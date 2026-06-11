@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html" class="active">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <h1>Glossary &mdash; словарь терминов harness-а</h1>
+  <p class="lead">Это термин-хаб: сюда ведут все остальные страницы. Каждый термин &mdash; короткое объяснение на 1&ndash;3 предложения плюс блок &laquo;где встречается&raquo; со ссылками туда, где термин реально работает. Логическая цепочка такая: <strong>оркестратор</strong> веером поднимает <strong>subagent-ов</strong>, те выполняют работу или судят её, а eval-стенд измеряет, насыпает ли skill агенту правильное поведение. Термины ниже сгруппированы по ролям, eval-понятиям, понятиям жизненного цикла/отказов и наблюдаемости.</p>
+
+  <div class="note"><span class="t">Как пользоваться.</span> Любое подчёркнутое пунктиром <a class="term" href="#term-orchestrator">слово-термин</a> на других страницах ведёт сюда, на якорь <code>#term-SLUG</code>. Внутри каждого определения ссылки ведут обратно &mdash; на <a href="scenarios.html#SC-01">сценарии</a>, <a href="runs.html#run-wlw9qhhhm">прогоны</a>, <a href="skill.html#E1">edge-кейсы</a> и <a href="architecture.html">архитектуру</a>. Так словарь и карта связаны в обе стороны.</div>
+
+  <!-- ============ Mini map / counts ============ -->
+  <section id="overview">
+  <div class="grid kpis">
+    <div class="card kpi">
+      <div class="num">26</div>
+      <div class="lbl">Терминов в словаре</div>
+      <div class="sub">4 группы понятий</div>
+    </div>
+    <div class="card kpi">
+      <div class="num">7</div>
+      <div class="lbl">Workflow-прогонов</div>
+      <div class="sub">2 delivery &middot; 5 harness</div>
+    </div>
+    <div class="card kpi">
+      <div class="num">20</div>
+      <div class="lbl">Eval-сценариев</div>
+      <div class="sub">16 edge-кейсов E1&ndash;E16</div>
+    </div>
+    <div class="card kpi">
+      <div class="num">9</div>
+      <div class="lbl">Delivery-циклов</div>
+      <div class="sub">из них и выросли уроки</div>
+    </div>
+  </div>
+
+  <div class="grid cards-2" style="margin-top:14px;">
+    <div class="chart-wrap">
+      <h3>Сколько терминов в каждой группе</h3>
+      <canvas id="chGroups" height="240"></canvas>
+      <p class="muted" style="margin-bottom:0;">Группы: Roles, Eval, Lifecycle/Failure, Observability.</p>
+    </div>
+    <div class="chart-wrap">
+      <h3>Verdict-ы по 20 сценариям</h3>
+      <canvas id="chVerdicts" height="240"></canvas>
+      <p class="muted" style="margin-bottom:0;">PASS / GUARD / FAIL / PENDING &mdash; источник: <a href="scenarios.html#SC-01">Scenarios</a>.</p>
+    </div>
+  </div>
+  </section>
+
+  <!-- =========================================================
+       GROUP 1 — ROLES
+       ========================================================= -->
+  <h2 id="g-roles">Роли &mdash; кто кого поднимает</h2>
+  <p>Это &laquo;кто есть кто&raquo; в цепочке агентов. Сверху вниз: оркестратор &rarr; cycle-worker &rarr; subagent-ы внутри workflow. Связи и реальные деревья агентов смотрите на <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a> и <a href="architecture.html">Architecture</a>.</p>
+
+  <div class="grid cards-2">
+
+    <div class="card" id="term-orchestrator">
+      <h3>orchestrator <span class="muted">(оркестратор)</span></h3>
+      <p>Верхний агент-дирижёр. Он не пишет код сам &mdash; он держит план, по одному поднимает рабочих агентов на каждый цикл доставки, читает их отчёты и решает, что делать дальше. Главная его дисциплина &mdash; <a class="term" href="#term-telemetry">экономия контекста</a>: не читать тяжёлые файлы, а передавать пути.</p>
+      <p class="muted">Где: <a href="architecture.html">Architecture</a> &middot; восстановление после компакта &mdash; <a href="scenarios.html#SC-03">SC-03</a>, переполнение собственного лимита &mdash; <a href="scenarios.html#SC-19">SC-19</a>, дисциплина контекста &mdash; <a href="scenarios.html#SC-20">SC-20</a>.</p>
+    </div>
+
+    <div class="card" id="term-cycle-worker">
+      <h3>cycle-worker <span class="muted">(рабочий цикла)</span></h3>
+      <p>Агент, которому оркестратор отдаёт один цикл доставки целиком: построить фазу, смержить PR, закрыть тикеты. Живёт в своей <a class="term" href="#term-tmux-pane">tmux-панели</a>, отчитывается файлом или сообщением и завершается. Реально таких циклов было 9.</p>
+      <p class="muted">Где: <a href="runs.html">Runs</a> (delivery-циклы) &middot; преждевременное убийство продуктивного worker-а &mdash; <a href="scenarios.html#SC-02">SC-02</a> и <a href="skill.html#E2">E2</a> &middot; зависший worker &mdash; <a href="scenarios.html#SC-08">SC-08</a>.</p>
+    </div>
+
+    <div class="card" id="term-subagent">
+      <h3>subagent <span class="muted">(под-агент)</span></h3>
+      <p>Одноразовый агент, поднятый внутри <a class="term" href="#term-workflow">workflow</a> под одну узкую задачу: написать сценарий, сделать ревью по одной оси, отыграть один прогон под тестом. После выдачи результата исчезает. Суммарно по всем прогонам их было 635.</p>
+      <p class="muted">Где: <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a> (деревья) &middot; <a href="runs.html#breakdown">Runs &mdash; разбор прогонов</a> &middot; форма их запуска &mdash; <a class="term" href="#term-fan-out">fan-out</a>.</p>
+    </div>
+
+    <div class="card" id="term-agent-under-test">
+      <h3>agent-under-test <span class="muted">(агент-под-тестом)</span></h3>
+      <p>Subagent, которого eval ставит в смоделированную ситуацию и смотрит, как он поступит. В <a class="term" href="#term-red-green">RED/GREEN</a>-прогоне RED-плечо &mdash; это агент <em>без</em> skill-а, GREEN-плечо &mdash; <em>со</em> skill-ом; разницу в поведении и измеряет стенд.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-01">Scenarios</a> &middot; матрица плеч в прогоне &mdash; <a href="runs.html#run-wlw9qhhhm">eval-full-run</a> &middot; судит его работу <a class="term" href="#term-judge">judge</a>.</p>
+    </div>
+
+    <div class="card" id="term-judge">
+      <span id="term-llm-judge"></span>
+      <h3>judge <span class="muted">(LLM-судья)</span></h3>
+      <p>Subagent-оценщик. Он не выполняет задачу &mdash; он читает, что сделал <a class="term" href="#term-agent-under-test">агент-под-тестом</a>, и по <a class="term" href="#term-rubric">рубрике</a> ставит балл. На каждое плечо &mdash; свои судьи; именно их недельный лимит и срубил в большом прогоне.</p>
+      <p class="muted">Где: <a href="runs.html#run-wgr53dz8h">eval-smoke</a> (8 судей) &middot; упавшие GREEN-судьи &mdash; <a href="runs.html#run-wlw9qhhhm">eval-full-run</a> и resume <a href="runs.html#run-wragtqbc2">eval-full-resume</a>.</p>
+    </div>
+
+    <div class="card" id="term-workflow">
+      <h3>workflow <span class="muted">(прогон-веер)</span></h3>
+      <p>Один запуск оркестратора, который веером поднимает множество subagent-ов, собирает их результаты и сводит в один артефакт. Каждый из 7 прогонов harness-а &mdash; это один workflow.</p>
+      <p class="muted">Где: <a href="runs.html">Runs</a> (все 7) &middot; деревья &mdash; <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a> &middot; форма веера &mdash; <a class="term" href="#term-fan-out">fan-out</a>.</p>
+    </div>
+
+    <div class="card" id="term-skill">
+      <h3>skill <span class="muted">(навык orchestrating-delivery-agents)</span></h3>
+      <p>Документ-навык, который учит оркестратора правильно поднимать и вести worker-ов: принцип, 3 роли, lifecycle и 16 edge-кейсов. Его и измеряет весь eval-стенд через разницу GREEN&minus;RED.</p>
+      <p class="muted">Где: сам навык &mdash; <a href="skill.html">Skill</a> (E1&ndash;E16) &middot; как закаливался &mdash; <a href="dev-history.html#dh-01">dh-01</a> &middot; чем меряется &mdash; <a class="term" href="#term-eval">eval</a>.</p>
+    </div>
+
+    <div class="card" id="term-harness">
+      <h3>harness <span class="muted">(стенд)</span></h3>
+      <p>Весь инструмент целиком: <a class="term" href="#term-skill">навык</a> + eval-сюита (20 сценариев, RED/GREEN-раннер) + дизайн observability. То есть и навык, и аппарат, которым доказывают, что навык работает.</p>
+      <p class="muted">Где: устройство &mdash; <a href="architecture.html">Architecture</a> &middot; хроника постройки &mdash; <a href="dev-history.html#dh-01">Dev-history</a> &middot; прогоны &mdash; <a href="runs.html">Runs</a>.</p>
+    </div>
+
+  </div>
+
+  <!-- =========================================================
+       GROUP 2 — EVAL TERMS
+       ========================================================= -->
+  <h2 id="g-eval">Eval-понятия &mdash; как меряется skill</h2>
+  <p>Эти термины про то, как стенд доказывает, что skill реально меняет поведение агента: завести веер, прогнать оба плеча, дать судьям рубрику, посчитать pass-rate и выставить verdict. Корпус сценариев &mdash; на <a href="scenarios.html#SC-01">Scenarios</a>.</p>
+
+  <div class="grid cards-2">
+
+    <div class="card" id="term-fan-out">
+      <h3>fan-out <span class="muted">(веер)</span></h3>
+      <p>Приём, когда один агент <em>параллельно</em> поднимает много subagent-ов, а потом сворачивает их выходы в один результат. Бывает плоский (8&rarr;1) и матричный (20 сценариев &times; 24 агента). Это базовая форма всех прогонов harness-а.</p>
+      <p class="muted">Где: самый широкий веер &mdash; <a href="runs.html#run-wlw9qhhhm">eval-full-run</a> (480 агентов) &middot; плоский &mdash; <a href="runs.html#run-wt2ajzijl">harden-orchestration-skill</a> &middot; деревья &mdash; <a href="agents.html">Agents</a>.</p>
+    </div>
+
+    <div class="card" id="term-eval">
+      <h3>eval <span class="muted">(оценочный прогон)</span></h3>
+      <p>Автоматический замер: даём агенту смоделированную ситуацию, фиксируем его действия и оцениваем по рубрике. Цель harness-а &mdash; не &laquo;пройти тест&raquo;, а доказать <em>прирост</em> от skill-а: разницу GREEN&minus;RED.</p>
+      <p class="muted">Где: весь корпус &mdash; <a href="scenarios.html">Scenarios</a> &middot; конвейер &mdash; <a href="runs.html#run-wgr53dz8h">eval-smoke</a> &rarr; <a href="runs.html#run-wlw9qhhhm">eval-full-run</a>.</p>
+    </div>
+
+    <div class="card" id="term-tdd">
+      <h3>TDD <span class="muted">(test-driven, перенос на документацию)</span></h3>
+      <p>Тот же цикл, что в test-driven development, но применённый к навыку: RED (база без skill-а ожидаемо ошибается) &rarr; GREEN (со skill-ом проходит) &rarr; REFACTOR (чиним по слабым местам). Eval-стенд &mdash; это и есть «тесты» для документа-навыка.</p>
+      <p class="muted">Где: REFACTOR-фаза &mdash; SC-03 первым &middot; раннер &mdash; <a href="dev-history.html#dh-01">dh-03</a> &middot; механика &mdash; <a class="term" href="#term-red-green">RED/GREEN</a>.</p>
+    </div>
+
+    <div class="card" id="term-rubric">
+      <h3>rubric <span class="muted">(рубрика)</span></h3>
+      <p>Чёткий чек-лист критериев, по которому <a class="term" href="#term-judge">судья</a> ставит балл. Хранится в <code>rubric.md</code> рядом со сценарием и <strong>не</strong> протекает в промпт агента-под-тестом &mdash; иначе он бы просто подыграл оценщику.</p>
+      <p class="muted">Где: пишется в <a href="runs.html#run-wka1y0ile">gen-scenarios</a> (без утечки) &middot; применяется судьями &middot; критерии каждого &mdash; <a href="scenarios.html#SC-01">Scenarios</a>.</p>
+    </div>
+
+    <div class="card" id="term-red-green">
+      <span id="term-red"></span><span id="term-green"></span>
+      <h3>red-green <span class="muted">(RED/GREEN, два плеча)</span></h3>
+      <p>Двухплечевой замер. RED &mdash; агент <em>без</em> skill-а (ожидаемо ошибается), GREEN &mdash; тот же агент <em>со</em> skill-ом. Если GREEN заметно выше RED, skill работает. Пример: SC-02 поднялся 0.83&rarr;1.00.</p>
+      <p class="muted">Где: первый замер &mdash; <a href="runs.html#run-wgr53dz8h">eval-smoke</a> &middot; полный двухплечевой &mdash; <a href="runs.html#run-wlw9qhhhm">eval-full-run</a> &middot; цифры плеч &mdash; <a href="scenarios.html#SC-01">Scenarios</a>.</p>
+    </div>
+
+    <div class="card" id="term-pass-rate">
+      <h3>pass-rate <span class="muted">(доля успеха)</span></h3>
+      <p>Усреднённый по N прогонам балл судей для одного плеча сценария, от 0.0 до 1.0. Сравнивают GREEN-pass-rate с RED-pass-rate; разница &mdash; и есть измеренный вклад skill-а.</p>
+      <p class="muted">Где: колонки RED/GREEN &mdash; <a href="scenarios.html#SC-01">Scenarios</a> &middot; для 16 сценариев GREEN ещё считается &mdash; <a href="runs.html#run-wragtqbc2">eval-full-resume</a>.</p>
+    </div>
+
+    <div class="card" id="term-verdict-pass">
+      <h3>verdict: PASS <span class="badge b-pass">PASS</span></h3>
+      <p>Итог сценария, когда GREEN-<a class="term" href="#term-pass-rate">pass-rate</a> заметно выше RED &mdash; skill дал измеримый прирост. Так закрылись SC-01 (0.83&rarr;1.00) и SC-02 (0.83&rarr;1.00).</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-01">SC-01</a>, <a href="scenarios.html#SC-02">SC-02</a> &middot; правило вынесения &mdash; <a href="scenarios.html">Scenarios</a>.</p>
+    </div>
+
+    <div class="card" id="term-verdict-guard">
+      <h3>verdict: GUARD <span class="badge b-guard">GUARD</span></h3>
+      <p>Особый исход: RED и GREEN оба на 1.0 &mdash; правильное поведение настолько базовое, что агент делает его и без skill-а. Skill тут не вредит, а &laquo;стережёт&raquo; уже верный паттерн. Пример &mdash; SC-05.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-05">SC-05</a> (branch-collision) &middot; трактовка &mdash; <a href="scenarios.html">Scenarios</a>.</p>
+    </div>
+
+    <div class="card" id="term-verdict-fail">
+      <h3>verdict: FAIL <span class="badge b-fail">FAIL</span></h3>
+      <p>Исход, когда skill <em>не</em> поднял балл (а порой GREEN даже ниже RED). Сигнал, что либо skill, либо сам сценарий надо чинить. Пока единственный &mdash; SC-03 (RED 1.0 &rarr; GREEN 0.67).</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-03">SC-03</a> (orchestrator-recovery) &middot; контекст &mdash; <a class="term" href="#term-orchestrator">orchestrator</a> и <a href="skill.html">Skill</a>.</p>
+    </div>
+
+    <div class="card" id="term-double-merge">
+      <h3>double-merge race <span class="muted">(гонка двойного мержа)</span></h3>
+      <p>Гонка, когда один воркер ещё домерживает PR, а оркестратор поднимает второй на ту же задачу &mdash; и оба пытаются смержить одно и то же. Лекарство &mdash; не плодить дубль, пока не подтверждена терминация предыдущего воркера.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-01">SC-01</a> (duplicate-race) и <a href="skill.html#E1">E1</a> &middot; реальный случай &mdash; cycle-2 в <a href="agents.html#cycles">delivery-циклах</a> &middot; родственное правило &mdash; <a class="term" href="#term-idempotent-create">idempotent-create</a>.</p>
+    </div>
+
+    <div class="card" id="term-durability">
+      <h3>durability <span class="muted">(ось: живучесть)</span></h3>
+      <p>Ось рубрики про восстановление после сбоя: пережил ли агент компакцию/рестарт/свой лимит, не потеряв состояние и не наплодив дублей. По этой оси оценивались SC-03 и SC-19.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-03">SC-03</a> (recovery, единственный FAIL) и <a href="scenarios.html#SC-19">SC-19</a> (budget-limit) &middot; механизм &mdash; <a class="term" href="#term-orchestration-state">ORCHESTRATION-STATE.md</a>.</p>
+    </div>
+
+    <div class="card" id="term-leanness">
+      <h3>leanness <span class="muted">(ось: экономия контекста)</span></h3>
+      <p>Ось рубрики про дисциплину контекста: не читать тяжёлые файлы «чтобы понять», а передавать пути и пользоваться read-only probes. Главная привычка оркестратора &mdash; держать собственный контекст «тощим» (lean).</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-20">SC-20</a> (context-leanness) &middot; родственная слепота к стоимости &mdash; <a class="term" href="#term-telemetry">telemetry</a>.</p>
+    </div>
+
+  </div>
+
+  <!-- =========================================================
+       GROUP 3 — LIFECYCLE / FAILURE TERMS
+       ========================================================= -->
+  <h2 id="g-lifecycle">Жизненный цикл и отказы &mdash; чему учит skill</h2>
+  <p>Это понятия про опасные моменты в жизни агента: когда он рождается, говорит, останавливается, гибнет &mdash; и где именно скрыты грабли. Из них и состоит ядро skill-а: 16 edge-кейсов <a href="skill.html#E1">E1&ndash;E16</a>.</p>
+
+  <div class="grid cards-2">
+
+    <div class="card" id="term-handoff">
+      <h3>handoff <span class="muted">(передача эстафеты)</span></h3>
+      <p>Датированный файл-сводка, по которому свежий агент (или будущий ты) продолжает работу с нуля памяти. Опасность &mdash; дрейф нумерации и обрезка: если handoff расходится с живым git, верить надо git-у.</p>
+      <p class="muted">Где: подозрительный handoff &mdash; <a href="scenarios.html#SC-11">SC-11</a> и <a href="skill.html#E10">E10</a> &middot; реальные передачи &mdash; <a href="runs.html">Runs</a> (cycle-3 &laquo;handoff&raquo;).</p>
+    </div>
+
+    <div class="card" id="term-shutdown-response">
+      <h3>shutdown-response <span class="muted">(ответ на остановку)</span></h3>
+      <p>Финальное сообщение, которое агент отдаёт при штатном завершении &mdash; де-факто его прощальный отчёт. Фактическая правка этого механизма была одной из 7 критических находок при закалке skill-а.</p>
+      <p class="muted">Где: правка &mdash; <a href="runs.html#run-wt2ajzijl">harden-orchestration-skill</a> &middot; парный механизм остановки &mdash; <a class="term" href="#term-taskstop">TaskStop</a>.</p>
+    </div>
+
+    <div class="card" id="term-taskstop">
+      <h3>TaskStop <span class="muted">(принудительная остановка)</span></h3>
+      <p>Инструмент, которым оркестратор может остановить рабочего агента. Острый риск &mdash; нажать слишком рано на <em>тихом, но продуктивном</em> worker-е; именно этот промах в cycle-5 и породил урок SC-02.</p>
+      <p class="muted">Где: фактическая правка &mdash; <a href="runs.html#run-wt2ajzijl">harden-orchestration-skill</a> &middot; преждевременное убийство &mdash; <a href="scenarios.html#SC-02">SC-02</a>, <a href="skill.html#E2">E2</a> &middot; cycle-5 &mdash; <a href="runs.html">Runs</a>.</p>
+    </div>
+
+    <div class="card" id="term-idempotent-create">
+      <h3>idempotent-create <span class="muted">(идемпотентное создание)</span></h3>
+      <p>Правило &laquo;найди-или-создай&raquo;: повторный запуск не должен плодить дубли эпиков, тикетов, PR-ов. Без него возобновлённый worker молча создаёт второй эпик.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-16">SC-16</a> и <a href="skill.html#E15">E15</a> &middot; родственная гонка дублей &mdash; <a href="scenarios.html#SC-01">SC-01</a> &middot; свойство всего стенда &mdash; <a class="term" href="#term-idempotent-create">resume из кэша</a> в <a href="runs.html#run-wragtqbc2">eval-full-resume</a>.</p>
+    </div>
+
+    <div class="card" id="term-denylist">
+      <h3>denylist <span class="muted">(чёрный список операций)</span></h3>
+      <p>Перечень действий, которые автономный агент <em>не</em> делает без человека: force-push, deploy, <code>DROP TABLE</code>. Натыкаясь на такое, он останавливается в статус <code>BLOCKED_ON_HUMAN</code>, а не &laquo;решает сам&raquo;.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-15">SC-15</a> (security) и <a href="skill.html#E14">E14</a> &middot; рядом с <a class="term" href="#term-loop-guard">loop-guard</a>.</p>
+    </div>
+
+    <div class="card" id="term-loop-guard">
+      <h3>loop-guard <span class="muted">(страж зацикливания)</span></h3>
+      <p>Предохранитель от &laquo;бесконечной цепочки&raquo;: если звенья идут, а прогресса нет, агент обязан остановиться (STOP) и спросить, а не продолжать жечь бюджет.</p>
+      <p class="muted">Где: <a href="scenarios.html#SC-18">SC-18</a> (runaway) &middot; родственный budget-кейс &mdash; <a href="scenarios.html#SC-19">SC-19</a> &middot; пара к <a class="term" href="#term-denylist">denylist</a>.</p>
+    </div>
+
+    <div class="card" id="term-worktree">
+      <h3>worktree <span class="muted">(git-worktree)</span></h3>
+      <p>Отдельная рабочая копия репозитория для параллельного агента. Изоляция не бесплатна: в свежем worktree нет <code>node_modules</code>/<code>.env</code>, поэтому часто дешевле <em>выстроить</em> работу в очередь, чем плодить деревья.</p>
+      <p class="muted">Где: ловушка изоляции &mdash; <a href="scenarios.html#SC-06">SC-06</a> и <a href="skill.html#E5">E5</a> &middot; коллизия одной ветки &mdash; <a href="scenarios.html#SC-05">SC-05</a>, <a href="skill.html#E4">E4</a>.</p>
+    </div>
+
+    <div class="card" id="term-edge-case">
+      <h3>edge-case <span class="muted">(краевой случай, E1&ndash;E16)</span></h3>
+      <p>Конкретная ловушка из практики, под которую написаны и правило в skill-е, и сценарий в eval-е. Всего 16 штук &mdash; от гонки двойного мержа (E1) до устаревшего merge-gate (E16).</p>
+      <p class="muted">Где: список &mdash; <a href="skill.html#E1">Skill (E1&ndash;E16)</a> &middot; каждому соответствует сценарий &mdash; <a href="scenarios.html#SC-01">Scenarios</a>.</p>
+    </div>
+
+    <div class="card" id="term-sendmessage">
+      <h3>SendMessage <span class="muted">(двусторонняя связь)</span></h3>
+      <p>Инструмент двусторонней связи оркестратора с живым worker-ом: можно и спросить статус, и получить ответ, не убивая агента. Лучший выбор, когда нужно проверить, идёт ли работа, прежде чем тянуться к <a class="term" href="#term-taskstop">TaskStop</a>.</p>
+      <p class="muted">Где: проверка живости вместо kill &mdash; <a href="scenarios.html#SC-02">SC-02</a> &middot; альтернатива &mdash; отчёт через файл (cc-guide) в <a href="agents.html#cycles">delivery-циклах</a>.</p>
+    </div>
+
+    <div class="card" id="term-orchestration-state">
+      <h3>ORCHESTRATION-STATE.md <span class="muted">(состояние на диске)</span></h3>
+      <p>Файл, в котором оркестратор держит свой план и прогресс на диске &mdash; чтобы после компакции или рестарта <em>прочитать</em> состояние, а не спавнить новый параллельный оркестратор. Опора <a class="term" href="#term-durability">durability</a>.</p>
+      <p class="muted">Где: восстановление mid-chain &mdash; <a href="scenarios.html#SC-03">SC-03</a> &middot; устройство &mdash; <a class="term" href="#term-compaction">компакция</a>.</p>
+    </div>
+
+    <div class="card" id="term-orchestrator-report">
+      <h3>ORCHESTRATOR REPORT <span class="muted">(блок отчёта)</span></h3>
+      <p>Стандартный финальный блок <code>## ORCHESTRATOR REPORT</code> в каждом handoff: что сделано, где мы, какая следующая проблема. По нему свежий агент продолжает с нуля памяти, не доверяя «дрейфующей» нумерации.</p>
+      <p class="muted">Где: подозрительный handoff &mdash; <a href="scenarios.html#SC-11">SC-11</a> и <a href="skill.html#E10">E10</a> &middot; пара к <a class="term" href="#term-handoff">handoff</a>.</p>
+    </div>
+
+    <div class="card" id="term-blocked-on-human">
+      <h3>BLOCKED_ON_HUMAN <span class="muted">(статус «нужен человек»)</span></h3>
+      <p>Статус, в который агент уходит, упёршись в действие из <a class="term" href="#term-denylist">denylist</a> (force-push, deploy, <code>DROP TABLE</code>) или в прошедший дедлайн: он останавливается и эскалирует человеку, а не «решает сам».</p>
+      <p class="muted">Где: security-кейс &mdash; <a href="scenarios.html#SC-15">SC-15</a> и <a href="skill.html#E14">E14</a> &middot; источник списка &mdash; <a class="term" href="#term-denylist">denylist</a>.</p>
+    </div>
+
+    <div class="card" id="term-compaction">
+      <h3>compaction <span class="muted">(компакция контекста)</span></h3>
+      <p>Сжатие истории диалога, когда агент упирается в окно контекста &mdash; часть деталей теряется. Опасный момент: оркестратор после компакции должен <em>прочитать</em> состояние с диска, а не начать заново.</p>
+      <p class="muted">Где: восстановление после компакта &mdash; <a href="scenarios.html#SC-03">SC-03</a> &middot; хранилище состояния &mdash; <a class="term" href="#term-orchestration-state">ORCHESTRATION-STATE.md</a>.</p>
+    </div>
+
+    <div class="card" id="term-liveness">
+      <h3>liveness <span class="muted">(сигналы живости)</span></h3>
+      <p>Признаки того, что молчащий worker на самом деле работает: новые коммиты, растущий mtime лога/билда, активность в pane/<code>/workflows</code>. Проверять их во времени &mdash; обязательное условие перед любым kill: тишина &ne; зависание.</p>
+      <p class="muted">Где: idle &ne; stuck &mdash; <a href="scenarios.html#SC-02">SC-02</a> и <a href="scenarios.html#SC-08">SC-08</a> &middot; механизм связи &mdash; <a class="term" href="#term-sendmessage">SendMessage</a>.</p>
+    </div>
+
+  </div>
+
+  <!-- =========================================================
+       GROUP 4 — OBSERVABILITY TERMS
+       ========================================================= -->
+  <h2 id="g-observability">Наблюдаемость &mdash; чем всё это видно</h2>
+  <p>Эти термины про инфраструктуру, в которой агенты живут и из которой снимается телеметрия: панели tmux, поток событий, схема событий, SDK и сам сбор метрик. На них держатся <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a> и <a href="architecture.html">Architecture</a>.</p>
+
+  <div class="grid cards-2">
+
+    <div class="card" id="term-tmux-pane">
+      <span id="term-tmux"></span>
+      <h3>tmux-pane <span class="muted">(tmux, панель tmux)</span></h3>
+      <p>Прямоугольник внутри одного терминального окна, где живёт один рабочий агент &mdash; так его видно &laquo;вживую&raquo;. По умолчанию агенты раскладываются по <em>панелям</em>, а не по отдельным окнам, чтобы не терять их из виду.</p>
+      <p class="muted">Где: панели vs окна &mdash; <a href="scenarios.html#SC-13">SC-13</a> и <a href="skill.html#E12">E12</a> &middot; все delivery-циклы шли в панелях &mdash; <a href="runs.html">Runs</a>.</p>
+    </div>
+
+    <div class="card" id="term-telemetry">
+      <h3>telemetry <span class="muted">(телеметрия)</span></h3>
+      <p>Метрики прогона: subagent-ы, output-токены, tool-uses, длительность. Без само-отчёта по токенам оркестратор <em>не угадывает</em> цену &mdash; он требует TELEMETRY от worker-а. Суммарно стенд снял 14.6M токенов и 3403 tool-uses.</p>
+      <p class="muted">Где: вся таблица &mdash; <a href="runs.html#telemetry">Runs</a> &middot; профайлинг &mdash; <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a> &middot; слепота к стоимости &mdash; <a href="scenarios.html#SC-12">SC-12</a>, <a href="skill.html#E11">E11</a>.</p>
+    </div>
+
+    <div class="card" id="term-sse">
+      <h3>SSE <span class="muted">(server-sent events)</span></h3>
+      <p>Однонаправленный поток событий от сервера к клиенту по HTTP &mdash; так harness стримит ход прогона и completion-уведомления, из которых и снята вся телеметрия.</p>
+      <p class="muted">Где: транспорт событий &mdash; <a href="architecture.html">Architecture</a> &middot; формат событий &mdash; <a class="term" href="#term-event-schema">event-schema</a>.</p>
+    </div>
+
+    <div class="card" id="term-event-schema">
+      <h3>event-schema <span class="muted">(схема событий)</span></h3>
+      <p>Договорённость о форме событий в потоке: какие поля несёт каждое (тип, run_id, агент, токены). Именно по ней парсятся уведомления, чтобы достроить дерево агентов и сложить телеметрию.</p>
+      <p class="muted">Где: <a href="architecture.html">Architecture</a> &middot; транспорт &mdash; <a class="term" href="#term-sse">SSE</a> &middot; что из неё считают &mdash; <a class="term" href="#term-telemetry">telemetry</a>.</p>
+    </div>
+
+    <div class="card" id="term-agent-sdk">
+      <h3>agent-sdk <span class="muted">(SDK агентов)</span></h3>
+      <p>Программный слой, которым поднимаются и связываются агенты: запуск subagent-ов, передача сообщений, инструменты вроде <a class="term" href="#term-taskstop">TaskStop</a> и <a class="term" href="#term-shutdown-response">shutdown-response</a>. Поверх него и построен весь harness.</p>
+      <p class="muted">Где: <a href="architecture.html">Architecture</a> &middot; инструменты остановки &mdash; <a class="term" href="#term-taskstop">TaskStop</a> &middot; форма запуска &mdash; <a class="term" href="#term-fan-out">fan-out</a>.</p>
+    </div>
+
+    <div class="card" id="term-event-stream">
+      <h3>event stream <span class="muted">(поток событий)</span></h3>
+      <p>Основа дизайна observability: наблюдение строится поверх <em>потока событий</em> прогона, а не поверх UI. Каждое событие парсится по <a class="term" href="#term-event-schema">event-schema</a>, и из него достраивают дерево агентов и телеметрию.</p>
+      <p class="muted">Где: event-first дизайн &mdash; <a href="architecture.html">Architecture</a> &middot; транспорт &mdash; <a class="term" href="#term-sse">SSE</a> &middot; форма &mdash; <a class="term" href="#term-event-schema">event-schema</a>.</p>
+    </div>
+
+    <div class="card" id="term-websocket">
+      <h3>WebSocket <span class="muted">(двунаправленный транспорт)</span></h3>
+      <p>Двунаправленный транспорт поверх одного соединения &mdash; альтернатива <a class="term" href="#term-sse">SSE</a>, рассмотренная для стрима событий. Для одностороннего стрима телеметрии SSE проще и его и выбрали; WebSocket держат на случай интерактивного управления.</p>
+      <p class="muted">Где: SSE vs WebSocket &mdash; <a href="architecture.html">Architecture</a> &middot; выбранный транспорт &mdash; <a class="term" href="#term-sse">SSE</a>.</p>
+    </div>
+
+  </div>
+
+  <div class="note"><span class="t">Замкнутый круг.</span> Роли поднимают друг друга веером (<a class="term" href="#term-fan-out">fan-out</a>), eval-понятия меряют прирост от skill-а, понятия отказов описывают грабли, а наблюдаемость даёт цифры, которыми всё это видно. Дальше идите в <a href="dev-history.html#dh-01">Dev-history</a> &mdash; как harness строился по шагам, или в <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a> &mdash; сводка верхнего уровня. Эпик: <a href="https://ainstance-labs.atlassian.net/browse/TLM-58">TLM-58</a>.</div>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+(function () {
+  Chart.defaults.color = '#9da7b3';
+  Chart.defaults.font.family = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+  Chart.defaults.font.size = 11;
+  var grid = '#30363d';
+  var tick = '#9da7b3';
+
+  // Term counts per group (this page)
+  new Chart(document.getElementById('chGroups'), {
+    type: 'bar',
+    data: {
+      labels: ['Roles', 'Eval', 'Lifecycle/Failure', 'Observability'],
+      datasets: [{ data: [8, 12, 14, 7], backgroundColor: ['#bc8cff', '#58a6ff', '#d29922', '#3fb950'], borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function (c) { return c.parsed.y + ' терминов'; } } }
+      },
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: tick } },
+        y: { grid: { color: grid }, ticks: { color: tick, stepSize: 2 }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Verdict distribution across the 20 scenarios (from runs.json)
+  // PASS: SC-01, SC-02 = 2 ; GUARD: SC-05 = 1 ; FAIL: SC-03 = 1 ; PENDING: 16
+  new Chart(document.getElementById('chVerdicts'), {
+    type: 'doughnut',
+    data: {
+      labels: ['PASS', 'GUARD', 'FAIL', 'PENDING'],
+      datasets: [{
+        data: [2, 1, 1, 16],
+        backgroundColor: ['#3fb950', '#58a6ff', '#f85149', '#6e7781'],
+        borderColor: '#161b22', borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: tick } },
+        tooltip: { callbacks: { label: function (c) { return c.label + ': ' + c.parsed + ' сценариев'; } } }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

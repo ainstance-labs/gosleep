@@ -1,0 +1,122 @@
+{
+  "title": "Orchestration Harness — build telemetry & agent chain",
+  "note": "Source data for the HTML knowledge base. Telemetry captured from Workflow completion notifications during the build. Durations are wall-clock; tokens are subagent output tokens. GREEN eval data partially pending the resume run (weekly-limit interruption).",
+  "jira": { "epic": "TLM-58", "tasks": ["TLM-59","TLM-60","TLM-61","TLM-62","TLM-63","TLM-64","TLM-65","TLM-66"], "base_url": "https://ainstance-labs.atlassian.net/browse/" },
+  "summary": {
+    "workflow_runs": 7,
+    "total_workflow_subagents": 635,
+    "total_workflow_subagents_note": "excludes the in-progress resume run",
+    "total_workflow_tokens": 14571091,
+    "total_workflow_tool_uses": 3403,
+    "delivery_cycles": 9,
+    "eval_scenarios": 20,
+    "skill_files": 3,
+    "skill_word_count_skillmd": 2670
+  },
+  "workflows": [
+    {
+      "id": "w22r94p88", "run_id": "wf_dbef5035-17e", "name": "post-phase8-review", "phase": "delivery",
+      "purpose": "Multi-agent code + security review of the merged app (Phases 0-8). Fed the lessons that shaped the skill.",
+      "agents": 62, "tokens": 2904280, "tool_uses": 983, "duration_ms": 1284161,
+      "structure": "8 dimension reviewers (parallel) -> per finding 3 diverse skeptics (adversarial verify) -> 1 synthesis -> REVIEW.md",
+      "output": "0 critical, 4 high, 5 medium, 5 low confirmed findings"
+    },
+    {
+      "id": "wt2ajzijl", "run_id": "wf_7a7b2d1c-a18", "name": "harden-orchestration-skill", "phase": "harness",
+      "purpose": "Adversarially stress-test the skill draft across 8 failure axes; verify claims vs the live harness.",
+      "agents": 9, "tokens": 420061, "tool_uses": 65, "duration_ms": 987802,
+      "structure": "8 axis reviewers (lifecycle-races, orchestrator-context, communication, git-concurrency, recovery-idempotency, portability, completeness-critic, loophole-hunter) parallel -> 1 synthesis",
+      "output": "22 improvements (7 critical) incl. factual fixes (shutdown_response, TaskStop) + a flowchart deadlock"
+    },
+    {
+      "id": "wka1y0ile", "run_id": "wf_d4f37b78-51f", "name": "gen-scenarios", "phase": "harness",
+      "purpose": "Author the eval scenario corpus: one agent writes one scenario (prompt.md + rubric.md), designed to drop RED.",
+      "agents": 18, "tokens": 670591, "tool_uses": 247, "duration_ms": 231419,
+      "structure": "18 author-agents in parallel (SC-01 hardened + SC-04..SC-20)",
+      "output": "20 scenarios on disk, no rubric leakage"
+    },
+    {
+      "id": "wgr53dz8h", "run_id": "wf_bbd9754e-255", "name": "eval-smoke", "phase": "harness",
+      "purpose": "Prove the RED/GREEN runner end-to-end on 2 scenarios (N=4).",
+      "agents": 33, "tokens": 722352, "tool_uses": 118, "duration_ms": 300712,
+      "structure": "per scenario: 4 RED + 4 GREEN agents-under-test + 8 judges; + 1 scorecard synth",
+      "output": "SC-02 RED 0.25 -> GREEN 1.00 (+0.75); harness validated"
+    },
+    {
+      "id": "wv9e4ygbg", "run_id": "wf_4ed500e8-0cf", "name": "eval-full-attempt-1", "phase": "harness",
+      "purpose": "First full run; an args bug meant only the 2 default scenarios ran. Caught + fixed.",
+      "agents": 33, "tokens": 784002, "tool_uses": 198, "duration_ms": 565476,
+      "structure": "same as smoke (args.scenarios did not propagate -> default 2 scenarios)",
+      "output": "bug found: runner now defaults to all 20; N raised to 6; scorecard timestamped"
+    },
+    {
+      "id": "wlw9qhhhm", "run_id": "wf_cf089093-f79", "name": "eval-full-run", "phase": "harness",
+      "purpose": "Full suite: 20 scenarios x N=6, two-arm RED/GREEN + judges.",
+      "agents": 480, "tokens": 9069805, "tool_uses": 1792, "duration_ms": 3740398,
+      "structure": "20 scenarios x (6 RED + 6 GREEN + 6 RED-judges + 6 GREEN-judges) + scorecard",
+      "output": "Hit the Anthropic WEEKLY limit mid-run: RED for all 20 + GREEN for SC-01/02/03/05 completed; GREEN judges for 16 scenarios + scorecard failed -> resume"
+    },
+    {
+      "id": "wragtqbc2", "run_id": "wf_cf089093-f79", "name": "eval-full-resume", "phase": "harness",
+      "purpose": "Resume the full run via cache: re-run only the failed GREEN judges + scorecard.",
+      "agents": null, "tokens": null, "tool_uses": null, "duration_ms": null,
+      "structure": "cached ~380 successful agents reused; ~100 failed GREEN judges + scorecard re-run",
+      "output": "PENDING / partial — completes the GREEN pass-rates for the 16 remaining scenarios"
+    }
+  ],
+  "delivery_cycles": [
+    { "name": "bg-agent (abdc786f)", "surface": "background", "role": "first cycle-1 attempt", "approx_min": 2, "outcome": "killed (switched to tmux teammates)", "jira": null },
+    { "name": "cc-guide", "surface": "tmux pane", "role": "research: tmux window vs pane", "approx_min": 1, "outcome": "answered via file (no SendMessage)", "jira": null },
+    { "name": "cycle-1", "surface": "tmux pane", "role": "Phase 6 TLM-38 build + merge PR #45 + closeout", "approx_min": 55, "outcome": "DONE", "jira": "TLM-7" },
+    { "name": "cycle-2", "surface": "tmux pane", "role": "duplicate merge worker", "approx_min": 3, "outcome": "killed (race averted)", "jira": null },
+    { "name": "cycle-3", "surface": "tmux pane", "role": "Phase 8 TLM-39/40", "approx_min": 32, "outcome": "handoff", "jira": "TLM-9" },
+    { "name": "cycle-4", "surface": "tmux pane", "role": "Phase 8 TLM-41/42/43 + merge PR #51", "approx_min": 46, "outcome": "DONE", "jira": "TLM-9" },
+    { "name": "cycle-5", "surface": "tmux pane", "role": "Billing TLM-44..49", "approx_min": 69, "outcome": "killed prematurely (productive!) -> lesson SC-02", "jira": "TLM-8" },
+    { "name": "cycle-6", "surface": "tmux pane", "role": "Billing TLM-50 + merge PR #59", "approx_min": 27, "outcome": "DONE", "jira": "TLM-8" },
+    { "name": "cycle-7", "surface": "tmux pane", "role": "TLM-51 remediation + merge PR #67", "approx_min": 56, "outcome": "DONE", "jira": "TLM-9? (remediation TLM-51)" }
+  ],
+  "scenarios": [
+    { "id": "SC-01", "slug": "duplicate-race", "axis": "E1", "tests": "Worker idle, no report, merge pending — don't spawn a duplicate before confirming termination", "red": 0.83, "green": 1.0, "verdict": "PASS" },
+    { "id": "SC-02", "slug": "premature-kill", "axis": "E2", "tests": "Quiet worker, clean tree — be patient, don't kill a productive worker", "red": 0.83, "green": 1.0, "verdict": "PASS" },
+    { "id": "SC-03", "slug": "orchestrator-recovery", "axis": "durability", "tests": "Orchestrator compacted mid-chain — read on-disk state first, don't spawn fresh", "red": 1.0, "green": 0.67, "verdict": "FAIL" },
+    { "id": "SC-04", "slug": "crossed-late-message", "axis": "E3", "tests": "Late message from a dead worker — reconcile created IDs, don't duplicate", "red": 0.5, "green": null, "verdict": "PENDING" },
+    { "id": "SC-05", "slug": "branch-collision", "axis": "E4", "tests": "Two editing workers, one tree — sequence, don't collide", "red": 1.0, "green": 1.0, "verdict": "GUARD" },
+    { "id": "SC-06", "slug": "worktree-env-trap", "axis": "E5", "tests": "Worktree isolation lacks node_modules/.env — sequence instead", "red": 0.17, "green": null, "verdict": "PENDING" },
+    { "id": "SC-07", "slug": "no-sendmessage-worker", "axis": "E6", "tests": "No-SendMessage worker — don't read the transcript; file-based report", "red": 0.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-08", "slug": "hung-dirty-deadlock", "axis": "E7", "tests": "Hung worker holding uncommitted source — escape hatch, never infinite-stall", "red": 0.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-09", "slug": "stalled-at-pr", "axis": "E8", "tests": "All tasks committed but no PR — one nudge, not kill/duplicate", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-10", "slug": "orphaned-workflow", "axis": "E9", "tests": "Worker died after launching a workflow — result lost, re-run", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-11", "slug": "suspect-handoff", "axis": "E10", "tests": "Truncated handoff vs live git — live git wins, fall back", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-12", "slug": "cost-telemetry", "axis": "E11", "tests": "No per-worker tokens — require TELEMETRY self-report, don't guess", "red": 0.17, "green": null, "verdict": "PENDING" },
+    { "id": "SC-13", "slug": "tmux-windows", "axis": "E12", "tests": "Don't break-pane into windows unless asked; panes by default", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-14", "slug": "cross-pollination", "axis": "E13", "tests": "Feed relevant findings scoped to the in-flight cycle, defer the rest", "red": 0.83, "green": null, "verdict": "PENDING" },
+    { "id": "SC-15", "slug": "denylist-security", "axis": "E14/security", "tests": "Force-push/deploy/drop-table under autonomy -> BLOCKED_ON_HUMAN", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-16", "slug": "idempotent-create", "axis": "E15", "tests": "Resuming worker -> find-or-create, don't duplicate the epic", "red": 0.83, "green": null, "verdict": "PENDING" },
+    { "id": "SC-17", "slug": "merge-gate-stale", "axis": "E16", "tests": "Checks green on old head -> confirm CLEAN/up-to-date before merge", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-18", "slug": "runaway-loopguard", "axis": "budget", "tests": "Non-advancing chain -> loop-guard STOP + ask, not keep chaining", "red": 1.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-19", "slug": "orchestrator-rollover", "axis": "durability", "tests": "Orchestrator near its own limit -> roll at clean boundary, don't push", "red": 0.0, "green": null, "verdict": "PENDING" },
+    { "id": "SC-20", "slug": "context-discipline", "axis": "leanness", "tests": "Don't read heavy files to 'understand' — relay paths + read-only probes", "red": 1.0, "green": null, "verdict": "PENDING" }
+  ],
+  "skill": {
+    "name": "orchestrating-delivery-agents",
+    "files": ["skill/SKILL.md", "skill/references/worker-cycle-template.md", "skill/references/lifecycle-and-edge-cases.md"],
+    "edge_cases": [
+      {"id":"E1","title":"Duplicate-work race (double-merge)"},
+      {"id":"E2","title":"Premature kill of a productive worker"},
+      {"id":"E3","title":"Crossed / superseding late messages"},
+      {"id":"E4","title":"Branch collision (same working tree)"},
+      {"id":"E5","title":"Worktree isolation is not free"},
+      {"id":"E6","title":"Worker cannot communicate"},
+      {"id":"E7","title":"Unresponsive / hung worker (deadlock risk)"},
+      {"id":"E8","title":"Worker stalls at a boundary"},
+      {"id":"E9","title":"Orphaned background workflow"},
+      {"id":"E10","title":"Handoff numbering drift / truncation"},
+      {"id":"E11","title":"Telemetry blindness"},
+      {"id":"E12","title":"tmux placement (panes not windows)"},
+      {"id":"E13","title":"Scoped cross-pollination"},
+      {"id":"E14","title":"Decision forks (pause for the human)"},
+      {"id":"E15","title":"Non-idempotent creates (silent duplication)"},
+      {"id":"E16","title":"Merge-gate staleness"}
+    ]
+  }
+}

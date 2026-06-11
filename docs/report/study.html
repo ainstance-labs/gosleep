@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+ .step{margin:8px 0;padding-left:38px;position:relative;max-width:82ch}
+ .step .n{position:absolute;left:0;top:0;min-width:30px;text-align:right;color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+ .toc{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin:16px 0}
+ .toc ol{margin:6px 0 0;padding-left:22px} .toc li{padding:2px 0}
+</style>
+</head><body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html" class="active">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+<h1>Study — обучение с нуля</h1>
+<p class="lead">Пошаговый разбор для того, кто никогда не строил агентные системы. Идём по порядку: что это,
+как мы это делали, какие были ошибки, что получилось. 36 пунктов, сквозная нумерация. Незнакомые
+термины подчёркнуты — наведи/нажми, чтобы открыть объяснение в <a href="glossary.html">глоссарии</a>.</p>
+
+<div class="toc"><strong>Содержание</strong>
+<ol>
+<li><a href="#osnovy">Основы — что это вообще</a></li>
+<li><a href="#delivery">Живая доставка — как мы это делали по-настоящему</a></li>
+<li><a href="#oshibki">Ошибки-уроки — две реальные ошибки</a></li>
+<li><a href="#skill">Скилл — превращаем опыт в навык</a></li>
+<li><a href="#testy">Тесты — как проверять СКИЛЛ, а не код</a></li>
+<li><a href="#korpus">Корпус сценариев — 20 ловушек</a></li>
+<li><a href="#progony">Прогоны и стоимость — куда ушли лимиты</a></li>
+<li><a href="#itog">Что нашли и что дальше</a></li>
+</ol></div>
+
+<h2 id="osnovy">Основы — что это вообще</h2>
+<p class="step"><span class="n">1.</span> Представь, что у тебя есть умный помощник (<a class="term" href="glossary.html#term-subagent">агент</a>) — это языковая модель, которая может читать файлы, писать код, запускать команды. Один агент = один «работник».</p>
+<p class="step"><span class="n">2.</span> У агента есть <a class="term" href="glossary.html#term-compaction">окно контекста</a> — это его «оперативная память». Она ограничена. Когда работа большая, память кончается, и агент «забывает» начало.</p>
+<p class="step"><span class="n">3.</span> Если работы много (целый roadmap из 9 эпиков), один агент не вытянет — память кончится на середине, и его придётся перезапускать вручную.</p>
+<p class="step"><span class="n">4.</span> Решение — <a class="term" href="glossary.html#term-orchestrator">оркестратор</a>: агент, который сам НЕ делает работу, а только раздаёт её другим свежим агентам и следит за ними. Как тимлид: не пишет код сам, а координирует.</p>
+<p class="step"><span class="n">5.</span> Свежий агент на каждый кусок работы называется <a class="term" href="glossary.html#term-cycle-worker">cycle-worker</a> (рабочий цикл). Отработал кусок — передал эстафету следующему.</p>
+<p class="step"><span class="n">6.</span> Эстафета передаётся через <a class="term" href="glossary.html#term-handoff">handoff</a> — это файл-«записка»: что сделано, где мы, что делать дальше. Новый агент читает её и продолжает с нуля памяти. Так цепочка живёт дольше любого одного агента.</p>
+<h2 id="delivery">Живая доставка — как мы это делали по-настоящему</h2>
+<p class="step"><span class="n">7.</span> Мы реально прогнали так целый проект: оркестратор + цепочка cycle-worker-ов, соединённых handoff-ами. Подробная хронология — на странице <a href="dev-history.html">Dev-history</a>.</p>
+<p class="step"><span class="n">8.</span> Каждый воркер работал в своей панели <a class="term" href="glossary.html#term-tmux-pane">tmux</a> — это видно вживую. Дерево «кто кого запускал» — на <a href="agents.html#cycles">Agents (циклы)</a>.</p>
+<p class="step"><span class="n">9.</span> Воркеры общались с оркестратором через <a class="term" href="glossary.html#term-sendmessage">SendMessage</a> — обычный текст невидим оркестратору, нужно именно отправить сообщение.</p>
+<p class="step"><span class="n">10.</span> Оркестратор НЕ читает тяжёлые файлы (чужой код, транскрипты) — иначе у НЕГО кончится память. Он держит только пути и короткие отчёты. Это правило — <a class="term" href="glossary.html#term-leanness">leanness</a>.</p>
+<p class="step"><span class="n">11.</span> Когда у воркера контекст подходит к ~75–80%, он сам пишет handoff и отдаёт отчёт. Оркестратор поднимает следующего свежего воркера. Так мы закрыли 9 эпиков подряд.</p>
+<h2 id="oshibki">Ошибки-уроки — две реальные ошибки</h2>
+<p class="step"><span class="n">12.</span> Урок №1 — «гонка дубликата». Воркер ушёл в <a class="term" href="glossary.html#term-liveness">idle</a> без отчёта; оркестратор решил «он закончил» и поднял второго на ту же задачу. Двое сделали один и тот же мерж — <a class="term" href="glossary.html#term-double-merge">double-merge</a>. Сценарий <a href="scenarios.html#SC-01">SC-01</a>, edge-case <a href="skill.html#E1">E1</a>.</p>
+<p class="step"><span class="n">13.</span> Вывод: <strong>idle ≠ закончил</strong>. Нельзя поднимать замену, пока прошлый не ПОДТВЕРЖДЁН завершённым.</p>
+<p class="step"><span class="n">14.</span> Урок №2 — «преждевременное убийство». Воркер молчал пару минут, оркестратор решил «завис» и убил его. А он работал — просто думал. Потеряли прогресс. Сценарий <a href="scenarios.html#SC-02">SC-02</a>, edge-case <a href="skill.html#E2">E2</a>.</p>
+<p class="step"><span class="n">15.</span> Вывод: <strong>idle ≠ завис</strong>. Сначала терпение и проверка по git, только потом действия.</p>
+<p class="step"><span class="n">16.</span> Эти две ошибки — фундамент всего дальнейшего: мы превратили их (и десяток других ловушек) в правила.</p>
+<h2 id="skill">Скилл — превращаем опыт в навык</h2>
+<p class="step"><span class="n">17.</span> Все правила мы собрали в <a class="term" href="glossary.html#term-skill">скилл</a> <code>orchestrating-delivery-agents</code> — это инструкция, которую любой агент читает и начинает действовать как опытный оркестратор. Разбор — на странице <a href="skill.html">Skill</a>.</p>
+<p class="step"><span class="n">18.</span> В скилле: модель ролей, схема решения «агент молчит — что делать», протокол жизненного цикла и каталог из 16 <a class="term" href="glossary.html#term-edge-case">edge-кейсов</a> (<a href="skill.html#E1">E1</a>…<a href="skill.html#E16">E16</a>).</p>
+<p class="step"><span class="n">19.</span> Скилл мы «закалили»: запустили 8 свежих агентов-критиков, каждый бил по своей оси (гонки, восстановление, безопасность…). Они нашли даже фактические ошибки и логический тупик — мы внесли 22 правки. См. <a href="dev-history.html#dh-01">dh-01</a>.</p>
+<p class="step"><span class="n">20.</span> Важная идея: скилл — это процесс, а не код. Значит и проверять его надо не обычными тестами, а поведенчески.</p>
+<h2 id="testy">Тесты — как проверять СКИЛЛ, а не код</h2>
+<p class="step"><span class="n">21.</span> Тест скилла = <a class="term" href="glossary.html#term-eval">eval</a>: даём свежему агенту ситуацию и смотрим, принял ли он правильное решение. Это поведенческая проверка.</p>
+<p class="step"><span class="n">22.</span> Каждый сценарий — два файла: prompt.md (ситуация, её видит агент) и rubric.md (критерии оценки, их видит только <a class="term" href="glossary.html#term-judge">судья</a>). Разделены, чтобы агент не подсмотрел ответ.</p>
+<p class="step"><span class="n">23.</span> Гоним каждый сценарий двумя «руками»: <a class="term" href="glossary.html#term-red-green">RED</a> — агент БЕЗ скилла (базовая линия), и GREEN — агент СО скиллом. Разница = польза скилла.</p>
+<p class="step"><span class="n">24.</span> Судья ставит pass/fail по рубрике. Считаем <a class="term" href="glossary.html#term-pass-rate">pass-rate</a> — долю верных решений из N прогонов (модель недетерминирована, поэтому несколько прогонов).</p>
+<p class="step"><span class="n">25.</span> Вердикты: <a class="term" href="glossary.html#term-verdict-pass">PASS</a> (скилл помог), <a class="term" href="glossary.html#term-verdict-guard">GUARD</a> (база и так справляется), <a class="term" href="glossary.html#term-verdict-fail">FAIL</a> (GREEN&lt;0.8 — реальная дыра). Все прогоны — на <a href="runs.html">Runs</a>.</p>
+<h2 id="korpus">Корпус сценариев — 20 ловушек</h2>
+<p class="step"><span class="n">26.</span> Мы написали 20 стресс-сценариев — по одному на каждый edge-кейс + безопасность, бюджет, перекладку оркестратора, дисциплину контекста. Все — на <a href="scenarios.html">Scenarios</a>.</p>
+<p class="step"><span class="n">27.</span> Ключевой урок: сценарий полезен, только если он «роняет RED» — то есть базовая модель без скилла на нём реально ошибается. Если и без скилла всё ок, тест ничего не различает.</p>
+<p class="step"><span class="n">28.</span> Поэтому в каждом сценарии неправильное действие сделано НАРОЧНО заманчивым (дедлайн, «не тормози», полная автономия) — чтобы проверить, удержит ли скилл от ошибки.</p>
+<h2 id="progony">Прогоны и стоимость — куда ушли лимиты</h2>
+<p class="step"><span class="n">29.</span> Всего было 7 воркфлоу-прогонов, в сумме ~635 <a class="term" href="glossary.html#term-subagent">субагентов</a> и ~14.6M токенов. Полная телеметрия — на <a href="runs.html">Runs</a>, поимённый список всех 635 — на <a href="subagents.html">Subagents</a> (раскрывается по клику).</p>
+<p class="step"><span class="n">30.</span> <a class="term" href="glossary.html#term-workflow">Workflow</a> — это способ запустить много агентов по чёткому сценарию (<a class="term" href="glossary.html#term-fan-out">fan-out</a>): например «20 сценариев × 6 прогонов × 2 руки + судьи».</p>
+<p class="step"><span class="n">31.</span> На полном прогоне (480 агентов) мы упёрлись в недельный лимит — часть судей упала. Доделали через <a class="term" href="glossary.html#term-orchestration-state">resume</a>: кэш переиспользует готовых агентов, заново гоняются только упавшие.</p>
+<p class="step"><span class="n">32.</span> Урок про стоимость: движок не отдаёт токены по каждому субагенту (<a class="term" href="glossary.html#term-telemetry">telemetry</a>-слепота) — поэтому каждый воркер должен сам сообщать свою стоимость.</p>
+<h2 id="itog">Что нашли и что дальше</h2>
+<p class="step"><span class="n">33.</span> Итог по 20 сценариям: <span class="badge b-pass">6 PASS</span> · <span class="badge b-guard">6 GUARD</span> · <span class="badge b-fail">8 FAIL</span>. На самых злых ловушках скилл дал огромный лифт (например <a href="scenarios.html#SC-08">SC-08</a>: 0.00→1.00).</p>
+<p class="step"><span class="n">34.</span> 8 дыр (GREEN&lt;0.8) — это бэклог доработки. Самые большие: <a href="scenarios.html#SC-19">SC-19</a> перекладка оркестратора (0.20), <a href="scenarios.html#SC-09">SC-09</a> nudge-на-PR (0.33), <a href="scenarios.html#SC-12">SC-12</a> телеметрия (0.33).</p>
+<p class="step"><span class="n">35.</span> Темы дыр: идемпотентность (<a class="term" href="glossary.html#term-idempotent-create">find-or-create</a>), запись состояния/телеметрия, конфликт «терпение vs активный nudge». Это следующий REFACTOR скилла.</p>
+<p class="step"><span class="n">36.</span> Где мы сейчас: ядро скилла доказанно работает, корпус тестов на месте, дыры найдены и понятны. Дальше — починить дыры и (позже) построить web-<a class="term" href="glossary.html#term-event-schema">observability</a> harness. См. <a href="architecture.html">Architecture</a> и <a href="dev-history.html">Dev-history</a>.</p>
+
+<hr>
+<p class="muted">Дальше по теме: <a href="skill.html">Skill</a> · <a href="scenarios.html">Scenarios</a> ·
+<a href="runs.html">Runs</a> · <a href="subagents.html">Subagents</a> · <a href="glossary.html">Glossary</a> ·
+<a href="dev-history.html">Dev-history</a>.</p>
+</main>
+<footer>Orchestration Harness · Study (36 пунктов, сквозная нумерация) · Jira TLM-58</footer>
+</body></html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agents &amp; Profiling — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html" class="active">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <h1>Agents &amp; Profiling</h1>
+  <p class="lead">
+    Это страница профилирования — карта всех агентов, которые построили этот harness. Здесь видно
+    полную цепочку: один <a class="term" href="glossary.html#term-orchestrator">orchestrator</a> в корне,
+    под ним 7 запусков <a class="term" href="glossary.html#term-workflow">workflow</a>, а под каждым
+    запуском — десятки <a class="term" href="glossary.html#term-subagent">subagent</a>'ов, разложенных
+    по ролям. Ниже — отдельное дерево из 9 <a class="term" href="glossary.html#term-cycle-worker">cycle-worker</a>'ов
+    (tmux-команды), из которых был дистиллирован сам навык, и профиль по токенам.
+  </p>
+
+  <div class="grid kpis">
+    <div class="card kpi"><div class="num">7</div><div class="lbl">Workflow runs</div><div class="sub">1 orchestrator в корне</div></div>
+    <div class="card kpi"><div class="num">635</div><div class="lbl">Subagents</div><div class="sub">без in-progress resume</div></div>
+    <div class="card kpi"><div class="num">14.6M</div><div class="lbl">Output-токены</div><div class="sub">суммарно по subagent'ам</div></div>
+    <div class="card kpi"><div class="num">3 403</div><div class="lbl">Tool-uses</div><div class="sub">вызовов инструментов</div></div>
+    <div class="card kpi"><div class="num">9</div><div class="lbl">Delivery cycles</div><div class="sub">источник навыка</div></div>
+  </div>
+
+  <div class="note">
+    <span class="t">Как читать дерево.</span> Отступ = уровень вложенности. Фиолетовое — orchestrator
+    (корень), синее — <a href="#" onclick="return false">workflow run</a> (узел запуска), серое — листья
+    с ролями subagent'ов. В <span class="meta">сером курсиве</span> после узла — счётчики и токены из
+    <code>runs.json</code>. Каждый запуск сослан на свою телеметрию в
+    <a href="runs.html">Runs</a>.
+  </div>
+
+  <!-- ============================================================ -->
+  <section id="tree">
+  <h2>1. Цепочка агентов <a class="anchorlink" href="#tree">#</a></h2>
+  <p>
+    Корень — <a class="term" href="glossary.html#term-orchestrator">orchestrator</a>: он сам почти не
+    «работает руками», а запускает workflow'ы и раздаёт задачи. Каждый workflow веером
+    (<a class="term" href="glossary.html#term-fan-out">fan-out</a>) разворачивается в параллельных
+    subagent'ов. Дерево читается сверху вниз в порядке запусков: сначала delivery-ревью, затем harness
+    (закалка навыка → генерация сценариев → smoke → полный прогон → resume).
+  </p>
+
+  <div class="tree">
+<span class="node-orch">● orchestrator</span> <span class="meta">— корень цепочки · 7 workflow runs · 635 subagents · 14.6M токенов · 3 403 tool-uses</span>
+│
+├─ <a class="node-wf" id="run-w22r94p88" href="runs.html#run-w22r94p88">▣ post-phase8-review</a> <span class="meta">[delivery] · 62 агента · 2.90M ток · 983 tool-uses · ~21 мин</span>
+│   ├─ <span class="node-sub">8× dimension reviewer</span> <span class="meta">— параллельно, по одной оси ревью</span>
+│   ├─ <span class="node-sub">~48× skeptic (3 на находку)</span> <span class="meta">— adversarial verify каждой находки</span>
+│   └─ <span class="node-sub">1× synthesis → REVIEW.md</span> <span class="meta">— 0 critical / 4 high / 5 med / 5 low</span>
+│
+├─ <a class="node-wf" id="run-wt2ajzijl" href="runs.html#run-wt2ajzijl">▣ harden-orchestration-skill</a> <span class="meta">[harness] · 9 агентов · 420K ток · 65 tool-uses · ~16 мин</span>
+│   ├─ <span class="node-sub">8× axis reviewer</span> <span class="meta">— lifecycle-races, orchestrator-context, communication, git-concurrency,</span>
+│   │                       <span class="meta">  recovery-idempotency, portability, completeness-critic, loophole-hunter</span>
+│   └─ <span class="node-sub">1× synthesis</span> <span class="meta">— 22 улучшения (7 critical): shutdown_response, TaskStop, deadlock в схеме</span>
+│
+├─ <a class="node-wf" id="run-wka1y0ile" href="runs.html#run-wka1y0ile">▣ gen-scenarios</a> <span class="meta">[harness] · 18 агентов · 670K ток · 247 tool-uses · ~4 мин</span>
+│   └─ <span class="node-sub">18× author-agent</span> <span class="meta">— 1 агент = 1 сценарий (prompt.md + rubric.md): SC-01 + SC-04..SC-20</span>
+│                              <span class="meta">  → 20 сценариев на диске, без утечки рубрик</span>
+│
+├─ <a class="node-wf" id="run-wgr53dz8h" href="runs.html#run-wgr53dz8h">▣ eval-smoke</a> <span class="meta">[harness] · 33 агента · 722K ток · 118 tool-uses · ~5 мин · N=4 на 2 сценария</span>
+│   ├─ <span class="node-sub">8× RED agent-under-test</span> <span class="meta">— 4 на сценарий, без навыка (baseline)</span>
+│   ├─ <span class="node-sub">8× GREEN agent-under-test</span> <span class="meta">— 4 на сценарий, с навыком</span>
+│   ├─ <span class="node-sub">16× judge</span> <span class="meta">— по 1 на каждый прогон, оценка по rubric.md</span>
+│   └─ <span class="node-sub">1× scorecard synth</span> <span class="meta">— SC-02: RED 0.25 → GREEN 1.00 (+0.75)</span>
+│
+├─ <a class="node-wf" id="run-wv9e4ygbg" href="runs.html#run-wv9e4ygbg">▣ eval-full-attempt-1</a> <span class="meta">[harness] · 33 агента · 784K ток · 198 tool-uses · ~9 мин · args-баг</span>
+│   ├─ <span class="node-sub">8× RED + 8× GREEN</span> <span class="meta">— args.scenarios не пробросился → только 2 дефолтных сценария</span>
+│   ├─ <span class="node-sub">16× judge</span> <span class="meta">— на тех же 2 сценариях</span>
+│   └─ <span class="node-sub">1× scorecard synth</span> <span class="meta">— баг найден: runner теперь дефолтит на все 20; N поднят до 6</span>
+│
+├─ <a class="node-wf" id="run-wlw9qhhhm" href="runs.html#run-wlw9qhhhm">▣ eval-full-run</a> <span class="meta">[harness] · 480 агентов · 9.07M ток · 1 792 tool-uses · ~62 мин · 20×N=6</span>
+│   └─ <span class="node-sub">20 сценариев ×</span> <span class="meta">(6 RED + 6 GREEN + 6 RED-judges + 6 GREEN-judges) + scorecard</span>
+│       ├─ <span class="node-sub">120× RED agent-under-test</span> <span class="meta">— завершены для всех 20 сценариев</span>
+│       ├─ <span class="node-sub">120× GREEN agent-under-test</span> <span class="meta">— завершены SC-01/02/03/05; остальные оборвались</span>
+│       ├─ <span class="node-sub">120× RED judge</span> <span class="meta">— завершены</span>
+│       ├─ <span class="node-sub">~20× GREEN judge</span> <span class="meta">— 16 сценариев + scorecard упали (weekly-limit)</span>
+│       └─ <span class="node-sub">1× scorecard synth</span> <span class="meta danger">— FAILED: упёрлись в недельный лимит Anthropic</span>
+│
+└─ <a class="node-wf" id="run-wragtqbc2" href="runs.html#run-wragtqbc2">▣ eval-full-resume</a> <span class="meta">[harness] · PENDING · через кэш</span>
+    ├─ <span class="node-sub">~380 кэшированных агентов</span> <span class="meta">— переиспользованы, не перезапускались</span>
+    └─ <span class="node-sub">~100 GREEN judges + scorecard</span> <span class="meta">— перезапуск только упавших</span>
+  </div>
+
+  <p class="muted">
+    Веер у <code>eval-full-run</code> — самый широкий: 480 параллельных subagent'ов
+    (~75% всех агентов harness'а). Это и есть причина, почему именно этот запуск упёрся в недельный
+    лимит — см. профиль ниже.
+  </p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="cycles">
+  <h2>2. Delivery cycles — источник навыка <a class="anchorlink" href="#cycles">#</a></h2>
+  <p>
+    Это второе дерево — не агенты harness'а, а 9 реальных
+    <a class="term" href="glossary.html#term-cycle-worker">cycle-worker</a>'ов, которых orchestrator
+    запускал как teammate'ов в <a class="term" href="glossary.html#term-tmux-pane">tmux-панелях</a> во
+    время доставки эпиков Phase 6–8 и billing. Именно из наблюдения за этими циклами был дистиллирован
+    навык <code>orchestrating-delivery-agents</code>. Два цикла дали прямые уроки и стали eval-сценариями.
+  </p>
+
+  <div class="tree">
+<span class="node-orch">● orchestrator</span> <span class="meta">— 9 delivery cycles в tmux · навык дистиллирован отсюда</span>
+│
+├─ <span class="node-sub">bg-agent (abdc786f)</span> <span class="meta">[background] первая попытка cycle-1 · ~2 мин · KILLED → перешли на tmux-teammates</span>
+├─ <span class="node-sub">cc-guide</span> <span class="meta">[tmux] research: tmux window vs pane · ~1 мин · ответ через файл (без SendMessage)</span>
+├─ <span class="node-sub">cycle-1</span> <span class="meta">[tmux] Phase 6 <a href="https://ainstance-labs.atlassian.net/browse/TLM-7">TLM-7</a> · TLM-38 build + merge PR #45 · ~55 мин · </span><span class="badge b-done">DONE</span>
+├─ <span class="node-sub" style="color:var(--yellow)">cycle-2 ⚠</span> <span class="meta">[tmux] дубль-merge worker · ~3 мин · KILLED (race averted) → урок </span><a href="scenarios.html#SC-01">SC-01 duplicate-race</a>
+├─ <span class="node-sub">cycle-3</span> <span class="meta">[tmux] Phase 8 <a href="https://ainstance-labs.atlassian.net/browse/TLM-9">TLM-9</a> · TLM-39/40 · ~32 мин · </span><span class="badge b-pending">handoff</span>
+├─ <span class="node-sub">cycle-4</span> <span class="meta">[tmux] Phase 8 <a href="https://ainstance-labs.atlassian.net/browse/TLM-9">TLM-9</a> · TLM-41/42/43 + merge PR #51 · ~46 мин · </span><span class="badge b-done">DONE</span>
+├─ <span class="node-sub" style="color:var(--yellow)">cycle-5 ⚠</span> <span class="meta">[tmux] Billing <a href="https://ainstance-labs.atlassian.net/browse/TLM-8">TLM-8</a> · TLM-44..49 · ~69 мин · KILLED преждевременно (а был продуктивен!) → урок </span><a href="scenarios.html#SC-02">SC-02 premature-kill</a>
+├─ <span class="node-sub">cycle-6</span> <span class="meta">[tmux] Billing <a href="https://ainstance-labs.atlassian.net/browse/TLM-8">TLM-8</a> · TLM-50 + merge PR #59 · ~27 мин · </span><span class="badge b-done">DONE</span>
+└─ <span class="node-sub">cycle-7</span> <span class="meta">[tmux] TLM-51 remediation + merge PR #67 · ~56 мин · </span><span class="badge b-done">DONE</span>
+  </div>
+
+  <div class="cards-2 grid">
+    <div class="card" style="border-left:3px solid var(--yellow)">
+      <h3 style="margin-top:0">cycle-2 → урок про дубликаты</h3>
+      <p class="muted">
+        Воркер простаивал, отчёта нет, merge ещё в процессе — и едва не запустили второй воркер на ту же
+        задачу. Race удалось предотвратить. Урок: не плодить дубликат, пока не подтверждена терминация
+        предыдущего. Кодифицировано в edge-case <a href="skill.html#E1">E1</a> и проверяется
+        <a href="scenarios.html#SC-01">SC-01 duplicate-race</a> (RED 0.83 → GREEN 1.0,
+        <span class="badge b-pass">PASS</span>).
+      </p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--yellow)">
+      <h3 style="margin-top:0">cycle-5 → урок про терпение</h3>
+      <p class="muted">
+        Воркер молчал, дерево чистое — и его убили, хотя он был продуктивен (69 минут полезной работы).
+        Урок: тишина ≠ зависание; быть терпеливым, не убивать рабочего воркера. Кодифицировано в edge-case
+        <a href="skill.html#E2">E2</a> и проверяется <a href="scenarios.html#SC-02">SC-02 premature-kill</a>
+        (RED 0.83 → GREEN 1.0, <span class="badge b-pass">PASS</span>).
+      </p>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="profiling">
+  <h2>3. Профиль: куда ушли агенты и токены <a class="anchorlink" href="#profiling">#</a></h2>
+  <p>
+    Все запуски делятся на две фазы: <span class="badge b-delivery">delivery</span> (ревью реального
+    приложения, давшее уроки) и <span class="badge b-harness">harness</span> (постройка навыка и
+    eval-конвейера). Ниже — распределение subagent'ов по запускам и токенов по фазам. Числа взяты из
+    <code>runs.json</code>.
+  </p>
+
+  <div class="cards-2 grid">
+    <div class="chart-wrap">
+      <h3>Subagents по запускам</h3>
+      <canvas id="chSubagents" height="240"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Токены по фазам (delivery vs harness)</h3>
+      <canvas id="chTokens" height="240"></canvas>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>Запуск</th><th>Фаза</th><th>Структура веера</th>
+      <th class="num">Agents</th><th class="num">Tokens</th><th class="num">Tool-uses</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="runs.html#run-w22r94p88">post-phase8-review</a></td>
+        <td><span class="badge b-delivery">delivery</span></td>
+        <td class="muted">8 reviewers → 3 skeptics/находку → 1 synth</td>
+        <td class="num">62</td><td class="num">2.90M</td><td class="num">983</td>
+      </tr>
+      <tr>
+        <td><a href="runs.html#run-wt2ajzijl">harden-orchestration-skill</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="muted">8 axis reviewers ∥ → 1 synth</td>
+        <td class="num">9</td><td class="num">420K</td><td class="num">65</td>
+      </tr>
+      <tr>
+        <td><a href="runs.html#run-wka1y0ile">gen-scenarios</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="muted">18 authors ∥ (1 агент = 1 сценарий)</td>
+        <td class="num">18</td><td class="num">670K</td><td class="num">247</td>
+      </tr>
+      <tr>
+        <td><a href="runs.html#run-wgr53dz8h">eval-smoke</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="muted">2 сц × (4 RED + 4 GREEN + 8 judges) + synth</td>
+        <td class="num">33</td><td class="num">722K</td><td class="num">118</td>
+      </tr>
+      <tr>
+        <td><a href="runs.html#run-wv9e4ygbg">eval-full-attempt-1</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="muted">как smoke (args-баг → 2 сценария)</td>
+        <td class="num">33</td><td class="num">784K</td><td class="num">198</td>
+      </tr>
+      <tr>
+        <td><a href="runs.html#run-wlw9qhhhm">eval-full-run</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="muted">20 сц × (6 RED + 6 GREEN + 12 judges) + synth</td>
+        <td class="num">480</td><td class="num">9.07M</td><td class="num">1 792</td>
+      </tr>
+      <tr>
+        <td><a href="runs.html#run-wragtqbc2">eval-full-resume</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="muted">~380 кэш переиспользовано · ~100 перезапуск</td>
+        <td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Где сосредоточены токены</h3>
+  <p>
+    Один запуск — <a href="runs.html#run-wlw9qhhhm">eval-full-run</a> — поглотил <strong>9.07M из 14.6M</strong>
+    токенов (≈62%) и 480 из 635 агентов. Причина в самой геометрии веера: 20 сценариев × N=6 в двух плечах
+    (<a class="term" href="glossary.html#term-red-green">RED/GREEN</a>) плюс по
+    <a class="term" href="glossary.html#term-judge">judge</a>'у на каждый прогон даёт квадратичный рост.
+    Именно ширина этого веера упёрлась в недельный лимит Anthropic в середине прогона; добивает его
+    <a href="runs.html#run-wragtqbc2">resume</a> через кэш, не перезапуская ~380 успешных агентов.
+  </p>
+
+  <h3>Три формы веера (fan-out)</h3>
+  <div class="grid cards-3">
+    <div class="card">
+      <h3 style="margin-top:0">Worker-веер</h3>
+      <p class="muted">
+        Много одинаковых исполнителей-<a class="term" href="glossary.html#term-subagent">subagent</a>'ов,
+        каждый делает свой кусок. Пример: <a href="runs.html#run-wka1y0ile">gen-scenarios</a> — 18
+        авторов, один пишет один сценарий. Простой, линейный, дешёвый веер.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Review-веер</h3>
+      <p class="muted">
+        Параллельные ревьюеры по осям → adversarial-проверка каждой находки → одна синтез-сводка. Пример:
+        <a href="runs.html#run-w22r94p88">post-phase8-review</a> (8→3/находку→1) и
+        <a href="runs.html#run-wt2ajzijl">harden</a> (8 осей→1). Дорого по токенам на находку, но даёт
+        перекрёстную проверку.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Eval-веер (judge)</h3>
+      <p class="muted">
+        Два плеча <a class="term" href="glossary.html#term-red-green">RED/GREEN</a>
+        agent-under-test, на каждый прогон — свой <a class="term" href="glossary.html#term-judge">judge</a>,
+        затем scorecard. Пример: <a href="runs.html#run-wlw9qhhhm">eval-full-run</a>. Самый широкий и
+        дорогой; масштаб = сценарии × N × плечи.
+      </p>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <span class="t">Урок профилирования.</span> Стоимость почти полностью определяется шириной веера, а не
+    глубиной цепочки. Корень-<a class="term" href="glossary.html#term-orchestrator">orchestrator</a>
+    дешёвый — дорого стоят листья. Поэтому в навыке заложена дисциплина контекста и
+    <a class="term" href="glossary.html#term-loop-guard">loop-guard</a>: не раздувать веер сверх нужного
+    и уметь возобновляться через кэш вместо перезапуска (см. <a href="runs.html#run-wragtqbc2">resume</a>).
+  </div>
+  </section>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+Chart.defaults.color = '#9da7b3';
+Chart.defaults.font.family = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
+const gridColor = '#30363d';
+const tickColor = '#9da7b3';
+
+// Subagents per run (from runs.json.workflows; resume = pending, omitted)
+new Chart(document.getElementById('chSubagents'), {
+  type: 'bar',
+  data: {
+    labels: ['post-phase8-review','harden','gen-scenarios','eval-smoke','eval-full-att-1','eval-full-run'],
+    datasets: [{
+      label: 'subagents',
+      data: [62, 9, 18, 33, 33, 480],
+      backgroundColor: ['#bc8cff','#58a6ff','#58a6ff','#58a6ff','#58a6ff','#58a6ff'],
+      borderColor: '#30363d', borderWidth: 1
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: tickColor, maxRotation: 45, minRotation: 45 } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor }, beginAtZero: true }
+    }
+  }
+});
+
+// Tokens by phase: delivery (post-phase8-review) vs harness (everything else)
+const tokDelivery = 2904280;
+const tokHarness = 420061 + 670591 + 722352 + 784002 + 9069805; // 11.67M
+new Chart(document.getElementById('chTokens'), {
+  type: 'doughnut',
+  data: {
+    labels: ['delivery (post-phase8-review)','harness (skill + evals)'],
+    datasets: [{
+      data: [tokDelivery, tokHarness],
+      backgroundColor: ['#bc8cff','#58a6ff'],
+      borderColor: '#0d1117', borderWidth: 2
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { position: 'bottom', labels: { color: tickColor } },
+      tooltip: { callbacks: { label: (c) => c.label + ': ' + (c.parsed/1e6).toFixed(2) + 'M ток' } }
+    }
+  }
+});
+</script>
+</body>
+</html>

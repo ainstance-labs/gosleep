@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runs — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html" class="active">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <h1>Runs &mdash; телеметрия workflow-прогонов</h1>
+  <p class="lead">Эта страница собирает все семь <a class="term" href="glossary.html#term-workflow">Workflow</a>-прогонов, из которых вырос harness: от ревью готового приложения до полного eval-прогона на 20 сценариях. Каждый прогон &mdash; это один оркестратор, который веером (<a class="term" href="glossary.html#term-fan-out">fan-out</a>) запускает множество <a class="term" href="glossary.html#term-subagent">subagent</a>-ов, собирает их результаты и сводит в один артефакт. Цифры ниже &mdash; реальная телеметрия, снятая из completion-уведомлений во время сборки.</p>
+
+  <div class="note"><span class="t">Как читать.</span> Прогоны делятся на две фазы: <span class="badge b-delivery">delivery</span> &mdash; работа над самим приложением (ревью кода Phases 0&ndash;8), и <span class="badge b-harness">harness</span> &mdash; постройка и прогон самого eval-стенда. Цепочку агентов каждого прогона смотрите на странице <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>; что именно проверяют eval-прогоны &mdash; на странице <a href="scenarios.html">Scenarios</a>.</div>
+
+  <!-- ============ KPIs ============ -->
+  <section id="overview">
+  <div class="grid kpis">
+    <div class="card kpi">
+      <div class="num">7</div>
+      <div class="lbl">Workflow-прогонов</div>
+      <div class="sub">2 delivery &middot; 5 harness</div>
+    </div>
+    <div class="card kpi">
+      <div class="num">635</div>
+      <div class="lbl">Subagent-ов суммарно</div>
+      <div class="sub">без in-progress resume-прогона</div>
+    </div>
+    <div class="card kpi">
+      <div class="num">14.6M</div>
+      <div class="lbl">Output-токенов</div>
+      <div class="sub">сумма по subagent-ам</div>
+    </div>
+    <div class="card kpi">
+      <div class="num">3 403</div>
+      <div class="lbl">Tool-uses</div>
+      <div class="sub">вызовов инструментов</div>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ Telemetry table ============ -->
+  <section id="telemetry">
+  <h2>Телеметрия прогонов</h2>
+  <p>Одна строка &mdash; один прогон. <span class="muted">Agents</span> &mdash; сколько subagent-ов было поднято; <span class="muted">Tokens</span> &mdash; их суммарные output-токены; <span class="muted">Tool-uses</span> &mdash; число вызовов инструментов; <span class="muted">Duration</span> &mdash; wall-clock в минутах (из миллисекунд). Имя прогона ведёт к его разбору ниже.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Прогон</th>
+        <th>Фаза</th>
+        <th class="num">Agents</th>
+        <th class="num">Tokens</th>
+        <th class="num">Tool-uses</th>
+        <th class="num">Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#run-w22r94p88">post-phase8-review</a></td>
+        <td><span class="badge b-delivery">delivery</span></td>
+        <td class="num">62</td>
+        <td class="num">2.90M</td>
+        <td class="num">983</td>
+        <td class="num">21.4 мин</td>
+      </tr>
+      <tr>
+        <td><a href="#run-wt2ajzijl">harden-orchestration-skill</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="num">9</td>
+        <td class="num">0.42M</td>
+        <td class="num">65</td>
+        <td class="num">16.5 мин</td>
+      </tr>
+      <tr>
+        <td><a href="#run-wka1y0ile">gen-scenarios</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="num">18</td>
+        <td class="num">0.67M</td>
+        <td class="num">247</td>
+        <td class="num">3.9 мин</td>
+      </tr>
+      <tr>
+        <td><a href="#run-wgr53dz8h">eval-smoke</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="num">33</td>
+        <td class="num">0.72M</td>
+        <td class="num">118</td>
+        <td class="num">5.0 мин</td>
+      </tr>
+      <tr>
+        <td><a href="#run-wv9e4ygbg">eval-full-attempt-1</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="num">33</td>
+        <td class="num">0.78M</td>
+        <td class="num">198</td>
+        <td class="num">9.4 мин</td>
+      </tr>
+      <tr>
+        <td><a href="#run-wlw9qhhhm">eval-full-run</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="num">480</td>
+        <td class="num">9.07M</td>
+        <td class="num">1 792</td>
+        <td class="num">62.3 мин</td>
+      </tr>
+      <tr>
+        <td><a href="#run-wragtqbc2">eval-full-resume</a></td>
+        <td><span class="badge b-harness">harness</span></td>
+        <td class="num"><span class="muted">&mdash;</span></td>
+        <td class="num"><span class="muted">&mdash;</span></td>
+        <td class="num"><span class="muted">&mdash;</span></td>
+        <td class="num"><span class="badge b-pending">pending</span></td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td><strong>Итого</strong> <span class="muted">(без resume)</span></td>
+        <td></td>
+        <td class="num"><strong>635</strong></td>
+        <td class="num"><strong>14.6M</strong></td>
+        <td class="num"><strong>3 403</strong></td>
+        <td class="num"><strong>118.5 мин</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+  <p class="muted">Durations &mdash; wall-clock; tokens &mdash; output-токены subagent-ов. GREEN-данные частично pending из-за прерывания по недельному лимиту (см. <a href="#run-wlw9qhhhm">eval-full-run</a>).</p>
+  </section>
+
+  <!-- ============ Charts ============ -->
+  <section id="charts">
+  <h2>Профиль прогонов в трёх разрезах</h2>
+  <p>Три простые гистограммы показывают, куда уходит масштаб. Видно сразу: один прогон &mdash; <a href="#run-wlw9qhhhm">eval-full-run</a> &mdash; доминирует по всем осям, потому что это полный матричный прогон 20 сценариев &times; N=6 в двух плечах с судьями. Resume-прогон в графики не входит (его телеметрия ещё pending).</p>
+
+  <div class="grid cards-3">
+    <div class="chart-wrap">
+      <h3>Токены на прогон</h3>
+      <canvas id="chTokens" height="240"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Subagent-ов на прогон</h3>
+      <canvas id="chAgents" height="240"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Длительность, мин</h3>
+      <canvas id="chDur" height="240"></canvas>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ Per-run breakdown ============ -->
+  <section id="breakdown">
+  <h2>Разбор каждого прогона</h2>
+  <p>Для каждого прогона &mdash; зачем он, какова форма веера (структура fan-out) и что он выдал на выходе. Понятия <a class="term" href="glossary.html#term-workflow">Workflow</a>, <a class="term" href="glossary.html#term-fan-out">fan-out</a> и <a class="term" href="glossary.html#term-subagent">subagent</a> раскрыты в глоссарии; диаграмму цепочки агентов для прогона смотрите по ссылке &laquo;цепочка агентов&raquo; в каждой карточке.</p>
+
+  <!-- run 1 -->
+  <article class="card" id="run-w22r94p88" style="margin:14px 0;">
+    <div class="pill-row">
+      <span class="badge b-delivery">delivery</span>
+      <strong>post-phase8-review</strong>
+      <span class="muted">id: w22r94p88 &middot; run_id: wf_dbef5035-17e</span>
+    </div>
+    <p><strong>Назначение.</strong> Многоагентное ревью кода и безопасности уже смерженного приложения (Phases 0&ndash;8). Именно уроки этого ревью легли в основу самого skill-а.</p>
+    <p><strong>Структура (форма веера).</strong> 8 reviewer-ов по измерениям запускаются параллельно &rarr; на каждую находку 3 разнородных скептика делают adversarial-проверку &rarr; 1 synthesis-агент сводит всё в <code>REVIEW.md</code>. Двухступенчатый веер: сначала поиск, потом отсев ложных срабатываний.</p>
+    <p><strong>Выход.</strong> Подтверждено 0 critical, 4 high, 5 medium, 5 low.</p>
+    <p class="muted">62 subagent-а &middot; 2.90M токенов &middot; 983 tool-uses &middot; 21.4 мин &middot; <a href="agents.html#run-w22r94p88">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <!-- run 2 -->
+  <article class="card" id="run-wt2ajzijl" style="margin:14px 0;">
+    <div class="pill-row">
+      <span class="badge b-harness">harness</span>
+      <strong>harden-orchestration-skill</strong>
+      <span class="muted">id: wt2ajzijl &middot; run_id: wf_7a7b2d1c-a18</span>
+    </div>
+    <p><strong>Назначение.</strong> Состязательно проверить черновик skill-а на прочность по 8 осям отказов и сверить его утверждения с живым harness-ом.</p>
+    <p><strong>Структура (форма веера).</strong> 8 axis-reviewer-ов параллельно (lifecycle-races, orchestrator-context, communication, git-concurrency, recovery-idempotency, portability, completeness-critic, loophole-hunter) &rarr; 1 synthesis. Плоский веер 8&rarr;1.</p>
+    <p><strong>Выход.</strong> 22 улучшения (7 critical), включая фактические правки (<code>shutdown_response</code>, <code>TaskStop</code>) и дедлок в блок-схеме.</p>
+    <p class="muted">9 subagent-ов &middot; 0.42M токенов &middot; 65 tool-uses &middot; 16.5 мин &middot; <a href="agents.html#run-wt2ajzijl">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <!-- run 3 -->
+  <article class="card" id="run-wka1y0ile" style="margin:14px 0;">
+    <div class="pill-row">
+      <span class="badge b-harness">harness</span>
+      <strong>gen-scenarios</strong>
+      <span class="muted">id: wka1y0ile &middot; run_id: wf_d4f37b78-51f</span>
+    </div>
+    <p><strong>Назначение.</strong> Написать корпус eval-сценариев: один агент пишет один сценарий (<code>prompt.md</code> + <code>rubric.md</code>), нарочно так, чтобы базовый агент &laquo;ронял&raquo; его в RED.</p>
+    <p><strong>Структура (форма веера).</strong> 18 author-агентов параллельно (SC-01 в усиленном виде + SC-04..SC-20). Чистый широкий fan-out без обратной свёртки &mdash; каждый агент пишет свои файлы на диск независимо.</p>
+    <p><strong>Выход.</strong> 20 сценариев на диске, без утечки рубрики в промпт. Готовый корпус смотрите на <a href="scenarios.html#SC-01">Scenarios</a>.</p>
+    <p class="muted">18 subagent-ов &middot; 0.67M токенов &middot; 247 tool-uses &middot; 3.9 мин &middot; <a href="agents.html#run-wka1y0ile">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <!-- run 4 -->
+  <article class="card" id="run-wgr53dz8h" style="margin:14px 0;">
+    <div class="pill-row">
+      <span class="badge b-harness">harness</span>
+      <strong>eval-smoke</strong>
+      <span class="muted">id: wgr53dz8h &middot; run_id: wf_bbd9754e-255</span>
+    </div>
+    <p><strong>Назначение.</strong> Прогнать <a class="term" href="glossary.html#term-red-green">RED/GREEN</a>-раннер сквозь весь конвейер на 2 сценариях (N=4), чтобы убедиться, что стенд работает end-to-end.</p>
+    <p><strong>Структура (форма веера).</strong> На каждый сценарий: 4 RED + 4 GREEN <a class="term" href="glossary.html#term-agent-under-test">агента-под-тестом</a> + 8 <a class="term" href="glossary.html#term-judge">судей</a>; плюс 1 scorecard-synthesis. Матричный веер с двумя плечами и судейским слоем.</p>
+    <p><strong>Выход.</strong> SC-02: RED 0.25 &rarr; GREEN 1.00 (+0.75); harness валидирован. См. <a href="scenarios.html#SC-02">SC-02</a>.</p>
+    <p class="muted">33 subagent-а &middot; 0.72M токенов &middot; 118 tool-uses &middot; 5.0 мин &middot; <a href="agents.html#run-wgr53dz8h">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <!-- run 5 -->
+  <article class="card" id="run-wv9e4ygbg" style="margin:14px 0;">
+    <div class="pill-row">
+      <span class="badge b-harness">harness</span>
+      <strong>eval-full-attempt-1</strong>
+      <span class="muted">id: wv9e4ygbg &middot; run_id: wf_4ed500e8-0cf</span>
+    </div>
+    <p><strong>Назначение.</strong> Первый &laquo;полный&raquo; прогон. Из-за бага в передаче аргументов отработали только 2 дефолтных сценария &mdash; баг пойман и исправлен прямо здесь.</p>
+    <p><strong>Структура (форма веера).</strong> Та же, что у smoke; <code>args.scenarios</code> не пробросился &rarr; раннер откатился к 2 дефолтным сценариям.</p>
+    <p><strong>Выход.</strong> Найден баг: раннер теперь по умолчанию берёт все 20 сценариев; N поднят до 6; scorecard получил таймстемп.</p>
+    <p class="muted">33 subagent-а &middot; 0.78M токенов &middot; 198 tool-uses &middot; 9.4 мин &middot; <a href="agents.html#run-wv9e4ygbg">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <!-- run 6 -->
+  <article class="card" id="run-wlw9qhhhm" style="margin:14px 0; border-color: rgba(210,153,34,.45);">
+    <div class="pill-row">
+      <span class="badge b-harness">harness</span>
+      <strong>eval-full-run</strong>
+      <span class="muted">id: wlw9qhhhm &middot; run_id: wf_cf089093-f79</span>
+      <span class="badge b-prog">прервано лимитом</span>
+    </div>
+    <p><strong>Назначение.</strong> Полный прогон: 20 сценариев &times; N=6, двухплечевой RED/GREEN с судьями. Самый крупный прогон стенда &mdash; 480 subagent-ов и 9.07M токенов.</p>
+    <p><strong>Структура (форма веера).</strong> 20 сценариев &times; (6 RED + 6 GREEN + 6 RED-судей + 6 GREEN-судей) + scorecard. Это 24 агента на сценарий &mdash; самый широкий веер во всём наборе.</p>
+    <div class="note warn"><span class="t">Прерывание по недельному лимиту.</span> На середине прогона был выбран <strong>недельный лимит Anthropic</strong>. Успели: RED по всем 20 сценариям + GREEN по SC-01/02/03/05. Не успели: GREEN-судьи для 16 сценариев и итоговый scorecard. Это и потребовало отдельного resume-прогона &mdash; см. <a href="#run-wragtqbc2">eval-full-resume</a> ниже.</div>
+    <p><strong>Выход.</strong> Частичный: полные RED-данные + 4 завершённых GREEN-сценария; остальное передано resume-прогону.</p>
+    <p class="muted">480 subagent-ов &middot; 9.07M токенов &middot; 1 792 tool-uses &middot; 62.3 мин &middot; <a href="agents.html#run-wlw9qhhhm">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <!-- run 7 -->
+  <article class="card" id="run-wragtqbc2" style="margin:14px 0; border-color: rgba(88,166,255,.45);">
+    <div class="pill-row">
+      <span class="badge b-harness">harness</span>
+      <strong>eval-full-resume</strong>
+      <span class="muted">id: wragtqbc2 &middot; run_id: wf_cf089093-f79</span>
+      <span class="badge b-pending">pending</span>
+    </div>
+    <p><strong>Назначение.</strong> Доиграть прерванный полный прогон через кэш: повторно запустить <em>только</em> упавшие GREEN-судьи и scorecard, не пересчитывая то, что уже посчитано.</p>
+    <p><strong>Структура (форма веера).</strong> ~380 успешных агентов переиспользуются из кэша; повторно гоняются ~100 упавших GREEN-судей + scorecard. Тот же <code>run_id</code>, что у прерванного прогона &mdash; resume именно продолжает его, а не начинает заново.</p>
+    <p><strong>Выход.</strong> <span class="badge b-pending">PENDING / partial</span> &mdash; завершает GREEN pass-rate для оставшихся 16 сценариев. Полные результаты появятся на <a href="scenarios.html">Scenarios</a> после завершения.</p>
+    <p class="muted">телеметрия pending &middot; <a href="agents.html#run-wragtqbc2">цепочка агентов &rarr;</a></p>
+  </article>
+
+  <div class="note"><span class="t">Зачем resume вообще понадобился.</span> Недельный лимит провайдера &mdash; это внешний отказ посреди дорогого прогона. Возможность доиграть <strong>только</strong> упавшую часть из кэша (а не пережигать 9M токенов заново) &mdash; ровно то свойство, которое harness и проектировался проверять: идемпотентность и устойчивость к прерываниям. То есть стенд на себе же продемонстрировал нужный паттерн.</div>
+  </section>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+(function () {
+  Chart.defaults.color = '#9da7b3';
+  Chart.defaults.font.family = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+  Chart.defaults.font.size = 11;
+
+  // Embedded telemetry (copied from runs.json; resume excluded — pending)
+  var labels  = ['post-phase8-review','harden-skill','gen-scenarios','eval-smoke','eval-full-1','eval-full-run'];
+  var tokensM = [2.90, 0.42, 0.67, 0.72, 0.78, 9.07];   // millions of output tokens
+  var agents  = [62, 9, 18, 33, 33, 480];               // subagents per run
+  var durMin  = [21.4, 16.5, 3.9, 5.0, 9.4, 62.3];      // wall-clock minutes
+
+  var grid = '#30363d';
+  var tick = '#9da7b3';
+  function baseOpts(unitSuffix) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (c) { return c.parsed.y + (unitSuffix || ''); }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: tick, maxRotation: 60, minRotation: 45 } },
+        y: { grid: { color: grid }, ticks: { color: tick }, beginAtZero: true }
+      }
+    };
+  }
+
+  new Chart(document.getElementById('chTokens'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: tokensM, backgroundColor: '#bc8cff', borderRadius: 4 }] },
+    options: baseOpts('M токенов')
+  });
+
+  new Chart(document.getElementById('chAgents'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: agents, backgroundColor: '#58a6ff', borderRadius: 4 }] },
+    options: baseOpts(' subagent-ов')
+  });
+
+  new Chart(document.getElementById('chDur'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: durMin, backgroundColor: '#3fb950', borderRadius: 4 }] },
+    options: baseOpts(' мин')
+  });
+})();
+</script>
+</body>
+</html>
