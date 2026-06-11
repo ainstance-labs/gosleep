@@ -1,0 +1,17 @@
+# OS noise
+.DS_Store
+
+# Env / secrets — never committed
+.env
+.env.*
+
+# Orchestration artifacts (project-scoped scratch, per orchestrating-delivery-agents)
+.artifacts/
+docs/reviews/
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
