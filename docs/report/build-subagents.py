@@ -110,14 +110,14 @@ def detail(run, role, scnid, label):
             parts.append(f'<p><strong>Итог сценария:</strong> RED {r:.2f} → GREEN {g:.2f} · <span class="badge {VB[v]}">{v}</span> '
                          f'(PASS=скилл помог, GUARD=база и так ок, FAIL=GREEN&lt;0.8 дыра)</p>')
         parts.append('<p><strong>Файлы на диске:</strong> '
-                     f'<a href="../evals/scenarios/{d}/prompt.md">prompt.md</a> · '
-                     f'<a href="../evals/scenarios/{d}/rubric.md">rubric.md</a> · '
+                     f'<a href="../../evals/scenarios/{d}/prompt.md">prompt.md</a> · '
+                     f'<a href="../../evals/scenarios/{d}/rubric.md">rubric.md</a> · '
                      f'<a href="scenarios.html#{scnid}">детали сценария →</a>'
                      + (f' · <a href="skill.html#{axis}">edge-case {axis} →</a>' if axis in EDGE_ANCHOR else '')
                      + '</p>')
     elif role=="axis-reviewer":
         parts.append(f"<p><strong>Ось проверки:</strong> {esc(label.replace('axis · ',''))} — искал дыры скилла по этой оси.</p>")
-        parts.append('<p><strong>Файлы:</strong> <a href="../skill/SKILL.md">SKILL.md</a> · <a href="skill.html">страница скилла →</a></p>')
+        parts.append('<p><strong>Файлы:</strong> <a href="../../skill/SKILL.md">SKILL.md</a> · <a href="skill.html">страница скилла →</a></p>')
     elif role=="dimension-reviewer":
         parts.append(f"<p><strong>Измерение ревью кода:</strong> {esc(label.replace('dim · ',''))}.</p>")
         parts.append('<p><strong>Файл:</strong> <a href="../../review/2026-06-07-post-phase8-review.md">REVIEW.md (находки)</a></p>')
@@ -125,7 +125,7 @@ def detail(run, role, scnid, label):
         parts.append(f"<p><strong>Что проверял:</strong> {esc(label)} — пытался опровергнуть находку ревью.</p>")
         parts.append('<p><strong>Файл:</strong> <a href="../../review/2026-06-07-post-phase8-review.md">REVIEW.md</a></p>')
     elif role=="scorecard-synth":
-        parts.append(f'<p><strong>Результат:</strong> <a href="../evals/results/{SCORECARD}">scorecard ({SCORECARD}) →</a> · <a href="runs.html#run-{run}">телеметрия прогона →</a></p>')
+        parts.append(f'<p><strong>Результат:</strong> <a href="../../evals/results/{SCORECARD}">scorecard ({SCORECARD}) →</a> · <a href="runs.html#run-{run}">телеметрия прогона →</a></p>')
     elif role=="synthesis":
         parts.append('<p><strong>Свёл находки</strong> в приоритизированный список правок.</p>')
     parts.append(f'<p class="muted">Прогон: <a href="runs.html#run-{run}">{esc(run)} (телеметрия) →</a> · агенты этого прогона: <a href="agents.html#run-{run}">дерево →</a></p>')

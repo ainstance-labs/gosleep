@@ -13,7 +13,11 @@ export const meta = {
   ],
 }
 
-const ROOT = '/Users/romanlidovskyi/Documents/dev/tasty/tasty-lunch/docs/orchestration-harness'
+// Project root = two dirs up from this script (evals/runner/), so a future move doesn't break it.
+// Falls back to the absolute root if the Workflow sandbox doesn't provide __dirname.
+const ROOT = typeof __dirname !== 'undefined'
+  ? __dirname.split('/').slice(0, -2).join('/')
+  : '/Users/romanlidovskyi/Documents/dev/harness/gosleep'
 const SKILL_DIR = (args && args.skillDir) || `${ROOT}/skill`
 
 const ALL_SCENARIOS = [
