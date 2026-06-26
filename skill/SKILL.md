@@ -92,6 +92,17 @@ human) always terminates.
 - **Liveness, ranked (highest first):** a report = reached a boundary; a `/workflows` task in terminal state = exited; `tmux list-panes -F '#{pane_id} #{pane_dead}'` = running vs exited; git movement = proves *progress*, never proves *stopped*. Before concluding "stuck", check non-git evidence too (`tmux capture-pane -p | tail`, build/log mtime).
 - **Probe read-only and OFF the worker's tree:** `git fetch --quiet` first, then `git log origin/main..origin/<branch> --oneline`; treat `gh pr view <n> --json state,mergedAt` as the authoritative done-signal (local `main` does NOT advance on a remote merge). Use `gh`, `git ls-remote`, or `git -C <path>` — don't run `git status` against a live worker's tree (its branch switch would misreport your view). **Never read the worker's transcript** (context overflow).
 - **Two patience clocks:** kill-timer arms on (a) no git progress ~10–15 min AND also (b) no report for a hard ceiling ~45–60 min *regardless of git movement* (a looping worker commits forever — git motion ≠ health). Require workers to `SendMessage` a one-line `PROGRESS` before any long (>~10 min) no-commit step, and key patience on last-known-liveness, not time-since-spawn.
+- **Verification watchdog (refines the coarse ~20-min clock for any verification step).** A declared
+  verification step — run by an orchestrator-spawned verifier-teammate (the live-validated default for
+  user-facing surfaces) or a worker-owned background subagent — is the one place that coarse silence clock
+  is too slow, and prompt-level time caps do NOT self-enforce (observed: a "10-min cap" written into a
+  verifier's prompt ran 33 min). So arm an EXTERNAL watchdog: a background watcher polling the verifier's
+  `steps.log` heartbeat every ~20s. ~3 min of silence → wake and intervene, FIRST killing the automation
+  browser (the gentle unstick — it errors the frozen step so the turn ends and steering resumes; pane-kill
+  the verifier itself only if it stays stuck). ~15 min total → cap reached, take the PARTIAL report. The
+  journal's last `START` line pinpoints the frozen step. Identify hung automation processes by their flags
+  (e.g. `--allow-pre-commit-input`) + recent start time — NEVER the human's own browser. See edge case E17
+  in `references/lifecycle-and-edge-cases.md`.
 - **Stay lean:** don't probe on every idle — probe on a timer (stall start, then ~5 min) or a `Monitor` poll loop; keep probes terse and compare a stored SHA in the state file; log nothing on no-change.
 
 ## Terminating + chaining
@@ -114,7 +125,11 @@ replacement orchestrator. Structure (in this order):
    model/verification policy, what's next. The owner must understand the situation in one glance —
    no key-soup, no abbreviations invented mid-chain.
 2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | status=...`.
-3. **Standing rules/decisions:** the owner's non-negotiables and policy decisions, dated.
+3. **Standing rules/decisions + known-automation-traps:** the owner's non-negotiables and policy
+   decisions, dated; and a per-project **known-automation-trap registry** — routes/flows that reproducibly
+   misbehave under the browser-automation tooling (e.g. "route X hangs under the automation MCP — skip it;
+   curl-first that route to separate an app fault from an automation flake"). Every verifier brief you
+   write carries the current trap list.
 4. **Log — structured, NOT prose walls:** subsections by **date** (`### YYYY-MM-DD — Phase <N> (epic <KEY>)`),
    under each date group by **cycle** (`**Cycle N (worker-name)**`), and inside each cycle short
    bullets that LEAD WITH THE TASK KEY (`- TLM-82: grid landed @ <sha>; browser-verify PASS; 1 review major fixed`).
@@ -161,9 +176,29 @@ Guardrails matter MORE with no human in the loop.
   context are the longevity killer (one audit result = ~15k chars of your window). Everything runs in
   disposable teammates; only ≤~12-line reports enter your context.
 - **Three model tiers:** the orchestrator may sit on the premium model (it only coordinates — tiny
-  volume); workers and reviewers run on the mid tier; ALL verification (browser checks, skeptics,
-  mechanical re-checks) runs on the cheap tier via plain single subagents the worker/reviewer spawns.
-  ALWAYS pass `model:` explicitly when spawning — teammate defaults differ from what you expect.
+  volume); workers and reviewers run on the mid tier; ALL verification runs on the cheap tier. Split by
+  hang risk: a **hang-prone long-running tool** the worker must run itself is spawned BY THE WORKER as a
+  cheap-tier BACKGROUND subagent (`run_in_background: true`, no `name` — non-blocking, the worker stays
+  reachable by mail, killable via `TaskStop` — see worker template), NEVER a plain SYNCHRONOUS in-process
+  subagent that would freeze its parent's turn if it hangs, and NEVER a teammate (the roster is FLAT — a
+  worker cannot spawn a teammate; only the orchestrator can — and for any USER-FACING SURFACE that
+  orchestrator-run, pane-visible path is now the live-validated DEFAULT (the worker requests it by
+  `SendMessage`; see the next bullet), the background subagent reserved for a hang-prone NON-browser tool
+  the worker must run itself); fast non-browser checks (skeptics, mechanical re-checks) run as plain single
+  cheap subagents the worker/reviewer spawns. ALWAYS pass `model:` explicitly when spawning —
+  subagent/teammate defaults differ from what you expect.
+- **Orchestrator-run verification of user-facing surfaces (VERIFY-REQUEST — live-validated default).**
+  A worker that never drives a browser can never be frozen by one, so for any user-facing surface the
+  worker does NOT spawn even a background browser-verifier — when the surface is ready (gates green,
+  committed) it sends YOU a `VERIFY-REQUEST` and then HOLDS every shared-resource operation (builds,
+  server starts — shared port + `.next`), doing only read-only/docs work until your ALL-CLEAR. The request
+  must carry routes, flows-to-check, a creds pointer, and explicit DEGRADED-state definitions (what PASS
+  looks like with no keys/credentials/providers — else normal degradation gets reported as bugs). YOU
+  spawn the verifier as a cheap-tier teammate in its OWN pane (the flat roster is exactly why the worker
+  must request, not spawn), brief it with the current known-automation-traps + the instrumented-verifier
+  contract (a `steps.log` heartbeat + an incrementally regenerated HTML report — see E17), arm the
+  watchdog (above), then relay the verdict back; on critical/major findings tell the worker to FOLD before
+  it resumes. Verifiers self-report their model in the result — a mismatch is noted, never retried in a loop.
 - **Workers get NO multi-agent Workflow tool** (ban it in the brief; watch /workflows and kill
   worker-owned runs). Prompt-level caps get ignored under pressure; mechanism-level caps hold. A
   worker that "reviews" by fanning out N fresh skeptics re-reads the same diff N times — the

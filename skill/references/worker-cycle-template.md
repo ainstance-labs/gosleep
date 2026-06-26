@@ -52,13 +52,55 @@ delivery-workflow skill) while details are fresh.
 ## Verification & model economy (hard rules — abuse here once burned a third of a weekly token limit)
 - The multi-agent **Workflow tool is FORBIDDEN** for workers; the orchestrator watches /workflows and
   kills worker-owned runs. Caps that live in prompts get ignored; caps that live in mechanism hold.
-- Verification runs on a CHEAP model via plain Agent-tool subagents: max ONE browser-verifier per
-  user-facing surface (build+start the app — not the dev watcher; screenshots to a gitignored
-  `.artifacts/screenshots/` — never `/tmp`, never committed; compact
-  discrepancy list back) and max ONE grouped skeptic per task.
-- Self-review your own diff inline FIRST (your warm context is cheap) and hand the skeptic a findings
-  list WITH exact code quotes — a skeptic must never re-read a whole diff blind; N fresh agents
-  re-reading the same diff is the documented failure mode.
+- **User-facing surfaces: you NEVER drive a browser — send a VERIFY-REQUEST (the live-validated default).**
+  When a user-facing surface is ready (gates green, committed), do NOT build/start the app or spawn any
+  browser-verifier yourself. `SendMessage` the orchestrator a `VERIFY-REQUEST` and then HOLD every
+  shared-resource operation — builds, server starts (shared port + `.next`) — doing ONLY read-only / docs
+  work until the orchestrator's ALL-CLEAR. The orchestrator (not you — the roster is flat) runs the
+  verifier in its own pane and relays a verdict; on critical/major findings, FOLD them before you proceed.
+  Your VERIFY-REQUEST MUST carry, every time:
+  - the **routes** to open and the **flows** to check, in order;
+  - a **creds pointer** — where test login/credentials live (never paste secrets);
+  - explicit **DEGRADED-state definitions**: what PASS looks like WITHOUT keys / credentials / providers
+    (e.g. an honest "not connected" banner; a row inserted + a success toast even though no real email is
+    sent). Without these stated IN ADVANCE, the verifier reports normal degradation as bugs.
+- **Why the browser never runs inside your turn — and the rule for any hang-prone tool you DO run
+  yourself.** (For user-facing surfaces the VERIFY-REQUEST above supersedes this: you don't touch the
+  browser at all. This bullet is the reasoning behind that, and it still governs any hang-prone NON-browser
+  tool you must run yourself, which runs as a cheap-tier BACKGROUND subagent — never a SYNCHRONOUS
+  in-process subagent, and never a teammate, you literally cannot spawn one.) The team roster is FLAT: a
+  teammate cannot spawn another teammate (`Error: Teammates cannot spawn other teammates — the team roster
+  is flat`); only the
+  orchestrator (team lead) can. So YOU spawn any hang-prone NON-browser tool as a cheap-tier BACKGROUND
+  subagent — Agent tool with `run_in_background: true`, NO `name`/`team_name`, explicit cheap `model:`.
+  Why background and not a plain synchronous subagent: a synchronous in-process subagent is
+  mailbox-blocking — while it runs you cannot receive ANY message (they queue until your turn ends), so a
+  hung tool hangs YOU and locks out all steering, and the only recovery is someone killing the process out
+  from under it. A background subagent keeps every resilience property that matters: it does NOT block your
+  turn — spawn it, go idle, and stay REACHABLE BY MAIL while it runs (the original failure was an
+  unreachable mid-turn worker); its completion wakes you; and it is killable — you OWN the task, so a
+  `TaskStop` on the orchestrator's order lands IMMEDIATELY (you're idle, not mid-turn), with infra-kill of
+  the process as the fallback. This SAME reasoning is why a browser — the worst offender — was moved OUT of
+  your turn entirely: instead of a background browser-verifier, user-facing surfaces go to the orchestrator
+  via VERIFY-REQUEST, which gets full pane visibility for free (the orchestrator's verifier runs in its own
+  pane). That pane-visible orchestrator path is now the DEFAULT for any user-facing surface, not an
+  optional extra. Whoever runs a verifier: cap at ONE per user-facing surface (build+start the app — not
+  the dev watcher; screenshots to a gitignored `.artifacts/screenshots/` — never `/tmp`, never committed;
+  compact discrepancy list back).
+- **Every verifier brief carries hard timeouts.** Any single browser action (navigate, wait_for, click,
+  snapshot) gets an explicit ~60s timeout; on timeout do NOT retry the same wait — screenshot whatever is
+  on screen, record the failure, and move on or abort. TOTAL verification budget ~15 min; when exceeded,
+  return a PARTIAL report (what passed, what couldn't be checked, why) rather than keep waiting. A page
+  that never finishes loading is itself a FINDING to report, not a reason to wait forever.
+- **No silent auto-relaunch loops.** If a verifier fails/hangs/dies you may relaunch it at most ONCE, and
+  ONLY after ENDING your current turn with a brief `PROGRESS` report ("verifier attempt 1 failed:
+  <reason>; relaunching") — ending the turn lets queued orchestrator/human directives deliver between
+  attempts. Two failed attempts → STOP verifying, report the situation, and let the orchestrator decide.
+- Fast, non-browser checks (grouped skeptics, mechanical re-checks) stay as plain in-process Agent-tool
+  subagents on the cheap model: max ONE grouped skeptic per task. Self-review your own diff inline FIRST
+  (your warm context is cheap) and hand the skeptic a findings list WITH exact code quotes — a skeptic
+  must never re-read a whole diff blind; N fresh agents re-reading the same diff is the documented
+  failure mode.
 - Never run build gates while any dev server/watcher is alive (file-churn rebuild loops).
 
 ## Context calibration (workers systematically over-estimate by ~2x — read this)

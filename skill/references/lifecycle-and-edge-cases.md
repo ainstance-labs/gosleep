@@ -143,6 +143,46 @@ merging A, in-flight B carries a stale base.
 checks are green on the CURRENT head, or use require-up-to-date auto-merge. Merging A → tell B to
 `git fetch` + rebase onto new main and re-run gates. Default sequencing avoids concurrent merges.
 
+**E17 — Hung browser-verifier freezes the worker's turn.** A worker runs its browser-verifier as an
+in-process subagent; a page never finishes loading; the subagent blocks on a wait. Because an in-process
+subagent is synchronous and mailbox-less, the parent worker cannot receive ANY message while it runs —
+neither orchestrator nor human can steer — and the worker may silently auto-relaunch the verifier inside
+the same turn, compounding the stall. Observed once as a >1h pipeline freeze (two auto-relaunches; the
+only lever was killing browser/server processes).
+→ Prevention (strongest, live-validated): the worker NEVER drives a browser at all — when a user-facing
+surface is ready it sends a `VERIFY-REQUEST` and the ORCHESTRATOR runs the verification in its own pane
+(SKILL.md "Orchestrator-run verification of user-facing surfaces"), while the worker HOLDS all
+builds/server starts (shared port + `.next`) until ALL-CLEAR, so it cannot be frozen by a browser it never
+launched. The prior worker-side rule (enforced in the brief — see worker-cycle-template "Verification &
+model economy") is the reasoning behind moving the browser out of the turn, and remains the mechanism for
+any hang-prone NON-browser tool the worker must run itself: it runs as a cheap-tier BACKGROUND subagent
+(`run_in_background: true`, no `name` — non-blocking, the worker stays reachable by mail, killable via
+`TaskStop`), NOT a synchronous in-process subagent, and NOT a teammate (the roster is FLAT — a worker
+cannot spawn a teammate; only the orchestrator can). Every verifier brief carries a ~60s per-action
+timeout and a ~15 min total budget (a never-loading page is a FINDING, not a reason to wait); on failure
+relaunch at most ONCE and only after ending the turn with a `PROGRESS` report.
+→ Instrumented-verifier contract (every verifier, orchestrator- or worker-spawned): write a timestamped
+`steps.log` heartbeat line BEFORE and AFTER each browser action, and REGENERATE the HTML report (timeline
++ screenshots with a lightbox) incrementally from step 0 after every step. A kill then never loses the
+evidence gathered so far, and the orchestrator's watchdog has a file to poll — its last `START` line
+pinpoints the frozen step. Log + report live in the project's gitignored per-task artifacts dir (never `/tmp`).
+→ Teardown contract: on finish OR abort, the verifier kills its app server AND the parent process that
+launched it (e.g. the `pnpm start` wrapper — kill the process GROUP, not just the child), then VERIFIES
+the port is free (`lsof -i :<port>` empty) and LOGS that it is. An orphaned app server left listening once
+blocked the NEXT cycle's build/start gate.
+→ Recovery (orchestrator side): the steps.log watchdog (SKILL.md "Verification watchdog" — poll ~20s;
+~3 min silence → intervene; ~15 min → cap + partial report) catches a freeze FAR earlier than the coarse
+~20-min silence clock, which is now only the backstop. To intervene, find the hung automation processes
+(headless browser + app-server, identified by automation flags like `--allow-pre-commit-input` and a
+recent start time — NEVER the human's own browser) and kill THOSE FIRST — the gentle unstick that errors
+the stuck call and restores steering; pane-kill the verifier only if it stays stuck. For an
+orchestrator-spawned verifier TEAMMATE (the user-facing default) you own the pane — kill it directly with
+`tmux kill-pane` / `TaskStop`. For a legacy WORKER-owned background verifier, order the worker
+(`SendMessage`) to `TaskStop` its own task — which now delivers immediately because the worker is idle, not
+mid-turn (infra-kill of browser/server stays the fallback). Findings come back to you as a verdict relay;
+on critical/major, tell the worker to FOLD before it resumes (it has been HOLDING shared-resource ops since
+the VERIFY-REQUEST).
+
 ## What the orchestrator must NOT do
 
 Reading handoff bodies, source, or worker transcripts to "understand" is the fastest way to blow your own
