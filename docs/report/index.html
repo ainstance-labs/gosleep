@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html" class="active">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <section id="hero">
+    <h1>Orchestration Harness — как мы это построили</h1>
+    <p class="lead">
+      Это база знаний (knowledge base) про один инструмент: <strong>harness для оркестрации
+      delivery-агентов</strong>. Он состоит из трёх частей — навыка
+      (<a class="term" href="glossary.html#term-orchestrator">orchestrator</a>-skill, который учит
+      главного агента правильно запускать и вести worker-агентов),
+      <a class="term" href="glossary.html#term-eval">eval</a>-сюиты (20 стресс-сценариев, которые
+      проверяют, что навык реально меняет поведение) и дизайна
+      <a class="term" href="glossary.html#term-telemetry">observability</a> (как за всем этим наблюдать).
+      Здесь — вся телеметрия сборки: сколько агентов отработало, сколько токенов и инструментов
+      потрачено, что прошло проверки, а что ещё нет.
+    </p>
+    <p class="muted">Эпик в Jira:
+      <a href="https://ainstance-labs.atlassian.net/browse/TLM-58">TLM-58</a> ·
+      исходники: <code>docs/orchestration-harness/</code> ·
+      телеметрия снята из Workflow-уведомлений во время сборки.</p>
+  </section>
+
+  <div class="note">
+    <span class="t">Агенту, который читает этот индекс.</span>
+    Используй навигацию сверху как карту. Хочешь понять <em>сам навык и правила</em> — иди в
+    <a href="skill.html">Skill</a> (там каталог из 16 edge-case с якорями
+    <a href="skill.html#E1">#E1</a>…<a href="skill.html#E16">#E16</a>). Хочешь увидеть <em>чем это
+    проверено</em> — <a href="scenarios.html">Scenarios</a>
+    (<a href="scenarios.html#SC-01">#SC-01</a>…<a href="scenarios.html#SC-20">#SC-20</a>). Нужна
+    <em>телеметрия запусков</em> — <a href="runs.html">Runs</a>; <em>цепочка субагентов и
+    профилирование</em> — <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>; <em>устройство и дизайн
+    observability</em> — <a href="architecture.html">Architecture</a>. Незнакомый термин подчёркнут
+    точками и ведёт в <a href="glossary.html">Glossary</a>. Хронология работы — в
+    <a href="dev-history.html">Dev-history</a>. Прыгай на страницу, дальше иди по перекрёстным ссылкам.
+  </div>
+
+  <section id="kpis">
+    <h2>Сводка сборки</h2>
+    <div class="grid kpis">
+      <div class="card kpi">
+        <div class="num">7</div>
+        <div class="lbl">Workflow-запусков</div>
+        <div class="sub">multi-agent <a class="term" href="glossary.html#term-workflow">workflow</a>; см. <a href="runs.html">Runs</a></div>
+      </div>
+      <div class="card kpi">
+        <div class="num">635</div>
+        <div class="lbl">Субагентов всего</div>
+        <div class="sub">без in-progress resume-прогона</div>
+      </div>
+      <div class="card kpi">
+        <div class="num">14.6M</div>
+        <div class="lbl">Токенов (output)</div>
+        <div class="sub">14 571 091 токен субагентов</div>
+      </div>
+      <div class="card kpi">
+        <div class="num">3 403</div>
+        <div class="lbl">Tool-use вызовов</div>
+        <div class="sub">обращений к инструментам</div>
+      </div>
+      <div class="card kpi">
+        <div class="num">20</div>
+        <div class="lbl">Eval-сценариев</div>
+        <div class="sub">SC-01…SC-20; см. <a href="scenarios.html">Scenarios</a></div>
+      </div>
+      <div class="card kpi">
+        <div class="num">9</div>
+        <div class="lbl">Delivery-циклов</div>
+        <div class="sub">tmux-воркеры, из которых выжат навык</div>
+      </div>
+    </div>
+    <p class="muted">Все числа берутся из <code>report/data/runs.json</code>. Токены — это output
+      субагентов; длительности — wall-clock.</p>
+  </section>
+
+  <section id="eval-summary">
+    <h2>Итог проверок (20 сценариев)</h2>
+    <p>
+      Каждый сценарий гоняется в двух «руках»:
+      <a class="term" href="glossary.html#term-red-green">RED</a> (агент без навыка) и GREEN
+      (агент с навыком). Сравнение даёт
+      <a class="term" href="glossary.html#term-verdict-pass">verdict</a>: PASS (навык помог), GUARD
+      (оба и так справились — навык не повредил), FAIL (нашли реальную дыру), PENDING (GREEN-прогон
+      ещё не завершён — упёрлись в недельный лимит, идёт resume).
+    </p>
+    <div class="grid cards-2">
+      <div class="card">
+        <div class="pill-row" style="margin-bottom:12px;">
+          <span class="badge b-pass">PASS · 2</span>
+          <span class="badge b-guard">GUARD · 1</span>
+          <span class="badge b-fail">FAIL · 1</span>
+          <span class="badge b-pending">PENDING · 16</span>
+        </div>
+        <ul class="clean">
+          <li><span class="badge b-pass">PASS</span> &nbsp;<a href="scenarios.html#SC-01">SC-01 duplicate-race</a> (0.83 → 1.00), <a href="scenarios.html#SC-02">SC-02 premature-kill</a> (0.83 → 1.00) — навык поднял pass-rate.</li>
+          <li><span class="badge b-guard">GUARD</span> &nbsp;<a href="scenarios.html#SC-05">SC-05 branch-collision</a> (1.00 → 1.00) — оба прошли, регрессии нет.</li>
+          <li><span class="badge b-fail">FAIL</span> &nbsp;<a href="scenarios.html#SC-03">SC-03 orchestrator-recovery</a> (1.00 → 0.67) — реальная дыра, чиним в <a href="https://ainstance-labs.atlassian.net/browse/TLM-64">TLM-64</a>.</li>
+          <li><span class="badge b-pending">PENDING</span> &nbsp;16 сценариев — RED снят, GREEN-судьи + scorecard доигрываются (resume <a href="runs.html#run-wragtqbc2">wragtqbc2</a>).</li>
+        </ul>
+        <p class="muted">Полная таблица RED/GREEN и разбор каждого — на странице
+          <a href="scenarios.html">Scenarios</a>.</p>
+      </div>
+      <div class="chart-wrap">
+        <h3>Распределение вердиктов</h3>
+        <canvas id="verdictChart" height="220"></canvas>
+      </div>
+    </div>
+    <div class="note warn">
+      <span class="t">Главное доказано.</span> На сценариях, где агент без навыка ошибается
+      (преждевременный kill, дубль-merge), агент с навыком — нет: pass-rate растёт с ~0.83 до 1.00.
+      Нашли одну настоящую дыру (<a href="scenarios.html#SC-03">SC-03</a>, восстановление
+      оркестратора) — её правим следующей.
+    </div>
+  </section>
+
+  <section id="jira">
+    <h2>Прогресс по Jira (эпик TLM-58)</h2>
+    <p>Иерархия — только Epic + Task (free-tier Jira). Один PR на эпик, один commit на таск.
+      Каждая строка ведёт и в Jira, и в соответствующую запись
+      <a href="dev-history.html">Dev-history</a>.</p>
+    <table>
+      <thead>
+        <tr><th>Jira</th><th>Что это</th><th>Статус</th><th>Подробнее</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-58">TLM-58</a> <span class="muted">(эпик)</span></td>
+          <td>Orchestration Harness — навык + evals + observability</td>
+          <td><span class="badge b-prog">In Progress</span></td>
+          <td><a href="dev-history.html">Dev-history</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-59">TLM-59</a></td>
+          <td>Навык <code>orchestrating-delivery-agents</code>: написать + закалить</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td><a href="dev-history.html#dh-01">dh-01</a> · <a href="skill.html">Skill</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-60">TLM-60</a></td>
+          <td>Каркас проекта <code>docs/orchestration-harness/</code> + install-скрипт</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td><a href="dev-history.html#dh-02">dh-02</a> · <a href="architecture.html#layout">Architecture</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-61">TLM-61</a></td>
+          <td>Eval-фреймворк (RED/GREEN runner + формат сценариев)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td><a href="dev-history.html#dh-03">dh-03</a> · <a href="architecture.html#eval-pipeline">pipeline</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-62">TLM-62</a></td>
+          <td>Корпус из 20 стресс-сценариев (SC-01…SC-20)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td><a href="dev-history.html#dh-04">dh-04</a> · <a href="scenarios.html">Scenarios</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-63">TLM-63</a></td>
+          <td>Полный прогон сюиты + scorecard</td>
+          <td><span class="badge b-prog">In Progress</span></td>
+          <td><a href="dev-history.html#dh-05">dh-05</a> · <a href="runs.html#run-wlw9qhhhm">runs</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-64">TLM-64</a></td>
+          <td>REFACTOR навыка по слабым местам (SC-03 первым)</td>
+          <td><span class="badge b-todo">To Do</span></td>
+          <td><a href="dev-history.html#dh-06">dh-06</a> · <a href="scenarios.html#SC-03">SC-03</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-65">TLM-65</a></td>
+          <td>Папка <code>dev-history/</code> — хронология сборки</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td><a href="dev-history.html">Dev-history</a></td>
+        </tr>
+        <tr>
+          <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-66">TLM-66</a></td>
+          <td>Observability-harness — дизайн (web vs console)</td>
+          <td><span class="badge b-done">Done</span></td>
+          <td><a href="dev-history.html#dh-07">dh-07</a> · <a href="architecture.html#observability">Architecture</a></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted">5 запусков сборки были «harness»-фазой (создание самого инструмента), а первый
+      review-прогон относится к delivery — он подкинул уроки, из которых вырос навык.</p>
+  </section>
+
+  <section id="system-map">
+    <h2>Карта системы</h2>
+    <p>Сверху — <a class="term" href="glossary.html#term-orchestrator">orchestrator</a>. Под ним два
+      слоя: семь <a class="term" href="glossary.html#term-workflow">workflow</a>-запусков (каждый
+      разворачивается в десятки/сотни <a class="term" href="glossary.html#term-subagent">субагентов</a>
+      через <a class="term" href="glossary.html#term-fan-out">fan-out</a>) и девять delivery-циклов —
+      живые tmux-воркеры, из наблюдения за которыми и был выжат навык. Полную цепочку и профилирование
+      см. на <a href="agents.html#tree">Agents &amp; Profiling</a>.</p>
+
+    <div class="tree">
+<span class="node-orch">orchestrator</span> <span class="meta">(главный агент — следит, запускает, чейнит)</span>
+├─ <span class="node-wf">workflow-запуски</span> <span class="meta">7 · 635 субагентов · 14.6M токенов · 3 403 tool-use</span>
+│  ├─ <a href="runs.html#run-w22r94p88" class="node-wf">post-phase8-review</a> <span class="meta">delivery · 62 агента · 2.90M · 8 reviewers → 3 skeptics → synth</span>
+│  ├─ <a href="runs.html#run-wt2ajzijl" class="node-wf">harden-orchestration-skill</a> <span class="meta">harness · 9 агентов · 0.42M · 8 axis-критиков → synth</span>
+│  ├─ <a href="runs.html#run-wka1y0ile" class="node-wf">gen-scenarios</a> <span class="meta">harness · 18 агентов · 0.67M · 18 авторов параллельно</span>
+│  ├─ <a href="runs.html#run-wgr53dz8h" class="node-wf">eval-smoke</a> <span class="meta">harness · 33 агента · 0.72M · RED+GREEN+judges на 2 сценария</span>
+│  ├─ <a href="runs.html#run-wv9e4ygbg" class="node-wf">eval-full-attempt-1</a> <span class="meta">harness · 33 агента · 0.78M · args-баг → шёл только 2 сценария</span>
+│  ├─ <a href="runs.html#run-wlw9qhhhm" class="node-wf">eval-full-run</a> <span class="meta">harness · 480 агентов · 9.07M · 20×(6 RED+6 GREEN+судьи) — упёрлись в лимит</span>
+│  └─ <a href="runs.html#run-wragtqbc2" class="node-wf">eval-full-resume</a> <span class="meta">harness · PENDING · из кэша добивает GREEN-судей 16 сценариев</span>
+└─ <span class="node-wf">delivery-циклы</span> <span class="meta">9 · tmux-воркеры — источник уроков навыка</span>
+   ├─ <span class="node-sub">bg-agent (abdc786f)</span> <span class="meta">background · killed → перешли на tmux-команды</span>
+   ├─ <span class="node-sub">cc-guide</span> <span class="meta">research: tmux window vs pane · ответ через файл</span>
+   ├─ <span class="node-sub">cycle-1</span> <span class="meta">Phase 6 TLM-38 + PR #45 · DONE</span>
+   ├─ <span class="node-sub">cycle-2</span> <span class="meta">дубль-merge · killed → урок <a href="scenarios.html#SC-01">SC-01</a></span>
+   ├─ <span class="node-sub">cycle-3</span> <span class="meta">Phase 8 TLM-39/40 · handoff</span>
+   ├─ <span class="node-sub">cycle-4</span> <span class="meta">Phase 8 TLM-41/42/43 + PR #51 · DONE</span>
+   ├─ <span class="node-sub">cycle-5</span> <span class="meta">Billing TLM-44..49 · преждевременный kill → урок <a href="scenarios.html#SC-02">SC-02</a></span>
+   ├─ <span class="node-sub">cycle-6</span> <span class="meta">Billing TLM-50 + PR #59 · DONE</span>
+   └─ <span class="node-sub">cycle-7</span> <span class="meta">TLM-51 remediation + PR #67 · DONE</span>
+    </div>
+    <p class="muted">Раскрытая версия дерева (роли субагентов внутри каждого workflow) и заметки по
+      профилированию — на <a href="agents.html#tree">Agents &amp; Profiling</a>.</p>
+  </section>
+
+  <section id="nav-grid">
+    <h2>Куда идти дальше</h2>
+    <div class="grid cards-3">
+      <div class="card">
+        <h3><a href="skill.html">Skill</a></h3>
+        <p class="muted">Сам навык <code>orchestrating-delivery-agents</code>: принцип, 3 роли,
+          lifecycle и каталог из 16 edge-case (<a href="skill.html#E1">E1</a>…<a href="skill.html#E16">E16</a>).</p>
+      </div>
+      <div class="card">
+        <h3><a href="scenarios.html">Scenarios</a></h3>
+        <p class="muted">Корпус из 20 стресс-сценариев с RED/GREEN pass-rate и вердиктами
+          (<a href="scenarios.html#SC-01">SC-01</a>…<a href="scenarios.html#SC-20">SC-20</a>).</p>
+      </div>
+      <div class="card">
+        <h3><a href="runs.html">Runs</a></h3>
+        <p class="muted">Телеметрия 7 workflow-запусков: агенты, токены, tool-use, длительности +
+          графики.</p>
+      </div>
+      <div class="card">
+        <h3><a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a></h3>
+        <p class="muted">Цепочка субагентов целиком, 9 delivery-циклов и заметки по профилированию
+          (куда ушли токены).</p>
+      </div>
+      <div class="card">
+        <h3><a href="architecture.html">Architecture</a></h3>
+        <p class="muted">Устройство harness: раскладка проекта, eval-pipeline и дизайн будущей
+          live-observability.</p>
+      </div>
+      <div class="card">
+        <h3><a href="glossary.html">Glossary</a></h3>
+        <p class="muted">Хаб терминов: orchestrator, fan-out, RED/GREEN, judge, SSE, worktree и др. —
+          сюда ведут все подчёркнутые слова.</p>
+      </div>
+      <div class="card">
+        <h3><a href="dev-history.html">Dev-history</a></h3>
+        <p class="muted">Хронология сборки простыми словами: что сделали, где мы, какую проблему решаем
+          (<a href="dev-history.html#dh-01">dh-01</a>…<a href="dev-history.html#dh-07">dh-07</a>).</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+  Chart.defaults.color = '#9da7b3';
+  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  new Chart(document.getElementById('verdictChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['PASS', 'GUARD', 'FAIL', 'PENDING'],
+      datasets: [{
+        data: [2, 1, 1, 16],
+        backgroundColor: ['#3fb950', '#58a6ff', '#f85149', '#6e7781'],
+        borderColor: '#161b22',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '58%',
+      plugins: {
+        legend: { position: 'right', labels: { color: '#9da7b3', boxWidth: 14, padding: 12 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} / 20` } }
+      }
+    }
+  });
+</script>
+</body>
+</html>

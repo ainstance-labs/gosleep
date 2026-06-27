@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html" class="active">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <h1>Skill: <code>orchestrating-delivery-agents</code></h1>
+  <p class="lead">
+    Этот навык учит агента-<a class="term" href="glossary.html#term-orchestrator">оркестратора</a> вести
+    длинную поставку (roadmap, миграцию, multi-epic фичу), которая <em>не помещается</em> в context window
+    одного агента. Вместо того чтобы один агент упирался в лимит контекста и его вручную перезапускали,
+    оркестратор порождает цепочку свежих <a class="term" href="glossary.html#term-cycle-worker">cycle-worker</a>'ов
+    и сшивает их через <a class="term" href="glossary.html#term-handoff">handoff</a>-файлы.
+  </p>
+
+  <div class="kpis grid">
+    <div class="card kpi"><div class="num">3</div><div class="lbl">Файла навыка</div><div class="sub">SKILL.md + 2 reference'а</div></div>
+    <div class="card kpi"><div class="num">2 670</div><div class="lbl">Слов в SKILL.md</div><div class="sub">плотный, без воды</div></div>
+    <div class="card kpi"><div class="num">16</div><div class="lbl">Edge-case'ов</div><div class="sub">каталог провалов <a href="#edge-cases">ниже</a></div></div>
+    <div class="card kpi"><div class="num">20</div><div class="lbl">Eval-сценариев</div><div class="sub"><a href="scenarios.html">проверяют навык</a></div></div>
+    <div class="card kpi"><div class="num">9</div><div class="lbl">Реальных циклов</div><div class="sub">откуда вынесены уроки</div></div>
+  </div>
+
+  <div class="note">
+    <span class="t">Как читать эту страницу.</span> Сверху — <a href="#principle">ядро</a> (принцип + три роли)
+    и <a href="#model">модель</a>. Затем <a href="#lifecycle">жизненный цикл</a> (spawn → monitor → terminate
+    → chain) и логика «когда воркер простаивает». Внизу — <a href="#edge-cases">каталог из 16 ловушек</a>,
+    каждая со ссылкой «проверяется сценарием SC-xx». Источники навыка:
+    <code>skill/SKILL.md</code>, <code>skill/references/lifecycle-and-edge-cases.md</code>,
+    <code>skill/references/worker-cycle-template.md</code>.
+  </div>
+
+  <!-- ============================ PRINCIPLE + ROLES ============================ -->
+  <section id="principle">
+  <h2>Ядро: один принцип и три роли</h2>
+
+  <p>
+    <strong>Главный принцип:</strong> оркестратор остаётся «худым» и держит своё состояние
+    <strong>на диске</strong>, а не в контексте — поэтому он переживает каждого воркера и даже собственную
+    <a class="term" href="glossary.html#term-compaction">компакцию</a> или рестарт. Оркестратор передаёт
+    только <em>пути</em> к handoff'ам и компактные отчёты; он <em>не читает</em> тяжёлые файлы (тела
+    handoff'ов, исходники, транскрипты агентов). Детали держат воркеры; нить разговора держит маленький
+    on-disk «гроссбух».
+  </p>
+
+  <div class="cards-3 grid">
+    <div class="card">
+      <h3>Оркестратор (это вы)</h3>
+      <p class="muted" style="margin-top:0">Порождает воркеров, мониторит их, сшивает циклы, решает развилки,
+      общается с человеком, ведёт on-disk state-файл. <strong>Сам не выполняет ничего.</strong> Его
+      долговечность — весь смысл навыка.</p>
+    </div>
+    <div class="card">
+      <h3>Cycle-worker</h3>
+      <p class="muted" style="margin-top:0">Свежий агент, который делает ОДИН ограниченный кусок до ~75–80%
+      своего контекста, затем пишет handoff и шлёт отчёт. <strong>Одноразовый по дизайну</strong> — упёрся в
+      контекст, отдал эстафету, исчез.</p>
+    </div>
+    <div class="card">
+      <h3>Handoff</h3>
+      <p class="muted" style="margin-top:0">Эстафетная палочка-память между воркерами: самодостаточный
+      документ, который свежий воркер читает и продолжает <strong>с нулём предыдущего контекста</strong>.
+      Сверху — компактный <code>## ORCHESTRATOR REPORT</code>.</p>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <span class="t">Когда применять / когда нет.</span> <strong>Да:</strong> работа больше одного контекста;
+    агент, который вы постоянно перезапускаете из-за исчерпания контекста; человек хочет смотреть и рулить;
+    восстановление прерванной цепочки. <strong>Нет:</strong> одна ограниченная задача (просто сделайте её /
+    один subagent); чистый fan-out без последовательной зависимости (это
+    <a class="term" href="glossary.html#term-workflow">Workflow</a>, см. <code>dispatching-parallel-agents</code>).
+  </div>
+  </section>
+
+  <!-- ============================ MODEL ============================ -->
+  <section id="model">
+  <h2>Модель: две поверхности порождения</h2>
+  <p>
+    Первое, что делает оркестратор — <strong>проверка возможностей (capability check)</strong>: какая
+    поверхность для порождения воркеров доступна. От этого зависят механика kill'а, мониторинг и часть
+    edge-case'ов.
+  </p>
+
+  <div class="cards-2 grid">
+    <div class="card">
+      <h3><span class="badge b-harness">Agent Teams</span> live, tmux-панели</h3>
+      <p style="margin-top:0">Воркеры открываются в <strong>split-панелях tmux</strong>, есть живой
+      двусторонний <a class="term" href="glossary.html#term-sendmessage">SendMessage</a>. Лучший выбор, когда
+      человек смотрит и вы рулите <em>посреди</em> цикла. Терминация — <code>tmux kill-pane</code>.
+      Подтверждение — событие <code>teammate_terminated</code> с именем воркера.</p>
+    </div>
+    <div class="card">
+      <h3><span class="badge b-harness">Background subagents</span> headless</h3>
+      <p style="margin-top:0">Задачи <a class="term" href="glossary.html#term-workflow"><code>/workflows</code></a>,
+      идущие до завершения и возвращающие финальный отчёт; убиваются через
+      <a class="term" href="glossary.html#term-taskstop"><code>TaskStop</code></a>. Работают headless, без
+      живых «подталкиваний». В этом режиме часть live-monitoring edge-case'ов (E1, E2, E7, E8, E12)
+      <em>почти не применима</em> — фоновая задача либо вернулась, либо вы её остановили.</p>
+    </div>
+  </div>
+
+  <p class="muted">
+    Выбор делается под окружение; в протоколе ниже помечено, где две поверхности расходятся. В
+    <strong>background-only</strong> режиме цикл сводится к: породить ОДИН ограниченный цикл → дождаться его
+    возврата (или <code>TaskStop</code>) → прочитать ТОЛЬКО его возвращённый отчёт → сшить следующий.
+    Handoff'ы, идемпотентные creates, git-безопасность, state-файл и восстановление работают в обоих режимах.
+  </p>
+
+  <div class="chart-wrap">
+    <h3>Реальная цепочка поставки: 9 циклов по поверхностям</h3>
+    <p class="muted" style="margin-top:0;font-size:13px">
+      Длительность каждого цикла (мин) из <code>runs.json</code>; цвет — исход. Два очень коротких цикла —
+      убитые: <code>bg-agent</code> (переход с background на tmux) и <code>cycle-2</code> (предотвращённая гонка
+      дубликатов). См. <a href="runs.html">Runs</a>.
+    </p>
+    <canvas id="cyclesChart" height="150"></canvas>
+  </div>
+  </section>
+
+  <!-- ============================ LIFECYCLE ============================ -->
+  <section id="lifecycle">
+  <h2>Жизненный цикл: spawn → monitor → terminate → chain</h2>
+  <p>
+    Это сердце навыка — протокол, который держит цепочку стабильной. Четыре шага по кругу, и встроенная
+    логика «когда воркер простаивает».
+  </p>
+
+  <h3>1. Spawn (породить цикл)</h3>
+  <ul>
+    <li>Тип воркера <strong>с <code>SendMessage</code></strong> (например general-purpose). Read-only тип
+      без SendMessage отчитаться не может — пусть пишет находки в файл через <code>Bash</code>, а вы его
+      читаете.</li>
+    <li><strong>Least privilege:</strong> каждому циклу минимум нужных инструментов; не запускайте
+      неприсмотренных воркеров с отключённым sandbox / обойдёнными правами сверх задачи.</li>
+    <li>Самодостаточный бриф из <code>references/worker-cycle-template.md</code>; <strong>один воркер на одно
+      рабочее дерево</strong> (см. git-безопасность).</li>
+  </ul>
+
+  <h3>2. Monitor (мониторить, не сжигая свой контекст)</h3>
+  <p>
+    Сигналы живости (<a class="term" href="glossary.html#term-liveness">liveness</a>), ранжированные по
+    надёжности — от высшей к низшей:
+  </p>
+  <ol>
+    <li><strong>Отчёт <code>SendMessage</code></strong> → воркер дошёл до границы.</li>
+    <li><strong>Задача <code>/workflows</code> в терминальном статусе</strong> (completed/stopped/failed) →
+      фоновый воркер вышел.</li>
+    <li><strong><code>tmux list-panes</code></strong> (<code>pane_dead</code>) → процесс панели жив или вышел.</li>
+    <li><strong>Движение git</strong> → доказывает <em>прогресс</em>, НИКОГДА не доказывает <em>остановку</em>.
+      Последнее средство и запаздывающее: воркер может читать/планировать/собирать 15+ минут без единого
+      коммита.</li>
+  </ol>
+  <p class="muted">
+    Пробуйте состояние <strong>только для чтения и ВНЕ дерева воркера</strong>: сначала
+    <code>git fetch --quiet</code>, затем <code>git log origin/main..origin/&lt;branch&gt;</code>;
+    <code>gh pr view &lt;n&gt;</code> — авторитетный «done»-сигнал (локальный <code>main</code> не двигается на
+    удалённый merge). Не запускайте <code>git status</code> против живого дерева воркера. И
+    <strong>никогда не читайте транскрипт воркера</strong> — это переполнит ваш контекст.
+  </p>
+
+  <div class="note">
+    <span class="t">Два «часа терпения».</span> Kill-таймер взводится при (a) отсутствии git-прогресса
+    ~10–15 мин <strong>И</strong> (b) отсутствии отчёта ~45–60 мин <em>независимо от движения git</em>
+    (зацикленный воркер коммитит вечно — движение git ≠ здоровье). Просите воркеров слать однострочный
+    <code>PROGRESS</code> перед любым длинным (&gt;~10 мин) шагом без коммита.
+  </div>
+
+  <h3>3. Terminate (завершить) и 4. Chain (сшить)</h3>
+  <ul>
+    <li><strong>Предпочитайте само-затихание (self-quiescence):</strong> воркер сам доводит до конца → пишет
+      handoff → шлёт отчёт → уходит в idle. Чистый отчёт <code>CYCLE_STATUS: COMPLETE</code> — и есть ваш
+      сигнал терминации.</li>
+    <li><strong>Graceful stop:</strong> <code>{type:'shutdown_request'}</code> → воркер на следующей границе
+      отвечает <code>{type:'shutdown_response', approve:true}</code> и выходит.</li>
+    <li><strong>Forced stop по поверхности:</strong> панель → <code>tmux kill-pane -t &lt;pane_id&gt;</code>
+      (пере-перечислить панели, опознать по ИМЕНИ, не по переиспользуемому <code>%N</code>); фон →
+      <code>TaskStop(task_id)</code>. <strong>Никогда</strong> не убивайте фоновую задачу через tmux.</li>
+    <li><strong>Подтвердите терминацию ПЕРЕД сшивкой.</strong> Поздний <code>SendMessage</code> после kill —
+      это <em>запоздавшее in-flight сообщение, а не живость</em>. Затем порождайте следующий цикл, нацелив
+      его на handoff, написанный предыдущим.</li>
+  </ul>
+
+  <div class="note danger">
+    <span class="t">Железное правило сшивки.</span> Подтвердите, что предыдущий воркер ТЕРМИНИРОВАН, до
+    порождения следующего цикла. Порождение замены при живом оригинале — причина дубликатов и разрушительной
+    работы №1 (см. <a href="#E1">E1</a>).
+  </div>
+
+  <h3 id="idle-logic">Логика простоя: какие две беды она предотвращает</h3>
+  <p>
+    Оркестрация ломается двумя способами, и оба — от неверного прочтения «idle»:
+  </p>
+  <div class="cards-2 grid">
+    <div class="card">
+      <h3 style="margin-top:0;color:var(--red)">Беда A — порождение дубликата</h3>
+      <p class="muted" style="margin-top:0">Вы решили «idle = готов» и породили замену, пока оригинал ещё
+      работал → <strong>два воркера делают один merge/closeout</strong> (double-merge). См. <a href="#E1">E1</a>,
+      проверяется <a href="scenarios.html#SC-01">SC-01 →</a>.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;color:var(--red)">Беда B — убийство продуктивного воркера</h3>
+      <p class="muted" style="margin-top:0">Вы решили «idle = застрял» и убили после первого простоя — а его
+      подробный отчёт и реальный прогресс пришли сразу после. См. <a href="#E2">E2</a>, проверяется
+      <a href="scenarios.html#SC-02">SC-02 →</a>.</p>
+    </div>
+  </div>
+
+  <p>Поэтому при «воркер простаивает, отчёта нет» решение идёт по лестнице, а не сразу к kill'у:</p>
+  <ol>
+    <li><strong>Пришёл ли отчёт (in-flight)?</strong> Да → обработать; если done → терминировать →
+      ПОДТВЕРДИТЬ → сшить следующий.</li>
+    <li><strong>Проверка живости</strong> (отчёт? <code>/workflows</code> завершён? панель жива? git
+      двигался?). Жив/двигается → <strong>ЖДАТЬ</strong> (idle между ходами — это норма).</li>
+    <li><strong>Статичен?</strong> Нет git-прогресса ~10–15 мин ИЛИ нет отчёта ~45–60 мин? Если нет —
+      продолжать ждать, перепроверить по таймеру.</li>
+    <li><strong>Уже подталкивали в этот застой?</strong> Нет → ОДНО подталкивание (<code>PROGRESS</code> или
+      finalize) — но <em>не порождать одновременно дубликат</em>.</li>
+    <li><strong>Безопасно убивать?</strong> (<code>git status --porcelain</code> — нет несохранённого
+      ИСХОДНИКА). Да → hard-kill по поверхности → ПОДТВЕРДИТЬ → свежий цикл пересобирает из git.</li>
+    <li><strong>Грязное дерево?</strong> Директивное подталкивание: «закоммить-или-откати WIP + одобри
+      shutdown за N мин» → стало чисто/отзывчиво? → kill; всё ещё застрял →
+      <code>BLOCKED_ON_HUMAN</code> (спросить человека: «выбросить WIP и убить» vs «ждать»).</li>
+  </ol>
+  <div class="note">
+    <span class="t">Эскейп-хетч всегда завершается.</span> nudge → директивный nudge → человек. Один воркер
+    никогда не стопорит конвейер навсегда — лестница всегда терминирует. Подробности развилки и каскада
+    проверок живости — на странице <a href="architecture.html">Architecture</a>.
+  </div>
+  </section>
+
+  <!-- ============================ ON-DISK STATE & RECOVERY ============================ -->
+  <section id="state">
+  <h2>State на диске и восстановление цепочки</h2>
+  <div class="cards-2 grid">
+    <div class="card">
+      <h3 style="margin-top:0">Один маленький файл — гроссбух</h3>
+      <p class="muted" style="margin-top:0"><code>docs/handoff/ORCHESTRATION-STATE.md</code> (≤ ~30 строк):
+      <strong>LIVE-STATUS</strong> блок (перезаписывается каждое изменение) +
+      <strong>append-лог</strong> по одной строке на цикл (merged PR#, открытые tracker-ID, кумулятивные
+      ~токены). Этот файл, а не скроллбэк чата — ground truth для вас и для любого оркестратора-заместителя.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Cold-start прерванной цепочки</h3>
+      <p class="muted" style="margin-top:0">После компакции/краша: <strong>не</strong> реконструировать по
+      памяти и <strong>не</strong> «породить свежего на всякий случай». Прочитать
+      <code>ORCHESTRATION-STATE.md</code> → подтвердить реальность (<code>tmux list-panes</code>,
+      выжившие <code>/workflows</code>, <code>git log</code>, <code>gh pr list</code>) → примирить орфанов →
+      и только потом порождать. Проверяется <a href="scenarios.html#SC-03">SC-03 →</a>.</p>
+    </div>
+  </div>
+  <div class="note warn">
+    <span class="t">Само-мониторинг оркестратора.</span> На <strong>~70%</strong> своего контекста (раньше,
+    чем воркер: середина цепочки при компакции может осиротить живого воркера) — перекатиться на чистой
+    границе (воркер терминирован, ничего не порождено), убедившись, что state-файл актуален. Планировать
+    перекат каждые <strong>~8–15 циклов</strong>. Проверяется <a href="scenarios.html#SC-19">SC-19 →</a>.
+  </div>
+  </section>
+
+  <!-- ============================ EDGE CASES ============================ -->
+  <section id="edge-cases">
+  <h2>Каталог из 16 edge-case'ов</h2>
+  <p class="lead">
+    Каждый пункт был замечен в реальном многочасовом прогоне оркестрации или сверен с живым harness'ом. Для
+    каждого: в чём ловушка и как правильно с ней обойтись. У каждого — ссылка «проверяется сценарием».
+  </p>
+
+  <div class="chart-wrap">
+    <h3>RED-baseline по сценариям, покрывающим edge-case'ы</h3>
+    <p class="muted" style="margin-top:0;font-size:13px">
+      Доля «прохождения» голым агентом <em>без</em> навыка (RED). Низкие столбцы = ловушка реально кусается
+      без навыка (E5/worktree, E6/no-SendMessage, E7/deadlock, E11/telemetry — около нуля). Полные RED/GREEN
+      и вердикты — на странице <a href="scenarios.html">Scenarios</a>.
+    </p>
+    <canvas id="edgeRedChart" height="170"></canvas>
+  </div>
+
+  <!-- E1 -->
+  <div class="card" id="E1" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E1</span><strong>Duplicate-work race (double-merge)</strong></div>
+    <p>Вы подталкиваете простаивающего воркера И одновременно порождаете «замену»; оригинал ещё работал — два
+    воркера делают один merge/closeout. Это <a href="#idle-logic">беда A</a>.
+    <strong>Правильно:</strong> никогда не порождать замену, пока предыдущий воркер не ПОДТВЕРЖДЁН
+    терминированным (по поверхности). Подталкивать безопасно; порождать дубликат — нет. «Idle, нет отчёта» =
+    «может, в полёте», а не «остановился».</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-01">SC-01 →</a></p>
+  </div>
+
+  <!-- E2 -->
+  <div class="card" id="E2" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E2</span><strong>Premature kill of a productive worker</strong></div>
+    <p>Вы убиваете после одного простоя и пары минут — а его подробный отчёт и реальный прогресс приходят
+    сразу следом. Это <a href="#idle-logic">беда B</a>. <strong>Правильно:</strong> терпение. Idle ≠ застрял.
+    Применяйте ранжирование живости и два часа терпения (нет git ~10–15 мин И нет отчёта ~45–60 мин). Чистое
+    дерево само по себе НЕ значит «застрял» — воркер может планировать/читать/ждать своего Workflow.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-02">SC-02 →</a></p>
+  </div>
+
+  <!-- E3 -->
+  <div class="card" id="E3" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E3</span><strong>Crossed / superseding late messages</strong></div>
+    <p>Ваше сообщение и ответ воркера расходятся в полёте; или убитый воркер шлёт финальное сообщение после
+    смерти; или позднее сообщение несёт <em>новее</em> handoff / перевёрнутый <code>CYCLE_STATUS</code> /
+    другой <code>NEXT</code>, чем тот, от которого вы уже сшили. <strong>Правильно:</strong> перед любым
+    разрушительным действием перепроверить живое состояние (git/gh/панели), матчить по <code>CYCLE_ID</code>.
+    Поздние <em>дополнительные</em> факты (уже созданные issue/таски) → отдать замене для ПЕРЕИСПОЛЬЗОВАНИЯ.
+    Поздние <em>замещающие</em> факты → поправить преемника через SendMessage, пока он не подействовал на
+    устаревшую эстафету.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-04">SC-04 →</a></p>
+  </div>
+
+  <!-- E4 -->
+  <div class="card" id="E4" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E4</span><strong>Branch collision (same working tree)</strong></div>
+    <p>Два редактирующих воркера; git держит одну ветку на дерево; одновременные правки корёжат
+    index/дерево. <strong>Правильно:</strong> один редактирующий цикл на дерево, секвенировать работу.
+    Read-only ревью может идти параллельно, но прибейте его к неизменяемому ref'у
+    (<code>gh pr diff &lt;n&gt;</code> или одноразовый <code>git worktree add</code> на фиксированном SHA) —
+    живое редактируемое дерево даёт само-противоречивый снимок (файл A на одном коммите, файл B на другом).</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-05">SC-05 →</a></p>
+  </div>
+
+  <!-- E5 -->
+  <div class="card" id="E5" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E5</span><strong>Worktree isolation is not free</strong></div>
+    <p><code>isolation:'worktree'</code> даёт отдельное дерево, но в нём нет <code>node_modules</code> и
+    gitignore'нутого <code>.env.local</code>/секретов — сборки и DB-зависимые тесты там падают.
+    <strong>Правильно:</strong> для Node/CI-gated репозиториев предпочитать секвенирование; либо заложить
+    бюджет на то, чтобы воркер сам поднял окружение worktree (install + копирование env) — это дорого. Для
+    параллельного <em>редактирования</em> worktree редко того стоит.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-06">SC-06 →</a></p>
+  </div>
+
+  <!-- E6 -->
+  <div class="card" id="E6" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E6</span><strong>Worker cannot communicate</strong></div>
+    <p>Тип воркера без <code>SendMessage</code> (read-only research-агент) закончил — а вы не получили ничего.
+    <strong>Правильно:</strong> для всего, что должно отчитываться, использовать типы с SendMessage. Для
+    исследователей — инструктировать писать через <code>Bash</code> в <code>/tmp/&lt;name&gt;.md</code>, а
+    затем читать этот файл. Никогда не читать транскрипт, чтобы «узнать», что он сделал.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-07">SC-07 →</a></p>
+  </div>
+
+  <!-- E7 -->
+  <div class="card" id="E7" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E7</span><strong>Unresponsive / hung worker (deadlock risk)</strong></div>
+    <p>Простаивает, нет отчёта после подталкивания через всё окно, нет нового прогресса — И возможно держит
+    несохранённую работу или отвергает shutdown. <strong>Правильно:</strong> эскейп-хетч из флоучарта: если
+    safe-to-kill → kill по поверхности → свежий цикл пересобирает из git. Если грязно → ОДНО директивное
+    подталкивание («закоммить-или-чисто-откати WIP и одобри shutdown за N мин») → всё ещё застрял →
+    <code>BLOCKED_ON_HUMAN</code>. Никогда не стопорить конвейер на одном воркере навсегда.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-08">SC-08 →</a></p>
+  </div>
+
+  <!-- E8 -->
+  <div class="card" id="E8" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E8</span><strong>Worker stalls at a boundary</strong></div>
+    <p>Закоммитил все таски, но не открыл PR / не написал handoff / не отчитался. <strong>Правильно:</strong>
+    ОДНО мягкое подталкивание «finalize-or-handoff». Подталкивание, не kill — риска гонки нет, пока вы не
+    порождаете заодно дубликат.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-09">SC-09 →</a></p>
+  </div>
+
+  <!-- E9 -->
+  <div class="card" id="E9" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E9</span><strong>Orphaned background workflow</strong></div>
+    <p>Воркер запустил фоновый <a class="term" href="glossary.html#term-workflow">Workflow</a> и умер;
+    результат workflow'а адресуется мёртвому воркеру (потерян). <strong>Правильно:</strong> помнить об этом;
+    перезапустить аудит в замене или запускать важные аудиты с уровня оркестратора, чтобы результат вернулся
+    к вам.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-10">SC-10 →</a></p>
+  </div>
+
+  <!-- E10 -->
+  <div class="card" id="E10" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E10</span><strong>Handoff numbering drift / truncation</strong></div>
+    <p>Префикс <code>NN-</code> — соглашение проекта, не enforced: файлы пропускаются/сталкиваются; воркер,
+    умерший в середине записи, оставляет усечённую эстафету. <strong>Правильно:</strong> выводить следующий
+    номер детерминированно (max NN, +1); писать <strong>атомарно</strong> (temp → rename); валидировать
+    handoff против живого git перед доверием. Живой git побеждает; новейший handoff не авто-доверенный, если
+    его автор умер.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-11">SC-11 →</a></p>
+  </div>
+
+  <!-- E11 -->
+  <div class="card" id="E11" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E11</span><strong>Telemetry blindness</strong></div>
+    <p>Инструмент порождения не возвращает оркестратору per-worker токены/длительность.
+    <strong>Правильно:</strong> требовать строку <code>TELEMETRY:</code> в каждом отчёте и складывать в
+    state-файл; не угадывать. Точные токены авто-всплывают только для Workflow'ов (нотификация
+    завершения) — см. страницу <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-12">SC-12 →</a></p>
+  </div>
+
+  <!-- E12 -->
+  <div class="card" id="E12" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E12</span><strong>tmux placement (panes not windows)</strong></div>
+    <p>Agent Teams всегда использует split-ПАНЕЛИ (<code>teammateMode</code>), не окна; фоновые subagent'ы в
+    tmux не появляются вовсе. <strong>Правильно:</strong> не делать <code>break-pane</code> в окна, если
+    человек этого не просил. По умолчанию — панели в одном окне.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-13">SC-13 →</a></p>
+  </div>
+
+  <!-- E13 -->
+  <div class="card" id="E13" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E13</span><strong>Scoped cross-pollination</strong></div>
+    <p>Выход одного потока (например находки ревью) — ровно то, что нужно in-flight циклу.
+    <strong>Правильно:</strong> отдать через SendMessage, но СКОУПИРОВАННО: «вложи ВОТ ЭТИ в свой epic;
+    остальное оставь на отдельный цикл» — чтобы воркер не раздул scope и не столкнулся с другой веткой.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-14">SC-14 →</a></p>
+  </div>
+
+  <!-- E14 -->
+  <div class="card" id="E14" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E14</span><strong>Decision forks (pause for the human)</strong></div>
+    <p>Граница roadmap/epic, либо блок на credentials / действие из denylist / продуктовое решение / бюджет.
+    <strong>Правильно:</strong> пауза и вопрос человеку (AskUserQuestion). Иначе — продолжать под выданной
+    автономией. Denylist (force-push, удаление веток/тегов/релизов, prod-деплои, ротация секретов,
+    разрушительные DB-миграции на общих данных, внешние коммуникации, удаление инфры) —
+    <code>BLOCKED_ON_HUMAN</code>, никогда автономно.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-15">SC-15 →</a></p>
+  </div>
+
+  <!-- E15 -->
+  <div class="card" id="E15" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E15</span><strong>Non-idempotent creates (silent duplication)</strong></div>
+    <p>Воркер создаёт epic + таски + зеркальные issue + ветку, затем умирает до отчёта; замена пересоздаёт
+    весь epic. <strong>Правильно:</strong> воркеры обязаны <strong>find-or-create</strong> — искать перед
+    созданием ЛЮБОГО epic/таска/issue/ветки и переиспользовать совпадение; использовать стабильные
+    естественные ключи, чтобы повтор после краша сходился на прежнем артефакте. Оркестратор отдаёт замене
+    created-ID из любого позднего отчёта.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-16">SC-16 →</a></p>
+  </div>
+
+  <!-- E16 -->
+  <div class="card" id="E16" style="margin:14px 0">
+    <div class="pill-row"><span class="badge b-harness">E16</span><strong>Merge-gate staleness</strong></div>
+    <p>Проверки были зелёными на СТАРОМ head'е; два epic'а мёрджатся близко; после merge'а A in-flight B несёт
+    устаревшую базу. <strong>Правильно:</strong> перед merge'ем подтвердить
+    <code>gh pr view &lt;n&gt; --json mergeStateStatus</code> = <code>CLEAN</code> (не BEHIND/BLOCKED) и
+    что проверки зелёные на ТЕКУЩЕМ head'е. Merge A → сказать B сделать <code>git fetch</code> + rebase на
+    новый main и перезапустить gates. По умолчанию секвенирование избегает одновременных merge'ей.</p>
+    <p class="muted">Проверяется <a href="scenarios.html#SC-17">SC-17 →</a></p>
+  </div>
+
+  <div class="note">
+    <span class="t">Сверх 16 осей.</span> Корпус сценариев покрывает и сквозные свойства навыка, не привязанные
+    к одной ловушке: <strong>durability</strong> — восстановление и перекат оркестратора
+    (<a href="scenarios.html#SC-03">SC-03 →</a>, <a href="scenarios.html#SC-19">SC-19 →</a>);
+    <strong>budget</strong> — loop-guard против runaway-цепочки
+    (<a href="scenarios.html#SC-18">SC-18 →</a>); <strong>leanness</strong> — дисциплина контекста: не читать
+    тяжёлые файлы ради «понимания», а релеить пути и пробовать read-only
+    (<a href="scenarios.html#SC-20">SC-20 →</a>).
+  </div>
+  </section>
+
+  <!-- ============================ COST & SECURITY ============================ -->
+  <section id="cost-security">
+  <h2>Стоимость, runaway-контроль и безопасность</h2>
+  <div class="cards-2 grid">
+    <div class="card">
+      <h3 style="margin-top:0">Бюджет и loop-guard</h3>
+      <ul class="clean">
+        <li>Заранее договориться о <strong>max числе циклов и/или потолке токенов</strong>; складывать
+          <code>TELEMETRY</code> каждого воркера в state-файл.</li>
+        <li>На потолке → STOP и развилка <code>BUDGET_EXCEEDED</code>.</li>
+        <li><strong>Loop-guard:</strong> два подряд цикла с тем же / не-продвигающим <code>NEXT</code>, или N
+          циклов без нового merged PR = застрял → STOP и спросить человека. <a href="scenarios.html#SC-18">SC-18 →</a></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Безопасность и полномочия воркера</h3>
+      <p class="muted" style="margin-top:0">Гардрейлы важнее без человека в петле. Least privilege на цикл.
+      Полномочие «merge зелёного PR + advance» покрывает только <strong>обратимую in-repo поставку</strong> —
+      не denylist. Всё из denylist всплывает как <code>BLOCKED_ON_HUMAN</code>, никогда автономно.
+      <a href="scenarios.html#SC-15">SC-15 →</a></p>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============================ REFERENCES ============================ -->
+  <section id="references">
+  <h2>Файлы навыка</h2>
+  <table>
+    <thead><tr><th>Файл</th><th>Что внутри</th></tr></thead>
+    <tbody>
+      <tr><td><code>skill/SKILL.md</code></td><td>Модель: принцип, три роли, жизненный цикл, логика простоя,
+        state на диске, восстановление, стоимость, безопасность, git-конкурентность, развилки. 2 670 слов.</td></tr>
+      <tr><td><code>skill/references/worker-cycle-template.md</code></td><td>Переиспользуемый промт
+        cycle-worker'а: Step 0 (orient), hard rules, gates, wrap-up протокол, скелет тела handoff'а, контракт
+        компактного отчёта, from-zero фоллбэк для цикла #1.</td></tr>
+      <tr><td><code>skill/references/lifecycle-and-edge-cases.md</code></td><td>Механика порождения по
+        поверхностям (вкл. background-only), ранжированные сигналы живости, safe-to-kill gate, контракт
+        отчёта и полный каталог из 16 edge-case'ов с правильной обработкой.</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">
+    Связанные навыки: <code>superpowers:writing-plans</code>, <code>handoff</code>,
+    <code>delivery-workflow</code> + <code>using-jira</code>, <code>superpowers:dispatching-parallel-agents</code>,
+    <code>superpowers:receiving-code-review</code>. Как навык строился — на странице
+    <a href="dev-history.html">Dev-history</a>. Jira-эпик:
+    <a href="https://ainstance-labs.atlassian.net/browse/TLM-58">TLM-58</a>.
+  </p>
+  </section>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+Chart.defaults.color = '#9da7b3';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+// ---- Delivery cycles (duration, mins) ----
+(function () {
+  const labels = ['bg-agent','cc-guide','cycle-1','cycle-2','cycle-3','cycle-4','cycle-5','cycle-6','cycle-7'];
+  const mins   = [2, 1, 55, 3, 32, 46, 69, 27, 56];
+  // colour by outcome: red = killed, green = DONE, blue = handoff/answered
+  const colours = [
+    '#f85149', // bg-agent killed
+    '#58a6ff', // cc-guide answered via file
+    '#3fb950', // cycle-1 DONE
+    '#f85149', // cycle-2 killed (race averted)
+    '#58a6ff', // cycle-3 handoff
+    '#3fb950', // cycle-4 DONE
+    '#d29922', // cycle-5 killed prematurely (productive) -> lesson
+    '#3fb950', // cycle-6 DONE
+    '#3fb950'  // cycle-7 DONE
+  ];
+  new Chart(document.getElementById('cyclesChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'минут', data: mins, backgroundColor: colours, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (c) => c.parsed.y + ' мин' } } },
+      scales: {
+        x: { grid: { color: '#30363d' }, ticks: { color: '#9da7b3' } },
+        y: { grid: { color: '#30363d' }, ticks: { color: '#9da7b3' }, title: { display: true, text: 'минут', color: '#9da7b3' } }
+      }
+    }
+  });
+})();
+
+// ---- RED baseline for edge-case scenarios ----
+(function () {
+  // SC-01..SC-17 map to E1..E16 (+SC-03 durability shown for context)
+  const labels = ['SC-01\nE1','SC-02\nE2','SC-04\nE3','SC-05\nE4','SC-06\nE5','SC-07\nE6','SC-08\nE7','SC-09\nE8','SC-10\nE9','SC-11\nE10','SC-12\nE11','SC-13\nE12','SC-14\nE13','SC-15\nE14','SC-16\nE15','SC-17\nE16'];
+  const red    = [0.83, 0.83, 0.5, 1.0, 0.17, 0.0, 0.0, 1.0, 1.0, 1.0, 0.17, 1.0, 0.83, 1.0, 0.83, 1.0];
+  const colours = red.map(v => v <= 0.34 ? '#f85149' : (v <= 0.67 ? '#d29922' : '#3fb950'));
+  new Chart(document.getElementById('edgeRedChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'RED pass-rate', data: red, backgroundColor: colours, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (c) => 'RED ' + c.parsed.y.toFixed(2) } } },
+      scales: {
+        x: { grid: { color: '#30363d' }, ticks: { color: '#9da7b3', font: { size: 10 }, maxRotation: 0, autoSkip: false } },
+        y: { grid: { color: '#30363d' }, ticks: { color: '#9da7b3', stepSize: 0.25 }, min: 0, max: 1, title: { display: true, text: 'pass-rate без навыка', color: '#9da7b3' } }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

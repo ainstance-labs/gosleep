@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev-history — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html" class="active">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <h1>Dev-history &mdash; хронология сборки harness</h1>
+  <p class="lead">Здесь простыми словами записан каждый шаг работы над <a class="term" href="glossary.html#term-harness">harness</a>. Один пункт &mdash; один кусок работы, пронумерован и привязан к Jira-таску. Читай сверху вниз: поймёшь, что сделано, где мы сейчас и какую проблему решает каждый шаг. Логика всего эпика проста &mdash; сначала написали и закалили <a class="term" href="glossary.html#term-skill">скилл</a>, потом построили стенд, чтобы его <em>измерить</em>, прогнали корпус сценариев, нашли реальную дыру и наметили её правку.</p>
+
+  <div class="note"><span class="t">Эпик.</span> <a href="https://ainstance-labs.atlassian.net/browse/TLM-58">TLM-58</a> &mdash; Orchestration Harness. Восемь тасков (TLM-59 &hellip; TLM-66) под одним PR; каждый таск &mdash; один пункт хронологии ниже. Детали тестов &mdash; на странице <a href="scenarios.html">Scenarios</a>, телеметрия прогонов &mdash; на <a href="runs.html">Runs</a>, цепочки агентов &mdash; на <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>.</div>
+
+  <!-- ============ Overall progress ============ -->
+  <section id="progress">
+  <h2>Прогресс одним взглядом</h2>
+  <p>Семь содержательных шагов плюс сама эта папка dev-history (TLM-65). Зелёное &mdash; сделано, жёлтое &mdash; идёт, серое &mdash; следующее. Логическая цепочка: <strong>01 скилл</strong> &rarr; <strong>02 проект</strong> &rarr; <strong>03 стенд</strong> &rarr; <strong>04 сценарии</strong> &rarr; <strong>05 прогон</strong> &rarr; <strong>06 правка по дырам</strong>; <strong>07</strong> &mdash; дизайн будущей web-наблюдаемости.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Jira</th>
+        <th>Что это</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num"><a href="#dh-01">01</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-59">TLM-59</a></td>
+        <td>Скилл <code>orchestrating-delivery-agents</code>: написать + закалить</td>
+        <td><span class="badge b-done">готово</span></td>
+      </tr>
+      <tr>
+        <td class="num"><a href="#dh-02">02</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-60">TLM-60</a></td>
+        <td>Каркас проекта <code>docs/orchestration-harness/</code> + install-скрипт</td>
+        <td><span class="badge b-done">готово</span></td>
+      </tr>
+      <tr>
+        <td class="num"><a href="#dh-03">03</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-61">TLM-61</a></td>
+        <td>Eval-фреймворк (RED/GREEN-раннер + формат сценариев)</td>
+        <td><span class="badge b-done">готово</span></td>
+      </tr>
+      <tr>
+        <td class="num"><a href="#dh-04">04</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-62">TLM-62</a></td>
+        <td>Корпус из 20 стресс-сценариев (SC-01&hellip;SC-20)</td>
+        <td><span class="badge b-done">готово</span></td>
+      </tr>
+      <tr>
+        <td class="num"><a href="#dh-05">05</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-63">TLM-63</a></td>
+        <td>Полный прогон сюиты + scorecard</td>
+        <td><span class="badge b-prog">идёт (resume после лимита)</span></td>
+      </tr>
+      <tr>
+        <td class="num"><a href="#dh-06">06</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-64">TLM-64</a></td>
+        <td>REFACTOR скилла по слабым местам (SC-03 первым)</td>
+        <td><span class="badge b-pending">следующий</span></td>
+      </tr>
+      <tr>
+        <td class="num"><a href="#dh-07">07</a></td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-66">TLM-66</a></td>
+        <td>Observability-harness &mdash; дизайн (web vs console)</td>
+        <td><span class="badge b-done">дизайн готов, билд позже</span></td>
+      </tr>
+      <tr>
+        <td class="num">&mdash;</td>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/TLM-65">TLM-65</a></td>
+        <td>Эта папка dev-history</td>
+        <td><span class="badge b-done">готово</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note warn"><span class="t">Где мы прямо сейчас.</span> Прогнали скилл против корпуса. Главное доказано: <strong>скилл реально меняет поведение агента</strong> &mdash; на сценарии «преждевременный kill» без скилла агенты ошибаются, со скиллом нет. Нашли <strong>одну реальную дыру</strong> (<a href="scenarios.html#SC-03">SC-03</a>, восстановление оркестратора) &mdash; её чиним следующей в <a href="#dh-06">шаге 06</a> (TLM-64).</div>
+
+  <!-- ============ Status overview chart ============ -->
+  <div class="grid cards-2">
+    <div class="chart-wrap">
+      <h3>Статусы шагов</h3>
+      <canvas id="chStatus" height="230"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Шаги по фазам работы</h3>
+      <canvas id="chPhase" height="230"></canvas>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ 01 ============ -->
+  <section id="dh-01">
+  <h2>01 &mdash; Написали и закалили скилл оркестратора</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-59">TLM-59</a> &middot; <span class="badge b-done">готово</span> &middot; 2026-06-08</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Во время живой доставки (9 эпиков подряд) у агентов постоянно заканчивался контекст, и оркестрацию приходилось чинить вручную. Хотели зафиксировать рабочий подход &mdash; «чистый оркестратор + цепочка свежих агентов через <a class="term" href="glossary.html#term-handoff">handoff</a>» &mdash; как переиспользуемый навык, который работает в любом проекте.</p>
+    </div>
+    <div class="card">
+      <h3>Что сделали</h3>
+      <ul>
+        <li>Написали глобальный скилл <strong><code>orchestrating-delivery-agents</code></strong> (<code>skill/SKILL.md</code> + 2 файла-справочника): модель ролей, flowchart решения «агент молчит», протокол жизненного цикла, каталог <a class="term" href="glossary.html#term-edge-case">edge-кейсов</a>.</li>
+        <li>Прогнали <strong>адверсариальную закалку в 8 осей</strong> (свежие агенты искали дыры) &mdash; прогон <a href="runs.html#run-wt2ajzijl">harden-orchestration-skill</a>. Она поймала даже фактические ошибки против реального движка и один логический тупик в схеме.</li>
+        <li>Внесли <strong>22 правки</strong>: состояние оркестратора на диске, восстановление после рестарта, security-<a class="term" href="glossary.html#term-denylist">denylist</a>, завершение агентов по типам (панель vs фоновый), идемпотентные создания.</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Где мы.</strong> Скилл готов и закалён, лежит в <code>skill/</code>. Дальше его нужно было начать <em>измерять</em> &mdash; отсюда тесты (<a href="#dh-03">шаг 03</a>).</p>
+  <table>
+    <thead><tr><th>Кусок</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>SKILL.md + references</td><td>&#9989;</td></tr>
+      <tr><td>Адверсариальная закалка (8 осей)</td><td>&#9989;</td></tr>
+      <tr><td>22 правки внесены</td><td>&#9989;</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+  <!-- ============ 02 ============ -->
+  <section id="dh-02">
+  <h2>02 &mdash; Завели проект harness</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-60">TLM-60</a> &middot; <span class="badge b-done">готово</span> &middot; 2026-06-08</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Скилл жил только в <code>~/.claude/skills/</code> (вне гита). Чтобы развивать его как настоящий продукт &mdash; с тестами, историей, потом отдельным репозиторием &mdash; нужен git-трекаемый проект-источник.</p>
+    </div>
+    <div class="card">
+      <h3>Что сделали</h3>
+      <ul>
+        <li>Создали структуру <strong><code>docs/orchestration-harness/</code></strong>: <code>skill/</code> (источник), <code>evals/</code> (тесты), <code>design/</code> (дизайн web-версии), <code>README.md</code>.</li>
+        <li>Написали <strong><code>install.sh</code></strong> &mdash; синхронизирует <code>skill/</code> в активную папку <code>~/.claude/skills/&hellip;</code> (источник правды в репо, но скилл остаётся включённым). Проверили &mdash; работает.</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Где мы.</strong> Есть аккуратный изолированный проект, готовый к выносу в отдельный репозиторий позже. Не мешает сборке основного приложения (лежит в <code>docs/</code>). Подробнее об устройстве &mdash; на странице <a href="architecture.html">Architecture</a>.</p>
+  <table>
+    <thead><tr><th>Кусок</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>Структура папок</td><td>&#9989;</td></tr>
+      <tr><td>install.sh (источник &rarr; активный скилл)</td><td>&#9989;</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+  <!-- ============ 03 ============ -->
+  <section id="dh-03">
+  <h2>03 &mdash; Построили фреймворк тестов (RED/GREEN)</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-61">TLM-61</a> &middot; <span class="badge b-done">готово</span> &middot; 2026-06-08</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Скилл &mdash; это процесс, а не код. Обычные unit-тесты тут не подходят. Нужен способ <strong>измерять поведение</strong>: делает ли агент правильный выбор в сложной ситуации, и реально ли скилл это улучшает.</p>
+    </div>
+    <div class="card">
+      <h3>Что сделали</h3>
+      <ul>
+        <li>Придумали формат: один сценарий = <strong><code>prompt.md</code></strong> (ситуация, её видит тестируемый агент) + <strong><code>rubric.md</code></strong> (критерии оценки, их видит только судья). Файлы физически разделены, чтобы агент не «подсматривал» правильный ответ.</li>
+        <li>Написали раннер <strong><code>evals/runner/eval-runner.js</code></strong>: каждый сценарий гоняется N раз <a class="term" href="glossary.html#term-red"><strong>без скилла (RED</strong></a>, базовая линия) и <a class="term" href="glossary.html#term-green"><strong>со скиллом (GREEN)</strong></a>; строгий судья ставит pass/fail по рубрике; считаются pass-rate и дельта &rarr; <strong>scorecard</strong> с таймстемпом в <code>evals/results/</code>.</li>
+        <li>Вердикты: <span class="badge b-pass">PASS</span> (GREEN&ge;0.8 и GREEN&gt;RED), <span class="badge b-guard">GUARD</span> (скилл держит, но база и так справляется), <span class="badge b-fail">FAIL</span> (GREEN&lt;0.8 &mdash; настоящая дыра).</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Где мы.</strong> Фреймворк готов. Это прямой перенос <a class="term" href="glossary.html#term-tdd">TDD</a> на документацию: RED (база) &rarr; GREEN (со скиллом) &rarr; REFACTOR.</p>
+  <table>
+    <thead><tr><th>Кусок</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>Формат сценария (prompt/rubric раздельно)</td><td>&#9989;</td></tr>
+      <tr><td>RED/GREEN-раннер + судья + scorecard</td><td>&#9989;</td></tr>
+      <tr><td>Вердикты PASS/GUARD/FAIL</td><td>&#9989;</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+  <!-- ============ 04 ============ -->
+  <section id="dh-04">
+  <h2>04 &mdash; Написали корпус из 20 сценариев</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-62">TLM-62</a> &middot; <span class="badge b-done">готово</span> &middot; 2026-06-08</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Чтобы тесты были полезными, нужны сценарии на <strong>каждое слабое место</strong> оркестрации &mdash; и они должны быть достаточно «злыми». Урок с первого прогона: если базовая модель и так справляется (RED&nbsp;=&nbsp;1.0), сценарий ничего не различает. Значит, неправильное действие надо делать <em>по-настоящему заманчивым</em>.</p>
+    </div>
+    <div class="card">
+      <h3>Что сделали</h3>
+      <ul>
+        <li>Сгенерировали <strong>20 сценариев</strong> (<a href="scenarios.html#SC-01">SC-01</a>&hellip;<a href="scenarios.html#SC-20">SC-20</a>) &mdash; по одному на каждый edge-кейс (<a href="skill.html#E1">E1</a>&ndash;<a href="skill.html#E16">E16</a>) плюс security/denylist, бюджет/loop-guard, перекладка оркестратора, дисциплина контекста.</li>
+        <li>Генерацию сделали <a class="term" href="glossary.html#term-fan-out">воркфлоу-веером</a> (<code>evals/runner/gen-scenarios.js</code>, 18 агентов-авторов) &mdash; прогон <a href="runs.html#run-wka1y0ile">gen-scenarios</a>; каждый писал свой сценарий с правилом «ситуация должна ронять RED».</li>
+        <li>Проверили на диске: все 20 папок с <code>prompt.md</code> + <code>rubric.md</code>, <strong>без утечки рубрики</strong> в промпт.</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Где мы.</strong> Корпус на диске, готов к прогону. Примеры «злых» сценариев, где база падает: <a href="scenarios.html#SC-08">молчащий воркер с незакоммиченным кодом</a>, <a href="scenarios.html#SC-18">потолок стоимости прогона</a>, <a href="scenarios.html#SC-03">восстановление после рестарта оркестратора</a>.</p>
+  <table>
+    <thead><tr><th>Кусок</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>20 сценариев на диске</td><td>&#9989;</td></tr>
+      <tr><td>Генератор-воркфлоу</td><td>&#9989;</td></tr>
+      <tr><td>Проверка (есть оба файла, нет утечки)</td><td>&#9989;</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+  <!-- ============ 05 ============ -->
+  <section id="dh-05">
+  <h2>05 &mdash; Полный прогон сюиты (+ как упёрлись в лимит)</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-63">TLM-63</a> &middot; <span class="badge b-prog">идёт (resume)</span> &middot; 2026-06-08 &rarr; 2026-06-09</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Прогнать все 20 сценариев в двуруком режиме (RED/GREEN) и получить честную картину: где скилл реально вытягивает, а где дыры.</p>
+    </div>
+    <div class="card">
+      <h3>Что сделали / что произошло</h3>
+      <ul>
+        <li><strong>Дымовой прогон</strong> (<a href="runs.html#run-wgr53dz8h">eval-smoke</a>, 2 сценария, N=4) доказал, что харнесс работает end-to-end. На «преждевременном kill» получили <strong>RED&nbsp;0.25 &rarr; GREEN&nbsp;1.00</strong> (+0.75) &mdash; скилл предотвращает ошибку, которую мы сами допустили в живой сессии.</li>
+        <li>Заметили: при N=4 pass-rate шумит (тот же сценарий скакал 0.25&harr;1.00). Подняли до <strong>N=6</strong> и добавили таймстемп в имя scorecard, чтобы прогоны не затирали друг друга.</li>
+        <li>Нашли баг раннера (<a href="runs.html#run-wv9e4ygbg">eval-full-attempt-1</a>): <code>args</code> со списком сценариев не доходили &mdash; починили (дефолт = все 20).</li>
+        <li><strong>Полный прогон</strong> (<a href="runs.html#run-wlw9qhhhm">eval-full-run</a>, 20&nbsp;&times;&nbsp;N=6 &asymp; 480 агентов) на середине упёрся в <strong>недельный лимит Anthropic</strong>: RED по всем 20 + GREEN по 4 сценариям успели; GREEN-судьи по 16 сценариям и scorecard упали.</li>
+        <li><strong>Продолжаем через resume</strong> (<a href="runs.html#run-wragtqbc2">eval-full-resume</a>) &mdash; кэш переиспользует ~380 готовых агентов, заново гоняются только упавшие.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Что уже видно</h3>
+  <table>
+    <thead>
+      <tr><th>Сценарий</th><th class="num">RED</th><th class="num">GREEN</th><th>Итог</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><a href="scenarios.html#SC-02">SC-02 преждевременный kill</a></td><td class="num">0.83</td><td class="num">1.00</td><td><span class="badge b-pass">PASS</span></td></tr>
+      <tr><td><a href="scenarios.html#SC-01">SC-01 дубль-гонка</a></td><td class="num">0.83</td><td class="num">1.00</td><td><span class="badge b-pass">PASS</span></td></tr>
+      <tr><td><a href="scenarios.html#SC-03">SC-03 восстановление оркестратора</a></td><td class="num">1.00</td><td class="num">0.67</td><td><span class="badge b-fail">FAIL (дыра)</span></td></tr>
+      <tr><td><a href="scenarios.html#SC-05">SC-05 коллизия веток</a></td><td class="num">1.00</td><td class="num">1.00</td><td><span class="badge b-guard">GUARD</span></td></tr>
+      <tr><td>«злые» (ждут GREEN): SC-07/08/19&nbsp;=&nbsp;0, SC-06/12&nbsp;=&nbsp;0.17, SC-04&nbsp;=&nbsp;0.5</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="badge b-pending">PENDING</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart-wrap">
+    <h3>RED &rarr; GREEN по завершённым сценариям</h3>
+    <canvas id="chRedGreen" height="240"></canvas>
+  </div>
+
+  <div class="note"><span class="t">Где мы.</span> Resume досчитывает GREEN по 16 сценариям + scorecard. Главный вывод уже есть: <strong>скилл работает</strong>, и найдена <strong>одна конкретная дыра (SC-03)</strong> &rarr; чиним в <a href="#dh-06">шаге 06</a> (TLM-64). Полная таблица всех 20 сценариев &mdash; на странице <a href="scenarios.html">Scenarios</a>.</div>
+  </section>
+
+  <!-- ============ 06 ============ -->
+  <section id="dh-06">
+  <h2>06 &mdash; REFACTOR скилла по слабым местам (SC-03 первым)</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-64">TLM-64</a> &middot; <span class="badge b-pending">следующий</span> &middot; 2026-06-09</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Тест нашёл реальную дыру в скилле. На сценарии <strong><a href="scenarios.html#SC-03">SC-03</a> (оркестратора скомпактили посреди цепочки)</strong> GREEN&nbsp;=&nbsp;0.67 &mdash; даже со скиллом агент в трети случаев действует неправильно.</p>
+      <p class="muted"><strong>Что именно идёт не так</strong> (из вердиктов судей): агент объявляет файл состояния <code>ORCHESTRATION-STATE.md</code> «отсутствующим» и сразу прыгает в live-проверки (git/gh), <em>вместо того чтобы сначала прочитать состояние с диска</em> &mdash; например, самый свежий пронумерованный handoff. Скилл недостаточно чётко описывает fallback «нет state-файла &rarr; всё равно сначала диск (последний handoff), и только потом live».</p>
+    </div>
+    <div class="card">
+      <h3>План (это и есть TDD-REFACTOR)</h3>
+      <ol>
+        <li>Поправить раздел восстановления в <code>skill/SKILL.md</code>: явный шаг «нет <code>ORCHESTRATION-STATE.md</code> &rarr; читай highest-numbered handoff на диске ПЕРВЫМ; live-проверки потом, для подтверждения».</li>
+        <li><code>./install.sh</code> &mdash; обновить активный скилл.</li>
+        <li>Перегнать <strong>только слабые сценарии</strong> (дёшево) и убедиться, что GREEN(SC-03) вырос &ge;&nbsp;0.8.</li>
+        <li>Добавить в список любые другие GREEN&lt;0.8, которые покажет полный scorecard из <a href="#dh-05">шага 05</a>.</li>
+      </ol>
+    </div>
+  </div>
+  <p><strong>Где мы.</strong> Ждём полный scorecard (resume в <a href="#dh-05">05</a>), чтобы зафиксировать весь список дыр, и приступаем к правкам.</p>
+  <table>
+    <thead><tr><th>Шаг</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>Зафиксировать список GREEN&lt;0.8</td><td>&#9203; ждём scorecard</td></tr>
+      <tr><td>Правка скилла (SC-03 recovery)</td><td>&#9203;</td></tr>
+      <tr><td>Перепрогон слабых + проверка лифта</td><td>&#9203;</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+  <!-- ============ 07 ============ -->
+  <section id="dh-07">
+  <h2>07 &mdash; Observability-harness: дизайн (web vs console)</h2>
+  <p class="muted"><a href="https://ainstance-labs.atlassian.net/browse/TLM-66">TLM-66</a> &middot; <span class="badge b-done">дизайн готов (билд позже)</span> &middot; 2026-06-08</p>
+
+  <div class="grid cards-2">
+    <div class="card">
+      <h3>Какую проблему решаем</h3>
+      <p>Хотим в будущем «профессиональный harness»: запускаешь команду &mdash; и в браузере видишь живьём, что происходит (флот агентов, их статусы, как они общаются между собой, что создаётся в Jira/GitHub).</p>
+    </div>
+    <div class="card">
+      <h3>Что зафиксировали (консультация)</h3>
+      <ul>
+        <li><strong>Главный принцип:</strong> сначала стабильная <strong>схема событий + единый append-only поток</strong>; UI (любой) &mdash; это уже потребитель. Один лог событий даёт сразу live-просмотр, <strong>replay прогонов</strong>, audit-trail и фикстуры для тестов.</li>
+        <li><strong>Транспорт:</strong> SSE (просто, сервер&rarr;браузер) или WebSocket (если из UI ещё и управлять &mdash; пауза/kill).</li>
+        <li><strong>Стек:</strong> Next.js (он у нас уже есть) &mdash; приём событий + SSE + React-вью.</li>
+        <li><strong>Рекомендация:</strong> делать <strong>web</strong> поверх событийного потока; tmux-панели оставить как «сырой» вид. Для настоящего продукта &mdash; рассмотреть <strong>Claude Agent SDK</strong> (свой цикл &rarr; чистая эмиссия событий).</li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted">Подробно: <code>design/event-schema.md</code> и <code>design/web-harness-design.md</code>.</p>
+  <p><strong>Где мы.</strong> Дизайн зафиксирован, билд отложен на отдельный майлстоун (сначала доводим скилл + тесты). Сам этот knowledge base &mdash; первая, статичная итерация той самой web-наблюдаемости.</p>
+  <table>
+    <thead><tr><th>Кусок</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td>event-schema.md</td><td>&#9989;</td></tr>
+      <tr><td>web-harness-design.md</td><td>&#9989;</td></tr>
+      <tr><td>Реализация web/SSE</td><td>&#9203; позже</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+(function () {
+  Chart.defaults.color = '#9da7b3';
+  Chart.defaults.font.family = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+  Chart.defaults.font.size = 11;
+
+  var grid = '#30363d';
+  var tick = '#9da7b3';
+
+  // ---- Статусы шагов (8 пунктов TLM-59..66 + dev-history TLM-65) ----
+  // готово: 01,02,03,04,07,dev-history = 6 ; идёт: 05 = 1 ; следующий: 06 = 1
+  new Chart(document.getElementById('chStatus'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Готово', 'Идёт', 'Следующий'],
+      datasets: [{
+        data: [6, 1, 1],
+        backgroundColor: ['#3fb950', '#d29922', '#6e7681'],
+        borderColor: '#161b22',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: tick } } }
+    }
+  });
+
+  // ---- Шаги по фазам работы ----
+  new Chart(document.getElementById('chPhase'), {
+    type: 'bar',
+    data: {
+      labels: ['Скилл', 'Проект', 'Стенд', 'Сценарии', 'Прогон', 'Правка', 'Observability'],
+      datasets: [{
+        data: [1, 1, 1, 1, 1, 1, 1],
+        backgroundColor: ['#bc8cff', '#bc8cff', '#58a6ff', '#58a6ff', '#58a6ff', '#d29922', '#3fb950'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: tick, maxRotation: 60, minRotation: 45 } },
+        y: { display: false, grid: { display: false }, beginAtZero: true, max: 1.4 }
+      }
+    }
+  });
+
+  // ---- RED -> GREEN по завершённым сценариям (из runs.json) ----
+  var rgLabels = ['SC-01 дубль-гонка', 'SC-02 преждевр. kill', 'SC-03 восст. оркестр.', 'SC-05 коллизия веток'];
+  var redVals   = [0.83, 0.83, 1.00, 1.00];
+  var greenVals = [1.00, 1.00, 0.67, 1.00];
+  new Chart(document.getElementById('chRedGreen'), {
+    type: 'bar',
+    data: {
+      labels: rgLabels,
+      datasets: [
+        { label: 'RED (без скилла)',  data: redVals,   backgroundColor: '#f85149', borderRadius: 4 },
+        { label: 'GREEN (со скиллом)', data: greenVals, backgroundColor: '#3fb950', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: tick } },
+        tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + c.parsed.y.toFixed(2); } } }
+      },
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: tick, maxRotation: 60, minRotation: 45 } },
+        y: { grid: { color: grid }, ticks: { color: tick }, beginAtZero: true, max: 1.0 }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — Orchestration Harness</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+  <a class="brand" href="index.html">Orchestration Harness<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="study.html">Study</a>
+    <a href="skill.html">Skill</a>
+    <a href="scenarios.html">Scenarios</a>
+    <a href="runs.html">Runs</a>
+    <a href="agents.html">Agents &amp; Profiling</a>
+    <a href="subagents.html">Subagents</a>
+    <a href="issues.html">Issues</a>
+    <a href="architecture.html" class="active">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="dev-history.html">Dev-history</a>
+  </nav>
+</div></header>
+<main class="container">
+
+  <h1>Архитектура harness</h1>
+  <p class="lead">
+    Как устроен этот проект и почему. От исходника навыка до активного навыка, через
+    eval-pipeline, к будущему live-наблюдению за флотом агентов. Главный архитектурный
+    принцип здесь один: <strong>сначала событие, потом интерфейс</strong> — всё строится
+    поверх единого
+    <a class="term" href="glossary.html#term-event-stream">event stream</a>, а не поверх UI.
+  </p>
+
+  <div class="note">
+    <span class="t">Логическая цепочка страницы.</span>
+    (1) <a href="#layout">Раскладка проекта</a> — где что лежит и как один кусок порождает другой.
+    (2) <a href="#eval-pipeline">Eval-pipeline</a> — как сценарий проходит через
+    <a class="term" href="glossary.html#term-red-green">RED/GREEN</a>-runner и
+    <a class="term" href="glossary.html#term-judge">judge</a> к scorecard.
+    (3) <a href="#observability">Observability</a> — дизайн будущего live-harness.
+    (4) <a href="#event-schema">Event schema</a> — предлагаемые типы событий.
+  </div>
+
+  <!-- ============================================================ -->
+  <section id="layout">
+  <h2>1. Раскладка проекта</h2>
+  <p>
+    Harness — это standalone-проект, который пока живёт под <code>docs/</code> в репозитории
+    tasty-lunch (позже переедет в собственный git-репозиторий). Его задача — превратить навык
+    <a class="term" href="glossary.html#term-skill">orchestrating-delivery-agents</a> в
+    профессиональный, измеримый и эволюционирующий продукт. Четыре каталога образуют единый
+    конвейер: исходник навыка → активный навык → eval-suite (его проверяет) → design (его будущее).
+  </p>
+
+  <div class="tree">
+<span class="node-orch">docs/orchestration-harness/</span>
+├── <span class="node-wf">skill/</span>                         <span class="meta"># SOURCE OF TRUTH навыка (3 файла, ~2 670 слов в SKILL.md)</span>
+│   ├── <span class="node-sub">SKILL.md</span>                  <span class="meta"># процесс оркестрации: lifecycle воркеров, decision forks</span>
+│   └── <span class="node-sub">references/</span>
+│       ├── <span class="node-sub">worker-cycle-template.md</span>
+│       └── <span class="node-sub">lifecycle-and-edge-cases.md</span>   <span class="meta"># 16 edge-кейсов E1..E16</span>
+│
+├── <span class="node-wf">install.sh</span>                     <span class="meta"># синхронизирует skill/ -&gt; активный навык</span>
+│        │
+│        ▼
+│   <span class="node-orch">~/.claude/skills/orchestrating-delivery-agents/</span>   <span class="meta"># АКТИВНЫЙ навык, его читают агенты</span>
+│
+├── <span class="node-wf">evals/</span>                         <span class="meta"># поведенческий test-suite (TDD для процесса)</span>
+│   ├── <span class="node-sub">scenarios/</span>               <span class="meta"># SC-01..SC-20: prompt.md + rubric.md на каждый</span>
+│   ├── <span class="node-sub">runner/eval-runner.js</span>     <span class="meta"># two-arm RED/GREEN runner (запуск как Workflow)</span>
+│   └── <span class="node-sub">scorecards/</span>              <span class="meta"># результаты: pass-rate, дельта RED-&gt;GREEN</span>
+│
+├── <span class="node-wf">design/</span>                        <span class="meta"># дизайн будущего live observability harness</span>
+│   ├── <span class="node-sub">event-schema.md</span>          <span class="meta"># фундамент: типы событий (см. часть 4)</span>
+│   └── <span class="node-sub">web-harness-design.md</span>    <span class="meta"># web vs console, стек, sequencing</span>
+│
+└── <span class="node-wf">report/</span>                        <span class="meta"># ЭТА база знаний (HTML + data/runs.json)</span>
+    ├── <span class="node-sub">assets/style.css</span>
+    ├── <span class="node-sub">data/runs.json</span>           <span class="meta"># вся телеметрия (источник цифр этой страницы)</span>
+    └── <span class="node-sub">*.html</span>                   <span class="meta"># dashboard, skill, scenarios, runs, agents, architecture...</span>
+  </div>
+
+  <div class="cards-3" style="display:grid;gap:14px;margin-top:18px">
+    <div class="card">
+      <h3 style="margin-top:0">skill/ → активный навык</h3>
+      <p style="margin:0" class="muted">
+        <code>skill/</code> — единственный источник правды. <code>install.sh</code> копирует его
+        в <code>~/.claude/skills/</code>, откуда навык подхватывают агенты. Правишь исходник —
+        переустанавливаешь — навык активен. Разделение «исходник vs установленное» делает
+        изменение версионируемым и обратимым.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">evals/ проверяет навык</h3>
+      <p style="margin:0" class="muted">
+        Навык — это <em>процесс</em>, поэтому и тестируется как процесс. Каждый
+        <a href="scenarios.html#SC-01">сценарий</a> — это ситуация для оркестратора плюс rubric
+        (правильное поведение + ловушки). Подробный поток — в <a href="#eval-pipeline">части 2</a>.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">design/ — будущее</h3>
+      <p style="margin:0" class="muted">
+        Пока live-наблюдение — это <a class="term" href="glossary.html#term-tmux">tmux</a>-панели.
+        <code>design/</code> описывает шаг дальше: web-harness поверх event-лога. Детали —
+        в <a href="#observability">части 3</a>–<a href="#event-schema">4</a>.
+      </p>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="t">Каждый каталог кормит следующий.</span> Уроки из delivery-прогона
+    (<a href="runs.html#run-w22r94p88">post-phase8-review</a>) → правки в <code>skill/</code> →
+    новые ловушки → новые сценарии в <code>evals/</code> → доказательная эволюция навыка → когда
+    хочется видеть это вживую, включается <code>design/</code>. Это тот же цикл
+    RED → GREEN → REFACTOR, но для процесса, а не для кода.
+  </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="eval-pipeline">
+  <h2>2. Eval-pipeline: от сценария к scorecard</h2>
+  <p>
+    Это <code>superpowers:writing-skills</code> TDD, сделанный повторяемым. Runner даёт свежему
+    агенту одну и ту же ситуацию дважды: <strong>без навыка</strong> (RED baseline) и
+    <strong>с навыком</strong> (GREEN). Каждый из N прогонов на каждой руке судит отдельный
+    <a class="term" href="glossary.html#term-judge">judge</a> по rubric. Навык «проходит»
+    сценарий, когда GREEN высокий (≥ 0.8) <em>и</em> бьёт RED.
+  </p>
+
+  <h3>Поток одного сценария (N=6, как в полном прогоне)</h3>
+  <div class="tree">
+<span class="node-wf">SC-XX</span>  ──&gt;  <span class="node-orch">eval-runner.js</span> (как <a class="term" href="glossary.html#term-workflow">Workflow</a>)
+            │
+            ├── читает <span class="node-sub">prompt.md</span>  (ситуация для оркестратора)
+            ├── читает <span class="node-sub">rubric.md</span>  (правильное поведение + ловушки — НЕ показывается агенту)
+            │
+            ├──&gt; <span class="node-orch">RED-рука</span>:   6 agents-under-test  <span class="meta">БЕЗ навыка (baseline)</span>
+            │         │
+            │         └──&gt; 6 RED-judges  <span class="meta"># каждый ответ судит свой judge по rubric</span>
+            │
+            ├──&gt; <span class="node-orch">GREEN-рука</span>: 6 agents-under-test  <span class="meta">С навыком в контексте</span>
+            │         │
+            │         └──&gt; 6 GREEN-judges
+            │
+            └──&gt; <span class="node-wf">scorecard-synth</span>
+                      │
+                      ▼
+                  <span class="node-sub">scorecard.json</span>:  RED pass-rate · GREEN pass-rate · дельта · verdict
+  </div>
+
+  <p>
+    Один полный сценарий = 6 RED + 6 GREEN + 6 RED-judges + 6 GREEN-judges + общий
+    scorecard-synth. Для 20 сценариев это сотни агентов в одном прогоне — отсюда
+    <strong>480 субагентов</strong> в <a href="runs.html#run-wlw9qhhhm">eval-full-run</a>.
+    Смысл двух рук прост: GREEN сам по себе ничего не доказывает; ценность навыка — это
+    <em>дельта</em> над RED, измеренная на одной и той же ситуации.
+  </p>
+
+  <div class="cards-2" style="display:grid;gap:14px">
+    <div class="card">
+      <h3 style="margin-top:0">Verdict-логика</h3>
+      <table>
+        <thead><tr><th>Verdict</th><th>Условие</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge b-pass">PASS</span></td><td>GREEN ≥ 0.8 и GREEN &gt; RED</td></tr>
+          <tr><td><span class="badge b-guard">GUARD</span></td><td>RED уже высокий — навык удерживает, но дельты нет</td></tr>
+          <tr><td><span class="badge b-fail">FAIL</span></td><td>GREEN &lt; порога или не бьёт RED</td></tr>
+          <tr><td><span class="badge b-pending">PENDING</span></td><td>GREEN ещё не досчитан (resume-прогон)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Resume через кэш</h3>
+      <p style="margin:0" class="muted">
+        Полный прогон упёрся в недельный лимit Anthropic в середине. Решение — кэш: успешные
+        агенты не перезапускаются. В
+        <a href="runs.html#run-wragtqbc2">eval-full-resume</a> переиспользованы ~380 успешных
+        агентов, заново гонятся только ~100 упавших GREEN-judges + scorecard. Это делает
+        pipeline идемпотентным и устойчивым к обрывам — тот же принцип, что навык требует от
+        воркеров (см. <a href="scenarios.html#SC-16">SC-16</a>).
+      </p>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <h3>Масштаб прогона: субагенты по workflow</h3>
+    <p class="muted" style="margin-top:0">
+      Eval-прогоны порождают на порядок больше агентов, чем review-прогон — каждый сценарий
+      разворачивается в 4 группы по N агентов плюс судьи. Числа из
+      <code>data/runs.json</code>.
+    </p>
+    <canvas id="chartAgents" height="150"></canvas>
+  </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="observability">
+  <h2>3. Observability: будущий live-harness</h2>
+  <p>
+    Цель — смотреть прогон вживую в браузере: флот агентов, их статусы, вызовы инструментов,
+    сообщения между агентами и что происходит в Jira/GitHub. Дизайн зафиксирован, реализация
+    отложена — здесь записано рекомендованное направление.
+  </p>
+
+  <h3 id="event-first">Принцип: сначала событие, потом UI</h3>
+  <p>
+    Единственное архитектурное решение, которое делает возможным <em>любой</em> интерфейс (TUI
+    или web): продюсеры (агенты) эмитят стабильный, append-only поток структурированных
+    событий, а потребители (UI / тесты / аудит) подключаются к нему. Один event-лог сразу даёт
+    четыре вещи: live-вид, replay прогона, audit trail и фикстуры для тестов. UI — это просто
+    consumer; он строится поверх
+    <a class="term" href="glossary.html#term-event-stream">event stream</a>, а не наоборот.
+  </p>
+
+  <h3 id="sse-vs-ws">SSE против WebSocket</h3>
+  <p>
+    Маленький сервер тейлит лог (<code>runs/&lt;run-id&gt;/events.jsonl</code>) и пушит клиентам.
+    Транспорт выбирается по тому, нужен ли UI <em>контроль</em> над прогоном:
+  </p>
+  <table>
+    <thead><tr><th>Транспорт</th><th>Направление</th><th>Когда</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a class="term" href="glossary.html#term-sse">SSE</a></td>
+        <td>сервер → браузер (one-way)</td>
+        <td>live-вид только для чтения — наблюдаем флот, ничего не трогаем. Дешевле, проще, hits
+            нативный <code>EventSource</code> в браузере.</td>
+      </tr>
+      <tr>
+        <td><a class="term" href="glossary.html#term-websocket">WebSocket</a></td>
+        <td>двунаправленный</td>
+        <td>если UI ещё и управляет прогоном — pause / kill агента. Нужна, когда наблюдение
+            превращается в пульт.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <span class="t">Рекомендация.</span> Старт на <a class="term" href="glossary.html#term-sse">SSE</a>
+    (наблюдение), переход на WebSocket только когда понадобится управление. Сам поток событий от
+    выбора транспорта не зависит — это и есть смысл «event-first».
+  </div>
+
+  <h3 id="stack">Стек и виды</h3>
+  <div class="cards-2" style="display:grid;gap:14px">
+    <div class="card">
+      <h3 style="margin-top:0">Next.js (App Router)</h3>
+      <p style="margin:0" class="muted">
+        Совпадает с текущим TS/Next-стеком команды. Route Handler принимает события, SSE-endpoint
+        пушит их в браузер, React рисует UI. Persist событий (JSONL → SQLite/Postgres) даёт
+        replay и аудит.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">tmux как raw-вид</h3>
+      <p style="margin:0" class="muted">
+        <a class="term" href="glossary.html#term-tmux">tmux</a>-панели остаются «сырым» живым
+        видом: бесплатно, мгновенно, без инфраструктуры. Web-harness не заменяет их, а добавляет
+        графы, timeline и шеринг поверх того же event-лога.
+      </p>
+    </div>
+  </div>
+  <p>
+    Виды web-UI: дерево/флот агентов (React Flow / d3 / Mermaid), timeline циклов (Gantt), живой
+    feed сообщений, drill-down по агенту (вызовы инструментов, задача, токены), панель Jira/GitHub
+    (API/webhooks).
+  </p>
+
+  <h3 id="agent-sdk">Опция: Claude Agent SDK</h3>
+  <p>
+    Для «настоящего продукта» можно перенести сам цикл оркестрации на
+    <a class="term" href="glossary.html#term-agent-sdk">Claude Agent SDK</a> (TypeScript): тогда
+    мы владеем циклом и эмитим события напрямую — first-class observability и control. Сегодня
+    события приходят из хуков Claude Code (PreToolUse / PostToolUse / SessionStart / Stop) плюс
+    явных записей в лог от оркестратора и воркеров; SDK-путь делает эмиссию частью самого loop.
+    <span class="muted">(Конкретику хуков/SDK проверять по актуальным докам на момент реализации.)</span>
+  </p>
+
+  <h3 id="sequencing">Sequencing</h3>
+  <div class="tree">
+<span class="node-wf">1.</span> Зафиксировать event schema; научить оркестратор/воркеров эмитить события (хуки + записи в лог).
+<span class="node-wf">2.</span> Тонкий viewer (даже <span class="node-sub">tail -f</span> или минимальная <a class="term" href="glossary.html#term-sse">SSE</a>-страница), чтобы провалидировать поток.
+<span class="node-wf">3.</span> Развернуть полноценные web-виды (дерево, timeline, feed, Jira-панель).
+<span class="node-wf">4.</span> <span class="meta">(опц.)</span> Переплатформить loop на <a class="term" href="glossary.html#term-agent-sdk">Agent SDK</a> для чистой programmatic observability + control.
+  </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="event-schema">
+  <h2>4. Event schema (предлагаемые типы событий)</h2>
+  <p>
+    Все продюсеры эмитят события в общем конверте — это контракт, к которому привязываются и UI,
+    и тесты, и аудит. Конверт:
+  </p>
+  <pre>{ "ts": "&lt;iso8601&gt;", "run_id": "...", "seq": 123,
+  "actor": "orchestrator | &lt;cycle-name&gt; | judge",
+  "type": "&lt;event type&gt;", "data": { ... } }</pre>
+
+  <table>
+    <thead><tr><th>Тип события</th><th>data (полезная нагрузка)</th><th>Зачем</th></tr></thead>
+    <tbody>
+      <tr><td><code>run.started</code> / <code>run.finished</code></td><td>goal, budget</td><td>границы прогона</td></tr>
+      <tr><td><code>cycle.started</code> / <code>cycle.ended</code></td><td>cycle, worker, branch, status</td><td>delivery-цикл воркера</td></tr>
+      <tr><td><code>agent.spawned</code> / <code>agent.idle</code> / <code>agent.terminated</code></td><td>name, surface (pane | background), id</td><td>lifecycle агента во флоте</td></tr>
+      <tr><td><code>agent.message</code></td><td>from, to, kind (report | nudge | progress | shutdown), summary</td><td>живой feed сообщений</td></tr>
+      <tr><td><code>tool.call</code></td><td>actor, tool, args_summary</td><td>из хуков Pre/PostToolUse или SDK</td></tr>
+      <tr><td><code>handoff.written</code></td><td>path, cycle</td><td>фиксация handoff на диск</td></tr>
+      <tr><td><code>tracker.issue.created</code> / <code>tracker.issue.transitioned</code></td><td>key, summary, status</td><td>панель Jira</td></tr>
+      <tr><td><code>vcs.commit</code> / <code>vcs.pr.opened</code> / <code>vcs.pr.merged</code></td><td>sha | pr, branch</td><td>панель GitHub</td></tr>
+      <tr><td><code>orchestrator.state</code></td><td>snapshot LIVE-STATUS</td><td>текущее состояние оркестратора</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart-wrap">
+    <h3>Источники событий (доля типов в предлагаемой схеме)</h3>
+    <p class="muted" style="margin-top:0">
+      Схема покрывает четыре домена: lifecycle агентов и циклов, поток сообщений, инструменты, и
+      внешние трекеры (Jira/GitHub/VCS). Это распределение типов событий по доменам.
+    </p>
+    <canvas id="chartEvents" height="170"></canvas>
+  </div>
+
+  <div class="note warn">
+    <span class="t">Статус.</span> Event schema и web-harness — пока <span class="badge b-pending">DESIGN-ONLY</span>.
+    Навык уже захардён 8-осевым adversarial-ревью, eval-suite работает; observability — следующий
+    рубеж. Точные возможности хуков/SDK сверять с доками на момент сборки, а не по памяти.
+    Связанный эпик: <a href="https://ainstance-labs.atlassian.net/browse/TLM-58">TLM-58</a>.
+  </div>
+  </section>
+
+</main>
+<footer>Orchestration Harness knowledge base · generated for development profiling · Jira epic TLM-58 · source: docs/orchestration-harness/</footer>
+
+<script>
+Chart.defaults.color = '#9da7b3';
+Chart.defaults.font.family = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
+// ---- subagents per workflow (from data/runs.json; resume run is null/in-progress) ----
+(function () {
+  var ctx = document.getElementById('chartAgents');
+  if (!ctx) return;
+  var labels = ['post-phase8-review', 'harden-skill', 'gen-scenarios', 'eval-smoke', 'eval-full-att-1', 'eval-full-run'];
+  var agents = [62, 9, 18, 33, 33, 480];
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'субагенты',
+        data: agents,
+        backgroundColor: ['#bc8cff', '#58a6ff', '#58a6ff', '#58a6ff', '#58a6ff', '#3fb950'],
+        borderColor: '#30363d',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#30363d' }, ticks: { color: '#9da7b3', maxRotation: 30, minRotation: 0 } },
+        y: { grid: { color: '#30363d' }, ticks: { color: '#9da7b3' }, beginAtZero: true }
+      }
+    }
+  });
+})();
+
+// ---- event types by domain (proposed event-schema.md) ----
+(function () {
+  var ctx = document.getElementById('chartEvents');
+  if (!ctx) return;
+  // lifecycle: run.started/finished, cycle.started/ended, agent.spawned/idle/terminated, orchestrator.state = 8
+  // messaging: agent.message = 1
+  // tools: tool.call = 1, handoff.written = 1
+  // external trackers: tracker.created/transitioned, vcs.commit/pr.opened/pr.merged = 5
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Lifecycle (агенты + циклы)', 'Сообщения', 'Инструменты + handoff', 'Трекеры (Jira/GitHub/VCS)'],
+      datasets: [{
+        data: [8, 1, 2, 5],
+        backgroundColor: ['#bc8cff', '#d29922', '#58a6ff', '#3fb950'],
+        borderColor: '#161b22',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#9da7b3', boxWidth: 14 } }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
