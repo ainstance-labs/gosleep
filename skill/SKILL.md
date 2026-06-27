@@ -79,6 +79,18 @@ Spawning a replacement while the original is alive is the #1 cause of duplicate/
 **Never let one worker stall the pipeline forever** — the escape hatch above (nudge → directive nudge →
 human) always terminates.
 
+**PR / finalize boundary — patience vs active nudge (distinct concepts, do not conflate):**
+- **Patience** = a worker that is idle between turns is NORMAL; idle ≠ stuck, idle ≠ slow. A worker
+  that committed all tasks and then went quiet is finishing up. DO NOT send a message just because
+  it is quiet.
+- **Active nudge** = a deliberate one-shot message you send when the patience window has elapsed
+  with NO PR opened and NO report sent. At a FINALIZE/PR boundary, after the normal patience window
+  elapses (~45–60 min of no report, after all tasks committed), send EXACTLY ONE "finalize-or-handoff"
+  nudge. After that single nudge: wait for its reply; do NOT re-send; do NOT spawn a duplicate worker.
+  If the nudge goes unanswered past the hard ceiling → apply the kill/escalation tree above. The
+  answer is NEVER "wait indefinitely" and NEVER "spawn a fresh finalize worker while the original
+  is alive."
+
 ## Spawning a cycle worker
 
 - Use a worker type that has `SendMessage` (e.g. general-purpose). A read-only / no-SendMessage type cannot report — have it `Bash`-write findings to a known file you Read.
@@ -90,7 +102,7 @@ human) always terminates.
 
 - Signals: `SendMessage` reports (real) and idle notifications (turn boundaries — NOT a stop/finish signal).
 - **Liveness, ranked (highest first):** a report = reached a boundary; a `/workflows` task in terminal state = exited; `tmux list-panes -F '#{pane_id} #{pane_dead}'` = running vs exited; git movement = proves *progress*, never proves *stopped*. Before concluding "stuck", check non-git evidence too (`tmux capture-pane -p | tail`, build/log mtime).
-- **Probe read-only and OFF the worker's tree:** `git fetch --quiet` first, then `git log origin/main..origin/<branch> --oneline`; treat `gh pr view <n> --json state,mergedAt` as the authoritative done-signal (local `main` does NOT advance on a remote merge). Use `gh`, `git ls-remote`, or `git -C <path>` — don't run `git status` against a live worker's tree (its branch switch would misreport your view). **Never read the worker's transcript** (context overflow).
+- **Probe read-only and OFF the worker's tree:** `git fetch --quiet` first, then `git log origin/main..origin/<branch> --oneline`; treat `gh pr view <n> --json state,mergedAt` as the authoritative done-signal (local `main` does NOT advance on a remote merge). Use `gh`, `git ls-remote`, or `git -C <path>` — don't run `git status` against a live worker's tree (its branch switch would misreport your view). **Never read the worker's transcript** (context overflow) — not even under the dead-worker report-recovery exception; that exception covers the HANDOFF FILE only, never any transcript.
 - **Two patience clocks:** kill-timer arms on (a) no git progress ~10–15 min AND also (b) no report for a hard ceiling ~45–60 min *regardless of git movement* (a looping worker commits forever — git motion ≠ health). Require workers to `SendMessage` a one-line `PROGRESS` before any long (>~10 min) no-commit step, and key patience on last-known-liveness, not time-since-spawn.
 - **Verification watchdog (refines the coarse ~20-min clock for any verification step).** A declared
   verification step — run by an orchestrator-spawned verifier-teammate (the live-validated default for
@@ -125,16 +137,19 @@ replacement orchestrator. Structure (in this order):
    model/verification policy, what's next. The owner must understand the situation in one glance —
    no key-soup, no abbreviations invented mid-chain.
 2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | status=...`.
-3. **Standing rules/decisions + known-automation-traps:** the owner's non-negotiables and policy
+3. **TELEMETRY block (cumulative, persisted each change):** `cycles_completed=N | tokens_total=T | tokens_workers=W | tokens_orchestrator=O | open_workers=[name,...]`. A rolled-over or restarted orchestrator reads this block to resume cumulative tallies — never reset to zero.
+4. **Standing rules/decisions + known-automation-traps:** the owner's non-negotiables and policy
    decisions, dated; and a per-project **known-automation-trap registry** — routes/flows that reproducibly
    misbehave under the browser-automation tooling (e.g. "route X hangs under the automation MCP — skip it;
    curl-first that route to separate an app fault from an automation flake"). Every verifier brief you
    write carries the current trap list.
-4. **Log — structured, NOT prose walls:** subsections by **date** (`### YYYY-MM-DD — Phase <N> (epic <KEY>)`),
+5. **Log — structured, NOT prose walls:** subsections by **date** (`### YYYY-MM-DD — Phase <N> (epic <KEY>)`),
    under each date group by **cycle** (`**Cycle N (worker-name)**`), and inside each cycle short
    bullets that LEAD WITH THE TASK KEY (`- TLM-82: grid landed @ <sha>; browser-verify PASS; 1 review major fixed`).
    Date → phase/epic → cycle → task-keyed bullets lets both the owner and a cold-started orchestrator
    scan it top-down without parsing paragraphs.
+
+**Write the STATE file atomically:** write to a same-directory hidden temp (`docs/handoff/.ORCHESTRATION-STATE.md.tmp`), then `mv`/rename into place. Same-directory rename is atomic; a crash mid-write can't leave a truncated or half-updated STATE file. Never write directly to the final path. On startup, detect and remove any stale `.tmp` left by a prior crash.
 
 This file — not chat scrollback — is ground truth for you and any replacement orchestrator. Keep the
 human section current every time LIVE-STATUS changes; compress old log entries rather than letting
@@ -159,15 +174,18 @@ After compaction, crash, or a fresh session days later — **do NOT reconstruct 
 
 Your longevity is the whole point, but you are not immortal. Self-monitor your OWN context; at **~70%**
 (earlier than a worker — a mid-chain compaction can orphan a live worker), roll at a **clean boundary**
-(worker terminated, nothing spawned): ensure `ORCHESTRATION-STATE.md` is current, **write/refresh a
+(worker terminated, nothing spawned): ensure `ORCHESTRATION-STATE.md` is current with the **latest
+cumulative TELEMETRY block** (cycles_completed, tokens_total, open_workers), **write/refresh a
 DATED handoff file** (`docs/handoff/NN-YYYY-MM-DD-...md`) capturing the exact resume point, then
-start a fresh orchestrator pointed at BOTH the STATE file and the dated handoff, then exit. Do this
-at EVERY session boundary (restart, roll, compaction, or planned pause) — updating only the STATE
-file is not enough. Plan to roll roughly every **~8–15 cycles** rather than assuming immortality.
+start a fresh orchestrator pointed at BOTH the STATE file and the dated handoff, **explicitly passing
+the cumulative telemetry + budget tallies** from the TELEMETRY block so the new orchestrator resumes
+running totals rather than resetting to zero, then exit. Do this at EVERY session boundary (restart,
+roll, compaction, or planned pause) — updating only the STATE file is not enough. Plan to roll roughly
+every **~8–15 cycles** rather than assuming immortality.
 
 ## Cost & runaway control
 
-- Agree a **max cycle count and/or aggregate-token ceiling** up front; tally each worker's `TELEMETRY` into the state file.
+- Agree a **max cycle count and/or aggregate-token ceiling** up front; tally each worker's `TELEMETRY` into the TELEMETRY block of the state file (cumulative — never reset on rollover or restart).
 - On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork.
 - **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no new merged PR, = stuck → STOP and ask the human. A chain with no forward progress is a runaway, even if it looks busy.
 
@@ -262,7 +280,8 @@ A new project has no handoffs. Before cycle #1:
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
 | Terminate | Pane → `tmux kill-pane`; background → `TaskStop(task_id)`. Worker replies `shutdown_response{approve}`. |
-| Committed all tasks but no PR/report | ONE nudge to finalize-or-handoff. Never also spawn a duplicate. |
+| Committed all tasks, quiet (patience window not elapsed) | Normal — patience. Idle ≠ stuck. Do NOT nudge yet. |
+| Committed all tasks, no PR/report past patience window | ONE "finalize-or-handoff" nudge. Then wait. Never re-nudge; never spawn a duplicate while alive; never wait indefinitely past the hard ceiling. |
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
@@ -271,7 +290,7 @@ A new project has no handoffs. Before cycle #1:
 
 ## Common mistakes
 
-- **Reading heavy files yourself** (handoff bodies, source, transcripts) → orchestrator runs out of context. Relay paths + compact reports; the ONE exception is reading a dead worker's top `## ORCHESTRATOR REPORT` section (range-read only) to recover a lost report.
+- **Reading heavy files yourself** (handoff bodies, source, transcripts) → orchestrator runs out of context. Relay paths + compact reports. The ONE narrow exception: a **range-read of ONLY the top `## ORCHESTRATOR REPORT` block** of a **DEAD worker's HANDOFF FILE** to recover a lost report. This exception never covers: (a) any transcript (dead or live), (b) a live worker's files, (c) reading the full handoff file, or (d) any other heavy file. Do not stretch it.
 - **Keeping chain state only in chat** → a compaction/restart orphans workers. State lives in `ORCHESTRATION-STATE.md`.
 - **Rolling with only STATE updated, no dated handoff** → the next orchestrator has no resume point; it must probe live tools blind. Write a dated `docs/handoff/NN-...md` at EVERY session boundary.
 - **Spawning a replacement before confirming termination** → duplicate/destructive work.
@@ -288,7 +307,8 @@ A new project has no handoffs. Before cycle #1:
 - "I got compacted — I'll spawn fresh to be safe." → No. Read `ORCHESTRATION-STATE.md` + list panes/workflows.
 - "Updated STATE + chat summary, that's enough to restart." → No: write a dated handoff too. STATE + chat without a dated handoff leaves the next orchestrator with no resume point.
 - "STATE file not found → I'll just probe live tools." → No: read the newest on-disk handoff (`docs/handoff/NN-...md`) FIRST. On-disk layer before live tooling, always.
-- "Let me read the handoff/source to understand." → No (except a dead worker's top report block).
+- "Let me read the handoff/source to understand." → No (except a dead worker's top report block — handoff file only, range-read, not the transcript).
+- "The exception lets me read the transcript / the full handoff / a live worker's file." → No. The exception is a range-read of ONLY the top `## ORCHESTRATOR REPORT` block of a DEAD worker's HANDOFF FILE. Transcripts are never covered.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 
