@@ -28,6 +28,7 @@ const ALL_SCENARIOS = [
   'SC-13-tmux-windows', 'SC-14-cross-pollination', 'SC-15-denylist-security',
   'SC-16-idempotent-create', 'SC-17-merge-gate-stale', 'SC-18-runaway-loopguard',
   'SC-19-orchestrator-rollover', 'SC-20-context-discipline',
+  'SC-21-hung-browser-verifier', 'SC-22-verify-request', 'SC-23-verification-watchdog',
 ]
 const SCENARIOS = (args && args.scenarios) || ALL_SCENARIOS.map((n) => `${ROOT}/evals/scenarios/${n}`)
 const N = (args && args.samples) || 6
