@@ -144,7 +144,9 @@ them sprawl.
 
 After compaction, crash, or a fresh session days later — **do NOT reconstruct from memory and do NOT
 "spawn fresh to be safe":**
-1. Read `ORCHESTRATION-STATE.md`.
+1. The prior orchestrator MUST have written a dated handoff on exit. Read BOTH: `ORCHESTRATION-STATE.md`
+   AND the highest-numbered `docs/handoff/NN-...md`. If no dated handoff exists, the prior orchestrator
+   violated the session-boundary rule — reconstruct from the STATE file + live git as best you can.
 2. Confirm reality: `tmux list-panes`; `/workflows` survivors; `git fetch && git log origin/main..origin/<branch>`; `gh pr list`; tracker; highest-numbered handoff.
 3. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning.
 4. Never spawn until every pane/task is positively accounted for.
@@ -153,9 +155,11 @@ After compaction, crash, or a fresh session days later — **do NOT reconstruct 
 
 Your longevity is the whole point, but you are not immortal. Self-monitor your OWN context; at **~70%**
 (earlier than a worker — a mid-chain compaction can orphan a live worker), roll at a **clean boundary**
-(worker terminated, nothing spawned): ensure `ORCHESTRATION-STATE.md` is current, start a fresh
-orchestrator pointed at it, then exit. Plan to roll roughly every **~8–15 cycles** rather than assuming
-immortality.
+(worker terminated, nothing spawned): ensure `ORCHESTRATION-STATE.md` is current, **write/refresh a
+DATED handoff file** (`docs/handoff/NN-YYYY-MM-DD-...md`) capturing the exact resume point, then
+start a fresh orchestrator pointed at BOTH the STATE file and the dated handoff, then exit. Do this
+at EVERY session boundary (restart, roll, compaction, or planned pause) — updating only the STATE
+file is not enough. Plan to roll roughly every **~8–15 cycles** rather than assuming immortality.
 
 ## Cost & runaway control
 
@@ -265,6 +269,7 @@ A new project has no handoffs. Before cycle #1:
 
 - **Reading heavy files yourself** (handoff bodies, source, transcripts) → orchestrator runs out of context. Relay paths + compact reports; the ONE exception is reading a dead worker's top `## ORCHESTRATOR REPORT` section (range-read only) to recover a lost report.
 - **Keeping chain state only in chat** → a compaction/restart orphans workers. State lives in `ORCHESTRATION-STATE.md`.
+- **Rolling with only STATE updated, no dated handoff** → the next orchestrator has no resume point; it must probe live tools blind. Write a dated `docs/handoff/NN-...md` at EVERY session boundary.
 - **Spawning a replacement before confirming termination** → duplicate/destructive work.
 - **Killing on the first idle** → you kill productive workers. Patience + liveness-rank + git first.
 - **`git status` as the kill gate / against a live tree** → hides unsaved source or misreports. Use `git status --porcelain` for the safe-to-kill check; probe off-tree.
@@ -277,6 +282,7 @@ A new project has no handoffs. Before cycle #1:
 - "It's idle, must be done/stuck — I'll spawn the next one." → Confirm termination; liveness-rank first.
 - "I'll just kill it." (after one idle, <window, unknown git/liveness) → Patience + check first.
 - "I got compacted — I'll spawn fresh to be safe." → No. Read `ORCHESTRATION-STATE.md` + list panes/workflows.
+- "Updated STATE + chat summary, that's enough to restart." → No: write a dated handoff too. STATE + chat without a dated handoff leaves the next orchestrator with no resume point.
 - "Let me read the handoff/source to understand." → No (except a dead worker's top report block).
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
@@ -286,4 +292,4 @@ A new project has no handoffs. Before cycle #1:
 - `references/worker-cycle-template.md` — the reusable cycle-worker prompt, handoff-body skeleton, compact-report contract, idempotent-creates and security hard rules.
 - `references/lifecycle-and-edge-cases.md` — spawn mechanics per surface (incl. background-only mode), liveness signals, the full edge-case catalog with correct handling.
 
-**Related skills:** `superpowers:writing-plans` (plan a milestone before cycles), `handoff` (optional — a baton format helper), `delivery-workflow` + `using-jira` (one team's delivery mechanics workers follow), `superpowers:dispatching-parallel-agents` (pure fan-out), `superpowers:receiving-code-review` (apply review findings with judgment).
+**Related skills:** `superpowers:writing-plans` (plan a milestone before cycles), `handoff` (REQUIRED at orchestrator session boundaries — a baton format helper), `delivery-workflow` + `using-jira` (one team's delivery mechanics workers follow), `superpowers:dispatching-parallel-agents` (pure fan-out), `superpowers:receiving-code-review` (apply review findings with judgment).
