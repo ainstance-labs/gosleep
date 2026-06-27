@@ -147,9 +147,13 @@ After compaction, crash, or a fresh session days later — **do NOT reconstruct 
 1. The prior orchestrator MUST have written a dated handoff on exit. Read BOTH: `ORCHESTRATION-STATE.md`
    AND the highest-numbered `docs/handoff/NN-...md`. If no dated handoff exists, the prior orchestrator
    violated the session-boundary rule — reconstruct from the STATE file + live git as best you can.
-2. Confirm reality: `tmux list-panes`; `/workflows` survivors; `git fetch && git log origin/main..origin/<branch>`; `gh pr list`; tracker; highest-numbered handoff.
-3. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning.
-4. Never spawn until every pane/task is positively accounted for.
+2. **If the STATE file seems missing, stale, or context was lost: stay on-disk-first.** Before running
+   ANY live probes or tools, read the highest-numbered `docs/handoff/NN-...md` on disk. Never skip the
+   on-disk layer to jump straight to live tooling — the handoff is cheaper and usually sufficient to
+   orient you. Run live probes (step 3) only AFTER reading what's on disk.
+3. Confirm reality: `tmux list-panes`; `/workflows` survivors; `git fetch && git log origin/main..origin/<branch>`; `gh pr list`; tracker; highest-numbered handoff.
+4. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning.
+5. Never spawn until every pane/task is positively accounted for.
 
 ## Orchestrator self-monitoring (roll before you're compacted)
 
@@ -283,6 +287,7 @@ A new project has no handoffs. Before cycle #1:
 - "I'll just kill it." (after one idle, <window, unknown git/liveness) → Patience + check first.
 - "I got compacted — I'll spawn fresh to be safe." → No. Read `ORCHESTRATION-STATE.md` + list panes/workflows.
 - "Updated STATE + chat summary, that's enough to restart." → No: write a dated handoff too. STATE + chat without a dated handoff leaves the next orchestrator with no resume point.
+- "STATE file not found → I'll just probe live tools." → No: read the newest on-disk handoff (`docs/handoff/NN-...md`) FIRST. On-disk layer before live tooling, always.
 - "Let me read the handoff/source to understand." → No (except a dead worker's top report block).
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
