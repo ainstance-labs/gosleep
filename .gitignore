@@ -21,3 +21,6 @@ __pycache__/
 
 # Eval runner — transient per-run config (copy from run-config.example.json, never commit)
 evals/runner/run-config.json
+
+# Eval RED baseline cache — local derived artifact, mixed N, not source of truth
+evals/baselines/
