@@ -1,6 +1,7 @@
 // RED/GREEN two-arm behavioral eval for the orchestrating-delivery-agents skill.
 // Launch: Workflow({ scriptPath: ".../evals/runner/eval-runner.js" })  // runs the FULL corpus
-// Override (subset / N): pass args { scenarios: [absDir,...], samples: N, skillDir: absDir }
+// Override: pass args { scenarios: [absDir,...], samples: N, skillDir: absDir,
+//   samplesByScenario: { 'SC-19-orchestrator-rollover': 12, ... }, useCachedRed: true }
 // (If args don't propagate in your harness, edit ALL_SCENARIOS / N below and re-launch by scriptPath.)
 export const meta = {
   name: 'orchestration-skill-evals',
@@ -32,21 +33,39 @@ const ALL_SCENARIOS = [
 ]
 const SCENARIOS = (args && args.scenarios) || ALL_SCENARIOS.map((n) => `${ROOT}/evals/scenarios/${n}`)
 const N = (args && args.samples) || 6
+// Per-scenario N override map: scenarioName -> N (e.g. { 'SC-19-orchestrator-rollover': 12 })
+const SAMPLES_BY_SCENARIO = (args && args.samplesByScenario) || {}
+// When true AND evals/baselines/<name>.json exists, skip RED arm and load cached verdicts instead.
+// Default false: run RED fresh and write (or overwrite) the baseline cache.
+const USE_CACHED_RED = !!(args && args.useCachedRed)
 
 const DECISION_SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: { next_action: { type: 'string' }, rationale: { type: 'string' } },
   required: ['next_action', 'rationale'],
 }
-const VERDICT_SCHEMA = {
+
+// Batched verdict schema: one judge call per arm returns an array of N verdicts (one per answer).
+// Drops judge call count from 2N to 2 per scenario.
+const BATCH_VERDICT_SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: {
-    verdict: { type: 'string', enum: ['pass', 'fail'] },
-    anti_patterns_triggered: { type: 'array', items: { type: 'string' } },
-    reasoning: { type: 'string' },
+    verdicts: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          verdict: { type: 'string', enum: ['pass', 'fail'] },
+          anti_patterns_triggered: { type: 'array', items: { type: 'string' } },
+          reasoning: { type: 'string' },
+        },
+        required: ['verdict', 'anti_patterns_triggered', 'reasoning'],
+      },
+    },
   },
-  required: ['verdict', 'anti_patterns_triggered', 'reasoning'],
+  required: ['verdicts'],
 }
+
 const SCORECARD_SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: {
@@ -64,21 +83,71 @@ const redPrompt = (scn, i) => `You are acting as the ORCHESTRATOR of a multi-age
 
 const greenPrompt = (scn, i) => `You are acting as the ORCHESTRATOR of a multi-agent software-delivery run (you coordinate workers; you do not do the delivery yourself). FIRST read the skill at ${SKILL_DIR}/SKILL.md and consult ${SKILL_DIR}/references/ as needed. THEN read the situation at ${scn}/prompt.md. Apply the skill. Independently (variation ${i}) decide your SINGLE next action. Output next_action (concrete: the exact tool call, message, or wait you would do next) and rationale.`
 
-const judgePrompt = (scn, ans) => `You are a STRICT eval judge. Read the rubric at ${scn}/rubric.md (PASS criteria, FAIL/anti-patterns, judge guidance). The agent-under-test answered:\n\nnext_action: ${ans.next_action}\n\nrationale: ${ans.rationale}\n\nReturn a verdict strictly per the rubric: 'pass' only if it meets ALL pass criteria and triggers NO anti-pattern; otherwise 'fail'. List anti_patterns_triggered and give brief reasoning.`
+// Batched judge prompt: receives ALL answers for one arm and must return one verdict per answer.
+const batchJudgePrompt = (scn, arm, answers) => {
+  const numbered = answers.map((a, i) =>
+    `[${i}] next_action: ${a.next_action}\n\nrationale: ${a.rationale}`
+  ).join('\n\n---\n\n')
+  return `You are a STRICT eval judge. Read the rubric at ${scn}/rubric.md (PASS criteria, FAIL/anti-patterns, judge guidance). You will judge ${answers.length} ${arm}-arm answer(s). Apply the rubric strictly to EACH answer: 'pass' only if it meets ALL pass criteria and triggers NO anti-pattern; otherwise 'fail'. Return a 'verdicts' array with EXACTLY ${answers.length} element(s) in the same order as the answers below.\n\nAnswers:\n${numbered}`
+}
 
 const rate = (vs) => { const c = vs.filter(Boolean); return c.length ? c.filter((v) => v.verdict === 'pass').length / c.length : null }
 
 async function runScenario(scn) {
-  const red = await parallel(range(N).map((i) => () =>
-    agent(redPrompt(scn, i), { label: `RED ${name(scn)} #${i}`, phase: 'RED (no skill)', schema: DECISION_SCHEMA })))
-  const green = await parallel(range(N).map((i) => () =>
-    agent(greenPrompt(scn, i), { label: `GREEN ${name(scn)} #${i}`, phase: 'GREEN (with skill)', schema: DECISION_SCHEMA })))
-  const judge = (arm, ans, i) => agent(judgePrompt(scn, ans), { label: `judge ${arm} ${name(scn)} #${i}`, phase: 'Judge', schema: VERDICT_SCHEMA })
-  const redV = await parallel(red.map((a, i) => () => (a ? judge('RED', a, i) : null)))
-  const greenV = await parallel(green.map((a, i) => () => (a ? judge('GREEN', a, i) : null)))
+  const scnName = name(scn)
+  const scenarioN = SAMPLES_BY_SCENARIO[scnName] || N
+
+  // --- RED arm (possibly loaded from baseline cache) ---
+  let redV = null
+  if (USE_CACHED_RED) {
+    const cachePath = `${ROOT}/evals/baselines/${scnName}.json`
+    const cached = await agent(
+      `Check if the file "${cachePath}" exists on disk. If it exists, read it (use the Read tool or run: cat "${cachePath}") and return its exact text contents. If it does not exist, return only the string "MISS".`,
+      { label: `load RED cache ${scnName}`, phase: 'RED (no skill)' }
+    )
+    if (cached && cached.trim() !== 'MISS') {
+      try { redV = JSON.parse(cached) } catch (_) { redV = null }
+    }
+  }
+
+  if (!redV) {
+    // Run RED arm fresh
+    const red = await parallel(range(scenarioN).map((i) => () =>
+      agent(redPrompt(scn, i), { label: `RED ${scnName} #${i}`, phase: 'RED (no skill)', schema: DECISION_SCHEMA })))
+    const validRed = red.filter(Boolean)
+    if (validRed.length > 0) {
+      const batchResult = await agent(
+        batchJudgePrompt(scn, 'RED', validRed),
+        { label: `judge RED ${scnName}`, phase: 'Judge', schema: BATCH_VERDICT_SCHEMA }
+      )
+      redV = batchResult ? batchResult.verdicts : []
+    } else {
+      redV = []
+    }
+    // Write baseline cache (always, so a future run with useCachedRed=true can skip this arm)
+    const baseline = JSON.stringify(redV, null, 2)
+    await agent(
+      `Create the directory "${ROOT}/evals/baselines" if it does not exist, then write the following JSON to "${ROOT}/evals/baselines/${scnName}.json":\n\n${baseline}\n\nReturn only "ok".`,
+      { label: `write RED cache ${scnName}`, phase: 'RED (no skill)' }
+    )
+  }
+
+  // --- GREEN arm (always runs) ---
+  const green = await parallel(range(scenarioN).map((i) => () =>
+    agent(greenPrompt(scn, i), { label: `GREEN ${scnName} #${i}`, phase: 'GREEN (with skill)', schema: DECISION_SCHEMA })))
+  const validGreen = green.filter(Boolean)
+  let greenV = []
+  if (validGreen.length > 0) {
+    const batchResult = await agent(
+      batchJudgePrompt(scn, 'GREEN', validGreen),
+      { label: `judge GREEN ${scnName}`, phase: 'Judge', schema: BATCH_VERDICT_SCHEMA }
+    )
+    greenV = batchResult ? batchResult.verdicts : []
+  }
+
   return {
-    scenario: name(scn),
-    n: N,
+    scenario: scnName,
+    n: scenarioN,
     red_pass_rate: rate(redV),
     green_pass_rate: rate(greenV),
     green_fail_antipatterns: greenV.filter(Boolean).filter((v) => v.verdict === 'fail').flatMap((v) => v.anti_patterns_triggered),
@@ -86,7 +155,7 @@ async function runScenario(scn) {
 }
 
 phase('RED (no skill)')
-log(`Two-arm eval over ${SCENARIOS.length} scenario(s), N=${N} each (RED baseline + GREEN with skill).`)
+log(`Two-arm eval over ${SCENARIOS.length} scenario(s), default N=${N} (RED baseline + GREEN with skill). useCachedRed=${USE_CACHED_RED}.`)
 const results = (await parallel(SCENARIOS.map((scn) => () => runScenario(scn)))).filter(Boolean)
 
 phase('Scorecard')
