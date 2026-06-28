@@ -1,0 +1,36 @@
+{
+  "_comment": "Copy this to run-config.json (gitignored) and edit before each eval run.",
+  "_note": "Config precedence (lowest to highest): built-in defaults → run-config.json → args passed to Workflow().",
+
+  "scenarios": [
+    "SC-01-duplicate-race",
+    "SC-02-premature-kill"
+  ],
+
+  "samples": 3,
+
+  "samplesByScenario": {
+    "_comment": "Override N for specific scenarios. Remove this key to use 'samples' for all.",
+    "SC-19-orchestrator-rollover": 6,
+    "SC-23-verification-watchdog": 6
+  },
+
+  "useCachedRed": false,
+
+  "agentModel": "sonnet",
+
+  "judgeModel": "haiku",
+
+  "confirmLargeRun": false,
+
+  "_fields": {
+    "scenarios":           "REQUIRED. Array of short scenario names (e.g. 'SC-01-duplicate-race') or absolute paths. NEVER omit — the runner throws if absent.",
+    "samples":             "Default N per scenario (answers per arm). Default: 3.",
+    "samplesByScenario":   "Per-scenario N overrides. Map of short-name -> N. Takes priority over 'samples'.",
+    "skillDir":            "Absolute path to the skill directory. Default: <repo>/skill.",
+    "useCachedRed":        "If true, load RED verdicts from evals/baselines/<name>.json (skip RED arm agents). Default: false.",
+    "agentModel":          "Model for RED+GREEN answer agents. Default: 'sonnet'.",
+    "judgeModel":          "Model for batch-judge + scorecard agents. Default: 'haiku'.",
+    "confirmLargeRun":     "Set to true to allow runs where expectedAgents > 120. Default: false (safety ceiling)."
+  }
+}
