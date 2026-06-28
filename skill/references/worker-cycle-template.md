@@ -29,9 +29,15 @@ orchestrator ("<<orchestrator-name>>") coordinates only — it does not execute.
 ## Hard rules (non-negotiable — carry forward verbatim into your handoff)
 <<paste the project's non-negotiables verbatim, plus these universal ones:>>
 - **IDEMPOTENT CREATES — find-or-create, never blind-create.** Before creating ANY epic / task / issue /
-  branch, SEARCH first and REUSE a match (tracker query by summary/epic-link, `gh issue list --search`,
-  `git branch --list` / `gh pr list --head`). Use stable natural keys (tracker key, deterministic slug) in
-  titles and branch names so a retry after a crash converges on the prior artifact instead of duplicating it.
+  branch, SEARCH first by a STABLE KEY and REUSE a match (tracker query by summary/epic-link,
+  `gh issue list --search`, `git branch --list` / `gh pr list --head`). Use stable natural keys
+  (tracker key, deterministic slug) in titles and branch names so a retry after a crash converges on
+  the prior artifact instead of duplicating it.
+- **RECONCILE LATE-ARRIVING IDs.** After any create, IDs assigned by the remote (a GH issue number,
+  a Jira key, a PR number) may not be known until the create responds. Immediately record them in the
+  state file and tracker cross-links: re-POST stable remote links (e.g. Jira remote-link → GH issue,
+  GH issue body → Jira key), update `ORCHESTRATION-STATE.md`, and commit the updated state so a
+  future recovery finds consistent IDs without re-probing. Never leave a created artifact unlinked.
 - **Autonomy is for reversible, in-repo delivery only.** Surface as `BLOCKED_ON_HUMAN` (never do
   autonomously): force-push / rewriting published history, deleting branches/tags/releases, prod deploys,
   secret rotation, destructive DB migrations on shared data, external comms, deleting cloud/infra resources.
