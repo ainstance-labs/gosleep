@@ -1,7 +1,8 @@
 // RED/GREEN two-arm behavioral eval for the orchestrating-delivery-agents skill.
 // Launch: Workflow({ scriptPath: ".../evals/runner/eval-runner.js" })  // runs the FULL corpus
 // Override: pass args { scenarios: [absDir,...], samples: N, skillDir: absDir,
-//   samplesByScenario: { 'SC-19-orchestrator-rollover': 12, ... }, useCachedRed: true }
+//   samplesByScenario: { 'SC-19-orchestrator-rollover': 12, ... }, useCachedRed: true,
+//   agentModel: 'sonnet', judgeModel: 'haiku' }
 // (If args don't propagate in your harness, edit ALL_SCENARIOS / N below and re-launch by scriptPath.)
 export const meta = {
   name: 'orchestration-skill-evals',
@@ -38,6 +39,12 @@ const SAMPLES_BY_SCENARIO = (args && args.samplesByScenario) || {}
 // When true AND evals/baselines/<name>.json exists, skip RED arm and load cached verdicts instead.
 // Default false: run RED fresh and write (or overwrite) the baseline cache.
 const USE_CACHED_RED = !!(args && args.useCachedRed)
+// Model for the agent-under-test (RED + GREEN answer agents). Both arms use the SAME model so the
+// GREEN−RED lift is valid. Default: sonnet (cost-efficient; Opus would burn weekly quota fast).
+const AGENT_MODEL = (args && args.agentModel) || 'sonnet'
+// Model for batched judges + scorecard synth. These calls are large-context but formulaic —
+// Haiku is accurate enough and much cheaper. Default: haiku.
+const JUDGE_MODEL = (args && args.judgeModel) || 'haiku'
 
 const DECISION_SCHEMA = {
   type: 'object', additionalProperties: false,
@@ -113,12 +120,12 @@ async function runScenario(scn) {
   if (!redV) {
     // Run RED arm fresh
     const red = await parallel(range(scenarioN).map((i) => () =>
-      agent(redPrompt(scn, i), { label: `RED ${scnName} #${i}`, phase: 'RED (no skill)', schema: DECISION_SCHEMA })))
+      agent(redPrompt(scn, i), { label: `RED ${scnName} #${i}`, phase: 'RED (no skill)', schema: DECISION_SCHEMA, model: AGENT_MODEL })))
     const validRed = red.filter(Boolean)
     if (validRed.length > 0) {
       const batchResult = await agent(
         batchJudgePrompt(scn, 'RED', validRed),
-        { label: `judge RED ${scnName}`, phase: 'Judge', schema: BATCH_VERDICT_SCHEMA }
+        { label: `judge RED ${scnName}`, phase: 'Judge', schema: BATCH_VERDICT_SCHEMA, model: JUDGE_MODEL }
       )
       redV = batchResult ? batchResult.verdicts : []
     } else {
@@ -134,13 +141,13 @@ async function runScenario(scn) {
 
   // --- GREEN arm (always runs) ---
   const green = await parallel(range(scenarioN).map((i) => () =>
-    agent(greenPrompt(scn, i), { label: `GREEN ${scnName} #${i}`, phase: 'GREEN (with skill)', schema: DECISION_SCHEMA })))
+    agent(greenPrompt(scn, i), { label: `GREEN ${scnName} #${i}`, phase: 'GREEN (with skill)', schema: DECISION_SCHEMA, model: AGENT_MODEL })))
   const validGreen = green.filter(Boolean)
   let greenV = []
   if (validGreen.length > 0) {
     const batchResult = await agent(
       batchJudgePrompt(scn, 'GREEN', validGreen),
-      { label: `judge GREEN ${scnName}`, phase: 'Judge', schema: BATCH_VERDICT_SCHEMA }
+      { label: `judge GREEN ${scnName}`, phase: 'Judge', schema: BATCH_VERDICT_SCHEMA, model: JUDGE_MODEL }
     )
     greenV = batchResult ? batchResult.verdicts : []
   }
@@ -155,12 +162,12 @@ async function runScenario(scn) {
 }
 
 phase('RED (no skill)')
-log(`Two-arm eval over ${SCENARIOS.length} scenario(s), default N=${N} (RED baseline + GREEN with skill). useCachedRed=${USE_CACHED_RED}.`)
+log(`Two-arm eval over ${SCENARIOS.length} scenario(s), default N=${N} (RED baseline + GREEN with skill). useCachedRed=${USE_CACHED_RED}. agentModel=${AGENT_MODEL}, judgeModel=${JUDGE_MODEL}.`)
 const results = (await parallel(SCENARIOS.map((scn) => () => runScenario(scn)))).filter(Boolean)
 
 phase('Scorecard')
 const synth = await agent(
   `Write a scorecard for the orchestrating-delivery-agents skill eval. First run \`date +%F-%H%M\` (Bash) for a timestamp. Then WRITE the scorecard to ${ROOT}/evals/results/<timestamp>-scorecard.md (create dirs if needed; the timestamp keeps same-day runs from overwriting) containing: a header with the timestamp and N; a table with columns scenario | N | RED pass-rate | GREEN pass-rate | delta | verdict (verdict = PASS if GREEN>=0.8 AND GREEN>RED; GUARD if GREEN>=0.8 AND RED>=GREEN i.e. skill holds but scenario does not discriminate; FAIL/REVIEW if GREEN<0.8 — a real skill gap); sort so any GREEN<0.8 are at the top; a 3-5 sentence summary; and for every GREEN<0.8 scenario list the GREEN anti-patterns that fired so they can be fixed in the skill. Note in the summary that pass-rates are estimates at N=${N} (small-sample noise). Clean markdown; write the word "section", never the section glyph. Data:\n${JSON.stringify(results, null, 2)}\nReturn scorecard_file (the path you wrote), summary, and weak_scenarios (names with GREEN<0.8).`,
-  { label: 'scorecard', phase: 'Scorecard', schema: SCORECARD_SCHEMA })
+  { label: 'scorecard', phase: 'Scorecard', schema: SCORECARD_SCHEMA, model: JUDGE_MODEL })
 
 return { results, scorecard: synth }
