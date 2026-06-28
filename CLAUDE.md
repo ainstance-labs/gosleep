@@ -33,6 +33,25 @@ eval runner per README "Use" (fix stale ROOT paths first — GSL-4).
 
 ## Skill source of truth
 
-`skill/` is the source of truth for the global `orchestrating-delivery-agents` skill.
-`./install.sh` syncs **local → global** with `rsync --delete`: never run it while `skill/` is
-behind the global copy — reverse-sync (global → local) and commit first.
+`skill/` is the source of truth for **all 5 owned skills**, each in its own named subfolder:
+
+```
+skill/
+  orchestrating-delivery-agents/   # SKILL.md + references/
+  delivery-workflow/               # SKILL.md
+  handoff/                         # SKILL.md
+  using-jira/                      # SKILL.md
+  writing-prds/                    # SKILL.md
+```
+
+`./install.sh` installs **every subfolder** under `skill/` into `~/.claude/skills/<name>/`
+using `rsync -a --delete`. Sync direction is always **local → global**.
+
+**Safety rules (hard):**
+- `--delete` is scoped to individual named skill dirs (`~/.claude/skills/<name>/`).
+- The script NEVER runs `rsync --delete` or `rm` against the parent `~/.claude/skills/` itself.
+- Unrelated global skills (`gstack`, `gsd-*`, plugins, etc.) are never touched.
+
+**Before running `./install.sh`:** ensure `skill/` is not behind the global copy. If you suspect
+the global is newer, reverse-sync first: `rsync -a "$HOME/.claude/skills/<name>/" "skill/<name>/"`
+and commit before running the installer.
