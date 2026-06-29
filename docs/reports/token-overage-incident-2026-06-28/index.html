@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anthropic Token Overage — Support Request Pack (2026-06-28 incident)</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b36; --txt:#e6e9ef; --mut:#9aa4b2; --acc:#6ea8fe; --warn:#ffb454; --ok:#5fd08a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:920px; margin:0 auto; padding:32px 22px 80px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h2 { font-size:18px; margin:34px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .sub { color:var(--mut); margin:0 0 22px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin:14px 0; }
+  .ru { color:var(--mut); font-size:13.5px; font-style:italic; margin:2px 0 10px; }
+  table { width:100%; border-collapse:collapse; margin:8px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; font-size:13px; }
+  td.num { font-variant-numeric:tabular-nums; font-weight:600; }
+  code,kbd { background:#0b0d12; border:1px solid var(--line); border-radius:5px; padding:1px 6px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfe0ff; }
+  pre { background:#0b0d12; border:1px solid var(--line); border-radius:8px; padding:16px; overflow:auto; white-space:pre-wrap; font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e6e9ef; }
+  a { color:var(--acc); }
+  .pill { display:inline-block; font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); color:var(--mut); margin-right:6px; }
+  .warn { color:var(--warn); } .ok { color:var(--ok); }
+  .copy-label { color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin:18px 0 6px; }
+  ul { margin:8px 0; padding-left:20px; } li { margin:4px 0; }
+  .small { font-size:12.5px; color:var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Anthropic — Token Overage Support Request Pack</h1>
+  <p class="sub">Incident date: <strong>2026-06-28</strong> · Product: Claude Code · Prepared 2026-06-29</p>
+
+  <div class="card">
+    <p class="ru">Что это: готовый пакет для обращения в поддержку Anthropic о перерасходе токенов из-за одного непреднамеренного прогона. Ниже — куда писать, тема, готовый текст письма (англ.) и доказательная статистика. Подставь поля в <code>[ ... ]</code> и отправь.</p>
+    <p style="margin:0"><span class="pill">242 agents</span><span class="pill">≈1.20M output tok</span><span class="pill">≈0.59M input tok</span><span class="pill">≈25.4M cache-read tok</span><span class="pill ok">root cause fixed</span></p>
+  </div>
+
+  <h2>1 · Where to send it</h2>
+  <p class="ru">Куда писать (по убыванию надёжности маршрутизации):</p>
+  <div class="card">
+    <ul>
+      <li><strong>Help Center / Submit a request:</strong> <a href="https://support.anthropic.com">https://support.anthropic.com</a> — use the chat widget or the "Submit a request" form. This is the most reliable route for billing/usage adjustments.</li>
+      <li><strong>If you use the API / Console:</strong> sign in at <a href="https://console.anthropic.com">https://console.anthropic.com</a> → <em>Support</em>, so the request is attached to your billed organization.</li>
+      <li><strong>Email (commonly referenced):</strong> <code>support@anthropic.com</code> — fine as a fallback, but the Help Center form routes faster and lets you attach evidence.</li>
+    </ul>
+    <p class="small">Note: Anthropic handles usage-credit requests case by case. Be factual, attach evidence, and make one clear ask. There is no guaranteed refund, but a single well-documented unintended run is exactly the kind of case they review.</p>
+  </div>
+
+  <h2>2 · Suggested subject line</h2>
+  <pre>Usage credit request — unintended runaway agent run on 2026-06-28 (~242 sub-agents, ~1.8M tokens)</pre>
+
+  <h2>3 · Ready-to-send email / request body (English)</h2>
+  <p class="ru">Готовый текст письма. Подставь значения в квадратных скобках (аккаунт, план, часовой пояс) и отправь.</p>
+  <div class="copy-label">— begin —</div>
+  <pre>Hello Anthropic Support,
+
+I am writing to request a usage credit / adjustment for a single unintended,
+runaway agent run that consumed a large number of tokens on my account.
+
+ACCOUNT
+- Account email: [rommxx@gmail.com]
+- Plan / product: [Claude Code — specify your plan, e.g. Max / Team / API org name]
+- Organization / workspace (if API): [your org name or ID]
+
+WHEN
+- Date: 2026-06-28
+- Approximate time window: 20:37 – 21:10 [your local timezone]
+
+WHAT HAPPENED (concise)
+I was running an automated, multi-agent evaluation harness in Claude Code. I
+launched what was meant to be a tiny smoke test limited to 2 test scenarios.
+Due to a configuration bug, a "scenarios" parameter failed to propagate into
+the evaluation script, and the script's fallback behavior ran the FULL suite of
+23 scenarios instead of the intended 2. As a result it spawned roughly 242
+background sub-agents before I detected and stopped it.
+
+The run was a single, contiguous automated job (one workflow), not normal
+interactive usage. I stopped it manually as soon as I noticed the unexpected
+consumption.
+
+MEASURED CONSUMPTION (this one run)
+- Sub-agents spawned: ~242
+- Output tokens:      ~1,204,528
+- Input tokens:       ~586,032
+- Cache-read tokens:  ~25,435,319
+- Models used:        Claude Sonnet (test agents) and Claude Haiku (judge agents)
+
+ROOT CAUSE AND FIX (already done on my side)
+- Root cause: the run-parameter did not reach the script, and the script
+  defaulted to "run everything."
+- Fix applied: the harness now refuses to run unless an explicit scenario list
+  is provided (no silent full-run default) and enforces a hard ceiling on the
+  number of agents per run, so this cannot recur.
+
+REQUEST
+Given that this was a single unintended run caused by a configuration bug — not
+ongoing or abusive usage — I would appreciate a usage credit or adjustment for
+the tokens consumed by this run. I am happy to provide any additional logs,
+identifiers, or screenshots you need.
+
+Thank you for your time and help.
+
+Best regards,
+[Your name]
+[Account email: rommxx@gmail.com]</pre>
+  <div class="copy-label">— end —</div>
+
+  <h2>4 · Evidence / facts (attach or paste if asked)</h2>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Incident date</td><td class="num">2026-06-28</td></tr>
+    <tr><td>Approx. time window (local)</td><td class="num">~20:37 – 21:10</td></tr>
+    <tr><td>Nature</td><td>Single automated multi-agent workflow run (Claude Code eval harness)</td></tr>
+    <tr><td>Intended scope</td><td>2 scenarios, 1 sample each (~13 agents)</td></tr>
+    <tr><td>Actual scope (the bug)</td><td>23 scenarios at default N=6 → <strong>~242 background sub-agents</strong></td></tr>
+    <tr><td>Output tokens</td><td class="num">~1,204,528</td></tr>
+    <tr><td>Input tokens</td><td class="num">~586,032</td></tr>
+    <tr><td>Cache-read tokens</td><td class="num">~25,435,319</td></tr>
+    <tr><td>Models</td><td>Claude Sonnet (test) + Claude Haiku (judge)</td></tr>
+    <tr><td>Cause</td><td>Run parameter (<code>scenarios</code>) did not propagate; script defaulted to all scenarios</td></tr>
+    <tr><td>Mitigation</td><td>Stopped mid-run; harness now requires explicit config + hard agent ceiling</td></tr>
+  </table>
+  <p class="ru">Эти цифры взяты из локальных логов прогона (per-agent jsonl). Cache-read обычно тарифицируется по сниженной ставке — это в твою пользу, упомяни при необходимости.</p>
+
+  <h2>5 · Tips for a strong request</h2>
+  <ul>
+    <li>Keep it factual and short — one clear ask (a usage credit for this single run).</li>
+    <li>Emphasize it was <strong>one unintended automated run from a config bug</strong>, not normal or abusive usage, and that you stopped it and fixed the root cause.</li>
+    <li>Offer to provide logs / identifiers — willingness to cooperate helps.</li>
+    <li>If you have a billing dashboard screenshot showing the spike on 2026-06-28, attach it.</li>
+    <li>Be polite; these are reviewed case by case and a credit is discretionary.</li>
+  </ul>
+
+  <p class="small" style="margin-top:30px">Prepared automatically as part of the gosleep orchestration session. Numbers are measured from the run's local agent logs and are approximate (rounded). Replace all <code>[bracketed]</code> placeholders before sending.</p>
+
+</div>
+</body>
+</html>

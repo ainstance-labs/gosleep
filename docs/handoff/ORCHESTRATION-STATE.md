@@ -2,59 +2,64 @@
 
 ## At a glance (human)
 
-- **Working on:** autonomous multi-hour campaign (owner granted full autonomy 2026-06-27). Closing epic **GSL-1** then building a new epic **"Harness hardening"** (skill-gap fixes + new eval scenarios).
-- **Pane mode: CONFIRMED WORKING this session.** A probe worker opened as tmux split pane `%8` = `7:0.1` inside the orchestrator's own window 7 (content: @panecheck / Haiku / gosleep / PR #5). `teammateMode: auto` is honored at startup even though `CLAUDE_CODE_CHILD_SESSION=1`. Other windows' panes (`%6`/`%9` = tasty-lunch) are visible but NOT ours — distinguish by window membership (7.x = ours).
-- **GSL-1 status:** all tasks (GSL-2/3/4/5) Done; PR **#5** open + mergeable; closing it now (regular merge) as Cycle 1.
-- **TLM-58 (tasty-lunch) reconciled:** it is the "mother" epic of the whole harness, built BEFORE the gosleep repo existed. 16 tasks: 10 Done (already physically imported into gosleep = GSL-2), 1 In Progress (TLM-63 full eval run, stalled on weekly usage limit), 5 To Do skill-gaps (TLM-64/71/72/73/74). Owner decision 2026-06-27: copy ONLY the live work into GSL (no duplication of the 10 done); do NOT touch TLM-58 itself for now.
-- **New epic plan "Harness hardening":** 6 skill-gap fixes (GSL-6 handoff-discipline + TLM-64/71/72/73/74 ports) + new eval-scenario authoring (E17 / VERIFY-REQUEST / watchdog) + a ledger-commit/uphousekeeping task. Each new task carries a provenance link to its TLM source key.
-- **Autonomous decisions:** merge PR #5 regular; copy only the 6 live TLM tasks + reparent GSL-6; do NOT run the expensive full eval (~480 agents); defer vendoring (needs owner design choice). Models: workers=Sonnet, verification=Haiku, orchestrator=Opus.
-- **Queued for owner (end-of-run questions):** (1) vendoring design A vs B; (2) run the expensive full eval (resume TLM-63 + new scenarios)?; (3) merge the Harness-hardening PR autonomously or leave for owner review?; (4) disposition of original TLM-58 (close as superseded?).
-- **Standing policy:** orchestrator executes NOTHING — all delivery (commits, Jira, GitHub, dev_history, evals) to pane-workers; orchestrator only coordinates, keeps THIS file current, and writes a dated handoff at every session boundary.
+- **Working on:** **Epic GSL-24 "Harness hardening v2"** — make the 4 eval-FAILED v1 fixes actually change agent behavior. v1 (GSL-7) edited the skill text but the behavioral eval showed 4 of 6 fixes did NOT move behavior (abstract prose ≠ behavior change). v2 = CONCRETE, imperative, example-driven edits that NAME the exact anti-pattern, placed prominently (Red flags / Quick reference).
+- **Reality (2026-06-29 cold-start, verified live):** `main @ c46eb74` (GSL-19 eval epic merged via PR #27). Four epics shipped & closed: GSL-1, GSL-7 (hardening v1), GSL-15 (vendoring), GSL-19 (efficient+SAFE eval runner + validation scorecard). No open PRs. Fleet empty (no panes in my window 7; no background Workflow tasks). Window 10 = a DIFFERENT project's fleet — NOT ours, never touch.
+- **v2 epic ready:** GSL-24 (In Progress, GH #28) + tasks GSL-25 (SC-09), GSL-26 (SC-19), GSL-27 (SC-12), GSL-28 (SC-11) all To Do, plus GSL-29 (re-validate at N=2). Per-task v2 plan lives in each Jira task description.
+- **Why v2 (eval finding, scorecard `evals/results/2026-06-29-0028-scorecard.md`):** GREEN scores SC-09=0.0 (patience-vs-nudge), SC-19=0.0 (rollover-while-worker-alive), SC-12=0.25 (telemetry), SC-11=0.75 (state-mechanics). These 4 fixes underperformed → v2 rewrites them concretely.
+- **Plan this run:** Cycle 1 pane-worker = ledger housekeeping (new GSL-30) + the 4 concrete skill fixes (1 commit/task, commit-before-next, `./install.sh` after) → orchestrator-run controlled GSL-29 eval Workflow (4 scenarios, N=2, cached RED) → Cycle 2 pane-worker commits scorecard+analysis + opens the GSL-24 epic PR (In Review). Owner-gated: whether to auto-merge the v2 PR.
+- **CONTROL on evals (hard lesson — see incident below):** the eval runner is a background Workflow (invisible agents, NOT panes). Run ONLY via `evals/runner/run-config.json` (requires explicit scenarios; 120-agent ceiling that throws). Control-test first, watch live agent count, NEVER fire-and-forget.
+- **Standing policy:** orchestrator executes NOTHING delivery — all commits/Jira/GitHub/dev_history to pane-workers (Sonnet); verification = Haiku; orchestrator = Opus, only coordinates + owns THIS file + writes a dated handoff at every boundary. The GSL-29 eval Workflow is the ONE orchestrator-run action (workers are banned from the Workflow tool), under tight control.
 
 ## LIVE-STATUS
 
-`cycle 2 DONE + terminated | cycle 3 NEXT | worker=gsl-fix-a (Sonnet) branch=GSL-7-harness-hardening (off main@6316954) | task=GSL-14 artifacts commit + GSL-6/8/9 skill fixes | status=GSL-7 epic In Progress; GSL-6(reparent)+GSL-8..14 created (GH #8..#15); executing skill fixes; install.sh deferred to epic finalize`
+`cycle=0 (cold-start complete) | orchestrator=Opus 4.8 (1M) pane=%7 win=7 | tree=/Users/romanlidovskyi/Documents/dev/harness/gosleep branch=GSL-19-eval-validation(merged)@c46eb74 | fleet=EMPTY | latest handoff=docs/handoff/07-2026-06-29-handoff-v2-execution.md | status=ABOUT TO SPAWN Cycle 1 (gsl24-fixes, Sonnet) = ledger GSL-30 + skill fixes GSL-25/26/27/28. next Jira=GSL-30, next GH=#34.`
 
-### Key mapping (epic GSL-7 "Harness hardening")
-| Jira | summary | GH | source |
-|---|---|---|---|
-| GSL-7 | Harness hardening (epic, In Progress) | #8 | — |
-| GSL-6 | handoff discipline (Bug, reparented) | #7 | operational |
-| GSL-8 | recovery on-disk handoff FIRST | #9 | TLM-64 / SC-03 |
-| GSL-9 | idempotent find-or-create + late IDs | #10 | TLM-71 / SC-04,11,16 |
-| GSL-10 | on-disk state + telemetry + rollover | #11 | TLM-72 / SC-19,12 |
-| GSL-11 | patience vs active nudge at PR boundary | #12 | TLM-73 / SC-09 |
-| GSL-12 | transcript-tail abuse + context discipline | #13 | TLM-74 / SC-07,20 |
-| GSL-13 | author E17/VERIFY-REQUEST/watchdog scenarios | #14 | new behavior |
-| GSL-14 | track orchestration ledger + gitignore .vscode | #15 | owner decision |
+## TELEMETRY (cumulative — never reset)
+
+`cycles_completed≈12 (prior sessions) | tokens: NOT precisely tracked across prior sessions (no TELEMETRY block kept before now; the 2026-06-28 242-agent incident alone ≈ 1.2M out / 0.59M in / 25.4M cache-read) | forward-tracking starts this session | open_workers=[] | budget: no hard ceiling agreed; eval runs capped at 120 agents by the runner; loop-guard = stop if 2 cycles with non-advancing NEXT.`
 
 ## Standing rules / decisions
 
 - 2026-06-11 (owner): orchestrator never executes delivery — all delivery to worker agents; orchestrator coordinates + keeps state on disk + writes dated handoff at each boundary. (A trivial command the owner directly asks for may be run inline.)
-- **2026-06-27 (owner): FULL AUTONOMOUS multi-hour run.** Do not ask questions, do not stop mid-run (stopping loses the autonomous process). Accumulate questions and surface them at the END; owner will then answer + possibly finish remaining items. Decisions that would normally pause → make a defensible reversible call, log it, queue the question.
-- Anchors (CLAUDE.md): Jira GSL @ ainstance-labs.atlassian.net (cloudId 74054cdc-47ef-497d-9684-734149876a8b; transitions To Do=11/In Progress=21/In Review=31/Done=41); GitHub ainstance-labs/gosleep; assignee Roman L (accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67). Epic+Task only (Bug allowed); 1 branch/Epic, 1 commit/Task (msg starts with key), 1 PR/Epic, regular merge (never squash). Idempotent creates; no force-push; artifacts in-tree (never /tmp); write "section" not the glyph.
-- `skill/` is source of truth for the global skill; `./install.sh` syncs local -> global (`rsync --delete`). Pull global ahead via the REVERSE rsync; never run install.sh while local is behind global.
-- 2026-06-27 (owner): confirmed the copy-only-live-work plan for TLM-58 (no duplication of the 10 done tasks); leave original TLM-58 untouched for now; reparent GSL-6 under the new Harness-hardening epic (supersedes the earlier "leave GSL-6 standalone").
-- 2026-06-26 (owner, deferred): vendoring of the 4 supporting skills (writing-prds, delivery-workflow, handoff, using-jira) — design A vs B NOT chosen; deferred to end-of-run.
-- Operational note (2026-06-26): a graceful teammate `shutdown_request` is NOT reliable — the probe ignored it and stayed idle; force `tmux kill-pane` was needed. Use kill-pane as the fallback to terminate a stuck teammate (read-only worker = safe).
+- 2026-06-27 (owner): FULL AUTONOMOUS multi-hour run. Don't ask mid-run (stopping loses the process); accumulate questions, surface at END; decisions that would pause → make a defensible reversible call, log it, queue the question.
+- 2026-06-28 (owner): RUN evals OPTIMALLY (efficient-agent-evals): cache + reuse RED, re-run GREEN only, batched judge, deterministic asserts, right-size N.
+- 2026-06-28 (owner): N=**2** for eval runs going forward.
+- 2026-06-28 (owner): VENDORING = Option A — gosleep is SOURCE OF TRUTH for ALL delivery/orchestration skills; per-skill subfolders under `skill/`; `install.sh` installs all local→global.
+- 2026-06-28 (owner): TLM-58 = DROPPED (owner closes it himself); OFF our queue.
+- **2026-06-28/29 (eval incident — IRON RULE):** never fire-and-forget a multi-agent Workflow. Eval runner reads `evals/runner/run-config.json` (gitignored), REFUSES without explicit scenarios (no silent full-run), throws if expected agents > 120. Always control-test first + watch live agent count + watchdog.
+- Anchors (CLAUDE.md): Jira GSL @ ainstance-labs.atlassian.net (cloudId 74054cdc-47ef-497d-9684-734149876a8b; transitions To Do=11/In Progress=21/In Review=31/Done=41); GitHub ainstance-labs/gosleep; assignee Roman L (557058:83b04839-8bde-4331-9c2d-24843d0b8e67). Epic+Task only (Bug allowed); 1 branch/Epic, 1 commit/Task (msg starts with key), 1 PR/Epic, regular merge (never squash). Idempotent creates; no force-push; artifacts in-tree (never /tmp); write "section" not the glyph.
+- `skill/` source of truth; `./install.sh` syncs local→global per-skill (`rsync --delete` scoped to each `~/.claude/skills/<name>/`, never the parent). Pull global ahead via REVERSE rsync; never install while local is behind global.
+- Models: workers=Sonnet, verification=Haiku, orchestrator=Opus. ALWAYS pass `model:` explicitly when spawning.
+- Operational: graceful teammate `shutdown_request` is NOT reliable — use `tmux kill-pane` to terminate a stuck read-only worker.
+- PROCESS LESSON (v1 Cycle 4): workers MUST commit each task BEFORE editing the next file/section — else all edits collapse into one commit (per-task granularity lost; can't fix without banned force-push).
+
+## v2 key mapping (epic GSL-24 "Harness hardening v2")
+
+| Jira | summary | GH | targets | v1 GREEN |
+|---|---|---|---|---|
+| GSL-24 | Harness hardening v2 (epic, In Progress) | #28 | — | — |
+| GSL-25 | v2 SC-09: forbid vague "keep monitoring"; mandate ONE concrete nudge + example | #29 | SC-09 | 0.0 |
+| GSL-26 | v2 SC-19: hard gate — never roll while a worker is alive | #30 | SC-19 | 0.0 |
+| GSL-27 | v2 SC-12: concrete TELEMETRY-in-STATE mechanism | #31 | SC-12 | 0.25 |
+| GSL-28 | v2 SC-11: concrete state-update on suspect handoff / late ID | #32 | SC-11 | 0.75 |
+| GSL-29 | v2 re-validate (SC-09/11/12/19 @ N=2, cached RED) | #33 | all 4 | — |
+| GSL-30 | ledger housekeeping (handoffs 04–07 + STATE + reports + 0009 scorecard) | #34 (to create) | — | — |
+
+## Owner questions (saved — surface at end of run; owner unavailable)
+
+- Merge the GSL-24 v2 PR autonomously, or leave for owner review? (Conservative default: open PR, leave In Review — skill-governance change; owner explicitly flagged this.)
+- Long-term eval architecture: eval agents are inherently background Workflow (cannot be panes); acceptable to keep controlling via config+ceiling+control-test+watchdog, or want a pane-native design?
+- Token-credit report for the 242-agent incident at `docs/reports/token-overage-incident-2026-06-28/index.html` — owner previously said NOT to send (treat as closed unless owner reopens).
 
 ## Log
 
-### 2026-06-11 — Phase: init (epic GSL-1)
-- Orchestrator bootstrap; created this state file. Jira GSL-1 In Progress, GSL-2/3 Done, GSL-4 In Progress; PR #5 open; GH #1-4; git @ c189a66.
+### 2026-06-11 → 2026-06-28 — epics GSL-1, GSL-7, GSL-15, GSL-19 (compressed)
+- **GSL-1 (init):** imported harness v0, wired tracker+GitHub, fixed stale ROOT paths, synced skill. PR #5 regular-merged. Done.
+- **GSL-7 (hardening v1):** 6 skill-gap fixes (recovery on-disk-first, idempotent+late-IDs, state+telemetry+rollover, patience-vs-nudge, transcript-discipline) + authored eval scenarios SC-21/22/23. PR #16 regular-merged; `./install.sh` synced global. Done. **Per-task granularity anomaly in Cycle 4** (all 3 edits landed in one commit) — documented, lesson captured above.
+- **GSL-15 (vendoring, Option A):** restructured `skill/` into per-skill subfolders + multi-skill `install.sh`; vendored 4 supporting skills; updated CLAUDE.md+README. PR #21 regular-merged (main `b1753a1`). Verified all 5 skills diff-r identical vs global, ~74 unrelated globals intact. Done.
+- **GSL-19 (eval validation):** made runner efficient (batched judge + per-scenario N + RED cache); ran on cost-appropriate models (Sonnet under-test, Haiku judge); FILE-based run-config + hard 120-agent safety after the incident; ran the controlled validation (86 agents, N=4, cached RED). Scorecard `evals/results/2026-06-29-0028-scorecard.md`. PR #27 regular-merged (main `c46eb74`). Done.
+- **INCIDENT (2026-06-28):** a "2-scenario smoke" launched via Workflow defaulted to all-23 (arg didn't propagate) and was fire-and-forgot → 242 invisible background agents before TaskStop. Salvage: ~21 cached RED baselines (reused since). Root-caused by GSL-23. Report at `docs/reports/token-overage-incident-2026-06-28/`.
+- **EVAL FINDING → motivates v2:** GREEN SC-09=0.0, SC-19=0.0, SC-12=0.25, SC-11=0.75. Text-only edits didn't change behavior.
 
-### 2026-06-25 — Phase: init (epic GSL-1)
-- TCC/Full-Disk-Access blocker hit then resolved by owner. Reverse-synced global->local skill (E17 / VERIFY-REQUEST / watchdog / background-subagent rule), `diff -r` identical. Wrote handoff 02.
-
-### 2026-06-26 — Phase: init (epic GSL-1)
-- **Cycle 1 (gsl5-worker, Sonnet):** GSL-5 skill-sync delivered — commit `875bc26`, GH #6, Jira Done. Orchestrator-verified.
-- **Cycle 2 (gsl4-worker, Sonnet):** GSL-4 stale-path fix — commit `06ed904`, Jira Done. Static path-resolution verify only (no LLM/Workflow). All GSL-1 tasks now Done.
-- Owner raised worker-visibility (panes) + asked to re-confirm vendoring design. Added `teammateMode: auto` to settings; proved it needs a fresh session. Filed Bug GSL-6 + GH #7 (handoff-discipline gap). Wrote handoff 03.
-
-### 2026-06-27 — Phase: GSL-1 close-out + new epic (Harness hardening)
-- Cold-start by fresh top-level orchestrator (Opus 4.8). Raised the 4 delivery skills; reconciled live: ACCESS_OK; git @ 06ed904; skill/ `diff -r` identical; Jira GSL-1 In Progress, GSL-2/3/4/5 Done, GSL-6 Bug To Do (standalone); PR #5 open; GH #1-4/#6/#7; next free GH=#8, next Jira key=GSL-7.
-- **Pane test PASSED:** probe `panecheck` (Haiku) opened as split pane `%8` in window 7; proven mine via window membership + pane content. Probe force-killed (graceful shutdown ignored).
-- Read TLM-58 (tasty-lunch) full: 16 tasks, mapped Done vs live. Confirmed all Done deliverables physically present in gosleep (skill/, evals/ 20 SC-*, docs/report/, docs/design/, docs/dev-history/).
-- Owner granted FULL AUTONOMOUS run; confirmed copy-only-live-work plan. Campaign started: close GSL-1 -> Harness-hardening epic.
-- **Cycle 1 (gsl1-closeout, Sonnet):** GSL-1 closed — PR #5 REGULAR-merged (main @6316954), branch deleted, GH #1-4/#6 closed, epic Done. Orchestrator-verified independently (merge commit on origin/main over the 4 task commits = not squash). Worker terminated (kill-pane).
-- **Cycle 2 (gsl-hardening-setup, Sonnet):** created epic GSL-7 (In Progress) + tasks GSL-8..GSL-14 + reparented GSL-6 under GSL-7; GH mirrors #8..#15. Verified via JQL + gh. Worker terminated.
+### 2026-06-29 — Phase: GSL-24 hardening v2 (epic GSL-24)
+- **Cold-start by fresh top-level orchestrator (Opus 4.8, 1M ctx).** Raised the 4 delivery skills. Reconciled live: `main @ c46eb74`; fleet empty (window 7 = me only; window 10 = foreign fleet; TaskList empty); no open PRs; GH issues #28–33 open; Jira GSL-24 In Progress, GSL-25/26/27/28/29 To Do, GSL-1/7/15/19 Done. STATE was stale (didn't reflect GSL-19 merge + v2 epic) — rewrote it (this file). Plan set (see At a glance). About to spawn Cycle 1.
