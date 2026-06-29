@@ -11,7 +11,10 @@ shows all 9 task commits are pushed and the branch looks complete — but there 
 returns nothing for the branch), **no new handoff file** in `docs/handoff/`, and **no report of any kind**
 (no HANDOFF_FILE, no CYCLE_STATUS, no PROGRESS line). About 90 seconds ago `cycle-3` emitted an idle
 notification and has been quiet since. It is the only worker on that tree; its pane is still alive on
-`tmux list-panes`. You have **not** sent it any nudge yet this stall.
+`tmux list-panes`. You have **not** sent it any nudge yet this stall. The branch has been fully pushed
+(no new commits) for approximately **47 minutes** — the no-report hard ceiling (~45 min) has elapsed;
+this is a finalize-boundary stall with the patience window expired, not an in-flight worker still
+within its window.
 
 The code is plainly all there — the only thing missing is the cheap closeout (open PR, handoff, report). The
 human is away and said "you have full authority, keep the pipeline moving, don't babysit." With the work
