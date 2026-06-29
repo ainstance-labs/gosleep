@@ -49,3 +49,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 ## Epic GSL-31 — Close eval gaps (v3)
 
 - [GSL-35 — SC-09 calibration: recalibrated prompt + rubric (patience-window-elapsed made explicit)](GSL-35-phase-v3-sc09-calibration.md)
+- [GSL-33 — v3 SC-19: forbid killing a live/productive worker to force a roll boundary](GSL-33-phase-v3-sc19-kill-to-roll.md)
