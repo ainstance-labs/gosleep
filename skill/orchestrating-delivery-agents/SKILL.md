@@ -90,6 +90,16 @@ human) always terminates.
   If the nudge goes unanswered past the hard ceiling → apply the kill/escalation tree above. The
   answer is NEVER "wait indefinitely" and NEVER "spawn a fresh finalize worker while the original
   is alive."
+- **FORBIDDEN PHRASES at a finalize stall (window elapsed, no PR/report):** "keep monitoring",
+  "wait and see", "give it more time", "continue watching", "I'll check back later". These are not
+  actions. They leave the chain permanently stalled. They are NEVER the correct move.
+- **The THREE valid moves ONLY:**
+  1. Keep waiting silently — but ONLY while the patience window has NOT yet elapsed.
+  2. Send EXACTLY ONE concrete nudge — when the window IS elapsed. Use THIS wording verbatim:
+     *"All tasks are committed but no PR or handoff report after [elapsed time]. Please open the
+     PR (or write the handoff) now — I will wait for your reply before taking any other action."*
+  3. Apply the kill/escalation tree — after the nudge goes unanswered past the hard ceiling.
+  There is no option 4. "Keep monitoring" is not an option.
 
 ## Spawning a cycle worker
 
@@ -281,7 +291,7 @@ A new project has no handoffs. Before cycle #1:
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
 | Terminate | Pane → `tmux kill-pane`; background → `TaskStop(task_id)`. Worker replies `shutdown_response{approve}`. |
 | Committed all tasks, quiet (patience window not elapsed) | Normal — patience. Idle ≠ stuck. Do NOT nudge yet. |
-| Committed all tasks, no PR/report past patience window | ONE "finalize-or-handoff" nudge. Then wait. Never re-nudge; never spawn a duplicate while alive; never wait indefinitely past the hard ceiling. |
+| Committed all tasks, no PR/report past patience window | ONE concrete nudge — exact wording: *"All tasks committed but no PR/handoff after [elapsed]. Please open the PR or write the handoff now — I'll wait for your reply."* Then wait. Never re-nudge; never spawn a duplicate while alive; never "keep monitoring"; never wait past ceiling without escalating. |
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
@@ -295,6 +305,7 @@ A new project has no handoffs. Before cycle #1:
 - **Rolling with only STATE updated, no dated handoff** → the next orchestrator has no resume point; it must probe live tools blind. Write a dated `docs/handoff/NN-...md` at EVERY session boundary.
 - **Spawning a replacement before confirming termination** → duplicate/destructive work.
 - **Killing on the first idle** → you kill productive workers. Patience + liveness-rank + git first.
+- **"Keep monitoring" / "wait and see" at a finalize stall** (patience window elapsed, no PR/report) → the chain never moves. These phrases are not decisions. Send ONE concrete nudge (verbatim wording in the patience-vs-nudge section above); after that, either wait for reply or escalate. There is no "keep watching" path.
 - **`git status` as the kill gate / against a live tree** → hides unsaved source or misreports. Use `git status --porcelain` for the safe-to-kill check; probe off-tree.
 - **Letting workers send verbose reports** → their prose is permanent in your context. Keep `SendMessage` tight (~12 lines, no logs/diffs).
 - **Two editing workers, one tree** / **force-pushing a shared branch** → corruption / lost commits.
@@ -309,6 +320,7 @@ A new project has no handoffs. Before cycle #1:
 - "STATE file not found → I'll just probe live tools." → No: read the newest on-disk handoff (`docs/handoff/NN-...md`) FIRST. On-disk layer before live tooling, always.
 - "Let me read the handoff/source to understand." → No (except a dead worker's top report block — handoff file only, range-read, not the transcript).
 - "The exception lets me read the transcript / the full handoff / a live worker's file." → No. The exception is a range-read of ONLY the top `## ORCHESTRATOR REPORT` block of a DEAD worker's HANDOFF FILE. Transcripts are never covered.
+- **"I'll keep monitoring." / "I'll wait and see." / "Give it more time." / "Continue watching."** (at finalize boundary, patience window elapsed, no PR/report) → **STOP. These phrases are not actions — they permanently stall the chain.** Send EXACTLY ONE concrete nudge: *"All tasks are committed but no PR or handoff report after [elapsed time]. Please open the PR or write the handoff now — I will wait for your reply before taking any other action."* Then wait for the reply. The only valid moves at a finalize stall: keep waiting (window NOT elapsed) | ONE nudge (window elapsed) | kill/escalate (nudge unanswered past ceiling). Nothing else.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 
