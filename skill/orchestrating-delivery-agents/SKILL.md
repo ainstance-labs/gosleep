@@ -193,6 +193,18 @@ running totals rather than resetting to zero, then exit. Do this at EVERY sessio
 roll, compaction, or planned pause) — updating only the STATE file is not enough. Plan to roll roughly
 every **~8–15 cycles** rather than assuming immortality.
 
+**HARD GATE — before any roll/compact/handoff/fresh-orchestrator, confirm EVERY worker is TERMINATED.**
+"I'm low on context" does not override this rule. Rationalization ("I'll roll now and the worker will
+be fine") is wrong — rolling with a live worker orphans it: the orphan keeps running, may write to
+shared files, corrupt the chain, or consume budget with no supervision. The ONLY safe sequences are:
+- **Wait:** receive the worker's COMPLETE `SendMessage` report → confirm terminated (per surface) →
+  THEN update STATE + write dated handoff + start fresh orchestrator.
+- **Terminate first:** send `shutdown_request` → receive `shutdown_response{approve:true}` (or
+  hard-kill per surface) → CONFIRM dead (pane gone from `tmux list-panes` re-list, or `TaskStop`
+  success) → THEN update STATE + write dated handoff + start fresh orchestrator.
+There is no "roll now and deal with the worker later." If you cannot terminate cleanly and cannot
+wait, surface `BLOCKED_ON_HUMAN` — do not roll.
+
 ## Cost & runaway control
 
 - Agree a **max cycle count and/or aggregate-token ceiling** up front; tally each worker's `TELEMETRY` into the TELEMETRY block of the state file (cumulative — never reset on rollover or restart).
@@ -289,6 +301,7 @@ A new project has no handoffs. Before cycle #1:
 |---|---|
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
+| About to roll / compact / hand off to fresh orchestrator | HARD GATE: confirm EVERY worker TERMINATED first (pane gone from re-list or `TaskStop` success). Never roll with a live worker. |
 | Terminate | Pane → `tmux kill-pane`; background → `TaskStop(task_id)`. Worker replies `shutdown_response{approve}`. |
 | Committed all tasks, quiet (patience window not elapsed) | Normal — patience. Idle ≠ stuck. Do NOT nudge yet. |
 | Committed all tasks, no PR/report past patience window | ONE concrete nudge — exact wording: *"All tasks committed but no PR/handoff after [elapsed]. Please open the PR or write the handoff now — I'll wait for your reply."* Then wait. Never re-nudge; never spawn a duplicate while alive; never "keep monitoring"; never wait past ceiling without escalating. |
@@ -306,6 +319,7 @@ A new project has no handoffs. Before cycle #1:
 - **Spawning a replacement before confirming termination** → duplicate/destructive work.
 - **Killing on the first idle** → you kill productive workers. Patience + liveness-rank + git first.
 - **"Keep monitoring" / "wait and see" at a finalize stall** (patience window elapsed, no PR/report) → the chain never moves. These phrases are not decisions. Send ONE concrete nudge (verbatim wording in the patience-vs-nudge section above); after that, either wait for reply or escalate. There is no "keep watching" path.
+- **Rolling/handing off with a live worker** → orphans it; the orphan may write shared files, corrupt the chain, or consume budget with no supervision. "I'm low on context" does not override this. The sequence is ALWAYS: wait-for-COMPLETE-report OR terminate+confirm-dead (per surface), THEN roll. Rolling first is always wrong.
 - **`git status` as the kill gate / against a live tree** → hides unsaved source or misreports. Use `git status --porcelain` for the safe-to-kill check; probe off-tree.
 - **Letting workers send verbose reports** → their prose is permanent in your context. Keep `SendMessage` tight (~12 lines, no logs/diffs).
 - **Two editing workers, one tree** / **force-pushing a shared branch** → corruption / lost commits.
@@ -321,6 +335,7 @@ A new project has no handoffs. Before cycle #1:
 - "Let me read the handoff/source to understand." → No (except a dead worker's top report block — handoff file only, range-read, not the transcript).
 - "The exception lets me read the transcript / the full handoff / a live worker's file." → No. The exception is a range-read of ONLY the top `## ORCHESTRATOR REPORT` block of a DEAD worker's HANDOFF FILE. Transcripts are never covered.
 - **"I'll keep monitoring." / "I'll wait and see." / "Give it more time." / "Continue watching."** (at finalize boundary, patience window elapsed, no PR/report) → **STOP. These phrases are not actions — they permanently stall the chain.** Send EXACTLY ONE concrete nudge: *"All tasks are committed but no PR or handoff report after [elapsed time]. Please open the PR or write the handoff now — I will wait for your reply before taking any other action."* Then wait for the reply. The only valid moves at a finalize stall: keep waiting (window NOT elapsed) | ONE nudge (window elapsed) | kill/escalate (nudge unanswered past ceiling). Nothing else.
+- **"I'm low on context, I'll roll / compact / start a fresh orchestrator now."** (while a worker is alive and unterminated) → **HARD BLOCK. You will orphan the live worker.** "Low on context" never overrides the termination gate. The ONLY safe sequences: (A) wait for the worker's COMPLETE `SendMessage` report → confirm terminated → THEN roll; or (B) send `shutdown_request` → receive `approve:true` → confirm dead (pane gone from re-list or `TaskStop` success) → THEN roll. Example correct action: *"My context is at 73%. I have a live worker (cycle-13). I will wait for its COMPLETE report before rolling. I will NOT hand off yet."* If you cannot wait or terminate, surface `BLOCKED_ON_HUMAN`.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 
