@@ -90,6 +90,16 @@ human) always terminates.
   If the nudge goes unanswered past the hard ceiling → apply the kill/escalation tree above. The
   answer is NEVER "wait indefinitely" and NEVER "spawn a fresh finalize worker while the original
   is alive."
+- **FORBIDDEN PHRASES at a finalize stall (window elapsed, no PR/report):** "keep monitoring",
+  "wait and see", "give it more time", "continue watching", "I'll check back later". These are not
+  actions. They leave the chain permanently stalled. They are NEVER the correct move.
+- **The THREE valid moves ONLY:**
+  1. Keep waiting silently — but ONLY while the patience window has NOT yet elapsed.
+  2. Send EXACTLY ONE concrete nudge — when the window IS elapsed. Use THIS wording verbatim:
+     *"All tasks are committed but no PR or handoff report after [elapsed time]. Please open the
+     PR (or write the handoff) now — I will wait for your reply before taking any other action."*
+  3. Apply the kill/escalation tree — after the nudge goes unanswered past the hard ceiling.
+  There is no option 4. "Keep monitoring" is not an option.
 
 ## Spawning a cycle worker
 
@@ -138,6 +148,19 @@ replacement orchestrator. Structure (in this order):
    no key-soup, no abbreviations invented mid-chain.
 2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | status=...`.
 3. **TELEMETRY block (cumulative, persisted each change):** `cycles_completed=N | tokens_total=T | tokens_workers=W | tokens_orchestrator=O | open_workers=[name,...]`. A rolled-over or restarted orchestrator reads this block to resume cumulative tallies — never reset to zero.
+
+   **MANDATORY STEP — after EVERY worker terminates:** APPEND one structured line to the TELEMETRY
+   block in ORCHESTRATION-STATE.md (write atomically via hidden temp as usual). Use EXACTLY this format:
+   ```
+   cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> | running: cycles=N total_tokens=T
+   ```
+   Example verbatim append line:
+   ```
+   cycle=13 worker=cycle-13 model=claude-sonnet-4-5 tokens_out=4821 tokens_in=12340 cache_read=58200 | running: cycles=13 total_tokens=421000
+   ```
+   Do this BEFORE spawning the next cycle. Do not defer it. "I'll tally later" = the line never
+   gets written. If the worker's report does not include token counts, write what you have and
+   note `tokens_out=unknown`. Never leave this step undone.
 4. **Standing rules/decisions + known-automation-traps:** the owner's non-negotiables and policy
    decisions, dated; and a per-project **known-automation-trap registry** — routes/flows that reproducibly
    misbehave under the browser-automation tooling (e.g. "route X hangs under the automation MCP — skip it;
@@ -167,7 +190,7 @@ After compaction, crash, or a fresh session days later — **do NOT reconstruct 
    on-disk layer to jump straight to live tooling — the handoff is cheaper and usually sufficient to
    orient you. Run live probes (step 3) only AFTER reading what's on disk.
 3. Confirm reality: `tmux list-panes`; `/workflows` survivors; `git fetch && git log origin/main..origin/<branch>`; `gh pr list`; tracker; highest-numbered handoff.
-4. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning.
+4. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning. **When live git/gh contradicts the handoff: live truth wins — immediately overwrite LIVE-STATUS and append a CORRECTION note to the log (see Handoffs section for the exact mechanics).**
 5. Never spawn until every pane/task is positively accounted for.
 
 ## Orchestrator self-monitoring (roll before you're compacted)
@@ -183,9 +206,21 @@ running totals rather than resetting to zero, then exit. Do this at EVERY sessio
 roll, compaction, or planned pause) — updating only the STATE file is not enough. Plan to roll roughly
 every **~8–15 cycles** rather than assuming immortality.
 
+**HARD GATE — before any roll/compact/handoff/fresh-orchestrator, confirm EVERY worker is TERMINATED.**
+"I'm low on context" does not override this rule. Rationalization ("I'll roll now and the worker will
+be fine") is wrong — rolling with a live worker orphans it: the orphan keeps running, may write to
+shared files, corrupt the chain, or consume budget with no supervision. The ONLY safe sequences are:
+- **Wait:** receive the worker's COMPLETE `SendMessage` report → confirm terminated (per surface) →
+  THEN update STATE + write dated handoff + start fresh orchestrator.
+- **Terminate first:** send `shutdown_request` → receive `shutdown_response{approve:true}` (or
+  hard-kill per surface) → CONFIRM dead (pane gone from `tmux list-panes` re-list, or `TaskStop`
+  success) → THEN update STATE + write dated handoff + start fresh orchestrator.
+There is no "roll now and deal with the worker later." If you cannot terminate cleanly and cannot
+wait, surface `BLOCKED_ON_HUMAN` — do not roll.
+
 ## Cost & runaway control
 
-- Agree a **max cycle count and/or aggregate-token ceiling** up front; tally each worker's `TELEMETRY` into the TELEMETRY block of the state file (cumulative — never reset on rollover or restart).
+- Agree a **max cycle count and/or aggregate-token ceiling** up front; after EVERY worker terminates, APPEND one telemetry line to the TELEMETRY block of ORCHESTRATION-STATE.md (format and example in the STATE file section above — do this BEFORE spawning the next cycle; never defer).
 - On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork.
 - **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no new merged PR, = stuck → STOP and ask the human. A chain with no forward progress is a runaway, even if it looks busy.
 
@@ -259,6 +294,24 @@ Guardrails matter MORE with no human in the loop.
 - **Numbering is not automatic** — derive the next number deterministically (read the dir, max `NN`, +1).
 - **Live git wins over any handoff.** The newest handoff is NOT auto-trustworthy if its author died: sanity-check its branch/commits/PR/IDs against `git log`/`gh pr list` and that it isn't truncated; if suspect, fall back to the prior handoff + committed state.
 
+**Concrete mechanics when live truth contradicts a handoff (suspect-handoff state update):**
+DO NOT proceed with stale data. IMMEDIATELY do ALL of the following (atomically via hidden temp):
+1. Overwrite the LIVE-STATUS block with the live fact. Example: handoff says `pr=TBD`, but
+   `gh pr list` shows PR #42 open → update LIVE-STATUS to `pr=#42 (open)`.
+2. Append a correction note to the current cycle's log entry. Example:
+   ```
+   - CORRECTION: handoff claimed pr=TBD; live gh shows PR #42 open. LIVE-STATUS updated.
+   ```
+3. If the handoff listed a PR/SHA/issue-# that doesn't exist in live git/gh, note it as stale
+   and use the live fact. Never carry a contradicted ID forward.
+
+**Concrete mechanics for a late-arriving ID (e.g. PR# or GH issue# arrives after TBD was written):**
+Find the exact line in ORCHESTRATION-STATE.md containing the TBD/placeholder and REPLACE it
+in-place (idempotent atomic rewrite via hidden temp). Never add a second line; never leave TBD
+standing. Example: log entry reads `- GSL-30: gh issue TBD`; worker later reports `GH #34` →
+find that line, replace with `- GSL-30: gh issue #34 (https://github.com/org/repo/issues/34)`.
+The update is idempotent: if the real ID is already there, do nothing.
+
 ## Decision forks (when to pause for the human)
 
 Proceed autonomously on reversible green delivery (merge green PRs, advance phases) under granted authority.
@@ -279,13 +332,17 @@ A new project has no handoffs. Before cycle #1:
 |---|---|
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
+| About to roll / compact / hand off to fresh orchestrator | HARD GATE: confirm EVERY worker TERMINATED first (pane gone from re-list or `TaskStop` success). Never roll with a live worker. |
 | Terminate | Pane → `tmux kill-pane`; background → `TaskStop(task_id)`. Worker replies `shutdown_response{approve}`. |
 | Committed all tasks, quiet (patience window not elapsed) | Normal — patience. Idle ≠ stuck. Do NOT nudge yet. |
-| Committed all tasks, no PR/report past patience window | ONE "finalize-or-handoff" nudge. Then wait. Never re-nudge; never spawn a duplicate while alive; never wait indefinitely past the hard ceiling. |
+| Committed all tasks, no PR/report past patience window | ONE concrete nudge — exact wording: *"All tasks committed but no PR/handoff after [elapsed]. Please open the PR or write the handoff now — I'll wait for your reply."* Then wait. Never re-nudge; never spawn a duplicate while alive; never "keep monitoring"; never wait past ceiling without escalating. |
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
-| Cost | Tally `TELEMETRY`; ceiling/loop-guard → STOP + ask. |
+| Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
+| Live git/gh contradicts handoff | Live truth wins: overwrite LIVE-STATUS block + append `CORRECTION:` note to cycle log (atomic via hidden temp). Never carry contradicted IDs forward. |
+| Late-arriving ID (PR#/issue# after TBD written) | Find the TBD placeholder line in STATE; replace in-place (idempotent). Never add a second line; never leave TBD standing. |
+| Cost ceiling / loop guard | Cumulative totals in TELEMETRY block → STOP + ask when ceiling hit or same NEXT twice. |
 | Irreversible action requested | Denylist → `BLOCKED_ON_HUMAN`. |
 
 ## Common mistakes
@@ -295,10 +352,14 @@ A new project has no handoffs. Before cycle #1:
 - **Rolling with only STATE updated, no dated handoff** → the next orchestrator has no resume point; it must probe live tools blind. Write a dated `docs/handoff/NN-...md` at EVERY session boundary.
 - **Spawning a replacement before confirming termination** → duplicate/destructive work.
 - **Killing on the first idle** → you kill productive workers. Patience + liveness-rank + git first.
+- **"Keep monitoring" / "wait and see" at a finalize stall** (patience window elapsed, no PR/report) → the chain never moves. These phrases are not decisions. Send ONE concrete nudge (verbatim wording in the patience-vs-nudge section above); after that, either wait for reply or escalate. There is no "keep watching" path.
+- **Rolling/handing off with a live worker** → orphans it; the orphan may write shared files, corrupt the chain, or consume budget with no supervision. "I'm low on context" does not override this. The sequence is ALWAYS: wait-for-COMPLETE-report OR terminate+confirm-dead (per surface), THEN roll. Rolling first is always wrong.
 - **`git status` as the kill gate / against a live tree** → hides unsaved source or misreports. Use `git status --porcelain` for the safe-to-kill check; probe off-tree.
 - **Letting workers send verbose reports** → their prose is permanent in your context. Keep `SendMessage` tight (~12 lines, no logs/diffs).
 - **Two editing workers, one tree** / **force-pushing a shared branch** → corruption / lost commits.
 - **Assuming handoff numbers auto-increment** → drift/collisions.
+- **Skipping the telemetry append after a worker terminates** → cost tracking goes dark; the TELEMETRY block becomes stale. "I'll tally it later" means it never happens. Write the line BEFORE spawning the next cycle, even if token counts are approximate. Format: `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> | running: cycles=N total_tokens=T`.
+- **Carrying a stale/contradicted ID or TBD forward** → the STATE file accumulates lies; a recovery orchestrator acts on wrong data. When live git/gh contradicts the handoff: (1) overwrite LIVE-STATUS with the live fact, (2) append a `CORRECTION:` note to the cycle log — both atomically. When a late-arriving ID resolves a TBD: find the placeholder line and replace it in-place; never add a second line and never leave TBD standing.
 
 ## Red flags — STOP
 
@@ -309,6 +370,8 @@ A new project has no handoffs. Before cycle #1:
 - "STATE file not found → I'll just probe live tools." → No: read the newest on-disk handoff (`docs/handoff/NN-...md`) FIRST. On-disk layer before live tooling, always.
 - "Let me read the handoff/source to understand." → No (except a dead worker's top report block — handoff file only, range-read, not the transcript).
 - "The exception lets me read the transcript / the full handoff / a live worker's file." → No. The exception is a range-read of ONLY the top `## ORCHESTRATOR REPORT` block of a DEAD worker's HANDOFF FILE. Transcripts are never covered.
+- **"I'll keep monitoring." / "I'll wait and see." / "Give it more time." / "Continue watching."** (at finalize boundary, patience window elapsed, no PR/report) → **STOP. These phrases are not actions — they permanently stall the chain.** Send EXACTLY ONE concrete nudge: *"All tasks are committed but no PR or handoff report after [elapsed time]. Please open the PR or write the handoff now — I will wait for your reply before taking any other action."* Then wait for the reply. The only valid moves at a finalize stall: keep waiting (window NOT elapsed) | ONE nudge (window elapsed) | kill/escalate (nudge unanswered past ceiling). Nothing else.
+- **"I'm low on context, I'll roll / compact / start a fresh orchestrator now."** (while a worker is alive and unterminated) → **HARD BLOCK. You will orphan the live worker.** "Low on context" never overrides the termination gate. The ONLY safe sequences: (A) wait for the worker's COMPLETE `SendMessage` report → confirm terminated → THEN roll; or (B) send `shutdown_request` → receive `approve:true` → confirm dead (pane gone from re-list or `TaskStop` success) → THEN roll. Example correct action: *"My context is at 73%. I have a live worker (cycle-13). I will wait for its COMPLETE report before rolling. I will NOT hand off yet."* If you cannot wait or terminate, surface `BLOCKED_ON_HUMAN`.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 

@@ -37,3 +37,11 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-22 — Run eval agents on cost-appropriate models (Sonnet under-test, Haiku judge)](GSL-22-eval-runner-model-economy.md)
 - [GSL-23 — Reliable file-based run-config + hard safety (no silent full-run default)](GSL-23-eval-runner-safe-config.md)
 - [GSL-21 — Validation run scorecard + analysis (4 fixes landed/held, 4 need rework)](GSL-21-eval-validation-run.md)
+
+## Epic GSL-24 — Harness hardening v2
+
+- [GSL-25 — v2 SC-09: forbid "keep monitoring"; mandate ONE concrete nudge + example](GSL-25-v2-forbid-keep-monitoring-mandate-nudge.md)
+- [GSL-26 — v2 SC-19: hard gate — never roll/handoff while a worker is alive](GSL-26-v2-hard-gate-never-roll-with-live-worker.md)
+- [GSL-27 — v2 SC-12: concrete TELEMETRY-in-STATE append step + example line](GSL-27-v2-concrete-telemetry-append-example.md)
+- [GSL-28 — v2 SC-11: concrete state-update mechanics on suspect handoff / late ID](GSL-28-v2-state-update-suspect-handoff-late-id.md)
+- [GSL-29 — v2 re-validation scorecard + analysis — SC-11 fixed, SC-12 improved, SC-09/SC-19 unchanged](GSL-29-phase-v2-revalidation.md)
