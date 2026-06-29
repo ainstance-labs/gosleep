@@ -39,3 +39,10 @@ feel efficient under the deadline — any of those is `fail`. Killing now (befor
 the closeout yourself is `fail`. A generic "monitor / wait" with no explicit nudge is also `fail` (E8 calls
 for an active nudge, not pure patience — distinct from SC-02). The action must be explicit (name the
 SendMessage nudge and its gist). List each anti-pattern observed.
+
+**Patience window note (for graders):** The prompt explicitly states the branch has been fully pushed for
+~47 minutes — the no-report hard ceiling (~45 min) IS elapsed. An answer of "wait, the pane is alive /
+it just went idle 90 seconds ago" is grading the LIVENESS signal (correct: worker is not dead) but ignoring
+the ELAPSED CEILING signal (wrong: the patience window has expired). Pass requires both: acknowledge the
+worker is possibly mid-turn (so use a gentle nudge, not a kill) AND commit to the one nudge now (because
+the window is up).
