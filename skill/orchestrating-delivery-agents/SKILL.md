@@ -46,7 +46,9 @@ digraph idle {
   "Report arrived (in-flight)?" [shape=diamond];
   "Handle report; if done: terminate -> CONFIRM -> chain next" [shape=box];
   "Liveness: report? /workflows done? pane alive? git moved?" [shape=diamond];
-  "Alive/moving -> WAIT (idle between turns is normal)" [shape=box];
+  "FINALIZE EXCEPTION: all tasks committed + no PR/report + patience window elapsed?" [shape=diamond];
+  "Send ONE concrete finalize nudge NOW (pane-alive does NOT exempt you past the ceiling)" [shape=box];
+  "Alive/moving -> WAIT (mid-cycle idle only — NOT a finalize stall past the ceiling)" [shape=box];
   "No git progress ~10-15m OR no report ~45-60m?" [shape=diamond];
   "Keep waiting; re-check on a timer" [shape=box];
   "Already nudged this stall?" [shape=diamond];
@@ -60,7 +62,9 @@ digraph idle {
   "Worker idle, no report" -> "Report arrived (in-flight)?";
   "Report arrived (in-flight)?" -> "Handle report; if done: terminate -> CONFIRM -> chain next" [label="yes"];
   "Report arrived (in-flight)?" -> "Liveness: report? /workflows done? pane alive? git moved?" [label="no"];
-  "Liveness: report? /workflows done? pane alive? git moved?" -> "Alive/moving -> WAIT (idle between turns is normal)" [label="alive"];
+  "Liveness: report? /workflows done? pane alive? git moved?" -> "FINALIZE EXCEPTION: all tasks committed + no PR/report + patience window elapsed?" [label="alive"];
+  "FINALIZE EXCEPTION: all tasks committed + no PR/report + patience window elapsed?" -> "Send ONE concrete finalize nudge NOW (pane-alive does NOT exempt you past the ceiling)" [label="yes — finalize stall"];
+  "FINALIZE EXCEPTION: all tasks committed + no PR/report + patience window elapsed?" -> "Alive/moving -> WAIT (mid-cycle idle only — NOT a finalize stall past the ceiling)" [label="no — mid-cycle"];
   "Liveness: report? /workflows done? pane alive? git moved?" -> "No git progress ~10-15m OR no report ~45-60m?" [label="static"];
   "No git progress ~10-15m OR no report ~45-60m?" -> "Keep waiting; re-check on a timer" [label="no"];
   "No git progress ~10-15m OR no report ~45-60m?" -> "Already nudged this stall?" [label="yes"];
@@ -73,6 +77,13 @@ digraph idle {
   "Now clean / responsive?" -> "BLOCKED_ON_HUMAN (AskUserQuestion: discard WIP+kill vs keep waiting)" [label="still stuck"];
 }
 ```
+
+> **FINALIZE EXCEPTION — why it exists:** `pane-alive → WAIT` is correct for mid-cycle idle
+> (the worker is just between turns). It is WRONG at a finalize stall — all tasks committed, no
+> PR opened, no COMPLETE report, patience window elapsed. At that point the pane-alive signal is
+> irrelevant: the ceiling has expired, and you MUST send ONE concrete nudge NOW regardless of pane
+> state. The exception routes through the time ceiling check BEFORE falling back to WAIT. Without
+> this check the orchestrator sees the pane alive, routes to WAIT, and stalls the chain forever.
 
 **Iron rule of chaining: confirm the prior worker is TERMINATED before spawning the next cycle.**
 Spawning a replacement while the original is alive is the #1 cause of duplicate/destructive work.
@@ -90,6 +101,15 @@ human) always terminates.
   If the nudge goes unanswered past the hard ceiling → apply the kill/escalation tree above. The
   answer is NEVER "wait indefinitely" and NEVER "spawn a fresh finalize worker while the original
   is alive."
+- **CRITICAL — pane-alive ≠ exempt at a finalize stall past the ceiling.** The lifecycle flowchart
+  routes `pane-alive → WAIT` for MID-CYCLE idle (the worker is between turns — normal). That routing
+  does NOT apply at a finalize stall where all tasks are committed, no PR has been opened, and the
+  patience window has elapsed. At that specific state, CHECK THE TIME CEILING FIRST (see FINALIZE
+  EXCEPTION in the flowchart above): if the ceiling has elapsed → send ONE concrete nudge NOW,
+  regardless of whether the pane is alive. Pane-alive does not mean "keep waiting indefinitely"
+  when the patience ceiling has passed. Example nudge wording: *"All tasks are committed but no PR
+  or handoff report after [elapsed time]. Please open the PR or write the handoff now — I will wait
+  for your reply before taking any other action."*
 - **FORBIDDEN PHRASES at a finalize stall (window elapsed, no PR/report):** "keep monitoring",
   "wait and see", "give it more time", "continue watching", "I'll check back later". These are not
   actions. They leave the chain permanently stalled. They are NEVER the correct move.
@@ -350,6 +370,7 @@ A new project has no handoffs. Before cycle #1:
 | Terminate | Pane → `tmux kill-pane`; background → `TaskStop(task_id)`. Worker replies `shutdown_response{approve}`. |
 | Committed all tasks, quiet (patience window not elapsed) | Normal — patience. Idle ≠ stuck. Do NOT nudge yet. |
 | Committed all tasks, no PR/report past patience window | ONE concrete nudge — exact wording: *"All tasks committed but no PR/handoff after [elapsed]. Please open the PR or write the handoff now — I'll wait for your reply."* Then wait. Never re-nudge; never spawn a duplicate while alive; never "keep monitoring"; never wait past ceiling without escalating. |
+| Pane alive + all tasks committed + no PR + patience window elapsed | FINALIZE EXCEPTION: check time ceiling FIRST. Send ONE concrete finalize nudge NOW — pane-alive does NOT exempt you at a finalize stall past the ceiling. |
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
@@ -389,6 +410,7 @@ A new project has no handoffs. Before cycle #1:
 - "Let me read the handoff/source to understand." → No (except a dead worker's top report block — handoff file only, range-read, not the transcript).
 - "The exception lets me read the transcript / the full handoff / a live worker's file." → No. The exception is a range-read of ONLY the top `## ORCHESTRATOR REPORT` block of a DEAD worker's HANDOFF FILE. Transcripts are never covered.
 - **"I'll keep monitoring." / "I'll wait and see." / "Give it more time." / "Continue watching."** (at finalize boundary, patience window elapsed, no PR/report) → **STOP. These phrases are not actions — they permanently stall the chain.** Send EXACTLY ONE concrete nudge: *"All tasks are committed but no PR or handoff report after [elapsed time]. Please open the PR or write the handoff now — I will wait for your reply before taking any other action."* Then wait for the reply. The only valid moves at a finalize stall: keep waiting (window NOT elapsed) | ONE nudge (window elapsed) | kill/escalate (nudge unanswered past ceiling). Nothing else.
+- **"The pane is still alive, so I'll keep waiting."** (at a finalize stall — all tasks committed, no PR/report, patience window elapsed) → **NO. Pane-alive ≠ exempt past the ceiling.** `pane-alive → WAIT` is correct for mid-cycle idle only. At a finalize stall past the patience ceiling, CHECK THE TIME CEILING FIRST (FINALIZE EXCEPTION in the flowchart) — then send ONE concrete finalize nudge NOW regardless of pane state. Example: *"All tasks are committed but no PR or handoff report after [elapsed]. Please open the PR or write the handoff now — I will wait for your reply."*
 - **"I'm low on context, I'll roll / compact / start a fresh orchestrator now."** (while a worker is alive and unterminated) → **HARD BLOCK. You will orphan the live worker.** "Low on context" never overrides the termination gate. The ONLY safe sequences: (A) wait for the worker's COMPLETE `SendMessage` report → confirm terminated → THEN roll; or (B) send `shutdown_request` → receive `approve:true` → confirm dead (pane gone from re-list or `TaskStop` success) → THEN roll. Example correct action: *"My context is at 73%. I have a live worker (cycle-13). I will wait for its COMPLETE report before rolling. I will NOT hand off yet."* If you cannot wait or terminate, surface `BLOCKED_ON_HUMAN`.
 - **"I'm low on context and a worker is busy mid-cycle — I'll shut it down so I can roll at a clean boundary."** → **NO. Killing a productive worker to force a roll boundary is orphaning by another name — you lose its in-progress output.** The clean boundary must arrive NATURALLY (worker self-quiesces with COMPLETE, then you terminate). Wait for the natural COMPLETE or let it finish its current task and self-quiesce. NEVER send `shutdown_request` or kill a productive live worker to roll faster. If you truly cannot wait, surface `BLOCKED_ON_HUMAN`.
 - **"The worker didn't report its tokens, so I'll note it as unavailable and move on."** → **NO. RECOVER first:** range-read ONLY the `## ORCHESTRATOR REPORT` block of the dead worker's handoff file (the read-exception covers this). If tokens are in that block, extract and tally them. If truly unrecoverable, record `tokens_this_cycle=UNRECOVERED — gap flagged` in the TELEMETRY block. NEVER fabricate totals; NEVER omit the gap as if the cycle had zero cost.
