@@ -148,6 +148,19 @@ replacement orchestrator. Structure (in this order):
    no key-soup, no abbreviations invented mid-chain.
 2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | status=...`.
 3. **TELEMETRY block (cumulative, persisted each change):** `cycles_completed=N | tokens_total=T | tokens_workers=W | tokens_orchestrator=O | open_workers=[name,...]`. A rolled-over or restarted orchestrator reads this block to resume cumulative tallies — never reset to zero.
+
+   **MANDATORY STEP — after EVERY worker terminates:** APPEND one structured line to the TELEMETRY
+   block in ORCHESTRATION-STATE.md (write atomically via hidden temp as usual). Use EXACTLY this format:
+   ```
+   cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> | running: cycles=N total_tokens=T
+   ```
+   Example verbatim append line:
+   ```
+   cycle=13 worker=cycle-13 model=claude-sonnet-4-5 tokens_out=4821 tokens_in=12340 cache_read=58200 | running: cycles=13 total_tokens=421000
+   ```
+   Do this BEFORE spawning the next cycle. Do not defer it. "I'll tally later" = the line never
+   gets written. If the worker's report does not include token counts, write what you have and
+   note `tokens_out=unknown`. Never leave this step undone.
 4. **Standing rules/decisions + known-automation-traps:** the owner's non-negotiables and policy
    decisions, dated; and a per-project **known-automation-trap registry** — routes/flows that reproducibly
    misbehave under the browser-automation tooling (e.g. "route X hangs under the automation MCP — skip it;
@@ -207,7 +220,7 @@ wait, surface `BLOCKED_ON_HUMAN` — do not roll.
 
 ## Cost & runaway control
 
-- Agree a **max cycle count and/or aggregate-token ceiling** up front; tally each worker's `TELEMETRY` into the TELEMETRY block of the state file (cumulative — never reset on rollover or restart).
+- Agree a **max cycle count and/or aggregate-token ceiling** up front; after EVERY worker terminates, APPEND one telemetry line to the TELEMETRY block of ORCHESTRATION-STATE.md (format and example in the STATE file section above — do this BEFORE spawning the next cycle; never defer).
 - On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork.
 - **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no new merged PR, = stuck → STOP and ask the human. A chain with no forward progress is a runaway, even if it looks busy.
 
@@ -308,7 +321,8 @@ A new project has no handoffs. Before cycle #1:
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
-| Cost | Tally `TELEMETRY`; ceiling/loop-guard → STOP + ask. |
+| Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
+| Cost ceiling / loop guard | Cumulative totals in TELEMETRY block → STOP + ask when ceiling hit or same NEXT twice. |
 | Irreversible action requested | Denylist → `BLOCKED_ON_HUMAN`. |
 
 ## Common mistakes
@@ -324,6 +338,7 @@ A new project has no handoffs. Before cycle #1:
 - **Letting workers send verbose reports** → their prose is permanent in your context. Keep `SendMessage` tight (~12 lines, no logs/diffs).
 - **Two editing workers, one tree** / **force-pushing a shared branch** → corruption / lost commits.
 - **Assuming handoff numbers auto-increment** → drift/collisions.
+- **Skipping the telemetry append after a worker terminates** → cost tracking goes dark; the TELEMETRY block becomes stale. "I'll tally it later" means it never happens. Write the line BEFORE spawning the next cycle, even if token counts are approximate. Format: `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> | running: cycles=N total_tokens=T`.
 
 ## Red flags — STOP
 

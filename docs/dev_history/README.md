@@ -42,3 +42,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 
 - [GSL-25 — v2 SC-09: forbid "keep monitoring"; mandate ONE concrete nudge + example](GSL-25-v2-forbid-keep-monitoring-mandate-nudge.md)
 - [GSL-26 — v2 SC-19: hard gate — never roll/handoff while a worker is alive](GSL-26-v2-hard-gate-never-roll-with-live-worker.md)
+- [GSL-27 — v2 SC-12: concrete TELEMETRY-in-STATE append step + example line](GSL-27-v2-concrete-telemetry-append-example.md)
