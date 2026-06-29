@@ -190,7 +190,7 @@ After compaction, crash, or a fresh session days later — **do NOT reconstruct 
    on-disk layer to jump straight to live tooling — the handoff is cheaper and usually sufficient to
    orient you. Run live probes (step 3) only AFTER reading what's on disk.
 3. Confirm reality: `tmux list-panes`; `/workflows` survivors; `git fetch && git log origin/main..origin/<branch>`; `gh pr list`; tracker; highest-numbered handoff.
-4. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning.
+4. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning. **When live git/gh contradicts the handoff: live truth wins — immediately overwrite LIVE-STATUS and append a CORRECTION note to the log (see Handoffs section for the exact mechanics).**
 5. Never spawn until every pane/task is positively accounted for.
 
 ## Orchestrator self-monitoring (roll before you're compacted)
@@ -294,6 +294,24 @@ Guardrails matter MORE with no human in the loop.
 - **Numbering is not automatic** — derive the next number deterministically (read the dir, max `NN`, +1).
 - **Live git wins over any handoff.** The newest handoff is NOT auto-trustworthy if its author died: sanity-check its branch/commits/PR/IDs against `git log`/`gh pr list` and that it isn't truncated; if suspect, fall back to the prior handoff + committed state.
 
+**Concrete mechanics when live truth contradicts a handoff (suspect-handoff state update):**
+DO NOT proceed with stale data. IMMEDIATELY do ALL of the following (atomically via hidden temp):
+1. Overwrite the LIVE-STATUS block with the live fact. Example: handoff says `pr=TBD`, but
+   `gh pr list` shows PR #42 open → update LIVE-STATUS to `pr=#42 (open)`.
+2. Append a correction note to the current cycle's log entry. Example:
+   ```
+   - CORRECTION: handoff claimed pr=TBD; live gh shows PR #42 open. LIVE-STATUS updated.
+   ```
+3. If the handoff listed a PR/SHA/issue-# that doesn't exist in live git/gh, note it as stale
+   and use the live fact. Never carry a contradicted ID forward.
+
+**Concrete mechanics for a late-arriving ID (e.g. PR# or GH issue# arrives after TBD was written):**
+Find the exact line in ORCHESTRATION-STATE.md containing the TBD/placeholder and REPLACE it
+in-place (idempotent atomic rewrite via hidden temp). Never add a second line; never leave TBD
+standing. Example: log entry reads `- GSL-30: gh issue TBD`; worker later reports `GH #34` →
+find that line, replace with `- GSL-30: gh issue #34 (https://github.com/org/repo/issues/34)`.
+The update is idempotent: if the real ID is already there, do nothing.
+
 ## Decision forks (when to pause for the human)
 
 Proceed autonomously on reversible green delivery (merge green PRs, advance phases) under granted authority.
@@ -322,6 +340,8 @@ A new project has no handoffs. Before cycle #1:
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
 | Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
+| Live git/gh contradicts handoff | Live truth wins: overwrite LIVE-STATUS block + append `CORRECTION:` note to cycle log (atomic via hidden temp). Never carry contradicted IDs forward. |
+| Late-arriving ID (PR#/issue# after TBD written) | Find the TBD placeholder line in STATE; replace in-place (idempotent). Never add a second line; never leave TBD standing. |
 | Cost ceiling / loop guard | Cumulative totals in TELEMETRY block → STOP + ask when ceiling hit or same NEXT twice. |
 | Irreversible action requested | Denylist → `BLOCKED_ON_HUMAN`. |
 
@@ -339,6 +359,7 @@ A new project has no handoffs. Before cycle #1:
 - **Two editing workers, one tree** / **force-pushing a shared branch** → corruption / lost commits.
 - **Assuming handoff numbers auto-increment** → drift/collisions.
 - **Skipping the telemetry append after a worker terminates** → cost tracking goes dark; the TELEMETRY block becomes stale. "I'll tally it later" means it never happens. Write the line BEFORE spawning the next cycle, even if token counts are approximate. Format: `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> | running: cycles=N total_tokens=T`.
+- **Carrying a stale/contradicted ID or TBD forward** → the STATE file accumulates lies; a recovery orchestrator acts on wrong data. When live git/gh contradicts the handoff: (1) overwrite LIVE-STATUS with the live fact, (2) append a `CORRECTION:` note to the cycle log — both atomically. When a late-arriving ID resolves a TBD: find the placeholder line and replace it in-place; never add a second line and never leave TBD standing.
 
 ## Red flags — STOP
 
