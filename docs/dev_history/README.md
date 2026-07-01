@@ -53,3 +53,9 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-34 — v3 SC-12: cost recovery via range-read + mandatory telemetry in briefs/STATE](GSL-34-phase-v3-sc12-cost-recovery.md)
 - [GSL-32 — v3 SC-09: finalize-boundary exception — time-ceiling check before pane-alive→WAIT](GSL-32-phase-v3-sc09-finalize-exception.md)
 - [GSL-36 — v3 re-validation results + analysis — SC-09 fixed (0→1.0), SC-19 0→0.75, SC-12 still 0.0, SC-11 N=2 noise](GSL-36-phase-v3-revalidation.md)
+
+## Epic GSL-37 — Remaining gaps & eval-quality after v3
+
+- [GSL-40 — Track orchestration ledger — handoffs 09-11 + STATE snapshot](GSL-40-phase-v3fu-ledger-snapshot.md)
+- [GSL-39 — SC-09 restore discrimination — prompt states facts, agent must infer elapsed ceiling](GSL-39-phase-v3fu-sc09-discrimination.md)
+- [GSL-38 — SC-12 calibration — recalibrated scenario (question framing suppressed process-fix behavior)](GSL-38-phase-v3fu-sc12-calibration.md)
