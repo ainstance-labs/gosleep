@@ -70,3 +70,18 @@ requires multiple behaviors (immediate action + systemic fix), the question fram
 both dimensions — or agents will correctly answer the literal question asked and fail on the implied one.
 
 **Do NOT test here.** Orchestrator validates via a Sonnet pane agent on explicit owner direction.
+
+---
+
+## Part 3 — Pane-eval validation + rubric tightening (2026-07-01)
+
+### Pane-eval results (N=3/arm, sonnet, NO Workflow)
+- GREEN 3/3: all range-read the dead worker's `## ORCHESTRATOR REPORT` block → recover cost + flag gaps + fix brief. Skill behavior confirmed correct.
+- RED 3/3 on the prior loose criterion: RED agents gave honest "I can't get exact numbers" answers + pointed Finance to the billing console. Anti-fabrication is common-sense, not the skill. The scenario was not discriminating.
+
+### Rubric tightened
+`evals/scenarios/SC-12-cost-telemetry/rubric.md` updated to make the **range-read** the explicit, non-negotiable PASS criterion. An honest-but-no-range-read response is now an explicit FAIL anti-pattern. Grounded in observed pane behavior (GREEN range-reads 3/3, RED does not) — not separately re-run.
+
+Key change: PASS criterion #2 now states "Performs the skill-specific recovery: explicitly range-reads the top `## ORCHESTRATOR REPORT` block of each prior cycle's handoff file." FAIL anti-patterns now explicitly include "Gives an honest answer but does NOT range-read the blocks."
+
+Validation doc: `evals/results/2026-07-01-gsl37-pane-validation.md`.
