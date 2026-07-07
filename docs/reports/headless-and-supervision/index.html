@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Headless Claude (claude -p), Subscription &amp; Orchestrator Supervision — gosleep report</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --panel2:#eaeef4; --ink:#16202b; --muted:#5b6674;
+  --line:#d9e0e8; --accent:#1a66c9; --accent-soft:#e3edfa;
+  --ok:#177a45; --ok-soft:#e0f3e8;
+  --warn:#a35a06; --warn-soft:#fdf0dc;
+  --bad:#bf2e2e; --bad-soft:#fbe4e4;
+  --code-bg:#eceff4;
+  --shadow:0 1px 2px rgba(15,23,32,.06), 0 8px 24px rgba(15,23,32,.05);
+}
+@media (prefers-color-scheme: dark){
+ :root{
+  --bg:#0e141b; --panel:#161d26; --panel2:#1d2632; --ink:#e7ecf3; --muted:#9aa7b5;
+  --line:#2b3644; --accent:#6aa6f8; --accent-soft:#182c47;
+  --ok:#4cc584; --ok-soft:#12301f;
+  --warn:#e5a83e; --warn-soft:#33270f;
+  --bad:#ef7070; --bad-soft:#3a1717;
+  --code-bg:#0f151d;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+ }
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:.1em .35em;font:.86em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font:.82rem/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:14px 0}
+pre code{background:none;border:none;padding:0}
+h1{font-size:1.9rem;line-height:1.25;letter-spacing:-.02em}
+h2{font-size:1.45rem;letter-spacing:-.01em;margin:0 0 6px}
+h3{font-size:1.12rem;margin:26px 0 10px}
+h4{font-size:1rem;margin:18px 0 8px}
+p{margin:10px 0}
+ul,ol{margin:10px 0 10px 24px}
+li{margin:5px 0}
+strong{font-weight:650}
+/* masthead */
+.masthead{padding:44px 0 10px}
+.masthead .kicker{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;margin-bottom:10px}
+.masthead p.sub{color:var(--muted);max-width:900px;margin-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{font-size:.76rem;font-weight:600;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;color:var(--muted)}
+.chip.lang{border-color:var(--accent);color:var(--accent)}
+/* toc */
+.toc{position:sticky;top:0;z-index:50;background:var(--bg);padding:10px 0;margin:18px 0 8px;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+.toc a{font-size:.8rem;font-weight:600;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;color:var(--ink);white-space:nowrap}
+.toc a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+/* sections */
+section{margin-top:56px}
+.snum{display:inline-block;font-size:.75rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.14em;margin-bottom:6px}
+.lede{color:var(--muted);font-size:1.02rem;max-width:920px}
+/* cards */
+.grid{display:grid;gap:16px;margin:20px 0}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:900px){.g3{grid-template-columns:1fr}.g2{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 8px;font-size:1.02rem}
+.card .q{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+.card .ans{font-size:1.5rem;font-weight:800;letter-spacing:-.01em;margin-bottom:8px}
+.card.v-ok{border-top:4px solid var(--ok)} .card.v-ok .ans{color:var(--ok)}
+.card.v-warn{border-top:4px solid var(--warn)} .card.v-warn .ans{color:var(--warn)}
+.card.v-bad{border-top:4px solid var(--bad)} .card.v-bad .ans{color:var(--bad)}
+.card p{font-size:.92rem;color:var(--muted);margin:6px 0 0}
+.card p strong{color:var(--ink)}
+/* callouts */
+.callout{border:1px solid var(--line);border-left:5px solid var(--accent);background:var(--panel);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:.95rem}
+.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.callout .t{font-weight:750;display:block;margin-bottom:4px}
+/* badges */
+.badge{display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.06em;border-radius:5px;padding:2px 8px;vertical-align:middle;text-transform:uppercase}
+.b-fact{background:var(--ok-soft);color:var(--ok)}
+.b-med{background:var(--accent-soft);color:var(--accent)}
+.b-comm{background:var(--warn-soft);color:var(--warn)}
+.b-risk{background:var(--bad-soft);color:var(--bad)}
+/* tables */
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:20px 0}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:720px}
+th{background:var(--panel2);text-align:left;font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+th,td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+td.center,th.center{text-align:center}
+.big-matrix{min-width:1050px}
+.yes{color:var(--ok);font-weight:750}
+.no{color:var(--bad);font-weight:750}
+.mid{color:var(--warn);font-weight:750}
+/* figures */
+.figure{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 12px;box-shadow:var(--shadow);margin:22px 0}
+.figure figcaption{font-size:.82rem;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.scrollx{overflow-x:auto}
+.scrollx svg{min-width:940px;width:100%;height:auto;display:block}
+.figure svg{width:100%;height:auto;display:block}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.sbox{fill:var(--panel2);stroke:var(--line);stroke-width:1.2}
+.sbox-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+.sbox-ok{fill:var(--ok-soft);stroke:var(--ok);stroke-width:1.4}
+.sbox-warn{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.4}
+.sbox-bad{fill:var(--bad-soft);stroke:var(--bad);stroke-width:1.4}
+.stext{fill:var(--ink);font-size:13px}
+.sbold{fill:var(--ink);font-size:13px;font-weight:700}
+.smut{fill:var(--muted);font-size:11.5px}
+.stiny{fill:var(--muted);font-size:10.5px}
+.sacc{fill:var(--accent);font-weight:700;font-size:12px}
+.sok{fill:var(--ok);font-weight:700;font-size:12px}
+.swarn{fill:var(--warn);font-weight:700;font-size:12px}
+.sbad{fill:var(--bad);font-weight:700;font-size:12px}
+.sline{stroke:var(--muted);stroke-width:1.4;fill:none}
+.sline-acc{stroke:var(--accent);stroke-width:1.6;fill:none}
+.sline-bad{stroke:var(--bad);stroke-width:1.6;fill:none}
+.sline-ok{stroke:var(--ok);stroke-width:1.6;fill:none}
+.sdash{stroke-dasharray:5 4}
+/* glossary + terms */
+.term{border-bottom:1.5px dotted var(--accent);cursor:help}
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 22px;margin:16px 0}
+@media(max-width:800px){.gloss{grid-template-columns:1fr}}
+.gloss div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.88rem}
+.gloss dt{font-weight:750;margin-bottom:2px}
+.gloss dd{color:var(--muted);margin:0}
+/* rank list */
+.ranked{list-style:none;margin:20px 0;counter-reset:rk}
+.ranked>li{counter-increment:rk;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:16px 18px 14px 66px;position:relative;margin:12px 0}
+.ranked>li::before{content:counter(rk);position:absolute;left:18px;top:16px;width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:1.05rem;display:flex;align-items:center;justify-content:center}
+.ranked .rt{font-weight:750;display:block;margin-bottom:4px}
+.ranked p{font-size:.92rem;color:var(--muted);margin:4px 0 0}
+.ranked p strong{color:var(--ink)}
+.efchip{display:inline-block;font-size:.68rem;font-weight:800;border-radius:5px;padding:2px 8px;margin-left:8px;background:var(--panel2);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+/* footnotes / sources */
+sup a{font-size:.72em;font-weight:700}
+.srcs{font-size:.86rem}
+.srcs li{margin:7px 0;color:var(--muted)}
+.srcs li strong{color:var(--ink)}
+footer{margin-top:70px;border-top:1px solid var(--line);padding-top:18px;font-size:.82rem;color:var(--muted)}
+.small{font-size:.84rem;color:var(--muted)}
+hr.sep{border:none;border-top:1px solid var(--line);margin:30px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">gosleep · GSL-41 orchestration research · report</div>
+  <h1>Headless Claude (<code>claude&nbsp;-p</code>), Subscription &amp; Orchestrator Supervision</h1>
+  <p class="sub">Two questions from the owner, answered in one place: <strong>(1)</strong> What is <code>claude -p</code>, does it run on our Claude subscription, and is Anthropic going to shut it down? <strong>(2)</strong> Who watches the orchestrator when there is nobody above it — and what should gosleep build so a fleet survives the night?</p>
+  <div class="chips">
+    <span class="chip">Date: 2026-07-08</span>
+    <span class="chip">Branch: GSL-41-orchestration-research</span>
+    <span class="chip">Inputs: research notes 02, 03, 04 + orchestrating-delivery-agents skill</span>
+    <span class="chip lang"><a href="RU/index.html">Русская версия →</a></span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#verdicts">Verdicts</a>
+  <a href="#s1">1 · What is claude -p</a>
+  <a href="#s2">2 · Policy timeline &amp; risk</a>
+  <a href="#s3">3 · Approach matrix</a>
+  <a href="#s4">4 · Who watches the orchestrator</a>
+  <a href="#s5">5 · Supervision design for gosleep</a>
+  <a href="#s6">6 · Recommendations</a>
+  <a href="#sources">Sources</a>
+</nav>
+
+<!-- ============================ VERDICTS ============================ -->
+<section id="verdicts">
+  <span class="snum">Executive verdicts</span>
+  <h2>Three answers before the details</h2>
+  <p class="lede">Everything below expands on these three cards. Claims are tagged
+    <span class="badge b-fact">FACT</span> (primary/official source),
+    <span class="badge b-med">FACT·MED</span> (consistent secondary sources, primary not retrieved),
+    <span class="badge b-comm">COMMUNITY</span> (single secondary source) — the tags come straight from the underlying research notes.</p>
+
+  <div class="grid g3">
+    <div class="card v-ok">
+      <div class="q">Does <code>claude -p</code> run on our subscription?</div>
+      <div class="ans">YES</div>
+      <p><strong>It works today, by design</strong>, on a machine logged in with a Pro/Max subscription — it is the official CLI, not a third-party tool. Since ~2026-06-15 it bills against a <strong>separate monthly programmatic credit pool</strong> (reported $20 Pro / $100 Max&nbsp;5x / $200 Max&nbsp;20x at API list rates — secondary-source figures), not the generous interactive quota.<sup><a href="#src9">[9]</a></sup></p>
+    </div>
+    <div class="card v-warn">
+      <div class="q">Will Anthropic shut it down?</div>
+      <div class="ans">UNLIKELY</div>
+      <p>Every 2026 crackdown targeted <strong>third-party harnesses on subscription OAuth tokens</strong> — never the official CLI. In June 2026 Anthropic built a <strong>metering system</strong> for headless usage. You don't meter what you intend to kill. Residual risk: pool sizes and rates can be re-tuned at will.<sup><a href="#src8">[8]</a>,<a href="#src10">[10]</a></sup></p>
+    </div>
+    <div class="card v-bad">
+      <div class="q">Who watches the orchestrator today?</div>
+      <div class="ans">NOBODY</div>
+      <p>Our supervision is <strong>one layer deep</strong>: the orchestrator watches workers; nothing watches the orchestrator. If it dies or wedges at 3&nbsp;am, the fleet idles until morning. Fix (§5): heartbeat file + mechanical launchd watchdog + restart budget + owner escalation — <strong>zero tokens, no AI in the loop</strong>.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="t">TL;DR for the sleepy owner</span>
+    Keep the current tmux + Agent Teams engine (it rides the generous interactive quota Anthropic keeps protecting).
+    Use <code>claude -p</code> only for bounded glue jobs, with per-run budget caps, and watch its credit burn.
+    Never pipe our subscription login into any third-party tool — that is the one thing that actually gets accounts banned.
+    And build the missing supervision layer: a dumb, token-free watchdog script that restarts a dead orchestrator from the on-disk ledger and pages you only when its restart budget runs out.
+  </div>
+</section>
+
+<!-- ============================ SECTION 1 ============================ -->
+<section id="s1">
+  <span class="snum">Section 1</span>
+  <h2>What <code>claude -p</code> actually is — explained from zero</h2>
+  <p class="lede">No prior knowledge assumed. This section defines every word as it appears; all mechanics come from Anthropic's official documentation (fetched 2026-07-07).<sup><a href="#src1">[1]</a></sup></p>
+
+  <h3>1.1 Start one step earlier: what Claude Code is</h3>
+  <p><strong>Claude Code</strong> is Anthropic's official command-line program (a <span class="term" title="Command-Line Interface — a program you run by typing its name in a terminal window">CLI</span>). You type <code>claude</code> in a terminal, and an interactive chat opens right there: you describe a task in plain language, and the agent reads your files, edits code, runs commands and tests — asking your permission for anything sensitive. That interactive session is how gosleep's orchestrator and workers run today, inside <span class="term" title="A terminal multiplexer — a program that keeps several terminal 'panes' alive in one window, even when you disconnect">tmux</span> panes.</p>
+
+  <h3>1.2 The flag: <code>-p</code> turns the same agent into a one-shot command</h3>
+  <p><strong><code>claude -p "do X"</code></strong> (long form <code>--print</code>) runs the <em>exact same agent</em> once, with no chat UI: it does the task, prints the answer to standard output, and exits. This is what "<span class="term" title="Running without an interactive user interface — no screen, no human at the keyboard; input goes in, output comes out, the process ends">headless</span>" means — the program runs without its interactive "head". That single flag turns Claude Code into a normal Unix building block you can pipe, script, put in a <span class="term" title="The classic Unix scheduler: runs a command at fixed times, e.g. 'every night at 02:00'">cron</span> job, or call in a loop:</p>
+  <pre><code># behaves like any other shell command
+cat build-error.txt | claude -p 'explain the root cause' &gt; diagnosis.txt
+
+# machine-readable result: answer + session id + cost of this run
+claude -p 'summarize open PRs' --output-format json</code></pre>
+  <p>Crucially, it is <strong>not a different product and not a raw API call</strong>: same model, same tools (Bash/Read/Edit/…), same project context (CLAUDE.md, skills, <span class="term" title="Model Context Protocol — a plug-in standard that lets the agent talk to external tools and services">MCP</span> servers), and — key for us — <strong>the same login</strong> as your interactive session.<sup><a href="#src1">[1]</a></sup></p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3>What stays the same as interactive Claude Code</h3>
+      <ul>
+        <li>The model and the agent engine itself</li>
+        <li>All tools: shell, file read/edit, web, MCP</li>
+        <li>Project context: CLAUDE.md, skills, MCP config (unless you pass <code>--bare</code>)</li>
+        <li>Authentication — the machine's existing subscription login</li>
+        <li>Skills work: <code>/skill-name</code> inside the prompt string</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The two things that change</h3>
+      <ul>
+        <li><strong>Nobody can answer permission prompts.</strong> You pre-approve tools (<code>--allowedTools "Bash(git diff *),Read,Edit"</code>) or set a <code>--permission-mode</code>; anything not pre-approved either auto-denies or aborts the run. <code>--dangerously-skip-permissions</code> removes prompts entirely (with a few hard-coded circuit breakers such as <code>rm -rf /</code>).</li>
+        <li><strong>Output becomes machine-readable.</strong> <code>--output-format json</code> returns the result plus <code>session_id</code>, <code>total_cost_usd</code> and token usage; <code>stream-json</code> gives a real-time event stream; <code>--json-schema</code> forces structured output.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>1.3 Flags that matter for an orchestrator</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:30%">Flag</th><th>What it gives an unattended run</th></tr></thead>
+    <tbody>
+      <tr><td><code>-p</code> / <code>--print</code></td><td>One-shot non-interactive run; reads stdin (capped at 10&nbsp;MB since v2.1.128).</td></tr>
+      <tr><td><code>--output-format json | stream-json</code></td><td>Parseable result, session id, per-call cost; <code>stream-json</code> + <code>--verbose --include-partial-messages</code> = live token/event stream (incl. <code>system/init</code> and <code>system/api_retry</code> events).</td></tr>
+      <tr><td><code>--resume &lt;session-id&gt;</code> / <code>--continue</code></td><td>Multi-step workflows across separate invocations — session state persists; lookup is scoped to the project directory and its worktrees.</td></tr>
+      <tr><td><code>--allowedTools</code> / <code>--disallowedTools</code></td><td>Permission-rule syntax (<code>Bash(git commit *)</code>) — the whole safety model for unattended runs.</td></tr>
+      <tr><td><code>--permission-mode</code></td><td>Baseline posture (<code>acceptEdits</code>, <code>dontAsk</code>, <code>plan</code>, <code>bypassPermissions</code>…); <code>dontAsk</code> = fully non-interactive, deny-by-default.</td></tr>
+      <tr><td><code>--permission-prompt-tool</code></td><td>Delegates approvals to your own MCP tool — programmatic human-in-the-loop.</td></tr>
+      <tr><td><code>--max-turns</code>, <code>--max-budget-usd</code></td><td>Hard caps per run (the dollar cap is print-mode only) — mechanism-level runaway protection.</td></tr>
+      <tr><td><code>--mcp-config</code>, <code>--agents</code>, <code>--append-system-prompt(-file)</code></td><td>Inject MCP servers, custom subagents (JSON), extra system prompt per call.</td></tr>
+      <tr><td><code>--bare</code></td><td>Skips ALL auto-discovery (hooks/skills/plugins/MCP/CLAUDE.md) for reproducible CI runs. ⚠️ <strong><code>--bare</code> also skips the OAuth keychain — subscription login does NOT work in bare mode</strong> (API key only). Docs say bare "will become the default for <code>-p</code> in a future release" — pin your CLI version.<sup><a href="#src1">[1]</a></sup></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.4 The Agent SDK: same engine, library form — different rules</h3>
+  <p>The <strong>Claude Agent SDK</strong> (TypeScript <code>@anthropic-ai/claude-agent-sdk</code>, Python <code>claude-agent-sdk</code>; renamed from "Claude Code SDK") is the same engine exposed as a programming library. The official docs literally describe <code>claude -p</code> as "using the Agent SDK via the CLI"; mechanically the SDK bundles and spawns the Claude Code binary and talks to it over stdio — it is not a separate implementation.<sup><a href="#src2">[2]</a></sup> What it adds over shelling out to <code>claude -p</code>: in-process hooks (PreToolUse/PostToolUse/Stop…), in-process custom tools, a <code>canUseTool</code> permission callback (programmatic approval mid-run), native session objects, structured outputs, streaming bidirectional input.</p>
+  <div class="callout warn">
+    <span class="t">The critical asymmetry: SDK ≠ subscription</span>
+    The SDK docs document <strong>only API-key / cloud-provider authentication</strong>. Anthropic's explicit line (verbatim): <em>"Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK. Please use the API key authentication methods described in this document instead."</em><sup><a href="#src2">[2]</a></sup> The ban is aimed at <em>products offering subscription auth to others</em>; the docs are silent on private personal SDK use over one's own subscription token — undocumented, unendorsed, <strong>avoid</strong>. Rule of thumb: <strong><code>claude -p</code> = subscription-legal; Agent SDK = API key</strong>.
+  </div>
+
+  <h3>1.5 How a headless run authenticates (and the gotcha that silently costs money)</h3>
+  <p>Two words first. A <strong>subscription</strong> (Pro/Max) is the flat monthly plan you log into with <span class="term" title="An industry-standard login protocol: you sign in once in the browser and the tool stores a token in the OS keychain — no password stored in scripts">OAuth</span> via <code>/login</code>. An <strong>API key</strong> is pay-per-token developer billing — every token costs real dollars with no monthly ceiling. Headless runs pick credentials in this official precedence order (highest wins):<sup><a href="#src1">[1]</a></sup></p>
+  <ol>
+    <li>Cloud provider credentials (Bedrock / Vertex / Foundry)</li>
+    <li><code>ANTHROPIC_AUTH_TOKEN</code> environment variable</li>
+    <li><code>ANTHROPIC_API_KEY</code> — <em>"in non-interactive mode the key is always used when present"</em></li>
+    <li><code>apiKeyHelper</code> script</li>
+    <li><code>CLAUDE_CODE_OAUTH_TOKEN</code> — from <strong><code>claude setup-token</code></strong>: an official, one-year, <strong>subscription-backed</strong> token for CI/scripts (inference-only scope; requires Pro/Max/Team/Enterprise). The official GitHub Action accepts it as a first-class input.<sup><a href="#src15">[15]</a></sup></li>
+    <li><strong>Subscription OAuth from <code>/login</code> — the default for Pro/Max users.</strong></li>
+  </ol>
+  <div class="callout bad">
+    <span class="t">Gotcha: a stray API key silently hijacks your subscription</span>
+    Because rule 3 outranks rule 6, an exported <code>ANTHROPIC_API_KEY</code> anywhere in the environment makes every headless run bill the API — per token, real dollars — even though the machine is logged in with a subscription. Sanity check before any unattended run: <code>unset ANTHROPIC_API_KEY</code>. §6 recommends baking this check into <code>install.sh</code>/doctor.
+  </div>
+  <p><strong>Bottom line: on a logged-in Pro/Max machine, <code>claude -p</code> just works on the subscription, by design, today</strong> — and Anthropic even ships an official subscription token (<code>setup-token</code>) for headless environments.<sup><a href="#src1">[1]</a>,<a href="#src15">[15]</a></sup></p>
+
+  <h3>1.6 Official autonomous surfaces adjacent to <code>-p</code></h3>
+  <div class="grid g3">
+    <div class="card">
+      <h3>Cloud Routines <span class="badge b-med">research preview</span></h3>
+      <p>Scheduled agents on claude.ai infrastructure: a saved prompt + repos + MCP connectors, triggered by cron (≥1&nbsp;h), API call, or GitHub events; run <strong>fully autonomously, no permission prompts</strong>. <strong>Require subscription login</strong> — a set <code>ANTHROPIC_API_KEY</code> actually breaks the feature. Consume subscription usage plus a separate daily routine cap.<sup><a href="#src3">[3]</a></sup></p>
+    </div>
+    <div class="card">
+      <h3><code>/loop</code> + scheduled tasks</h3>
+      <p>Local, session-scoped recurring runs inside Claude Code (die with the session; 7-day expiry). The first-party answer to the simple "re-run this prompt on a timer" case.<sup><a href="#src4">[4]</a></sup></p>
+    </div>
+    <div class="card">
+      <h3>Desktop scheduled tasks</h3>
+      <p>Recurring tasks run on your machine via the Claude Desktop app — the consumer-grade sibling of Routines.<sup><a href="#src4">[4]</a></sup></p>
+    </div>
+  </div>
+
+  <h3>1.7 Mini-glossary (terms used throughout this report)</h3>
+  <dl class="gloss">
+    <div><dt>Headless</dt><dd>Running without an interactive UI — no human at the keyboard; input in, output out, process exits.</dd></div>
+    <div><dt>OAuth / subscription login</dt><dd>Browser-based sign-in; a token lands in the OS keychain. This is what <code>/login</code> does for Pro/Max.</dd></div>
+    <div><dt>API key</dt><dd>Pay-per-token developer billing. Unlimited ceiling, unlimited bill.</dd></div>
+    <div><dt>Programmatic credit pool</dt><dd>Since ~2026-06-15: a monthly dollar allowance inside the subscription that headless/scripted usage draws from, metered at API list rates (see §2 caveat).</dd></div>
+    <div><dt>Orchestrator / worker</dt><dd>gosleep's split: one lead agent coordinates (spawns, monitors, chains); disposable worker agents execute one context-bounded chunk each.</dd></div>
+    <div><dt>Watchdog</dt><dd>A process whose only job is to check that another process is alive and healthy, and act when it isn't.</dd></div>
+    <div><dt>Heartbeat</dt><dd>A periodic, observable "I'm alive" signal — best practice: a timestamp written to disk, not an in-memory belief.</dd></div>
+    <div><dt>launchd</dt><dd>macOS's built-in service manager: runs scripts on an interval, survives reboots, handles wake-from-sleep better than cron.</dd></div>
+    <div><dt>Tick loop</dt><dd>A dumb scheduler pattern: wake every N seconds/minutes, scan durable state, act on deltas, exit. No memory between ticks.</dd></div>
+    <div><dt>Restart budget</dt><dd>"At most N restarts per window" — a crash-looping component escalates to a human instead of thrashing forever.</dd></div>
+    <div><dt>Zombie session</dt><dd>The container is alive but the brain is dead — e.g. a tmux pane exists but the Claude process inside it has exited.</dd></div>
+    <div><dt>Context window / compaction</dt><dd>The model's finite working memory. When it fills, the session summarizes ("compacts") itself — an orchestrator can lose the thread this way.</dd></div>
+  </dl>
+</section>
+
+<!-- ============================ SECTION 2 ============================ -->
+<section id="s2">
+  <span class="snum">Section 2</span>
+  <h2>Anthropic policy 2025–2026: the timeline, the verdict, the risk</h2>
+  <p class="lede">The owner's fear is legitimate — Anthropic has spent a year tightening automation-over-subscription. But the pattern of <em>what</em> they tightened matters more than the fact that they tightened. Every event below is dated and sourced.<sup><a href="#src5">[5]</a>–<a href="#src11">[11]</a></sup></p>
+
+  <figure class="figure">
+    <div class="scrollx">
+    <svg viewBox="0 0 1160 330" role="img" aria-label="Timeline of Anthropic subscription/automation policy events 2025-2026">
+      <defs>
+        <marker id="tl-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--muted)"/>
+        </marker>
+      </defs>
+      <!-- legend -->
+      <circle cx="70" cy="22" r="6" style="fill:var(--warn)"/><text x="82" y="26" class="smut">quota policy</text>
+      <circle cx="190" cy="22" r="6" style="fill:var(--bad)"/><text x="202" y="26" class="smut">enforcement / ban</text>
+      <circle cx="340" cy="22" r="6" style="fill:var(--accent)"/><text x="352" y="26" class="smut">new product</text>
+      <circle cx="470" cy="22" r="6" style="fill:var(--ok)"/><text x="482" y="26" class="smut">metering (not banning)</text>
+      <!-- axis -->
+      <line x1="50" y1="175" x2="1130" y2="175" class="sline" marker-end="url(#tl-arr)"/>
+      <text x="60" y="196" class="stiny">Jul 2025</text>
+      <line x1="558" y1="168" x2="558" y2="182" class="sline"/>
+      <text x="548" y="196" class="stiny">2026</text>
+      <text x="1085" y="196" class="stiny">Jul 2026</text>
+      <!-- e1: 2025-07-28 above -->
+      <circle cx="135" cy="175" r="7" style="fill:var(--warn)"/>
+      <line x1="135" y1="168" x2="135" y2="112" class="sline sdash"/>
+      <text x="135" y="70" text-anchor="middle" class="sbold">2025-07-28</text>
+      <text x="135" y="88" text-anchor="middle" class="smut">Weekly rate limits</text>
+      <text x="135" y="103" text-anchor="middle" class="smut">announced for Pro/Max</text>
+      <!-- e2: 2025-08-28 below -->
+      <circle cx="218" cy="175" r="7" style="fill:var(--warn)"/>
+      <line x1="218" y1="182" x2="218" y2="226" class="sline sdash"/>
+      <text x="218" y="244" text-anchor="middle" class="sbold">2025-08-28</text>
+      <text x="218" y="262" text-anchor="middle" class="smut">Weekly limits</text>
+      <text x="218" y="277" text-anchor="middle" class="smut">take effect</text>
+      <!-- e3: 2026-01-09 above -->
+      <circle cx="583" cy="175" r="7" style="fill:var(--bad)"/>
+      <line x1="583" y1="168" x2="583" y2="112" class="sline sdash"/>
+      <text x="583" y="70" text-anchor="middle" class="sbold">2026-01-09</text>
+      <text x="583" y="88" text-anchor="middle" class="smut">Server-side blocks: OAuth tokens</text>
+      <text x="583" y="103" text-anchor="middle" class="smut">rejected outside Claude Code</text>
+      <!-- e4: 2026-02-19 below -->
+      <circle cx="695" cy="175" r="7" style="fill:var(--bad)"/>
+      <line x1="695" y1="182" x2="695" y2="226" class="sline sdash"/>
+      <text x="695" y="244" text-anchor="middle" class="sbold">2026-02-19</text>
+      <text x="695" y="262" text-anchor="middle" class="smut">Consumer ToS: OAuth only for</text>
+      <text x="695" y="277" text-anchor="middle" class="smut">Claude Code + claude.ai</text>
+      <!-- e5: 2026-04-04 above -->
+      <circle cx="813" cy="175" r="7" style="fill:var(--bad)"/>
+      <line x1="813" y1="168" x2="813" y2="112" class="sline sdash"/>
+      <text x="813" y="55" text-anchor="middle" class="sbold">2026-04-04</text>
+      <text x="813" y="73" text-anchor="middle" class="smut">Third-party harnesses cut off</text>
+      <text x="813" y="88" text-anchor="middle" class="smut">commercially (OpenClaw first);</text>
+      <text x="813" y="103" text-anchor="middle" class="smut">compensation credits offered</text>
+      <!-- e6: 2026-04-08 below -->
+      <circle cx="843" cy="175" r="7" style="fill:var(--accent)"/>
+      <line x1="843" y1="182" x2="843" y2="226" class="sline sdash"/>
+      <text x="855" y="244" text-anchor="middle" class="sbold">2026-04-08</text>
+      <text x="855" y="262" text-anchor="middle" class="smut">Claude Managed Agents launch —</text>
+      <text x="855" y="277" text-anchor="middle" class="smut">the sanctioned replacement (API $)</text>
+      <!-- e7: 2026-06-15 above -->
+      <circle cx="1013" cy="175" r="7" style="fill:var(--ok)"/>
+      <line x1="1013" y1="168" x2="1013" y2="112" class="sline sdash"/>
+      <text x="1013" y="55" text-anchor="middle" class="sbold">2026-06-15</text>
+      <text x="1013" y="73" text-anchor="middle" class="smut">Programmatic usage split into</text>
+      <text x="1013" y="88" text-anchor="middle" class="smut">its own monthly credit pool;</text>
+      <text x="1013" y="103" text-anchor="middle" class="smut">interactive quota untouched</text>
+      <!-- today -->
+      <line x1="1077" y1="150" x2="1077" y2="200" class="sline-acc sdash"/>
+      <text x="1077" y="220" text-anchor="middle" class="sacc">today · 2026-07-08</text>
+    </svg>
+    </div>
+    <figcaption>Fig. 1 — One year of policy: quota discipline (amber) → OAuth enforcement against third parties (red) → sanctioned paid products (blue) → metering of official headless use (green). The official CLI was never the target.</figcaption>
+  </figure>
+
+  <h3>2.1 The events, one by one</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:12%">Date</th><th>What happened</th><th style="width:12%">Status</th></tr></thead>
+    <tbody>
+      <tr><td><strong>2025-07-28</strong></td><td>Anthropic announces <strong>weekly rate limits</strong> for Pro/Max (effective 2025-08-28), stacked on the rolling 5-hour window. Stated reasons: users running Claude Code "essentially 24/7", account sharing, resale of access; one user reportedly consumed "tens of thousands of dollars" of model usage on a $200 plan.<sup><a href="#src5">[5]</a></sup></td><td><span class="badge b-fact">FACT</span></td></tr>
+      <tr><td><strong>2026-01-09</strong></td><td>Silent <strong>server-side checks</strong> deploy: third-party tools using Pro/Max OAuth tokens start receiving <em>"This credential is only authorized for use with Claude Code and cannot be used for other API requests."</em><sup><a href="#src6">[6]</a></sup></td><td><span class="badge b-fact">FACT</span></td></tr>
+      <tr><td><strong>2026-02-19</strong></td><td>Formalized in updated <strong>Consumer Terms of Service</strong> — new "Authentication and credential use" section: OAuth credentials from Free/Pro/Max accounts are <strong>only for Claude Code and claude.ai</strong>; using them in any other product/tool/service — reportedly including Anthropic's own Agent SDK — violates the ToS.<sup><a href="#src7">[7]</a></sup></td><td><span class="badge b-fact">FACT</span></td></tr>
+      <tr><td><strong>2026-04-04</strong></td><td>Enforcement effective 12PM PT: <strong>subscriptions no longer cover usage through third-party tools</strong> (OpenClaw — a 247k★ agent framework — named first; "all third-party harnesses in the coming weeks"). Compensation: one-month credit, discounted Extra-Usage bundles, or full refund. A same-week community report claims Pro/Max was blocked from "most third-party agent frameworks" and that official Agent Teams became "the only fully-supported multi-agent option" for subscribers.<sup><a href="#src8">[8]</a>,<a href="#src11">[11]</a></sup></td><td><span class="badge b-fact">FACT</span> + <span class="badge b-comm">COMMUNITY</span></td></tr>
+      <tr><td><strong>2026-04-08</strong></td><td><strong>Claude Managed Agents</strong> launches — hosted agents on the API, widely read as "the sanctioned replacement for third-party agent infrastructure". The timing (four days after the cutoff) tells the strategy: move agent infra to paid, sanctioned surfaces.<sup><a href="#src8">[8]</a></sup></td><td><span class="badge b-fact">FACT</span></td></tr>
+      <tr><td><strong>2026-06-15</strong></td><td><strong>Programmatic usage splits off from the interactive quota.</strong> Per a May Help-Center notice as reported by secondary guides: the Agent SDK, <code>claude -p</code> scripts, GitHub Actions and third-party agent apps get their <strong>own monthly credit pool — $20 Pro / $100 Max&nbsp;5x / $200 Max&nbsp;20x — billed at API list rates</strong>. "Typing into Claude Code in your terminal is unaffected." The ralph-claude-code maintainer records the same shift in an ADR dated the same day.<sup><a href="#src9">[9]</a>,<a href="#src10">[10]</a></sup></td><td><span class="badge b-med">FACT·MED</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="t">CAVEAT — the dollar figures are secondary-source</span>
+    The primary Help-Center text for the 2026-06-15 "programmatic credit pool" change was not directly retrievable during research. The $20/$100/$200 figures rest on one detailed secondary guide plus ralph's same-dated ADR — consistent, but <strong>re-verify against the primary source before building any billing logic on the exact numbers</strong>.<sup><a href="#src9">[9]</a></sup> The 2026-04-04 announcement is likewise reconstructed from press (announced via X; no canonical Anthropic page found).
+  </div>
+
+  <h3>2.2 The verdict: where <code>claude -p</code> on subscription stands today (2026-07-08)</h3>
+  <div class="grid g2">
+    <div class="card v-ok">
+      <div class="q">Legal &amp; working</div>
+      <p><strong><code>claude -p</code> still works while logged in with Pro/Max</strong> — it is the official CLI, and the enforcement error message itself says credentials are "only authorized for use with Claude Code". Scripting the official CLI ≠ a third-party harness on your OAuth token. Since ~2026-06-15 it draws from the programmatic credit pool at API list rates; interactive terminal use keeps the classic 5-hour + weekly window model.</p>
+    </div>
+    <div class="card v-warn">
+      <div class="q">But budget-capped, not flat-rate</div>
+      <p>A Max&nbsp;20x plan gives ≈$200/month of programmatic credit. A busy overnight <code>claude -p</code> fleet at API rates can burn that <strong>in days</strong>. "Headless on subscription" is now <em>legal and supported but bounded</em> — a budget, not a loophole. Bulk work belongs on the interactive quota (tmux + Agent Teams), which remains far more generous per dollar.</p>
+    </div>
+  </div>
+  <p>The June split is the strongest signal in the whole timeline: Anthropic's chosen resolution for headless subscription use was to <strong>meter it, not ban it</strong>. The realistic failure mode is therefore not "Anthropic bans <code>claude -p</code>" but <strong>"the quota/credit gets tighter"</strong> — which is a budgeting problem, not an existential one. The ralph maintainer independently reached the same read and additionally rejected the "drive the interactive TUI programmatically to spend interactive quota" workaround as <em>"adversarial to the vendor's billing intent and plausibly against terms"</em>.<sup><a href="#src10">[10]</a></sup></p>
+
+  <h3>2.3 Risk register</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Risk</th><th class="center" style="width:11%">Likelihood</th><th class="center" style="width:10%">Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Programmatic credit pool shrinks / rates re-tuned</td><td class="center mid">Medium</td><td class="center mid">Medium</td><td>Treat the pool as bounded glue budget, not the engine; log <code>total_cost_usd</code> per run; alert at N% of monthly pool; design loops to degrade to wait-for-window (ralph pattern).</td></tr>
+      <tr><td><code>--bare</code> becomes the default for <code>-p</code> (kills OAuth in scripts)</td><td class="center mid">Medium</td><td class="center">Low</td><td>Pin the CLI version; pass explicit flags in wrappers; smoke-test auth after upgrades.</td></tr>
+      <tr><td>Agent Teams API changes (still behind an experimental flag)</td><td class="center mid">Medium</td><td class="center mid">Medium</td><td>Keep orchestration logic in skills (portable prose), not code welded to the surface.</td></tr>
+      <tr><td>Interactive weekly limits tightened again</td><td class="center mid">Medium</td><td class="center mid">Medium</td><td>Quota-aware pacing; overnight loops that wait for the window instead of dying; keep an <code>ANTHROPIC_API_KEY</code> escape-hatch config path — same CLI, one env var — <strong>OFF by default</strong>.</td></tr>
+      <tr><td>Anthropic bans headless <code>claude -p</code> outright</td><td class="center">Low</td><td class="center no">High</td><td>Unlikely — they just built metering for it (and an official <code>setup-token</code>). If it happens: Routines (subscription-native) + API-key escape hatch.</td></tr>
+      <tr><td>Using third-party harnesses / SDK on subscription OAuth</td><td class="center">—</td><td class="center no">Account risk</td><td><strong>Never.</strong> Technically blocked 2026-01-09, ToS-banned 2026-02-19, commercially terminated 2026-04-04. This is the one genuinely fatal move.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================ SECTION 3 ============================ -->
+<section id="s3">
+  <span class="snum">Section 3</span>
+  <h2>The approach matrix: every way to run agents, side by side</h2>
+  <p class="lede">Five viable architectures plus the forbidden one, scored on the axes the owner cares about: does it ride the subscription, can it run overnight, can anyone supervise it, will it get shut down, and what does it cost.<sup><a href="#src3">[3]</a>,<a href="#src8">[8]</a>–<a href="#src11">[11]</a></sup></p>
+
+  <div class="tablewrap"><table class="big-matrix">
+    <thead><tr>
+      <th style="width:16%">Approach</th><th>On subscription?</th><th>Overnight autonomy</th><th>Supervision over it</th><th>Shutdown / ToS risk</th><th>Cost</th><th style="width:15%">Verdict</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>A. Interactive Claude Code + Agent Teams in tmux</strong><br><span class="small">(current gosleep)</span></td>
+        <td><span class="yes">✅ Interactive quota</span> (5-h + weekly windows) — the most generous $/token surface</td>
+        <td><span class="mid">Medium-high</span>: fleet runs unattended while quota lasts; needs the lead alive (pulse / wake-ups); weekly caps are the ceiling</td>
+        <td><span class="yes">Best-in-class</span>: every pane observable and steerable; human can attach anytime</td>
+        <td><span class="yes">Low</span> — official surface; Agent Teams still behind an experimental flag (API may shift)</td>
+        <td>Included in Max</td>
+        <td><strong>Keep as the core engine</strong></td>
+      </tr>
+      <tr>
+        <td><strong>B. <code>claude -p</code> loops</strong><br><span class="small">(ralph-style)</span></td>
+        <td><span class="yes">✅ Official CLI on subscription OAuth</span>; since ~2026-06-15 draws the programmatic credit pool ($20/$100/$200 mo at API list rates)</td>
+        <td><span class="yes">High</span>: cron-able, loopable; quota-auto-wait patterns exist</td>
+        <td><span class="mid">Partial</span>: JSON/stream-json logs, status files; steering only between iterations (<code>--resume</code>)</td>
+        <td><span class="mid">Low-medium</span> — official and documented (<code>setup-token</code> exists for exactly this); metering can be re-tuned; the future <code>--bare</code> default breaks OAuth scripts if unpinned</td>
+        <td>Bounded by the credit pool, then Extra Usage</td>
+        <td><strong>Adopt for bounded glue</strong> (nightly report, watchdog triage) — not the bulk engine</td>
+      </tr>
+      <tr>
+        <td><strong>C. Agent SDK + API key</strong></td>
+        <td><span class="no">❌</span> — subscription auth explicitly disallowed for products; unendorsed even privately. API key required</td>
+        <td><span class="yes">High</span></td>
+        <td><span class="yes">Full programmatic</span>: hooks, <code>canUseTool</code>, session objects</td>
+        <td><span class="yes">Low with API key</span> (the sanctioned developer path)</td>
+        <td>Pure API $ — most expensive per token, unbounded</td>
+        <td>Only if the owner accepts API billing; <strong>not now</strong></td>
+      </tr>
+      <tr>
+        <td><strong>D. Cloud Routines</strong><br><span class="small">(claude.ai scheduled agents)</span></td>
+        <td><span class="yes">✅ Requires subscription login</span> (an exported API key breaks it)</td>
+        <td><span class="yes">High</span>: cron ≥1&nbsp;h / API-fire / GitHub triggers; fully autonomous, no permission prompts</td>
+        <td><span class="mid">Low during the run</span> (cloud session); results land in repos/PRs</td>
+        <td><span class="mid">Medium</span> — research preview, surface may change</td>
+        <td>Subscription usage + separate daily routine cap</td>
+        <td><strong>Adopt as the overnight trigger / watchdog</strong> once stable; wrap in a thin skill</td>
+      </tr>
+      <tr>
+        <td><strong>E. Managed Agents</strong><br><span class="small">(API service, 2026-04-08)</span></td>
+        <td><span class="no">❌ API billing</span></td>
+        <td><span class="yes">High</span>: hosted sessions, cron deployments, outcomes/rubrics</td>
+        <td><span class="mid">Medium</span>: event streams, webhooks, tool confirmation</td>
+        <td><span class="yes">Low</span> (Anthropic's strategic bet)</td>
+        <td>API $ + infra pricing</td>
+        <td>The "grown-up" endgame if gosleep ever goes API-funded. <strong>Watch, don't build on</strong></td>
+      </tr>
+      <tr>
+        <td><strong>F. Third-party harnesses on subscription</strong><br><span class="small">(Ruflo/claude-flow, OpenClaw-class tools…)</span></td>
+        <td><span class="no">❌ Blocked → banned → cut off</span> (Jan → Feb → Apr 2026)</td>
+        <td>—</td>
+        <td>—</td>
+        <td><span class="no">MAXIMAL — account risk</span></td>
+        <td>—</td>
+        <td><strong>Never</strong></td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.1 The recommended stack: A + D + B, in that order</h3>
+  <ol>
+    <li><strong>A (tmux + Agent Teams) stays the engine.</strong> It is the only approach that simultaneously (i) runs on the generous interactive quota, (ii) satisfies the owner's supervision requirement — observable panes, steerable lead — and (iii) sits on the exact surface Anthropic has repeatedly protected while cutting everything else off. The April 2026 wave <em>strengthened</em> this bet.<sup><a href="#src11">[11]</a></sup></li>
+    <li><strong>D (Routines) is the missing overnight piece.</strong> Subscription-native, autonomous, cron/GitHub-triggered. Use it to kick off or resume the fleet at night and to run watchdog/report jobs, instead of keeping a laptop-bound orchestrator alive forever. Research-preview status → wrap it in a thin skill so it stays swappable.</li>
+    <li><strong>B (<code>claude -p</code>) for deterministic glue.</strong> Headless one-shots — generate a report, check CI, triage the issue queue, AI-triage a watchdog anomaly (§5.7) — with <code>--output-format json</code> + <code>--max-budget-usd</code> + strict <code>--allowedTools</code>. Monitor the credit burn via <code>total_cost_usd</code> on every call. Pin the CLI version against the coming <code>--bare</code> default change.</li>
+  </ol>
+
+  <div class="callout ok">
+    <span class="t">Answer to the owner's fear, in one sentence</span>
+    The bet-the-project risk sits with <em>third-party harnesses</em>, not with the official CLI in either mode — so gosleep's exposure is a <strong>budget knob Anthropic may turn</strong>, not a kill switch; we handle a budget knob with pacing, telemetry and a wait-for-window degrade path, all of which are in §6.
+  </div>
+</section>
+
+<!-- ============================ SECTION 4 ============================ -->
+<section id="s4">
+  <span class="snum">Section 4</span>
+  <h2>The problem nobody solves by default: who watches the orchestrator?</h2>
+  <p class="lede">gosleep's orchestrator watches its workers well — patience clocks, liveness ranking, nudges, kill trees. But the supervision stack is exactly <strong>one layer deep</strong>. Above the orchestrator sits… nobody. Three real projects hit this same wall; their scars are the best design input we have.<sup><a href="#src12">[12]</a>–<a href="#src14">[14]</a></sup></p>
+
+  <h3>4.1 Our current model, honestly drawn</h3>
+  <figure class="figure">
+    <div class="scrollx">
+    <svg viewBox="0 0 1000 400" role="img" aria-label="Current gosleep supervision model with the gap above the orchestrator">
+      <defs>
+        <marker id="g-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--muted)"/>
+        </marker>
+        <marker id="g-arr-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--bad)"/>
+        </marker>
+      </defs>
+      <!-- nobody box -->
+      <rect x="380" y="18" width="240" height="52" rx="10" class="sbox-bad sdash"/>
+      <text x="500" y="40" text-anchor="middle" class="sbad">??? — NOBODY</text>
+      <text x="500" y="58" text-anchor="middle" class="stiny">no process checks the orchestrator</text>
+      <line x1="500" y1="70" x2="500" y2="120" class="sline-bad sdash" marker-end="url(#g-arr-bad)"/>
+      <!-- owner -->
+      <rect x="40" y="80" width="220" height="60" rx="10" class="sbox"/>
+      <text x="150" y="105" text-anchor="middle" class="sbold">Owner</text>
+      <text x="150" y="124" text-anchor="middle" class="smut">asleep at 3 am</text>
+      <line x1="260" y1="110" x2="380" y2="145" class="sline sdash" marker-end="url(#g-arr)"/>
+      <text x="310" y="112" text-anchor="middle" class="stiny">watches by day only</text>
+      <!-- orchestrator -->
+      <rect x="330" y="125" width="340" height="80" rx="12" class="sbox-acc"/>
+      <text x="500" y="152" text-anchor="middle" class="sbold">Orchestrator — Agent Teams lead</text>
+      <text x="500" y="171" text-anchor="middle" class="smut">interactive Claude in a tmux pane</text>
+      <text x="500" y="188" text-anchor="middle" class="smut">spawns · monitors · merges · keeps the ledger</text>
+      <text x="695" y="140" class="sbad">single point of failure</text>
+      <!-- ledger -->
+      <rect x="770" y="150" width="200" height="66" rx="10" class="sbox"/>
+      <text x="870" y="175" text-anchor="middle" class="sbold">On-disk ledger</text>
+      <text x="870" y="193" text-anchor="middle" class="stiny">ORCHESTRATION-STATE.md · handoffs</text>
+      <line x1="670" y1="180" x2="770" y2="180" class="sline" marker-end="url(#g-arr)"/>
+      <text x="720" y="172" text-anchor="middle" class="stiny">writes</text>
+      <!-- workers -->
+      <line x1="420" y1="205" x2="260" y2="290" class="sline" marker-end="url(#g-arr)"/>
+      <line x1="500" y1="205" x2="500" y2="290" class="sline" marker-end="url(#g-arr)"/>
+      <line x1="580" y1="205" x2="740" y2="290" class="sline" marker-end="url(#g-arr)"/>
+      <text x="500" y="250" text-anchor="middle" class="stiny">spawns · monitors · nudges · kills (well-covered by the skill)</text>
+      <rect x="140" y="292" width="230" height="62" rx="10" class="sbox"/>
+      <text x="255" y="317" text-anchor="middle" class="sbold">Worker (cycle N)</text>
+      <text x="255" y="336" text-anchor="middle" class="stiny">tmux pane · one context-bounded chunk</text>
+      <rect x="390" y="292" width="220" height="62" rx="10" class="sbox"/>
+      <text x="500" y="317" text-anchor="middle" class="sbold">Reviewer</text>
+      <text x="500" y="336" text-anchor="middle" class="stiny">disposable teammate</text>
+      <rect x="630" y="292" width="230" height="62" rx="10" class="sbox"/>
+      <text x="745" y="317" text-anchor="middle" class="sbold">Verifier</text>
+      <text x="745" y="336" text-anchor="middle" class="stiny">cheap tier + E17 watchdog</text>
+      <text x="500" y="386" text-anchor="middle" class="smut">Downward supervision: strong. Upward supervision: none.</text>
+    </svg>
+    </div>
+    <figcaption>Fig. 2 — Today's gosleep. The orchestrator supervises everything below it; nothing supervises the orchestrator. When the owner sleeps, the top of the chain is unguarded.</figcaption>
+  </figure>
+
+  <p>What exactly can go wrong at the top? The research names five failure classes:<sup><a href="#src13">[13]</a></sup></p>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:8%">Code</th><th style="width:22%">Failure mode</th><th>What it looks like</th><th>What happens today</th></tr></thead>
+    <tbody>
+      <tr><td><strong>D1</strong></td><td>Death</td><td>Pane or process gone — crash, accidental kill, machine event.</td><td>Fleet orphaned; workers finish and idle; nothing chains the next cycle until the owner wakes.</td></tr>
+      <tr><td><strong>D2</strong></td><td>Hang</td><td>Alive but wedged: stuck tool call, permission prompt nobody answers, API-error loop.</td><td>Invisible — the pane looks alive. Same orphaned fleet, harder to notice.</td></tr>
+      <tr><td><strong>D3</strong></td><td>Context exhaustion</td><td>Alive but compacted/degraded; forgets protocol mid-chain.</td><td>Worst case: a degraded orchestrator makes wrong decisions instead of no decisions.</td></tr>
+      <tr><td><strong>D4</strong></td><td>Silent quiesce</td><td>Ended a turn without an armed wake-up — nothing will ever prompt it again.</td><td>The owner's pulse rule (never end a turn without an armed wake-up) covers this by discipline only; a missed wake-up is silent.</td></tr>
+      <tr><td><strong>D5</strong></td><td>Crash loop</td><td>Dies repeatedly on the same input; naive auto-restart would thrash forever.</td><td>No restart machinery exists at all — so today this is "just" repeated D1.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.2 Case study 1 — Overstory: four watchdog tiers, and the gap survived anyway</h3>
+  <p><strong>Overstory</strong> (jayminwest, archived 2026-05-28) was a multi-agent orchestration system very close in shape to gosleep: coordinator LLM + workers in git worktrees + tmux. Its supervision hierarchy was the most elaborate of any project surveyed:<sup><a href="#src14">[14]</a></sup></p>
+  <ul>
+    <li><strong>Tier 0 — mechanical daemon.</strong> A plain non-AI process ticking over every active session with <strong>progressive escalation</strong>: Level 0 warn → Level 1 tmux/mail nudge → Level 2 invoke AI triage → Level 3 kill the session. Escalation advances with elapsed stall time; recovery resets it; <code>maxTriagePerTick</code> caps AI spend per tick.</li>
+    <li><strong>Tier 1 — AI triage.</strong> On escalation, a one-shot <code>claude -p</code> (30-second timeout) reads the last 50 lines of the stalled agent's log and classifies: <code>retry | terminate | extend</code>. <strong>Fails safe</strong>: if Claude is unavailable or there are no logs → <code>extend</code> ("don't kill what you can't diagnose").</li>
+    <li><strong>Tier 2 — monitor agent.</strong> A persistent Claude agent that "continuously patrols the agent fleet" — an AI watching AIs.</li>
+    <li><strong>Tier 3 — per-project supervisor: DEPRECATED.</strong> The author tried a fourth supervision level and retired it. Supervision hierarchies above one watcher didn't earn their keep.</li>
+  </ul>
+  <p>Other mechanics worth stealing: the <strong>ZFC principle</strong> ("Zero Failure Crash") — observable state is the source of truth, never recorded state, with an explicit signal priority (tmux liveness &gt; pid liveness &gt; sessions file) and conflict rules ("tmux alive + recorded zombie → investigate, don't auto-kill"); a <strong><code>worker_died</code> death-notification mail</strong> so a parent never blocks forever waiting for a dead child; <strong><code>decision_gate</code></strong> — an agent explicitly paused on a human question is <em>not a stall</em>, the watchdog skips it; and a <strong>forward-only state machine</strong> (<code>completed</code> is sticky, so a late watchdog tick can't reclassify a clean exit as a zombie).</p>
+  <div class="callout bad">
+    <span class="t">And yet: the top of the chain stayed unguarded</span>
+    The coordinator — the orchestrator-equivalent — was <strong>exempt from stall detection</strong> (long idle is normal for it), so a <em>wedged-but-alive</em> coordinator was invisible to all four tiers. And <strong>nothing auto-restarted a dead coordinator</strong> — the operator had to run <code>ov coordinator start</code> by hand. Even the watchdog daemon itself had no supervisor, only collision detection. Four tiers of machinery, and the exact gap gosleep has survived at the top.<sup><a href="#src14">[14]</a></sup>
+  </div>
+
+  <h3>4.3 Case study 2 — Warren: dissolve the problem instead of solving it</h3>
+  <p><strong>Warren</strong> (same author, 2026, very active) is the post-mortem answer to Overstory. Its central move: <strong>there is no persistent LLM orchestrator at all</strong>. Coordination is plain code — <span class="term" title="A dumb scheduler: wake every N seconds, scan durable state, act on deltas, exit">tick loops</span> over durable database state. Code doesn't hallucinate, doesn't exhaust context, and restarts idempotently; the LLM only lives inside bounded, disposable runs. "Who watches the orchestrator" stops being a question when the orchestrator is a 30-second cron tick.<sup><a href="#src13">[13]</a></sup></p>
+  <p>Around that core, Warren layers four independent supervision mechanisms — each watching a different failure class:</p>
+  <ul>
+    <li><strong>Process supervisor</strong> (container entrypoint): restarts the sandbox substrate in-process with exponential backoff (1&nbsp;s base → 16&nbsp;s cap) under a <strong>5-restarts-in-60-s budget</strong>; budget exhausted → exit non-zero so the outer layer (docker/fly restart policy) recycles the whole container. The warren core itself is <strong>never restarted in-process</strong>: <em>"never mask a warren bug with an in-process restart loop"</em> — crash-loop detection belongs to the layer above. Bonus paranoia: a component exiting <strong>0 without a shutdown signal</strong> is treated as a failure — clean-but-unexpected exit is as suspicious as a crash.</li>
+    <li><strong>Run heartbeat watchdog</strong>: a 30-s tick scans running jobs; heartbeat = timestamp of the <em>newest event row</em> (never self-report); older than a deliberately generous <strong>45-minute budget</strong> → cancel, and <strong>route through "reap"</strong> so partial committed work is still pushed as a branch. Design details: on by default ("a safety net must not depend on an operator remembering an env var"); single-flight ticks; per-run error isolation; long-lived conversations exempted (idle ≠ hung); invalid config <strong>throws at boot</strong> — a typo fails loud, never silently mis-arms the net. Motivating incident (2026-06-05): a stuck bash tool pinned a linter at ~57 CPU-minutes forever, and nothing reaped it.</li>
+    <li><strong>Closed-loop healer</strong>: production alerts → fingerprint → dispatch a healer agent, guarded by per-fingerprint <strong>max-retries + cooldown</strong> — so an alert storm can't become an agent storm.</li>
+    <li><strong>Detector suite</strong>: pause-timeout, idle-conversation, plan-run tick — all the same shape: periodic tick over durable state, single-flight, isolated errors, on by default.</li>
+  </ul>
+  <p><strong>The unifying principle:</strong> every liveness decision is made from <strong>durable state</strong> (event timestamps in the DB), never from in-memory beliefs — so every detector survives a restart for free, and the same logic works on the recovery path. One more warren rule that matters for budgets: <strong>malformed budget values fail OPEN</strong> — "a budget typo must never silently cancel every run at $0".</p>
+
+  <h3>4.4 Case study 3 — Gas Town: the chain of accountability, with production scars</h3>
+  <p><strong>Gas Town</strong> (Steve Yegge, active through 2026) runs 20–30 interactive-CLI agents and keeps a persistent LLM coordinator (the "Mayor") — i.e. it chose gosleep's architecture at 10× scale, and therefore had to actually answer our question. Its answer is a <strong>watchdog chain</strong>: the <em>Witness</em> watches workers; the <em>Deacon</em> (daemon patrol) watches system health; and <strong>Boot the Dog checks the Deacon every 5 minutes</strong> — a watchdog for the watchdog, added because the Deacon itself died in practice.<sup><a href="#src12">[12]</a></sup></p>
+  <p>The implementation details are a catalogue of first-night failures pre-fixed for us:</p>
+  <ul>
+    <li><strong>Boot is a fresh LLM triage tick, not a daemon:</strong> it runs anew each tick and decides one of exactly four actions — <code>start / wake / nudge / nothing</code> — persisted to a status file; a <code>flock</code> + marker file makes it single-flight (no overlapping triage runs).</li>
+    <li><strong>Stuck detection is counter + cooldown, never one-shot:</strong> ping timeout 30&nbsp;s → force-kill only after <strong>3 consecutive failures</strong> → then a <strong>5-minute cooldown between force-kills</strong>. Heartbeat aging is tiered: 5&nbsp;min = stale, 20&nbsp;min = very-stale → poke.</li>
+    <li><strong>Startup grace period:</strong> exists because the heartbeat check used to kill freshly-started sessions before they wrote their first heartbeat (issue #567). <em>Every watchdog needs a warm-up exemption.</em></li>
+    <li><strong>Zombie debounce:</strong> "tmux session exists but agent process not detected" must hold for <strong>≥3 consecutive patrol cycles</strong> before a zombie restart — transient gaps during handoffs look exactly like death.</li>
+    <li><strong>RestartTracker with exponential backoff</strong> — anti-crash-loop for daemon-managed components (independently the same finding as warren's restart budget).</li>
+    <li><strong>Mass-death detection:</strong> many deaths at once is a systemic failure, not N individual ones — different response.</li>
+    <li><strong>Three heartbeat stores</strong> (file, session state, ledger label) with the hard rule: <strong>never declare an agent stuck from a single store</strong> — cross-check tmux activity first; a live session with a stale store is "heartbeat-write divergence, not a stuck agent".</li>
+    <li><strong>The watchdog watches itself:</strong> Boot spawns are rate-limited by their own cooldown; per-rig checks run in a bounded worker pool with timeouts "so one slow rig cannot block all others".</li>
+  </ul>
+
+  <h3>4.5 The evolution, drawn</h3>
+  <figure class="figure">
+    <div class="scrollx">
+    <svg viewBox="0 0 1140 500" role="img" aria-label="Evolution of orchestrator supervision across Overstory, Warren and Gas Town">
+      <defs>
+        <marker id="e-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--muted)"/>
+        </marker>
+        <marker id="e-arr-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--accent)"/>
+        </marker>
+      </defs>
+      <!-- col titles -->
+      <text x="190" y="30" text-anchor="middle" class="sbold">Overstory · 2025 → archived 2026-05</text>
+      <text x="570" y="30" text-anchor="middle" class="sbold">Warren · 2026, active</text>
+      <text x="950" y="30" text-anchor="middle" class="sbold">Gas Town · 2026, active</text>
+      <!-- col 1 -->
+      <rect x="30" y="48" width="320" height="46" rx="9" class="sbox"/>
+      <text x="190" y="76" text-anchor="middle" class="stext">Operator (human)</text>
+      <line x1="190" y1="94" x2="190" y2="116" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="30" y="118" width="320" height="58" rx="9" class="sbox-warn"/>
+      <text x="190" y="141" text-anchor="middle" class="stext">Watchdog daemon (mechanical, Tier 0)</text>
+      <text x="190" y="160" text-anchor="middle" class="smut">+ AI triage (T1) + Monitor agent (T2)</text>
+      <line x1="190" y1="176" x2="190" y2="198" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="30" y="200" width="320" height="46" rx="9" class="sbox-acc"/>
+      <text x="190" y="228" text-anchor="middle" class="stext">Coordinator — persistent LLM</text>
+      <line x1="190" y1="246" x2="190" y2="268" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="30" y="270" width="320" height="46" rx="9" class="sbox"/>
+      <text x="190" y="298" text-anchor="middle" class="stext">Workers (spawn-per-turn)</text>
+      <text x="190" y="346" text-anchor="middle" class="smut">escalation: warn → nudge → AI triage → kill</text>
+      <text x="190" y="368" text-anchor="middle" class="sbad">coordinator: liveness-only, no auto-restart</text>
+      <text x="190" y="390" text-anchor="middle" class="sbad">Tier-3 supervisor — deprecated</text>
+      <text x="190" y="412" text-anchor="middle" class="smut">4 tiers of machinery — gap at the top survived</text>
+      <!-- pivot arrow -->
+      <line x1="358" y1="220" x2="404" y2="220" class="sline-acc" marker-end="url(#e-arr-acc)"/>
+      <text x="381" y="205" text-anchor="middle" class="sacc">pivot</text>
+      <!-- col 2 -->
+      <rect x="410" y="48" width="320" height="46" rx="9" class="sbox"/>
+      <text x="570" y="70" text-anchor="middle" class="stext">docker / fly restart policy</text>
+      <text x="570" y="87" text-anchor="middle" class="stiny">the dumb outer layer</text>
+      <line x1="570" y1="94" x2="570" y2="116" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="410" y="118" width="320" height="58" rx="9" class="sbox-warn"/>
+      <text x="570" y="141" text-anchor="middle" class="stext">Process supervisor</text>
+      <text x="570" y="160" text-anchor="middle" class="smut">restart budget 5-in-60s · exp backoff 1→16s</text>
+      <line x1="570" y1="176" x2="570" y2="198" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="410" y="200" width="320" height="58" rx="9" class="sbox-ok"/>
+      <text x="570" y="223" text-anchor="middle" class="stext">Warren core — deterministic tick loops</text>
+      <text x="570" y="242" text-anchor="middle" class="sok">NO persistent LLM orchestrator</text>
+      <line x1="570" y1="258" x2="570" y2="280" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="410" y="282" width="320" height="46" rx="9" class="sbox"/>
+      <text x="570" y="304" text-anchor="middle" class="stext">Bounded sandboxed runs</text>
+      <text x="570" y="321" text-anchor="middle" class="stiny">the LLM lives only in here</text>
+      <text x="570" y="358" text-anchor="middle" class="sok">problem dissolved: nothing long-lived to babysit</text>
+      <text x="570" y="380" text-anchor="middle" class="smut">heartbeat = newest event row · 45-min budget</text>
+      <text x="570" y="402" text-anchor="middle" class="smut">kills route through reap — partial work survives</text>
+      <text x="570" y="424" text-anchor="middle" class="smut">no AI anywhere in the supervision loop</text>
+      <!-- col 3 -->
+      <rect x="790" y="48" width="320" height="52" rx="9" class="sbox-warn"/>
+      <text x="950" y="70" text-anchor="middle" class="stext">Boot the Dog — checks the Deacon</text>
+      <text x="950" y="89" text-anchor="middle" class="smut">fresh LLM triage tick, every 5 min</text>
+      <line x1="950" y1="100" x2="950" y2="122" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="790" y="124" width="320" height="46" rx="9" class="sbox"/>
+      <text x="950" y="146" text-anchor="middle" class="stext">Deacon — daemon patrol</text>
+      <text x="950" y="163" text-anchor="middle" class="stiny">system health, feeds workers overnight</text>
+      <line x1="950" y1="170" x2="950" y2="192" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="790" y="194" width="320" height="46" rx="9" class="sbox"/>
+      <text x="950" y="216" text-anchor="middle" class="stext">Witness — watches the workers</text>
+      <text x="950" y="233" text-anchor="middle" class="stiny">independent of the workers' own claims</text>
+      <line x1="950" y1="240" x2="950" y2="262" class="sline" marker-end="url(#e-arr)"/>
+      <rect x="790" y="264" width="320" height="46" rx="9" class="sbox"/>
+      <text x="950" y="286" text-anchor="middle" class="stext">Polecats (workers) + Mayor (LLM lead)</text>
+      <text x="950" y="303" text-anchor="middle" class="stiny">gosleep's architecture at 10× scale</text>
+      <text x="950" y="340" text-anchor="middle" class="swarn">chain of accountability — a watchdog for the watchdog</text>
+      <text x="950" y="362" text-anchor="middle" class="smut">every decision: counter-debounced + cooldown + grace</text>
+      <text x="950" y="384" text-anchor="middle" class="smut">zombie debounce ×3 · startup grace · mass-death check</text>
+      <text x="950" y="406" text-anchor="middle" class="smut">3 heartbeat stores — never trust just one</text>
+      <!-- bottom lesson strip -->
+      <rect x="30" y="444" width="1080" height="42" rx="9" class="sbox-acc"/>
+      <text x="570" y="470" text-anchor="middle" class="stext">Convergent lesson: liveness from durable artifacts · mechanical watchdog, AI at most advisory · every restart under a budget that ends at a human</text>
+    </svg>
+    </div>
+    <figcaption>Fig. 3 — Three answers to "who watches the orchestrator". Overstory piled on tiers and still left the top unguarded; Warren removed the long-lived LLM entirely; Gas Town kept the LLM lead and built a debounced watchdog chain above it. gosleep = Gas Town's problem, so gosleep borrows Gas Town's chain with Warren's discipline.</figcaption>
+  </figure>
+
+  <h3>4.6 Production lessons — the rules we don't have to re-learn at 3 am</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:26%">Lesson</th><th style="width:18%">Who paid for it</th><th>Rule for gosleep</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Startup grace period</strong></td><td>Gas Town (issue #567)</td><td>Never evaluate heartbeat age for the first ~10 min after (re)spawning the orchestrator — a fresh session hasn't written its first heartbeat yet.</td></tr>
+      <tr><td><strong>Zombie debounce</strong></td><td>Gas Town</td><td>"Pane alive but agent process absent" must persist ≥3 consecutive watchdog ticks before acting — handoffs produce transient gaps that look like death.</td></tr>
+      <tr><td><strong>Kill cooldown</strong></td><td>Gas Town</td><td>After any force-kill, a mandatory cooldown (≥5 min) before the next one — no rapid-fire kill loops.</td></tr>
+      <tr><td><strong>Restart budget + backoff</strong></td><td>Warren &amp; Gas Town, independently</td><td>N restarts per window (we pick 3/night); budget exhausted → STOP restarting and page the owner. "Never mask an orchestrator bug with a restart loop."</td></tr>
+      <tr><td><strong>Single-flight ticks</strong></td><td>Warren, Gas Town (flock)</td><td>A watchdog tick that overlaps its predecessor is dropped, not stacked — use a lock file.</td></tr>
+      <tr><td><strong>Per-item error isolation</strong></td><td>Warren</td><td>One bad worker row can't crash the watchdog loop; wrap each check.</td></tr>
+      <tr><td><strong>Budgets fail OPEN, config fails LOUD</strong></td><td>Warren</td><td>A malformed budget value must never silently cancel everything at $0; an invalid watchdog config must refuse to arm at startup, not mis-arm silently.</td></tr>
+      <tr><td><strong>Never trust a single liveness store</strong></td><td>Gas Town, Overstory (ZFC)</td><td>Heartbeat file stale ≠ dead. Cross-check tmux pane liveness + ledger/git mtime before any kill; divergence = investigate, not execute.</td></tr>
+      <tr><td><strong>Route kills through harvest</strong></td><td>Warren ("reap"), Overstory (<code>worker_died</code>)</td><td>When killing a hung agent, still collect its committed work and write a death entry to the ledger — no task silently vanishes.</td></tr>
+      <tr><td><strong>Clean-but-unexpected exit is suspicious</strong></td><td>Warren</td><td>An orchestrator that exits 0 with live workers and no handoff is a failure, not a success.</td></tr>
+      <tr><td><strong>Human gates need timeouts</strong></td><td>Warren (pause budget, 30 min default)</td><td>Every "ask the owner" pause carries a wall-clock budget; on expiry the flow proceeds with a recorded warning — the sleeping owner never wedges the fleet.</td></tr>
+      <tr><td><strong>Generous thresholds beat jumpy ones</strong></td><td>Warren (45-min heartbeat budget)</td><td>Thresholds at the 30–45-min scale, not 5 — false-positive kills of healthy orchestrators cost more than slow detection.</td></tr>
+      <tr><td><strong>Watchdog on by default</strong></td><td>Warren</td><td>The safety net must not depend on anyone remembering to arm it.</td></tr>
+      <tr><td><strong>AI patrol doesn't pay</strong></td><td>Overstory → Warren arc</td><td>Overstory built continuous AI supervision (Tier 2); Warren dropped AI from the loop entirely. AI may only <em>recommend</em> on anomaly; the mechanical layer enforces.</td></tr>
+      <tr><td><strong>Kill only by explicit id</strong></td><td><strong>gosleep itself</strong> (2026-07-07)</td><td>A <code>tmux kill-pane -a</code> once killed a live fleet. The watchdog kills only the exact session/pane id it verified, never "everything else".</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.7 Side-note: the cache economics of checking on things</h3>
+  <div class="callout">
+    <span class="t">Why pulse cadence is a money question, not just a discipline question</span>
+    Anthropic's prompt-cache <span class="term" title="Time-To-Live: how long the cached prompt prefix stays warm; a re-read within the TTL is heavily discounted">TTL</span> silently dropped from 1&nbsp;hour to <strong>5 minutes on 2026-03-06</strong> — loops tuned for the old TTL saw +30–60% effective cost. The emergent community rule: <strong>poll inside the cache window (&lt;5&nbsp;min) or commit to long sleeps (20–30&nbsp;min+) and eat exactly one cache miss — the worst cadence is just past the TTL.</strong> For gosleep's orchestrator self-pulse: &lt;5-min ticks only while actively wedging a stall; 20–30-min ticks while workers grind. The mechanical watchdog (§5) costs zero tokens at any cadence — which is precisely why the <em>mechanical</em> layer, not the LLM, should be the thing that runs every few minutes.<sup><a href="#src16">[16]</a></sup>
+  </div>
+</section>
+
+<!-- ============================ SECTION 5 ============================ -->
+<section id="s5">
+  <span class="snum">Section 5</span>
+  <h2>The supervision design for gosleep</h2>
+  <p class="lede">A direct transplant of Warren's supervisor + watchdog semantics onto our tmux world, hardened with Gas Town's debouncing scars. Five components, zero tokens in the control loop, and a human only at the very end of the escalation chain.<sup><a href="#src12">[12]</a>–<a href="#src14">[14]</a></sup></p>
+
+  <h3>5.1 Design principles</h3>
+  <ul>
+    <li><strong>Liveness is judged from durable artifacts</strong> — heartbeat-file age, ledger mtime, tmux pane liveness, git motion — never from pane-content scraping or the orchestrator's in-memory belief (Warren's rule; Overstory's ZFC).</li>
+    <li><strong>The watchdog is mechanical.</strong> No AI in the enforcement loop — the Overstory→Warren arc showed continuous AI supervision doesn't pay. AI appears at most as an advisory triage step, and it can only <em>recommend</em>.</li>
+    <li><strong>Recovery = re-attach + reconcile, never blind respawn.</strong> A fresh orchestrator is seeded from the on-disk ledger (STATE + newest dated handoff) and re-attaches to live workers — Warren's <code>recover</code>/re-wake pattern, which our skill already encodes as the cold-start protocol.</li>
+    <li><strong>Every restart sits under a budget that ends at a human.</strong> "Never mask an orchestrator bug with a restart loop."</li>
+    <li><strong>Every decision is debounced, cooled down, and grace-perioded</strong> — a one-shot "stale → kill" script will fire on false positives its first night (Gas Town, empirically).</li>
+  </ul>
+
+  <h3>5.2 The architecture</h3>
+  <figure class="figure">
+    <div class="scrollx">
+    <svg viewBox="0 0 1120 630" role="img" aria-label="Recommended gosleep supervision architecture">
+      <defs>
+        <marker id="a-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--muted)"/>
+        </marker>
+        <marker id="a-arr-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--accent)"/>
+        </marker>
+        <marker id="a-arr-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--bad)"/>
+        </marker>
+      </defs>
+      <!-- lanes -->
+      <rect x="20" y="18" width="1080" height="90" rx="10" style="fill:var(--panel2);opacity:.45"/>
+      <text x="34" y="40" class="stiny" style="font-weight:800;letter-spacing:.08em">OWNER</text>
+      <rect x="20" y="120" width="1080" height="118" rx="10" style="fill:var(--panel2);opacity:.45"/>
+      <text x="34" y="142" class="stiny" style="font-weight:800;letter-spacing:.08em">MECHANICAL LAYER — ZERO TOKENS</text>
+      <rect x="20" y="284" width="1080" height="94" rx="10" style="fill:var(--panel2);opacity:.45"/>
+      <text x="34" y="306" class="stiny" style="font-weight:800;letter-spacing:.08em">DURABLE STATE — DISK</text>
+      <rect x="20" y="404" width="1080" height="206" rx="10" style="fill:var(--panel2);opacity:.45"/>
+      <text x="34" y="426" class="stiny" style="font-weight:800;letter-spacing:.08em">LLM LAYER — SUBSCRIPTION QUOTA</text>
+      <!-- owner -->
+      <rect x="820" y="34" width="262" height="58" rx="10" class="sbox-bad"/>
+      <text x="951" y="58" text-anchor="middle" class="sbold">Owner</text>
+      <text x="951" y="77" text-anchor="middle" class="stiny">push notification · morning digest</text>
+      <!-- launchd -->
+      <rect x="46" y="152" width="216" height="68" rx="10" class="sbox"/>
+      <text x="154" y="176" text-anchor="middle" class="sbold">launchd LaunchAgent</text>
+      <text x="154" y="194" text-anchor="middle" class="stiny">fires every ~3 min</text>
+      <text x="154" y="209" text-anchor="middle" class="stiny">survives reboot &amp; sleep-wake</text>
+      <line x1="262" y1="186" x2="318" y2="186" class="sline" marker-end="url(#a-arr)"/>
+      <!-- watchdog -->
+      <rect x="320" y="148" width="330" height="80" rx="10" class="sbox-acc"/>
+      <text x="485" y="172" text-anchor="middle" class="sbold">watchdog.sh — plain bash</text>
+      <text x="485" y="191" text-anchor="middle" class="smut">pane alive? · heartbeat age? · context% ceiling?</text>
+      <text x="485" y="209" text-anchor="middle" class="smut">single-flight lock · acts only on deltas</text>
+      <!-- budget -->
+      <line x1="650" y1="186" x2="706" y2="186" class="sline" marker-end="url(#a-arr)"/>
+      <text x="678" y="176" text-anchor="middle" class="stiny">consults</text>
+      <rect x="708" y="152" width="230" height="68" rx="10" class="sbox-warn"/>
+      <text x="823" y="176" text-anchor="middle" class="sbold">Restart budget</text>
+      <text x="823" y="194" text-anchor="middle" class="stiny">3 respawns/night · 15-min cooldown</text>
+      <text x="823" y="209" text-anchor="middle" class="stiny">10-min startup grace · debounce ×2</text>
+      <line x1="900" y1="152" x2="948" y2="94" class="sline-bad" marker-end="url(#a-arr-bad)"/>
+      <text x="1000" y="122" text-anchor="middle" class="sbad">budget exhausted →</text>
+      <text x="1000" y="139" text-anchor="middle" class="sbad">page the owner, stop respawning</text>
+      <!-- heartbeat file -->
+      <rect x="320" y="308" width="330" height="58" rx="10" class="sbox"/>
+      <text x="485" y="331" text-anchor="middle" class="sbold">.orchestrator-heartbeat</text>
+      <text x="485" y="350" text-anchor="middle" class="stiny">{ts, context%, fleet summary} appended each pulse</text>
+      <!-- ledger -->
+      <rect x="700" y="308" width="330" height="58" rx="10" class="sbox"/>
+      <text x="865" y="331" text-anchor="middle" class="sbold">ORCHESTRATION-STATE.md + dated handoffs</text>
+      <text x="865" y="350" text-anchor="middle" class="stiny">the cold-start seed · atomic writes</text>
+      <!-- watchdog reads heartbeat -->
+      <line x1="400" y1="228" x2="400" y2="306" class="sline" marker-end="url(#a-arr)"/>
+      <text x="398" y="266" text-anchor="end" class="stiny">reads age + context%</text>
+      <!-- probe/respawn polyline -->
+      <path d="M 320 214 L 292 214 L 292 468 L 316 468" class="sline-acc" fill="none" marker-end="url(#a-arr-acc)"/>
+      <text x="152" y="252" class="stiny">probe: pane alive? → nudge (send-keys) →</text>
+      <text x="152" y="268" class="stiny">kill by EXPLICIT id → respawn cold-start</text>
+      <!-- orchestrator -->
+      <rect x="320" y="436" width="330" height="80" rx="10" class="sbox-acc"/>
+      <text x="485" y="460" text-anchor="middle" class="sbold">Orchestrator — Agent Teams lead (tmux)</text>
+      <text x="485" y="479" text-anchor="middle" class="smut">pulse: write heartbeat FIRST → probe fleet</text>
+      <text x="485" y="497" text-anchor="middle" class="smut">→ act on deltas → re-arm wake-up</text>
+      <!-- orchestrator writes heartbeat -->
+      <line x1="560" y1="436" x2="560" y2="368" class="sline" marker-end="url(#a-arr)"/>
+      <text x="566" y="404" class="stiny">writes first, every pulse</text>
+      <!-- ledger seeds cold start -->
+      <line x1="820" y1="366" x2="655" y2="458" class="sline" marker-end="url(#a-arr)"/>
+      <text x="810" y="410" text-anchor="middle" class="stiny">seeds cold-start: re-attach to live workers,</text>
+      <text x="810" y="426" text-anchor="middle" class="stiny">never blind-respawn them</text>
+      <!-- self pulse -->
+      <path d="M 650 505 C 706 505, 706 540, 650 528" class="sline-acc" fill="none" marker-end="url(#a-arr-acc)"/>
+      <text x="726" y="528" class="sacc">self-pulse (ScheduleWakeup)</text>
+      <text x="726" y="546" class="stiny">never end a turn unarmed · cache-aware cadence</text>
+      <!-- workers -->
+      <line x1="420" y1="516" x2="360" y2="556" class="sline" marker-end="url(#a-arr)"/>
+      <line x1="485" y1="516" x2="485" y2="556" class="sline" marker-end="url(#a-arr)"/>
+      <line x1="550" y1="516" x2="610" y2="556" class="sline" marker-end="url(#a-arr)"/>
+      <rect x="290" y="558" width="140" height="42" rx="9" class="sbox"/>
+      <text x="360" y="584" text-anchor="middle" class="stext">Worker</text>
+      <rect x="446" y="558" width="140" height="42" rx="9" class="sbox"/>
+      <text x="516" y="584" text-anchor="middle" class="stext">Reviewer</text>
+      <rect x="602" y="558" width="140" height="42" rx="9" class="sbox"/>
+      <text x="672" y="584" text-anchor="middle" class="stext">Verifier</text>
+    </svg>
+    </div>
+    <figcaption>Fig. 4 — Target design. The only thing that runs every few minutes is a token-free bash script under launchd. The orchestrator's job in this scheme is just two habits: write the heartbeat as the <em>first</em> act of every pulse, and never end a turn without an armed wake-up. Everything else is mechanical.</figcaption>
+  </figure>
+
+  <h3>5.3 The five components</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:22%">Component</th><th>What it is</th><th style="width:22%">Cost</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1 · Heartbeat file</strong></td><td>A fixed path (e.g. <code>docs/handoff/.orchestrator-heartbeat</code>). Each orchestrator pulse <em>appends</em> one line: <code>{ts, context%, open_workers, fleet summary}</code>. Writing it is the <strong>FIRST act of every pulse</strong> — so a wedge mid-pulse still leaves an honest timestamp.</td><td>Zero — one file append</td></tr>
+      <tr><td><strong>2 · Self-pulse</strong></td><td>The owner's existing mandate, mechanized: the orchestrator never ends a turn with a live fleet without an armed wake-up (ScheduleWakeup). Cadence per §4.7: &lt;5 min while actively wedging a stall (cache warm), 20–30 min while workers grind. This is the heartbeat <em>generator</em> — necessary, but it cannot supervise itself.</td><td>Included in normal orchestrator turns</td></tr>
+      <tr><td><strong>3 · Mechanical watchdog</strong></td><td>A launchd LaunchAgent firing a dumb bash script every ~3 min (launchd &gt; cron on macOS: survives reboots, handles wake-from-sleep). Checks three durable signals; acts per the decision table below. Kills <strong>only by explicit, just-verified session/pane id</strong> — never <code>-a</code> (the 2026-07-07 lesson).</td><td>Zero tokens, ~0 CPU</td></tr>
+      <tr><td><strong>4 · Restart budget + escalation</strong></td><td>A counter file: max 3 respawns per night, 15-min cooldown between kills, 10-min startup grace after any respawn, 2-tick debounce on staleness. Budget exhausted → stop respawning, <strong>page the owner</strong> (push notification / email) and leave the ledger as the morning briefing.</td><td>Zero</td></tr>
+      <tr><td><strong>5 · Optional AI triage (Tier 1)</strong></td><td>Only when the mechanical layer sees an anomaly it can't classify (e.g. heartbeat stale but pane alive and git moving): one-shot <code>claude -p</code>, 30-s timeout, given the last heartbeat + ledger tail + <code>tmux capture-pane</code>; verdict <code>nudge | restart | extend | escalate</code>; <strong>fail-safe default <code>extend</code></strong> when the call fails (Overstory's rule). AI recommends; the mechanical layer enforces budgets.</td><td>Programmatic credits, only on anomaly — this is a perfect §3-approach-B glue job</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.4 What it detects → what it does</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:10%">Failure</th><th style="width:30%">Detected by</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td><strong>D1</strong> death</td><td>tmux session/pane for the orchestrator absent</td><td>Respawn a fresh orchestrator in tmux with the cold-start prompt from <code>orchestrating-delivery-agents</code> — read STATE + newest handoff, <strong>re-attach to live workers, never blind-respawn them</strong>. Counts against the restart budget.</td></tr>
+      <tr><td><strong>D2</strong> hang</td><td>Heartbeat file age &gt; threshold (30–45 min, generous by design) while <code>open_workers &gt; 0</code>; cross-checked against pane liveness + ledger/git mtime (never a single store)</td><td>Tick 1: ONE <code>send-keys</code> nudge. Still stale next tick (debounce ×2): kill by explicit id → respawn cold-start, under budget + cooldown.</td></tr>
+      <tr><td><strong>D3</strong> context exhaustion</td><td>Latest heartbeat line reports <code>context% ≥ ceiling</code> (e.g. 80%)</td><td><code>send-keys</code>: "write the dated handoff now"; after it lands (or a bounded wait), respawn a fresh orchestrator seeded from the handoff — Warren's re-wake: <strong>new session from durable transcript, never "resume" a dying context</strong>.</td></tr>
+      <tr><td><strong>D4</strong> silent quiesce</td><td>Heartbeat stale + pane idle + <code>open_workers &gt; 0</code> (same staleness path as D2)</td><td>Same nudge → respawn path. The self-pulse rule makes this rare; the watchdog makes it non-fatal.</td></tr>
+      <tr><td><strong>D5</strong> crash loop</td><td>Restart-budget counter reaches its cap within the window</td><td><strong>STOP respawning.</strong> Page the owner. A crash-looping orchestrator is a bug to fix awake, not a process to defibrillate all night.</td></tr>
+      <tr><td>Ambiguous anomaly</td><td>Signals disagree (heartbeat stale, but pane alive and git moving)</td><td>Optional Tier-1 AI triage (component 5); its verdict is advisory, budget still enforced mechanically. Without triage: treat as healthy — divergence is "heartbeat-write divergence, not a stuck agent" (Gas Town).</td></tr>
+      <tr><td>All healthy</td><td>Heartbeat fresh, pane alive, context under ceiling</td><td><strong>Do nothing, log nothing.</strong> A quiet watchdog is the success case.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.5 The whole watchdog, as pseudocode</h3>
+  <pre><code># fired by launchd every ~3 min; flock guarantees single-flight
+[ -f /tmp/gosleep-watchdog.lock ] &amp;&amp; exit 0            # single-flight
+now=$(date +%s); hb=docs/handoff/.orchestrator-heartbeat
+
+grace_active   &amp;&amp; exit 0        # 10 min after any respawn: hands off (Gas Town #567)
+budget_spent   &amp;&amp; notify_owner "watchdog: restart budget exhausted" &amp;&amp; exit 0
+
+if ! tmux has-session -t "$ORCH_SESSION"; then          # D1 — death
+    respawn_orchestrator_cold_start                     # explicit session name; seeded from ledger
+    bump_budget; exit 0
+fi
+
+age=$(( now - $(stat -f %m "$hb") ))
+ctx=$(tail -1 "$hb" | parse_context_pct)
+
+if (( ctx &gt;= CTX_CEILING )); then                       # D3 — context exhaustion
+    tmux send-keys -t "$ORCH_PANE" "write the dated handoff now" Enter
+    mark_pending_rewake; exit 0
+fi
+
+if (( age &gt; STALE_SECS )) &amp;&amp; open_workers_gt_zero; then # D2 / D4 — hang or quiesce
+    cross_check_pane_and_git || exit 0                  # never trust a single store
+    if first_stale_tick; then
+        tmux send-keys -t "$ORCH_PANE" "PULSE?" Enter   # one nudge
+    elif cooldown_elapsed; then                         # debounce ×2 + 15-min kill cooldown
+        tmux kill-pane -t "$ORCH_PANE_ID_EXACT"         # explicit id ONLY — never -a
+        respawn_orchestrator_cold_start; bump_budget    # D5 guarded by the budget above
+    fi
+fi
+# healthy → exit silently. A quiet watchdog is the success case.</code></pre>
+  <p class="small">Illustrative, not final code — thresholds (<code>STALE_SECS</code> 30–45 min, <code>CTX_CEILING</code> ~80%, budget 3/night) are the research-backed starting points; invalid config must refuse to arm at install time (fail loud), and the respawn prompt must be idempotent (reconcile from ledger, never double-dispatch).</p>
+
+  <h3>5.6 Known limits</h3>
+  <ul>
+    <li><strong>macOS sleep pauses everything</strong> — watchdog and fleet alike. Run on a box that stays awake, or accept that sleep pauses the whole system coherently (launchd at least catches up on wake).</li>
+    <li><strong>A heartbeat can lie by omission</strong> if the orchestrator wedges mid-pulse — mitigated by making the heartbeat write the first act of the pulse.</li>
+    <li><strong>Paired orchestrators (active/standby) were considered and rejected:</strong> split-brain double-dispatch risk, a second LLM to babysit, and this machine's ~3-pane teammate cap make it strictly worse than the mechanical watchdog. Neither surveyed author ever shipped it; Overstory deprecated its extra tier.<sup><a href="#src13">[13]</a>,<a href="#src14">[14]</a></sup></li>
+    <li><strong>The night-mode endgame (worth a later experiment):</strong> Warren-style inversion — no persistent orchestrator at all during the unattended window; a launchd tick runs a short-lived <code>claude -p</code> orchestrator turn (reconcile ledger → harvest → dispatch → exit). Dissolves D1–D5 by construction, at the cost of the live steering pane and per-tick ledger re-reads. Interactive by day, tick-mode by night; compare throughput and failure rates before committing.</li>
+  </ul>
+
+  <h3>5.7 Rollout order</h3>
+  <ol>
+    <li><strong>Phase 1 (now, zero infra):</strong> heartbeat-file protocol + self-pulse cadence written into the orchestrating skill. The heartbeat is useful from day one even before anything reads it — it's the owner's "is it alive?" glance.</li>
+    <li><strong>Phase 2 (the actual fix):</strong> launchd watchdog + restart budget + owner notification. This is the single change that removes "orchestrator died at 3 am, fleet idled until morning".</li>
+    <li><strong>Phase 3 (refinement):</strong> Tier-1 AI triage on anomaly (<code>claude -p</code>, bounded, fail-safe <code>extend</code>).</li>
+    <li><strong>Phase 4 (experiments):</strong> a cloud Routine as the nightly kick-off/report trigger; the tick-mode night orchestrator pilot.</li>
+  </ol>
+</section>
+
+<!-- ============================ SECTION 6 ============================ -->
+<section id="s6">
+  <span class="snum">Section 6</span>
+  <h2>Final recommendations, ranked</h2>
+  <p class="lede">Ordered by (value for the sleeping owner ÷ effort). Items 1–4 are the minimum viable "owner goes to sleep" package.</p>
+
+  <ol class="ranked">
+    <li><span class="rt">Keep tmux + Agent Teams as the engine; stay subscription-first on official surfaces <span class="efchip">effort: none</span><span class="efchip">risk: low</span></span>
+      <p>It rides the most generous quota, satisfies the supervision requirement, and sits on the one surface Anthropic has consistently protected while cutting everything else off (§2, §3). <strong>Do not migrate to SDK/API or any third-party harness.</strong></p></li>
+    <li><span class="rt">Build the mechanical watchdog: heartbeat file + launchd script + restart budget + owner escalation <span class="efchip">effort: med</span><span class="efchip">value: highest</span></span>
+      <p>The §5 design verbatim. Zero tokens, no AI in the loop, kills only by explicit id, all decisions debounced + cooled down + grace-perioded. This closes D1–D5 — the entire "who watches the orchestrator" question.</p></li>
+    <li><span class="rt">Mechanize the self-pulse with cache-aware pacing <span class="efchip">effort: low</span></span>
+      <p>Never end a turn with a live fleet and no armed wake-up; write the heartbeat as the first act of every pulse; cadence &lt;5 min only while actively wedging a stall, 20–30 min while workers grind (the 5-minute cache TTL rule, §4.7). Put it in the skill text, not just in memory.</p></li>
+    <li><span class="rt">Use <code>claude -p</code> for bounded glue only — with telemetry on every call <span class="efchip">effort: low</span></span>
+      <p>Nightly reports, CI checks, watchdog triage: <code>--output-format json</code> + <code>--max-budget-usd</code> + strict <code>--allowedTools</code>; log <code>total_cost_usd</code> + session id into the ledger; alert at N% of the monthly programmatic pool. Pin the CLI version against the coming <code>--bare</code> default (bare mode kills subscription OAuth). Re-verify the pool's $ figures against the primary Help-Center source before building billing logic (§2 caveat).</p></li>
+    <li><span class="rt">Encode policy guardrails so future agents can't wander into banned territory <span class="efchip">effort: low</span></span>
+      <p>A written rules file: subscription OAuth never leaves official surfaces (Agent SDK included); no third-party harnesses, ever; <code>unset ANTHROPIC_API_KEY</code> sanity check in <code>install.sh</code>/doctor so a stray key can't silently hijack billing; API-key escape hatch exists but stays OFF by default.</p></li>
+    <li><span class="rt">Port ralph's unattended-loop hardening into the orchestrating skill <span class="efchip">effort: med</span></span>
+      <p>Dual-condition exit gate (heuristics + explicit <code>EXIT_SIGNAL</code>), circuit breaker (no-progress / same-error / permission-denial thresholds with cooldown + probe), <strong>quota auto-wait</strong> (degrade to wait-for-window instead of dying), question-detection with corrective re-prompt, control-file protection.<sup><a href="#src10">[10]</a>,<a href="#src17">[17]</a></sup></p></li>
+    <li><span class="rt">Adopt the fleet-reliability patterns from Gas Town / Warren <span class="efchip">effort: med</span></span>
+      <p>Zombie-session detection (tmux alive ≠ Claude alive) in the pulse check; harvest-through-reap on any kill (collect committed work + write a <code>worker_died</code> ledger entry); forward-only worker state machine (<code>completed</code> is sticky); failure memory — every watchdog intervention appends a structured record for retros and threshold tuning.</p></li>
+    <li><span class="rt">Night mode + morning digest + question buffering <span class="efchip">effort: med</span></span>
+      <p>A declared unattended window: reversible low-stakes questions take the default and get logged; material ones pause <em>that task</em> under a warren-style timeout budget; denylist items block as today. At window end: <code>MORNING-DIGEST-&lt;date&gt;.md</code> — work landed, verdicts, parked items, deduped questions, budget spent. The owner wakes to a narrative, not 40 unlabeled branches.</p></li>
+    <li><span class="rt">Prototype one cloud Routine as the overnight trigger <span class="efchip">effort: low-med</span><span class="efchip">preview</span></span>
+      <p>Subscription-native, autonomous, cron/GitHub-triggered: "wake the fleet / run the queue / file a report" — instead of keeping a laptop-bound orchestrator warm all night. Wrap in a thin skill; it's a research preview and may shift. Evaluate <code>/loop</code> + scheduled tasks as the local fallback.<sup><a href="#src3">[3]</a></sup></p></li>
+    <li><span class="rt">Explicitly do NOT adopt <span class="efchip">standing policy</span></span>
+      <p>Ruflo/claude-flow and every API-only or banned-on-subscription harness; TUI-driving hacks to spend interactive quota programmatically ("adversarial to the vendor's billing intent" — ralph ADR); paired-orchestrator standby schemes; continuous AI patrol agents. Each was evaluated and rejected on evidence, not taste (§3, §4, §5.6).</p></li>
+  </ol>
+</section>
+
+<!-- ============================ SOURCES ============================ -->
+<section id="sources">
+  <span class="snum">Appendix</span>
+  <h2>Sources</h2>
+  <p class="small">Primary research lives in this repo: <code>docs/research/2026-07-07-orchestration/03-headless-subscription-landscape.md</code> (headless mode, policy timeline, approach matrix), <code>02-warren-overstory.md</code> (supervision stacks), <code>04-loop-engineering.md</code> (Gas Town watchdog implementation, cache economics). Current-state reference: <code>skill/orchestrating-delivery-agents/SKILL.md</code>. External sources as cited:</p>
+  <ol class="srcs">
+    <li id="src1"><strong>Official Claude Code docs — headless mode</strong>: code.claude.com/docs/en/headless.md (fetched 2026-07-07; docs updated 2026-07-06). Flags, auth precedence, <code>--bare</code> OAuth caveat.</li>
+    <li id="src2"><strong>Agent SDK overview</strong>: code.claude.com/docs/en/agent-sdk/overview.md — SDK/CLI identity; the verbatim third-party-auth prohibition.</li>
+    <li id="src3"><strong>Routines</strong>: code.claude.com/docs/en/routines.md — cloud scheduled agents, subscription-login requirement.</li>
+    <li id="src4"><strong>Scheduled tasks / <code>/loop</code></strong>: code.claude.com/docs/en/scheduled-tasks.md.</li>
+    <li id="src5"><strong>Weekly limits (2025-07-28)</strong>: news.ycombinator.com/item?id=44713757 and the Max-account email thread id=44713837; TechCrunch coverage cited therein.</li>
+    <li id="src6"><strong>OAuth server-side blocks (2026-01-09)</strong>: natural20.com coverage of the OpenClaw OAuth ban; ridakaddir.com "Did Anthropic kill OpenCode…".</li>
+    <li id="src7"><strong>Consumer ToS change (2026-02-19)</strong>: winbuzzer.com 2026-02-19; mlq.ai news; news.ycombinator.com/item?id=46549823.</li>
+    <li id="src8"><strong>Third-party cutoff + Managed Agents (2026-04-04/08)</strong>: finance.biggo.com 2026-04-05; marketingagent.blog 2026-04-04; thenextweb.com on OpenClaw; Ewan Mak (Medium) on Managed Agents timing. Reconstructed from press — no canonical Anthropic page found.</li>
+    <li id="src9"><strong>Programmatic credit pool (2026-06-15)</strong> <span class="badge b-med">FACT·MED</span>: ccforeveryone.com/guides/claude-code-limits-and-pricing (June 2026). Primary Help-Center notice not directly retrieved — re-verify the $20/$100/$200 figures before building on them.</li>
+    <li id="src10"><strong>ralph-claude-code ADR 0001 (2026-06-15)</strong>: github.com/frankbria/ralph-claude-code /docs/adr/ — headless-billing pivot; rejection of TUI-driving workarounds; loop-hardening machinery (v0.11.5).</li>
+    <li id="src11"><strong>Orchestrator landscape comparison</strong> <span class="badge b-comm">COMMUNITY</span>: claudefa.st/blog/tools/orchestrators/multi-agent-orchestrators — the "Agent Teams only fully-supported option" claim; single secondary source, may overstate.</li>
+    <li id="src12"><strong>Gas Town source</strong> (Steve Yegge; local clone <code>.research-cache/gastown</code>): internal/boot/boot.go, internal/deacon/*.go, internal/daemon/daemon.go — Boot-the-Dog chain, stuck counters, startup grace (issue #567), zombie debounce, RestartTracker, heartbeat stores; docs/concepts/heartbeats.md.</li>
+    <li id="src13"><strong>Warren source</strong> (jayminwest; local clone <code>.research-cache/warren</code>, HEAD c3508c5): src/supervisor/main.ts (restart budget, never-restart-warren rule), src/runs/watchdog.ts (45-min event heartbeat, reap routing), src/runs/cost-cap.ts (fail-open budgets), src/runs/pause.ts (pause budgets), src/runs/stream/recover.ts (re-attach recovery).</li>
+    <li id="src14"><strong>Overstory source</strong> (archived 2026-05-28; local clone <code>.research-cache/overstory</code>): src/watchdog/daemon.ts (tiered escalation, worker_died, decision_gate), src/watchdog/triage.ts (30-s AI triage, fail-safe extend), src/watchdog/health.ts (ZFC signal priority, forward-only state machine), src/commands/supervisor.ts (Tier-3 deprecation); STEELMAN.md (swarm-economics self-critique).</li>
+    <li id="src15"><strong>claude-code-action</strong>: github.com/anthropics/claude-code-action action.yml — <code>claude_code_oauth_token</code> as a first-class input; "Pro and Max users can generate this by running <code>claude setup-token</code>".</li>
+    <li id="src16"><strong>Cache-TTL change (2026-03-06) + pacing rule</strong>: community reports collated in 04-loop-engineering.md §3.5; OpenClaw heartbeat docs (docs.openclaw.ai/gateway/heartbeat) for the heartbeat-vs-cron split.</li>
+    <li id="src17"><strong>Loop-engineering canon</strong>: ghuntley.com/ralph (2025-07-14); Anthropic engineering, "Effective harnesses for long-running agents" (2025-11-26); Addy Osmani, "Long-running Agents" (2026-04-28).</li>
+  </ol>
+</section>
+
+<footer>
+  <p>gosleep · GSL-41 orchestration research · report «Headless Claude &amp; Orchestrator Supervision» · 2026-07-08 · worker: writer-headless.<br>
+  EN version (primary). <a href="RU/index.html">Русская версия</a>. Self-contained HTML — no external requests, light/dark via <code>prefers-color-scheme</code>.</p>
+</footer>
+
+</div>
+</body>
+</html>
