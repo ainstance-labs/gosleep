@@ -63,3 +63,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 ## Epic GSL-41 — Orchestration deep-research → reports + PRD
 
 - [GSL-42 — Commit orchestration ledger (handoff 12 + STATE) + branch housekeeping](GSL-42-phase-gsl41-cycle1-ledger-housekeeping.md)
+- [GSL-43 — Deep-dive findings pack — autosk, warren/overstory, headless, loops, lab/UI](GSL-43-phase-gsl41-cycle1-research-findings-pack.md)
