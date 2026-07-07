@@ -1,0 +1,827 @@
+<title>Loop Engineering — разбор с нуля и план внедрения</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ============================ THEME TOKENS ============================ */
+:root{
+  --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef1f7; --surface-3:#e6eaf2;
+  --border:#dde2ec; --border-strong:#c6cdda;
+  --text:#171a21; --text-muted:#5b6472; --text-faint:#8a93a3;
+  --accent:#4f46e5; --accent-soft:#eae8fd;
+  --accent2:#0e7490; --accent2-soft:#d7f0f6;
+  --accent3:#b45309; --accent3-soft:#fbeecf;
+  --good:#047857; --good-soft:#d5f0e3;
+  --warn:#b45309; --warn-soft:#fbeecf;
+  --bad:#c02626; --bad-soft:#fbe0e0;
+  --shadow:0 1px 2px rgba(17,20,30,.05), 0 6px 20px rgba(17,20,30,.06);
+  --shadow-lg:0 8px 40px rgba(17,20,30,.12);
+  --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Menlo",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0c0f14; --surface:#141922; --surface-2:#1a212c; --surface-3:#222b38;
+    --border:#28313f; --border-strong:#3a4656;
+    --text:#e7ebf2; --text-muted:#9aa5b5; --text-faint:#6b7686;
+    --accent:#8b93f8; --accent-soft:#20223f;
+    --accent2:#38bdd8; --accent2-soft:#122a31;
+    --accent3:#e6a23c; --accent3-soft:#2e2413;
+    --good:#34d399; --good-soft:#10281f;
+    --warn:#e6a23c; --warn-soft:#2e2413;
+    --bad:#f87171; --bad-soft:#2f1717;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35);
+    --shadow-lg:0 10px 44px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef1f7; --surface-3:#e6eaf2;
+  --border:#dde2ec; --border-strong:#c6cdda;
+  --text:#171a21; --text-muted:#5b6472; --text-faint:#8a93a3;
+  --accent:#4f46e5; --accent-soft:#eae8fd;
+  --accent2:#0e7490; --accent2-soft:#d7f0f6;
+  --accent3:#b45309; --accent3-soft:#fbeecf;
+  --good:#047857; --good-soft:#d5f0e3;
+  --warn:#b45309; --warn-soft:#fbeecf;
+  --bad:#c02626; --bad-soft:#fbe0e0;
+  --shadow:0 1px 2px rgba(17,20,30,.05), 0 6px 20px rgba(17,20,30,.06);
+  --shadow-lg:0 8px 40px rgba(17,20,30,.12);
+}
+:root[data-theme="dark"]{
+  --bg:#0c0f14; --surface:#141922; --surface-2:#1a212c; --surface-3:#222b38;
+  --border:#28313f; --border-strong:#3a4656;
+  --text:#e7ebf2; --text-muted:#9aa5b5; --text-faint:#6b7686;
+  --accent:#8b93f8; --accent-soft:#20223f;
+  --accent2:#38bdd8; --accent2-soft:#122a31;
+  --accent3:#e6a23c; --accent3-soft:#2e2413;
+  --good:#34d399; --good-soft:#10281f;
+  --warn:#e6a23c; --warn-soft:#2e2413;
+  --bad:#f87171; --bad-soft:#2f1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35);
+  --shadow-lg:0 10px 44px rgba(0,0,0,.5);
+}
+
+/* ============================ BASE ============================ */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans); line-height:1.62;
+  font-size:clamp(15px,.4vw + 14px,16.5px);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 clamp(16px,4vw,40px)}
+h1,h2,h3,h4{line-height:1.24; letter-spacing:-.01em; margin:0}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font-family:var(--mono); font-size:.86em}
+code{background:var(--surface-2); border:1px solid var(--border); border-radius:5px; padding:.08em .38em}
+sup a{font-size:.7em; padding:0 1px; color:var(--accent2); font-weight:700}
+mark{background:var(--accent3-soft); color:var(--text); padding:0 .22em; border-radius:3px}
+
+/* ============================ TOP NAV ============================ */
+.topbar{
+  position:sticky; top:0; z-index:50; backdrop-filter:blur(12px);
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  border-bottom:1px solid var(--border);
+}
+.topbar-inner{display:flex; align-items:center; gap:14px; padding:9px clamp(16px,4vw,40px); max-width:1180px; margin:0 auto}
+.brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:-.02em; font-size:.98rem; white-space:nowrap}
+.brand .dot{width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 12px var(--accent)}
+.navlinks{display:flex; gap:2px; margin-left:auto; overflow-x:auto; scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{color:var(--text-muted); font-size:.82rem; font-weight:600; padding:6px 10px; border-radius:7px; white-space:nowrap}
+.navlinks a:hover{color:var(--text); background:var(--surface-2); text-decoration:none}
+.langbtn,.themebtn{
+  border:1px solid var(--border-strong); background:var(--surface); color:var(--text);
+  border-radius:8px; padding:6px 11px; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap;
+  font-family:var(--sans);
+}
+.langbtn:hover,.themebtn:hover{background:var(--surface-2)}
+.themebtn{padding:6px 9px}
+
+/* ============================ HERO ============================ */
+.hero{padding:clamp(38px,7vw,74px) 0 clamp(26px,4vw,40px); position:relative; overflow:hidden}
+.hero::before{
+  content:""; position:absolute; inset:0; z-index:-1; opacity:.5;
+  background:
+    radial-gradient(60% 90% at 82% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(50% 80% at 8% 0%, var(--accent2-soft), transparent 55%);
+}
+.eyebrow{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:.74rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent2); font-weight:700; margin-bottom:16px}
+.eyebrow .pip{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 10px var(--accent2)}
+.hero h1{font-size:clamp(1.9rem,5vw,3.4rem); font-weight:850; letter-spacing:-.025em; max-width:18ch}
+.hero .lede{font-size:clamp(1.02rem,1.4vw,1.28rem); color:var(--text-muted); max-width:62ch; margin-top:18px}
+.hero .lede strong{color:var(--text)}
+.metabar{display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:26px}
+.metatag{display:inline-flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 13px; font-size:.8rem; color:var(--text-muted); box-shadow:var(--shadow)}
+.metatag b{color:var(--text); font-weight:700}
+
+/* ============================ SECTION SCAFFOLD ============================ */
+section{padding:clamp(30px,5vw,58px) 0; scroll-margin-top:64px; border-top:1px solid var(--border)}
+.sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px; flex-wrap:wrap}
+.sec-num{font-family:var(--mono); font-size:.86rem; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:7px; padding:3px 9px}
+.sec-head h2{font-size:clamp(1.45rem,3vw,2.05rem); font-weight:820; letter-spacing:-.015em}
+.sec-sub{color:var(--text-muted); font-size:1.02rem; max-width:78ch; margin:6px 0 26px}
+.lead-p{max-width:78ch}
+.lead-p + .lead-p{margin-top:14px}
+
+/* ============================ CARDS ============================ */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:15px; padding:22px 22px; box-shadow:var(--shadow)}
+.grid{display:grid; gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:880px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* stat tiles */
+.stat{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px; box-shadow:var(--shadow); position:relative; overflow:hidden}
+.stat::after{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent)}
+.stat.a2::after{background:var(--accent2)} .stat.a3::after{background:var(--accent3)} .stat.gd::after{background:var(--good)} .stat.bd::after{background:var(--bad)}
+.stat .k{font-size:clamp(1.6rem,3.4vw,2.4rem); font-weight:840; letter-spacing:-.03em; line-height:1}
+.stat .l{color:var(--text-muted); font-size:.86rem; margin-top:8px}
+.stat .l b{color:var(--text)}
+
+/* callouts */
+.callout{border-left:4px solid var(--accent); background:var(--surface-2); border-radius:0 12px 12px 0; padding:15px 18px; margin:18px 0}
+.callout.warn{border-color:var(--warn); background:var(--warn-soft)}
+.callout.good{border-color:var(--good); background:var(--good-soft)}
+.callout.bad{border-color:var(--bad); background:var(--bad-soft)}
+.callout .ct{font-weight:800; font-size:.82rem; letter-spacing:.02em; text-transform:uppercase; display:block; margin-bottom:5px; color:var(--text-muted)}
+
+/* ============================ TIMELINE (SVG) ============================ */
+.tl-scroll{overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch}
+.tl-scroll svg{display:block; min-width:940px}
+.tl-cap{color:var(--text-faint); font-size:.8rem; margin-top:6px}
+.phase-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px}
+@media(max-width:880px){.phase-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.phase-row{grid-template-columns:1fr}}
+.phase{background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:16px; box-shadow:var(--shadow)}
+.phase .yr{font-family:var(--mono); font-size:.76rem; font-weight:700; color:var(--accent2)}
+.phase h4{font-size:1rem; margin:5px 0 7px}
+.phase p{font-size:.88rem; color:var(--text-muted); margin:0}
+
+/* ============================ PATTERN CATALOG ============================ */
+.pat{display:flex; flex-direction:column; gap:0; background:var(--surface); border:1px solid var(--border); border-radius:15px; box-shadow:var(--shadow); overflow:hidden}
+.pat-head{display:flex; align-items:flex-start; gap:13px; padding:18px 20px; background:linear-gradient(180deg,var(--surface-2),transparent)}
+.pat-ix{flex:none; width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-family:var(--mono); font-weight:800; font-size:.9rem; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.pat-head h3{font-size:1.1rem; font-weight:780}
+.pat-head .aka{font-size:.8rem; color:var(--text-faint); margin-top:2px}
+.pat-body{padding:4px 20px 20px; display:flex; flex-direction:column; gap:13px}
+.pat-block .lab{font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; font-weight:800; color:var(--text-faint); display:flex; align-items:center; gap:6px; margin-bottom:5px}
+.pat-block.ess .lab::before{content:"◆"; color:var(--accent)}
+.pat-block.impl .lab::before{content:"▚"; color:var(--accent2)}
+.pat-block.pit .lab::before{content:"▲"; color:var(--warn)}
+.pat-block p{margin:0; font-size:.92rem}
+.pat-block.pit p{color:var(--text-muted)}
+.srcs{display:flex; flex-wrap:wrap; gap:6px; margin-top:2px}
+.src{font-size:.73rem; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:2px 8px; color:var(--text-muted); font-family:var(--mono)}
+
+/* ============================ TABLES ============================ */
+.table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:13px; box-shadow:var(--shadow); -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; min-width:660px; font-size:.9rem; background:var(--surface)}
+thead th{position:sticky; top:0; text-align:left; background:var(--surface-3); color:var(--text); font-weight:750; padding:12px 14px; border-bottom:2px solid var(--border-strong); font-size:.82rem}
+tbody td{padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface-2)}
+td b, th b{font-weight:750}
+.pill{display:inline-flex; align-items:center; gap:5px; font-size:.76rem; font-weight:750; border-radius:999px; padding:2px 9px; white-space:nowrap}
+.pill.yes{background:var(--good-soft); color:var(--good)}
+.pill.part{background:var(--warn-soft); color:var(--warn)}
+.pill.no{background:var(--bad-soft); color:var(--bad)}
+.pill.dot::before{content:"●"; font-size:.7em}
+.chip{display:inline-flex; align-items:center; gap:5px; font-size:.72rem; font-weight:750; border-radius:6px; padding:2px 8px; border:1px solid var(--border)}
+.chip.low{background:var(--good-soft); color:var(--good); border-color:transparent}
+.chip.med{background:var(--warn-soft); color:var(--warn); border-color:transparent}
+.chip.high{background:var(--bad-soft); color:var(--bad); border-color:transparent}
+
+/* ============================ CODE ============================ */
+pre{background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:10px; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:.82rem; line-height:1.55; margin:14px 0}
+
+/* ============================ RANKED ADOPTION ============================ */
+.rank{display:flex; flex-direction:column; gap:14px}
+.rankitem{display:grid; grid-template-columns:52px 1fr; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); position:relative}
+.rankitem.mvp{border-color:var(--accent); background:linear-gradient(180deg,var(--accent-soft),transparent 60%)}
+.rankn{width:52px; height:52px; border-radius:12px; display:grid; place-items:center; font-family:var(--mono); font-weight:840; font-size:1.5rem; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); align-self:start}
+.rankitem.tail .rankn{background:linear-gradient(135deg,var(--text-faint),var(--accent2))}
+.rankbody h4{font-size:1.06rem; display:flex; flex-wrap:wrap; align-items:center; gap:9px}
+.rankbody .solves{margin:9px 0 0; font-size:.92rem}
+.rankbody .solves b{color:var(--accent2)}
+.metaline{display:flex; flex-wrap:wrap; gap:8px; margin-top:11px}
+.mvp-badge{font-size:.68rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#fff; background:var(--accent); border-radius:5px; padding:2px 7px}
+
+/* sources */
+.sources{font-size:.85rem}
+.sources ol{margin:0; padding-left:22px; color:var(--text-muted)}
+.sources li{margin-bottom:8px; break-inside:avoid}
+.sources li b{color:var(--text)}
+.src-grid{columns:2; column-gap:34px}
+@media(max-width:720px){.src-grid{columns:1}}
+
+/* misc */
+.divider{height:1px; background:var(--border); margin:26px 0}
+.kicker{font-family:var(--mono); font-size:.76rem; color:var(--accent2); font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:10px}
+ul.clean{list-style:none; padding:0; margin:0}
+ul.clean li{position:relative; padding-left:22px; margin-bottom:9px}
+ul.clean li::before{content:"→"; position:absolute; left:0; color:var(--accent); font-weight:800}
+ul.tick{list-style:none; padding:0; margin:0}
+ul.tick li{position:relative; padding-left:24px; margin-bottom:9px}
+ul.tick li::before{content:"✓"; position:absolute; left:0; color:var(--good); font-weight:800}
+footer.pagefoot{border-top:1px solid var(--border); padding:34px 0 60px; color:var(--text-faint); font-size:.84rem}
+footer.pagefoot .wrap>div{max-width:78ch}
+.arc{background:var(--surface-2); border:1px dashed var(--border-strong); border-radius:12px; padding:16px 18px; font-size:.95rem; margin:18px 0; text-align:center}
+.arc b{color:var(--accent)}
+@media print{.topbar{display:none} body{background:#fff}}
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>Loop&nbsp;Engineering</div>
+    <nav class="navlinks">
+      <a href="#what">Что это</a>
+      <a href="#timeline">Канон</a>
+      <a href="#catalog">10 паттернов</a>
+      <a href="#economics">Экономика кэша</a>
+      <a href="#antirunaway">Анти-runaway</a>
+      <a href="#gap">Gap vs gosleep</a>
+      <a href="#adopt">План внедрения</a>
+      <a href="#conclusion">Выводы</a>
+    </nav>
+    <a class="langbtn" href="../index.html" title="English version">EN</a>
+    <button class="themebtn" id="themeToggle" title="Светлая / тёмная тема" aria-label="Переключить тему">◐</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="pip"></span>GSL-41 · Orchestration research · 2026-07</div>
+    <h1>Loop engineering, объяснённый с нуля</h1>
+    <p class="lede">Как сообщество научилось гонять кодинг-агента <strong>ночью, без человека, за пределами любой одной памяти</strong> — канон, каталог из десяти переиспользуемых паттернов и точное место <strong>gosleep</strong> относительно этого канона.</p>
+    <div class="metabar">
+      <span class="metatag">📎 Первоисточник отчёта: <b>04-loop-engineering.md</b></span>
+      <span class="metatag">🎯 Оптика: <b>оркестратор, работающий, пока владелец спит</b></span>
+      <span class="metatag">🧩 <b>10 паттернов</b> · <b>8 ранжированных adoptions</b></span>
+      <span class="metatag">🌗 Светлая / тёмная · self-contained</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- 0. TL;DR -->
+<section id="tldr" style="border-top:none">
+  <div class="sec-head"><span class="sec-num">TL;DR</span><h2>Весь отчёт в шести цифрах</h2></div>
+  <p class="sec-sub">Если читать только это: перед нами зрелая инженерная дисциплина с датированным происхождением и именованными паттернами. Мы сильны на стороне воркера и имеем одну структурную «слепую зону» на стороне оркестратора.</p>
+  <div class="grid g3">
+    <div class="stat a2"><div class="k">2025-07</div><div class="l">Документ-основание — «Ralph» loop Джеффри Хантли (Geoffrey Huntley): <code>while :; do cat PROMPT.md | claude-code; done</code>. Из одной строки выросла целая дисциплина.</div></div>
+    <div class="stat"><div class="k">3 эпохи</div><div class="l"><b>2024</b> «агент — это цикл» → <b>2025</b> «обернуть агента циклом» → <b>2026</b> «инженерить этот цикл как production-инфраструктуру».</div></div>
+    <div class="stat a3"><div class="k">5&nbsp;мин</div><div class="l">Время жизни prompt-кэша молча упало с <b>1&nbsp;часа → 5&nbsp;мин 2026-03-06</b>. Теперь оно диктует, как часто должен просыпаться простаивающий цикл.</div></div>
+    <div class="stat gd"><div class="k">8 / 15</div><div class="l">gosleep уже держит уровень канона или выше по <b>8 из 15</b> паттернов — все на стороне воркера (state, батоны, patience, verification).</div></div>
+    <div class="stat bd"><div class="k">1 дыра</div><div class="l">Каждая недостающая способность — грань одной дыры: <b>оркестратор как самопланирующийся, самовосстанавливающийся цикл</b>.</div></div>
+    <div class="stat"><div class="k">3 пункта</div><div class="l">Минимальный пакет «владелец идёт спать»: <b>self-pulse + night mode + question buffer</b>. Все — усилие LOW–MED.</div></div>
+  </div>
+</section>
+
+<!-- 1. WHAT IT IS -->
+<section id="what">
+  <div class="sec-head"><span class="sec-num">01</span><h2>Что такое «loop engineering» на самом деле</h2></div>
+  <p class="sec-sub">Каждый термин ниже вводится с нуля. Никакого словаря знать заранее не требуется.</p>
+
+  <p class="lead-p"><b>Одним предложением:</b> loop engineering — это дисциплина обёртывания кодинг-агента во <em>внешний управляющий цикл</em> (outer loop): перезапустить его с чистого листа, скормить сохранённое на диске состояние, проверить прогресс и решить — продолжить / остановить / эскалировать — так, чтобы полезная работа шла <mark>за пределами любой одной памяти и без человека, жмущего «continue».</mark></p>
+
+  <p class="lead-p" style="margin-top:14px">Инсайт, с которого началась область, почти неловко прост. LLM-агент <em>уже</em> цикл: модель думает, вызывает инструмент, читает результат, снова думает — по кругу, пока не решит остановиться. Но этот цикл живёт внутри одного <b>context window</b> (контекстного окна — конечного объёма текста, который модель держит одновременно) и умирает, когда окно заполняется. Ответ сообщества: <b>обернуть всего агента в <code>while true</code></b> и сделать файловую систему + git той памятью, что переживает каждый перезапуск. Всё дальнейшее — stop conditions, budgets, circuit breakers, checkpoints — это инженерная дисциплина, наслоённая поверх этого <code>while true</code>.</p>
+
+  <div class="callout">
+    <span class="ct">Ключевая ментальная модель — два вложенных цикла</span>
+    <b>Inner loop (внутренний)</b> = собственный цикл агента think→tool→observe внутри одного context window. Ограничен окном, и это проблема вендора модели. <b>Outer loop (внешний)</b> = harness, который заново запускает <em>свежего</em> агента поверх окон — тот самый <code>while true</code>. Ограничен только <em>вашими</em> guard'ами, и это <em>ваша</em> проблема. <b>Loop engineering = инженерия внешнего цикла.</b>
+  </div>
+
+  <div class="kicker">Словарь-карта — каждый термин встретится ниже снова</div>
+  <div class="grid g2" style="margin-top:6px">
+    <div class="card">
+      <ul class="clean" style="font-size:.94rem">
+        <li><b>Inner loop</b> — цикл агента think→tool→observe внутри одного context window.</li>
+        <li><b>Outer loop</b> — harness, заново вызывающий агента поверх окон (<code>while true</code>).</li>
+        <li><b>Harness</b> — всё вокруг модели: инструменты, файлы состояния, логика рестарта, guard'ы. «Harness engineering» ≈ «loop engineering»; второе делает акцент на цикле перезапуска.</li>
+        <li><b>Stop condition / definition-of-done</b> — машинно-проверяемое условие, завершающее внешний цикл (а не «модель почувствовала, что готово»).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <ul class="clean" style="font-size:.94rem">
+        <li><b>Circuit breaker / loop guard</b> — детекторы, останавливающие цикл, который не даёт прогресса (защита от runaway).</li>
+        <li><b>Checkpoint &amp; resume</b> — устойчивое состояние, записанное на каждой границе, чтобы свежий агент продолжил с диска.</li>
+        <li><b>Heartbeat</b> — периодический дешёвый «тик»: «я жив / есть что делать?».</li>
+        <li><b>Watchdog</b> — отдельный процесс, который следит за циклом и вмешивается, когда тот залипает.</li>
+        <li><b>Park / escalate</b> — увести застрявшую задачу в очередь к человеку, а не ретраить её вечно.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 2. TIMELINE / CANON -->
+<section id="timeline">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Откуда это взялось — канон, с датами</h2></div>
+  <p class="sec-sub">Короткая хронология со ссылками. Каждый узел — первоисточник, который был реально скачан из веба или прочитан из исходников.</p>
+
+  <div class="tl-scroll" aria-label="Таймлайн канона">
+    <svg viewBox="0 0 960 260" role="img" aria-labelledby="tl-title">
+      <title id="tl-title">Таймлайн канона loop-engineering, 2024–2026</title>
+      <defs>
+        <linearGradient id="axis" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--accent2)"/>
+          <stop offset="1" stop-color="var(--accent)"/>
+        </linearGradient>
+      </defs>
+      <line x1="40" y1="132" x2="920" y2="132" stroke="url(#axis)" stroke-width="4" stroke-linecap="round"/>
+      <text x="40" y="30" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--accent2)">ЭПОХА 1 · агент — это цикл</text>
+      <text x="360" y="30" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--accent)">ЭПОХА 2 · цикл вокруг агента</text>
+      <text x="720" y="30" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--accent3)">ЭПОХА 3 · loop engineering</text>
+
+      <circle cx="90" cy="132" r="9" fill="var(--surface)" stroke="var(--accent2)" stroke-width="3"/>
+      <text x="90" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">2024-12</text>
+      <text x="90" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">«Агент = цикл»</text>
+      <text x="90" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">Anthropic + T. Ball</text>
+
+      <circle cx="250" cy="132" r="11" fill="var(--accent2)" stroke="var(--surface)" stroke-width="3"/>
+      <text x="250" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--accent2)" font-weight="700">2025-07-14</text>
+      <text x="250" y="160" text-anchor="middle" font-size="12.5" font-weight="800" fill="var(--text)">Ralph loop</text>
+      <text x="250" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">Huntley — документ-основание</text>
+
+      <circle cx="430" cy="132" r="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>
+      <text x="430" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">2025-11-26</text>
+      <text x="430" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">Anthropic harness</text>
+      <text x="430" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">split: initializer + coder</text>
+
+      <circle cx="590" cy="132" r="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>
+      <text x="590" y="188" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">конец 2025</text>
+      <text x="590" y="212" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">Канонизация</text>
+      <text x="590" y="228" text-anchor="middle" font-size="11" fill="var(--text-muted)">plugin · ralph-cc · Gas Town</text>
+
+      <circle cx="720" cy="132" r="9" fill="var(--accent3)" stroke="var(--surface)" stroke-width="3"/>
+      <text x="720" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--accent3)" font-weight="700">2026-03-06</text>
+      <text x="720" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">Обрыв cache TTL</text>
+      <text x="720" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">1ч → 5мин</text>
+
+      <circle cx="850" cy="132" r="10" fill="var(--surface)" stroke="var(--accent3)" stroke-width="3"/>
+      <text x="850" y="188" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">2026-04 → 06</text>
+      <text x="850" y="212" text-anchor="middle" font-size="12.5" font-weight="800" fill="var(--text)">«Loop engineering»</text>
+      <text x="850" y="228" text-anchor="middle" font-size="11" fill="var(--text-muted)">Osmani даёт имя</text>
+    </svg>
+  </div>
+  <p class="tl-cap">↔ На узком экране прокрутите по горизонтали. Источники скачаны или прочитаны из исходников (см. §Источники).</p>
+
+  <div class="phase-row">
+    <div class="phase">
+      <div class="yr">ФАЗА 0 · 2024 → нач. 2025</div>
+      <h4>Агент <em>и есть</em> цикл</h4>
+      <p>«Building effective agents» от Anthropic <sup><a href="#s1">1</a></sup> и «How to build an agent» Торстена Болла (Thorsten Ball) популяризируют наблюдение: кодинг-агент — это ~300 строк: модель + инструменты + while-loop. Это <b>inner</b> loop. Его жёсткий предел — context window.</p>
+    </div>
+    <div class="phase">
+      <div class="yr">ФАЗА 1 · 2025-07-14</div>
+      <h4>Ralph loop</h4>
+      <p>Хантли публикует документ-основание outer-loop-инженерии <sup><a href="#s2">2</a></sup>. Назван в честь Ralph Wiggum (The Simpsons): пробовать одно и то же, пока не заработает. Нарочито тупая оркестрация; весь детерминизм — в <code>PROMPT.md</code> + спеках на диске. Полевой тезис: «за ночь отгрузил 6 репозиториев».</p>
+    </div>
+    <div class="phase">
+      <div class="yr">ФАЗА 2 · 2025-11 → конец 2025</div>
+      <h4>Канонизация</h4>
+      <p>Разбор harness-инженерии от Anthropic <sup><a href="#s3">3</a></sup> формализует ту же форму (initializer + coding agent). Вендор выпускает официальный <b>ralph-wiggum plugin</b> <sup><a href="#s5">5</a></sup>. Сообщество превращает это в production-раннеры (<b>ralph-claude-code</b> <sup><a href="#s6">6</a></sup>); <b>Gas Town</b> Стива Йегги (Steve Yegge) <sup><a href="#s7">7</a></sup> масштабирует до оргструктуры циклов.</p>
+    </div>
+    <div class="phase">
+      <div class="yr">ФАЗА 3 · 2026</div>
+      <h4>У этого появляется имя</h4>
+      <p>Эдди Османи (Addy Osmani) систематизирует словарь <sup><a href="#s4">4</a></sup> (30+ часов автономного кодинга, приложение на 11k строк за один прогон) и в июне 2026 популяризирует термин <b>«loop engineering»</b>. За этим — волна explainer'ов. Консенсусные пять блоков: <b>найти работу → сделать → проверить → запомнить → повторить по триггеру.</b></p>
+    </div>
+  </div>
+
+  <div class="arc">Дуга в одну строку: <b>2024</b> «агент — это цикл» → <b>2025</b> «обернуть агента циклом» (Ralph) → <b>2026</b> «инженерить этот цикл как production-инфраструктуру» (loop engineering).</div>
+</section>
+
+<!-- 3. PATTERN CATALOG -->
+<section id="catalog">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Каталог паттернов — десять переиспользуемых ходов</h2></div>
+  <p class="sec-sub">Всё, что область успела выучить, разложено на десять паттернов. Каждая карточка: <b>◆ суть</b> простыми словами · <b>▚ где реализовано</b> (реальные системы) · <b>▲ подводные камни</b>, на которых спотыкаются.</p>
+
+  <div class="grid" style="gap:18px">
+
+    <!-- 3.1 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">1</div><div><h3>Outer loop vs inner loop</h3><div class="aka">несущее различие — на нём висит всё остальное</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p><b>Inner</b> loop (model→tool→observe) ограничен одним context window и это проблема вендора. <b>Outer</b> loop (запустить свежего агента → навести на устойчивое состояние → проверить прогресс → решить continue/stop/escalate) ограничен только вашими guard'ами и это <b>ваша</b> проблема. Loop engineering — это инженерия внешнего цикла.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Однострочник Ralph; split «initializer / coding agent» у Anthropic; каждый раннер ниже.</p><div class="srcs"><span class="src">ghuntley/ralph</span><span class="src">anthropic harness</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Смешение двух циклов. Трюки inner-loop (compaction, окна побольше) откладывают, но не отменяют нужду во внешнем цикле — Osmani: <em>context rot деградирует качество задолго до лимита токенов</em>, поэтому рестарт со свежим контекстом лучше растягивания уставшего.</p></div>
+      </div>
+    </div>
+
+    <!-- 3.2 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">2</div><div><h3>Stop conditions &amp; definition-of-done</h3><div class="aka">как цикл понимает, что действительно закончил</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Цикл должен завершаться по <b>машинно-проверяемому условию, объявленному до прогона</b> — никогда «модель почувствовала, что готово». Формулируй done как <em>данные</em>, а не прозу.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Anthropic: JSON <b>feature list</b> (200+ пунктов, все стартуют как <code>failing</code>; done = все <code>passing</code>; спека запрещает править/удалять тесты). У Carson (snarktank/ralph) истории в <code>prd.json</code> переключают <code>passes:false→true</code>; выход только при <code>&lt;promise&gt;COMPLETE&lt;/promise&gt;</code> И all-pass, плюс жёсткий <code>max_iterations</code>. У ralph-claude-code — самый проработанный exit где-либо: <b>двойной gate</b> (≥2 накопленных сигнала завершения И явный <code>EXIT_SIGNAL:true</code>) плюс аварийный force-exit.</p><div class="srcs"><span class="src">anthropic feature-list</span><span class="src">snarktank/ralph</span><span class="src">ralph-claude-code</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Одно-сигнальные выходы (модель рано объявляет победу — Anthropic видели это постоянно). Модель, правящая сам done-предикат (отсюда пункты «не трогать тесты»). Устаревшие exit-сигналы, пережившие рестарт (ralph-cc чистит <code>.exit_signals</code> между сессиями).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.3 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">3</div><div><h3>Budget guards / token ceilings</h3><div class="aka">жёсткие потолки, переживающие рестарт</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Жёсткие <b>механизменные</b> потолки на итерации, вызовы, токены и доллары — потому что потолок, живущий только в промпте, не самоисполняется под давлением.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>ralph-claude-code: <code>MAX_CALLS_PER_HOUR=100</code> (сброс каждый час), опциональный кумулятивный лимит токенов, <code>MAX_COST</code> в USD на прогон в sandbox, таймаут 15 мин на вызов. autosk хранит бюджеты по visit-count в <code>task.json</code>, сбрасываемые человеком. warren добавляет выстраданное правило: <b>кривой бюджет должен fail OPEN</b> — опечатка в бюджете не должна молча отменить каждый прогон.</p><div class="srcs"><span class="src">ralph-claude-code</span><span class="src">autosk task.json</span><span class="src">warren</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Бюджеты, живущие только в промпте (игнорируются). Бюджеты без персистентности (рестартнутый цикл забыл, что уже потратил потолок). Бюджеты, которые fail <em>closed</em> на опечатке конфига (урок warren — убивает каждый прогон).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.4 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">4</div><div><h3>Checkpoint &amp; resume</h3><div class="aka">писать состояние на каждой границе, чтобы любой продолжил с диска</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Каждая итерация заканчивается записью <b>устойчивого состояния</b> (коммит + заметка о прогрессе), чтобы любая следующая итерация — тот же цикл или холодный рестарт спустя дни — продолжила с диска, а не из памяти.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Anthropic: <code>claude-progress.txt</code> + описательные коммиты; <em>initializer agent</em> существует только чтобы создать эту поверхность resume. Carson: память — это <em>только</em> история git + append-only <code>progress.txt</code> + флаги <code>prd.json</code>, и он чекпоинтит ещё и <em>знание</em> — дописывает codebase-грабли в <code>AGENTS.md</code>, чтобы поздние итерации их наследовали. warren гонит даже убитые watchdog'ом прогоны «через reap, а не голый finalize», чтобы частично закоммиченная работа не пропала.</p><div class="srcs"><span class="src">anthropic progress.txt</span><span class="src">snarktank AGENTS.md</span><span class="src">warren reap</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Чекпоинт в чат/скроллбэк (теряется при compaction). Resume <em>устаревшей</em> сессии вместо свежего контекста (класс багов «session hijacking»). Progress-файлы, растущие безгранично. Доверие чекпоинту вместо живого git (gosleep это уже решает атомарным temp+rename и правилом «live git wins»).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.5 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">5</div><div><h3>Self-pacing &amp; cache window</h3><div class="aka">решить, когда просыпаться — и почему важны 5 минут</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Автономный цикл должен решать, <b>когда проснуться снова</b>. Фиксированный cron либо расточителен (ничего не изменилось), либо медлителен (что-то срочное). Уточнение 2026-го: подбирать интервал под <b>время жизни prompt-кэша</b>, потому что экономика кэша доминирует в стоимости простаивающего цикла. Полностью раскрыто в <a href="#economics">§04</a>.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Каноничный split OpenClaw <b>heartbeat vs cron</b>: heartbeat — периодический ход в <em>основной</em> сессии, читающий крошечный стабильный чеклист и пакующий все проверки в один ход; cron — отдельные изолированные джобы. Рычаги цены: изолированные сессии (~100K → 2–5K токенов/прогон), дешёвая модель, окна активных часов. Собственный <code>ScheduleWakeup</code> / динамический <code>/loop</code> в Claude Code кодирует ровно правило cache-окна («не бери 300s»).</p><div class="srcs"><span class="src">OpenClaw heartbeat</span><span class="src">ScheduleWakeup</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Пуллинг «на всякий случай» каждые N минут — каждый тик это полный ход агента (выгорание-по-счёту-за-токены). Wake-up'ы, заново запускающие дорогую работу вместо дешёвого triage. Heartbeat, чей контекст сессии растёт вечно (ответ: изолированная сессия + крошечный чеклист). Фиксированный cron без быстрого пути «делать нечего → сказать OK и выйти дёшево».</p></div>
+      </div>
+    </div>
+
+    <!-- 3.6 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">6</div><div><h3>Overnight / unattended</h3><div class="aka">работа, пока человек спит; читаемое утро, а не сырые логи</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Цикл работает, пока человек спит. Каждая точка касания человека либо <b>убрана</b> (auto-approve в рамках scoped-прав), либо <b>отложена</b> (утренняя очередь), либо <b>фатальна</b> (park). Утренний артефакт — <em>читаемый дайджест</em>, а не сырые логи.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Линия Ralph («отгружай фичи во сне… вернись к готовым фичам, зелёным тестам, закоммиченному коду»). Явный <b>unattended mode</b> ralph-cc авто-ждёт сквозь 5-часовой лимит подписки вместо выхода. Morning-brief cron + активные часы + «будить человека только на алерты» у OpenClaw. Gas Town гоняет весь «город» на патрулях и выдаёт владельцу читаемый утром <b>capability ledger</b>. <b>Park-to-human</b> утренняя очередь у autosk.</p><div class="srcs"><span class="src">geocod.io ralph</span><span class="src">ralph-cc unattended</span><span class="src">OpenClaw brief</span><span class="src">Gas Town ledger</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Auto-approve за пределами scoped-прав (консенсус сообщества держит merge/deploy/деструктив под human-gate даже на максимальной автономии). Окна rate-limit, прочитанные как ошибки. Проснуться к 40 неподписанным веткам — <b>дайджест так же важен, как работа</b>. Отсутствие пути отката.</p></div>
+      </div>
+    </div>
+
+    <!-- 3.7 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">7</div><div><h3>Question buffering</h3><div class="aka">не останавливать весь цикл из-за одного вопроса</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Ночью блокирующий вопрос — это stall. Три ответа по возрастанию зрелости: <b>(a) park</b> — увести задачу и идти дальше; <b>(b) pause с бюджетом</b> — ждать асинхронный ответ человека, авто-решить по таймауту; <b>(c) buffer &amp; continue</b> — залогировать вопрос, взять обратимый дефолт, продолжать работать, показать буфер в утреннем дайджесте. (c) — идеал для gosleep и наименее реализован в публичном коде.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>warren — самое конкретное: воркеры эмитят <code>question_posed</code> в event-лог → прогон переходит в <code>paused</code>; человек отвечает по API, ИЛИ <b>pause budget</b> истекает и прогон продолжается. Вопросы — это события, а не модальные диалоги. autosk использует park-to-human как универсальный сток. OpenClaw по дизайну rate-лимитит <em>канал</em> вопросов (пакетирование, подавление OK-шума). Osmani: «delegated approval с полным сохранением execution-state».</p><div class="srcs"><span class="src">warren pause-budget</span><span class="src">autosk park</span><span class="src">OpenClaw suppress</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Слишком охотный park (один неоднозначный lint-правило не должно стопить фичу — для этого buffer-and-default). Ответ <em>необратимым</em> дефолтом (буферизация работает, только когда дефолт дёшево откатить). Спам вопросов — буферу нужен dedup (один вопрос от 5 циклов = 1 утренний пункт).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.8 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">8</div><div><h3>Verification loops</h3><div class="aka">свежий судья, потому что генератор не проверяет сам себя</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Генератор не должен оценивать свою же работу. Отдельная стадия — свежий агент, тест-сьют или браузер — верифицирует каждый инкремент <b>до</b> того, как переключится done-флаг; <b>ratchets</b> (храповики) не дают регрессий (метрика может только расти).</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Решающая находка Anthropic: Claude помечал фичи готовыми преждевременно, <b>пока ему не дали browser automation</b> (Puppeteer MCP), чтобы тестировать «как пользователь». planner/worker/<b>judge</b> split + <b>test ratchets</b> у Osmani. «backpressure» у Huntley: компиляторы и статические анализаторы вшиты так, что плохая итерация не проходит дальше. Gas Town: Refinery ревьюит вывод воркера; Witness верифицирует прогресс независимо от заявлений самого воркера.</p><div class="srcs"><span class="src">anthropic puppeteer</span><span class="src">osmani judge</span><span class="src">gastown witness</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Верификатор, разделяющий контекст генератора (наследует его допущения — свежий контекст в этом весь смысл). Верификация, которую модель может править (удаление тестов). Верификатор, который зависает и морозит цикл (E17 watchdog в gosleep существует ровно для этого; per-call timeout у Ralph — эквивалент на уровне цикла).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.9 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">9</div><div><h3>Anti-runaway protections</h3><div class="aka">крутящийся цикл хуже остановленного</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Цикл, крутящийся без прогресса, жжёт бюджет и может повредить дерево — хуже остановленного. Детекция <b>много-сигнальная</b> (прогресс, повтор ошибки, форма вывода); реакция <b>ступенчатая</b> (halt → cooldown → человек). Полностью разобрано в <a href="#antirunaway">§05</a>.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Полноценный circuit breaker в стиле Nygard у ralph-claude-code (CLOSED/HALF_OPEN/OPEN; открывается на 3 циклах без прогресса, 5 циклах с той же ошибкой, &gt;70% падении вывода или 2 циклах permission-denial; 30-мин cooldown, затем проба). <b>Цепь watchdog'ов</b> Gas Town (Witness → Deacon → Boot-the-Dog проверяет Deacon каждые 5 мин) с жёстким правилом <b>никогда не объявлять агента застрявшим по одному store</b>. warren выводит heartbeat из новейшей строки события и self-arm'ится по умолчанию.</p><div class="srcs"><span class="src">ralph circuit_breaker.sh</span><span class="src">gastown boot</span><span class="src">warren liveness</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Одно-сигнальная детекция «застрял». Watchdog'и, за которыми никто не следит (Boot существует, потому что сам Deacon на практике умирал). Kill-пути, уничтожающие частичную работу (правило reap у warren). Самозаявленные heartbeat'ы — залипший агент не может отчитаться; выводи liveness из <em>артефактов</em> (события, коммиты, mtime файлов).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.10 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">10</div><div><h3>State-on-disk</h3><div class="aka">файловая система + git ЕСТЬ память цикла</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Суть</span><p>Файловая система + git <b>и есть</b> память цикла. Всё, нужное для решения «что дальше», должно быть повторно выводимо с диска читателем с нулевым предыдущим контекстом.</p></div>
+        <div class="pat-block impl"><span class="lab">Где</span><p>Каждая серьёзная система сходится на одной тройке: <b>(1) work state</b> — флаги <code>prd.json</code> / feature-list JSON / Beads ledger / счётчики <code>task.json</code> / event-лог. <b>(2) narrative</b> — append-only <code>progress.txt</code> / capability ledger / накопление <code>AGENTS.md</code> (цикл улучшает собственные будущие промпты). <b>(3) loop-control state</b> — <code>.ralph/</code> exit-сигналы + JSON circuit breaker'а + метрики, heartbeat-store'ы, pause/visit-бюджеты.</p><div class="srcs"><span class="src">все системы</span></div></div>
+        <div class="pat-block pit"><span class="lab">Подводные камни</span><p>Состояние только в сессии (умирает с ней). Неатомарные записи (обрезанные батоны — правило temp+rename в gosleep). Нечитаемое человеком состояние (владелец должен триажить с телефона — сбрасываемые человеком JSON-счётчики autosk — образец). Стены прозы вместо структурированного состояния.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 4. ECONOMICS -->
+<section id="economics">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Экономика self-pacing</h2></div>
+  <p class="sec-sub">Почему стоимость простаивающего цикла определяется одним числом, которого не видно на дашборде — временем жизни prompt-кэша.</p>
+
+  <div class="grid g2" style="align-items:start">
+    <div>
+      <p class="lead-p"><b>Сперва — что такое prompt-кэш.</b> Когда вы шлёте большой промпт (системные инструкции, стоящий файл состояния, чеклист) в модель, провайдер может <em>закэшировать</em> этот префикс. Если вскоре вы шлёте почти тот же промпт, за закэшированную часть вы платите долю цены. Загвоздка: у кэша есть <b>время жизни (TTL)</b>. Промахнулись мимо окна — следующий вызов заново платит полную цену за весь префикс. Это <b>cache miss</b>.</p>
+      <p class="lead-p" style="margin-top:14px"><b>Что изменилось.</b> Дефолтный TTL кэша у Anthropic молча упал с <b>1 часа → 5 минут 2026-03-06</b>. Циклы, пуллившие раз в 15–30 минут, были настроены под старое часовое окно; ночью они внезапно стали съедать полный cache miss на <em>каждом тике</em> — сообщения об <b>+30–60% эффективной стоимости</b>.</p>
+      <div class="callout warn">
+        <span class="ct">Возникшее правило</span>
+        <b>Пуллить внутри cache-окна (&lt;5 мин) ИЛИ уходить в длинные сны (20–30 мин+) и съедать ровно ОДИН cache miss.</b> Худшая из возможных каденций — <em>чуть за TTL</em> (скажем, 6–10 минут), где вы платите полный miss каждый раз и не получаете за это ничего.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="kicker">Решение о каденции — в каком я режиме?</div>
+      <table style="min-width:0; font-size:.86rem">
+        <thead><tr><th>Интервал</th><th>Кэш</th><th>Когда</th></tr></thead>
+        <tbody>
+          <tr><td><b>&lt; 5 мин</b><br><span style="color:var(--text-muted)">60–270s</span></td><td><span class="pill yes dot">тёплый</span></td><td>Активно расклиниваешь stall / следишь за внешним состоянием, о котором harness не уведомит (CI, deploy).</td></tr>
+          <tr><td><b>~5 мин</b><br><span style="color:var(--text-muted)">300s</span></td><td><span class="pill no dot">худшее</span></td><td><b>Избегать.</b> Чуть за TTL — платишь полный miss без амортизации. Опустись до 270s или прыгни на 1200s+.</td></tr>
+          <tr><td><b>20–30 мин+</b><br><span style="color:var(--text-muted)">1200s+</span></td><td><span class="pill part dot">1 miss</span></td><td>Воркеры пашут, срочного нет, или простой. Один cache miss, амортизированный длинным ожиданием.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:.82rem; color:var(--text-muted); margin:12px 0 0">Эта таблица прямо закодирована в гайдансе <code>ScheduleWakeup</code> в Claude Code («не бери 300s») — инструменте, которым оркестратор gosleep и вооружал бы свой self-pulse.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">Принцип дешёвого triage</span>
+    Поскольку каждый wake-up — полный ход агента, wake-up должен делать <em>минимум</em>, отвечающий на вопрос «есть что делать?». Форма heartbeat у OpenClaw: прочитать крошечный <b>стабильный</b> чеклист (чтобы кэш оставался валидным), упаковать все проверки в один ход и взять быстрый путь <b>«ничего не изменилось → сказать OK и выйти»</b>. Wake-up, заново запускающий дорогую slash-команду вместо дешёвого triage — классическая самонанесённая рана (баг Claude Code #54086).
+  </div>
+</section>
+
+<!-- 5. ANTI-RUNAWAY REFERENCE -->
+<section id="antirunaway">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Anti-runaway, эталонного качества</h2></div>
+  <p class="sec-sub">Две production-системы решили «остановить крутящийся цикл» правильно. Их код несёт уроки, которых не передаст ни один дизайн-док — каждый из них шрам от реального инцидента.</p>
+
+  <div class="grid g2" style="align-items:start">
+    <!-- ralph-claude-code -->
+    <div class="card">
+      <div class="kicker" style="color:var(--accent)">Эталон A — ralph-claude-code</div>
+      <h3 style="font-size:1.2rem; margin-bottom:6px">Двойной exit gate + circuit breaker</h3>
+      <p style="color:var(--text-muted); font-size:.92rem; margin:0 0 14px">v0.11.x, 784 теста — bash-однострочник, превращённый в production-раннер цикла.</p>
+
+      <p style="font-weight:700; font-size:.85rem; margin:0 0 6px">Двойное условие выхода — для done нужно ОБА:</p>
+      <ul class="tick" style="font-size:.9rem">
+        <li>≥2 накопленных сигнала завершения по недавним циклам (в JSON <code>.exit_signals</code>), <b>И</b></li>
+        <li>явный <code>EXIT_SIGNAL: true</code> в ответе агента.</li>
+      </ul>
+      <p style="font-size:.9rem; margin:10px 0 0">Плюс <b>аварийный force-exit</b> после 5 подряд <code>EXIT_SIGNAL=true</code> на случай, если нормальный путь залип; и <code>STATUS: COMPLETE</code> с <code>EXIT_SIGNAL:false</code> явно <em>продолжает</em>. Exit-сигналы чистятся между сессиями, чтобы устаревший не выстрелил.</p>
+
+      <div class="divider"></div>
+      <p style="font-weight:700; font-size:.85rem; margin:0 0 6px">Circuit breaker — конечный автомат Nygard в <code>circuit_breaker.sh</code>:</p>
+      <div class="grid g3" style="gap:8px; margin:8px 0">
+        <div style="text-align:center; background:var(--good-soft); border-radius:9px; padding:8px 4px"><b style="color:var(--good)">CLOSED</b><br><span style="font-size:.76rem; color:var(--text-muted)">норм. поток</span></div>
+        <div style="text-align:center; background:var(--warn-soft); border-radius:9px; padding:8px 4px"><b style="color:var(--warn)">HALF_OPEN</b><br><span style="font-size:.76rem; color:var(--text-muted)">проба</span></div>
+        <div style="text-align:center; background:var(--bad-soft); border-radius:9px; padding:8px 4px"><b style="color:var(--bad)">OPEN</b><br><span style="font-size:.76rem; color:var(--text-muted)">сработал</span></div>
+      </div>
+      <p style="font-size:.88rem; margin:6px 0 0"><b>Открывается на любом из:</b> 3 цикла без прогресса · 5 циклов с той же ошибкой · &gt;70% падение вывода · 2 цикла permission-denial. Затем <b>30-мин cooldown → HALF_OPEN</b> (одна дешёвая проба) — не хард-стоп, а один ретрай. Все пороги настраиваются через env; состояние — в JSON. Прогресс = git-коммиты внутри цикла, но git-движение <em>никогда</em> не считается завершением.</p>
+    </div>
+
+    <!-- gastown -->
+    <div class="card">
+      <div class="kicker" style="color:var(--accent2)">Эталон B — Gas Town</div>
+      <h3 style="font-size:1.2rem; margin-bottom:6px">Цепь watchdog'ов и её шрамы</h3>
+      <p style="color:var(--text-muted); font-size:.92rem; margin:0 0 14px">Индустриального масштаба оргструктура циклов от Steve Yegge — прочитана из Go-исходников.</p>
+
+      <p style="font-weight:700; font-size:.85rem; margin:0 0 6px">Кто за кем следит:</p>
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:.82rem; margin-bottom:12px">
+        <span class="src">Witness → воркеры</span><span style="color:var(--text-faint)">·</span>
+        <span class="src">Deacon → система</span><span style="color:var(--text-faint)">·</span>
+        <span class="src">Boot → Deacon, каждые 5 мин</span>
+      </div>
+      <p style="font-size:.9rem; margin:0 0 10px"><b>Boot</b> — не тупой таймер, а свежий LLM-triage-агент на каждом тике демона, выбирающий одно из четырёх действий: <code>start / wake / nudge / nothing</code>. <code>flock</code> + marker-файл держат его single-flight (не может пересечься сам с собой).</p>
+
+      <p style="font-weight:700; font-size:.85rem; margin:8px 0 6px">Production-шрамы (каждый — исправленный инцидент):</p>
+      <ul class="clean" style="font-size:.87rem">
+        <li><b>Startup grace period</b> — heartbeat-проверка убивала только что стартовавшие сессии до того, как те успевали записать первый heartbeat (issue #567). Каждому watchdog нужна разминочная поблажка.</li>
+        <li><b>Счётчик + cooldown, никогда не one-shot</b> — force-kill только после <b>3 подряд</b> провалов ping, затем <b>5-мин cooldown</b> между убийствами.</li>
+        <li><b>Zombie debounce</b> — нужно <b>≥3 подряд</b> цикла «tmux-сессия есть, а процесса агента нет» до рестарта. Pane-alive и process-alive — <em>разные</em> сигналы, штатно расходящиеся при handoff'ах.</li>
+        <li><b>Crash-loop backoff</b> — RestartTracker с экспоненциальным backoff (warren независимо пришёл к тому же бюджету 5-рестартов-за-60с).</li>
+        <li><b>Mass-death detection</b> — много смертей разом — <em>другой</em> (системный) сбой, чем одна смерть.</li>
+        <li><b>Bounded fan-out</b> — watchdog проверяет rig'и в worker-pool с per-rig таймаутами, чтобы один медленный rig не блокировал все.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout bad">
+    <span class="ct">Дистиллят урока для watchdog-над-оркестратором в gosleep</span>
+    Каждое решение watchdog должно быть <b>(a) counter-debounced</b>, <b>(b) cooldown-limited</b>, <b>(c) освобождено на время warm-up</b> и <b>(d) сам watchdog single-flight + rate-limited</b>. Наивный скрипт «STATE устарел → рестартнуть оркестратор» <em>выстрелит</em> на ложных срабатываниях в первую же ночь — сессия между ходами, свежий старт посреди записи, транзиентная дыра handoff'а. Debouncing — это не gold-plating, а разница между watchdog'ом и самонанесённой аварией.
+  </div>
+</section>
+
+<!-- 6. GAP ANALYSIS -->
+<section id="gap">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Gap-анализ — канон vs скилл gosleep</h2></div>
+  <p class="sec-sub">Прочитано против <code>skill/orchestrating-delivery-agents</code> по состоянию на 2026-07-07. Заголовок: <b>мы на уровне канона или выше по безопасности цикла на стороне воркера и ниже канона по механике цикла на стороне оркестратора.</b></p>
+
+  <div class="grid g3" style="margin-bottom:22px">
+    <div class="stat gd"><div class="k">8</div><div class="l"><b>На уровне или выше</b> канона — outer loop, state-on-disk, checkpoint, budget, patience/liveness, verification, authority model, loop guard (база).</div></div>
+    <div class="stat a3"><div class="k">2</div><div class="l"><b>Частично</b> — definition-of-done (только per-cycle), watchdog chain (следим за воркерами; за нами никто).</div></div>
+    <div class="stat bd"><div class="k">5</div><div class="l"><b>Нет</b> — self-pulse, авто-рестарт-после-смерти, question buffer, night mode, динамическая каденция wake. Всё на стороне оркестратора.</div></div>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th style="min-width:230px">Паттерн канона</th><th style="min-width:120px">Есть у нас?</th><th style="min-width:320px">Дыра / что даст внедрение</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Outer loop</b> (cycle-workers, свежий контекст на кусок)</td><td><span class="pill yes dot">Ядро</span></td><td>Сердце скилла. —</td></tr>
+        <tr><td><b>State-on-disk</b> (ORCHESTRATION-STATE.md, атомарные записи, handoffs)</td><td><span class="pill yes dot">Сильно</span></td><td>Атомарный temp+rename, live-git-wins, механика коррекций. <b>На уровне или выше канона.</b></td></tr>
+        <tr><td><b>Checkpoint &amp; resume</b> (handoff-батоны, cold-start протокол)</td><td><span class="pill yes dot">Сильно</span></td><td>Нет только <em>knowledge</em>-чекпоинта Carson — стоящего шага «дописывать learnings в LEARNINGS/AGENTS каждый цикл» (→ adoption #7).</td></tr>
+        <tr><td><b>Definition-of-done</b></td><td><span class="pill part dot">Частично</span></td><td>Per-cycle DONE через отчёты/PR; roadmap-уровень done неявен. Нет машинно-проверяемого аналога feature-list/prd.json — «фаза готова» это суждение, а не данные (→ adoption #5).</td></tr>
+        <tr><td><b>Budget guards / token ceilings</b></td><td><span class="pill yes dot">Есть</span></td><td>TELEMETRY-блок, агрегатный потолок, форк BUDGET_EXCEEDED. Но потолок — <em>прозой</em>, обеспечиваемой оркестратором, не механизм; нет per-hour caps; нет долларовых caps.</td></tr>
+        <tr><td><b>Loop guard</b> (не-двигающийся NEXT, no-new-PR)</td><td><span class="pill yes dot">Есть</span></td><td>Грубее breaker'а Ralph: нет сигналов same-error / output-decline, нет cooldown/HALF_OPEN ретрая — наш стопает, но не пробует (→ adoption #6).</td></tr>
+        <tr><td><b>Patience clocks / liveness ranking</b></td><td><span class="pill yes dot">Сильно</span></td><td>Двое часов, finalize-исключение, E17 watchdog. Урок single-store уже усвоен; cross-check-правило Gas Town <em>подтверждает</em> наш дизайн.</td></tr>
+        <tr><td><b>Verification loops</b> (свежий verifier, watchdog)</td><td><span class="pill yes dot">Сильно</span></td><td>VERIFY-REQUEST, verifier на дешёвом тире, steps.log watchdog. Нет только концепта <em>test-ratchet</em> (качество может только расти).</td></tr>
+        <tr><td><b>Overnight authority model</b></td><td><span class="pill yes dot">Есть</span></td><td>Denylist + reversible-green автономия — ровно консенсус сообщества. <b>Уже канон-уровня.</b></td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Orchestrator self-pulse / armed wake-up</b></td><td><span class="pill no dot">Нет</span></td><td><b>ГЛАВНАЯ дыра.</b> Мандат владельца в памяти есть (проверяться каждые 5–10 мин, не завершать ход без armed wake-up), но скилл не определяет <em>механизм</em> — ни ScheduleWakeup/Monitor/cron, ни политики каденции, ни экономики cache-окна (→ adoption #1).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Авто-рестарт после смерти оркестратора</b></td><td><span class="pill no dot">Нет</span></td><td>Cold-start протокол есть, но <em>что-то должно его вызвать</em>. Нет watchdog-над-оркестратором (Boot у Gas Town; supervisor warren). Сейчас: мёртвый оркестратор = осиротевший флот, пока человек не заметит (→ adoption #4).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Question buffering / park queue</b></td><td><span class="pill no dot">Нет</span></td><td>Только BLOCKED_ON_HUMAN (модально — стопит тот тред). Нет park-and-continue, нет pause budget, нет утренней очереди вопросов с dedup (→ adoption #3).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Self-pacing / night mode</b></td><td><span class="pill no dot">Нет</span></td><td>Нет активных часов, нет утреннего дайджеста как артефакта, нет политики тихих часов для уведомлений (→ adoption #2).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Динамическое самопланирование интервалов wake</b></td><td><span class="pill no dot">Нет</span></td><td>Канон: подгонять интервал под то, чего ждёшь; уважать 5-мин cache TTL (пуллить &lt;5м или спать 20м+, никогда чуть-за-окном). Часть adoption #1.</td></tr>
+        <tr><td><b>Anti-runaway: watchdog chain</b></td><td><span class="pill part dot">Частично</span></td><td>Оркестратор следит за воркерами; за оркестратором никто. Слой Boot-the-Dog отсутствует (та же строка, что авто-рестарт).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="ct">Диагноз одной строкой</span>
+    Мы на уровне канона или выше по безопасности цикла на стороне воркера (state, батоны, patience, verification, telemetry) и ниже канона по механике цикла на стороне оркестратора. <b>Каждая строка «нет» — грань одной недостающей способности: оркестратор как самопланирующийся, самовосстанавливающийся цикл.</b> Скилл тихо предполагает оркестратора, который бодрствует, потому что человек держит его сессию тёплой.
+  </div>
+</section>
+
+<!-- 7. ADOPTION PLAN -->
+<section id="adopt">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Что внедрять, по рангу</h2></div>
+  <p class="sec-sub">Ранг = ценность для «владелец спит» ÷ усилие. Каждый пункт называет механизм, что он детектит/решает и стоимость сборки. Пункты <b>1 + 2 + 3</b> вместе — минимальный жизнеспособный пакет «владелец идёт спать».</p>
+
+  <div class="callout good" style="margin-top:0">
+    <span class="ct">Минимальный пакет «владелец спит»</span>
+    <b>#1 self-pulse</b> (никогда не задремать) <b>+ #2 night mode &amp; morning digest</b> (читаемое утро) <b>+ #3 question buffer</b> (не стопиться на вопросах). Все — усилие LOW–MED, без новой инфраструктуры. <b>#4</b> делает так, чтобы это пережило смерть самого оркестратора; <b>#5–#8</b> поднимают качество и экономику на длинной дистанции.
+  </div>
+
+  <div class="rank">
+
+    <div class="rankitem mvp">
+      <div class="rankn">1</div>
+      <div class="rankbody">
+        <h4>Armed self-pulse с cache-aware каденцией <span class="mvp-badge">MVP</span></h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Оркестратор <b>никогда не завершает ход, пока флот жив, без запланированного wake-up</b> (<code>ScheduleWakeup</code> в Claude Code; cron/<code>sleep</code>-обёртка где-то ещё). Pulse — это <b>дешёвый triage-тик</b>: прочитать STATE, прощупать сигналы liveness, действовать только на дельтах — форма heartbeat OpenClaw (крошечный стабильный чеклист, быстрый путь «OK → ничего не делать»). Каденция из канона: <b>&lt;5 мин</b>, пока активно расклиниваешь stall (кэш тёплый), <b>20–30 мин</b>, пока воркеры пашут (один амортизированный miss).</p>
+        <p class="solves"><b>Решает:</b> весь класс «оркестратор задремал / ход завершился и никто не следит» — мандат pulse-rule владельца, наконец механизированный.</p>
+        <div class="metaline"><span class="chip low">УСИЛИЕ · LOW</span><span class="chip low">ЦЕННОСТЬ · HIGH</span><span class="chip">текст скилла + таблица каденции; инструменты уже есть</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem mvp">
+      <div class="rankn">2</div>
+      <div class="rankbody">
+        <h4>Night mode + morning digest <span class="mvp-badge">MVP</span></h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Объявленное unattended-окно. Внутри него <code>AskUserQuestion</code> запрещён кроме denylist-пунктов; каждый потенциальный вопрос идёт в буфер (#3). На закрытии окна оркестратор пишет <code>docs/handoff/MORNING-DIGEST-&lt;date&gt;.md</code>: что приземлилось, вердикты, parked-пункты, буферизованные вопросы, потрачено vs потолок.</p>
+        <p class="solves"><b>Решает:</b> владелец, проснувшийся к 40 веткам без нарратива; делает «идти спать» явным режимом с ужатыми рельсами.</p>
+        <div class="metaline"><span class="chip med">УСИЛИЕ · LOW-MED</span><span class="chip low">ЦЕННОСТЬ · HIGH</span><span class="chip">протокол + шаблон; без новой инфры</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem mvp">
+      <div class="rankn">3</div>
+      <div class="rankbody">
+        <h4>Question buffer с pause-budget дефолтами <span class="mvp-badge">MVP</span></h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Трёхуровневый triage любого форка вне denylist: <b>(a)</b> обратимо + низкие ставки → взять дефолт, залогировать вопрос+выбор в <code>QUESTIONS.md</code> (buffer-and-continue); <b>(b)</b> существенно, но не опасно → warren-style пауза <em>этой задачи</em> с бюджетом, park её, переназначить воркера на следующую разблокированную задачу; <b>(c)</b> denylist/необратимо → BLOCKED_ON_HUMAN как сейчас. Dedup одинаковых вопросов между циклами.</p>
+        <p class="solves"><b>Решает:</b> ночные stall'ы на вопросах — сегодня каждая неоднозначность стопит тред до утра.</p>
+        <div class="metaline"><span class="chip med">УСИЛИЕ · MED</span><span class="chip low">ЦЕННОСТЬ · HIGH</span><span class="chip">протокол в шаблоне воркера + triage-правила оркестратора</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem">
+      <div class="rankn">4</div>
+      <div class="rankbody">
+        <h4>Watchdog над оркестратором (слой Boot)</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Внешняя, тупая, не-LLM проверка (cron-скрипт или дешёвый Monitor-цикл): «продвинулись ли mtime <code>ORCHESTRATION-STATE.md</code> / строка TELEMETRY за N мин, пока <code>open_workers&gt;0</code>?». Если stale → уведомить владельца И/ИЛИ перезапустить свежего оркестратора, наведённого на cold-start протокол, под warren-style restart-бюджетом (напр. 3/ночь, дальше — пейджить владельца). Liveness из <em>артефактов</em> (mtime, git), никогда self-report. <b>Применить уроки debounce из §05</b> — counter-debounce, cooldown, warm-up grace, single-flight.</p>
+        <p class="solves"><b>Решает:</b> мёртвый/сжатый оркестратор, осиротивший живой флот ночью — единственный сбой, из которого скилл не может восстановиться сам.</p>
+        <div class="metaline"><span class="chip med">УСИЛИЕ · MED</span><span class="chip low">ЦЕННОСТЬ · HIGH</span><span class="chip">маленький скрипт + секция скилла; cold-start протокол уже есть</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem">
+      <div class="rankn">5</div>
+      <div class="rankbody">
+        <h4>Машинно-проверяемый definition-of-done на фазу</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Взять паттерн feature-list/prd.json: каждый epic несёт JSON-чеклист с флагами <code>passes</code>, переключаемыми только после верификации; done уровня цикла = все-passing + PR смёржен, а не «воркер сказал COMPLETE». Запретить правку done-предиката (клауза «unacceptable» у Anthropic) в брифах воркеров.</p>
+        <p class="solves"><b>Решает:</b> преждевременную победу через границы циклов; даёт loop guard'у реальный предикат для проверки.</p>
+        <div class="metaline"><span class="chip med">УСИЛИЕ · MED</span><span class="chip med">ЦЕННОСТЬ · MED</span><span class="chip">ложится на существующую Jira-зеркалируемую структуру задач</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem">
+      <div class="rankn">6</div>
+      <div class="rankbody">
+        <h4>Circuit-breaker апгрейд для loop guard</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Расширить существующий loop guard сигналами ralph-claude-code: same-error-N-раз между циклами, падение output/прогресса и <b>cooldown + HALF_OPEN проба</b> (один дешёвый ретрай после паузы) вместо хард-STOP. Счётчики персистятся в STATE и сбрасываются человеком (phone-editable счётчики autosk).</p>
+        <p class="solves"><b>Решает:</b> и ложные halt'ы (транзиентный flake навсегда взводит guard), и busy-runaway, которые нынешний двух-сигнальный guard пропускает.</p>
+        <div class="metaline"><span class="chip med">УСИЛИЕ · MED</span><span class="chip med">ЦЕННОСТЬ · MED</span><span class="chip">расширяет существующий механизм</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem">
+      <div class="rankn">7</div>
+      <div class="rankbody">
+        <h4>Per-cycle learnings-чекпоинт (паттерн AGENTS.md)</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Воркеры дописывают codebase-грабли в стоящий LEARNINGS-файл, на который наводит следующий бриф; промпты цикла улучшаются по ходу (самый копируемый трюк Carson). Мы уже делаем это только для automation-traps — <b>обобщить</b>.</p>
+        <p class="solves"><b>Решает:</b> каждый свежий цикл заново открывает те же грабли.</p>
+        <div class="metaline"><span class="chip low">УСИЛИЕ · LOW</span><span class="chip med">ЦЕННОСТЬ · MED</span><span class="chip">обобщить существующий реестр</span></div>
+      </div>
+    </div>
+
+    <div class="rankitem tail">
+      <div class="rankn">8</div>
+      <div class="rankbody">
+        <h4>Sleep-time consolidation (idle-gap compute)</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Пока воркеры пашут, а оркестратор ждёт, тратить простаивающие wake-up'ы на дешёвую работу с памятью: сжимать старые записи лога STATE, дистиллировать ночные LEARNINGS, преднабрасывать morning digest. Исследовательский родственник — <b>sleep-time compute</b> у Letta (paper 2025-04): фоновые агенты делят память с основным и переписывают её асинхронно — заявлено до <b>+18% точности</b> и <b>2.5× ниже стоимость/запрос</b> за счёт предвычислений в простое. Держать различие острым: Ralph-циклы делают <em>больше работы</em> ночью; sleep-time compute делает <em>работу следующего дня дешевле и умнее</em>.</p>
+        <p class="solves"><b>Решает:</b> разрастание файла STATE и латентность morning digest — бесплатно, во время ожиданий.</p>
+        <div class="metaline"><span class="chip low">УСИЛИЕ · LOW</span><span class="chip">ЦЕННОСТЬ · nice-to-have</span><span class="chip">клауза «если триажить нечего — сделай одно consolidation-дело»</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 8. CONCLUSION -->
+<section id="conclusion">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Выводы</h2></div>
+  <div class="grid g2" style="align-items:start">
+    <div class="card">
+      <div class="kicker">Что устоялось в области</div>
+      <ul class="clean" style="font-size:.95rem">
+        <li>Loop engineering — <b>реальная датированная дисциплина</b>, не метафора. У неё есть документ-основание (Ralph, 2025-07), благословение вендора (Anthropic harness, 2025-11) и имя (2026-06).</li>
+        <li>Вся область — это <b>одна идея плюс дисциплина</b>: <code>while true</code> вокруг агента, файловая система + git как память — а дальше stop conditions, budgets, breakers, checkpoints поверх.</li>
+        <li>Фронтир 2026-го <b>экономический</b>: 5-минутный cache TTL теперь диктует каденцию wake, а idle-стоимость доминирует в ночных счетах.</li>
+        <li>Два самых выстраданных урока — оба про <b>недоверие одному сигналу</b>: не верь «я готово» от модели и не верь одному heartbeat-store, объявляя агента застрявшим.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="kicker">Что это значит для gosleep</div>
+      <ul class="tick" style="font-size:.95rem">
+        <li>Наша <b>сторона воркера уже канон-уровня или лучше</b> — state, батоны, patience-часы, verification, telemetry, authority model. Сохранить.</li>
+        <li>Наша единственная структурная дыра — <b>оркестратор как самопланирующийся, самовосстанавливающийся цикл</b>. Каждая недостающая способность — её грань.</li>
+        <li>Починка — <b>в основном проза + шаблоны</b>, не инфраструктура: adoptions #1–#3 (self-pulse, night mode, question buffer) — сон-разрешающий минимум, все усилия LOW–MED.</li>
+        <li>#4 (debounced watchdog над оркестратором) — то, что превращает «работает ночью» в «<b>переживает собственную смерть</b> ночью». Строить со шрамами §05 в уме — debounce, иначе выстрелит ложно в первую же ночь.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SOURCES -->
+<section id="sources" class="sources">
+  <div class="sec-head"><span class="sec-num">§</span><h2>Источники</h2></div>
+  <p class="sec-sub">Первоисточники, скачанные из веба или прочитанные из исходников в <code>.research-cache/</code>. Полный вывод: <code>docs/research/2026-07-07-orchestration/04-loop-engineering.md</code>.</p>
+  <div class="src-grid">
+    <ol>
+      <li id="s1"><b>Anthropic — «Building effective agents»</b> (дек. 2024) и Thorsten Ball, «How to build an agent». Наблюдение «агент — это цикл». <span style="color:var(--text-faint)">anthropic.com/engineering/building-effective-agents</span></li>
+      <li id="s2"><b>Geoffrey Huntley — «Ralph Wiggum as a software engineer»</b> (2025-07-14). Документ-основание outer-loop-инженерии. <span style="color:var(--text-faint)">ghuntley.com/ralph</span> · follow-up: github.com/ghuntley/how-to-ralph-wiggum</li>
+      <li id="s3"><b>Anthropic Engineering — «Effective harnesses for long-running agents»</b> (2025-11-26). Split initializer + coding agent; feature-list done; находка про Puppeteer-верификацию. <span style="color:var(--text-faint)">anthropic.com/engineering/effective-harnesses-for-long-running-agents</span></li>
+      <li id="s4"><b>Addy Osmani — «Long-running Agents»</b> (2026-04-28) + июньская волна термина «loop engineering» 2026. 30+ ч автономного кодинга; planner/worker/judge; test ratchets. <span style="color:var(--text-faint)">addyosmani.com/blog/long-running-agents</span></li>
+      <li id="s5"><b>anthropics/claude-code — ralph-wiggum plugin</b>. In-session Stop-hook цикл; <code>--max-iterations</code> как «primary safety mechanism»; completion = точное совпадение строки-promise. <span style="color:var(--text-faint)">github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum</span></li>
+    </ol>
+    <ol start="6">
+      <li id="s6"><b>frankbria/ralph-claude-code</b> (v0.11.x, 784 теста). Двойной exit gate; Nygard circuit breaker; per-hour/cost бюджеты; unattended mode. <span style="color:var(--text-faint)">github.com/frankbria/ralph-claude-code</span></li>
+      <li id="s7"><b>Gas Town</b> (Steve Yegge). Цепь watchdog'ов Witness → Deacon → Boot; правило heartbeat-divergence; startup grace, zombie debounce, crash-loop backoff. <span style="color:var(--text-faint)">прочитано из Go-исходников .research-cache/gastown</span></li>
+      <li id="s8"><b>OpenClaw</b> (Peter Steinberger; начинался как Clawdbot, 2025-11). Split heartbeat vs cron; изолированные сессии; активные часы; morning brief. <span style="color:var(--text-faint)">docs.openclaw.ai/gateway/heartbeat</span></li>
+      <li id="s9"><b>snarktank/ralph</b> (Ryan Carson). Флаги passes в <code>prd.json</code>; append-only progress.txt; knowledge-чекпоинт AGENTS.md; архивирование прогонов. <span style="color:var(--text-faint)">github.com/snarktank/ralph</span></li>
+      <li id="s10"><b>Letta — sleep-time compute</b> (Packer/Wooders, UC Berkeley Sky Lab; paper апр. 2025). Фоновые агенты переписывают общую память в простое; +18% точности, 2.5× снижение стоимости. <span style="color:var(--text-faint)">letta.com/blog/sleep-time-compute</span></li>
+      <li><b>Поддержка:</b> geocod.io «Ship features in your sleep with Ralph loops» (2026-01-27); таксономия loopengineering.run; autosk (соседские заметки 01); warren/overstory (соседские заметки 02); smtg-ai/claude-squad (уровень README); Claude Code <code>ScheduleWakeup</code> / bug #54086 / feature #28229.</li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer class="pagefoot">
+  <div class="wrap">
+    <div>
+      <b>Loop Engineering — разбор с нуля и план внедрения.</b> Собрано для фазы orchestration-research GSL-41 проекта gosleep, 2026-07.
+      Каждое утверждение прослеживается до <code>docs/research/2026-07-07-orchestration/04-loop-engineering.md</code> и первоисточников выше.
+      Self-contained: без внешних скриптов, шрифтов и сетевых запросов. · <a href="../index.html">English version →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeToggle');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('le-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function cur(){return root.getAttribute('data-theme')||(sysDark()?'dark':'light');}
+  function label(){btn.textContent=cur()==='dark'?'☀':'☾';}
+  label();
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    try{localStorage.setItem('le-theme',next);}catch(e){}
+    label();
+  });
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){var id=a.getAttribute('href').slice(1); var s=document.getElementById(id); if(s)map[id]=a;});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ links.forEach(function(l){l.style.color='';l.style.background='';});
+        var a=map[e.target.id]; if(a){a.style.color='var(--text)';a.style.background='var(--surface-2)';}}});
+    },{rootMargin:'-45% 0px -50% 0px'});
+    Object.keys(map).forEach(function(id){io.observe(document.getElementById(id));});
+  }
+})();
+</script>
