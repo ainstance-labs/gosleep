@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchestrator Landscape — GSL-41 Research Dashboard</title>
+<style>
+/* ============ tokens: light ============ */
+:root{
+  --bg:#f9f9f7; --surface:#fcfcfb; --surface2:#f3f2ee; --surface3:#eeede8;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --line2:#c3c2b7;
+  --accent:#2a78d6; --accent2:#1baf7a; --accent3:#4a3aa7;
+  --accent-bg:#e2edfa;
+  --good-t:#067806; --good-bg:#e2f3e2; --good-bd:#b5deb5;
+  --warn-t:#8a6100; --warn-bg:#fcf0d3; --warn-bd:#ecd598;
+  --ser-t:#a34a22;  --ser-bg:#fbe7dd;  --ser-bd:#eec4ae;
+  --crit-t:#b32d2d; --crit-bg:#f9e1e1; --crit-bd:#eab8b8;
+  --info-t:#1c5cab; --info-bg:#e2edfa; --info-bd:#b7d3f6;
+  --neu-t:#52514e;  --neu-bg:#eeede8;  --neu-bd:#d8d7cf;
+  --bar-good:#0ca30c; --bar-warn:#fab219; --bar-ser:#ec835a; --bar-crit:#d03b3b;
+  --shadow:0 1px 2px rgba(11,11,11,.05);
+}
+/* ============ tokens: dark ============ */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d0d0d; --surface:#1a1a19; --surface2:#232322; --surface3:#2a2a28;
+    --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+    --line:#2c2c2a; --line2:#383835;
+    --accent:#3987e5; --accent2:#199e70; --accent3:#9085e9;
+    --accent-bg:#12253d;
+    --good-t:#4cc24c; --good-bg:#142d14; --good-bd:#265426;
+    --warn-t:#fab219; --warn-bg:#2e2408; --warn-bd:#5c4a12;
+    --ser-t:#ec835a;  --ser-bg:#331b0f;  --ser-bd:#66351e;
+    --crit-t:#e05c5c; --crit-bg:#341313; --crit-bd:#662525;
+    --info-t:#86b6ef; --info-bg:#12253d; --info-bd:#1c4470;
+    --neu-t:#c3c2b7;  --neu-bg:#262622;  --neu-bd:#3a3a36;
+    --shadow:none;
+  }
+}
+/* ============ base ============ */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px 90px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:var(--surface3);border:1px solid var(--line);border-radius:4px;
+  padding:1px 5px;overflow-wrap:break-word}
+p{max-width:82ch;margin:10px 0}
+ul,ol{max-width:82ch;padding-left:22px}
+li{margin:5px 0}
+strong{color:var(--ink)}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+/* ============ hero ============ */
+.hero{padding:54px 0 6px}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(28px,4.5vw,42px);line-height:1.12;margin:10px 0 14px;letter-spacing:-.02em}
+.lede{font-size:17px;color:var(--ink2);max-width:74ch;margin:0 0 18px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.pill{font-size:12px;color:var(--ink2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 11px;white-space:nowrap}
+/* ============ toc ============ */
+.toc{position:sticky;top:0;z-index:50;background:var(--bg);
+  border-bottom:1px solid var(--line);margin:30px -24px 0;padding:9px 24px;
+  display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.toc a{font-size:12.5px;font-weight:600;color:var(--ink2);padding:4px 10px;border-radius:999px}
+.toc a:hover{background:var(--surface2);text-decoration:none;color:var(--ink)}
+/* ============ sections ============ */
+.sec{margin-top:70px}
+.sec>h2{font-size:26px;letter-spacing:-.01em;margin:0 0 4px;scroll-margin-top:64px}
+.secnum{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:8px}
+.sub{color:var(--ink2);margin:0 0 20px;max-width:84ch;font-size:15.5px}
+h3{font-size:18px;margin:36px 0 10px;scroll-margin-top:64px}
+h4{font-size:15px;margin:24px 0 8px}
+/* ============ stat tiles ============ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin:18px 0}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.tile .v{font-size:25px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.tile .v small{font-size:13px;font-weight:600;color:var(--ink2)}
+.tile .l{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+/* ============ cards ============ */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow)}
+.card .ct{font-size:14.5px;font-weight:700;margin:0 0 6px}
+.card p{font-size:13.5px;color:var(--ink2);margin:6px 0 0;max-width:none}
+.card ul{font-size:13.5px;color:var(--ink2);margin:6px 0 0;padding-left:18px}
+.t-good{border-top:3px solid var(--bar-good)}
+.t-warn{border-top:3px solid var(--bar-warn)}
+.t-ser{border-top:3px solid var(--bar-ser)}
+.t-crit{border-top:3px solid var(--bar-crit)}
+.t-acc{border-top:3px solid var(--accent)}
+.t-acc2{border-top:3px solid var(--accent2)}
+.t-acc3{border-top:3px solid var(--accent3)}
+/* ============ badges ============ */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.03em;
+  padding:2.5px 9px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.b-good{color:var(--good-t);background:var(--good-bg);border:1px solid var(--good-bd)}
+.b-warn{color:var(--warn-t);background:var(--warn-bg);border:1px solid var(--warn-bd)}
+.b-ser{color:var(--ser-t);background:var(--ser-bg);border:1px solid var(--ser-bd)}
+.b-crit{color:var(--crit-t);background:var(--crit-bg);border:1px solid var(--crit-bd)}
+.b-info{color:var(--info-t);background:var(--info-bg);border:1px solid var(--info-bd)}
+.b-neu{color:var(--neu-t);background:var(--neu-bg);border:1px solid var(--neu-bd)}
+.ver{display:inline-flex;gap:4px;flex-wrap:wrap}
+.ver .badge{font-size:10px;padding:1.5px 7px}
+/* ============ tables ============ */
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;
+  padding:10px 12px;border-bottom:1px solid var(--line2);background:var(--surface2);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--ink);font-weight:600}
+.num,.tab{font-variant-numeric:tabular-nums}
+.matrix th:first-child,.matrix td:first-child{position:sticky;left:0;z-index:2;min-width:150px;
+  background:var(--surface);box-shadow:1px 0 0 var(--line)}
+.matrix th:first-child{background:var(--surface2);z-index:3}
+.matrix td{min-width:168px}
+.matrix td.hl,.matrix th.hl{background:var(--accent-bg)}
+/* ============ callouts ============ */
+.callout{border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--surface);
+  border-radius:8px;padding:14px 18px;margin:18px 0}
+.callout.warn{border-left-color:var(--bar-warn)}
+.callout.crit{border-left-color:var(--bar-crit)}
+.callout.good{border-left-color:var(--bar-good)}
+.callout .ct{font-weight:700;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px}
+.callout p{max-width:none}
+/* ============ glossary ============ */
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;margin:18px 0}
+.gterm{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin:0}
+.gterm dt{font-weight:700;font-size:13.5px;margin-bottom:4px}
+.gterm dd{margin:0;font-size:13px;color:var(--ink2)}
+/* ============ diagrams ============ */
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:18px 0;overflow-x:auto}
+.fig svg{display:block;min-width:780px;width:100%;height:auto}
+.figcap{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:none}
+svg .bx{fill:var(--surface2);stroke:var(--line2)}
+svg .bxs{fill:var(--surface);stroke:var(--line2)}
+svg .bxa{fill:var(--accent-bg);stroke:var(--accent)}
+svg .bxg{fill:var(--good-bg);stroke:var(--good-bd)}
+svg .bxw{fill:var(--warn-bg);stroke:var(--warn-bd)}
+svg .bxc{fill:none;stroke:var(--crit-t);stroke-dasharray:5 4}
+svg .ln{stroke:var(--line2);fill:none;stroke-width:1.3}
+svg .lna{stroke:var(--accent);fill:none;stroke-width:1.5}
+svg .lnc{stroke:var(--crit-t);fill:none;stroke-width:1.3;stroke-dasharray:4 3}
+svg .ar{fill:var(--line2)}
+svg .ara{fill:var(--accent)}
+svg text{fill:var(--ink);font:600 12px system-ui,sans-serif}
+svg .ts{fill:var(--ink2);font-weight:400;font-size:11px}
+svg .tm{fill:var(--muted);font-weight:400;font-size:10.5px}
+svg .tc{fill:var(--crit-t);font-size:10.5px;font-weight:600}
+svg .ta{fill:var(--accent);font-weight:700;font-size:10.5px;letter-spacing:.06em}
+svg .tg{fill:var(--good-t);font-size:10.5px;font-weight:600}
+/* ============ ranked list ============ */
+.rank{counter-reset:r;list-style:none;padding:0;max-width:none}
+.rank>li{counter-increment:r;position:relative;padding:14px 16px 14px 56px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.rank>li::before{content:counter(r);position:absolute;left:15px;top:15px;width:27px;height:27px;
+  border-radius:8px;background:var(--accent-bg);color:var(--info-t);font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center}
+.rank .rt{font-weight:700;font-size:14.5px}
+.rank p{font-size:13.5px;color:var(--ink2);margin:5px 0 0;max-width:none}
+/* ============ key/value ============ */
+.kv{display:grid;grid-template-columns:180px 1fr;gap:7px 16px;font-size:13.5px;margin:14px 0;max-width:none}
+.kv dt{color:var(--muted);font-weight:600}
+.kv dd{margin:0;color:var(--ink2)}
+@media(max-width:640px){.kv{grid-template-columns:1fr}.kv dt{margin-top:6px}}
+/* ============ misc ============ */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.src{font-size:12px;color:var(--muted);margin:8px 0 22px;max-width:none}
+.src code{font-size:11px;background:transparent;border:none;padding:0;color:var(--muted)}
+footer{margin-top:80px;border-top:1px solid var(--line);padding-top:18px;font-size:12.5px;color:var(--muted)}
+footer p{max-width:none}
+.langlink{font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">gosleep · GSL-41 orchestration research · 2026-07-07</div>
+  <h1>Orchestrator Landscape</h1>
+  <p class="lede">A deep, source-verified survey of systems that orchestrate autonomous coding agents —
+  <strong>AutoSK</strong>, <strong>Warren</strong>, <strong>Overstory</strong>, and the wider ecosystem
+  (Gastown, Ralph, Claude Squad and others) — compared against what <strong>gosleep</strong> already has,
+  and distilled into a ranked adoption plan. Every hard claim carries a source: a <code>file:line</code>
+  in a cloned repo, an official doc, or a dated press report.</p>
+  <div class="meta">
+    <span class="pill">3 primary research reports (workers res-autosk, res-warren, res-headless)</span>
+    <span class="pill">5 repos cloned &amp; read at source level</span>
+    <span class="pill">11 tools surveyed</span>
+    <span class="pill"><a class="langlink" href="RU/index.html">Русская версия →</a></span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#concepts">0 · Concepts</a>
+  <a href="#summary">1 · Executive summary</a>
+  <a href="#autosk">2 · AutoSK</a>
+  <a href="#warren">3 · Warren</a>
+  <a href="#overstory">4 · Overstory</a>
+  <a href="#headless">5 · Headless &amp; subscription</a>
+  <a href="#ecosystem">6 · Ecosystem</a>
+  <a href="#matrix">7 · Comparison matrix</a>
+  <a href="#adopt">8 · What gosleep adopts</a>
+</nav>
+
+<!-- ==================== 0 CONCEPTS ==================== -->
+<section class="sec" id="concepts">
+  <h2><span class="secnum">0</span>How to read this report — the concepts</h2>
+  <p class="sub">The report assumes zero prior context. Every system below is built from the same
+  vocabulary; here is that vocabulary in plain language. Terms are also re-explained the first time
+  they matter inside a section.</p>
+
+  <dl class="gloss">
+    <div class="gterm"><dt>Orchestrator / worker</dt>
+      <dd>The split every system converges on: an <strong>orchestrator</strong> decides what to do next,
+      spawns workers, watches them, and talks to the human; <strong>workers</strong> are disposable agents
+      that each execute one bounded chunk of work and then exit. gosleep's own skill mandates a
+      "pure orchestrator" that executes nothing itself.</dd></div>
+    <div class="gterm"><dt>Headless mode / <code>claude&nbsp;-p</code></dt>
+      <dd>Normally <code>claude</code> opens an interactive chat in your terminal. <code>claude -p "do X"</code>
+      (<code>--print</code>) runs the exact same agent <em>once, with no UI</em>: it does the task, prints the
+      result, and exits — Claude Code as a Unix command you can pipe, script, cron, and loop. Same model,
+      same tools, same login; nobody is present to answer permission prompts, so tools must be pre-approved.</dd></div>
+    <div class="gterm"><dt>stream-json (NDJSON over stdio)</dt>
+      <dd>A machine-readable dialect of headless mode: <code>--output-format stream-json --input-format stream-json</code>
+      turns the agent into a live event stream (one JSON object per line) on stdout, and accepts new user
+      messages — even a mid-turn interrupt — on stdin. This is how a program "talks to" a running headless agent.</dd></div>
+    <div class="gterm"><dt>Subscription vs API key</dt>
+      <dd>Two ways to pay for Claude. A <strong>Pro/Max subscription</strong> is flat-rate with usage windows
+      (a rolling 5-hour window plus weekly caps) and covers the official apps, including Claude Code.
+      An <strong>API key</strong> is pay-per-token with no ceiling. Which one a tool can run on is the single
+      question that now sorts the entire orchestrator landscape (§5).</dd></div>
+    <div class="gterm"><dt>tmux / pane</dt>
+      <dd>A terminal multiplexer: one terminal window split into independent <strong>panes</strong>, each running
+      its own process, surviving disconnects. gosleep, Gastown, Claude Squad, and Overstory's escape hatch all
+      run interactive <code>claude</code> sessions inside tmux panes so a human can attach and watch any agent live.</dd></div>
+    <div class="gterm"><dt>Agent Teams</dt>
+      <dd>Claude Code's first-party multi-agent primitive (~Feb 2026): one lead session spawns teammate
+      sessions with their own context windows, peer-to-peer messaging, and a shared task list — all inside
+      the official client, so it runs on the subscription's interactive quota. This is gosleep's current surface.</dd></div>
+    <div class="gterm"><dt>Git worktree</dt>
+      <dd>A second (third, …) working directory checked out from the same repository. Each agent gets its own
+      worktree, so parallel agents can't overwrite each other's files; merged back via branches. The standard
+      isolation unit across the landscape.</dd></div>
+    <div class="gterm"><dt>MCP (Model Context Protocol)</dt>
+      <dd>A standard for giving an agent extra tools over a network or socket. AutoSK mints a tiny private MCP
+      server per agent session, so the agent can call control-plane tools (like "advance this task to the next
+      step") as ordinary tool calls that the host validates.</dd></div>
+    <div class="gterm"><dt>Watchdog</dt>
+      <dd>A supervising process that periodically checks whether agents are alive and making progress, and
+      intervenes (nudge → kill → escalate) when they are not. The key design question: is the watchdog
+      <em>mechanical</em> (plain code, deterministic) or an AI itself? The field's answer converged hard on
+      mechanical (§4, §8).</dd></div>
+    <div class="gterm"><dt>Heartbeat</dt>
+      <dd>A periodic, durable proof of life: "the newest timestamp this component wrote somewhere on disk /
+      in a DB". Liveness is judged from that durable record — never from a process merely existing, and never
+      from what the supervisor <em>remembers</em>. Both Warren and Overstory arrived at this rule independently.</dd></div>
+    <div class="gterm"><dt>Park-to-human</dt>
+      <dd>The universal failure sink: when an agent crashes, loops, exceeds a budget, or can't decide, the task
+      is not silently retried — it is <em>parked</em> into a "waiting for a person" state with an explanatory
+      note. The set of parked tasks IS the owner's morning review queue.</dd></div>
+    <div class="gterm"><dt>Handoff / ledger</dt>
+      <dd>gosleep vocabulary: a <strong>handoff</strong> is a self-contained document one agent writes so a fresh
+      agent (with zero memory) can resume; the <strong>ledger</strong> (<code>ORCHESTRATION-STATE.md</code>) is the
+      orchestrator's on-disk state file. Other systems keep the same information in task files (AutoSK) or a
+      database (Warren).</dd></div>
+    <div class="gterm"><dt>Kickback / corrections loop</dt>
+      <dd>AutoSK's turn-level guard: if an agent ends its turn without declaring the required transition, the
+      host re-prompts it with a correction — at most N times (default 3) — then parks the task to a human.
+      Bounded retries with a single exit, never an infinite loop.</dd></div>
+    <div class="gterm"><dt>Circuit breaker</dt>
+      <dd>Ralph's loop-level guard, borrowed from electrical engineering: the loop "trips open" when it detects
+      no progress, the same error repeating, or output collapsing — then cools down before retrying, instead of
+      burning quota on a stuck loop.</dd></div>
+    <div class="gterm"><dt>Usage window / quota</dt>
+      <dd>Subscription limits arrive as windows: a rolling 5-hour window plus weekly caps (since 2025-08-28).
+      When a window is exhausted, every agent riding that login stalls at once. Overnight autonomy therefore
+      needs <em>window-aware waiting</em>, not just error handling.</dd></div>
+    <div class="gterm"><dt>Spawn-per-turn / fresh-context-per-step</dt>
+      <dd>Instead of keeping one long-lived agent whose context window slowly fills up, spawn a fresh process
+      for each step/turn and carry all state in files or a DB. Context exhaustion is designed away rather than
+      fought. AutoSK, late Overstory, and gosleep's cycle-worker model all converge here.</dd></div>
+    <div class="gterm"><dt>Daemon</dt>
+      <dd>A background service that keeps running independently of any terminal — AutoSK's <code>autoskd</code>
+      owns all state and serves every UI; Warren is itself a server process. gosleep currently has no daemon:
+      the orchestrator is an interactive session.</dd></div>
+  </dl>
+</section>
+
+<!-- ==================== 1 EXECUTIVE SUMMARY ==================== -->
+<section class="sec" id="summary">
+  <h2><span class="secnum">1</span>Executive summary</h2>
+  <p class="sub">Five findings carry the whole report. Details and evidence live in the sections that follow.</p>
+
+  <div class="cards">
+    <div class="card t-good">
+      <div class="ct"><span class="badge b-good">VALIDATED</span>&nbsp; gosleep's core bets are the field's convergence points</div>
+      <p>Independently of us, the strongest projects landed on the same fundamentals gosleep already uses:
+      <strong>state in plain files / durable records</strong> (AutoSK abandoned its v1 database for files),
+      <strong>fresh context per step</strong> instead of fighting compaction, <strong>interactive CLI in tmux</strong>
+      as the subscription-legal spawn surface (Gastown, Claude Squad), and <strong>recovery by re-attach + reconcile
+      from durable state</strong>, never blind respawn (Warren). Our architecture is not exotic — it is the
+      emerging standard, minus a few hardening layers.</p>
+    </div>
+    <div class="card t-warn">
+      <div class="ct"><span class="badge b-warn">POLICY SHIFT</span>&nbsp; Subscription-first survives — but headless is now metered</div>
+      <p>Anthropic spent Jan–Apr 2026 cutting third-party harnesses off from subscription OAuth, and in June split
+      <strong>programmatic usage (<code>claude -p</code>, SDK, CI) into its own monthly credit pool</strong>
+      ($20 Pro / $100 Max&nbsp;5x / $200 Max&nbsp;20x at API list rates). Interactive Claude Code — gosleep's tmux +
+      Agent Teams surface — is explicitly unaffected and remains the most generous $/token surface. Verdict:
+      keep interactive quota as the engine; treat headless as bounded glue (§5).</p>
+    </div>
+    <div class="card t-acc">
+      <div class="ct"><span class="badge b-info">CONVERGENCE</span>&nbsp; The field pushed the LLM out of the supervision loop</div>
+      <p>Overstory built a 4-tier watchdog with AI triage and an AI monitor-agent; its successor Warren kept
+      <strong>one mechanical 30-second tick over durable heartbeats</strong> and dropped AI from supervision
+      entirely. AutoSK's loops are all bounded counters with a single human exit. The lesson for gosleep's
+      "who watches the orchestrator" gap: the watcher must be dumb code over durable state — the LLM belongs
+      inside bounded runs, not in the control loop (§4).</p>
+    </div>
+    <div class="card t-crit">
+      <div class="ct"><span class="badge b-crit">GAPS = OPPORTUNITY</span>&nbsp; Nobody ships the two features an owner-asleep system needs most</div>
+      <p>Across the whole landscape, <strong>no tool notifies anyone when work parks for a human</strong>
+      (AutoSK's parks are silent; a fleet can quietly die at 1am), and <strong>no tool is usage-window-aware</strong>
+      (quota exhaustion parks everything; nothing resumes when the window resets — only Ralph auto-waits).
+      Push-on-park and window-aware scheduling are gosleep's clearest differentiators (§8).</p>
+    </div>
+    <div class="card t-acc2">
+      <div class="ct"><span class="badge b-good">TOP ADOPTIONS</span>&nbsp; The five highest-value transplants</div>
+      <ul>
+        <li><strong>External mechanical watchdog</strong> over an orchestrator heartbeat file, with a restart budget (Warren's supervisor semantics on tmux).</li>
+        <li><strong>Park-to-human as the single failure sink</strong> with an explanatory note (AutoSK) — the owner's morning queue.</li>
+        <li><strong>Persisted, human-resettable loop budgets</strong>: turn corrections → step-visit caps → park (AutoSK) + Ralph's circuit breaker &amp; exit gate.</li>
+        <li><strong>Quota auto-wait</strong> (Ralph) grown into fleet-level window-aware scheduling.</li>
+        <li><strong><code>claude -p</code> stream-json harness</strong> for bounded headless glue — the proven wire pattern (AutoSK's driver).</li>
+      </ul>
+    </div>
+    <div class="card t-acc3">
+      <div class="ct"><span class="badge b-neu">ECONOMICS</span>&nbsp; Wide swarms lost the argument</div>
+      <p>Overstory's own in-repo self-critique (<code>STEELMAN.md</code>) reports a 20-agent swarm finishing
+      15 tasks in 6h for ~$60 of tokens where a single agent did the same in 8h for ~$9 — a 2-hour speedup
+      bought for $51 of coordination overhead. Warren's answer: <strong>serial, PR-gated execution, one child
+      at a time</strong>. gosleep's ~3-pane cap and one-commit-per-task discipline sit on the right side of
+      this trade already (§4).</p>
+    </div>
+  </div>
+  <p class="src">Sources: sections §2–§8 below; primary research in
+  <code>docs/research/2026-07-07-orchestration/01-autosk.md</code>, <code>02-warren-overstory.md</code>, <code>03-headless-subscription-landscape.md</code>.</p>
+</section>
+<!-- ==================== 2 AUTOSK ==================== -->
+<section class="sec" id="autosk">
+  <h2><span class="secnum">2</span>AutoSK — the file-native task tracker + workflow engine</h2>
+  <p class="sub">A local-first task tracker, workflow engine, and three-frontend interface for coding agents,
+  by solo developer <code>wierdbytes</code>. The most instructive single codebase in this survey: nearly every
+  design decision gosleep faces has been made here once, documented, and tested — on pure subscription auth.</p>
+
+  <h3>2.1 Identity &amp; maturity</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">374</div><div class="l">commits, 1 contributor</div></div>
+    <div class="tile"><div class="v tab">27<small> ★</small></div><div class="l">stars — near-zero adoption</div></div>
+    <div class="tile"><div class="v tab">~6.5</div><div class="l">weeks of life (2026-05-13 →)</div></div>
+    <div class="tile"><div class="v">v0.2.4</div><div class="l">latest release (2026-06-28)</div></div>
+    <div class="tile"><div class="v">MIT</div><div class="l">license</div></div>
+    <div class="tile"><div class="v">iOS β</div><div class="l">TestFlight companion app</div></div>
+  </div>
+  <p>Three-layer pitch: (1) a file-based task tracker under <code>.autosk/</code> in your repo;
+  (2) an opt-in workflow engine where each workflow is a directed graph of steps, each step owned by an
+  agent managed by a daemon; (3) three front ends — CLI, a lazygit-style TUI, and a Tauri desktop/mobile GUI.
+  Explicitly inspired by <strong>beads</strong> (Steve Yegge), <strong>pi.dev</strong>, and <strong>sandcastle</strong>.
+  Stack: Go (CLI/TUI), Bun/TypeScript daemon compiled to a standalone binary, Tauri (Rust + React) GUI,
+  releases automated via GitHub Actions, Homebrew + TestFlight distribution.</p>
+  <div class="callout">
+    <div class="ct">Why 27 stars still matter</div>
+    <p>This is one senior engineer's opinionated reference architecture, not a community-validated product —
+    but the opinions are unusually well-documented (~45 daemon test files, golden byte-format tests, design-rationale
+    headers on every module). The strongest signal is the <strong>v1→v2 clean break</strong>: the author first built a
+    DB-backed store and npm-installed agents, then <em>abandoned both</em> for plain files + in-process code.
+    gosleep already bets on files; AutoSK is independent validation of that bet.</p>
+  </div>
+  <p class="src">Sources: <code>README.md:3-36</code>, <code>AGENTS.md:6-19</code>, GitHub API (stars/commits), clone @ <code>fd4c22e</code>.</p>
+
+  <h3>2.2 Architecture</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 352" role="img" aria-label="AutoSK architecture diagram">
+      <defs>
+        <marker id="arw-ask" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <!-- clients -->
+      <text x="16" y="46" class="ta">CLIENTS (pure JSON-RPC, no storage)</text>
+      <rect x="16" y="56" width="168" height="50" rx="8" class="bxs"/>
+      <text x="30" y="77">autosk CLI</text>
+      <text x="30" y="94" class="ts">Go · Cobra</text>
+      <rect x="16" y="122" width="168" height="50" rx="8" class="bxs"/>
+      <text x="30" y="143">autosk lazy TUI</text>
+      <text x="30" y="160" class="ts">lazygit-style (gocui)</text>
+      <rect x="16" y="188" width="168" height="50" rx="8" class="bxs"/>
+      <text x="30" y="209">Tauri GUI</text>
+      <text x="30" y="226" class="ts">desktop + iPhone (remote)</text>
+      <!-- arrows clients -> daemon -->
+      <line x1="184" y1="81" x2="250" y2="81" class="ln" marker-end="url(#arw-ask)"/>
+      <line x1="184" y1="147" x2="250" y2="147" class="ln" marker-end="url(#arw-ask)"/>
+      <line x1="184" y1="213" x2="250" y2="213" class="ln" marker-end="url(#arw-ask)"/>
+      <text x="217" y="136" class="tm" text-anchor="middle">JSON-RPC</text>
+      <!-- daemon -->
+      <rect x="250" y="34" width="290" height="286" rx="10" class="bxa"/>
+      <text x="266" y="58">autoskd — daemon (Bun, one per host)</text>
+      <rect x="266" y="72" width="258" height="52" rx="7" class="bxs"/>
+      <text x="278" y="92">Scheduler — event-driven scans</text>
+      <text x="278" y="109" class="ts">global FIFO pool, 4 workers · 30s rescan</text>
+      <rect x="266" y="136" width="258" height="72" rx="7" class="bxs"/>
+      <text x="278" y="156">.autosk/ file store (sole writer)</text>
+      <text x="278" y="172" class="ts">tasks/&lt;id&gt;/task.json · sessions/&lt;id&gt;.jsonl</text>
+      <text x="278" y="188" class="ts">atomic: temp → fsync → rename → fsync dir</text>
+      <rect x="266" y="220" width="258" height="52" rx="7" class="bxs"/>
+      <text x="278" y="240">Extensions — in-process TypeScript</text>
+      <text x="278" y="257" class="ts">workflows + agents are code, not config</text>
+      <text x="266" y="298" class="tm">UDS (local) · TCP 0.0.0.0:7077 (token, no TLS)</text>
+      <!-- claude subprocess -->
+      <rect x="640" y="44" width="224" height="96" rx="8" class="bx"/>
+      <text x="654" y="66">claude -p subprocess</text>
+      <text x="654" y="84" class="ts">stream-json stdin/stdout</text>
+      <text x="654" y="100" class="ts">--permission-mode acceptEdits</text>
+      <text x="654" y="116" class="ts">per-task worktree / docker sandbox</text>
+      <line x1="540" y1="70" x2="640" y2="70" class="lna" marker-end="url(#arw-ask)"/>
+      <text x="590" y="58" class="tm" text-anchor="middle">spawn per step</text>
+      <text x="590" y="88" class="tm" text-anchor="middle">NDJSON ⇅ interrupt</text>
+      <!-- mcp -->
+      <rect x="640" y="182" width="224" height="76" rx="8" class="bx"/>
+      <text x="654" y="204">Per-session HTTP MCP server</text>
+      <text x="654" y="222" class="ts">random port + Bearer token</text>
+      <text x="654" y="238" class="ts">tools: transit · task · comment</text>
+      <line x1="540" y1="220" x2="640" y2="220" class="ln" marker-end="url(#arw-ask)"/>
+      <text x="590" y="210" class="tm" text-anchor="middle">mints per session</text>
+      <line x1="752" y1="140" x2="752" y2="182" class="lna" marker-end="url(#arw-ask)"/>
+      <text x="760" y="166" class="ta">mcp__autosk__transit</text>
+      <!-- park note -->
+      <text x="440" y="344" class="tc" text-anchor="middle">Every failure path — crash, no-transit, cap hit, daemon restart — parks the task to status "human"</text>
+    </svg>
+    <p class="figcap">Fig. 2a — AutoSK: three thin clients over one daemon that owns all state as files and drives each
+    workflow step as a fresh headless <code>claude -p</code> subprocess. Sources: <code>AGENTS.md:6-19</code>,
+    <code>daemon/extensions/claude-agent/src/index.ts:386-396</code>, <code>engine.ts:48-57</code>.</p>
+  </div>
+
+  <h4>How agents are launched — the exact mechanism</h4>
+  <p>Agents are <strong>headless CLI subprocesses speaking NDJSON over stdio</strong> — no PTY, no tmux, no Agent SDK.
+  The claude extension spawns
+  <code>claude -p --output-format stream-json --input-format stream-json --verbose --include-partial-messages --replay-user-messages</code>,
+  default <code>--permission-mode acceptEdits</code>, optional <code>--dangerously-skip-permissions</code> intended
+  only for worktree-isolated runs. A <code>ClaudeDriver</code> wraps the child: parses the event stream, mirrors
+  messages 1:1 into the transcript, coalesces partial deltas at ~40&nbsp;ms into an ephemeral "partial" channel.
+  <strong>Steering a live run</strong> is solved on the wire: a steer while the model is streaming writes a
+  <code>{type:"control_request", request:{subtype:"interrupt"}}</code> frame, then the new message; a follow-up
+  queues after the current turn.</p>
+  <p class="src">Sources: <code>claude-agent/src/index.ts:386-413</code>, <code>driver.ts:60-126, 254-272, 487-489</code>.</p>
+
+  <h4>The transit protocol — how a step ends</h4>
+  <p>The agent must end its step by calling the MCP tool <code>mcp__autosk__transit {to: "&lt;step&gt;|done|cancel|human"}</code> —
+  the model <em>declares</em> the workflow transition as a validated tool call. Subtlety: the tool is ack-only on
+  the MCP server; the <em>driver</em> observes the tool_use on the stream and host-side code commits the transition
+  after the turn ends. If the turn ends without a transit, or the workflow's <code>onTransit</code> hook rejects the
+  target, the <strong>kickback loop</strong> re-prompts with a correction (budget: 3); when the budget is spent, the
+  engine parks the task to <code>human</code> with reason <code>agent_did_not_transit</code>. This is the "agent must
+  explicitly hand off or park" discipline gosleep's phase gates want, made mechanical.</p>
+  <p class="src">Sources: <code>driver.ts:18-21, 385-389</code>, <code>index.ts:225-269</code>.</p>
+
+  <h4>Scheduler — race-free dispatch with no database</h4>
+  <ul>
+    <li><strong>Event-driven, not polled:</strong> transit/enroll/resume/finish kick a <em>coalesced</em> scan (scans never overlap); a 30s safety rescan backstops out-of-band file edits.</li>
+    <li><strong>Session-creation-as-claim:</strong> a scan claims a schedulable task by creating a <code>queued</code> session — guaranteeing one session per task; dispatch re-reads the task fresh before claiming ("the snapshot is never trusted").</li>
+    <li><strong>Commit-before-seal ordering:</strong> a closing session writes the task's new position FIRST while still <code>running</code> (live → scans skip it), only then flips its own meta terminal — closing the double-dispatch window.</li>
+    <li><strong>Interactive chats run off the bounded pool</strong> so an idle chat can't starve the 4-worker task scheduler.</li>
+    <li><strong>Isolation is agent-owned, not engine-owned:</strong> the engine abolished its isolation abstraction; agents wrap themselves via <code>@autosk/sandbox</code> (per-task git worktree, or a docker container that reaches the host MCP via <code>host.docker.internal</code>), with a final <code>cleanup</code> workflow step.</li>
+  </ul>
+  <p class="src">Sources: <code>engine.ts:1-20, 48-57, 363-453</code>, <code>session.ts:30-35, 309-341</code>, <code>sandbox</code> pkg, <code>README.md:149-151</code>.</p>
+
+  <h3>2.3 State &amp; resilience</h3>
+  <p>All state is plain files under <code>&lt;project&gt;/.autosk/</code> — no DB anywhere (v2 dropped v1's DB).
+  <code>tasks/&lt;id&gt;/task.json</code> is pretty-printed and <em>explicitly human-editable</em>; sessions are a
+  meta JSON + a JSONL transcript. The write discipline is production-grade:</p>
+  <div class="cards">
+    <div class="card">
+      <div class="ct">Atomic writes, byte-stable format</div>
+      <p>Every mutation: temp file in same dir → fsync temp → rename → fsync parent dir. Serializers reassemble
+      records with fixed key order; golden tests pin the exact bytes — "any byte-level change must fail a test".
+      Readers never see torn writes.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Concurrency without transactions</div>
+      <p>A <code>KeyedMutex</code> serializes read-modify-write per task id; distinct keys run parallel. Combined
+      with atomic rename, this replaces a database's transactions entirely. A change-signature
+      (<code>mtime:ctime:size:ino</code>) powers a read cache and lets the file watcher recognize the daemon's own
+      writes (echo suppression).</p>
+    </div>
+    <div class="card">
+      <div class="ct">External edits reconciled</div>
+      <p>Recursive <code>fs.watch</code> + a 5s rescan both funnel into one reconciliation: accept/reject per ownership
+      policy (the engine owns <code>status/step/workflow</code> while a session is live). The watcher is "intentionally
+      dumb — no diffing". Humans and agents may edit <code>task.json</code> directly by contract.</p>
+    </div>
+    <div class="card t-crit">
+      <div class="ct">Crash recovery = reap-then-park</div>
+      <p>On daemon start, any session left <code>running</code>/<code>queued</code> → <code>failed: daemon_restart</code>,
+      structural error lines appended to its transcript, and its task <strong>parked to <code>human</code></strong>.
+      No auto-resume of in-flight runs; the captured claude <code>session_id</code> is stored "for future
+      <code>--resume</code>" but unused. Every daemon upgrade fills the human queue.</p>
+    </div>
+  </div>
+  <p><strong>Surviving context exhaustion:</strong> there is no within-run checkpoint/compaction handling at all.
+  Each workflow step is a <em>fresh <code>claude -p</code> process with fresh context</em>; durable state crosses
+  step boundaries via <code>task.json</code> + comments + the git worktree — never via the agent's context. Loop
+  state (<code>metadata.step_visits</code> counters) persists in the task file, so a human can un-park a task and
+  reset its budget from any text editor — including a phone.</p>
+  <p class="src">Sources: <code>store/paths.ts:1-15</code>, <code>store/atomic.ts:1-24</code>, <code>store/records.ts:1-15</code>,
+  <code>store/lock.ts</code>, <code>store/watcher.ts:1-14</code>, <code>engine.ts:483-508</code>, <code>transition.ts:80-95</code>, <code>driver.ts:195-196, 363</code>.</p>
+
+  <h3>2.4 Auth — subscription-native, verified</h3>
+  <div class="callout good">
+    <div class="ct">Verdict: zero API-key code anywhere</div>
+    <p>There is <strong>no</strong> <code>ANTHROPIC_API_KEY</code> / OAuth / token handling in the entire codebase
+    (grep across daemon/, gui/, cmd/ — no hits). AutoSK simply spawns the operator's already-authenticated
+    <code>claude</code> CLI from <code>$PATH</code>. The docs state the contract: "The <code>claude</code> CLI, already
+    authenticated. The run is unattended — a headless Claude that hits an auth or permission prompt aborts."
+    This is a working proof that a full autonomous orchestrator can run purely on a Claude subscription by
+    treating the authenticated CLI as the only auth boundary.</p>
+  </div>
+  <ul>
+    <li><strong>Login-shell PATH probe:</strong> at startup the daemon runs the operator's shell <code>-ilc</code> to capture the real <code>$PATH</code> (Homebrew/asdf/nvm), because a GUI/launchd-spawned daemon has a bare PATH and would fail to find <code>claude</code>. A hard time cap prevents a broken rc file from wedging startup — a classic unattended-run failure, solved in ~150 lines.</li>
+    <li><strong>Docker sandboxes reuse subscription creds by bind-mount:</strong> <code>~/.claude/.credentials.json:ro</code> is mounted into the container with <code>HOME</code> aligned so the harness finds it. Works — but mounting long-lived creds into a container that may run <code>--dangerously-skip-permissions</code> is a real blast-radius trade-off.</li>
+    <li><code>--allowedTools</code> auto-allowlists the minted MCP tools so headless runs never die on a permission prompt.</li>
+  </ul>
+  <p class="src">Sources: <code>docs/extensions-tutorial-claude.md:25-27</code>, <code>rpc/path-env.ts</code>, <code>sandbox/src/docker.ts:52-59</code>, <code>index.ts:398-406</code>.</p>
+
+  <h3>2.5 UI — three thin clients, one contract</h3>
+  <p>All three front ends are pure JSON-RPC clients; no client owns storage. The GUI enforces exactly
+  <strong>one invoke chokepoint</strong> (a single file may call Tauri <code>invoke</code>) and <strong>one listen
+  chokepoint</strong> (a ref-counted event hub) — and a CI script <em>lints</em> that discipline. Two ideas stand out:</p>
+  <div class="cards">
+    <div class="card t-acc">
+      <div class="ct">The state-aware composer</div>
+      <p>One text box whose verb follows the selected entity's state: on a running session it steers / follows-up /
+      aborts; on a parked task it comments / resumes; on a bare task it enrolls. The owner never chooses a verb —
+      the state does. This is exactly what a gosleep morning-review UI needs.</p>
+    </div>
+    <div class="card t-acc">
+      <div class="ct">Replay-then-tail transcript streaming</div>
+      <p>Subscribe = replay history, then tail live events, deduped by a monotonic line cursor. During a live turn,
+      ~40&nbsp;ms-coalesced <em>partial</em> frames render a growing bubble, cleared when the durable line commits.
+      Durable lines vs cosmetic partials cleanly split — the correct streaming contract for any dashboard.</p>
+    </div>
+  </div>
+  <p class="src">Sources: <code>gui/README.md</code> (Architecture, ~:100-120), <code>scripts/check-ipc-discipline.mjs</code>, <code>README.md:88-91</code>.</p>
+
+  <h3>2.6 Mobile / remote access</h3>
+  <p>The transport is <strong>raw TCP JSON-RPC + a token — that's the whole stack</strong>. The daemon listens on
+  <code>0.0.0.0:7077</code> <em>by default</em>; the first request on a TCP connection must be
+  <code>meta.auth {token}</code> (32 random bytes hex, auto-minted at <code>~/.autosk/daemon-token</code>, mode 0600).
+  The iOS app (TestFlight) is the same Tauri app compiled for iPhone as a <em>remote-only companion</em> — full parity
+  once connected: live transcripts, steer/abort mid-turn, park/resume, task CRUD, in a compact single-pane layout.</p>
+  <div class="callout crit">
+    <div class="ct">The three gaps = gosleep's mobile opportunity</div>
+    <p><strong>No TLS</strong> (token crosses the wire in cleartext; no tunnel guidance at all),
+    <strong>no push notifications</strong> (zero APNs code — the phone must be foreground + connected to see anything),
+    and <strong>no relay</strong> (the phone reaches the daemon only on the same LAN or a DIY VPN). AutoSK proves the
+    daemon side of "steer a live agent from your phone" is the easy 90%; a Tailscale-assumed transport + push-on-park
+    would leapfrog it.</p>
+  </div>
+  <p class="src">Sources: <code>docs/daemon.md:69-90, 444-451</code>, <code>rpc/token.ts:1-40</code>, <code>gui/src-tauri/src/client/remote.rs:14-40</code>, <code>gui/README.md:258, 273-274</code>.</p>
+
+  <h3>2.7 Loop engineering — claimed vs implemented</h3>
+  <p>The marketing is modest and honest: "a real pipeline you can watch, steer, and trust" — no "sleep while it works"
+  claims, no scheduling, no self-healing. The code implements <strong>three nested, bounded loops</strong>, and the
+  design philosophy is visible in every exit: <em>bounded autonomy, park early, never spin.</em></p>
+  <div class="tw"><table>
+    <thead><tr><th>Loop</th><th>Mechanism</th><th>Budget</th><th>Exit</th></tr></thead>
+    <tbody>
+      <tr><td>Turn-level</td><td>Kickback/corrections: re-prompt if the turn ends without <code>transit</code> or the transition is rejected</td><td class="tab">3 attempts</td><td>park → <code>human</code> (<code>agent_did_not_transit</code>)</td></tr>
+      <tr><td>Step-level</td><td>Workflow bounce loops (<code>review → dev</code>, <code>validator → dev</code>) with persistent visit caps in <code>task.json</code></td><td class="tab">e.g. dev ≤ 5 visits</td><td>park → <code>human</code> + explanatory engine comment</td></tr>
+      <tr><td>System-level</td><td>Event-driven scheduler scans + 30s rescan; 4-worker FIFO pool; session-creation-as-claim</td><td class="tab">4 workers</td><td>task reaches <code>done</code> — or any park</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Not implemented:</strong> no cron/scheduled enrollment, no retry-with-backoff (any crash → park), no
+  auto-resume after daemon restart, no hung-agent watchdog beyond turn semantics, no cost/token budgets — the only
+  budgets are visit counts and correction counts. The counters living in the <em>task file</em> (not engine memory)
+  is what makes overnight autonomy auditable: the morning owner sees <code>step_visits: {dev: 5}</code> and a comment
+  explaining the park.</p>
+  <p class="src">Sources: <code>claude-agent/index.ts:225-269</code>, <code>feature-dev/index.ts:37-39, 81-86</code>, <code>transition.ts:80-95</code>, <code>engine.ts:48-57, 363-453</code>; website <code>Hero.astro:25</code>, <code>HowItWorks.astro:8-21</code>.</p>
+
+  <h3>2.8 Weaknesses / risks</h3>
+  <p>Counterweight first: code quality is unusually high (golden byte tests, concurrency/recovery suites, enforced
+  GUI lint). The risks are architectural and operational, not sloppiness:</p>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Risk</th><th>Severity</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">1</td><td>Network exposure by default</td><td><span class="badge b-crit">CRITICAL</span></td><td>TCP <code>0.0.0.0:7077</code> out of the box, token-only, no TLS; the token grants full RPC control — including enrolling tasks that spawn code-executing agents. The per-session MCP server also binds <code>0.0.0.0</code>.</td></tr>
+      <tr><td class="tab">2</td><td>No rate-limit / usage-cap awareness</td><td><span class="badge b-crit">CRITICAL for overnight</span></td><td><code>api_retry</code>/<code>api_error</code> merely logged; exhausted limits → park, no backoff, no resume-when-window-resets. <strong>The 5-hour usage window parks the whole fleet and nothing resumes on its own</strong> — the exact failure gosleep must engineer around.</td></tr>
+      <tr><td class="tab">3</td><td>Parks are silent</td><td><span class="badge b-ser">SERIOUS</span></td><td>No push, no email, no webhook when a task parks to <code>human</code>. Combined with #2, an unattended night can quietly end at 1am.</td></tr>
+      <tr><td class="tab">4</td><td>Daemon restart = fleet reset</td><td><span class="badge b-ser">SERIOUS</span></td><td>All in-flight sessions fail and park; captured <code>session_id</code> never used for <code>--resume</code>. Every upgrade is an operational event.</td></tr>
+      <tr><td class="tab">5</td><td>Extensions are unsandboxed in-process code</td><td><span class="badge b-ser">SERIOUS</span></td><td>Workflows/agents are TS loaded into the daemon (including npm-installed ones browsable from the GUI) — a compromised extension is daemon-privilege RCE.</td></tr>
+      <tr><td class="tab">6</td><td>Credential blast radius in Docker mode</td><td><span class="badge b-warn">MEDIUM</span></td><td><code>~/.claude/.credentials.json</code> bind-mounted into containers that may run <code>--dangerously-skip-permissions</code>.</td></tr>
+      <tr><td class="tab">7</td><td>No GC; always-resident daemon</td><td><span class="badge b-warn">MEDIUM</span></td><td>Session transcripts accumulate forever; idle-shutdown disabled whenever TCP is on (the default).</td></tr>
+      <tr><td class="tab">8</td><td>Bus factor 1, adoption ~0</td><td><span class="badge b-warn">MEDIUM</span></td><td>Solo author; 6 external PRs unmerged; known TUI bugs (#7, #8); v1→v2 was a no-migration clean break — the author will do it again.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Sources: <code>docs/daemon.md:444-458</code>, <code>driver.ts:374-376</code>, <code>hazard.ts</code>, <code>docker.ts:52-59</code>, <code>engine.ts:490</code>, GitHub issues #7/#8.</p>
+
+  <h3>2.9 What gosleep takes from AutoSK</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Pattern</th><th>Value / Effort / Risk</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">1</td><td><code>claude -p</code> stream-json bidirectional harness (exact flag set, steer-via-interrupt, follow-up queue)</td><td><span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>A proven, PTY-free worker interface on pure subscription auth.</td></tr>
+      <tr><td class="tab">2</td><td>Park-to-<code>human</code> as the single failure sink + engine-authored explanatory comment</td><td><span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>Every failure mode converges on one reviewable queue — the owner's morning inbox.</td></tr>
+      <tr><td class="tab">3</td><td>Three-tier loop budgets, persisted &amp; human-resettable</td><td><span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>A complete loop-safety vocabulary in ~100 lines; counters in the task file make overnight runs auditable.</td></tr>
+      <tr><td class="tab">4</td><td>Transit-as-explicit-tool-call with kickback re-prompt</td><td><span class="ver"><span class="badge b-good">V high</span><span class="badge b-warn">E med</span><span class="badge b-good">R low</span></span></td><td>The model must <em>declare</em> handoffs via a validated call; maps directly onto gosleep's phase gates.</td></tr>
+      <tr><td class="tab">5</td><td>Fresh-context-per-step + all state in files</td><td><span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>Don't engineer context survival; engineer step boundaries. Validates the handoff-file architecture.</td></tr>
+      <tr><td class="tab">6</td><td>Session-creation-as-claim + commit-before-seal ordering</td><td><span class="ver"><span class="badge b-warn">V med</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>Race-free multi-worker dispatch on shared file state, no DB.</td></tr>
+      <tr><td class="tab">7</td><td>Atomic write discipline (+ change-signature echo suppression)</td><td><span class="ver"><span class="badge b-warn">V med</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>A crash can never tear a handoff/state file. gosleep already does temp+rename; add fsync.</td></tr>
+      <tr><td class="tab">8</td><td>Per-session ephemeral MCP server + <code>--allowedTools</code> auto-allowlist</td><td><span class="ver"><span class="badge b-warn">V med</span><span class="badge b-warn">E med</span><span class="badge b-good">R low</span></span></td><td>Scoped control plane per worker; the allowlist trick keeps headless runs from dying on prompts.</td></tr>
+      <tr><td class="tab">9</td><td>Replay-then-tail transcript protocol + state-aware composer</td><td><span class="ver"><span class="badge b-warn">V med</span><span class="badge b-warn">E med</span><span class="badge b-good">R low</span></span></td><td>The streaming + interaction contract for a future gosleep dashboard.</td></tr>
+      <tr><td class="tab">10</td><td>Login-shell PATH probe before spawning anything</td><td><span class="ver"><span class="badge b-neu">V low</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span></span></td><td>Solves the classic launchd/GUI unattended-run failure.</td></tr>
+      <tr><td class="tab">11</td><td>Docker creds bind-mount for sandboxed subscription workers</td><td><span class="ver"><span class="badge b-warn">V med</span><span class="badge b-good">E low</span><span class="badge b-warn">R med</span></span></td><td>Works today; pair with read-only mounts, never with skip-permissions on untrusted tasks.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout good">
+    <div class="ct">Build-better — the gaps AutoSK leaves open</div>
+    <p><strong>Usage-window-aware scheduling</strong> (quiesce the fleet on limit exhaustion, auto-resume when the
+    window resets — AutoSK just parks) · <strong>push-on-park</strong> (ntfy/APNs/Telegram — AutoSK has zero
+    notification path) · <strong>session resume</strong> (<code>claude --resume</code> with the captured id, so
+    restarts don't reset in-flight work) · <strong>TLS/tunnel-first remote access</strong> instead of cleartext
+    token TCP on 0.0.0.0.</p>
+  </div>
+</section>
+<!-- ==================== 3 WARREN ==================== -->
+<section class="sec" id="warren">
+  <h2><span class="secnum">3</span>Warren — the deterministic control plane</h2>
+  <p class="sub">"Self-hostable control plane for ephemeral cloud agents — spawn sandboxed agents at your GitHub
+  repos, watch them work live, steer them, get a branch back." By Jaymin West (os-eco), continuously dogfooded
+  against real repos on Fly.io. Where AutoSK teaches state-as-files, Warren teaches <strong>supervision</strong> —
+  the most directly transferable material in this whole survey.</p>
+
+  <h3>3.1 Identity &amp; maturity</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">1,586</div><div class="l">commits in ≈2 months</div></div>
+    <div class="tile"><div class="v">v0.9.10</div><div class="l">version · MIT</div></div>
+    <div class="tile"><div class="v tab">33</div><div class="l">scenario acceptance tests</div></div>
+    <div class="tile"><div class="v">API key</div><div class="l">auth — NOT subscription</div></div>
+    <div class="tile"><div class="v">SQLite</div><div class="l">bun:sqlite + drizzle</div></div>
+    <div class="tile"><div class="v">bwrap</div><div class="l">sandbox per run (burrow)</div></div>
+  </div>
+  <p>Runs are short-lived by design: complete a task, validate, push a branch, spin down. Stack: Bun runtime
+  (TS executed directly), <code>Bun.serve</code> HTTP API + React SPA in one process, SQLite (optional Postgres).
+  Sandboxing is delegated to <strong>burrow</strong>, a sibling process using bubblewrap isolation, reached over a
+  unix socket with a shared bearer token. Warren bundles the <strong>os-eco data plane</strong> as opt-in features:
+  canopy (versioned prompts), mulch (persistent agent memory), seeds (git-native issue queue), plot (shared
+  human+agent event log). <strong>Auth is API-key only</strong> — <code>ANTHROPIC_API_KEY</code> is required and
+  forwarded to runtimes; there is no subscription path anywhere, and cost is tracked per run
+  (<code>runs.cost_usd</code>, <code>runs.tokens_*</code>).</p>
+  <p class="src">Sources: <code>warren/package.json:3-4</code>, <code>README.md:16, 26, 30-31, 58</code>, <code>CLAUDE.md</code> (Tech Stack); clone @ <code>c3508c5</code>.</p>
+
+  <h3>3.2 How agents are spawned — crash-safe dispatch</h3>
+  <ul>
+    <li><strong>Warren never spawns agent processes itself.</strong> It delegates to burrow over the socket in 3 steps: resolve the rendered agent definition and <em>freeze it onto the run row</em> (<code>runs.rendered_agent_json</code> — reproducibility); provision a workspace (seed files placed in one atomic round-trip, rollback on failure); dispatch the run.</li>
+    <li><strong>Row-before-spawn:</strong> the run row is created <em>before</em> any burrow call, with runtime IDs nulled; IDs are attached as calls succeed. If the orchestrator dies mid-spawn, a reconciler finds rows with null runtime IDs and cleans up — failures transition <code>queued → cancelled</code> with best-effort destroy.</li>
+    <li><strong>Placement before row-creation:</strong> a worker is picked first so <code>runs.worker_id</code> lands at creation; burrow→worker pinning stays sticky for cancel/steer/reap.</li>
+    <li><strong>Agents are prompt definitions, not code.</strong> Built-ins include <code>claude-code</code>, <code>planner</code>, <code>pr-fixer</code>, <code>healer</code>, the <code>leveret</code> overseer — and two cron <em>patrol agents</em>: <strong>nightwatch</strong> (nightly: scan repo → produce a plan of fixes, never fixes itself; reap auto-dispatches a plan-run per plan) and <strong>bugwatch</strong> (2×/week: triage bugs → ≤3 conservative fix-plans). Planners plan; executors execute — a working owner-sleeps loop, on API-key economics.</li>
+    <li><strong>Worker prompt discipline worth stealing</strong> (claude-code builtin): "Quality gates are terminal, not advisory. You are NOT done until the gate exits zero… If genuinely unfixable, say so explicitly and leave the work open rather than claiming success." The agent commits but never pushes — warren pushes host-side after the run terminates. Model tiering is pinned per builtin (Sonnet for scoped coding; operators raise to Opus per run).</li>
+  </ul>
+  <p class="src">Sources: <code>src/runs/spawn/dispatch.ts:1-45</code>, <code>src/registry/builtins/nightwatch.ts:1-17</code>, <code>bugwatch.ts:1-23</code>, <code>claude-code.ts:24-30</code>, <code>model-tiers.ts</code>.</p>
+
+  <h3>3.3 State, persistence, recovery</h3>
+  <div class="cards">
+    <div class="card t-acc">
+      <div class="ct">Recover by re-attach, not restart</div>
+      <p>On boot, warren walks the runs table for <code>{queued, running}</code> rows with a live runtime id and
+      <strong>re-attaches an event-stream bridge to each</strong> — a resume-sequence filter makes re-subscription
+      idempotent. Rows in active states <em>without</em> a runtime id surface as <code>skipped</code> partial spawns
+      for the operator. Restart recovery is a first-class, acceptance-tested path.</p>
+    </div>
+    <div class="card t-acc">
+      <div class="ct">Re-wake from the transcript</div>
+      <p>When a conversation's anchoring run has died, warren spawns a <em>fresh</em> run seeded purely from the DB
+      transcript — it survives the old workspace being destroyed; token cost grows with transcript length (accepted
+      v1 trade-off). The direct answer to context exhaustion: kill the exhausted agent, seed a fresh one from the
+      durable ledger — never "resume" dead context.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Belt-and-suspenders terminal detection</div>
+      <p>A run-state poller polls burrow in parallel with the event stream, so agents that never emit a terminal
+      envelope still reach terminal state in warren.</p>
+    </div>
+    <div class="card t-good">
+      <div class="ct">Reap — the single terminal path</div>
+      <p>Every ending — clean, cancelled, watchdog-killed — routes through one reap pipeline: push the partial
+      branch, open a PR, mirror memory/issue state, destroy the workspace, GC. <strong>Committed work is never
+      lost, even when the killer is the watchdog.</strong></p>
+    </div>
+  </div>
+  <p class="src">Sources: <code>src/runs/stream/recover.ts:1-13, 39-50</code>, <code>run-state-poller.ts:1-11</code>, <code>conversation-rewake.ts:1-21</code>, <code>src/runs/reap/</code>.</p>
+
+  <h3>3.4 Queues, scheduling, budgets</h3>
+  <ul>
+    <li><strong>Cron triggers:</strong> <code>.warren/triggers.yaml</code> per project; an in-process scheduler tick dispatches on the same composition path as manual runs. Per-trigger <code>maxCostUsd</code> overrides the agent-level cap.</li>
+    <li><strong>Serial plan-run dispatch — warren's "epic executor":</strong> a plan's children run <em>one at a time</em>, each gated on the previous PR <strong>merging</strong> before the next dispatches; re-dispatching a partially-done plan resumes from the next open child.</li>
+    <li><strong>Cost caps enforced mid-run:</strong> the event bridge cancels + reaps a run when cumulative cost crosses the cap. Malformed cap values <strong>fail OPEN</strong> — "a budget typo must never silently cancel every run at $0".</li>
+    <li><strong>Human gates with timeouts:</strong> an agent's question flips the run to <code>paused</code>; a human answers via API <em>or</em> the pause budget (default 30 min) elapses — then warren respawns a turn with the answer <em>or a timeout warning</em> folded in; the respawned agent re-reads state from disk. <strong>Autonomy never blocks forever on a human.</strong></li>
+    <li><strong>Idle coordinator:</strong> conversations idle &gt;20 min are finalized (resources reclaimed) without being closed.</li>
+  </ul>
+  <p class="src">Sources: <code>src/triggers/tick.ts</code>, <code>src/plan-runs/coordinator*.ts</code>, <code>src/runs/cost-cap.ts:1-31</code>, <code>src/runs/pause.ts:1-16</code>, <code>README.md:34-36</code>.</p>
+
+  <h3>3.5 The self-supervision stack — four layers, each watching a different failure class</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 366" role="img" aria-label="Warren supervision stack diagram">
+      <defs>
+        <marker id="arw-war" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <rect x="16" y="14" width="848" height="322" rx="10" class="bx"/>
+      <text x="32" y="38" class="ta">LAYER 0 — docker / Fly restart policy: the outer, dumb supervisor of the whole container</text>
+      <rect x="36" y="54" width="808" height="264" rx="10" class="bxs"/>
+      <text x="52" y="78" class="ta">LAYER 1 — process supervisor (container ENTRYPOINT): boot ordering, signal forwarding, restart policy</text>
+      <text x="52" y="98" class="ts">warren is NEVER restarted in-process — "never mask a warren bug with an in-process restart loop"; crash-loop detection belongs to the layer above</text>
+      <rect x="56" y="116" width="330" height="182" rx="8" class="bx"/>
+      <text x="72" y="140">burrow — sandbox substrate</text>
+      <text x="72" y="160" class="ts">bwrap isolation per run</text>
+      <text x="72" y="177" class="ts">unix socket + shared bearer token</text>
+      <text x="72" y="200" class="ts">restarted in-process: exp backoff 1s → 16s</text>
+      <text x="72" y="217" class="ts">budget 5 restarts / 60s → exit non-zero</text>
+      <text x="72" y="240" class="ts">exit 0 without a shutdown signal =</text>
+      <text x="72" y="256" class="ts">treated as failure ("clean-but-unexpected</text>
+      <text x="72" y="272" class="ts">is as suspicious as a crash")</text>
+      <rect x="410" y="116" width="414" height="182" rx="8" class="bxa"/>
+      <text x="426" y="140">warren — control plane (Bun + SQLite event log)</text>
+      <text x="426" y="158" class="ts">events table = the source of truth for liveness</text>
+      <rect x="426" y="172" width="382" height="110" rx="7" class="bxs"/>
+      <text x="440" y="194" class="ta">LAYER 2 — detector suite (30s ticks over DB state)</text>
+      <text x="440" y="214" class="ts">heartbeat watchdog: newest-event age &gt; 45 min → cancel via reap</text>
+      <text x="440" y="231" class="ts">pause detector (30 min question timeout) · idle coordinator (20 min)</text>
+      <text x="440" y="248" class="ts">plan-run tick · trigger cron · healer (retries + cooldown)</text>
+      <text x="440" y="272" class="ts">all: single-flight · error isolation · on by default · fail-loud</text>
+      <text x="440" y="356" class="tg" text-anchor="middle">Every liveness decision reads durable state (newest event row) — never in-memory belief. Detectors survive restarts for free.</text>
+    </svg>
+    <p class="figcap">Fig. 3a — Warren's four supervision layers. The asymmetry is deliberate: the substrate (burrow)
+    is restarted in-process under a budget; the orchestrator (warren) is never restarted in-process — its crashes
+    escalate to the outer layer. Sources: <code>src/supervisor/main.ts:1-23, 78-80, 199-205</code>,
+    <code>src/runs/watchdog.ts:1-47</code>, <code>detector-wiring.ts</code>.</p>
+  </div>
+  <ul>
+    <li><strong>The heartbeat watchdog exists because of a real incident</strong> (2026-06-05: a stuck bash tool pinned biome at ~57 CPU-min forever; nothing reaped it). It detects <em>silent-but-busy hangs</em> the exit-code layer can't see: 30s tick over <code>running</code> runs; heartbeat = timestamp of the newest event; older than 45 min (deliberately generous) → <code>watchdog.timed_out</code> → cancel → <strong>route through reap</strong> so committed work still ships as a branch.</li>
+    <li><strong>Design details worth copying verbatim:</strong> on by default ("a lifecycle-reclaim safety net must not depend on an operator remembering an env var"); single-flight ticks (an overlapping tick is dropped, not stacked); per-run error isolation (one bad row can't kill the loop); long-lived conversation runs exempted so idle ≠ hung; invalid config <strong>throws at boot</strong> ("a typo… fails loud rather than silently mis-arming the safety net").</li>
+    <li><strong>Closed-loop healer:</strong> production alerts (Sentry/Grafana) → fingerprint → route to a project → dispatch a healer agent run, guarded by per-fingerprint max-retries + cooldown — so an alert storm can't become an agent storm.</li>
+  </ul>
+
+  <h3>3.6 UI &amp; steering</h3>
+  <p>Web SPA, CLI, and raw HTTP are "three thin clients of one pipeline". Live NDJSON event tail
+  (<code>GET /runs/:id/events?follow=1</code>); <strong>steer-by-inbox</strong> — <code>POST /runs/:id/steer</code>
+  drops a message into the agent's inbox, picked up at the next turn boundary (durable delivery, unlike a raw
+  terminal keystroke); clean abort via cancel. The opt-in Workspace UI walks Shape (conversation with the leveret
+  overseer) → Plan (planner run + <strong>human sign-off gate that arms dispatch</strong>) → Run (serial plan-run
+  with per-child PR status) → Activity (unified human+agent timeline with inline answer-cards on open questions).</p>
+  <p class="src">Sources: <code>README.md:31-37</code>.</p>
+
+  <h3>3.7 Weaknesses — from gosleep's seat</h3>
+  <div class="cards">
+    <div class="card t-crit"><div class="ct"><span class="badge b-crit">BLOCKER</span>&nbsp; API-key economics</div>
+      <p>No subscription path at all. Every pattern transfers; the billing model doesn't. Warren's own cost-cap
+      machinery exists <em>because</em> API spend is unbounded.</p></div>
+    <div class="card t-warn"><div class="ct"><span class="badge b-warn">FRICTION</span>&nbsp; Cloud-shaped</div>
+      <p>Containers, Fly.io, bubblewrap, a resident server — a heavier operational footprint than a laptop-first,
+      skill-driven system wants. The <em>semantics</em> port to launchd + tmux; the runtime doesn't need to.</p></div>
+    <div class="card t-warn"><div class="ct"><span class="badge b-warn">TRADE-OFF</span>&nbsp; Re-wake cost curve</div>
+      <p>Re-seeding a fresh session from the whole DB transcript grows linearly with conversation length —
+      acknowledged as a v1 trade-off. gosleep's compact handoffs are the cheaper equivalent.</p></div>
+  </div>
+
+  <div class="callout">
+    <div class="ct">The unifying principle (Warren, verbatim design rule)</div>
+    <p>Every liveness decision is made from <strong>durable state (DB event timestamps), never from in-memory
+    beliefs</strong> — so every detector survives a warren restart for free, and the same logic works on the
+    recovery path. For gosleep: heartbeat = ledger/handoff file mtimes and tmux liveness — never pane-content
+    scraping, never what the orchestrator "remembers".</p>
+  </div>
+</section>
+<!-- ==================== 4 OVERSTORY ==================== -->
+<section class="sec" id="overstory">
+  <h2><span class="secnum">4</span>Overstory — the archived predecessor, and what its death teaches</h2>
+  <p class="sub">"Multi-agent orchestration for AI coding agents" — the same author's <em>previous</em> system:
+  local worker swarms in git worktrees, coordinated through a SQLite mail bus, watched by a four-tier watchdog.
+  Archived 2026-05-28 with a pointer to Warren, "overstory's spiritual successor". Its architecture is the closest
+  thing in the wild to gosleep's current tmux model — which makes its post-mortem required reading.</p>
+
+  <h3>4.1 Identity &amp; architecture</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">1,712</div><div class="l">commits before archive</div></div>
+    <div class="tile"><div class="v">2026-05-28</div><div class="l">archived read-only</div></div>
+    <div class="tile"><div class="v tab">11</div><div class="l">pluggable agent runtimes</div></div>
+    <div class="tile"><div class="v">SQLite</div><div class="l">mail bus (WAL, 1-5 ms)</div></div>
+    <div class="tile"><div class="v">tmux</div><div class="l">opt-in live mode</div></div>
+    <div class="tile"><div class="v">subscr.</div><div class="l">rides the CLI's login</div></div>
+  </div>
+  <ul>
+    <li><strong>Two spawn modes:</strong> headless (default) — <code>claude -p --output-format stream-json --input-format stream-json</code> subprocess; and <strong>tmux</strong> (opt-in escape hatch) — a session the operator can attach to and steer live. <em>The tmux mode is exactly gosleep's current architecture.</em> Auth rides whatever the CLI is logged in as — subscription-compatible, unlike Warren.</li>
+    <li><strong>Spawn-per-turn workers</strong> (late-phase redesign): task-scoped workers (builder/scout/reviewer/merger/lead) have <em>no persistent process between turns</em> — each mail delivery/nudge spawns a fresh <code>claude --resume &lt;session-id&gt;</code>, processes the turn, exits. Only coordinator/orchestrator/monitor stay long-lived.</li>
+    <li>Workers in isolated <strong>git worktrees</strong>, merged back via a FIFO merge queue with 4-tier conflict resolution — machinery that exists <em>because</em> parallel branches conflict (Warren later deleted the problem by going serial).</li>
+  </ul>
+  <p class="src">Sources: <code>overstory/README.md:9-11, ~178-185</code>, <code>src/runtimes/claude.ts:242-259</code>, <code>src/agents/capabilities.ts:5-9</code>; clone @ <code>ff38f3f</code>.</p>
+
+  <h3>4.2 The supervision hierarchy — who watches whom</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 384" role="img" aria-label="Overstory supervision hierarchy diagram">
+      <defs>
+        <marker id="arw-ov" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <text x="16" y="28" class="ta">WORK HIERARCHY</text>
+      <rect x="16" y="40" width="250" height="42" rx="8" class="bxs"/>
+      <text x="30" y="66">Operator (human)</text>
+      <line x1="141" y1="82" x2="141" y2="102" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="16" y="104" width="250" height="42" rx="8" class="bxs"/>
+      <text x="30" y="122">Orchestrator</text>
+      <text x="30" y="138" class="ts">multi-repo, optional, LLM</text>
+      <line x1="141" y1="146" x2="141" y2="166" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="16" y="168" width="250" height="74" rx="8" class="bxw"/>
+      <text x="30" y="188">Coordinator (per project)</text>
+      <text x="30" y="205" class="ts">persistent Claude agent</text>
+      <text x="30" y="221" class="tc">exempt from staleness checks;</text>
+      <text x="30" y="236" class="tc">NOTHING auto-restarts it when dead</text>
+      <line x1="141" y1="242" x2="141" y2="262" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="16" y="264" width="250" height="86" rx="8" class="bxs"/>
+      <text x="30" y="286">Workers (per task)</text>
+      <text x="30" y="303" class="ts">builder · scout · reviewer · merger · lead</text>
+      <text x="30" y="319" class="ts">spawn-per-turn: fresh claude --resume</text>
+      <text x="30" y="335" class="ts">one git worktree each</text>
+      <!-- watchdog column -->
+      <text x="330" y="28" class="ta">WATCH HIERARCHY (sideways)</text>
+      <rect x="330" y="40" width="256" height="118" rx="8" class="bxa"/>
+      <text x="344" y="62">TIER 0 — mechanical daemon</text>
+      <text x="344" y="80" class="ts">ov watch --background (plain code, no AI)</text>
+      <text x="344" y="97" class="ts">per-tick escalation on stalls:</text>
+      <text x="344" y="114" class="ts">L0 warn → L1 tmux/mail nudge →</text>
+      <text x="344" y="131" class="ts">L2 invoke AI triage → L3 kill session</text>
+      <text x="344" y="148" class="ts">recovery resets the level</text>
+      <rect x="330" y="180" width="256" height="88" rx="8" class="bx"/>
+      <text x="344" y="202">TIER 1 — AI triage (on demand)</text>
+      <text x="344" y="220" class="ts">one-shot claude -p over last 50 log lines,</text>
+      <text x="344" y="236" class="ts">30s timeout → retry | terminate | extend</text>
+      <text x="344" y="253" class="tg">fail-safe: can't diagnose → extend</text>
+      <line x1="458" y1="158" x2="458" y2="180" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="618" y="40" width="246" height="88" rx="8" class="bx"/>
+      <text x="632" y="62">TIER 2 — monitor agent</text>
+      <text x="632" y="80" class="ts">persistent Claude patrolling the fleet,</text>
+      <text x="632" y="96" class="ts">nudging stalled agents, reporting health</text>
+      <text x="632" y="113" class="tc">an AI watching AIs — dropped in Warren</text>
+      <rect x="618" y="150" width="246" height="60" rx="8" class="bxc"/>
+      <text x="632" y="172" class="tc">TIER 3 — per-project supervisor</text>
+      <text x="632" y="190" class="tc">DEPRECATED before the archive —</text>
+      <text x="632" y="205" class="tc">the 4th watch level didn't earn its keep</text>
+      <!-- arrows from tier0 to workers/coordinator -->
+      <line x1="330" y1="120" x2="270" y2="290" class="ln" marker-end="url(#arw-ov)"/>
+      <text x="308" y="230" class="tm" text-anchor="end">nudge / kill workers;</text>
+      <text x="308" y="245" class="tm" text-anchor="end">worker_died mail → parent</text>
+      <!-- ZFC note -->
+      <rect x="330" y="290" width="534" height="72" rx="8" class="bxg"/>
+      <text x="344" y="312" class="tg">ZFC ("Zero Failure Crash") — observable state is truth, recorded state is a claim:</text>
+      <text x="344" y="330" class="ts">tmux liveness &gt; pid liveness (signal 0) &gt; sessions.json · tmux-dead + "working" = zombie now</text>
+      <text x="344" y="347" class="ts">tmux-alive + "zombie" = investigate · decision_gate = paused on a human, never a stall</text>
+    </svg>
+    <p class="figcap">Fig. 4a — Overstory: a four-level work hierarchy watched sideways by a tiered watchdog.
+    The coordinator is watched for <em>death</em> but not for <em>hangs</em>, and nothing restarts it — the same gap
+    gosleep has one level up. Sources: <code>src/watchdog/daemon.ts:1-22, 556-611, 892-903</code>,
+    <code>triage.ts:1-7, 29-75</code>, <code>health.ts:4-31, 88-103</code>, <code>supervisor.ts:453, 472</code>.</p>
+  </div>
+  <ul>
+    <li><strong>Death notifications:</strong> when the watchdog terminates a worker it sends a synthetic <code>worker_died</code> mail to the parent, so the coordinator never blocks forever waiting for <code>worker_done</code>; run completion counts zombies as terminal ("a run that mixes them strands the coordinator forever").</li>
+    <li><strong>Forward-only state machine with CAS guards:</strong> <code>booting &lt; working &lt; completed &lt; stalled &lt; zombie</code>; <code>completed → *</code> is rejected so a late watchdog tick can't reclassify a clean exit as a zombie.</li>
+    <li><strong>Failure memory:</strong> every watchdog intervention is recorded (agent, capability, reason, triage verdict) to the mulch memory store — institutional memory of <em>how agents die</em>, fire-and-forget so recording can't break the watchdog.</li>
+    <li><strong>The gap acknowledged in code:</strong> the watchdog daemon itself has no supervisor — only collision detection against a leftover watchdog from a previous session.</li>
+  </ul>
+
+  <h3>4.3 STEELMAN — the economics that killed the swarm</h3>
+  <p>Overstory ships its own strongest counter-argument in-repo (<code>STEELMAN.md</code>), with real numbers:</p>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">20 agents</div><div class="l">15 tasks · 6 h · ~8M tokens</div></div>
+    <div class="tile"><div class="v tab">~$60</div><div class="l">swarm cost</div></div>
+    <div class="tile"><div class="v tab">1 agent</div><div class="l">same tasks · 8 h · ~1.2M tokens</div></div>
+    <div class="tile"><div class="v tab">~$9</div><div class="l">single-agent cost</div></div>
+    <div class="tile"><div class="v tab">$51</div><div class="l">price of saving 2 hours</div></div>
+  </div>
+  <p>Plus: compounding error rates at merge boundaries, debugging-as-forensics across worktrees, premature
+  decomposition. The author's revealed conclusion — archive the swarm, rebuild serial. gosleep's ~3-pane cap and
+  one-commit-per-task/one-PR-per-epic conventions already sit on the winning side of this trade.</p>
+  <p class="src">Source: <code>STEELMAN.md</code> §2.</p>
+
+  <h3>4.4 Overstory → Warren: the evolution table</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Overstory had</th><th>Warren replaced it with</th><th>The lesson</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">1</td><td>LLM coordinator/orchestrator agents — needing their own watchdog, triage, exit triggers, restart story</td><td><strong>No persistent LLM orchestrator at all</strong> — coordination is deterministic tick loops over durable DB state; the LLM lives only inside bounded runs</td><td>Code doesn't hallucinate, doesn't exhaust context, restarts idempotently. This <em>dissolves</em> "who watches the orchestrator" instead of solving it.</td></tr>
+      <tr><td class="tab">2</td><td>Parallel swarm + FIFO merge queue with 4-tier conflict resolution</td><td>Serial PR-gated plan-runs — one child at a time, next gated on the previous PR merging</td><td>STEELMAN's $60-vs-$9 economics predicted it: sidestep merge conflicts rather than resolve them.</td></tr>
+      <tr><td class="tab">3</td><td>4-tier watchdog with AI triage + AI monitor agent</td><td>One mechanical heartbeat watchdog (30s tick, one 45-min threshold, force-fail through reap)</td><td>AI in the supervision loop didn't survive contact. The watcher must be dumb.</td></tr>
+      <tr><td class="tab">4</td><td>Local worktrees + tmux sessions on the operator's box</td><td>Ephemeral bwrap sandboxes in the cloud; whole lifecycle = rows + events in one DB</td><td>Session-state sprawl (sessions.json, tmux liveness, signal conflicts) was the tax.</td></tr>
+      <tr><td class="tab">5</td><td>ZFC reconciliation rules for when recorded state lies</td><td>Liveness <em>defined</em> as "newest event timestamp" — one source of truth, no conflict matrix</td><td>Don't reconcile two sources of truth; have one.</td></tr>
+      <tr><td class="tab">6</td><td>Subscription-CLI auth (rides the operator's login)</td><td>API key + per-run cost caps</td><td>Cloud-headless forced the billing change — and forced building the cost-cap machinery. gosleep keeps the subscription side of this fork.</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Kept across the arc:</strong> the os-eco data plane (seeds/mulch/canopy), the headless
+  stream-json spawn contract, steer-by-inbox (upgraded with a pause timeout — overstory's <code>decision_gate</code>
+  paused the watchdog <em>indefinitely</em>), checkpoint/resume reborn as re-wake-from-transcript, and patrol agents
+  reborn as cron-scheduled nightwatch/bugwatch. <strong>Dropped:</strong> the 11-runtime adapter matrix (→ 3 builtins),
+  the SQLite mail bus, task groups, the TUI dashboard, the deprecated supervisor tier.</p>
+  <p class="src">Sources: <code>warren/SPEC.md:2897</code>, <code>overstory/README.md:9</code>, evolution analysis in <code>02-warren-overstory.md</code> §8.</p>
+
+  <h3>4.5 The "who watches the orchestrator" problem — options for gosleep</h3>
+  <p>gosleep's gap: Agent Teams gives ONE nesting level — the orchestrator spawns workers, but nothing sits above
+  the orchestrator. Failure modes to detect: <strong>D1</strong> death (pane/process gone) · <strong>D2</strong> hang
+  (alive but wedged: stuck tool, permission prompt, API-error loop) · <strong>D3</strong> context exhaustion (alive but
+  compacted/degraded) · <strong>D4</strong> silent quiesce (ended a turn without an armed wake-up) · <strong>D5</strong>
+  crash-loop. Prerequisite for every option: a <strong>written heartbeat protocol</strong> — each orchestrator pulse
+  appends <code>{ts, context%, fleet summary}</code> to a fixed file. Both Warren and Overstory converge on the same
+  rule: judge liveness from durable observable state, never from pane scraping or in-memory belief.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Option</th><th>Mechanics</th><th>Detects</th><th>Subscription</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>A · External mechanical watchdog</td><td>launchd LaunchAgent every 2–5 min: session exists? heartbeat fresh? context% under ceiling? Dead → respawn from the cold-start protocol (re-attach to live workers, never respawn them). Stale → one nudge, then kill (explicit session id only) + respawn. Restart budget 3-in-60-min; exhausted → stop and escalate to human.</td><td>D1 D2 D3 D4 D5</td><td><span class="badge b-good">✓ zero tokens</span></td><td><span class="badge b-good">RECOMMENDED CORE</span></td></tr>
+      <tr><td>B · Self-pulse (ScheduleWakeup)</td><td>The orchestrator never ends a turn without an armed wake-up; each pulse checks workers, writes the heartbeat, re-arms. Already the owner's standing rule.</td><td>worker-level only; it IS the thing that dies</td><td><span class="badge b-good">✓ native</span></td><td><span class="badge b-info">NECESSARY, NOT SUFFICIENT</span> — the heartbeat <em>generator</em> for A</td></tr>
+      <tr><td>C · Headless AI triage on anomaly</td><td>When A sees an anomaly it can't classify, spawn a one-shot <code>claude -p</code> (30s timeout) with the heartbeat, ledger tail and pane capture → <code>nudge | restart | extend | escalate</code>; fail-safe default <code>extend</code>. AI recommends; the mechanical layer enforces budgets.</td><td>D2 D3 with semantic judgment</td><td><span class="badge b-warn">costs quota per call</span></td><td><span class="badge b-info">ADD LATER</span> — on-anomaly only; Warren dropped <em>continuous</em> AI patrol for a reason</td></tr>
+      <tr><td>D · Paired orchestrators (active/standby)</td><td>Two orchestrator sessions heartbeat each other; standby takes over on miss.</td><td>D1 D2 mutually; D3 D4 hit both</td><td><span class="badge b-warn">burns a pane slot</span></td><td><span class="badge b-crit">NOT RECOMMENDED</span> — split-brain risk; neither author shipped it; supervision hierarchies above one watcher didn't earn their keep</td></tr>
+      <tr><td>E · Tick-mode (no persistent orchestrator)</td><td>launchd fires every N min; the tick runs a short-lived <code>claude -p</code> orchestrator turn: reconcile ledger vs reality, harvest, dispatch, write ledger, exit. Nothing long-lived exists to supervise.</td><td>dissolves D1–D5 by construction</td><td><span class="badge b-good">✓ CLI auth</span> (no warm cache across ticks)</td><td><span class="badge b-info">NIGHT-MODE EXPERIMENT</span> — the overstory→warren lesson applied whole; loses the live steering pane</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout good">
+    <div class="ct">Recommended composite</div>
+    <p><strong>Now:</strong> B (pulse + heartbeat write, already mandated) + A (launchd mechanical watchdog with
+    respawn budget + human escalation) — covers D1–D5 with zero token overhead. <strong>Next:</strong> C as an
+    on-anomaly triage step inside A (bounded, fail-safe extend). <strong>Experiment:</strong> E for the unattended
+    overnight window — interactive orchestrator by day, tick-mode while the owner sleeps; compare throughput and
+    failure rates.</p>
+  </div>
+  <p class="src">Source: <code>02-warren-overstory.md</code> §9 (analysis over warren <code>supervisor/main.ts</code>, <code>watchdog.ts</code>, <code>recover.ts</code>; overstory <code>daemon.ts</code>, <code>triage.ts</code>, <code>health.ts</code>).</p>
+</section>
+<!-- ==================== 5 HEADLESS & SUBSCRIPTION ==================== -->
+<section class="sec" id="headless">
+  <h2><span class="secnum">5</span>Headless mode &amp; the subscription question</h2>
+  <p class="sub">Can gosleep run on a Claude Pro/Max subscription — legally, reliably, overnight? This section
+  explains what <code>claude -p</code> actually is, reconstructs Anthropic's policy timeline with dated sources,
+  and ends in an approach matrix. Claims are labelled FACT / COMMUNITY-REPORT where the evidence differs.</p>
+
+  <h3>5.1 What <code>claude -p</code> actually is</h3>
+  <p>Normally <code>claude</code> opens a chat UI in your terminal and waits. <strong><code>claude -p "do X"</code>
+  runs the exact same agent once, with no UI: it does the task, prints the answer, exits.</strong> It is not a
+  different product or a raw API call — same model, same tools, same CLAUDE.md/skills/MCP context, same login.
+  Two things change: (1) <strong>nobody can answer permission prompts</strong> — tools must be pre-approved via
+  <code>--allowedTools</code> / <code>--permission-mode</code>, or the run aborts; (2) <strong>output becomes
+  machine-readable</strong> — <code>--output-format json</code> (result + session id + cost) or
+  <code>stream-json</code> (live event stream). The <strong>Agent SDK</strong> is the same engine in library form —
+  it bundles and spawns the Claude Code binary and talks to it over stdio — but its docs only document API-key
+  auth (that difference matters below).</p>
+  <div class="tw"><table>
+    <thead><tr><th>Flag</th><th>What it gives an orchestrator</th></tr></thead>
+    <tbody>
+      <tr><td><code>-p</code> / <code>--print</code></td><td>One-shot non-interactive run; reads stdin (capped 10 MB since v2.1.128).</td></tr>
+      <tr><td><code>--output-format json|stream-json</code></td><td>Parseable result, session id, per-call cost; stream-json + <code>--verbose --include-partial-messages</code> = live token/event stream incl. <code>system/init</code>, <code>system/api_retry</code>.</td></tr>
+      <tr><td><code>--resume &lt;id&gt;</code> / <code>--continue</code></td><td>Multi-step workflows across separate invocations — state persists; session lookup is scoped to the project dir + its worktrees.</td></tr>
+      <tr><td><code>--allowedTools</code> / <code>--disallowedTools</code></td><td>Permission-rule syntax (<code>Bash(git commit *)</code>) — the whole safety model for unattended runs.</td></tr>
+      <tr><td><code>--permission-mode</code></td><td>Baseline posture; <code>dontAsk</code> = fully non-interactive deny-by-default.</td></tr>
+      <tr><td><code>--permission-prompt-tool</code></td><td>Delegate approvals to your own MCP tool — programmatic human-in-the-loop.</td></tr>
+      <tr><td><code>--max-turns</code>, <code>--max-budget-usd</code></td><td>Hard caps per run (budget cap is print-mode only).</td></tr>
+      <tr><td><code>--bare</code></td><td>Skip ALL auto-discovery for reproducible CI runs. <strong>⚠ Also skips OAuth/keychain — subscription login does NOT work in bare mode</strong>; docs say bare "will become the default for <code>-p</code> in a future release" — a flag change worth pinning against.</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Auth precedence in headless mode (highest wins):</strong> cloud-provider creds →
+  <code>ANTHROPIC_AUTH_TOKEN</code> → <code>ANTHROPIC_API_KEY</code> (<em>"in non-interactive mode the key is always
+  used when present"</em> — a stray exported key silently hijacks your subscription; <code>unset</code> it) →
+  <code>apiKeyHelper</code> → <code>CLAUDE_CODE_OAUTH_TOKEN</code> (from <code>claude setup-token</code>: official,
+  one-year, <strong>subscription-backed</strong> token for CI, accepted first-class by
+  <code>anthropics/claude-code-action</code>) → subscription OAuth from <code>/login</code>, the Pro/Max default.
+  <strong>Bottom line: <code>claude -p</code> on a logged-in Pro/Max machine just works on the subscription, by
+  design, today.</strong></p>
+  <p class="src">Sources: code.claude.com/docs <code>headless.md</code>, <code>agent-sdk/overview.md</code> (fetched 2026-07-07, docs updated 2026-07-06); <code>claude-code-action/action.yml</code>.</p>
+
+  <h3>5.2 The policy timeline — dated and sourced</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Date</th><th>Event</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">2025-07-28</td><td>Weekly rate limits announced for Pro/Max (effective 08-28), stacked on the rolling 5-hour window. Stated reasons: users running Claude Code "essentially 24/7", account sharing, resale. One user reportedly consumed "tens of thousands of dollars" of usage on a $200 plan.</td><td><span class="badge b-good">FACT</span></td></tr>
+      <tr><td class="tab">2026-01-09</td><td>Silent server-side checks: third-party tools using Pro/Max OAuth tokens start receiving <em>"This credential is only authorized for use with Claude Code and cannot be used for other API requests."</em></td><td><span class="badge b-good">FACT</span></td></tr>
+      <tr><td class="tab">2026-02-19</td><td>Consumer ToS formalize it: OAuth credentials from Free/Pro/Max are <strong>only for Claude Code and claude.ai</strong>; use in any other product — reportedly including Anthropic's own Agent SDK — violates the ToS.</td><td><span class="badge b-good">FACT</span> <span class="badge b-warn">SDK detail unverified</span></td></tr>
+      <tr><td class="tab">2026-04-04</td><td>Enforcement effective 12PM PT: subscriptions no longer cover usage through third-party tools (OpenClaw — 247k★ framework — named first; "all third-party harnesses in the coming weeks"). Compensation: one-month credit / bundle discounts / refund. Four days later Anthropic ships <strong>Managed Agents</strong> (hosted agents on the API) — widely read as the sanctioned replacement.</td><td><span class="badge b-good">FACT</span> (multi-outlet)</td></tr>
+      <tr><td class="tab">2026-04-04</td><td>Per one secondary source: Pro/Max blocked from "most third-party agent frameworks"; for subscribers, official Agent Teams described as "the only fully-supported multi-agent orchestration option".</td><td><span class="badge b-warn">COMMUNITY-REPORT</span></td></tr>
+      <tr><td class="tab">2026-06-15</td><td><strong>Programmatic usage split from interactive quota:</strong> Agent SDK, <code>claude -p</code> scripts, GitHub Actions, third-party apps now draw from a separate monthly credit pool — <strong>$20 Pro / $100 Max 5x / $200 Max 20x, billed at API list rates</strong>. "Typing into Claude Code in your terminal is unaffected."</td><td><span class="badge b-good">FACT, medium conf.</span> (secondary guides + ralph ADR, primary notice not retrieved)</td></tr>
+      <tr><td class="tab">2026-06-15</td><td>Ralph's maintainer records the same in ADR 0001, pivots to provider-agnostic adapters as a hedge, and <em>rejects</em> driving the interactive TUI programmatically as "adversarial to the vendor's billing intent and plausibly against terms".</td><td><span class="badge b-good">FACT</span> (the ADR says this)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Sources: HN 44713757/44713837; Natural20, ridakaddir.com (Jan); Winbuzzer, MLQ, HN 46549823 (Feb);
+  BigGo, marketingagent.blog, TNW, Ewan Mak (Apr); ccforeveryone.com guide (Jun); <code>ralph-claude-code/docs/adr/0001</code>.</p>
+
+  <h3>5.3 Where this leaves gosleep today (2026-07-07)</h3>
+  <div class="cards">
+    <div class="card t-good">
+      <div class="ct">Interactive tmux + Agent Teams — the protected surface</div>
+      <p>gosleep's current approach stays on the <strong>interactive quota</strong> (5-hour + weekly windows) —
+      far more generous per dollar than API-rate credits, explicitly unaffected by every crackdown, and the exact
+      surface Anthropic kept carving out for subscribers while cutting everything else off.</p>
+    </div>
+    <div class="card t-warn">
+      <div class="ct"><code>claude -p</code> — legal, supported, budget-capped</div>
+      <p>Still works on subscription login, but since ~06-15 draws from the programmatic pool at API list rates.
+      A busy overnight headless fleet on Max 20x (≈$200/mo of credit) can burn that in days. Use it for
+      <strong>bounded glue</strong> — report generation, watchdog checks, CI — not the bulk engine.</p>
+    </div>
+    <div class="card t-crit">
+      <div class="ct">Third-party harnesses on OAuth — never</div>
+      <p>Blocked technically (2026-01-09), banned in ToS (02-19), commercially terminated (04-04). Never pipe a
+      subscription OAuth token into anything that isn't Claude Code / claude.ai — the Agent SDK included.</p>
+    </div>
+    <div class="card">
+      <div class="ct">The realistic risk is tightening, not banning</div>
+      <p>Anthropic just built a <em>metering system</em> for headless — you don't meter what you intend to kill.
+      Mitigation: design every autonomous loop to degrade to wait-for-window (Ralph's pattern), and keep an
+      <code>ANTHROPIC_API_KEY</code> escape-hatch config path (same CLI, one env var), OFF by default.</p>
+    </div>
+  </div>
+
+  <h3>5.4 Approach matrix</h3>
+  <div class="tw"><table class="matrix">
+    <thead><tr><th>Approach</th><th>On subscription?</th><th>Overnight autonomy</th><th>Supervision</th><th>Shutdown/ToS risk</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>A · Interactive Claude Code + Agent Teams in tmux <em>(current gosleep)</em></td><td><span class="badge b-good">✓ interactive quota</span> — most generous $/token</td><td>Medium-high: fleet runs while quota lasts; needs the lead alive (pulse/wake-ups); weekly caps are the ceiling</td><td>Best-in-class: every pane observable/steerable; human can attach anytime</td><td><span class="badge b-good">Low</span> — official surface; Agent Teams still behind an experimental flag</td><td><strong>Keep as the core engine</strong></td></tr>
+      <tr><td>B · <code>claude -p</code> loops (ralph-style)</td><td><span class="badge b-good">✓</span> — official CLI; draws from the programmatic credit pool since ~06-15</td><td>High: cron-able, loopable, quota-auto-wait patterns exist</td><td>Partial: JSON/stream logs, status files; steering between iterations via <code>--resume</code></td><td><span class="badge b-warn">Low-med</span> — metering can be re-tuned; pin against the <code>--bare</code>-default change</td><td><strong>Adopt for bounded glue</strong> (nightly report, watchdog checks), not the bulk engine</td></tr>
+      <tr><td>C · Agent SDK + API key</td><td><span class="badge b-crit">✗ on subscription</span> — API key required</td><td>High</td><td>Full programmatic (hooks, canUseTool, sessions)</td><td><span class="badge b-good">Low with API key</span></td><td>Only if the owner accepts API billing — <strong>not now</strong></td></tr>
+      <tr><td>D · Cloud Routines (claude.ai scheduled agents)</td><td><span class="badge b-good">✓ requires subscription login</span> (a set API key <em>breaks</em> it)</td><td>High: cron ≥1h / API-fire / GitHub triggers; fully autonomous, no permission prompts</td><td>Low during run (cloud session; results land in repos/PRs)</td><td><span class="badge b-warn">Medium</span> — research preview, surface may change</td><td><strong>Adopt as the overnight trigger/watchdog</strong> once stable; wrap in a thin skill</td></tr>
+      <tr><td>E · Managed Agents (API service, 2026-04-08)</td><td><span class="badge b-crit">✗ API billing</span></td><td>High: hosted sessions, cron deployments, outcomes/rubrics</td><td>Medium: event streams, webhooks, tool confirmation</td><td><span class="badge b-good">Low</span> (Anthropic's strategic bet)</td><td>The "grown-up" endgame if gosleep ever goes API-funded — watch, don't build on</td></tr>
+      <tr><td>F · Third-party harnesses (Ruflo etc.) on subscription</td><td><span class="badge b-crit">✗ banned</span></td><td>—</td><td>—</td><td><span class="badge b-crit">Maximal (account risk)</span></td><td><strong>Never</strong></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout good">
+    <div class="ct">Recommendation — A + D + B, in that order</div>
+    <p><strong>A stays the engine</strong>: the only approach that simultaneously runs on the generous interactive
+    quota, satisfies the owner's supervision requirement, and sits on the surface Anthropic has repeatedly protected.
+    <strong>D is the missing overnight piece</strong>: subscription-native, cron/GitHub-triggered — use it to kick off
+    or resume the fleet at night and run watchdog/report jobs instead of keeping a laptop-bound orchestrator alive.
+    <strong>B is deterministic glue</strong>: headless one-shots with <code>--output-format json</code> +
+    <code>--max-budget-usd</code> + strict <code>--allowedTools</code>, monitoring the credit burn via
+    <code>total_cost_usd</code>. First-party surfaces also include <code>/loop</code> + local scheduled tasks as the
+    poor-man's Routine.</p>
+  </div>
+  <p class="src">Sources: official docs <code>headless.md</code>, <code>routines.md</code>, <code>scheduled-tasks.md</code>, <code>agent-teams</code>; analysis in <code>03-headless-subscription-landscape.md</code> §§1-3.</p>
+</section>
+<!-- ==================== 6 ECOSYSTEM ==================== -->
+<section class="sec" id="ecosystem">
+  <h2><span class="secnum">6</span>The wider ecosystem — 2025–2026</h2>
+  <p class="sub">One question now sorts the whole landscape: <strong>how does the tool spawn Claude?</strong>
+  (a) interactive <code>claude</code> in tmux/PTY → subscription-OK; (b) <code>claude -p</code> loops →
+  subscription-OK today via the metered programmatic pool; (c) Agent SDK / raw API → API-key-only, subscription
+  use banned. Spawn mechanisms below were verified in cloned source where marked.</p>
+
+  <p><strong>First-party (Anthropic) — the sanctioned set.</strong> Claude Code ships four multi-agent primitives:
+  <strong>subagents</strong>, <strong>skills</strong>, <strong>Agent Teams</strong> (~Feb 2026, experimental flag;
+  one lead spawns teammates with own context windows, peer messaging, shared task list — gosleep's surface), and
+  <strong>workflows</strong> (research preview, Jun 2026). All run inside Claude Code → subscription-compatible.</p>
+
+  <h3>6.1 Gastown + Beads (Steve Yegge) — gosleep at 10× scale</h3>
+  <div class="grid2">
+    <div class="card">
+      <div class="ct">Model</div>
+      <p>A <em>Town</em> holds <em>Rigs</em> (one per repo). Each rig has <em>Crew</em> (human workspace),
+      <em>Polecats</em> (workers — <strong>persistent identity, ephemeral sessions</strong>) and <em>Hooks</em>
+      (git-worktree-backed storage that survives crashes). <em>The Mayor</em> — a Claude Code instance with full
+      workspace context — is the coordinator you talk to. <em>Convoys</em> bundle work; convoys labeled
+      <code>mountain</code> get autonomous stall detection and smart skip logic for epic-scale runs. All work state
+      lives in <strong>Beads</strong> — Yegge's git-backed issue tracker (~24k★) — so "agent memory" is structured
+      data in git, not conversation history.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Verdict for gosleep</div>
+      <p><strong>Spawn (source-verified):</strong> tmux sessions running interactive <code>claude</code>
+      (<code>internal/polecat/session_manager.go</code>), including detection of <strong>"zombie sessions — tmux
+      alive but Claude dead"</strong>. Subscription-compatible by construction. Pitch: "4–10 agents become chaotic →
+      scale comfortably to 20–30". The mapping is 1:1 — Mayor≈orchestrator, polecats≈workers, Beads≈Jira/GH+handoffs,
+      hooks≈worktrees. What gosleep lacks and gastown has: zombie-session detection, mailbox handoffs, per-worker
+      persistent identity, convoy stall detection. Go codebase — hard to vendor, but the <em>ideas</em> port cheaply.</p>
+    </div>
+  </div>
+
+  <h3>6.2 Ralph (<code>frankbria/ralph-claude-code</code>) — the overnight-loop engine</h3>
+  <p>Geoffrey Huntley's "Ralph Wiggum" technique (Jul 2025): an infinite shell loop re-invoking the agent with the
+  same prompt file, filesystem as memory — famous for months-long runs. This is the best-maintained implementation
+  (bash, v0.11.5, 784 tests) and <strong>GoSleep's literal namesake problem is what its hardening solves</strong>:</p>
+  <div class="cards">
+    <div class="card t-acc"><div class="ct">Dual-condition exit gate</div>
+      <p>Exit needs ≥2 heuristic completion indicators <strong>AND</strong> an explicit <code>EXIT_SIGNAL: true</code>
+      in a structured status block — preventing both premature exit (docs containing the word "done") and infinite loops.</p></div>
+    <div class="card t-acc"><div class="ct">Circuit breaker</div>
+      <p>CLOSED→HALF_OPEN→OPEN on: 3 no-progress loops, 5 same-error loops, &gt;70% output decline, 2
+      permission-denial loops; cooldown auto-recovery for unattended runs.</p></div>
+    <div class="card t-acc"><div class="ct">Quota auto-wait</div>
+      <p>4-layer limit detection (timeout guard → structural <code>rate_limit_event</code> → filtered text →
+      Extra-Usage exhaustion); unattended mode <strong>waits for the window to reset instead of dying</strong>.
+      The single most gosleep-relevant pattern in the ecosystem.</p></div>
+    <div class="card t-acc"><div class="ct">Question detection &amp; file protection</div>
+      <p>Catches Claude asking questions instead of acting (headless has no human) and injects corrective guidance
+      next loop; granular allowlists + per-loop integrity checks stop the agent deleting its own control files.</p></div>
+  </div>
+  <p>Loop mechanics: build context (loop #, remaining <code>fix_plan.md</code> tasks, breaker state, previous-loop
+  summary) → invoke <code>claude -p --output-format json</code> with <code>--allowedTools</code> and session
+  <code>--resume</code> → analyze JSON → continue/exit. Plus: rate limiter (100 calls/h), git backup branches +
+  rollback, tmux monitor dashboard, GitHub-issue queue. Strategic read (ADR 0001): the maintainer bets headless
+  moves to API-credit billing, refuses TUI-driving hacks as ToS-adversarial, and goes provider-agnostic. Details
+  worth stealing: only Claude and Gemini support race-free pre-assigned session ids (<code>--session-id</code> at
+  create); "unsupported features degrade with a logged warning, never a silent misbehavior."</p>
+  <p class="src">Sources: <code>.research-cache/ralph-claude-code</code> README, CLAUDE.md, ADR 0001; ghuntley.com/loop; The Register 2026-01-27.</p>
+
+  <h3>6.3 Claude Squad (<code>smtg-ai/claude-squad</code>) — the minimal fleet cockpit</h3>
+  <p>One TUI (<code>cs</code>, ~8k★, brew-installable) listing N <em>instances</em>; each = a git worktree + a tmux
+  session; create/pause/resume/attach; review diffs before applying; optional background "yolo" auto-accept.
+  <strong>Spawn (source-verified):</strong> <code>tmux new-session -d -s claudesquad_&lt;name&gt; -c &lt;worktree&gt; claude</code>
+  — pure interactive CLI in tmux, subscription quota, zero ToS surface. No agent-to-agent coordination, no
+  scheduler — a fleet cockpit, not an orchestrator. Its significance for gosleep: an independent, mature project
+  converged on gosleep's <em>exact</em> spawn pattern; its per-instance worktree isolation and pause/resume UX are
+  the concrete borrowables.</p>
+  <p class="src">Source: <code>.research-cache/claude-squad</code> <code>session/tmux/</code>, README.</p>
+
+  <h3>6.4 The short tail</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tool</th><th>What it is</th><th>Spawn / auth</th><th>Verdict for gosleep</th></tr></thead>
+    <tbody>
+      <tr><td>Ruflo (ex-claude-flow)</td><td>"Hive-mind/queen" swarm topologies, 87 MCP tools, 31.1k★ — most-starred orchestrator; performance claims (84.8% SWE-bench) community-disputed</td><td>SDK/API → <span class="badge b-crit">API-key only; blocked for Pro/Max since Apr 2026</span></td><td><strong>Avoid</strong> — banned-on-subscription category, hype-heavy, heavy dependency surface</td></tr>
+      <tr><td>vibe-kanban (BloopAI)</td><td>Kanban board over parallel coding agents (10+ CLIs); card = workspace with branch/terminal/diff review</td><td>Local CLIs → <span class="badge b-good">✓ subscription</span></td><td>Company shut down 2026-04-10; community-maintained — maintenance risk</td></tr>
+      <tr><td>Conductor / Crystal</td><td>Mac/Electron desktop UIs; each Claude Code session in an isolated worktree with diff/PR review</td><td>Official CLI → <span class="badge b-good">✓ subscription</span></td><td>Human-supervised parallelism only; no autonomy; GUI form factor doesn't compose with tmux/skills</td></tr>
+      <tr><td>ccpm (automazeio)</td><td>Shell-based: GitHub Issues as the coordination layer — issue → worktree → agent, reporting back to the thread; ~7.9k★</td><td>Official CLI → <span class="badge b-good">✓ subscription</span></td><td>Philosophically closest to gosleep's Jira/GitHub mirroring; worth watching</td></tr>
+      <tr><td>Mission Control (builderz-labs)</td><td>Self-hosted dashboard for dispatch/monitoring/spend governance <em>over</em> an executor (Ruflo or Claude Squad); ~3.8k★</td><td>n/a (layer above)</td><td>A dashboard layer, not an executor</td></tr>
+      <tr><td>Swarm SDK (parruda)</td><td>Low-level primitives to wire Claude Code sessions into swarms; you write the orchestrator</td><td>varies</td><td>DIY tier — gosleep's skill already plays this role</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Sources: web sweep + cloned-source inspection, <code>03-headless-subscription-landscape.md</code> §4; star counts are secondary-source figures.</p>
+</section>
+<!-- ==================== 7 MATRIX ==================== -->
+<section class="sec" id="matrix">
+  <h2><span class="secnum">7</span>The comparison matrix</h2>
+  <p class="sub">Seven systems side by side — the six strongest external references plus gosleep as it stands today
+  (per <code>skill/orchestrating-delivery-agents/SKILL.md</code> and the project ledger). First, gosleep today, for
+  readers arriving cold:</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 880 336" role="img" aria-label="gosleep current architecture diagram">
+      <defs>
+        <marker id="arw-gs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <rect x="16" y="30" width="200" height="60" rx="8" class="bxs"/>
+      <text x="30" y="53">Owner (human)</text>
+      <text x="30" y="71" class="ts">boundaries · morning queue</text>
+      <line x1="116" y1="90" x2="116" y2="128" class="ln" marker-start="url(#arw-gs)" marker-end="url(#arw-gs)"/>
+      <rect x="16" y="130" width="200" height="104" rx="8" class="bxa"/>
+      <text x="30" y="153">Orchestrator</text>
+      <text x="30" y="171" class="ts">Claude Code lead, interactive tmux</text>
+      <text x="30" y="188" class="ts">executes nothing itself</text>
+      <text x="30" y="205" class="ts">self-pulse every 5–10 min</text>
+      <text x="30" y="222" class="ts">rolls at ~70% context via handoff</text>
+      <line x1="216" y1="160" x2="288" y2="120" class="ln" marker-end="url(#arw-gs)"/>
+      <line x1="216" y1="190" x2="288" y2="190" class="ln" marker-end="url(#arw-gs)"/>
+      <text x="252" y="146" class="tm" text-anchor="middle">spawn ·</text>
+      <text x="252" y="160" class="tm" text-anchor="middle">SendMessage ⇅</text>
+      <rect x="290" y="80" width="220" height="58" rx="8" class="bxs"/>
+      <text x="304" y="103">Cycle-worker (tmux pane)</text>
+      <text x="304" y="121" class="ts">one context-bounded chunk → handoff</text>
+      <rect x="290" y="152" width="220" height="58" rx="8" class="bxs"/>
+      <text x="304" y="175">Reviewer / verifier (pane)</text>
+      <text x="304" y="193" class="ts">disposable, cheap tier, watchdogged</text>
+      <rect x="290" y="224" width="220" height="40" rx="8" class="bx"/>
+      <text x="304" y="249" class="tm">cap: ~3 concurrent panes (fork limit)</text>
+      <line x1="510" y1="109" x2="580" y2="80" class="ln" marker-end="url(#arw-gs)"/>
+      <line x1="510" y1="181" x2="580" y2="196" class="ln" marker-end="url(#arw-gs)"/>
+      <text x="545" y="70" class="tm" text-anchor="middle">handoffs</text>
+      <text x="545" y="212" class="tm" text-anchor="middle">PRs</text>
+      <rect x="582" y="30" width="282" height="98" rx="8" class="bxg"/>
+      <text x="596" y="53">On-disk ledger — docs/handoff/</text>
+      <text x="596" y="71" class="ts">ORCHESTRATION-STATE.md (atomic temp→rename)</text>
+      <text x="596" y="88" class="ts">dated handoffs NN-YYYY-MM-DD-…md</text>
+      <text x="596" y="105" class="ts">TELEMETRY block: tokens per cycle</text>
+      <rect x="582" y="152" width="282" height="58" rx="8" class="bxs"/>
+      <text x="596" y="175">Jira (GSL) + GitHub</text>
+      <text x="596" y="193" class="ts">epic branch · commit per task · one PR per epic</text>
+      <!-- gaps -->
+      <rect x="16" y="278" width="264" height="46" rx="8" class="bxc"/>
+      <text x="30" y="298" class="tc">GAP · nothing watches the orchestrator</text>
+      <text x="30" y="314" class="tc">(external watchdog missing)</text>
+      <rect x="298" y="278" width="264" height="46" rx="8" class="bxc"/>
+      <text x="312" y="298" class="tc">GAP · no notifications</text>
+      <text x="312" y="314" class="tc">(parks &amp; stalls are silent)</text>
+      <rect x="580" y="278" width="284" height="46" rx="8" class="bxc"/>
+      <text x="594" y="298" class="tc">GAP · no night scheduler</text>
+      <text x="594" y="314" class="tc">(no usage-window-aware resume)</text>
+    </svg>
+    <p class="figcap">Fig. 7a — gosleep today: an interactive orchestrator on Agent Teams, disposable workers,
+    all state on disk — with the three gaps this research targets marked in red.
+    Source: <code>skill/orchestrating-delivery-agents/SKILL.md</code>, project memory (pulse rule, pane cap).</p>
+  </div>
+
+  <div class="tw"><table class="matrix">
+    <thead><tr>
+      <th>Dimension</th><th>AutoSK</th><th>Warren</th><th>Overstory</th><th>Gastown</th><th>Ralph</th><th>Claude Squad</th><th class="hl">gosleep (today)</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>What it is</td><td>File-native task tracker + workflow engine + daemon</td><td>Control plane for ephemeral sandboxed cloud agents</td><td>Local multi-agent swarm w/ mail bus (archived)</td><td>Multi-agent workspace manager (Mayor + polecats + Beads)</td><td>Hardened <code>claude -p</code> loop runner</td><td>TUI fleet cockpit for parallel instances</td><td class="hl">Skill-driven orchestrator over Agent Teams</td></tr>
+      <tr><td>Status</td><td>Active, solo, v0.2.4, 27★</td><td>Very active, v0.9.10, dogfooded</td><td><span class="badge b-crit">archived 2026-05-28</span></td><td>Very active, v1.x, ~24k★ (Beads)</td><td>Active, v0.11.5, 784 tests</td><td>Mature, ~8k★</td><td class="hl">Active, internal</td></tr>
+      <tr><td>Spawn mechanism</td><td><code>claude -p</code> stream-json subprocess</td><td>burrow bwrap sandbox runs (delegated)</td><td><code>claude -p</code> headless or tmux interactive</td><td>tmux + interactive <code>claude</code> (verified)</td><td><code>claude -p --output-format json</code> loop + <code>--resume</code></td><td><code>tmux new-session … claude</code> (verified)</td><td class="hl">Agent Teams teammates in tmux panes, interactive</td></tr>
+      <tr><td>Subscription-compatible</td><td><span class="badge b-good">✓ native</span> (zero key code)</td><td><span class="badge b-crit">✗ API key required</span></td><td><span class="badge b-good">✓ rides CLI login</span></td><td><span class="badge b-good">✓ interactive quota</span></td><td><span class="badge b-good">✓</span> via programmatic pool</td><td><span class="badge b-good">✓ interactive quota</span></td><td class="hl"><span class="badge b-good">✓ interactive quota</span></td></tr>
+      <tr><td>State store</td><td>Plain files <code>.autosk/</code>, atomic writes, golden byte tests</td><td>SQLite event log (opt. Postgres)</td><td>SQLite mail + sessions.json + checkpoint files</td><td>Beads (git-backed issues) + worktree "hooks"</td><td>Filesystem: <code>PROMPT.md</code>, <code>fix_plan.md</code>, <code>status.json</code></td><td>Per-instance worktree + app state</td><td class="hl">Files: STATE ledger + dated handoffs, atomic temp→rename</td></tr>
+      <tr><td>Isolation</td><td>Agent-owned: worktree or docker sandbox</td><td>bwrap sandbox per run</td><td>Git worktree per worker</td><td>Worktree-backed hooks</td><td>Optional Docker/E2B</td><td>Worktree per instance</td><td class="hl">One editing worker per tree, sequenced</td></tr>
+      <tr><td>Supervision / watchdog</td><td>Kickback + visit caps only; no hang watchdog</td><td>4 layers: outer restart policy, supervisor, mechanical 45-min heartbeat watchdog, detectors — all deterministic</td><td>4 tiers incl. AI triage + monitor agent; coordinator itself unwatched for hangs</td><td>Zombie-session detection; convoy stall detection</td><td>Circuit breaker + exit gate + question detection</td><td>None (human watches)</td><td class="hl">Self-pulse + patience clocks + verifier watchdog; <strong>nothing above the orchestrator</strong></td></tr>
+      <tr><td>Loop budgets</td><td>3 corrections / step-visit caps, persisted &amp; human-resettable</td><td>Cost caps mid-run (fail open), pause budget 30 min, healer retries + cooldown</td><td><code>maxTriagePerTick</code>; escalation levels</td><td>Convoy skip logic</td><td>Rate limiter 100/h, breaker thresholds, dual exit gate</td><td>—</td><td class="hl">Cycle/token ceilings, loop guard (same-NEXT), telemetry per cycle</td></tr>
+      <tr><td>Crash recovery</td><td>Reap-then-park; <code>session_id</code> captured but unused</td><td>Re-attach on boot (acceptance-tested); re-wake from transcript; reap harvests partial work</td><td>ZFC reconcile; checkpoint resume; <strong>no coordinator auto-restart</strong></td><td>Hooks survive crashes; persistent identity</td><td>Session resume (24h); git rollback branches</td><td>Pause/resume instances</td><td class="hl">Cold-start: read ledger + newest handoff, reconcile, re-attach — manual trigger</td></tr>
+      <tr><td>Scheduling / autonomy</td><td><span class="badge b-crit">none</span> — no cron, no auto-resume</td><td>Cron triggers + nightwatch/bugwatch patrol agents; serial PR-gated plan-runs</td><td>Free-running patrol (monitor)</td><td>Autonomous convoys (mountain)</td><td>The loop <em>is</em> the scheduler; quota auto-wait</td><td><span class="badge b-crit">none</span></td><td class="hl"><span class="badge b-crit">none</span> — owner-armed pulse only</td></tr>
+      <tr><td>Steering</td><td>Mid-turn interrupt over stream-json stdin</td><td>Steer-by-inbox at turn boundary</td><td>Mail/nudges; tmux attach</td><td>Talk to the Mayor</td><td>Corrective guidance next loop</td><td>tmux attach</td><td class="hl">SendMessage mid-cycle + tmux attach</td></tr>
+      <tr><td>UI</td><td>CLI + TUI + Tauri GUI (desktop)</td><td>Web SPA + CLI + HTTP</td><td>CLI + <code>ov serve</code> web UI</td><td>CLI (hosted flavor exists)</td><td>tmux monitor dashboard</td><td>TUI</td><td class="hl">tmux panes + ≤12-line reports + ledger</td></tr>
+      <tr><td>Mobile / remote</td><td>iOS TestFlight (remote-only; no TLS, no push)</td><td>Web (self-hosted)</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="hl">—</td></tr>
+      <tr><td>Notifications</td><td><span class="badge b-crit">none</span> (parks silent)</td><td>Webhooks inbound (healer); outbound n/a</td><td>Internal mail only</td><td>—</td><td>—</td><td>—</td><td class="hl"><span class="badge b-crit">none</span> (gap)</td></tr>
+      <tr><td>Scale</td><td>4-worker global pool</td><td>Serial by design (plan-runs); multi-worker placement</td><td>20-agent swarms (self-refuted)</td><td>20–30 agents</td><td>1 looping agent</td><td>N independent instances</td><td class="hl">~3 concurrent panes</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Sources: §§2–6 above; gosleep column from <code>skill/orchestrating-delivery-agents/SKILL.md</code>, <code>CLAUDE.md</code>, project memory notes.</p>
+</section>
+
+<!-- ==================== 8 ADOPT ==================== -->
+<section class="sec" id="adopt">
+  <h2><span class="secnum">8</span>What gosleep adopts — the merged, ranked plan</h2>
+  <p class="sub">De-duplicated across all three research reports. Tier 1 = do now, ordered by leverage; Tier 2 =
+  next, cheap or already half-built; then the explicit do-not-adopt list. Source tags: <span class="badge b-neu">ASK</span>
+  AutoSK · <span class="badge b-neu">W/O</span> Warren/Overstory · <span class="badge b-neu">ECO</span> ecosystem report.</p>
+
+  <h3>Tier 1 — the six moves that change what gosleep is</h3>
+  <ol class="rank">
+    <li><span class="rt">Heartbeat file + external mechanical watchdog with restart budget &amp; human escalation</span>
+      <span class="ver"><span class="badge b-good">V high</span><span class="badge b-warn">E med</span><span class="badge b-good">R low</span><span class="badge b-neu">W/O</span></span>
+      <p>Each orchestrator pulse appends <code>{ts, context%, fleet}</code> to a fixed file (the write is the FIRST
+      act of the pulse). A launchd agent every 2–5 min checks session-exists / heartbeat-age / context-ceiling; dead →
+      respawn from the cold-start protocol (re-attach, never respawn workers); stale → one nudge then kill by explicit
+      id; budget 3-in-60-min, then stop and escalate. Warren's supervisor + watchdog semantics transplanted onto tmux.
+      Removes "orchestrator died at 3am, fleet idled until morning" — the single biggest gap.</p></li>
+    <li><span class="rt">Park-to-human as the single failure sink, with an explanatory note</span>
+      <span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span><span class="badge b-neu">ASK</span></span>
+      <p>Every failure mode — crash, no-handoff, cap hit, watchdog kill, structural drift — converges on ONE parked
+      state with a machine-written explanation, forming the owner's morning queue. gosleep has BLOCKED_ON_HUMAN; this
+      generalizes it into <em>the</em> universal sink with an auditable reason field.</p></li>
+    <li><span class="rt">Persisted, human-resettable loop budgets — the full vocabulary</span>
+      <span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span><span class="badge b-neu">ASK</span><span class="badge b-neu">ECO</span></span>
+      <p>AutoSK's three tiers (turn corrections ×3 → step-visit caps → park) merged with Ralph's breaker thresholds
+      (no-progress ×3, same-error ×5, output-collapse, permission-denial ×2) and dual-condition exit gate. Counters
+      live in the ledger/task files, not memory — the owner can pardon a parked task from any editor and the morning
+      state is auditable.</p></li>
+    <li><span class="rt">Quota auto-wait, grown into usage-window-aware fleet scheduling</span>
+      <span class="ver"><span class="badge b-good">V high</span><span class="badge b-warn">E med</span><span class="badge b-good">R low</span><span class="badge b-neu">ECO</span><span class="badge b-neu">ASK</span></span>
+      <p>Detect subscription-limit exhaustion (Ralph's 4-layer detection), quiesce the fleet cleanly, and auto-resume
+      when the window resets — instead of AutoSK's park-everything-at-1am. Nobody in the landscape ships this;
+      it is gosleep's namesake feature.</p></li>
+    <li><span class="rt">Push-on-park notifications (ntfy / Telegram / APNs)</span>
+      <span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span><span class="badge b-neu">ASK</span></span>
+      <p>The moment work parks for a human — or the watchdog escalates — the owner's phone knows. Zero tools in the
+      survey have this; it is the difference between "runs unattended" and "safe to sleep on".</p></li>
+    <li><span class="rt">Recovery = re-attach + reconcile, never blind respawn (harden the cold-start path)</span>
+      <span class="ver"><span class="badge b-good">V high</span><span class="badge b-good">E low</span><span class="badge b-good">R low</span><span class="badge b-neu">W/O</span></span>
+      <p>Warren's <code>recover.ts</code> pattern: walk durable state, re-attach to live workers, surface partial
+      spawns; re-wake = fresh orchestrator seeded from the ledger, never "resume" dead context. Mostly encoded in the
+      skill already — make it the watchdog's respawn prompt and acceptance-test it.</p></li>
+  </ol>
+
+  <h3>Tier 2 — next, in order</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Adoption</th><th>Source</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">7</td><td><code>claude -p</code> stream-json harness for bounded glue (exact flags, steer-via-interrupt, follow-up queue)</td><td><span class="badge b-neu">ASK</span></td><td>Nightly reports, watchdog triage, CI checks — within the programmatic credit pool, with <code>--max-budget-usd</code>.</td></tr>
+      <tr><td class="tab">8</td><td>Watchdog design details: on by default, single-flight ticks, per-worker error isolation, generous thresholds (45-min scale), exempt long-idle interactive sessions, fail-loud config</td><td><span class="badge b-neu">W/O</span></td><td>The difference between a safety net and a foot-gun.</td></tr>
+      <tr><td class="tab">9</td><td>Harvest-through-reap on kill + <code>worker_died</code> ledger entry</td><td><span class="badge b-neu">W/O</span></td><td>When killing a hung worker, still collect committed work (branch, notes); no task silently vanishes.</td></tr>
+      <tr><td class="tab">10</td><td>Human gates with timeouts</td><td><span class="badge b-neu">W/O</span></td><td>Every "ask the owner" pause carries a wall-clock budget; on expiry, continue with a recorded timeout warning — a sleeping owner never wedges the fleet.</td></tr>
+      <tr><td class="tab">11</td><td>Zombie-session detection (tmux alive ≠ Claude alive) in the pulse check</td><td><span class="badge b-neu">ECO</span></td><td>Gastown-verified; cheap to add to liveness ranking.</td></tr>
+      <tr><td class="tab">12</td><td>Atomic-write hardening: add fsync(file)+fsync(dir) to the existing temp→rename discipline</td><td><span class="badge b-neu">ASK</span></td><td>A crash can never tear a handoff.</td></tr>
+      <tr><td class="tab">13</td><td>Serial PR-gated plan execution, resumable from "next open child"</td><td><span class="badge b-neu">W/O</span></td><td>Matches one-commit-per-task and the ~3-pane cap; STEELMAN's economics argue against fan-out anyway.</td></tr>
+      <tr><td class="tab">14</td><td>Budget telemetry wrapper: every headless invocation logs <code>total_cost_usd</code> + session id into the TELEMETRY ledger; alert at N% of the monthly programmatic credit</td><td><span class="badge b-neu">ECO</span></td><td>Extends the existing per-cycle telemetry block.</td></tr>
+      <tr><td class="tab">15</td><td>Failure memory: every watchdog intervention appends a structured record to a learnings file</td><td><span class="badge b-neu">W/O</span></td><td>Feeds retros and threshold tuning — institutional memory of how agents die.</td></tr>
+      <tr><td class="tab">16</td><td>Worker prompt discipline: "quality gates are terminal, not advisory… leave work open rather than claiming success"; workers commit, orchestrator pushes</td><td><span class="badge b-neu">W/O</span></td><td>Paste into the cycle-worker template.</td></tr>
+      <tr><td class="tab">17</td><td>Declared handoffs: transit-as-explicit-signal with a bounded kickback re-prompt</td><td><span class="badge b-neu">ASK</span></td><td>The COMPLETE report becomes a validated, machine-checked signal rather than prose.</td></tr>
+      <tr><td class="tab">18</td><td>Forward-only worker state machine with CAS guards (<code>completed</code> is sticky)</td><td><span class="badge b-neu">W/O</span></td><td>A late watchdog tick can't reclassify a clean exit.</td></tr>
+      <tr><td class="tab">19</td><td>Official Routines prototype: one nightly "wake the fleet / run the queue / file a report" trigger, wrapped in a thin skill</td><td><span class="badge b-neu">ECO</span></td><td>Research preview — keep it swappable; evaluate <code>/loop</code> + scheduled tasks as the local fallback.</td></tr>
+      <tr><td class="tab">20</td><td><code>claude setup-token</code> for CI; policy-guardrails file (no OAuth outside official surfaces; <code>unset ANTHROPIC_API_KEY</code> sanity check in install/doctor)</td><td><span class="badge b-neu">ECO</span></td><td>Subscription-backed CI without an API key; future agents can't wander into banned territory.</td></tr>
+      <tr><td class="tab">21</td><td>Worktree-per-worker isolation where builds allow; login-shell PATH probe for anything launchd-spawned</td><td><span class="badge b-neu">ECO</span> <span class="badge b-neu">ASK</span></td><td>Caveat from the skill: fresh worktrees lack <code>node_modules</code>/<code>.env.local</code> — sequencing often beats it.</td></tr>
+      <tr><td class="tab">22</td><td>Tick-mode night orchestrator pilot (option E)</td><td><span class="badge b-neu">W/O</span></td><td>Prototype after Tier 1 is stable; interactive by day, tick-mode overnight; compare throughput and failure rates.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Explicitly NOT adopting</h3>
+  <ul>
+    <li><strong>Ruflo / claude-flow</strong> — API-only, banned-on-subscription category, hype-heavy.</li>
+    <li><strong>vibe-kanban</strong> — company shut down 2026-04-10; maintenance risk.</li>
+    <li><strong>GUI managers (Conductor / Crystal)</strong> — wrong form factor for a tmux/skill system.</li>
+    <li><strong>TUI-driving hacks (maestro-p style)</strong> — ToS-adversarial per Ralph's ADR; unnecessary — Agent Teams is sanctioned.</li>
+    <li><strong>Paired orchestrators (active/standby)</strong> — split-brain risk; nobody shipped it; extra watch tiers didn't earn their keep (Overstory deprecated its own).</li>
+    <li><strong>Continuous AI patrol agents</strong> — Overstory built it, Warren deleted it; AI belongs in bounded on-anomaly triage only.</li>
+    <li><strong>Vendoring Beads / a DB</strong> — Jira + GH Issues + handoff files already play that role; files won the state argument twice (AutoSK v2, our own ledger).</li>
+  </ul>
+
+  <div class="callout good">
+    <div class="ct">The one-paragraph strategy</div>
+    <p>Keep the engine exactly where it is — interactive Agent Teams on the subscription's interactive quota, the
+    surface Anthropic keeps protecting. Wrap it in Warren-grade supervision (heartbeat + dumb external watchdog +
+    restart budget), AutoSK-grade failure discipline (park-to-human with reasons, persisted budgets), and Ralph-grade
+    loop hardening (breaker, exit gate, quota auto-wait). Then ship the two features nobody else has — push-on-park
+    and window-aware resume — and gosleep is, by construction, the safest thing in this landscape to sleep on.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Method &amp; provenance.</strong> Compiled 2026-07-07/08 from three primary research reports produced by
+  dedicated research workers for GSL-41: <code>docs/research/2026-07-07-orchestration/01-autosk.md</code> (repo cloned
+  @ <code>fd4c22e</code>), <code>02-warren-overstory.md</code> (warren @ <code>c3508c5</code>, overstory @
+  <code>ff38f3f</code>), <code>03-headless-subscription-landscape.md</code> (official docs fetched 2026-07-07; gastown,
+  claude-squad, ralph-claude-code cloned to <code>.research-cache/</code>). All findings are static analysis — no tool
+  was executed. Known caveats: the 2026-06-15 programmatic-credit figures rest on secondary guides + Ralph's ADR
+  (primary Help-Center notice not retrieved); the 2026-04-04 announcement is reconstructed from press; star counts for
+  short-tail tools are secondary figures. The gosleep column reflects
+  <code>skill/orchestrating-delivery-agents/SKILL.md</code> as of branch <code>GSL-41-orchestration-research</code>.</p>
+  <p><a href="RU/index.html">Русская версия этого отчёта →</a></p>
+</footer>
+
+</div>
+</body>
+</html>
