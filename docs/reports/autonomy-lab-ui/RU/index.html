@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoSleep — Автономия, буфер вопросов, Лаборатория, UI и мобильный доступ</title>
+<style>
+/* ============================================================
+   DESIGN SYSTEM — self-contained, no external resources
+   ============================================================ */
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#fbfcfe;
+  --ink:#161a2b; --ink2:#3a4157; --ink3:#69708a; --faint:#9aa0b8;
+  --line:#e2e5f0; --line2:#d0d5e6;
+  --accent:#5a54e0; --accent-soft:#ecebff;
+  --teal:#0f9aa8; --teal-soft:#dff5f7;
+  --amber:#c9820a; --amber-soft:#fdf0d6;
+  --blocker:#d63b4b; --blocker-soft:#fbe3e6;
+  --decision:#c9820a; --decision-soft:#fdf0d6;
+  --clarify:#2f74d0; --clarify-soft:#e2edfb;
+  --fyi:#6b7392; --fyi-soft:#eceef5;
+  --ok:#159a63; --ok-soft:#dcf5e9;
+  --mono:'SF Mono',ui-monospace,'Cascadia Code','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --shadow:0 1px 2px rgba(20,26,43,.05),0 6px 22px rgba(20,26,43,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0c0e18; --bg2:#0a0c14; --card:#151826; --card2:#191d2e;
+    --ink:#e8ebf7; --ink2:#b9c0d8; --ink3:#8b93b0; --faint:#6a7291;
+    --line:#262b3f; --line2:#333a54;
+    --accent:#8f8bff; --accent-soft:#232248;
+    --teal:#39c9d6; --teal-soft:#123037;
+    --amber:#e6a63a; --amber-soft:#3a2e12;
+    --blocker:#ff6b78; --blocker-soft:#3a1a1f;
+    --decision:#e6a63a; --decision-soft:#3a2e12;
+    --clarify:#6fa8f0; --clarify-soft:#16263f;
+    --fyi:#9aa2c4; --fyi-soft:#20243a;
+    --ok:#43c98a; --ok-soft:#12321f;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#fbfcfe;
+  --ink:#161a2b; --ink2:#3a4157; --ink3:#69708a; --faint:#9aa0b8;
+  --line:#e2e5f0; --line2:#d0d5e6;
+  --accent:#5a54e0; --accent-soft:#ecebff;
+  --teal:#0f9aa8; --teal-soft:#dff5f7;
+  --amber:#c9820a; --amber-soft:#fdf0d6;
+  --blocker:#d63b4b; --blocker-soft:#fbe3e6;
+  --decision:#c9820a; --decision-soft:#fdf0d6;
+  --clarify:#2f74d0; --clarify-soft:#e2edfb;
+  --fyi:#6b7392; --fyi-soft:#eceef5;
+  --ok:#159a63; --ok-soft:#dcf5e9;
+  --shadow:0 1px 2px rgba(20,26,43,.05),0 6px 22px rgba(20,26,43,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e18; --bg2:#0a0c14; --card:#151826; --card2:#191d2e;
+  --ink:#e8ebf7; --ink2:#b9c0d8; --ink3:#8b93b0; --faint:#6a7291;
+  --line:#262b3f; --line2:#333a54;
+  --accent:#8f8bff; --accent-soft:#232248;
+  --teal:#39c9d6; --teal-soft:#123037;
+  --amber:#e6a63a; --amber-soft:#3a2e12;
+  --blocker:#ff6b78; --blocker-soft:#3a1a1f;
+  --decision:#e6a63a; --decision-soft:#3a2e12;
+  --clarify:#6fa8f0; --clarify-soft:#16263f;
+  --fyi:#9aa2c4; --fyi-soft:#20243a;
+  --ok:#43c98a; --ok-soft:#12321f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+.topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line)}
+.topbar .row{display:flex;align-items:center;gap:14px;height:56px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+.brand .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--teal));display:inline-block;box-shadow:0 0 0 3px var(--accent-soft)}
+.brand small{font-weight:500;color:var(--ink3);font-size:12px}
+.nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.nav a{font-size:12.5px;color:var(--ink2);text-decoration:none;padding:6px 9px;border-radius:8px;white-space:nowrap}
+.nav a:hover{background:var(--accent-soft);color:var(--accent)}
+.themebtn{border:1px solid var(--line2);background:var(--card);color:var(--ink2);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+.themebtn:hover{border-color:var(--accent);color:var(--accent)}
+.hero{padding:60px 0 34px;border-bottom:1px solid var(--line);background:radial-gradient(900px 380px at 12% -8%,var(--accent-soft),transparent 60%),radial-gradient(700px 340px at 96% 0%,var(--teal-soft),transparent 55%)}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px;letter-spacing:.5px;color:var(--accent);background:var(--card);border:1px solid var(--line2);padding:5px 11px;border-radius:999px;text-transform:uppercase}
+h1.title{font-size:clamp(28px,4.6vw,46px);line-height:1.08;margin:16px 0 10px;letter-spacing:-.5px;font-weight:800}
+.subtitle{font-size:clamp(16px,2vw,20px);color:var(--ink2);max-width:840px;margin:0 0 8px}
+.hero-meta{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:11.5px;color:var(--ink2);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.chip b{color:var(--accent)}
+section{padding:46px 0;border-bottom:1px solid var(--line)}
+.sec-kicker{font-family:var(--mono);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);font-weight:600}
+h2{font-size:clamp(22px,3vw,31px);margin:8px 0 6px;letter-spacing:-.3px;font-weight:800}
+h3{font-size:19px;margin:30px 0 8px;font-weight:700;letter-spacing:-.2px}
+h4{font-size:15px;margin:20px 0 6px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.4px}
+p{margin:10px 0}
+.lead{font-size:17.5px;color:var(--ink2);max-width:880px}
+a.ref{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
+sup.fn{font-family:var(--mono);font-size:10px;color:var(--teal);font-weight:700;padding-left:1px}
+strong{color:var(--ink);font-weight:700}
+em{color:var(--ink2)}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:860px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px;box-shadow:var(--shadow)}
+.card.tint{background:var(--card2)}
+.card h4{margin-top:0}
+.card .num{font-family:var(--mono);font-size:30px;font-weight:800;color:var(--accent);line-height:1}
+.card .lbl{font-size:12.5px;color:var(--ink3);margin-top:4px}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:6px;text-transform:uppercase;vertical-align:middle}
+.b-block{background:var(--blocker-soft);color:var(--blocker)}
+.b-dec{background:var(--decision-soft);color:var(--decision)}
+.b-clar{background:var(--clarify-soft);color:var(--clarify)}
+.b-fyi{background:var(--fyi-soft);color:var(--fyi)}
+.b-ok{background:var(--ok-soft);color:var(--ok)}
+.b-t1{background:var(--accent-soft);color:var(--accent)}
+.b-t2{background:var(--teal-soft);color:var(--teal)}
+.b-t3{background:var(--amber-soft);color:var(--amber)}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 12px 12px 0;padding:14px 18px;margin:18px 0}
+.callout.teal{border-color:var(--teal);background:var(--teal-soft)}
+.callout.amber{border-color:var(--amber);background:var(--amber-soft)}
+.callout.rot{border-color:var(--blocker);background:var(--blocker-soft)}
+.callout .t{font-weight:800;margin-bottom:3px;display:flex;gap:8px;align-items:center}
+.callout p{margin:4px 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:16px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+th{background:var(--bg2);text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap}
+.vhi{color:var(--ok);font-weight:700}
+.vmed{color:var(--amber);font-weight:700}
+.vlo{color:var(--ink3);font-weight:700}
+pre{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:15px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:var(--ink2);margin:14px 0}
+pre .k{color:var(--accent);font-weight:600}
+pre .s{color:var(--teal)}
+pre .c{color:var(--faint);font-style:italic}
+pre .n{color:var(--amber)}
+figure{margin:20px 0}
+.figbox{background:var(--card2);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);overflow-x:auto}
+figcaption{font-size:12.5px;color:var(--ink3);margin-top:9px;font-family:var(--mono)}
+svg{max-width:100%;height:auto;display:block}
+.device{border:1px solid var(--line2);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);background:var(--card);margin:16px 0}
+.device-bar{display:flex;align-items:center;gap:7px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--line)}
+.device-bar .tl{display:flex;gap:6px}
+.device-bar .tl i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.device-bar .tl i:nth-child(1){background:#ff5f57}
+.device-bar .tl i:nth-child(2){background:#febc2e}
+.device-bar .tl i:nth-child(3){background:#28c840}
+.device-bar .url{font-family:var(--mono);font-size:11px;color:var(--ink3);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 10px;flex:1}
+.appnav{display:flex;gap:2px;padding:8px 12px;background:var(--card2);border-bottom:1px solid var(--line);overflow-x:auto}
+.appnav .logo{font-weight:800;font-size:12px;letter-spacing:.5px;color:var(--accent);margin-right:8px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.appnav .logo .dot{width:14px;height:14px;border-radius:5px;background:linear-gradient(135deg,var(--accent),var(--teal))}
+.appnav a{font-size:11.5px;color:var(--ink3);padding:4px 9px;border-radius:7px;white-space:nowrap;text-decoration:none}
+.appnav a.on{background:var(--accent);color:#fff;font-weight:600}
+.screen{padding:16px}
+.screen-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.screen-h .t{font-weight:800;font-size:15px}
+.screen-h .s{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.runway{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 14px}
+.runway .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.runway .big{font-family:var(--mono);font-weight:800;font-size:18px;color:var(--ink)}
+.runway .bind{font-size:11.5px;color:var(--blocker);background:var(--blocker-soft);border-radius:6px;padding:2px 8px;font-family:var(--mono)}
+.gauges{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:680px){.gauges{grid-template-columns:repeat(3,1fr)}}
+.gauge{font-size:10.5px}
+.gauge .gl{color:var(--ink3);font-family:var(--mono);display:flex;justify-content:space-between;margin-bottom:3px}
+.gauge .track{height:7px;border-radius:99px;background:var(--line2);overflow:hidden}
+.gauge .fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--accent))}
+.gauge.warn .fill{background:linear-gradient(90deg,var(--amber),var(--blocker))}
+.gauge.bindg .track{box-shadow:0 0 0 2px var(--blocker-soft)}
+.digcols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:680px){.digcols{grid-template-columns:1fr}}
+.dcard{border:1px solid var(--line);border-radius:10px;padding:12px 13px;background:var(--card2)}
+.dcard .dh{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);font-weight:700;margin-bottom:9px;display:flex;justify-content:space-between}
+.qitem{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px dashed var(--line)}
+.qitem:first-of-type{border-top:none}
+.qitem .ib{flex-shrink:0;margin-top:1px}
+.qitem .qt{font-size:12.5px;color:var(--ink);line-height:1.4}
+.qitem .qm{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:2px}
+.li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink2);padding:5px 0}
+.li .dotm{width:6px;height:6px;border-radius:50%;background:var(--ok);margin-top:7px;flex-shrink:0}
+.tl-row{display:grid;grid-template-columns:58px 120px 110px 1fr;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;align-items:center}
+.tl-row:hover{background:var(--accent-soft)}
+.tl-row .ts{font-family:var(--mono);color:var(--ink3)}
+.tl-row .act{font-family:var(--mono);color:var(--accent);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-row .ty{font-family:var(--mono);color:var(--teal);font-size:11px}
+.tl-row .dt{color:var(--ink2);font-family:var(--mono);font-size:11.5px}
+.tl-row.inc{background:var(--blocker-soft)}
+.tl-row.inc .act{color:var(--blocker)}
+@media(max-width:680px){.tl-row{grid-template-columns:50px 1fr;row-gap:2px}.tl-row .ty{display:none}}
+.taskrow{display:grid;grid-template-columns:88px 1fr 120px 96px;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line);font-size:12.5px}
+.taskrow .key{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.st{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.st.done{background:var(--ok-soft);color:var(--ok)}
+.st.prog{background:var(--clarify-soft);color:var(--clarify)}
+.st.todo{background:var(--fyi-soft);color:var(--fyi)}
+.taskrow .lk{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.taskrow .lk a,.taskrow .lk span{color:var(--accent)}
+@media(max-width:680px){.taskrow{grid-template-columns:80px 1fr;row-gap:2px}.taskrow .lk,.taskrow .own{grid-column:2}}
+.fleet{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:680px){.fleet{grid-template-columns:1fr}}
+.fcard{border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--card2)}
+.fcard .fh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.fcard .fn{font-family:var(--mono);font-weight:700;font-size:12.5px}
+.dot-st{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.run{background:var(--ok)} .idle{background:var(--amber)} .queued{background:var(--fyi)} .term{background:var(--faint)}
+.fcard .fm{font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.7}
+.mini-track{height:5px;border-radius:99px;background:var(--line2);margin-top:6px;overflow:hidden}
+.mini-track .mf{height:100%;background:linear-gradient(90deg,var(--teal),var(--accent))}
+.qwin{display:flex;flex-direction:column;gap:9px}
+.qcard{border:1px solid var(--line);border-left-width:4px;border-radius:9px;padding:11px 13px;background:var(--card2)}
+.qcard.k-block{border-left-color:var(--blocker)}
+.qcard.k-dec{border-left-color:var(--decision)}
+.qcard.k-clar{border-left-color:var(--clarify)}
+.qcard.k-fyi{border-left-color:var(--fyi)}
+.qcard .qch{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.qcard .qq{font-size:13px;color:var(--ink);font-weight:600;line-height:1.4}
+.qcard .qmeta{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.countdown{font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:700}
+.pushed{font-family:var(--mono);font-size:10px;color:var(--ok)}
+.foot{padding:40px 0 70px;color:var(--ink3);font-size:13px}
+.foot h3{color:var(--ink)}
+ol.src{font-size:12.5px;color:var(--ink2);line-height:1.7;padding-left:22px}
+ol.src li{margin:4px 0}
+ol.src code{font-size:11px}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.pill{font-family:var(--mono);font-size:11px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;color:var(--ink2)}
+hr.soft{border:none;border-top:1px dashed var(--line);margin:26px 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink3);margin:10px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:4px;display:inline-block}
+.toc{columns:2;column-gap:24px;font-size:13.5px}
+@media(max-width:680px){.toc{columns:1}}
+.toc a{color:var(--ink2);text-decoration:none;display:block;padding:4px 0;border-bottom:1px solid var(--line)}
+.toc a:hover{color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);font-size:11px;margin-right:6px}
+</style>
+</head>
+<body>
+
+<!-- ======================= TOP BAR ======================= -->
+<div class="topbar">
+  <div class="wrap row">
+    <div class="brand"><span class="dot"></span> GoSleep&nbsp;Lab <small>· исследование GSL-41</small></div>
+    <nav class="nav">
+      <a href="#overview">Обзор</a>
+      <a href="#problem">Проблема</a>
+      <a href="#laboratory">Лаборатория</a>
+      <a href="#questions">Буфер&nbsp;вопросов</a>
+      <a href="#ui">UI</a>
+      <a href="#mobile">Мобильный</a>
+      <a href="#recommendations">Рекомендации</a>
+    </nav>
+    <button class="themebtn" id="tt">◐ Тема</button>
+  </div>
+</div>
+
+<!-- ======================= HERO ======================= -->
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">● Владелец спит · работа идёт · работа документирует себя сама</span>
+    <h1 class="title">Автономия, буфер&nbsp;вопросов,<br>Лаборатория, UI&nbsp;и&nbsp;мобильный доступ</h1>
+    <p class="subtitle">Проектный дайджест: как превратить GoSleep из системы, где документация пишется <em>по конвенции или по просьбе</em>, в систему, где она рождается <strong>сама собой</strong> — где флот агентов работает всю ночь, буферизует собственные вопросы и встречает владельца утром одним экраном, на котором видно всё.</p>
+    <div class="hero-meta">
+      <span class="chip">Фаза <b>GSL-41</b> · writer-autonomy</span>
+      <span class="chip">Референс: <b>tasty-lunch</b> 828 doc / 523 commit</span>
+      <span class="chip">Источник: <b>05-lab-ui-mobile-autonomy</b> + <b>01-autosk</b></span>
+      <span class="chip">Собрано <b>2026-07-08</b></span>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= OVERVIEW ======================= -->
+<section id="overview">
+  <div class="wrap">
+    <div class="sec-kicker">00 · Тезис</div>
+    <h2>Одно предложение, шесть подвижных частей</h2>
+    <p class="lead">Каждый артефакт, который производит система доставки, лежит где-то на шкале <strong>детерминизма его генерации</strong>. Референс-проект (tasty-lunch) с жестокой ясностью доказал оба конца этой шкалы: <em>нарративный</em> слой, поддерживаемый конвенциями скиллов, масштабировался до 197 файлов без единого сбоя — а единственный артефакт, который требовал <em>регенерации</em>, рукотворный wiki-хаб статуса, сгнил за месяц. Лаборатория — это машина, которая связывает всю шкалу так, что ничто не гниёт и ничему не нужна человеческая рука в 3 часа ночи.</p>
+
+    <div class="grid g4" style="margin-top:22px">
+      <div class="card"><div class="num">0</div><div class="lbl">токенов тратит слой событий Tier 1 — хуки срабатывают независимо от того, «сотрудничает» ли модель</div></div>
+      <div class="card"><div class="num">4</div><div class="lbl">типа вопросов (BLOCKER / DECISION / CLARIFY / FYI), у каждого своё ночное поведение и правило пуша</div></div>
+      <div class="card"><div class="num">7</div><div class="lbl">экранов дашборда, регенерируемых из данных — никогда не редактируются руками, поэтому никогда не гниют</div></div>
+      <div class="card"><div class="num">min()</div><div class="lbl">autonomy runway = ближайший из шести независимых «часов исчерпания»</div></div>
+    </div>
+
+    <div class="callout teal" style="margin-top:24px">
+      <div class="t">▲ Ключевая инверсия</div>
+      <p>Сегодня <code>AskUserQuestion</code> — основной интерфейс для вопроса, и ночью он просто <strong>блокирует панель</strong>, пока кто-нибудь не проснётся. Лаборатория переворачивает это: первичной становится долговечная <strong>запись вопроса</strong> (она переживает сессии, кормит дашборд, дайджест и пуш), а живой prompt поднимается, только когда владелец действительно на месте. Нет владельца → в очередь, взять обратимый дефолт, продолжать работать, показать всё утром.</p>
+    </div>
+
+    <h3>Что перед вами</h3>
+    <div class="toc">
+      <a href="#problem"><b>01</b> Проблема и урок tasty-lunch — конвенции масштабируются, хабы гниют</a>
+      <a href="#laboratory"><b>02</b> Лаборатория — три яруса убывающего детерминизма</a>
+      <a href="#questions"><b>03</b> Буфер вопросов — типология, очередь, манифест, learning loop, дайджест</a>
+      <a href="#ui"><b>04</b> UI оркестрации — 7 экранов, макеты и autonomy runway</a>
+      <a href="#mobile"><b>05</b> Мобильный — официальный Remote Control против DIY-пути autosk</a>
+      <a href="#recommendations"><b>06</b> Ранжированные рекомендации (ценность / усилие / риск)</a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PROBLEM ======================= -->
+<section id="problem">
+  <div class="wrap">
+    <div class="sec-kicker">01 · Проблема</div>
+    <h2>Документация сегодня: по конвенции или по просьбе. Цель: сама собой.</h2>
+    <p class="lead">У GoSleep уже сильная база — каждая задача оставляет бумажный след <em>по правилу, а не по одолжению</em>. Но ничто не записывает события <em>по мере того как они происходят</em>, у вопросов к владельцу нет дома, а дашборды, которые связали бы это воедино, не обновляются сами. Урок о том, что строить — и чего строить нельзя никогда — приходит из референс-проекта.</p>
+
+    <h3>Урок tasty-lunch: конвенции масштабируются, рукотворные хабы гниют</h3>
+    <p>tasty-lunch — та же линия скиллов, что у GoSleep: один владелец-одиночка + AI-оркестратор, 523 коммита за ~месяц, 828 документов на диске<sup class="fn">1</sup>. Прочтение всего дерева документации сортирует каждый артефакт в чистый вердикт — и этот вердикт и есть техзадание для Лаборатории.</p>
+
+    <div class="grid g2" style="margin-top:6px">
+      <div class="card">
+        <h4 style="color:var(--ok)">✓ Что масштабировалось — по конвенции</h4>
+        <p style="font-size:13.5px;color:var(--ink2)"><strong>197 файлов dev_history.</strong> <strong>94+ handoff</strong>, пронумерованных 01→94, каждый с машиночитаемым telemetry-футером. <strong>19 lessons-learned</strong>, каждый ссылается на реальный инцидент и закрывается правилом, унесённым в следующий цикл. Cycle-промпты жёстко зашивают <em>«invoke /handoff»</em> — эпоха «владелец просит handoff» уже закончилась. Единообразие 197 файлов <em>и есть</em> доказательство, что принуждение конвенциями работает в масштабе.</p>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--blocker)">✗ Что сгнило — построили руками и бросили</h4>
+        <p style="font-size:13.5px;color:var(--ink2)"><strong>wiki-хаб статуса</strong> построили руками один раз и больше не регенерировали. Он до сих пор гласит <em>«Phase 1 in progress, 1 of 9 epics done»</em> — при том что доставка дошла до <strong>Phase 23</strong>. Ни генератора, ни CI-проверки — поэтому он умер за месяц. Отдельно: <strong>81%</strong> дерева <code>reports/</code> так и не закоммитили (целый набор из 155 файлов не приземлился) — черновики без политики.</p>
+      </div>
+    </div>
+
+    <div class="callout rot">
+      <div class="t">⚠ Единственное правило, вокруг которого построен весь дайджест</div>
+      <p><strong>Всё, что нужно <em>регенерировать</em>, чтобы оно оставалось правдой, сгниёт — если только его не регенерирует скрипт.</strong> 197 append-only нарративных файлов выжили, потому что их написание — часть «готово». Единственный артефакт, требовавший регенерации, умер в тот момент, когда человек перестал править его руками. → Дашборд Лаборатории обязан быть <strong>сгенерирован скриптом из данных, никогда — рукотворным HTML.</strong></p>
+    </div>
+
+    <h3>GoSleep сегодня — кто что пишет и по какому триггеру</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Артефакт</th><th>Кто пишет</th><th>Триггер сегодня</th><th>Авто или руками?</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Dev history</strong> (на задачу)</td><td>Cycle-воркер</td><td>Конвенция: «пишется сразу после коммита»</td><td><span class="badge b-ok">Авто по конвенции</span></td></tr>
+          <tr><td><strong>Handoff</strong> (датированный, нумерованный)</td><td>Cycle-воркер / оркестратор</td><td>Мало контекста, граница, блокер или «напиши handoff»</td><td><span class="badge b-dec">Полу-авто</span> · всё ещё по решению агента</td></tr>
+          <tr><td><strong>ORCHESTRATION-STATE.md</strong></td><td>Только оркестратор</td><td>Каждая смена статуса; телеметрия после каждого воркера</td><td><span class="badge b-ok">Авто — лучшее, что есть</span></td></tr>
+          <tr><td><strong>Reviews</strong></td><td>Reviewer-teammate</td><td>Граничное ревью каждый цикл</td><td><span class="badge b-ok">Авто по конвенции</span></td></tr>
+          <tr><td><strong>Отчёты (HTML)</strong></td><td>Report-writer воркеры</td><td>Владелец просит / deliverable фазы</td><td><span class="badge b-block">Скорее руками</span> · генераторы есть, но запуск — по просьбе</td></tr>
+          <tr><td><strong>PRD / design / analysis</strong></td><td>Writer-воркер</td><td>Владелец просит</td><td><span class="badge b-block">Руками</span></td></tr>
+          <tr><td><strong>Кросс-ссылки Jira / GitHub</strong></td><td>Воркеры</td><td>Создание issue / открытие PR</td><td><span class="badge b-ok">Авто по конвенции</span></td></tr>
+          <tr><td><strong>Память оркестратора</strong></td><td>Оркестратор</td><td>Извлечённые уроки</td><td><span class="badge b-fyi">Авто, но приватно</span> · невидимо репозиторию</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Восемь пробелов, которые Лаборатория обязана закрыть</h3>
+    <div class="grid g2">
+      <div class="card tint"><h4>1 · Нет машиночитаемого слоя</h4><p style="font-size:13px">Всё — проза в Markdown. У LIVE-STATUS есть <em>грамматика</em>, но нет <em>схемы</em>. Нет ни <code>events.jsonl</code>, ни <code>status.json</code> — дашборду пришлось бы регэкспить Markdown-файл.</p></div>
+      <div class="card tint"><h4>2 · Нет таймлайна / ленты событий</h4><p style="font-size:13px">Восстановить «что было ночью» = прочесть STATE + N handoff-ов + git log + Jira. Ничто не пишет события <em>по мере наступления</em> в одно место с таймстампами.</p></div>
+      <div class="card tint"><h4>3 · Нет агрегированного «утреннего вида»</h4><p style="font-size:13px">Секция At-a-glance в STATE — ближайшее, но она перезаписывается (нет истории), никуда не ссылается и мешает инфу владельцу с самоинструкциями оркестратора.</p></div>
+      <div class="card tint"><h4>4 · У вопросов нет дома <span class="badge b-block">пробел №1</span></h4><p style="font-size:13px">Блокер становится синхронным <code>AskUserQuestion</code> (умирает с сессией) или похороненным абзацем в handoff. Ничто не ставит вопросы в очередь, не типизирует их между воркерами. <strong>Ночью AskUserQuestion просто блокирует панель.</strong></p></div>
+      <div class="card tint"><h4>5 · Отчёты не обновляются сами</h4><p style="font-size:13px">У <code>docs/report/</code> есть генераторы, но нет триггера, связывающего их с событиями доставки. Приземлённая задача не обновляет никакой дашборд.</p></div>
+      <div class="card tint"><h4>6 · Артефакты не сшиты кросс-индексом</h4><p style="font-size:13px">Ничто не связывает «GSL-38 → коммит f12092e → dev_history → находка ревью → handoff 11 → Jira/GH». У каждой директории — в лучшем случае свой README.</p></div>
+      <div class="card tint"><h4>7 · Телеметрия воркеров — самоотчёт-проза</h4><p style="font-size:13px">Счётчики токенов приходят внутри SendMessage; ничто не валидирует и не агрегирует их дальше одной строки-итога.</p></div>
+      <div class="card tint"><h4>8 · Вообще нет пути пуша</h4><p style="font-size:13px">Запаркованный вопрос в 01:00 обнаружится в 09:00 — только если владелец откроет терминал. (У autosk тот же пробел.<sup class="fn">2</sup>)</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LABORATORY ======================= -->
+<section id="laboratory">
+  <div class="wrap">
+    <div class="sec-kicker">02 · Лаборатория</div>
+    <h2>Три яруса убывающего детерминизма</h2>
+    <p class="lead">Доказательства из tasty-lunch сортируют каждый артефакт по тому, <em>как он обязан производиться</em>. Эта сортировка и есть архитектура: детерминированный пол событий, который ничего не стоит, существующий конвенционный нарратив посередине и ограниченная задача-синтезатор сверху, которая регенерирует всё производное. Wiki сгнил, потому что имел середину без пола и без крыши.</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 940 520" role="img" aria-label="Архитектура Лаборатории из трёх ярусов">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--ink3)"/></marker>
+            <marker id="aha" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--accent)"/></marker>
+          </defs>
+          <rect x="20" y="20" width="410" height="150" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="38" y="46" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--accent)">ЯРУС 1 · СОБЫТИЯ — детерминизм, 0 токенов</text>
+          <text x="38" y="66" font-family="var(--sans)" font-size="11.5" fill="var(--ink2)">Хуки Claude Code срабатывают независимо от модели.</text>
+          <g font-family="var(--mono)" font-size="10">
+            <rect x="38" y="80" width="118" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="46" y="95" fill="var(--ink2)">SubagentStart/Stop</text>
+            <rect x="164" y="80" width="96" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="172" y="95" fill="var(--ink2)">TeammateIdle</text>
+            <rect x="268" y="80" width="140" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="276" y="95" fill="var(--ink2)">PostToolUse (git/Jira)</text>
+            <rect x="38" y="108" width="104" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="46" y="123" fill="var(--ink2)">StopFailure</text>
+            <rect x="150" y="108" width="128" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="158" y="123" fill="var(--ink2)">Task Created/Done</text>
+            <rect x="286" y="108" width="122" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="294" y="123" fill="var(--ink2)">Pre/PostCompact</text>
+          </g>
+          <text x="38" y="152" font-family="var(--mono)" font-size="10.5" fill="var(--accent)">+ lab-emit однострочники (question.posed, decision.made…)</text>
+
+          <rect x="20" y="188" width="410" height="128" rx="12" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.5"/>
+          <text x="38" y="214" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--teal)">ЯРУС 2 · НАРРАТИВ — по конвенции (сегодня)</text>
+          <text x="38" y="234" font-family="var(--sans)" font-size="11.5" fill="var(--ink2)">Существующие скиллы без изменений. Уже часть «готово».</text>
+          <g font-family="var(--mono)" font-size="10">
+            <rect x="38" y="248" width="88" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="46" y="263" fill="var(--ink2)">handoffs</text>
+            <rect x="134" y="248" width="98" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="142" y="263" fill="var(--ink2)">dev_history</text>
+            <rect x="240" y="248" width="80" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="248" y="263" fill="var(--ink2)">reviews</text>
+            <rect x="328" y="248" width="80" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="336" y="263" fill="var(--ink2)">RCA/lessons</text>
+          </g>
+          <text x="38" y="298" font-family="var(--sans)" font-size="11" fill="var(--ink3)">Дельта: +1 строка <tspan font-family="var(--mono)">lab-emit handoff.written</tspan> — машинный футер.</text>
+
+          <rect x="20" y="334" width="410" height="166" rx="12" fill="var(--card2)" stroke="var(--line2)" stroke-width="1.5"/>
+          <text x="38" y="360" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--ink)">docs/lab/ — машинный слой на диске</text>
+          <g font-family="var(--mono)" font-size="10" fill="var(--ink2)">
+            <text x="38" y="382">events/2026-07-08.jsonl · append-only, посуточно</text>
+            <text x="38" y="400">questions/queue.jsonl · decisions/manifest.md</text>
+            <text x="38" y="418">telemetry.jsonl · status.json (производный)</text>
+            <text x="38" y="436">digest/…-morning.md · site/ (сгенерир. HTML)</text>
+            <text x="38" y="454">scratch/ · gitignored временные</text>
+          </g>
+          <text x="38" y="480" font-family="var(--sans)" font-size="10.5" fill="var(--ink3)">Атомарная запись (temp+rename); append-only JSONL не переписывается.</text>
+
+          <rect x="510" y="188" width="410" height="180" rx="12" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.5"/>
+          <text x="528" y="214" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--amber)">ЯРУС 3 · СИНТЕЗ — chronicler</text>
+          <text x="528" y="234" font-family="var(--sans)" font-size="11.5" fill="var(--ink2)">Ограниченная задача по расписанию — НЕ живая панель-teammate.</text>
+          <text x="528" y="254" font-family="var(--mono)" font-size="10.5" fill="var(--ink2)">claude -p --max-budget-usd  (или дешёвый tier)</text>
+          <g font-family="var(--sans)" font-size="11" fill="var(--ink2)">
+            <text x="528" y="280">• build-скрипты → status.json + site/ (статик. HTML)</text>
+            <text x="528" y="300">• кросс-индекс Library</text>
+            <text x="528" y="320">• утренний дайджест</text>
+            <text x="528" y="340">• poll-fill: сверка gh / Jira / git log</text>
+          </g>
+          <text x="528" y="360" font-family="var(--mono)" font-size="10" fill="var(--amber)">crash-safe: данные устаревают, доставка не стопорится</text>
+
+          <rect x="510" y="386" width="196" height="52" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="528" y="410" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Статический дашборд</text>
+          <text x="528" y="426" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">7 экранов · коммитится · file://</text>
+
+          <rect x="724" y="386" width="196" height="52" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="742" y="410" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Утренний дайджест</text>
+          <text x="742" y="426" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">+ опц. пуш «готов»</text>
+
+          <rect x="510" y="452" width="410" height="48" rx="10" fill="var(--card)" stroke="var(--line2)"/>
+          <text x="528" y="474" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Владелец, утром ☕</text>
+          <text x="528" y="490" font-family="var(--sans)" font-size="10.5" fill="var(--ink3)">один экран показывает всё · каждое утверждение ссылается на артефакт</text>
+
+          <line x1="225" y1="170" x2="225" y2="186" stroke="var(--accent)" stroke-width="2" marker-end="url(#aha)"/>
+          <line x1="225" y1="316" x2="225" y2="332" stroke="var(--teal)" stroke-width="2" marker-end="url(#ah)"/>
+          <path d="M430 400 C 480 400, 480 300, 508 280" fill="none" stroke="var(--ink3)" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="452" y="332" font-family="var(--mono)" font-size="9" fill="var(--ink3)">читает</text>
+          <line x1="608" y1="368" x2="608" y2="384" stroke="var(--accent)" stroke-width="2" marker-end="url(#aha)"/>
+          <line x1="822" y1="368" x2="822" y2="384" stroke="var(--accent)" stroke-width="2" marker-end="url(#aha)"/>
+          <line x1="608" y1="438" x2="608" y2="450" stroke="var(--ink3)" stroke-width="2" marker-end="url(#ah)"/>
+          <line x1="822" y1="438" x2="760" y2="450" stroke="var(--ink3)" stroke-width="2" marker-end="url(#ah)"/>
+        </svg>
+      </div>
+      <figcaption>Рис. 1 — Лаборатория. Cобытия Я1 (0 токенов) и нарратив Я2 (уже оплачен) оба ложатся в <code>docs/lab/</code>; chronicler Я3 читает это озеро по расписанию и регенерирует дашборд + дайджест. Wiki сгнил, потому что имел Я2 без пола Я1 и без крыши Я3.</figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Ярус</th><th>Кто производит</th><th>Детерминизм</th><th>Стоимость</th><th>Что генерирует</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-t1">Я1 · События</span></td>
+            <td>Хуки Claude Code (<code>.claude/settings.json</code>, <code>async:true</code>)</td>
+            <td>Механический — срабатывает независимо от модели</td>
+            <td><strong>0 токенов</strong>, ~0 задержки</td>
+            <td>Таймлайн: жизненный цикл сессий/воркеров, активность инструментов, коммиты, переходы Jira, сбои</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-t2">Я2 · Нарратив</span></td>
+            <td>Агенты по конвенции (существующие скиллы)</td>
+            <td>Поведенческий — принуждается брифами + эвалами</td>
+            <td>Уже оплачен (часть доставки)</td>
+            <td>Handoffs, dev_history, reviews, RCA — человеческая история</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-t3">Я3 · Синтез</span></td>
+            <td>chronicler — <code>claude -p</code> glue или дешёвый tier</td>
+            <td>Триггер по скрипту, контент с помощью модели</td>
+            <td>Малый, бюджетируемый (<code>--max-budget-usd</code>)</td>
+            <td>Регенерация дашборда, индексы, дайджест, кросс-ссылки, проверки свежести</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Ярус 1 — детерминированный слой событий</h3>
+    <p>Взять конверт из собственного черновика репозитория <code>event-schema.md</code>: <code>{ts, run_id, seq, actor, type, data}</code> плюс <code>session_id</code>/<code>agent_id</code> из входа хука. Его открытый caveat — «проверить возможности хуков на этапе сборки» — теперь снят: текущий каталог хуков покрывает каждый предложенный им тип события.<sup class="fn">3</sup></p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Тип события</th><th>Конкретный хук (проверено 2026-07-07)</th></tr></thead>
+        <tbody>
+          <tr><td><code>agent.spawned / terminated</code></td><td><code>SubagentStart</code> / <code>SubagentStop</code> (несут <code>agent_type</code>, <code>agent_id</code>); <code>SessionStart/End</code> для панелей</td></tr>
+          <tr><td><code>agent.idle</code></td><td><strong><code>TeammateIdle</code></strong> — срабатывает, когда teammate уходит в idle (слепое пятно пульса, теперь бесплатно)</td></tr>
+          <tr><td><code>tool.call</code> → <code>vcs.commit</code></td><td><code>PostToolUse</code> matcher <code>Bash(git commit *)</code>; matcher <code>mcp__atlassian__.*</code> → <code>tracker.issue.*</code></td></tr>
+          <tr><td><code>handoff.written</code></td><td><code>PostToolUse</code> matcher <code>Write|Edit</code> с <code>if</code> на путях <code>docs/handoff/*</code></td></tr>
+          <tr><td>сбои / квота</td><td><strong><code>StopFailure</code></strong> matchers <code>rate_limit|overloaded|server_error</code> — детектор окна квоты, бесплатно</td></tr>
+          <tr><td>вопросы / права</td><td><code>Notification</code>, <code>PermissionRequest</code>, <code>PermissionDenied</code></td></tr>
+          <tr><td>доска задач</td><td><code>TaskCreated</code> / <code>TaskCompleted</code></td></tr>
+          <tr><td>здоровье контекста</td><td><code>PreCompact</code> / <code>PostCompact</code> (компакция оркестратора = красный флаг)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="t">Почему Я1 важнее всего</div>
+      <p><strong>Живость выводится из артефактов, а не из самоотчёта.</strong> Зависший агент не может доложить, что он завис, — но его поток событий просто останавливается. Тот же поток, что кормит дашборд, — лучший вход для пульса, чем <code>tmux capture-pane</code>. Два производителя дополняют хуки: <strong>явные <code>lab-emit</code></strong> однострочники для семантических событий, которые хуки не выведут (<code>cycle.started</code>, <code>question.posed</code>, <code>decision.made</code>), и <strong>poll-fill</strong> — chronicler сверяет <code>gh pr list</code> / Jira JQL / <code>git log</code> для всего, что локальные хуки упустили (PR, смерженный из веба).</p>
+    </div>
+
+    <h3>Раскладка на диске — машинный слой рядом с человеческим</h3>
+    <pre><span class="c">docs/lab/                          # machine-first; коммитится кроме scratch</span>
+  events/2026-07-08.jsonl          <span class="c"># Я1 + явные события, append-only, посуточно</span>
+  status.json                      <span class="c"># снимок: сгенерирован ИЗ events + STATE каждый проход</span>
+  questions/queue.jsonl            <span class="c"># §03 — открытые вопросы (append + патч-запись)</span>
+  questions/archive.jsonl          <span class="c"># отвеченные/истёкшие, переносит chronicler</span>
+  decisions/manifest.md            <span class="c"># §03 — суверенитет владельца; ЕДИНСТВЕННЫЙ ручной файл</span>
+  decisions/log.jsonl              <span class="c"># каждое авто-решение + каждый ответ владельца</span>
+  telemetry.jsonl                  <span class="c"># построчно токены/стоимость (грамматика STATE)</span>
+  digest/2026-07-08-morning.md     <span class="c"># Я3-дайджест (по одному на активный день)</span>
+  site/                            <span class="c"># Я3-статический HTML-дашборд; руками не трогать</span>
+  scratch/                         <span class="c"># gitignored: урок «81% незакоммичено» из tasty-lunch</span></pre>
+    <p style="font-size:13.5px;color:var(--ink3)">Правила, унаследованные из существующей дисциплины: атомарная запись (temp+rename в той же директории) для каждого не-append файла; append-only JSONL никогда не переписывается (правки — новые записи с <code>supersedes:&lt;seq&gt;</code>); <code>ORCHESTRATION-STATE.md</code> <strong>остаётся авторитетом</strong> — <code>status.json</code> производный, и при конфликте побеждают STATE + живой git.</p>
+
+    <h3>Ярус 3 — дашборд «Лаборатория», и почему он статический</h3>
+    <p><strong>Статический HTML, регенерируемый из данных <code>docs/lab/</code> — без сервера в v1.</strong> Это соответствует проверенному паттерну <code>build-*.py</code>, работает из <code>file://</code>, переживает выключенную машину, коммитится (значит читается с GitHub на телефоне) и <em>не может сгнить, как wiki — потому что его никто не правит руками.</em> Триггеры регенерации: (a) chronicler на каждой границе цикла; (b) debounce-хук <code>PostToolUse</code> на записи в <code>docs/lab/</code>; (c) по требованию. Живое управление — <em>не</em> задача этого дашборда; это Remote Control / терминал (§05).</p>
+
+    <div class="callout amber">
+      <div class="t">chronicler — НЕ четвёртый живой агент</div>
+      <p>Это ограниченная задача по расписанию — headless one-shot со строгими <code>--allowedTools</code> + бюджетными кэпами. Держа его вне ростера teammate-ов, мы сохраняем бюджет <strong>spawn-cap-3</strong>, и падение chronicler-а никогда не застопорит доставку: слой данных просто устаревает до следующего тика, а <strong>дашборд показывает собственную несвежесть</strong> (штамп generated-at + макс. возраст события на каждой странице). Это встроенная сигнализация против гниения wiki.</p>
+    </div>
+
+    <h3>Информационная архитектура из 7 экранов</h3>
+    <div class="grid g3">
+      <div class="card tint"><h4>1 · Overview</h4><p style="font-size:12.5px">Утренний экран. Дайджест + полоса runway + сводка вопросов. Стартовая по умолчанию.</p></div>
+      <div class="card tint"><h4>2 · Timeline</h4><p style="font-size:12.5px">Лента событий, новейшие сверху, фильтр по актору / типу / серьёзности; маркеры инцидентов.</p></div>
+      <div class="card tint"><h4>3 · Tasks</h4><p style="font-size:12.5px">Доска по ключу Jira: статус, ссылки GH issue/PR, SHA коммитов, ссылка dev_history на задачу.</p></div>
+      <div class="card tint"><h4>4 · Questions</h4><p style="font-size:12.5px">Очередь §03: открытые (по типам), отвеченные (кто/когда), авто-разрешённые (с применённым дефолтом).</p></div>
+      <div class="card tint"><h4>5 · Fleet</h4><p style="font-size:12.5px">Карточки агентов: состояние, модель, старт/конец, токены, возраст последнего события.</p></div>
+      <div class="card tint"><h4>6 · Cost</h4><p style="font-size:12.5px">Ряды телеметрии: токены по циклам, накопление vs потолок, разбивка по моделям, события окна квоты.</p></div>
+      <div class="card tint" style="grid-column:span 3;border-color:var(--accent)"><h4 style="color:var(--accent)">7 · Library — сгенерированный кросс-индекс (убивает пробел №6)</h4><p style="font-size:12.5px">Handoffs (нумерованные), dev_history (по задачам), reviews, reports, research, RCA — каждая строка с датой, затронутыми ключами задач и ссылками. Это индекс, сшивающий «GSL-38 → коммит → dev_history → ревью → handoff → Jira/GH», сгенерированный, никогда не поддерживаемый руками.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= QUESTION BUFFER ======================= -->
+<section id="questions">
+  <div class="wrap">
+    <div class="sec-kicker">03 · Буфер вопросов</div>
+    <h2>Буферизуй-и-продолжай: паттерн автономии, позволяющий владельцу спать</h2>
+    <p class="lead">Сообщество описывает три уровня зрелости ночного поведения<sup class="fn">4</sup>: (a) <strong>парк</strong> на любом вопросе (autosk), (b) <strong>пауза с бюджетом</strong> и авто-разрешение, (c) <strong>буферизуй-и-продолжай</strong> — залогировать вопрос, взять обратимый дефолт, продолжать работать, показать всё утром. (c) назван «идеалом для GoSleep; наименее реализован в публичном коде». tasty-lunch уже испытал примитивную версию (<code>OWNER-QUESTIONS.md</code> / <code>OWNER-DECISIONS</code>). Здесь — полный дизайн.</p>
+
+    <h3>Четыре типа, четыре поведения</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Тип</th><th>Определение</th><th>Ночное поведение</th><th>Пуш?</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-block">BLOCKER</span></td>
+            <td>Работа не может идти И безопасного дефолта нет: креды, действия из denylist (force-push, prod-деплой, разрушительная миграция), необратимые развилки</td>
+            <td>Запарковать только <em>затронутый пункт</em> (не флот); перенаправить воркеров на незаблокированную работу; поставить вопрос в очередь</td>
+            <td><strong>Да, немедленно</strong> (если quiet-hours не велит батчить)</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-dec">DECISION</span></td>
+            <td>Настоящая развилка с жизнеспособными ветками, но есть защитимый дефолт</td>
+            <td>Записать вопрос + выбранный дефолт + дедлайн <code>auto_apply_at</code>: <em>«если не ответят к T, делаю X».</em> Работать до T, затем применить и залогировать <code>decision.made</code></td>
+            <td>Да, батчем (дайджест), если не помечен как high-impact</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-clar">CLARIFY</span></td>
+            <td>Двусмысленность с очевидно-разумным прочтением</td>
+            <td>Продолжить с дефолтом <em>немедленно</em>; записать как «отвечено дефолтом», чтобы владелец мог наложить вето задним числом</td>
+            <td>Нет — только дайджест</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-fyi">FYI</span></td>
+            <td>Ответ не нужен: инциденты восстановлены, пороги бюджета пройдены, сработали правила политики</td>
+            <td>Записать</td>
+            <td>Нет — только дайджест (если серьёзность ≥ инцидент)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 940 300" role="img" aria-label="Жизненный цикл вопроса">
+          <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--ink3)"/></marker></defs>
+          <rect x="18" y="120" width="120" height="56" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="78" y="145" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Агент упёрся</text>
+          <text x="78" y="162" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">в вопрос</text>
+          <polygon points="205,148 250,118 295,148 250,178" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.5"/>
+          <text x="250" y="152" text-anchor="middle" font-family="var(--mono)" font-size="10" font-weight="700" fill="var(--teal)">типиз.</text>
+          <line x1="138" y1="148" x2="203" y2="148" stroke="var(--ink3)" stroke-width="1.6" marker-end="url(#a2)"/>
+          <g font-family="var(--mono)" font-size="10">
+            <rect x="340" y="24" width="150" height="40" rx="8" fill="var(--blocker-soft)" stroke="var(--blocker)"/><text x="352" y="42" fill="var(--blocker)" font-weight="700">BLOCKER</text><text x="352" y="57" fill="var(--ink2)" font-size="9">парк пункта · пуш сразу</text>
+            <rect x="340" y="96" width="150" height="40" rx="8" fill="var(--decision-soft)" stroke="var(--decision)"/><text x="352" y="114" fill="var(--decision)" font-weight="700">DECISION</text><text x="352" y="129" fill="var(--ink2)" font-size="9">дефолт + дедлайн</text>
+            <rect x="340" y="168" width="150" height="40" rx="8" fill="var(--clarify-soft)" stroke="var(--clarify)"/><text x="352" y="186" fill="var(--clarify)" font-weight="700">CLARIFY</text><text x="352" y="201" fill="var(--ink2)" font-size="9">продолжить сейчас</text>
+            <rect x="340" y="240" width="150" height="40" rx="8" fill="var(--fyi-soft)" stroke="var(--fyi)"/><text x="352" y="258" fill="var(--fyi)" font-weight="700">FYI</text><text x="352" y="273" fill="var(--ink2)" font-size="9">только запись</text>
+          </g>
+          <line x1="272" y1="140" x2="338" y2="46" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="285" y1="148" x2="338" y2="116" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="285" y1="150" x2="338" y2="186" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="272" y1="158" x2="338" y2="258" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <rect x="540" y="96" width="150" height="112" rx="10" fill="var(--card2)" stroke="var(--line2)" stroke-width="1.5"/>
+          <text x="615" y="120" text-anchor="middle" font-family="var(--mono)" font-size="11" font-weight="700" fill="var(--ink)">queue.jsonl</text>
+          <text x="615" y="140" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink3)">append-only</text>
+          <text x="615" y="156" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink3)">дедуп по</text>
+          <text x="615" y="170" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink3)">(task, hash)</text>
+          <text x="615" y="192" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--teal)">seen_by: [w1,w2…]</text>
+          <line x1="490" y1="44" x2="538" y2="120" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="490" y1="116" x2="538" y2="130" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="490" y1="188" x2="538" y2="150" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="490" y1="260" x2="538" y2="175" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <rect x="740" y="40" width="180" height="46" rx="9" fill="var(--card)" stroke="var(--blocker)" stroke-width="1.4"/>
+          <text x="830" y="60" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="700" fill="var(--ink)">Пуш (BLOCKER)</text>
+          <text x="830" y="76" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">телефон · сейчас</text>
+          <rect x="740" y="98" width="180" height="46" rx="9" fill="var(--card)" stroke="var(--amber)" stroke-width="1.4"/>
+          <text x="830" y="118" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="700" fill="var(--ink)">Утренний дайджест</text>
+          <text x="830" y="134" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">всё, батчем</text>
+          <rect x="740" y="156" width="180" height="46" rx="9" fill="var(--card)" stroke="var(--ok)" stroke-width="1.4"/>
+          <text x="830" y="176" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="700" fill="var(--ink)">Ответ → log.jsonl</text>
+          <text x="830" y="192" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">learning loop кормит манифест</text>
+          <line x1="690" y1="120" x2="738" y2="63" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="690" y1="140" x2="738" y2="121" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <path d="M830 202 C 830 250, 615 250, 615 210" fill="none" stroke="var(--ok)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+        </svg>
+      </div>
+      <figcaption>Рис. 2 — Жизненный цикл вопроса. Живой <code>AskUserQuestion</code> становится лишь одним каналом доставки долговечной записи; запись первична. Дедуп схлопывает пятерых воркеров, упёршихся в одну двусмысленность, в один утренний пункт со списком <code>seen_by</code>.</figcaption>
+    </figure>
+
+    <h3>Формат очереди на диске — <code>docs/lab/questions/queue.jsonl</code></h3>
+    <pre>{<span class="s">"id"</span>:<span class="s">"q-2026-07-08-003"</span>, <span class="s">"ts"</span>:<span class="s">"2026-07-08T01:12:40Z"</span>, <span class="s">"type"</span>:<span class="s">"DECISION"</span>,
+ <span class="s">"from"</span>:<span class="s">"orchestrator"</span>, <span class="s">"task"</span>:<span class="s">"GSL-45"</span>, <span class="s">"links"</span>:{<span class="s">"jira"</span>:<span class="s">"GSL-45"</span>,<span class="s">"gh"</span>:<span class="s">"#52"</span>,<span class="s">"pr"</span>:<span class="s">"#56"</span>},
+ <span class="s">"question"</span>:<span class="s">"PR #56 конфликтует в README после сдвига main; rebase или merge main в ветку?"</span>,
+ <span class="s">"options"</span>:[{<span class="s">"label"</span>:<span class="s">"rebase"</span>,<span class="s">"pros"</span>:<span class="s">"линейная история"</span>,<span class="s">"cons"</span>:<span class="s">"переписывает коммиты"</span>},
+            {<span class="s">"label"</span>:<span class="s">"merge main in"</span>,<span class="s">"pros"</span>:<span class="s">"без rewrite"</span>,<span class="s">"cons"</span>:<span class="s">"merge-пузырь"</span>}],
+ <span class="s">"default"</span>:<span class="s">"merge main in"</span>, <span class="s">"default_rationale"</span>:<span class="s">"правило no-force-push; обратимо"</span>,
+ <span class="s">"reversibility"</span>:<span class="s">"high"</span>, <span class="s">"impact_if_wrong"</span>:<span class="s">"косметическая история"</span>,
+ <span class="s">"auto_apply_at"</span>:<span class="s">"2026-07-08T10:00:00Z"</span>, <span class="s">"status"</span>:<span class="s">"open"</span>}
+
+<span class="c">// разрешение добавляет патч-запись, никогда не переписывает:</span>
+{<span class="s">"re"</span>:<span class="s">"q-2026-07-08-003"</span>,<span class="s">"status"</span>:<span class="s">"answered"</span>,<span class="s">"answer"</span>:<span class="s">"merge main in"</span>,<span class="s">"answered_by"</span>:<span class="s">"owner"</span>,<span class="s">"channel"</span>:<span class="s">"telegram"</span>}</pre>
+    <p style="font-size:13.5px;color:var(--ink3)"><strong>Правило дедупа</strong> (ловушка «спам вопросами»): перед постановкой грепнуть открытые записи на тот же <code>(task, question-hash)</code>; пятеро воркеров на одной двусмысленности = ОДИН утренний пункт со списком <code>seen_by</code>.</p>
+
+    <h3>Манифест решений — «решай сам по манифесту владельца»</h3>
+    <p><code>docs/lab/decisions/manifest.md</code> — <strong>суверенитет владельца</strong>, единственный ручной файл в <code>docs/lab/</code>. Агенты ЧИТАЮТ его каждый цикл, ПРЕДЛАГАЮТ правки как diff в дайджесте и <strong>никогда не правят молча.</strong> Он даёт политике, которая сегодня разбросана по «Standing rules» в STATE, memory-файлам и директивам в чате, единый дом, читаемый тулингом и версионируемый владельцем. Его ярусы автономии зеркалят authority/denylist из orchestrating-скилла — новой политики он не изобретает.</p>
+    <pre><span class="c"># Decision manifest — &lt;owner&gt; — vN (updated YYYY-MM-DD)</span>
+<span class="k">## 1. Always autonomous</span> <span class="c">(никогда не спрашивать, всегда логировать)</span>
+- мержить зелёные PR на delivery-ветках; двигать фазы; обратимая работа в репо
+- восстанавливать транзиентные ошибки воркера одним continue-nudge (валидировано 2026-07-07)
+<span class="k">## 2. Decide-by-default</span> <span class="c">(запись DECISION, применить дефолт на дедлайне)</span>
+- дедлайны: ночь → 10:00 утра; день → +2ч
+- merge strategy → regular merge; модельная политика → Fable 5 / Opus-mechanical; N=2 эвала
+<span class="k">## 3. Always ask, never default</span> <span class="c">(= denylist дословно)</span>
+- force-push/rewrite истории; удаление веток/тегов/релизов; prod-деплой; ротация секретов;
+  разрушительные миграции БД; внешние коммуникации; удаление облачных ресурсов; трата сверх потолка
+<span class="k">## 4. Escalation &amp; channels</span>
+- тихие часы 00:00-08:30: пуш ТОЛЬКО BLOCKER; всё прочее — в дайджест 06:30
+- порядок каналов: пуш Claude-app → Telegram → (утром) дайджест
+<span class="k">## 5. Budget &amp; runway</span>
+- потолок токенов на фазу: N; на 80% → FYI; на 100% → BUDGET_EXCEEDED = BLOCKER
+<span class="k">## 6. Standing preferences</span> <span class="c">(стиль, язык, строгость ревью…)</span></pre>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4>Learning loop — вопросов-за-ночь → 0</h4>
+        <p style="font-size:13.5px">Каждый ответ (живой или из очереди) добавляется в <code>decisions/log.jsonl</code> с полным контекстом. Периодически chronicler майнит его: одна и та же форма вопроса, отвеченная одинаково ≥2–3×, становится <strong>кандидатом в манифест</strong> в дайджесте — <em>«Вы выбирали ‘regular merge’ 3× — повысить до §2 decide-by-default?»</em> Владелец одобряет правкой манифеста (или ответом «да»). Это напрямую сокращает будущий объём вопросов — <strong>настоящую метрику автономии.</strong></p>
+      </div>
+      <div class="card">
+        <h4>Доставка с учётом присутствия</h4>
+        <p style="font-size:13.5px">Синхронный <code>AskUserQuestion</code> поднимается, только когда владелец <em>присутствует</em> — официальный маркер <code>CLAUDE_CLIENT_PRESENCE_FILE</code> (Remote Control) или просто «владелец писал за последние N минут». Нет → в очередь + пуш по типу. Есть → спросить живьём, но <em>всё равно</em> залогировать ответ в очередь — learning loop нуждается в нём в любом случае.</p>
+      </div>
+    </div>
+
+    <h3>Утренний дайджест — deliverable, определяющий «GoSleep сработал»</h3>
+    <p>Генерируется во время пробуждения из манифеста (scheduled task / cron / Routine) и по требованию; пишется в <code>digest/YYYY-MM-DD-morning.md</code>, рендерится на экране Overview, опционально пушится «дайджест готов». Секции, в порядке приоритета владельца:</p>
+    <div class="grid g3">
+      <div class="card tint"><h4 style="color:var(--blocker)">1 · Ждёт тебя</h4><p style="font-size:12px">Открытые BLOCKER, затем DECISION с их дедлайнами.</p></div>
+      <div class="card tint"><h4 style="color:var(--teal)">2 · Решено за тебя</h4><p style="font-size:12px">Каждое авто-разрешение с процитированным правилом манифеста (дисциплина provenance).</p></div>
+      <div class="card tint"><h4 style="color:var(--ok)">3 · Что отгружено</h4><p style="font-size:12px">Задачи / PR / коммиты со ссылками.</p></div>
+      <div class="card tint"><h4 style="color:var(--amber)">4 · Инциденты</h4><p style="font-size:12px">Что сломалось, что восстановилось, ссылки на RCA.</p></div>
+      <div class="card tint"><h4>5 · Стоимость и runway</h4><p style="font-size:12px">Токены vs потолок, события квоты.</p></div>
+      <div class="card tint"><h4>6 · Кандидаты в манифест</h4><p style="font-size:12px">Предложения learning loop + план на завтра.</p></div>
+    </div>
+    <div class="callout amber">
+      <div class="t">Дайджест так же важен, как сама работа</div>
+      <p>Непроверяемая ночь — провальная ночь, <em>даже если все PR смержились</em>. Всё в дайджесте ссылается в дашборд / Library — provenance это дисциплина (она прямой потомок PRD-тегов OWNER-RATIFIED / OWNER-ACQUIESCED-DEFAULT из tasty-lunch).</p>
+    </div>
+
+    <h3>Интеграция с пульсом — минимальные дельты</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Существующий механизм</th><th>Единственное изменение</th></tr></thead>
+        <tbody>
+          <tr><td><strong>PULSE</strong> (самопроверка каждые 5–10 мин)</td><td>Также сканировать <code>queue.jsonl</code>: свежеотвеченные → действовать; DECISION после <code>auto_apply_at</code> → применить дефолт, emit <code>decision.made</code>; BLOCKER, простоявший слишком долго → re-push по манифесту</td></tr>
+          <tr><td><strong>BLOCKED_ON_HUMAN</strong></td><td>Становится «в очередь + перенаправить», а не «стоп»: записать вопрос, пушнуть по типу, запарковать только затронутый пункт, продолжать всё незаблокированное</td></tr>
+          <tr><td><strong>Брифы воркеров</strong></td><td>+1 строка: «свои вопросы emit-ить через <code>lab-emit question</code> с типом + дефолтом + reversibility; ПРОДОЛЖАТЬ на дефолте, если тип ≤ DECISION; никогда не блокировать свою панель на человеке»</td></tr>
+          <tr><td><strong>ORCHESTRATION-STATE.md</strong></td><td>Остаётся авторитетом; LIVE-STATUS получает одно поле: <code>questions: open=N (B/D/C/F)</code></td></tr>
+          <tr><td><strong>Handoffs</strong></td><td>Теперь также ссылаются на id открытых вопросов — сменный оркестратор тривиально наследует очередь (она и так на диске)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= UI ======================= -->
+<section id="ui">
+  <div class="wrap">
+    <div class="sec-kicker">04 · UI оркестрации</div>
+    <h2>Что видит владелец — 7 экранов и датчик «можно ли идти спать?»</h2>
+    <p class="lead">v1 — это read-only статический дашборд из §02. Макеты ниже — визуальные наброски ключевых экранов, добавленная ценность поверх ASCII-черновиков из findings: ровно то, что владелец должен уметь открыть, на ноутбуке или через GitHub-репозиторий на телефоне. Живое управление (state-aware composer из autosk, replay-then-tail транскрипты) — интерактивный слой v2.<sup class="fn">5</sup></p>
+
+    <h3 id="runway">Autonomy runway — <code>min()</code> по шести часам исчерпания</h3>
+    <p>Один составной заголовок отвечает на ночной вопрос владельца — <em>«можно ли идти спать?»</em> — доказательствами, а не ощущениями. Это ближайший из шести независимых «часов», связывающее ограничение подсвечено:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Часы</th><th>Источник</th><th>Исчерпание означает</th></tr></thead>
+        <tbody>
+          <tr><td>Контекст оркестратора</td><td>Самоотчёт % на каждом пульсе, сверенный с эвристикой ~8–15 циклов (никогда не верить только числу — урок «выдуманные 80% против реальных 63%»)</td><td>Нужен roll → плановый, не фатальный (если дисциплина handoff держится)</td></tr>
+          <tr><td>Потолок токенов / стоимости</td><td><code>telemetry.jsonl</code> накопление vs потолок §5 манифеста</td><td>BUDGET_EXCEEDED = BLOCKER</td></tr>
+          <tr><td>Окно квоты</td><td>События <code>StopFailure(rate_limit/overloaded)</code> + зонды типа <code>/usage</code></td><td>Флот затихает до сброса окна (показать ETA сброса)</td></tr>
+          <tr><td>Слоты флота</td><td>Живые панели vs spawn-cap 3</td><td>Очередь, не остановка</td></tr>
+          <tr><td>Открытые BLOCKER</td><td><code>questions/queue.jsonl</code></td><td>Затронутые пункты запаркованы</td></tr>
+          <tr><td>Остаток работы</td><td>Доска задач (счётчик To Do)</td><td>Готово = простой — хороший финал</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== MOCKUP: OVERVIEW / MORNING ===== -->
+    <h3>Экран 1 — Overview (утренний экран)</h3>
+    <div class="device">
+      <div class="device-bar"><div class="tl"><i></i><i></i><i></i></div><div class="url">file:///…/docs/lab/site/index.html · или github.com/ainstance-labs/gosleep</div></div>
+      <div class="appnav">
+        <span class="logo"><span class="dot"></span>GOSLEEP&nbsp;LAB</span>
+        <a class="on" href="#">Overview</a><a>Timeline</a><a>Tasks</a><a>Questions</a><a>Fleet</a><a>Cost</a><a>Library</a>
+      </div>
+      <div class="screen">
+        <div class="screen-h"><span class="t">Утренний дайджест — 2026-07-08</span><span class="s">ночной прогон 23:10 → 05:47 · собрано 06:30 · макс. возраст события 12м</span></div>
+
+        <div class="runway">
+          <div class="top">
+            <span class="big">RUNWAY ≈ 4ч</span>
+            <span class="bind">связ. огранич.: окно квоты сброс 03:00</span>
+          </div>
+          <div class="gauges">
+            <div class="gauge"><div class="gl"><span>ctx</span><span>42%</span></div><div class="track"><div class="fill" style="width:42%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>бюджет</span><span>45%</span></div><div class="track"><div class="fill" style="width:45%"></div></div></div>
+            <div class="gauge warn bindg"><div class="gl"><span>квота</span><span>~4ч</span></div><div class="track"><div class="fill" style="width:70%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>слоты</span><span>2/3</span></div><div class="track"><div class="fill" style="width:66%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>блокеры</span><span>1</span></div><div class="track"><div class="fill" style="width:20%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>бэклог</span><span>5</span></div><div class="track"><div class="fill" style="width:55%"></div></div></div>
+          </div>
+        </div>
+
+        <div class="digcols">
+          <div class="dcard">
+            <div class="dh"><span>✓ Сделано ночью</span><span>4</span></div>
+            <div class="li"><span class="dotm"></span>3 research-файла готовы (01, 03, 04)</div>
+            <div class="li"><span class="dotm"></span>GSL-42 Done → merged @898297c</div>
+            <div class="li"><span class="dotm"></span>PR #56 открыт (эпик GSL-41)</div>
+            <div class="li"><span class="dotm" style="background:var(--amber)"></span>2 инцидента, оба восстановлены (RCA ↗)</div>
+          </div>
+          <div class="dcard">
+            <div class="dh"><span>⧗ Ждёт тебя</span><span>3</span></div>
+            <div class="qitem"><span class="ib"><span class="badge b-block">Blocker</span></span><div><div class="qt">Vercel token истёк — деплой запаркован</div><div class="qm">creds · пуш 01:12 ✓ · запаркован только пункт</div></div></div>
+            <div class="qitem"><span class="ib"><span class="badge b-dec">Decision</span></span><div><div class="qt">Стратегия merge для PR #56 после конфликта</div><div class="qm">дефолт: merge main in · авто-применение 10:00</div></div></div>
+            <div class="qitem"><span class="ib"><span class="badge b-fyi">FYI</span></span><div><div class="qt">SC-19 полировка снова отложена</div><div class="qm">только дайджест</div></div></div>
+          </div>
+        </div>
+
+        <div class="dcard" style="margin-top:12px">
+          <div class="dh"><span>⚙ Решено за тебя — каждое правило процитировано</span><span>2</span></div>
+          <div class="qitem"><span class="ib"><span class="badge b-clar">Clarify</span></span><div><div class="qt">Оставил res-warren-2 после сбоя API → один continue-nudge</div><div class="qm">манифест §1 · правило: transient-error-recover (валид. 2026-07-07)</div></div></div>
+          <div class="qitem"><span class="ib"><span class="badge b-clar">Clarify</span></span><div><div class="qt">Поставил res-labui в очередь вместо 4-й панели</div><div class="qm">манифест §1 · правило: spawn-cap-3</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MOCKUP: TIMELINE + TASKS ===== -->
+    <div class="grid g2" style="margin-top:8px">
+      <div>
+        <h3>Экран 2 — Timeline</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a class="on">Timeline</a><a>Tasks</a><a>Questions</a></div>
+          <div class="screen" style="padding:6px 0">
+            <div style="padding:6px 12px;font-family:var(--mono);font-size:10.5px;color:var(--ink3)">фильтр: [все акторы ▾] [все типы ▾] [≥ info ▾]</div>
+            <div class="tl-row"><span class="ts">23:04</span><span class="act">res-headless-2</span><span class="ty">cycle.ended</span><span class="dt">COMPLETE 03 @36609B</span></div>
+            <div class="tl-row"><span class="ts">23:01</span><span class="act">orchestrator</span><span class="ty">agent.spawned</span><span class="dt">res-loops (pane %91)</span></div>
+            <div class="tl-row"><span class="ts">23:00</span><span class="act">orchestrator</span><span class="ty">telemetry</span><span class="dt">cycle=3 out=33k in=310k</span></div>
+            <div class="tl-row inc"><span class="ts">20:57</span><span class="act">res-warren-2</span><span class="ty">stop.failure</span><span class="dt">server_error → nudged ⚠</span></div>
+            <div class="tl-row"><span class="ts">20:41</span><span class="act">res-warren-2</span><span class="ty">vcs.commit</span><span class="dt">research-файл 14.5K</span></div>
+            <div class="tl-row"><span class="ts">20:20</span><span class="act">chronicler</span><span class="ty">site.rebuilt</span><span class="dt">7 экранов · 41 событие</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>Экран 3 — Tasks</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a>Timeline</a><a class="on">Tasks</a><a>Questions</a></div>
+          <div class="screen" style="padding:6px 0">
+            <div class="taskrow"><span class="key">GSL-42</span><span class="st done">✅ Done</span><span class="lk">#49 · @898297c</span><span class="lk"><span>hist ↗</span></span></div>
+            <div class="taskrow"><span class="key">GSL-43</span><span class="st prog">🔵 InPrg</span><span class="lk">#50 · res-warren-2</span><span class="lk"><span>hist ↗</span></span></div>
+            <div class="taskrow"><span class="key">GSL-44</span><span class="st prog">🔵 InPrg</span><span class="lk">#51 · res-loops</span><span class="lk"><span>hist ↗</span></span></div>
+            <div class="taskrow"><span class="key">GSL-45</span><span class="st todo">⚪ ToDo</span><span class="lk">#52 · queued</span><span class="lk"><span>—</span></span></div>
+            <div class="taskrow" style="background:var(--accent-soft)"><span class="key">GSL-41</span><span class="st prog">эпик</span><span class="lk">→ PR #56 (open)</span><span class="lk"><span>rollup ↗</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MOCKUP: QUESTIONS + FLEET ===== -->
+    <div class="grid g2" style="margin-top:8px">
+      <div>
+        <h3>Экран 4 — Окно вопросов</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a>Timeline</a><a>Tasks</a><a class="on">Questions</a></div>
+          <div class="screen">
+            <div class="qwin">
+              <div class="qcard k-block">
+                <div class="qch"><span class="badge b-block">Blocker</span><span class="pushed">пуш ✓ 01:12</span></div>
+                <div class="qq">Vercel token истёк — шаг деплоя не может продолжиться</div>
+                <div class="qmeta"><span>creds · GSL-40</span><span>возраст 41м</span><span>пункт запаркован (флот работает)</span></div>
+              </div>
+              <div class="qcard k-dec">
+                <div class="qch"><span class="badge b-dec">Decision</span><span class="countdown">авто-применение через 2ч 13м</span></div>
+                <div class="qq">Конфликт PR #56 — rebase или merge main in?</div>
+                <div class="qmeta"><span>дефолт: merge main in</span><span>обратимо · косметика</span></div>
+              </div>
+              <div class="qcard k-dec">
+                <div class="qch"><span class="badge b-dec">Decision</span><span class="countdown">авто-применение через 3ч</span></div>
+                <div class="qq">SC-19 полировка сейчас vs отложить на след. фазу?</div>
+                <div class="qmeta"><span>дефолт: отложить</span><span>низкий impact</span></div>
+              </div>
+              <div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px 2px 2px">── отвечено ночью ──</div>
+              <div class="qcard k-clar" style="opacity:.75">
+                <div class="qch"><span class="badge b-clar">Clarify</span><span class="pushed">дефолтом</span></div>
+                <div class="qq">Объём RU-зеркала → по манифесту §6</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>Экран 5 — Fleet</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a>Tasks</a><a class="on">Fleet</a><a>Cost</a></div>
+          <div class="screen">
+            <div class="fleet">
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st run"></span>orchestrator</span><span class="st done">ctx 42%</span></div>
+                <div class="fm">Fable 5 · пульс 04:31 · циклов 33<br>последнее событие 30с</div>
+              </div>
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st run"></span>res-warren-2</span><span class="st prog">RUNNING</span></div>
+                <div class="fm">GSL-43 · pane %88 · 02 @36997B<br>последнее событие 90с</div>
+                <div class="mini-track"><div class="mf" style="width:74%"></div></div>
+              </div>
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st run"></span>res-loops</span><span class="st prog">RUNNING</span></div>
+                <div class="fm">GSL-44 · pane %91 · 04 @35596B<br>последнее событие 4м</div>
+                <div class="mini-track"><div class="mf" style="width:66%"></div></div>
+              </div>
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st queued"></span>res-labui</span><span class="st todo">QUEUED</span></div>
+                <div class="fm">ждёт: слот 4 &gt; cap 3<br>причина: spawn-cap-3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Виджеты поверх базовой IA</h3>
+    <div class="grid g2">
+      <div class="card tint"><h4>Самоздоровье Лаборатории</h4><p style="font-size:13px">Датчики свежести доков: generated-at дашборда, покрытие dev_history (задач Done <em>с</em> файлом истории ÷ задач Done), возраст handoff vs последняя граница сессии, устаревание индекса. Система документирует себя, значит должна и <em>оценивать</em> себя — сигнализация против гниения wiki.</p></div>
+      <div class="card tint"><h4>Очередь на спавн</h4><p style="font-size:13px">Кто ждёт слот и почему (сегодня это живёт только в прозе LIVE-STATUS). Показывается как Fleet-карточка в состоянии QUEUED со своей причиной.</p></div>
+      <div class="card tint"><h4>Пины инцидентов</h4><p style="font-size:13px">Записи инцидентов (например, класса <code>kill-pane -a</code>) пришпилены к верху Timeline, пока не появится ссылка на RCA — видимый маркер «незакрытой петли».</p></div>
+      <div class="card tint"><h4>Кто какую поверхность потребляет</h4><p style="font-size:13px">Владелец утром → Overview/дайджест. Владелец бодрствует → Timeline/Fleet (живой вид — сырые панели tmux). Владелец удалённо → пуш → телефон. Сам оркестратор → <code>status.json</code> + очередь на пульсе (дешевле, чем перевыводить из прозы STATE).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= MOBILE ======================= -->
+<section id="mobile">
+  <div class="wrap">
+    <div class="sec-kicker">05 · Мобильный доступ</div>
+    <h2>Официальный Remote Control против DIY-пути autosk</h2>
+    <p class="lead">Самая ценная мобильная фича для системы «владелец спит» — <strong>пуш на запаркованный вопрос.</strong> autosk доказывает, что управление со стороны демона — лёгкие 90%, но оставляет ровно три пробела, которые GoSleep не должен унаследовать: <strong>нет TLS, нет relay, нет пуша.</strong> Официальный Remote Control (запущен 2026-02-24) закрывает все три на подписке. Строй поверх него, не переизобретай.</p>
+
+    <h3>Контраст — транспорт autosk против Remote Control</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Измерение</th><th>autosk (DIY-референс)<sup class="fn">2</sup></th><th>Официальный Remote Control<sup class="fn">6</sup></th></tr></thead>
+        <tbody>
+          <tr><td>Транспорт</td><td>Сырой TCP JSON-RPC на <code>0.0.0.0:7077</code> по умолчанию</td><td>Только исходящий HTTPS, никаких входящих портов</td></tr>
+          <tr><td>Шифрование</td><td><span class="vlo">Нет</span> — токен идёт по проводу в открытом виде</td><td><span class="vhi">TLS + короткоживущие scoped-креды</span></td></tr>
+          <tr><td>Аутентификация</td><td>32-байтовый файл токена, auth-before-anything</td><td>QR-пейринг к claude.ai/code + iOS/Android app; Trusted Devices</td></tr>
+          <tr><td>Пуш-уведомления</td><td><span class="vlo">Ноль APNs-кода</span> — телефон должен быть на переднем плане</td><td><span class="vhi">Встроенный мобильный пуш</span> — «когда Claude решит» + «требуются действия»</td></tr>
+          <tr><td>Досягаемость</td><td>Та же LAN или VPN/туннель, который строишь сам (недокументировано)</td><td>Откуда угодно — через relay claude.ai</td></tr>
+          <tr><td>Модель auth</td><td>Subscription-native (спавнит залогиненный <code>claude</code> CLI)</td><td><strong>Subscription-only по дизайну</strong></td></tr>
+          <tr><td>Чем управляет</td><td>Любой сессией, которой владеет демон</td><td>ОДНОЙ спаренной сессией — владелец рулит оркестратором, не отдельными панелями воркеров</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="t">Вердикт</div>
+      <p>Пробелы autosk <em>и есть</em> возможность GoSleep — а Remote Control их уже закрывает, на подписке, E2E-шифрованно, с пушем. Строить свой мобильный клиент/транспорт демона (путь autosk) <strong>неоправданно теперь, когда есть №1.</strong> Статус research preview — единственный риск.</p>
+    </div>
+
+    <h3>Рекомендуемый стек — послойно, всё official-first</h3>
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 940 340" role="img" aria-label="Рекомендуемый мобильный стек">
+          <rect x="30" y="70" width="150" height="210" rx="20" fill="var(--card2)" stroke="var(--line2)" stroke-width="2"/>
+          <rect x="44" y="92" width="122" height="150" rx="6" fill="var(--card)" stroke="var(--line)"/>
+          <text x="105" y="60" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Телефон владельца 🌙</text>
+          <g font-family="var(--mono)" font-size="8.5" fill="var(--ink2)">
+            <rect x="52" y="102" width="106" height="24" rx="5" fill="var(--blocker-soft)"/><text x="60" y="112" fill="var(--blocker)" font-weight="700">! BLOCKER пуш</text><text x="60" y="122">Vercel token истёк</text>
+            <rect x="52" y="132" width="106" height="24" rx="5" fill="var(--accent-soft)"/><text x="60" y="142" fill="var(--accent)" font-weight="700">Remote Control</text><text x="60" y="152">рулить оркестратором</text>
+            <rect x="52" y="162" width="106" height="24" rx="5" fill="var(--teal-soft)"/><text x="60" y="172" fill="var(--teal)" font-weight="700">Telegram</text><text x="60" y="182">ответ «1» → применит</text>
+            <rect x="52" y="192" width="106" height="42" rx="5" fill="var(--card2)" stroke="var(--line)"/><text x="60" y="204" fill="var(--ink3)" font-weight="700">GitHub (дашборд)</text><text x="60" y="216">статич. HTML, приватно,</text><text x="60" y="227">уже авторизован</text>
+          </g>
+          <g>
+            <rect x="270" y="30" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="284" y="50" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">1 · Remote Control на оркестраторе</text>
+            <text x="284" y="66" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">рулить + аппрув прав + пуш «Claude решает» · E2E · TLS</text>
+
+            <rect x="270" y="86" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--teal)" stroke-width="1.6"/>
+            <text x="284" y="106" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">2 · Hook → ntfy (self-hosted / ACL)</text>
+            <text x="284" y="122" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">события флота + Lab, что RC не видит · работает БЕЗ сессии</text>
+
+            <rect x="270" y="142" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--amber)" stroke-width="1.6"/>
+            <text x="284" y="162" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">3 · Channels / Telegram — путь ответа</text>
+            <text x="284" y="178" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">ответ «1» → оркестратор применяет опцию 1, логирует channel=telegram</text>
+
+            <rect x="270" y="198" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--fyi)" stroke-width="1.6"/>
+            <text x="284" y="218" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">4 · Tailscale + Blink/mosh — break-glass</text>
+            <text x="284" y="234" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">полный tmux-attach, когда красивые пути отказали · E2E WireGuard</text>
+
+            <rect x="270" y="254" width="330" height="46" rx="9" fill="var(--card2)" stroke="var(--line2)" stroke-width="1.4"/>
+            <text x="284" y="274" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">5 · Статический дашборд через GitHub</text>
+            <text x="284" y="290" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">коммитимый HTML, читается на телефоне, ноль доп. инфры</text>
+          </g>
+          <rect x="670" y="60" width="240" height="90" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="790" y="84" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--accent)">Сессия оркестратора</text>
+          <text x="790" y="104" text-anchor="middle" font-family="var(--sans)" font-size="10.5" fill="var(--ink2)">сущность, с которой говорит</text>
+          <text x="790" y="120" text-anchor="middle" font-family="var(--sans)" font-size="10.5" fill="var(--ink2)">владелец — верная единственная</text>
+          <text x="790" y="136" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">сессия для экспозиции</text>
+
+          <rect x="670" y="170" width="240" height="120" rx="10" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.4"/>
+          <text x="790" y="192" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--teal)">Флот + Лаборатория</text>
+          <text x="790" y="212" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink2)">панели воркеров · события docs/lab</text>
+          <text x="790" y="228" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink2)">BLOCKER · дайджест-готов</text>
+          <text x="790" y="244" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink2)">квота-парк · инцидент</text>
+          <text x="790" y="266" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">путь пуша, работающий,</text>
+          <text x="790" y="279" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">когда RC-сессии нет</text>
+
+          <line x1="180" y1="120" x2="268" y2="53" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="3 3"/>
+          <line x1="180" y1="150" x2="268" y2="165" stroke="var(--amber)" stroke-width="1.4" stroke-dasharray="3 3"/>
+          <line x1="600" y1="53" x2="668" y2="90" stroke="var(--accent)" stroke-width="1.6"/>
+          <line x1="600" y1="109" x2="668" y2="200" stroke="var(--teal)" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <figcaption>Рис. 3 — Рекомендуемый мобильный стек. Remote Control экспонирует оркестратор (единственную сессию, с которой говорит владелец); hook→ntfy покрывает события уровня флота, недоступные Remote Control; Telegram — путь ответа; Tailscale — break-glass; статический дашборд едет на GitHub бесплатно.</figcaption>
+    </figure>
+
+    <h3>Полный обзор паттернов</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Паттерн</th><th>Лучше всего для</th><th>Минусы</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Официальный Remote Control</strong></td><td>Управление + аппрув прав + пуш, subscription-native, E2E</td><td>Research preview; локальный процесс должен жить; зеркалит ОДНУ сессию</td></tr>
+          <tr><td>2</td><td><strong>Channels</strong> (Telegram/Discord/iMessage)</td><td>Входящий путь ответа для очереди — ответить из постели</td><td>Настройка плагина; форма сообщения, не дашборда</td></tr>
+          <tr><td>3</td><td><strong>Dispatch</strong> (app → Desktop)</td><td>Zero-setup инъекция задач («утром: ещё сделай X»)</td><td>Требует запущенный Desktop; не поверхность мониторинга</td></tr>
+          <tr><td>4</td><td><strong>Hook-driven push</strong> (ntfy / Pushover)</td><td>События уровня флота, что RC не видит; ~10 строк; tap-to-tmux</td><td>Односторонний; DIY-авторизация топика</td></tr>
+          <tr><td>5</td><td><strong>SSH/mosh + Tailscale</strong></td><td>Полный контроль — attach любой панели, kill, restart; работает, когда всё сломано</td><td>Плохой UX чтения с телефона; сам по себе без пуша</td></tr>
+          <tr><td>6</td><td>Web-tmux обёртки (VibeTunnel, ttyd)</td><td>Вид панелей в браузере</td><td>Бремя DIY-auth/TLS; вытеснено 1+5</td></tr>
+          <tr><td>7</td><td>Сторонние компаньоны (класс Omnara)</td><td>Полированный мобильный UX сегодня</td><td>Третья сторона в auth-пути = категория, по которой ударили меры 2026 — проверять сначала</td></tr>
+          <tr><td>8</td><td>Свой клиент в стиле autosk</td><td>Полный контроль</td><td>Стоимость + пробелы (TLS/пуш/relay); неоправданно теперь, когда есть №1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= RECOMMENDATIONS ======================= -->
+<section id="recommendations">
+  <div class="wrap">
+    <div class="sec-kicker">06 · Рекомендации</div>
+    <h2>Ранжировано по ценности / усилию / риску</h2>
+    <p class="lead">Порядок — это последовательность сборки: сначала детерминированный пол событий (всё остальное его потребляет), затем слой автономии, позволяющий владельцу спать, потом поверхности, показывающие ночь.</p>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--ok)"></span>Высокая ценность</span>
+      <span><span class="sw" style="background:var(--amber)"></span>Средняя</span>
+      <span><span class="sw" style="background:var(--fyi)"></span>Низкая / отложить</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Рекомендация</th><th>Ц</th><th>У</th><th>Р</th><th>Почему сейчас</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>T1 hook chronicler → <code>events/*.jsonl</code></strong></td><td class="vhi">ВЫС</td><td class="vhi">НИЗ</td><td class="vhi">НИЗ</td><td>Zero-token, независимый от модели таймлайн; фундамент, который потребляют все; снимает открытый caveat event-schema</td></tr>
+          <tr><td>2</td><td><strong>Буфер вопросов + типология + файл очереди</strong></td><td class="vhi">ВЫС</td><td class="vhi">НИЗ</td><td class="vhi">НИЗ</td><td>Убивает пробел автономии №1 (AskUserQuestion блокирует панели); нужен лишь helper + строки в брифах + один шаг PULSE</td></tr>
+          <tr><td>3</td><td><strong>Манифест решений</strong></td><td class="vhi">ВЫС</td><td class="vhi">НИЗ</td><td class="vhi">НИЗ</td><td>Делает «решай сам» аудируемым (каждое авто-решение цитирует правило); предпосылка для дефолтов-с-дедлайнами</td></tr>
+          <tr><td>4</td><td><strong>Remote Control + пуш на оркестраторе</strong></td><td class="vhi">ВЫС</td><td class="vhi">НИЗ</td><td class="vmed">НИЗ-СР</td><td>Сеть безопасности сна: BLOCKER-пуш + рулить из постели, subscription-native; статус preview — единственный риск</td></tr>
+          <tr><td>5</td><td><strong>Утренний дайджест</strong></td><td class="vhi">ВЫС</td><td class="vmed">СР</td><td class="vhi">НИЗ</td><td>Единственный deliverable к владельцу, определяющий «GoSleep сработал»; ограниченный <code>claude -p</code> glue</td></tr>
+          <tr><td>6</td><td><strong>Статический дашборд</strong> (сначала Overview+Timeline+Questions+Library)</td><td class="vmed">СР-ВЫС</td><td class="vmed">СР</td><td class="vhi">НИЗ</td><td>Анти-гниение by construction; переиспользует паттерн <code>build-*.py</code>; Fleet/Cost можно отложить</td></tr>
+          <tr><td>7</td><td><strong>Hook → ntfy пуш уровня флота</strong></td><td class="vmed">СР</td><td class="vhi">НИЗ</td><td class="vhi">НИЗ</td><td>Десять строк; покрывает то, что per-session пуш RC не может; self-host или ACL топика</td></tr>
+          <tr><td>8</td><td>Машинные футеры в артефактах T2</td><td class="vmed">СР</td><td class="vhi">НИЗ</td><td class="vhi">НИЗ</td><td>Однострочные добавки в скиллы; делает нарратив индексируемым без парсинга прозы</td></tr>
+          <tr><td>9</td><td>Docs integrity gate (портировать <code>check-docs-anchors.mjs</code>)</td><td class="vmed">СР</td><td class="vmed">СР</td><td class="vhi">НИЗ</td><td>Единственное механически-принуждаемое качество доков в референсе; начать как локальный gate</td></tr>
+          <tr><td>10</td><td>Learning loop → кандидаты в манифест</td><td class="vmed">СР</td><td class="vmed">СР</td><td class="vhi">НИЗ</td><td>После 2–3 недель данных <code>decisions/log</code>; вопросов-за-ночь — это KPI</td></tr>
+          <tr><td>11</td><td>Channels / Telegram входящие ответы</td><td class="vmed">СР</td><td class="vmed">СР</td><td class="vmed">СР</td><td>Высокий комфорт, стоимость поддержки плагина; оценить после приземления 1–7</td></tr>
+          <tr><td>12</td><td>v2 интерактивный дашборд (SSE / composer)</td><td class="vmed">СР</td><td class="vlo">ВЫС</td><td class="vmed">СР</td><td>Только после того, как слой JSONL себя докажет; контракт данных делает v2 чистой заменой потребителя</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout rot">
+      <div class="t">⛔ Явно НЕ строить</div>
+      <p>Свой мобильный клиент/транспорт демона (путь autosk — №8). Живой chronicler-teammate, держащий слот панели. Рукотворные status/wiki-страницы любого вида (урок гниения). Сторонние бриджи с subscription-auth (категория, попавшая под меры политики 2026).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SOURCES ======================= -->
+<footer class="foot">
+  <div class="wrap">
+    <h3>Источники и provenance</h3>
+    <div class="pill-row">
+      <span class="pill">Первичные чтения (высокая уверенность)</span>
+      <span class="pill">Проверенный субстрат возможностей (офиц. доки)</span>
+      <span class="pill">Проектные предложения (средняя уверенность)</span>
+    </div>
+    <ol class="src">
+      <li id="s1"><b>Система документации tasty-lunch</b> — обход всего дерева (<code>~/Documents/dev/tasty/tasty-lunch/docs/</code>, 828 файлов, 523 коммита); один read-only Explore-субагент, 2026-07-07. Пофайловые счётчики — отчёт субагента, проверяемы по указанным путям. → <code>docs/research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md</code> §1.</li>
+      <li id="s2"><b>Транспорт и пробелы autosk</b> (сырой TCP, нет TLS, нет пуша, iOS remote-only) — статический анализ клона @ <code>fd4c22e</code>, привязка к file:line. → <code>docs/research/2026-07-07-orchestration/01-autosk.md</code> §§5–6, 8.</li>
+      <li id="s3"><b>Каталог хуков Claude Code</b> — <code>code.claude.com/docs/en/hooks</code>, получено 2026-07-07 (снимает caveat <code>event-schema.md</code>). Version-gating отдельных событий не зафиксирован; TeammateIdle документирован, но не протестирован на этой машине.</li>
+      <li id="s4"><b>Уровни зрелости автономии и ловушка «спам вопросами»</b> — родственные findings <code>04-loop-engineering.md</code> §§3.6–3.9 (события <code>question_posed</code> warren цитируются из вторых рук; <code>02-warren-overstory.md</code> писался в процессе).</li>
+      <li id="s5"><b>UI-паттерны</b> (state-aware composer, replay-then-tail транскрипт) — <code>01-autosk.md</code> §5; fleet-кокпиты ландшафта — <code>03-headless-subscription-landscape.md</code> §4. Слой v2/интерактив.</li>
+      <li id="s6"><b>Официальный Remote Control</b> — <code>code.claude.com/docs/en/remote-control</code> (запуск 2026-02-24; пуш ≥2.1.110; presence-файл; Trusted Devices), + сравнение Channels/Dispatch, проверено 2026-07-07. Без hands-on теста RC под сессией-LEAD Agent-Teams.</li>
+    </ol>
+    <hr class="soft">
+    <p style="font-size:12px;color:var(--faint)">GoSleep Lab · исследование оркестрации GSL-41 · воркер writer-autonomy · собрано 2026-07-08. Это проектный дайджест — дизайны Лаборатории / буфера вопросов / UI / мобильного — предложения, валидированные схождением с родственными findings и прецедентом tasty-lunch, а не запущенным кодом. Self-contained; без внешних ресурсов; светлая и тёмная тема.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('tt');
+  function cur(){var t=root.getAttribute('data-theme');if(t)return t;return matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+  btn.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);btn.textContent=n==='dark'?'☀ Светлая':'◐ Тёмная';});
+})();
+</script>
+</body>
+</html>

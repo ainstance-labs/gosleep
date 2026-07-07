@@ -66,3 +66,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-43 — Deep-dive findings pack — autosk, warren/overstory, headless, loops, lab/UI](GSL-43-phase-gsl41-cycle1-research-findings-pack.md)
 - [GSL-44 — Report: Orchestrator landscape — autosk/warren/overstory + ecosystem (EN+RU dashboard)](GSL-44-phase-gsl41-cycle1-report-orchestrator-landscape.md)
 - [GSL-45 — Report: Headless claude -p, subscription & orchestrator supervision (EN+RU)](GSL-45-phase-gsl41-cycle1-report-headless-supervision.md)
+- [GSL-46 — Report: Autonomy, question buffer, Laboratory, UI & mobile (EN+RU)](GSL-46-phase-gsl41-cycle1-report-autonomy-lab-ui.md)
