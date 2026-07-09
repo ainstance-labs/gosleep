@@ -59,3 +59,13 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-40 — Track orchestration ledger — handoffs 09-11 + STATE snapshot](GSL-40-phase-v3fu-ledger-snapshot.md)
 - [GSL-39 — SC-09 restore discrimination — prompt states facts, agent must infer elapsed ceiling](GSL-39-phase-v3fu-sc09-discrimination.md)
 - [GSL-38 — SC-12 calibration — recalibrated scenario (question framing suppressed process-fix behavior)](GSL-38-phase-v3fu-sc12-calibration.md)
+
+## Epic GSL-41 — Orchestration deep-research → reports + PRD
+
+- [GSL-42 — Commit orchestration ledger (handoff 12 + STATE) + branch housekeeping](GSL-42-phase-gsl41-cycle1-ledger-housekeeping.md)
+- [GSL-43 — Deep-dive findings pack — autosk, warren/overstory, headless, loops, lab/UI](GSL-43-phase-gsl41-cycle1-research-findings-pack.md)
+- [GSL-44 — Report: Orchestrator landscape — autosk/warren/overstory + ecosystem (EN+RU dashboard)](GSL-44-phase-gsl41-cycle1-report-orchestrator-landscape.md)
+- [GSL-45 — Report: Headless claude -p, subscription & orchestrator supervision (EN+RU)](GSL-45-phase-gsl41-cycle1-report-headless-supervision.md)
+- [GSL-46 — Report: Autonomy, question buffer, Laboratory, UI & mobile (EN+RU)](GSL-46-phase-gsl41-cycle1-report-autonomy-lab-ui.md)
+- [GSL-47 — Report: Loop engineering (EN+RU)](GSL-47-phase-gsl41-cycle1-report-loop-engineering.md)
+- [GSL-48 — PRD — GoSleep evolution plan (orchestration v-next)](GSL-48-phase-gsl41-cycle1-prd-gosleep-evolution.md)

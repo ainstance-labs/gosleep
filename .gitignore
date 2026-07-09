@@ -24,3 +24,6 @@ evals/runner/run-config.json
 
 # Eval RED baseline cache — local derived artifact, mixed N, not source of truth
 evals/baselines/
+
+# Research cache — clones of third-party repos for deep-research, not committed
+.research-cache/

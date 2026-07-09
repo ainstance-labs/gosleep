@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ландшафт оркестраторов — исследование GSL-41</title>
+<style>
+/* ============ tokens: light ============ */
+:root{
+  --bg:#f9f9f7; --surface:#fcfcfb; --surface2:#f3f2ee; --surface3:#eeede8;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --line2:#c3c2b7;
+  --accent:#2a78d6; --accent2:#1baf7a; --accent3:#4a3aa7;
+  --accent-bg:#e2edfa;
+  --good-t:#067806; --good-bg:#e2f3e2; --good-bd:#b5deb5;
+  --warn-t:#8a6100; --warn-bg:#fcf0d3; --warn-bd:#ecd598;
+  --ser-t:#a34a22;  --ser-bg:#fbe7dd;  --ser-bd:#eec4ae;
+  --crit-t:#b32d2d; --crit-bg:#f9e1e1; --crit-bd:#eab8b8;
+  --info-t:#1c5cab; --info-bg:#e2edfa; --info-bd:#b7d3f6;
+  --neu-t:#52514e;  --neu-bg:#eeede8;  --neu-bd:#d8d7cf;
+  --bar-good:#0ca30c; --bar-warn:#fab219; --bar-ser:#ec835a; --bar-crit:#d03b3b;
+  --shadow:0 1px 2px rgba(11,11,11,.05);
+}
+/* ============ tokens: dark ============ */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d0d0d; --surface:#1a1a19; --surface2:#232322; --surface3:#2a2a28;
+    --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+    --line:#2c2c2a; --line2:#383835;
+    --accent:#3987e5; --accent2:#199e70; --accent3:#9085e9;
+    --accent-bg:#12253d;
+    --good-t:#4cc24c; --good-bg:#142d14; --good-bd:#265426;
+    --warn-t:#fab219; --warn-bg:#2e2408; --warn-bd:#5c4a12;
+    --ser-t:#ec835a;  --ser-bg:#331b0f;  --ser-bd:#66351e;
+    --crit-t:#e05c5c; --crit-bg:#341313; --crit-bd:#662525;
+    --info-t:#86b6ef; --info-bg:#12253d; --info-bd:#1c4470;
+    --neu-t:#c3c2b7;  --neu-bg:#262622;  --neu-bd:#3a3a36;
+    --shadow:none;
+  }
+}
+/* ============ base ============ */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px 90px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:var(--surface3);border:1px solid var(--line);border-radius:4px;
+  padding:1px 5px;overflow-wrap:break-word}
+p{max-width:82ch;margin:10px 0}
+ul,ol{max-width:82ch;padding-left:22px}
+li{margin:5px 0}
+strong{color:var(--ink)}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+/* ============ hero ============ */
+.hero{padding:54px 0 6px}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(28px,4.5vw,42px);line-height:1.12;margin:10px 0 14px;letter-spacing:-.02em}
+.lede{font-size:17px;color:var(--ink2);max-width:74ch;margin:0 0 18px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.pill{font-size:12px;color:var(--ink2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 11px;white-space:nowrap}
+/* ============ toc ============ */
+.toc{position:sticky;top:0;z-index:50;background:var(--bg);
+  border-bottom:1px solid var(--line);margin:30px -24px 0;padding:9px 24px;
+  display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.toc a{font-size:12.5px;font-weight:600;color:var(--ink2);padding:4px 10px;border-radius:999px}
+.toc a:hover{background:var(--surface2);text-decoration:none;color:var(--ink)}
+/* ============ sections ============ */
+.sec{margin-top:70px}
+.sec>h2{font-size:26px;letter-spacing:-.01em;margin:0 0 4px;scroll-margin-top:64px}
+.secnum{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:8px}
+.sub{color:var(--ink2);margin:0 0 20px;max-width:84ch;font-size:15.5px}
+h3{font-size:18px;margin:36px 0 10px;scroll-margin-top:64px}
+h4{font-size:15px;margin:24px 0 8px}
+/* ============ stat tiles ============ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin:18px 0}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.tile .v{font-size:25px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.tile .v small{font-size:13px;font-weight:600;color:var(--ink2)}
+.tile .l{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+/* ============ cards ============ */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow)}
+.card .ct{font-size:14.5px;font-weight:700;margin:0 0 6px}
+.card p{font-size:13.5px;color:var(--ink2);margin:6px 0 0;max-width:none}
+.card ul{font-size:13.5px;color:var(--ink2);margin:6px 0 0;padding-left:18px}
+.t-good{border-top:3px solid var(--bar-good)}
+.t-warn{border-top:3px solid var(--bar-warn)}
+.t-ser{border-top:3px solid var(--bar-ser)}
+.t-crit{border-top:3px solid var(--bar-crit)}
+.t-acc{border-top:3px solid var(--accent)}
+.t-acc2{border-top:3px solid var(--accent2)}
+.t-acc3{border-top:3px solid var(--accent3)}
+/* ============ badges ============ */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.03em;
+  padding:2.5px 9px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.b-good{color:var(--good-t);background:var(--good-bg);border:1px solid var(--good-bd)}
+.b-warn{color:var(--warn-t);background:var(--warn-bg);border:1px solid var(--warn-bd)}
+.b-ser{color:var(--ser-t);background:var(--ser-bg);border:1px solid var(--ser-bd)}
+.b-crit{color:var(--crit-t);background:var(--crit-bg);border:1px solid var(--crit-bd)}
+.b-info{color:var(--info-t);background:var(--info-bg);border:1px solid var(--info-bd)}
+.b-neu{color:var(--neu-t);background:var(--neu-bg);border:1px solid var(--neu-bd)}
+.ver{display:inline-flex;gap:4px;flex-wrap:wrap}
+.ver .badge{font-size:10px;padding:1.5px 7px}
+/* ============ tables ============ */
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;
+  padding:10px 12px;border-bottom:1px solid var(--line2);background:var(--surface2);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--ink);font-weight:600}
+.num,.tab{font-variant-numeric:tabular-nums}
+.matrix th:first-child,.matrix td:first-child{position:sticky;left:0;z-index:2;min-width:150px;
+  background:var(--surface);box-shadow:1px 0 0 var(--line)}
+.matrix th:first-child{background:var(--surface2);z-index:3}
+.matrix td{min-width:168px}
+.matrix td.hl,.matrix th.hl{background:var(--accent-bg)}
+/* ============ callouts ============ */
+.callout{border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--surface);
+  border-radius:8px;padding:14px 18px;margin:18px 0}
+.callout.warn{border-left-color:var(--bar-warn)}
+.callout.crit{border-left-color:var(--bar-crit)}
+.callout.good{border-left-color:var(--bar-good)}
+.callout .ct{font-weight:700;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px}
+.callout p{max-width:none}
+/* ============ glossary ============ */
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;margin:18px 0}
+.gterm{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin:0}
+.gterm dt{font-weight:700;font-size:13.5px;margin-bottom:4px}
+.gterm dd{margin:0;font-size:13px;color:var(--ink2)}
+/* ============ diagrams ============ */
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:18px 0;overflow-x:auto}
+.fig svg{display:block;min-width:780px;width:100%;height:auto}
+.figcap{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:none}
+svg .bx{fill:var(--surface2);stroke:var(--line2)}
+svg .bxs{fill:var(--surface);stroke:var(--line2)}
+svg .bxa{fill:var(--accent-bg);stroke:var(--accent)}
+svg .bxg{fill:var(--good-bg);stroke:var(--good-bd)}
+svg .bxw{fill:var(--warn-bg);stroke:var(--warn-bd)}
+svg .bxc{fill:none;stroke:var(--crit-t);stroke-dasharray:5 4}
+svg .ln{stroke:var(--line2);fill:none;stroke-width:1.3}
+svg .lna{stroke:var(--accent);fill:none;stroke-width:1.5}
+svg .lnc{stroke:var(--crit-t);fill:none;stroke-width:1.3;stroke-dasharray:4 3}
+svg .ar{fill:var(--line2)}
+svg .ara{fill:var(--accent)}
+svg text{fill:var(--ink);font:600 12px system-ui,sans-serif}
+svg .ts{fill:var(--ink2);font-weight:400;font-size:11px}
+svg .tm{fill:var(--muted);font-weight:400;font-size:10.5px}
+svg .tc{fill:var(--crit-t);font-size:10.5px;font-weight:600}
+svg .ta{fill:var(--accent);font-weight:700;font-size:10.5px;letter-spacing:.06em}
+svg .tg{fill:var(--good-t);font-size:10.5px;font-weight:600}
+/* ============ ranked list ============ */
+.rank{counter-reset:r;list-style:none;padding:0;max-width:none}
+.rank>li{counter-increment:r;position:relative;padding:14px 16px 14px 56px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.rank>li::before{content:counter(r);position:absolute;left:15px;top:15px;width:27px;height:27px;
+  border-radius:8px;background:var(--accent-bg);color:var(--info-t);font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center}
+.rank .rt{font-weight:700;font-size:14.5px}
+.rank p{font-size:13.5px;color:var(--ink2);margin:5px 0 0;max-width:none}
+/* ============ key/value ============ */
+.kv{display:grid;grid-template-columns:180px 1fr;gap:7px 16px;font-size:13.5px;margin:14px 0;max-width:none}
+.kv dt{color:var(--muted);font-weight:600}
+.kv dd{margin:0;color:var(--ink2)}
+@media(max-width:640px){.kv{grid-template-columns:1fr}.kv dt{margin-top:6px}}
+/* ============ misc ============ */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.src{font-size:12px;color:var(--muted);margin:8px 0 22px;max-width:none}
+.src code{font-size:11px;background:transparent;border:none;padding:0;color:var(--muted)}
+footer{margin-top:80px;border-top:1px solid var(--line);padding-top:18px;font-size:12.5px;color:var(--muted)}
+footer p{max-width:none}
+.langlink{font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">gosleep · исследование оркестрации GSL-41 · 2026-07-07</div>
+  <h1>Ландшафт оркестраторов</h1>
+  <p class="lede">Глубокий, проверенный по первоисточникам обзор систем, которые оркестрируют автономных
+  кодящих агентов — <strong>AutoSK</strong>, <strong>Warren</strong>, <strong>Overstory</strong> и более широкая
+  экосистема (Gastown, Ralph, Claude Squad и другие) — в сравнении с тем, что уже есть у <strong>gosleep</strong>,
+  и сведённый в ранжированный план заимствований. Каждое существенное утверждение снабжено источником:
+  <code>файл:строка</code> в клонированном репозитории, официальная документация или датированная публикация.</p>
+  <div class="meta">
+    <span class="pill">3 первичных исследования (воркеры res-autosk, res-warren, res-headless)</span>
+    <span class="pill">5 репозиториев прочитаны на уровне исходников</span>
+    <span class="pill">11 инструментов в обзоре</span>
+    <span class="pill"><a class="langlink" href="../index.html">English version →</a></span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Содержание">
+  <a href="#concepts">0 · Понятия</a>
+  <a href="#summary">1 · Главное</a>
+  <a href="#autosk">2 · AutoSK</a>
+  <a href="#warren">3 · Warren</a>
+  <a href="#overstory">4 · Overstory</a>
+  <a href="#headless">5 · Headless и подписка</a>
+  <a href="#ecosystem">6 · Экосистема</a>
+  <a href="#matrix">7 · Сравнительная матрица</a>
+  <a href="#adopt">8 · Что берёт gosleep</a>
+</nav>
+
+<!-- ==================== 0 ПОНЯТИЯ ==================== -->
+<section class="sec" id="concepts">
+  <h2><span class="secnum">0</span>Как читать этот отчёт — базовые понятия</h2>
+  <p class="sub">Отчёт не требует предварительного контекста. Все системы ниже собраны из одного и того же
+  словаря; вот этот словарь простым языком. Сложные термины дополнительно поясняются при первом появлении
+  внутри разделов.</p>
+
+  <dl class="gloss">
+    <div class="gterm"><dt>Оркестратор / воркер</dt>
+      <dd>Разделение, к которому приходят все системы: <strong>оркестратор</strong> решает, что делать дальше,
+      запускает воркеров, следит за ними и общается с человеком; <strong>воркеры</strong> — одноразовые агенты,
+      каждый из которых выполняет один ограниченный кусок работы и завершается. Скилл gosleep требует
+      «чистого оркестратора», который сам не выполняет ничего.</dd></div>
+    <div class="gterm"><dt>Headless-режим / <code>claude&nbsp;-p</code></dt>
+      <dd>Обычно <code>claude</code> открывает интерактивный чат в терминале. <code>claude -p "сделай X"</code>
+      (<code>--print</code>) запускает <em>того же самого агента один раз, без интерфейса</em>: он выполняет задачу,
+      печатает результат и завершается — Claude Code как Unix-команда, которую можно пайпить, скриптовать,
+      ставить в cron и зацикливать. Та же модель, те же инструменты, тот же логин; но отвечать на запросы
+      разрешений некому — инструменты нужно разрешать заранее.</dd></div>
+    <div class="gterm"><dt>stream-json (NDJSON через stdio)</dt>
+      <dd>Машиночитаемый диалект headless-режима: <code>--output-format stream-json --input-format stream-json</code>
+      превращает агента в живой поток событий (один JSON-объект на строку) на stdout и принимает новые сообщения —
+      вплоть до прерывания посреди хода — на stdin. Так программа «разговаривает» с работающим headless-агентом.</dd></div>
+    <div class="gterm"><dt>Подписка vs API-ключ</dt>
+      <dd>Два способа платить за Claude. <strong>Подписка Pro/Max</strong> — фиксированная цена с окнами
+      использования (скользящее 5-часовое окно плюс недельные лимиты), покрывает официальные приложения, включая
+      Claude Code. <strong>API-ключ</strong> — оплата за токены без потолка. Вопрос «на чём может работать
+      инструмент» — единственный, который сегодня сортирует весь ландшафт оркестраторов (§5).</dd></div>
+    <div class="gterm"><dt>tmux / панель (pane)</dt>
+      <dd>Терминальный мультиплексор: одно окно терминала делится на независимые <strong>панели</strong>, каждая со
+      своим процессом, переживающие отключения. gosleep, Gastown, Claude Squad и запасной режим Overstory — все
+      запускают интерактивные сессии <code>claude</code> в панелях tmux, чтобы человек мог подключиться и наблюдать
+      любого агента вживую.</dd></div>
+    <div class="gterm"><dt>Agent Teams</dt>
+      <dd>Штатный мультиагентный примитив Claude Code (~февраль 2026): одна ведущая сессия порождает сессии-тиммейты
+      с собственными контекстными окнами, обменом сообщениями и общим списком задач — всё внутри официального
+      клиента, то есть на интерактивной квоте подписки. Это текущая поверхность gosleep.</dd></div>
+    <div class="gterm"><dt>Git worktree</dt>
+      <dd>Второй (третий, …) рабочий каталог, выписанный из одного и того же репозитория. Каждому агенту — свой
+      worktree, чтобы параллельные агенты не перезаписывали файлы друг друга; слияние обратно — через ветки.
+      Стандартная единица изоляции во всём ландшафте.</dd></div>
+    <div class="gterm"><dt>MCP (Model Context Protocol)</dt>
+      <dd>Стандарт, дающий агенту дополнительные инструменты через сеть или сокет. AutoSK поднимает крошечный
+      приватный MCP-сервер на каждую сессию агента, чтобы агент вызывал инструменты управления (например,
+      «переведи задачу на следующий шаг») как обычные tool-вызовы, которые валидирует хост.</dd></div>
+    <div class="gterm"><dt>Watchdog («сторожевой пёс»)</dt>
+      <dd>Надзирающий процесс, который периодически проверяет, живы ли агенты и есть ли прогресс, и вмешивается
+      (подтолкнуть → убить → эскалировать), когда прогресса нет. Ключевой вопрос дизайна: watchdog
+      <em>механический</em> (простой детерминированный код) или сам является ИИ? Ответ отрасли жёстко сошёлся
+      на механическом (§4, §8).</dd></div>
+    <div class="gterm"><dt>Heartbeat («пульс»)</dt>
+      <dd>Периодическое, долговечное доказательство жизни: «самая свежая отметка времени, которую компонент
+      записал на диск / в БД». Живость судится по этой записи — никогда по факту существования процесса и никогда
+      по тому, что надзиратель <em>помнит</em>. Warren и Overstory пришли к этому правилу независимо.</dd></div>
+    <div class="gterm"><dt>Park-to-human («парковка на человека»)</dt>
+      <dd>Универсальный сток отказов: когда агент падает, зацикливается, превышает бюджет или не может решить,
+      задача не ретраится молча — она <em>паркуется</em> в состояние «ждёт человека» с пояснительной запиской.
+      Множество запаркованных задач — это и есть утренняя очередь владельца.</dd></div>
+    <div class="gterm"><dt>Handoff / леджер</dt>
+      <dd>Словарь gosleep: <strong>handoff</strong> — самодостаточный документ, который агент пишет, чтобы свежий
+      агент (с нулевой памятью) мог продолжить; <strong>леджер</strong> (<code>ORCHESTRATION-STATE.md</code>) —
+      файл состояния оркестратора на диске. Другие системы держат ту же информацию в файлах задач (AutoSK) или в
+      базе данных (Warren).</dd></div>
+    <div class="gterm"><dt>Kickback / цикл поправок</dt>
+      <dd>Страховка AutoSK на уровне хода: если агент закончил ход, не объявив требуемый переход, хост
+      переспрашивает его с поправкой — максимум N раз (по умолчанию 3), — затем паркует задачу на человека.
+      Ограниченные повторы с единственным выходом, никогда не бесконечный цикл.</dd></div>
+    <div class="gterm"><dt>Circuit breaker («автоматический выключатель»)</dt>
+      <dd>Страховка Ralph на уровне цикла, по аналогии с электрикой: цикл «выбивает пробки», когда видит отсутствие
+      прогресса, повтор одной и той же ошибки или резкое падение вывода — и остывает перед новой попыткой, вместо
+      того чтобы жечь квоту на застрявшем цикле.</dd></div>
+    <div class="gterm"><dt>Окно использования / квота</dt>
+      <dd>Лимиты подписки приходят окнами: скользящее 5-часовое окно плюс недельные потолки (с 2025-08-28).
+      Когда окно исчерпано, все агенты на этом логине встают разом. Ночной автономии поэтому нужно
+      <em>ожидание с учётом окна</em>, а не просто обработка ошибок.</dd></div>
+    <div class="gterm"><dt>Spawn-per-turn / свежий контекст на шаг</dt>
+      <dd>Вместо одного долгоживущего агента, у которого медленно заполняется контекстное окно, — свежий процесс
+      на каждый шаг/ход, а всё состояние в файлах или БД. Исчерпание контекста не побеждают — его проектируют
+      прочь. AutoSK, поздний Overstory и цикл-воркеры gosleep сходятся именно здесь.</dd></div>
+    <div class="gterm"><dt>Демон (daemon)</dt>
+      <dd>Фоновая служба, работающая независимо от терминала — <code>autoskd</code> у AutoSK владеет всем состоянием
+      и обслуживает все интерфейсы; Warren сам является сервером. У gosleep демона пока нет: оркестратор — это
+      интерактивная сессия.</dd></div>
+  </dl>
+</section>
+
+<!-- ==================== 1 ГЛАВНОЕ ==================== -->
+<section class="sec" id="summary">
+  <h2><span class="secnum">1</span>Главное</h2>
+  <p class="sub">Пять выводов, на которых держится весь отчёт. Детали и доказательства — в разделах ниже.</p>
+
+  <div class="cards">
+    <div class="card t-good">
+      <div class="ct"><span class="badge b-good">ПОДТВЕРЖДЕНО</span>&nbsp; Ключевые ставки gosleep — точки схождения всей отрасли</div>
+      <p>Независимо от нас сильнейшие проекты пришли к тем же основам, на которых уже стоит gosleep:
+      <strong>состояние в простых файлах / долговечных записях</strong> (AutoSK отказался от БД версии v1 в пользу
+      файлов), <strong>свежий контекст на каждый шаг</strong> вместо борьбы с компакцией, <strong>интерактивный CLI
+      в tmux</strong> как легальная для подписки поверхность запуска (Gastown, Claude Squad) и
+      <strong>восстановление через переподключение + сверку с долговечным состоянием</strong>, а не слепой перезапуск
+      (Warren). Наша архитектура не экзотика — это формирующийся стандарт, минус несколько слоёв закалки.</p>
+    </div>
+    <div class="card t-warn">
+      <div class="ct"><span class="badge b-warn">СДВИГ ПОЛИТИКИ</span>&nbsp; Ставка на подписку выживает — но headless теперь тарифицируется</div>
+      <p>С января по апрель 2026 Anthropic отрезала сторонние обвязки от OAuth подписок, а в июне выделила
+      <strong>программное использование (<code>claude -p</code>, SDK, CI) в отдельный месячный пул кредитов</strong>
+      ($20 Pro / $100 Max&nbsp;5x / $200 Max&nbsp;20x по прейскуранту API). Интерактивный Claude Code — поверхность
+      gosleep (tmux + Agent Teams) — явно не затронут и остаётся самой щедрой поверхностью по $/токен. Вердикт:
+      интерактивная квота — двигатель; headless — ограниченный «клей» (§5).</p>
+    </div>
+    <div class="card t-acc">
+      <div class="ct"><span class="badge b-info">КОНВЕРГЕНЦИЯ</span>&nbsp; Отрасль вытолкнула LLM из контура надзора</div>
+      <p>Overstory построил четырёхуровневый watchdog с ИИ-триажем и агентом-монитором; его наследник Warren оставил
+      <strong>один механический 30-секундный тик по долговечным heartbeat'ам</strong> и убрал ИИ из надзора совсем.
+      Все циклы AutoSK — ограниченные счётчики с единственным выходом на человека. Урок для дыры gosleep
+      «кто следит за оркестратором»: наблюдатель должен быть глупым кодом над долговечным состоянием — LLM
+      место внутри ограниченных запусков, а не в контуре управления (§4).</p>
+    </div>
+    <div class="card t-crit">
+      <div class="ct"><span class="badge b-crit">ДЫРЫ = ВОЗМОЖНОСТЬ</span>&nbsp; Никто не делает две функции, которые нужнее всего системе «владелец спит»</div>
+      <p>Во всём ландшафте <strong>ни один инструмент не уведомляет никого, когда работа паркуется на человека</strong>
+      (парковки AutoSK молчаливы; флот может тихо умереть в час ночи), и <strong>ни один не учитывает окна
+      квоты</strong> (исчерпание паркует всё; ничто не возобновляется по сбросу окна — только Ralph умеет ждать).
+      Push-по-парковке и планирование с учётом окон — самые ясные дифференциаторы gosleep (§8).</p>
+    </div>
+    <div class="card t-acc2">
+      <div class="ct"><span class="badge b-good">ТОП ЗАИМСТВОВАНИЙ</span>&nbsp; Пять самых ценных трансплантаций</div>
+      <ul>
+        <li><strong>Внешний механический watchdog</strong> над heartbeat-файлом оркестратора, с бюджетом перезапусков (семантика супервизора Warren на tmux).</li>
+        <li><strong>Park-to-human как единственный сток отказов</strong> с пояснительной запиской (AutoSK) — утренняя очередь владельца.</li>
+        <li><strong>Персистентные, сбрасываемые человеком бюджеты циклов</strong>: поправки хода → лимиты визитов шага → парковка (AutoSK) + circuit breaker и exit gate от Ralph.</li>
+        <li><strong>Автоожидание квоты</strong> (Ralph), выращенное до планирования флота с учётом окон.</li>
+        <li><strong>Обвязка <code>claude -p</code> stream-json</strong> для ограниченного headless-клея — проверенный сетевой паттерн (драйвер AutoSK).</li>
+      </ul>
+    </div>
+    <div class="card t-acc3">
+      <div class="ct"><span class="badge b-neu">ЭКОНОМИКА</span>&nbsp; Широкие рои проиграли спор</div>
+      <p>Собственная само-критика Overstory в репозитории (<code>STEELMAN.md</code>): рой из 20 агентов сделал
+      15 задач за 6 часов и ~$60 токенов там, где один агент сделал то же за 8 часов и ~$9 — экономия двух часов
+      куплена за $51 накладных расходов на координацию. Ответ Warren: <strong>последовательное исполнение с
+      PR-гейтом, по одной задаче за раз</strong>. Лимит gosleep в ~3 панели и дисциплина «один коммит на задачу»
+      уже на правильной стороне этого размена (§4).</p>
+    </div>
+  </div>
+  <p class="src">Источники: разделы §2–§8 ниже; первичные исследования в
+  <code>docs/research/2026-07-07-orchestration/01-autosk.md</code>, <code>02-warren-overstory.md</code>, <code>03-headless-subscription-landscape.md</code>.</p>
+</section>
+<!-- ==================== 2 AUTOSK ==================== -->
+<section class="sec" id="autosk">
+  <h2><span class="secnum">2</span>AutoSK — файловый трекер задач + движок workflow</h2>
+  <p class="sub">Локальный трекер задач, движок workflow и интерфейс с тремя фронтендами для кодящих агентов,
+  от соло-разработчика <code>wierdbytes</code>. Самая поучительная кодовая база обзора: почти каждое проектное
+  решение, стоящее перед gosleep, здесь уже принято один раз, задокументировано и покрыто тестами — на чистой
+  подписочной аутентификации.</p>
+
+  <h3>2.1 Идентичность и зрелость</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">374</div><div class="l">коммита, 1 контрибьютор</div></div>
+    <div class="tile"><div class="v tab">27<small> ★</small></div><div class="l">звёзд — почти ноль адопции</div></div>
+    <div class="tile"><div class="v tab">~6,5</div><div class="l">недель жизни (с 2026-05-13)</div></div>
+    <div class="tile"><div class="v">v0.2.4</div><div class="l">последний релиз (2026-06-28)</div></div>
+    <div class="tile"><div class="v">MIT</div><div class="l">лицензия</div></div>
+    <div class="tile"><div class="v">iOS β</div><div class="l">компаньон в TestFlight</div></div>
+  </div>
+  <p>Трёхслойная идея: (1) файловый трекер задач в <code>.autosk/</code> внутри репозитория; (2) опциональный движок
+  workflow, где каждый workflow — направленный граф шагов, и каждым шагом владеет агент под управлением демона;
+  (3) три фронтенда — CLI, TUI в стиле lazygit и десктопный/мобильный GUI на Tauri. Прямо вдохновлён
+  <strong>beads</strong> (Steve Yegge), <strong>pi.dev</strong> и <strong>sandcastle</strong>. Стек: Go (CLI/TUI),
+  демон на Bun/TypeScript, скомпилированный в автономный бинарник, GUI на Tauri (Rust + React), релизы через
+  GitHub Actions, дистрибуция Homebrew + TestFlight.</p>
+  <div class="callout">
+    <div class="ct">Почему 27 звёзд всё равно важны</div>
+    <p>Это референсная архитектура одного опытного инженера с его мнениями, а не проверенный сообществом продукт —
+    но мнения необычайно хорошо задокументированы (~45 файлов тестов демона, golden-тесты байтового формата,
+    заголовки с обоснованием дизайна в каждом модуле). Сильнейший сигнал — <strong>чистый разрыв v1→v2</strong>:
+    автор сначала построил хранилище на БД и агентов из npm-пакетов, а затем <em>отказался от обоих</em> в пользу
+    простых файлов + кода внутри процесса. gosleep уже ставит на файлы; AutoSK — независимое подтверждение этой ставки.</p>
+  </div>
+  <p class="src">Источники: <code>README.md:3-36</code>, <code>AGENTS.md:6-19</code>, GitHub API (звёзды/коммиты), клон @ <code>fd4c22e</code>.</p>
+
+  <h3>2.2 Архитектура</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 352" role="img" aria-label="Диаграмма архитектуры AutoSK">
+      <defs>
+        <marker id="arw-ask" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <text x="16" y="46" class="ta">КЛИЕНТЫ (чистый JSON-RPC, без хранилища)</text>
+      <rect x="16" y="56" width="168" height="50" rx="8" class="bxs"/>
+      <text x="30" y="77">autosk CLI</text>
+      <text x="30" y="94" class="ts">Go · Cobra</text>
+      <rect x="16" y="122" width="168" height="50" rx="8" class="bxs"/>
+      <text x="30" y="143">autosk lazy TUI</text>
+      <text x="30" y="160" class="ts">в стиле lazygit (gocui)</text>
+      <rect x="16" y="188" width="168" height="50" rx="8" class="bxs"/>
+      <text x="30" y="209">Tauri GUI</text>
+      <text x="30" y="226" class="ts">десктоп + iPhone (удалённо)</text>
+      <line x1="184" y1="81" x2="250" y2="81" class="ln" marker-end="url(#arw-ask)"/>
+      <line x1="184" y1="147" x2="250" y2="147" class="ln" marker-end="url(#arw-ask)"/>
+      <line x1="184" y1="213" x2="250" y2="213" class="ln" marker-end="url(#arw-ask)"/>
+      <text x="217" y="136" class="tm" text-anchor="middle">JSON-RPC</text>
+      <rect x="250" y="34" width="290" height="286" rx="10" class="bxa"/>
+      <text x="266" y="58">autoskd — демон (Bun, один на хост)</text>
+      <rect x="266" y="72" width="258" height="52" rx="7" class="bxs"/>
+      <text x="278" y="92">Планировщик — сканы по событиям</text>
+      <text x="278" y="109" class="ts">глобальный FIFO-пул, 4 воркера · рескан 30с</text>
+      <rect x="266" y="136" width="258" height="72" rx="7" class="bxs"/>
+      <text x="278" y="156">Файловое хранилище .autosk/</text>
+      <text x="278" y="172" class="ts">tasks/&lt;id&gt;/task.json · sessions/&lt;id&gt;.jsonl</text>
+      <text x="278" y="188" class="ts">атомарно: temp → fsync → rename → fsync dir</text>
+      <rect x="266" y="220" width="258" height="52" rx="7" class="bxs"/>
+      <text x="278" y="240">Расширения — TypeScript в процессе</text>
+      <text x="278" y="257" class="ts">workflow и агенты — код, а не конфиг</text>
+      <text x="266" y="298" class="tm">UDS (локально) · TCP 0.0.0.0:7077 (токен, без TLS)</text>
+      <rect x="640" y="44" width="224" height="96" rx="8" class="bx"/>
+      <text x="654" y="66">подпроцесс claude -p</text>
+      <text x="654" y="84" class="ts">stream-json stdin/stdout</text>
+      <text x="654" y="100" class="ts">--permission-mode acceptEdits</text>
+      <text x="654" y="116" class="ts">worktree / docker-песочница на задачу</text>
+      <line x1="540" y1="70" x2="640" y2="70" class="lna" marker-end="url(#arw-ask)"/>
+      <text x="590" y="58" class="tm" text-anchor="middle">спавн на каждый шаг</text>
+      <text x="590" y="88" class="tm" text-anchor="middle">NDJSON ⇅ interrupt</text>
+      <rect x="640" y="182" width="224" height="76" rx="8" class="bx"/>
+      <text x="654" y="204">HTTP MCP-сервер на сессию</text>
+      <text x="654" y="222" class="ts">случайный порт + Bearer-токен</text>
+      <text x="654" y="238" class="ts">инструменты: transit · task · comment</text>
+      <line x1="540" y1="220" x2="640" y2="220" class="ln" marker-end="url(#arw-ask)"/>
+      <text x="590" y="210" class="tm" text-anchor="middle">создаёт демон</text>
+      <line x1="752" y1="140" x2="752" y2="182" class="lna" marker-end="url(#arw-ask)"/>
+      <text x="760" y="166" class="ta">mcp__autosk__transit</text>
+      <text x="440" y="344" class="tc" text-anchor="middle">Любой путь отказа — крэш, нет transit, лимит, рестарт демона — паркует задачу в статус «human»</text>
+    </svg>
+    <p class="figcap">Рис. 2a — AutoSK: три тонких клиента над одним демоном, который владеет всем состоянием в
+    виде файлов и гоняет каждый шаг workflow как свежий headless-подпроцесс <code>claude -p</code>. Источники:
+    <code>AGENTS.md:6-19</code>, <code>daemon/extensions/claude-agent/src/index.ts:386-396</code>, <code>engine.ts:48-57</code>.</p>
+  </div>
+
+  <h4>Как запускаются агенты — точный механизм</h4>
+  <p>Агенты — это <strong>headless-подпроцессы CLI, говорящие NDJSON через stdio</strong> — без PTY, без tmux,
+  без Agent SDK. Расширение для claude запускает
+  <code>claude -p --output-format stream-json --input-format stream-json --verbose --include-partial-messages --replay-user-messages</code>,
+  по умолчанию <code>--permission-mode acceptEdits</code>, опционально <code>--dangerously-skip-permissions</code> —
+  только для запусков в изоляции worktree. <code>ClaudeDriver</code> оборачивает дочерний процесс: парсит поток
+  событий, зеркалит сообщения 1:1 в транскрипт, склеивает частичные дельты с шагом ~40&nbsp;мс в эфемерный
+  «partial»-канал. <strong>Руление живым запуском</strong> решено на уровне протокола: steer во время стриминга
+  пишет фрейм <code>{type:"control_request", request:{subtype:"interrupt"}}</code>, затем новое сообщение;
+  follow-up встаёт в очередь после текущего хода.</p>
+  <p class="src">Источники: <code>claude-agent/src/index.ts:386-413</code>, <code>driver.ts:60-126, 254-272, 487-489</code>.</p>
+
+  <h4>Протокол transit — как заканчивается шаг</h4>
+  <p>Агент обязан завершить шаг вызовом MCP-инструмента <code>mcp__autosk__transit {to: "&lt;шаг&gt;|done|cancel|human"}</code> —
+  модель <em>объявляет</em> переход workflow валидируемым tool-вызовом. Тонкость: на MCP-сервере инструмент лишь
+  подтверждает приём; <em>драйвер</em> видит tool_use в потоке, а код на стороне хоста коммитит переход после
+  окончания хода. Если ход закончился без transit или хук <code>onTransit</code> отклонил цель,
+  <strong>цикл kickback</strong> переспрашивает с поправкой (бюджет: 3); когда бюджет исчерпан, движок паркует
+  задачу в <code>human</code> с причиной <code>agent_did_not_transit</code>. Это та самая дисциплина «агент обязан
+  явно передать эстафету или запарковаться», которой хотят фазовые гейты gosleep, — сделанная механической.</p>
+  <p class="src">Источники: <code>driver.ts:18-21, 385-389</code>, <code>index.ts:225-269</code>.</p>
+
+  <h4>Планировщик — диспетчеризация без гонок и без БД</h4>
+  <ul>
+    <li><strong>По событиям, а не поллингом:</strong> transit/enroll/resume/завершение пинают <em>слитый</em> скан (сканы не перекрываются); 30-секундный страховочный рескан подхватывает внешние правки файлов.</li>
+    <li><strong>Создание сессии как захват (claim):</strong> скан «забирает» задачу, создавая <code>queued</code>-сессию — гарантия одной сессии на задачу; перед захватом задача перечитывается заново («снапшоту никогда не доверяют»).</li>
+    <li><strong>Порядок «commit до финализации»:</strong> закрывающаяся сессия СНАЧАЛА записывает новую позицию задачи, пока сама ещё <code>running</code> (живая → сканы её пропускают), и только потом помечает свою мету терминальной — окно двойной диспетчеризации закрыто.</li>
+    <li><strong>Интерактивные чаты живут вне ограниченного пула</strong>, чтобы простаивающий чат не задушил 4-воркерный планировщик задач.</li>
+    <li><strong>Изоляция принадлежит агенту, а не движку:</strong> движок упразднил абстракцию изоляции; агент оборачивает себя сам через <code>@autosk/sandbox</code> (git worktree на задачу или docker-контейнер, достающий хостовый MCP через <code>host.docker.internal</code>), с финальным шагом <code>cleanup</code> в workflow.</li>
+  </ul>
+  <p class="src">Источники: <code>engine.ts:1-20, 48-57, 363-453</code>, <code>session.ts:30-35, 309-341</code>, пакет <code>sandbox</code>, <code>README.md:149-151</code>.</p>
+
+  <h3>2.3 Состояние и живучесть</h3>
+  <p>Всё состояние — простые файлы в <code>&lt;проект&gt;/.autosk/</code>, БД нет нигде (v2 выбросила БД из v1).
+  <code>tasks/&lt;id&gt;/task.json</code> красиво отформатирован и <em>по контракту редактируем человеком</em>;
+  сессия — мета-JSON плюс JSONL-транскрипт. Дисциплина записи — продакшен-уровня:</p>
+  <div class="cards">
+    <div class="card">
+      <div class="ct">Атомарная запись, байт-стабильный формат</div>
+      <p>Каждая мутация: temp-файл в том же каталоге → fsync temp → rename → fsync родительского каталога.
+      Сериализаторы собирают записи с фиксированным порядком ключей; golden-тесты фиксируют точные байты —
+      «любое байтовое изменение обязано уронить тест». Читатели никогда не видят рваных записей.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Конкурентность без транзакций</div>
+      <p><code>KeyedMutex</code> сериализует read-modify-write по id задачи; разные ключи идут параллельно. Вместе с
+      атомарным rename это полностью заменяет транзакции БД. Сигнатура изменения
+      (<code>mtime:ctime:size:ino</code>) питает кэш чтения и позволяет вотчеру узнавать собственные записи демона
+      (подавление эха).</p>
+    </div>
+    <div class="card">
+      <div class="ct">Внешние правки сверяются</div>
+      <p>Рекурсивный <code>fs.watch</code> + рескан каждые 5с сходятся в одну сверку: принять/отклонить по политике
+      владения (движок владеет <code>status/step/workflow</code>, пока сессия жива). Вотчер «намеренно глупый —
+      без диффов». Люди и агенты могут править <code>task.json</code> напрямую — это часть контракта.</p>
+    </div>
+    <div class="card t-crit">
+      <div class="ct">Восстановление после крэша = собрать и запарковать</div>
+      <p>На старте демона любая сессия, оставшаяся <code>running</code>/<code>queued</code> → <code>failed: daemon_restart</code>,
+      в транскрипт дописываются структурные строки ошибки, а задача <strong>паркуется в <code>human</code></strong>.
+      Автовозобновления нет; захваченный <code>session_id</code> сохраняется «для будущего <code>--resume</code>»,
+      но не используется. Каждое обновление демона наполняет очередь человека.</p>
+    </div>
+  </div>
+  <p><strong>Переживание исчерпания контекста:</strong> внутри запуска нет никакой обработки чекпоинтов/компакции.
+  Каждый шаг workflow — <em>свежий процесс <code>claude -p</code> со свежим контекстом</em>; долговечное состояние
+  пересекает границы шагов через <code>task.json</code> + комментарии + git worktree — никогда через контекст агента.
+  Состояние циклов (счётчики <code>metadata.step_visits</code>) хранится в файле задачи, так что человек может
+  распарковать задачу и сбросить её бюджет из любого текстового редактора — хоть с телефона.</p>
+  <p class="src">Источники: <code>store/paths.ts:1-15</code>, <code>store/atomic.ts:1-24</code>, <code>store/records.ts:1-15</code>,
+  <code>store/lock.ts</code>, <code>store/watcher.ts:1-14</code>, <code>engine.ts:483-508</code>, <code>transition.ts:80-95</code>, <code>driver.ts:195-196, 363</code>.</p>
+
+  <h3>2.4 Аутентификация — нативно на подписке, проверено</h3>
+  <div class="callout good">
+    <div class="ct">Вердикт: нигде нет ни строчки кода про API-ключи</div>
+    <p>Во всей кодовой базе <strong>нет</strong> обработки <code>ANTHROPIC_API_KEY</code> / OAuth / токенов
+    (grep по daemon/, gui/, cmd/ — ни одного попадания). AutoSK просто запускает уже аутентифицированный
+    <code>claude</code> CLI оператора из <code>$PATH</code>. Контракт прописан в доках: «<code>claude</code> CLI,
+    уже аутентифицированный. Запуск без присмотра — headless-Claude, упёршийся в промпт авторизации или
+    разрешения, аварийно завершается». Это работающее доказательство: полноценный автономный оркестратор
+    <em>может</em> жить на чистой подписке Claude, если единственной границей аутентификации считать
+    залогиненный CLI.</p>
+  </div>
+  <ul>
+    <li><strong>Проба PATH через логин-шелл:</strong> на старте демон выполняет шелл оператора с <code>-ilc</code>, чтобы получить настоящий <code>$PATH</code> (Homebrew/asdf/nvm) — демон, запущенный из GUI/launchd, имеет голый PATH и не нашёл бы <code>claude</code>. Жёсткий таймаут не даёт битому rc-файлу заклинить старт. Классическая беда автономных запусков, решённая в ~150 строк.</li>
+    <li><strong>Docker-песочницы переиспользуют креды подписки через bind-mount:</strong> <code>~/.claude/.credentials.json:ro</code> монтируется в контейнер с выровненным <code>HOME</code>. Работает — но монтировать долгоживущие креды в контейнер, который может бежать с <code>--dangerously-skip-permissions</code>, — реальный размен на радиус поражения.</li>
+    <li><code>--allowedTools</code> автоматически разрешает поднятые MCP-инструменты, чтобы headless-запуски никогда не умирали на промпте разрешений.</li>
+  </ul>
+  <p class="src">Источники: <code>docs/extensions-tutorial-claude.md:25-27</code>, <code>rpc/path-env.ts</code>, <code>sandbox/src/docker.ts:52-59</code>, <code>index.ts:398-406</code>.</p>
+
+  <h3>2.5 UI — три тонких клиента, один контракт</h3>
+  <p>Все три фронтенда — чистые JSON-RPC-клиенты; ни один не владеет хранилищем. В GUI ровно
+  <strong>одна точка invoke</strong> (только один файл может звать Tauri <code>invoke</code>) и <strong>одна точка
+  listen</strong> (событийный хаб со счётчиком ссылок) — и CI-скрипт <em>линтит</em> эту дисциплину. Две идеи
+  выделяются:</p>
+  <div class="cards">
+    <div class="card t-acc">
+      <div class="ct">Композер, знающий состояние</div>
+      <p>Одно поле ввода, чей глагол следует за состоянием выбранной сущности: у бегущей сессии оно рулит /
+      дошлёт / прервёт; у запаркованной задачи — комментирует / возобновляет; у голой задачи — зачисляет в workflow.
+      Владелец никогда не выбирает глагол — его выбирает состояние. Ровно то, что нужно утреннему UI gosleep.</p>
+    </div>
+    <div class="card t-acc">
+      <div class="ct">Стриминг транскрипта replay-then-tail</div>
+      <p>Подписка = проиграть историю, затем хвостить живые события, дедуп по монотонному курсору строк. Во время
+      живого хода «partial»-кадры (склейка ~40&nbsp;мс) рисуют растущий пузырь, который очищается при коммите
+      долговечной строки. Долговечные строки и косметические partial'ы чисто разделены — правильный контракт
+      стриминга для любого дашборда.</p>
+    </div>
+  </div>
+  <p class="src">Источники: <code>gui/README.md</code> (Architecture, ~:100-120), <code>scripts/check-ipc-discipline.mjs</code>, <code>README.md:88-91</code>.</p>
+
+  <h3>2.6 Мобильный / удалённый доступ</h3>
+  <p>Транспорт — <strong>сырой TCP JSON-RPC + токен, и это весь стек</strong>. Демон слушает
+  <code>0.0.0.0:7077</code> <em>по умолчанию</em>; первый запрос TCP-соединения обязан быть
+  <code>meta.auth {token}</code> (32 случайных байта hex, автоматически создаётся в <code>~/.autosk/daemon-token</code>,
+  права 0600). iOS-приложение (TestFlight) — тот же Tauri, собранный под iPhone как <em>чисто удалённый
+  компаньон</em>: после подключения полный паритет — живые транскрипты, steer/abort посреди хода, парковка/резюм,
+  CRUD задач, в компактной однопанельной вёрстке.</p>
+  <div class="callout crit">
+    <div class="ct">Три дыры = мобильная возможность gosleep</div>
+    <p><strong>Нет TLS</strong> (токен ходит по сети открытым текстом; никаких рекомендаций про туннели),
+    <strong>нет push-уведомлений</strong> (ноль кода APNs — телефон должен быть на переднем плане и подключён,
+    иначе не увидит ничего) и <strong>нет релея</strong> (телефон достаёт демона только в одной LAN или через
+    самодельный VPN). AutoSK доказывает: серверная сторона «рулить живым агентом с телефона» — это лёгкие 90%.
+    Транспорт с расчётом на Tailscale + push-по-парковке обошли бы его одним прыжком.</p>
+  </div>
+  <p class="src">Источники: <code>docs/daemon.md:69-90, 444-451</code>, <code>rpc/token.ts:1-40</code>, <code>gui/src-tauri/src/client/remote.rs:14-40</code>, <code>gui/README.md:258, 273-274</code>.</p>
+
+  <h3>2.7 Инженерия циклов — заявлено vs реализовано</h3>
+  <p>Маркетинг скромный и честный: «настоящий конвейер, который можно наблюдать, рулить и которому можно доверять» —
+  никаких «спите, пока оно работает», никакого планировщика, никакого само-исцеления. Код реализует
+  <strong>три вложенных ограниченных цикла</strong>, и философия видна в каждом выходе:
+  <em>ограниченная автономия, парковаться рано, никогда не крутиться вхолостую.</em></p>
+  <div class="tw"><table>
+    <thead><tr><th>Цикл</th><th>Механизм</th><th>Бюджет</th><th>Выход</th></tr></thead>
+    <tbody>
+      <tr><td>Уровень хода</td><td>Kickback/поправки: переспросить, если ход закончился без <code>transit</code> или переход отклонён</td><td class="tab">3 попытки</td><td>парковка → <code>human</code> (<code>agent_did_not_transit</code>)</td></tr>
+      <tr><td>Уровень шага</td><td>Циклы-отскоки workflow (<code>review → dev</code>, <code>validator → dev</code>) с персистентными лимитами визитов в <code>task.json</code></td><td class="tab">напр. dev ≤ 5 визитов</td><td>парковка → <code>human</code> + пояснительный комментарий движка</td></tr>
+      <tr><td>Уровень системы</td><td>Сканы планировщика по событиям + рескан 30с; FIFO-пул на 4 воркера; создание-сессии-как-захват</td><td class="tab">4 воркера</td><td>задача доходит до <code>done</code> — или любая парковка</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Чего нет:</strong> ни cron/планового зачисления, ни ретраев с backoff (любой крэш → парковка),
+  ни автовозобновления после рестарта демона, ни watchdog'а на зависших агентов сверх семантики хода, ни бюджетов
+  на стоимость/токены — единственные бюджеты это счётчики визитов и поправок. То, что счётчики живут
+  в <em>файле задачи</em> (а не в памяти движка), и делает ночную автономию аудируемой: утром владелец видит
+  <code>step_visits: {dev: 5}</code> и комментарий, объясняющий парковку.</p>
+  <p class="src">Источники: <code>claude-agent/index.ts:225-269</code>, <code>feature-dev/index.ts:37-39, 81-86</code>, <code>transition.ts:80-95</code>, <code>engine.ts:48-57, 363-453</code>; сайт <code>Hero.astro:25</code>, <code>HowItWorks.astro:8-21</code>.</p>
+
+  <h3>2.8 Слабости / риски</h3>
+  <p>Сначала противовес: качество кода необычайно высокое (golden-тесты байтов, сьюты на конкурентность и
+  восстановление, принудительный линт GUI). Риски ниже — архитектурные и операционные, а не небрежность:</p>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Риск</th><th>Серьёзность</th><th>Детали</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">1</td><td>Сетевая экспозиция по умолчанию</td><td><span class="badge b-crit">КРИТИЧНО</span></td><td>TCP <code>0.0.0.0:7077</code> из коробки, только токен, без TLS; токен даёт полный RPC-контроль — включая зачисление задач, порождающих исполняющих код агентов. MCP-сервер сессии тоже слушает <code>0.0.0.0</code>.</td></tr>
+      <tr><td class="tab">2</td><td>Нет учёта rate-limit / квоты</td><td><span class="badge b-crit">КРИТИЧНО для ночи</span></td><td><code>api_retry</code>/<code>api_error</code> просто логируются; исчерпание лимитов → парковка, без backoff, без резюма по сбросу окна. <strong>5-часовое окно паркует весь флот, и ничто не возобновляется само</strong> — ровно тот отказ, который gosleep обязан обойти.</td></tr>
+      <tr><td class="tab">3</td><td>Парковки молчаливы</td><td><span class="badge b-ser">СЕРЬЁЗНО</span></td><td>Ни push, ни почты, ни webhook при парковке в <code>human</code>. Вместе с №2 — ночь без присмотра может тихо закончиться в час ночи.</td></tr>
+      <tr><td class="tab">4</td><td>Рестарт демона = сброс флота</td><td><span class="badge b-ser">СЕРЬЁЗНО</span></td><td>Все незавершённые сессии падают и паркуются; захваченный <code>session_id</code> так и не используется для <code>--resume</code>. Каждое обновление — операционное событие.</td></tr>
+      <tr><td class="tab">5</td><td>Расширения — неизолированный код в процессе</td><td><span class="badge b-ser">СЕРЬЁЗНО</span></td><td>Workflow/агенты — TS, загружаемый в демон (включая ставящиеся из npm через GUI) — скомпрометированное расширение это RCE с правами демона.</td></tr>
+      <tr><td class="tab">6</td><td>Радиус поражения кредов в Docker-режиме</td><td><span class="badge b-warn">СРЕДНЕ</span></td><td><code>~/.claude/.credentials.json</code> монтируется в контейнеры, которые могут бежать с <code>--dangerously-skip-permissions</code>.</td></tr>
+      <tr><td class="tab">7</td><td>Нет GC; вечно живущий демон</td><td><span class="badge b-warn">СРЕДНЕ</span></td><td>Транскрипты сессий копятся вечно; авто-выключение по простою отключено, когда включён TCP (по умолчанию).</td></tr>
+      <tr><td class="tab">8</td><td>Bus-фактор 1, адопция ~0</td><td><span class="badge b-warn">СРЕДНЕ</span></td><td>Соло-автор; 6 внешних PR не влиты; известные баги TUI (#7, #8); v1→v2 прошёл чистым разрывом без миграции — автор сделает так снова.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Источники: <code>docs/daemon.md:444-458</code>, <code>driver.ts:374-376</code>, <code>hazard.ts</code>, <code>docker.ts:52-59</code>, <code>engine.ts:490</code>, GitHub issues #7/#8.</p>
+
+  <h3>2.9 Что gosleep берёт у AutoSK</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Паттерн</th><th>Ценность / Усилия / Риск</th><th>Почему</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">1</td><td>Двунаправленная обвязка <code>claude -p</code> stream-json (точный набор флагов, steer-через-interrupt, очередь follow-up)</td><td><span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Проверенный интерфейс воркера без PTY, на чистой подписке.</td></tr>
+      <tr><td class="tab">2</td><td>Park-to-<code>human</code> как единственный сток отказов + пояснительный комментарий движка</td><td><span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Все отказы сходятся в одну проверяемую очередь — утренний инбокс владельца.</td></tr>
+      <tr><td class="tab">3</td><td>Трёхуровневые бюджеты циклов, персистентные и сбрасываемые человеком</td><td><span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Полный словарь безопасности циклов в ~100 строк; счётчики в файле задачи делают ночь аудируемой.</td></tr>
+      <tr><td class="tab">4</td><td>Transit как явный tool-вызов с kickback-переспросом</td><td><span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-warn">У сред</span><span class="badge b-good">Р низ</span></span></td><td>Модель обязана <em>объявить</em> передачу валидируемым вызовом; прямое соответствие фазовым гейтам gosleep.</td></tr>
+      <tr><td class="tab">5</td><td>Свежий контекст на шаг + всё состояние в файлах</td><td><span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Не инженерить выживание контекста — инженерить границы шагов. Подтверждает архитектуру handoff-файлов.</td></tr>
+      <tr><td class="tab">6</td><td>Создание-сессии-как-захват + порядок «commit до финализации»</td><td><span class="ver"><span class="badge b-warn">Ц сред</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Мультиворкерная диспетчеризация без гонок на общих файлах, без БД.</td></tr>
+      <tr><td class="tab">7</td><td>Дисциплина атомарной записи (+ сигнатуры изменений для подавления эха)</td><td><span class="ver"><span class="badge b-warn">Ц сред</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Крэш никогда не порвёт handoff/state-файл. gosleep уже делает temp+rename; добавить fsync.</td></tr>
+      <tr><td class="tab">8</td><td>Эфемерный MCP-сервер на сессию + авто-allowlist в <code>--allowedTools</code></td><td><span class="ver"><span class="badge b-warn">Ц сред</span><span class="badge b-warn">У сред</span><span class="badge b-good">Р низ</span></span></td><td>Ограниченный control-plane на воркера; трюк с allowlist не даёт headless-запускам умирать на промптах.</td></tr>
+      <tr><td class="tab">9</td><td>Протокол replay-then-tail + композер, знающий состояние</td><td><span class="ver"><span class="badge b-warn">Ц сред</span><span class="badge b-warn">У сред</span><span class="badge b-good">Р низ</span></span></td><td>Контракт стриминга и взаимодействия для будущего дашборда gosleep.</td></tr>
+      <tr><td class="tab">10</td><td>Проба PATH через логин-шелл перед любым спавном</td><td><span class="ver"><span class="badge b-neu">Ц низ</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span></span></td><td>Закрывает классический отказ автономных запусков из launchd/GUI.</td></tr>
+      <tr><td class="tab">11</td><td>Bind-mount кредов для песочниц на подписке</td><td><span class="ver"><span class="badge b-warn">Ц сред</span><span class="badge b-good">У низ</span><span class="badge b-warn">Р сред</span></span></td><td>Работает уже сейчас; только read-only и никогда вместе со skip-permissions на недоверенных задачах.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout good">
+    <div class="ct">Сделать лучше — дыры, которые AutoSK оставляет открытыми</div>
+    <p><strong>Планирование с учётом окон квоты</strong> (тихо усыпить флот при исчерпании, автоматически
+    проснуться по сбросу окна — AutoSK просто паркует) · <strong>push-по-парковке</strong> (ntfy/APNs/Telegram —
+    у AutoSK нулевой канал уведомлений) · <strong>возобновление сессий</strong> (<code>claude --resume</code>
+    с захваченным id, чтобы рестарты не сбрасывали работу) · <strong>удалённый доступ через TLS/туннель</strong>
+    вместо открытого токена по TCP на 0.0.0.0.</p>
+  </div>
+</section>
+<!-- ==================== 3 WARREN ==================== -->
+<section class="sec" id="warren">
+  <h2><span class="secnum">3</span>Warren — детерминированный control plane</h2>
+  <p class="sub">«Self-hostable control plane для эфемерных облачных агентов — запускай изолированных агентов
+  на своих GitHub-репозиториях, наблюдай вживую, рули и получай обратно ветку». Автор — Jaymin West (os-eco),
+  непрерывно «доедает собственный корм» на реальных репозиториях на Fly.io. Если AutoSK учит состоянию-в-файлах,
+  то Warren учит <strong>надзору</strong> — самый переносимый материал всего обзора.</p>
+
+  <h3>3.1 Идентичность и зрелость</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">1 586</div><div class="l">коммитов за ≈2 месяца</div></div>
+    <div class="tile"><div class="v">v0.9.10</div><div class="l">версия · MIT</div></div>
+    <div class="tile"><div class="v tab">33</div><div class="l">сценарных приёмочных теста</div></div>
+    <div class="tile"><div class="v">API-ключ</div><div class="l">аутентификация — НЕ подписка</div></div>
+    <div class="tile"><div class="v">SQLite</div><div class="l">bun:sqlite + drizzle</div></div>
+    <div class="tile"><div class="v">bwrap</div><div class="l">песочница на запуск (burrow)</div></div>
+  </div>
+  <p>Запуски короткоживущие по замыслу: выполнить задачу, провалидировать, запушить ветку, свернуться. Стек: Bun
+  (TS исполняется напрямую), <code>Bun.serve</code> HTTP API + React SPA в одном процессе, SQLite (опционально
+  Postgres). Песочницы делегированы <strong>burrow</strong> — процессу-соседу на bubblewrap-изоляции, доступному
+  через unix-сокет с общим bearer-токеном. Warren комплектует <strong>data plane экосистемы os-eco</strong> как
+  опциональные фичи: canopy (версионируемые промпты), mulch (постоянная память агентов), seeds (git-нативная
+  очередь issue), plot (общий событийный лог людей и агентов). <strong>Аутентификация только по API-ключу</strong> —
+  <code>ANTHROPIC_API_KEY</code> обязателен и пробрасывается рантаймам; пути через подписку нет нигде, стоимость
+  учитывается на каждый запуск (<code>runs.cost_usd</code>, <code>runs.tokens_*</code>).</p>
+  <p class="src">Источники: <code>warren/package.json:3-4</code>, <code>README.md:16, 26, 30-31, 58</code>, <code>CLAUDE.md</code> (Tech Stack); клон @ <code>c3508c5</code>.</p>
+
+  <h3>3.2 Как запускаются агенты — краш-безопасная диспетчеризация</h3>
+  <ul>
+    <li><strong>Warren никогда сам не спавнит процессы агентов.</strong> Он делегирует burrow через сокет в 3 шага: разрешить отрендеренное определение агента и <em>заморозить его на строке запуска</em> (<code>runs.rendered_agent_json</code> — воспроизводимость); подготовить рабочее пространство (seed-файлы кладутся одним атомарным раундтрипом, откат при сбое); диспетчеризовать запуск.</li>
+    <li><strong>Строка до спавна:</strong> строка запуска создаётся <em>до</em> любого вызова burrow, с занулёнными runtime-id; id подставляются по мере успеха вызовов. Если оркестратор умрёт посреди спавна, реконсилер найдёт строки с null-id и приберёт — сбои переводят <code>queued → cancelled</code> с best-effort уничтожением.</li>
+    <li><strong>Размещение до создания строки:</strong> воркер выбирается заранее, так что <code>runs.worker_id</code> ложится при создании; привязка burrow→воркер остаётся липкой для cancel/steer/reap.</li>
+    <li><strong>Агенты — промпт-определения, а не код.</strong> Среди встроенных: <code>claude-code</code>, <code>planner</code>, <code>pr-fixer</code>, <code>healer</code>, надзиратель <code>leveret</code> — и два cron-<em>патрульных агента</em>: <strong>nightwatch</strong> (еженощно: сканировать репозиторий → выдать план исправлений, никогда не чинит сам; reap авто-диспетчеризует plan-run на каждый план) и <strong>bugwatch</strong> (2 раза в неделю: триаж багов → ≤3 консервативных фикс-плана). Планировщики планируют; исполнители исполняют — работающий цикл «владелец спит», на экономике API-ключа.</li>
+    <li><strong>Дисциплина промпта воркера, которую стоит украсть</strong> (builtin claude-code): «Quality gates are terminal, not advisory. Ты НЕ закончил, пока гейт не выходит нулём… Не объявляй задачу завершённой с красным гейтом… Если действительно нечинимо — скажи это явно и оставь работу открытой, вместо того чтобы объявлять успех». Агент коммитит, но никогда не пушит — warren пушит на стороне хоста после завершения запуска. Тиры моделей прибиты на каждый builtin (Sonnet для декомпозированной работы; оператор поднимает до Opus на запуск).</li>
+  </ul>
+  <p class="src">Источники: <code>src/runs/spawn/dispatch.ts:1-45</code>, <code>src/registry/builtins/nightwatch.ts:1-17</code>, <code>bugwatch.ts:1-23</code>, <code>claude-code.ts:24-30</code>, <code>model-tiers.ts</code>.</p>
+
+  <h3>3.3 Состояние, персистентность, восстановление</h3>
+  <div class="cards">
+    <div class="card t-acc">
+      <div class="ct">Восстановление = переподключиться, а не перезапустить</div>
+      <p>На загрузке warren проходит таблицу запусков по строкам <code>{queued, running}</code> с живым runtime-id и
+      <strong>заново подключает мост событийного стрима к каждой</strong> — фильтр resume-seq делает переподписку
+      идемпотентной. Активные строки <em>без</em> runtime-id всплывают оператору как <code>skipped</code> —
+      частичные спавны. Восстановление после рестарта — первоклассный путь, покрытый приёмочными тестами.</p>
+    </div>
+    <div class="card t-acc">
+      <div class="ct">Re-wake из транскрипта</div>
+      <p>Когда якорный запуск разговора умер, warren спавнит <em>свежий</em> запуск, засеянный чисто из транскрипта
+      в БД — переживает уничтожение старого рабочего пространства; цена в токенах растёт с длиной транскрипта
+      (принятый v1-размен). Прямой ответ на исчерпание контекста: убить исчерпанного агента, засеять свежего из
+      долговечного леджера — никогда не «оживлять» мёртвый контекст.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Двойная детекция терминальности</div>
+      <p>Поллер состояний опрашивает burrow параллельно событийному стриму — агенты, так и не выславшие
+      терминальный конверт, всё равно доходят до терминального состояния в warren.</p>
+    </div>
+    <div class="card t-good">
+      <div class="ct">Reap — единственный терминальный путь</div>
+      <p>Любое окончание — чистое, отменённое, убитое watchdog'ом — идёт через один reap-конвейер: запушить
+      частичную ветку, открыть PR, отзеркалить память/issue-состояние, уничтожить workspace, GC.
+      <strong>Закоммиченная работа не теряется никогда, даже если убийца — watchdog.</strong></p>
+    </div>
+  </div>
+  <p class="src">Источники: <code>src/runs/stream/recover.ts:1-13, 39-50</code>, <code>run-state-poller.ts:1-11</code>, <code>conversation-rewake.ts:1-21</code>, <code>src/runs/reap/</code>.</p>
+
+  <h3>3.4 Очереди, планирование, бюджеты</h3>
+  <ul>
+    <li><strong>Cron-триггеры:</strong> <code>.warren/triggers.yaml</code> на проект; внутренний тик планировщика диспетчеризует по тому же пути композиции, что и ручные запуски. <code>maxCostUsd</code> триггера перекрывает лимит уровня агента.</li>
+    <li><strong>Последовательный plan-run — «исполнитель эпиков» warren:</strong> дети плана идут <em>по одному</em>, каждый следующий диспетчеризуется только после <strong>слияния</strong> PR предыдущего; повторная диспетчеризация полусделанного плана продолжает со следующего открытого ребёнка.</li>
+    <li><strong>Лимиты стоимости применяются посреди запуска:</strong> событийный мост отменяет + рипает запуск, когда накопленная стоимость пересекает лимит. Кривые значения лимита <strong>fail OPEN</strong> — «опечатка в бюджете не должна молча отменять каждый запуск на $0».</li>
+    <li><strong>Человеческие гейты с таймаутами:</strong> вопрос агента переводит запуск в <code>paused</code>; человек отвечает через API <em>или</em> истекает бюджет паузы (по умолчанию 30 минут) — тогда warren респавнит ход с ответом <em>или с предупреждением о таймауте</em> в промпте; респавненный агент перечитывает состояние с диска. <strong>Автономия никогда не блокируется на человеке навечно.</strong></li>
+    <li><strong>Координатор простоя:</strong> разговоры, простаивающие &gt;20 минут, финализируются (ресурсы возвращаются) без закрытия самого разговора.</li>
+  </ul>
+  <p class="src">Источники: <code>src/triggers/tick.ts</code>, <code>src/plan-runs/coordinator*.ts</code>, <code>src/runs/cost-cap.ts:1-31</code>, <code>src/runs/pause.ts:1-16</code>, <code>README.md:34-36</code>.</p>
+
+  <h3>3.5 Стек само-надзора — четыре слоя, каждый ловит свой класс отказов</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 366" role="img" aria-label="Диаграмма стека надзора Warren">
+      <defs>
+        <marker id="arw-war" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <rect x="16" y="14" width="848" height="322" rx="10" class="bx"/>
+      <text x="32" y="38" class="ta">СЛОЙ 0 — restart policy docker / Fly: внешний «глупый» супервизор всего контейнера</text>
+      <rect x="36" y="54" width="808" height="264" rx="10" class="bxs"/>
+      <text x="52" y="78" class="ta">СЛОЙ 1 — процесс-супервизор (ENTRYPOINT контейнера): порядок загрузки, проброс сигналов, политика рестартов</text>
+      <text x="52" y="98" class="ts">warren НИКОГДА не перезапускается внутри процесса — «не маскируй баг warren внутренним циклом рестартов»; детекция краш-лупов — этажом выше</text>
+      <rect x="56" y="116" width="330" height="182" rx="8" class="bx"/>
+      <text x="72" y="140">burrow — субстрат песочниц</text>
+      <text x="72" y="160" class="ts">bwrap-изоляция на каждый запуск</text>
+      <text x="72" y="177" class="ts">unix-сокет + общий bearer-токен</text>
+      <text x="72" y="200" class="ts">перезапуск внутри: эксп. backoff 1с → 16с</text>
+      <text x="72" y="217" class="ts">бюджет 5 рестартов / 60с → выход не-нулём</text>
+      <text x="72" y="240" class="ts">выход 0 без сигнала останова =</text>
+      <text x="72" y="256" class="ts">считается отказом («чистый-но-неожиданный</text>
+      <text x="72" y="272" class="ts">так же подозрителен, как крэш»)</text>
+      <rect x="410" y="116" width="414" height="182" rx="8" class="bxa"/>
+      <text x="426" y="140">warren — control plane (Bun + событийный лог SQLite)</text>
+      <text x="426" y="158" class="ts">таблица событий = источник истины о живости</text>
+      <rect x="426" y="172" width="382" height="110" rx="7" class="bxs"/>
+      <text x="440" y="194" class="ta">СЛОЙ 2 — детекторы (тики 30с по состоянию БД)</text>
+      <text x="440" y="214" class="ts">heartbeat-watchdog: событие старше 45 мин → cancel через reap</text>
+      <text x="440" y="231" class="ts">детектор пауз (30 мин на вопрос) · координатор простоя (20 мин)</text>
+      <text x="440" y="248" class="ts">тик plan-run · cron триггеров · healer (ретраи + cooldown)</text>
+      <text x="440" y="272" class="ts">все: single-flight · изоляция ошибок · ВКЛ по умолчанию · fail-loud</text>
+      <text x="440" y="356" class="tg" text-anchor="middle">Каждое решение о живости читает долговечное состояние (новейшую строку событий) — никогда память процесса. Детекторы бесплатно переживают рестарты.</text>
+    </svg>
+    <p class="figcap">Рис. 3a — четыре слоя надзора Warren. Асимметрия намеренная: субстрат (burrow) перезапускается
+    внутри процесса под бюджетом; оркестратор (warren) внутри процесса не перезапускается никогда — его крэши
+    эскалируются внешнему слою. Источники: <code>src/supervisor/main.ts:1-23, 78-80, 199-205</code>,
+    <code>src/runs/watchdog.ts:1-47</code>, <code>detector-wiring.ts</code>.</p>
+  </div>
+  <ul>
+    <li><strong>Heartbeat-watchdog существует из-за реального инцидента</strong> (2026-06-05: зависший bash-инструмент прибил biome на ~57 CPU-минут навечно; никто его не собрал). Он ловит <em>молчаливо-занятые зависания</em>, которых не видит слой кодов выхода: тик 30с по <code>running</code>-запускам; heartbeat = отметка новейшего события; старше 45 минут (нарочно щедро) → <code>watchdog.timed_out</code> → cancel → <strong>маршрут через reap</strong>, чтобы закоммиченная работа всё равно уехала веткой.</li>
+    <li><strong>Детали дизайна, которые стоит копировать дословно:</strong> включён по умолчанию («страховочная сеть не должна зависеть от того, вспомнил ли оператор env-переменную»); single-flight-тики (перекрывающийся тик отбрасывается, а не копится); изоляция ошибок по запуску (одна плохая строка не убивает цикл); долгоживущие разговоры исключены — простой ≠ зависание; кривой конфиг <strong>кидает исключение на старте</strong> («опечатка… падает громко, а не молча раз-armирует защиту»).</li>
+    <li><strong>Замкнутый healer:</strong> продакшен-алерты (Sentry/Grafana) → fingerprint → маршрутизация в проект → диспетчеризация агента-лекаря, под защитой max-retries + cooldown на fingerprint — шторм алертов не превращается в шторм агентов.</li>
+  </ul>
+
+  <h3>3.6 UI и руление</h3>
+  <p>Web SPA, CLI и сырой HTTP — «три тонких клиента одного конвейера». Живой NDJSON-хвост событий
+  (<code>GET /runs/:id/events?follow=1</code>); <strong>steer-через-инбокс</strong> — <code>POST /runs/:id/steer</code>
+  кладёт сообщение в инбокс агента, оно подхватывается на границе следующего хода (долговечная доставка, в отличие
+  от нажатия клавиш в терминале); чистый abort через cancel. Опциональный Workspace-UI ведёт по цепочке Shape
+  (разговор с надзирателем leveret) → Plan (запуск планировщика + <strong>человеческий sign-off-гейт, взводящий
+  диспетчеризацию</strong>) → Run (последовательный plan-run со статусом PR на ребёнка) → Activity (единая лента
+  людей и агентов с карточками-ответами на открытые вопросы).</p>
+  <p class="src">Источники: <code>README.md:31-37</code>.</p>
+
+  <h3>3.7 Слабости — с кресла gosleep</h3>
+  <div class="cards">
+    <div class="card t-crit"><div class="ct"><span class="badge b-crit">БЛОКЕР</span>&nbsp; Экономика API-ключа</div>
+      <p>Пути через подписку нет вообще. Все паттерны переносимы; модель оплаты — нет. Собственная машинерия
+      лимитов стоимости у warren существует <em>потому что</em> API-траты безграничны.</p></div>
+    <div class="card t-warn"><div class="ct"><span class="badge b-warn">ТРЕНИЕ</span>&nbsp; Облачная форма</div>
+      <p>Контейнеры, Fly.io, bubblewrap, резидентный сервер — операционный след тяжелее, чем нужно
+      laptop-first системе на скиллах. <em>Семантика</em> переносится на launchd + tmux; рантайм тащить не нужно.</p></div>
+    <div class="card t-warn"><div class="ct"><span class="badge b-warn">РАЗМЕН</span>&nbsp; Кривая стоимости re-wake</div>
+      <p>Пересев свежей сессии из всего транскрипта БД растёт линейно с длиной разговора — признанный v1-размен.
+      Компактные handoff'ы gosleep — более дешёвый эквивалент.</p></div>
+  </div>
+
+  <div class="callout">
+    <div class="ct">Объединяющий принцип (Warren, дословное правило дизайна)</div>
+    <p>Каждое решение о живости принимается из <strong>долговечного состояния (отметки событий в БД), никогда из
+    убеждений в памяти</strong> — поэтому каждый детектор бесплатно переживает рестарт warren, и та же логика
+    работает на пути восстановления. Для gosleep: heartbeat = mtime леджера/handoff-файлов и живость tmux —
+    никогда скрейпинг содержимого панели, никогда то, что оркестратор «помнит».</p>
+  </div>
+</section>
+<!-- ==================== 4 OVERSTORY ==================== -->
+<section class="sec" id="overstory">
+  <h2><span class="secnum">4</span>Overstory — архивированный предшественник и чему учит его смерть</h2>
+  <p class="sub">«Мультиагентная оркестрация для ИИ-агентов кодинга» — <em>предыдущая</em> система того же автора:
+  локальные рои воркеров в git worktree, координация через почтовую шину на SQLite, надзор четырёхуровневого
+  watchdog'а. Архивирован 2026-05-28 с указателем на Warren — «духовного наследника overstory». Его архитектура —
+  самое близкое в дикой природе к текущей tmux-модели gosleep, поэтому его вскрытие — обязательное чтение.</p>
+
+  <h3>4.1 Идентичность и архитектура</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">1 712</div><div class="l">коммитов до архивации</div></div>
+    <div class="tile"><div class="v">2026-05-28</div><div class="l">архив, read-only</div></div>
+    <div class="tile"><div class="v tab">11</div><div class="l">подключаемых рантаймов агентов</div></div>
+    <div class="tile"><div class="v">SQLite</div><div class="l">почтовая шина (WAL, 1-5 мс)</div></div>
+    <div class="tile"><div class="v">tmux</div><div class="l">опциональный живой режим</div></div>
+    <div class="tile"><div class="v">подписка</div><div class="l">едет на логине CLI</div></div>
+  </div>
+  <ul>
+    <li><strong>Два режима спавна:</strong> headless (по умолчанию) — подпроцесс <code>claude -p --output-format stream-json --input-format stream-json</code>; и <strong>tmux</strong> (опциональный запасной люк) — сессия, к которой оператор может подключиться и рулить вживую. <em>tmux-режим — это в точности текущая архитектура gosleep.</em> Аутентификация едет на том, чем залогинен CLI — совместимо с подпиской, в отличие от Warren.</li>
+    <li><strong>Воркеры spawn-per-turn</strong> (поздний редизайн): задачные воркеры (builder/scout/reviewer/merger/lead) <em>не имеют постоянного процесса между ходами</em> — каждая доставка почты/подталкивание спавнит свежий <code>claude --resume &lt;session-id&gt;</code>, который обрабатывает ход и выходит. Долгоживущими остаются только coordinator/orchestrator/monitor.</li>
+    <li>Воркеры в изолированных <strong>git worktree</strong>, слияние обратно через FIFO-очередь merge с 4-уровневым разрешением конфликтов — машинерия, существующая <em>потому что</em> параллельные ветки конфликтуют (Warren позже удалил саму проблему, став последовательным).</li>
+  </ul>
+  <p class="src">Источники: <code>overstory/README.md:9-11, ~178-185</code>, <code>src/runtimes/claude.ts:242-259</code>, <code>src/agents/capabilities.ts:5-9</code>; клон @ <code>ff38f3f</code>.</p>
+
+  <h3>4.2 Иерархия надзора — кто за кем следит</h3>
+  <div class="fig">
+    <svg viewBox="0 0 880 384" role="img" aria-label="Диаграмма иерархии надзора Overstory">
+      <defs>
+        <marker id="arw-ov" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <text x="16" y="28" class="ta">РАБОЧАЯ ИЕРАРХИЯ</text>
+      <rect x="16" y="40" width="250" height="42" rx="8" class="bxs"/>
+      <text x="30" y="66">Оператор (человек)</text>
+      <line x1="141" y1="82" x2="141" y2="102" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="16" y="104" width="250" height="42" rx="8" class="bxs"/>
+      <text x="30" y="122">Оркестратор</text>
+      <text x="30" y="138" class="ts">мульти-репо, опциональный, LLM</text>
+      <line x1="141" y1="146" x2="141" y2="166" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="16" y="168" width="250" height="74" rx="8" class="bxw"/>
+      <text x="30" y="188">Координатор (на проект)</text>
+      <text x="30" y="205" class="ts">постоянный Claude-агент</text>
+      <text x="30" y="221" class="tc">исключён из проверок на застой;</text>
+      <text x="30" y="236" class="tc">НИЧТО не перезапускает его, если умер</text>
+      <line x1="141" y1="242" x2="141" y2="262" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="16" y="264" width="250" height="86" rx="8" class="bxs"/>
+      <text x="30" y="286">Воркеры (на задачу)</text>
+      <text x="30" y="303" class="ts">builder · scout · reviewer · merger · lead</text>
+      <text x="30" y="319" class="ts">spawn-per-turn: свежий claude --resume</text>
+      <text x="30" y="335" class="ts">каждому — свой git worktree</text>
+      <text x="330" y="28" class="ta">НАДЗОРНАЯ ИЕРАРХИЯ (сбоку)</text>
+      <rect x="330" y="40" width="256" height="118" rx="8" class="bxa"/>
+      <text x="344" y="62">УРОВЕНЬ 0 — механический демон</text>
+      <text x="344" y="80" class="ts">ov watch --background (код, без ИИ)</text>
+      <text x="344" y="97" class="ts">эскалация по застою за тик:</text>
+      <text x="344" y="114" class="ts">L0 предупреждение → L1 nudge tmux/почтой →</text>
+      <text x="344" y="131" class="ts">L2 вызвать ИИ-триаж → L3 убить сессию</text>
+      <text x="344" y="148" class="ts">восстановление сбрасывает уровень</text>
+      <rect x="330" y="180" width="256" height="88" rx="8" class="bx"/>
+      <text x="344" y="202">УРОВЕНЬ 1 — ИИ-триаж (по требованию)</text>
+      <text x="344" y="220" class="ts">одноразовый claude -p по 50 строкам лога,</text>
+      <text x="344" y="236" class="ts">таймаут 30с → retry | terminate | extend</text>
+      <text x="344" y="253" class="tg">fail-safe: сомневаешься → extend, не убивай</text>
+      <line x1="458" y1="158" x2="458" y2="180" class="ln" marker-end="url(#arw-ov)"/>
+      <rect x="618" y="40" width="246" height="88" rx="8" class="bx"/>
+      <text x="632" y="62">УРОВЕНЬ 2 — агент-монитор</text>
+      <text x="632" y="80" class="ts">постоянный Claude, патрулирует флот,</text>
+      <text x="632" y="96" class="ts">подталкивает застрявших, докладывает</text>
+      <text x="632" y="113" class="tc">ИИ следит за ИИ — Warren это выбросил</text>
+      <rect x="618" y="150" width="246" height="60" rx="8" class="bxc"/>
+      <text x="632" y="172" class="tc">УРОВЕНЬ 3 — супервизор проекта</text>
+      <text x="632" y="190" class="tc">DEPRECATED ещё до архивации —</text>
+      <text x="632" y="205" class="tc">4-й надзорный этаж себя не оправдал</text>
+      <line x1="330" y1="120" x2="270" y2="290" class="ln" marker-end="url(#arw-ov)"/>
+      <text x="308" y="230" class="tm" text-anchor="end">nudge / kill воркеров;</text>
+      <text x="308" y="245" class="tm" text-anchor="end">почта worker_died → родителю</text>
+      <rect x="330" y="290" width="534" height="72" rx="8" class="bxg"/>
+      <text x="344" y="312" class="tg">ZFC («Zero Failure Crash») — наблюдаемое состояние это истина, записанное — лишь заявление:</text>
+      <text x="344" y="330" class="ts">живость tmux &gt; живость pid (signal 0) &gt; sessions.json · tmux мёртв + «working» = зомби немедленно</text>
+      <text x="344" y="347" class="ts">tmux жив + «зомби» = разбираться, не убивать · decision_gate = пауза на человеке, не застой</text>
+    </svg>
+    <p class="figcap">Рис. 4a — Overstory: четырёхэтажная рабочая иерархия под боковым присмотром многоуровневого
+    watchdog'а. Координатора следят на предмет <em>смерти</em>, но не <em>зависания</em>, и никто его не
+    перезапускает — та же дыра, что у gosleep, этажом выше. Источники: <code>src/watchdog/daemon.ts:1-22, 556-611, 892-903</code>,
+    <code>triage.ts:1-7, 29-75</code>, <code>health.ts:4-31, 88-103</code>, <code>supervisor.ts:453, 472</code>.</p>
+  </div>
+  <ul>
+    <li><strong>Уведомления о смерти:</strong> убивая воркера, watchdog шлёт синтетическую почту <code>worker_died</code> родителю — координатор никогда не блокируется навечно в ожидании <code>worker_done</code>; при подсчёте завершения зомби считаются терминальными («запуск, где они смешаны, навечно оставляет координатора на мели»).</li>
+    <li><strong>Однонаправленная машина состояний с CAS-защитой:</strong> <code>booting &lt; working &lt; completed &lt; stalled &lt; zombie</code>; переходы <code>completed → *</code> отклоняются — поздний тик watchdog'а не может переквалифицировать чистый выход в зомби.</li>
+    <li><strong>Память об отказах:</strong> каждое вмешательство watchdog'а записывается (агент, роль, причина, вердикт триажа) в память mulch — институциональная память о том, <em>как умирают агенты</em>; запись fire-and-forget, чтобы не сломать сам watchdog.</li>
+    <li><strong>Дыра, признанная в коде:</strong> у демона-watchdog'а нет собственного супервизора — только детекция коллизии с осиротевшим watchdog'ом прошлой сессии.</li>
+  </ul>
+
+  <h3>4.3 STEELMAN — экономика, убившая рой</h3>
+  <p>Overstory возит в репозитории собственный сильнейший контраргумент (<code>STEELMAN.md</code>), с реальными цифрами:</p>
+  <div class="tiles">
+    <div class="tile"><div class="v tab">20 агентов</div><div class="l">15 задач · 6 ч · ~8M токенов</div></div>
+    <div class="tile"><div class="v tab">~$60</div><div class="l">стоимость роя</div></div>
+    <div class="tile"><div class="v tab">1 агент</div><div class="l">те же задачи · 8 ч · ~1,2M токенов</div></div>
+    <div class="tile"><div class="v tab">~$9</div><div class="l">стоимость одного агента</div></div>
+    <div class="tile"><div class="v tab">$51</div><div class="l">цена экономии двух часов</div></div>
+  </div>
+  <p>Плюс: накапливающиеся ошибки на границах слияния, отладка-как-криминалистика по worktree, преждевременная
+  декомпозиция. Выявленный вывод автора — архивировать рой, пересобрать последовательно. Лимит gosleep в
+  ~3 панели и конвенции «один коммит на задачу / один PR на эпик» уже на выигрышной стороне размена.</p>
+  <p class="src">Источник: <code>STEELMAN.md</code> §2.</p>
+
+  <h3>4.4 Overstory → Warren: таблица эволюции</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Было в Overstory</th><th>Чем заменил Warren</th><th>Урок</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">1</td><td>LLM-координатор/оркестратор — которым нужны собственные watchdog, триаж, exit-триггеры, история рестартов</td><td><strong>Никакого постоянного LLM-оркестратора вообще</strong> — координация это детерминированные тик-циклы над долговечным состоянием БД; LLM живёт только внутри ограниченных запусков</td><td>Код не галлюцинирует, не исчерпывает контекст, рестартует идемпотентно. Это <em>растворяет</em> проблему «кто следит за оркестратором», а не решает её.</td></tr>
+      <tr><td class="tab">2</td><td>Параллельный рой + FIFO-очередь слияний с 4-уровневым разрешением конфликтов</td><td>Последовательные plan-run с PR-гейтом — по одному ребёнку, следующий после слияния PR предыдущего</td><td>Экономика STEELMAN ($60 против $9) это предсказала: конфликты слияния обходить, а не разрешать.</td></tr>
+      <tr><td class="tab">3</td><td>4-уровневый watchdog с ИИ-триажем + ИИ-монитор</td><td>Один механический heartbeat-watchdog (тик 30с, один порог 45 мин, force-fail через reap)</td><td>ИИ в контуре надзора не пережил встречи с реальностью. Наблюдатель обязан быть глупым.</td></tr>
+      <tr><td class="tab">4</td><td>Локальные worktree + tmux-сессии на машине оператора</td><td>Эфемерные bwrap-песочницы в облаке; весь жизненный цикл = строки + события в одной БД</td><td>Налогом был разброс состояния сессий (sessions.json, живость tmux, конфликты сигналов).</td></tr>
+      <tr><td class="tab">5</td><td>Правила сверки ZFC на случай, когда записанное состояние лжёт</td><td>Живость <em>определена</em> как «отметка новейшего события» — один источник истины, без матрицы конфликтов</td><td>Не сверяй два источника истины — имей один.</td></tr>
+      <tr><td class="tab">6</td><td>Аутентификация через CLI-подписку (едет на логине оператора)</td><td>API-ключ + лимиты стоимости на запуск</td><td>Облачный headless вынудил сменить биллинг — и вынудил построить машинерию лимитов. gosleep остаётся на подписочной стороне этой развилки.</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Сохранено сквозь арку:</strong> data plane os-eco (seeds/mulch/canopy), headless-контракт спавна
+  stream-json, steer-через-инбокс (улучшенный таймаутом паузы — <code>decision_gate</code> у overstory ставил
+  watchdog на паузу <em>бессрочно</em>), checkpoint/resume, переродившийся в re-wake-из-транскрипта, и патрульные
+  агенты, переродившиеся в cron-плановые nightwatch/bugwatch. <strong>Выброшено:</strong> матрица из 11 рантаймов
+  (→ 3 builtin'а), почтовая шина SQLite, группы задач, TUI-дашборд, deprecated-этаж супервизора.</p>
+  <p class="src">Источники: <code>warren/SPEC.md:2897</code>, <code>overstory/README.md:9</code>, анализ эволюции в <code>02-warren-overstory.md</code> §8.</p>
+
+  <h3>4.5 Проблема «кто следит за оркестратором» — варианты для gosleep</h3>
+  <p>Дыра gosleep: Agent Teams даёт ОДИН уровень вложенности — оркестратор спавнит воркеров, но над оркестратором
+  не сидит никто. Классы отказов, которые нужно ловить: <strong>D1</strong> смерть (панель/процесс исчезли) ·
+  <strong>D2</strong> зависание (жив, но заклинил: застрявший инструмент, промпт разрешений, цикл API-ошибок) ·
+  <strong>D3</strong> исчерпание контекста (жив, но скомпактирован/деградировал) · <strong>D4</strong> тихое затухание
+  (закончил ход без взведённого будильника) · <strong>D5</strong> краш-луп. Предусловие любого варианта:
+  <strong>письменный heartbeat-протокол</strong> — каждый пульс оркестратора дописывает
+  <code>{ts, context%, сводка флота}</code> в фиксированный файл. Warren и Overstory сходятся в одном правиле:
+  живость судить по долговечному наблюдаемому состоянию, никогда по скрейпингу панели или памяти процесса.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Вариант</th><th>Механика</th><th>Ловит</th><th>Подписка</th><th>Вердикт</th></tr></thead>
+    <tbody>
+      <tr><td>A · Внешний механический watchdog</td><td>launchd-агент каждые 2–5 мин: сессия существует? heartbeat свежий? context% под потолком? Мёртв → респавн по протоколу холодного старта (переподключиться к живым воркерам, не респавнить их). Застой → один nudge, затем kill (только по явному id сессии) + респавн. Бюджет рестартов 3-за-60-мин; исчерпан → остановиться и эскалировать человеку.</td><td>D1 D2 D3 D4 D5</td><td><span class="badge b-good">✓ ноль токенов</span></td><td><span class="badge b-good">РЕКОМЕНДОВАННОЕ ЯДРО</span></td></tr>
+      <tr><td>B · Само-пульс (ScheduleWakeup)</td><td>Оркестратор никогда не заканчивает ход без взведённого будильника; каждый пульс проверяет воркеров, пишет heartbeat, перевзводится. Уже действующее правило владельца.</td><td>только уровень воркеров; сам он и есть то, что умирает</td><td><span class="badge b-good">✓ нативно</span></td><td><span class="badge b-info">НЕОБХОДИМО, НО НЕДОСТАТОЧНО</span> — <em>генератор</em> heartbeat для A</td></tr>
+      <tr><td>C · Headless ИИ-триаж по аномалии</td><td>Когда A видит аномалию, которую не может классифицировать, — одноразовый <code>claude -p</code> (таймаут 30с) с heartbeat, хвостом леджера и capture панели → <code>nudge | restart | extend | escalate</code>; fail-safe по умолчанию <code>extend</code>. ИИ рекомендует; бюджеты применяет механический слой.</td><td>D2 D3 с семантическим суждением</td><td><span class="badge b-warn">стоит квоты за вызов</span></td><td><span class="badge b-info">ДОБАВИТЬ ПОЗЖЕ</span> — только по аномалии; <em>постоянный</em> ИИ-патруль Warren выбросил не зря</td></tr>
+      <tr><td>D · Парные оркестраторы (active/standby)</td><td>Две сессии оркестратора мониторят пульс друг друга; при пропуске standby перехватывает.</td><td>D1 D2 взаимно; D3 D4 бьют обоих</td><td><span class="badge b-warn">жжёт слот панели</span></td><td><span class="badge b-crit">НЕ РЕКОМЕНДУЕТСЯ</span> — риск split-brain; ни один автор такого не выпустил; надзорные этажи выше одного наблюдателя себя не оправдали</td></tr>
+      <tr><td>E · Инверсия Warren: без постоянного оркестратора (tick-режим)</td><td>launchd стреляет каждые N минут; тик запускает короткоживущий оркестраторский ход <code>claude -p</code>: сверить леджер с реальностью, собрать завершённых, диспетчеризовать следующую задачу, записать леджер, выйти. Долгоживущего, за кем надо следить, не существует.</td><td>растворяет D1–D5 по построению</td><td><span class="badge b-good">✓ авторизация CLI</span> (без тёплого кэша между тиками)</td><td><span class="badge b-info">НОЧНОЙ ЭКСПЕРИМЕНТ</span> — урок overstory→warren целиком; теряется живая панель руления</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout good">
+    <div class="ct">Рекомендованная связка</div>
+    <p><strong>Сейчас:</strong> B (пульс + запись heartbeat, уже предписано) + A (механический launchd-watchdog с
+    бюджетом респавнов и эскалацией человеку) — закрывает D1–D5 с нулевым расходом токенов. <strong>Дальше:</strong>
+    C как шаг триажа по аномалии внутри A (ограниченный, fail-safe extend). <strong>Эксперимент:</strong> E для
+    ночного окна без присмотра — интерактивный оркестратор днём, tick-режим пока владелец спит; сравнить
+    производительность и частоту отказов.</p>
+  </div>
+  <p class="src">Источник: <code>02-warren-overstory.md</code> §9 (анализ по warren <code>supervisor/main.ts</code>, <code>watchdog.ts</code>, <code>recover.ts</code>; overstory <code>daemon.ts</code>, <code>triage.ts</code>, <code>health.ts</code>).</p>
+</section>
+<!-- ==================== 5 HEADLESS И ПОДПИСКА ==================== -->
+<section class="sec" id="headless">
+  <h2><span class="secnum">5</span>Headless-режим и вопрос подписки</h2>
+  <p class="sub">Может ли gosleep работать на подписке Claude Pro/Max — легально, надёжно, всю ночь? Этот раздел
+  объясняет, что такое <code>claude -p</code> на самом деле, восстанавливает хронологию политики Anthropic по
+  датированным источникам и заканчивается матрицей подходов. Утверждения помечены как ФАКТ / СООБЩЕСТВО там,
+  где доказательная база различается.</p>
+
+  <h3>5.1 Что такое <code>claude -p</code> на самом деле</h3>
+  <p>Обычно <code>claude</code> открывает чат в терминале и ждёт. <strong><code>claude -p "сделай X"</code>
+  запускает того же самого агента один раз, без интерфейса: выполняет задачу, печатает ответ, выходит.</strong>
+  Это не отдельный продукт и не сырой вызов API — та же модель, те же инструменты, тот же контекст
+  CLAUDE.md/скиллов/MCP, тот же логин. Меняются две вещи: (1) <strong>на промпты разрешений отвечать некому</strong> —
+  инструменты нужно предодобрить через <code>--allowedTools</code> / <code>--permission-mode</code>, иначе запуск
+  аварийно завершается; (2) <strong>вывод становится машиночитаемым</strong> — <code>--output-format json</code>
+  (результат + session id + стоимость) или <code>stream-json</code> (живой поток событий). <strong>Agent SDK</strong> —
+  тот же движок в виде библиотеки: он упаковывает и спавнит бинарник Claude Code и говорит с ним через stdio, —
+  но его документация описывает только аутентификацию по API-ключу (эта разница важна ниже).</p>
+  <div class="tw"><table>
+    <thead><tr><th>Флаг</th><th>Что он даёт оркестратору</th></tr></thead>
+    <tbody>
+      <tr><td><code>-p</code> / <code>--print</code></td><td>Одноразовый неинтерактивный запуск; читает stdin (лимит 10 МБ с v2.1.128).</td></tr>
+      <tr><td><code>--output-format json|stream-json</code></td><td>Парсимый результат, session id, стоимость вызова; stream-json + <code>--verbose --include-partial-messages</code> = живой поток событий, вкл. <code>system/init</code>, <code>system/api_retry</code>.</td></tr>
+      <tr><td><code>--resume &lt;id&gt;</code> / <code>--continue</code></td><td>Многошаговые процессы через отдельные вызовы — состояние сохраняется; поиск сессии ограничен каталогом проекта + его worktree.</td></tr>
+      <tr><td><code>--allowedTools</code> / <code>--disallowedTools</code></td><td>Синтаксис правил разрешений (<code>Bash(git commit *)</code>) — вся модель безопасности для запусков без присмотра.</td></tr>
+      <tr><td><code>--permission-mode</code></td><td>Базовая поза; <code>dontAsk</code> = полностью неинтерактивный deny-by-default.</td></tr>
+      <tr><td><code>--permission-prompt-tool</code></td><td>Делегировать одобрения своему MCP-инструменту — программный human-in-the-loop.</td></tr>
+      <tr><td><code>--max-turns</code>, <code>--max-budget-usd</code></td><td>Жёсткие лимиты на запуск (бюджет — только в print-режиме).</td></tr>
+      <tr><td><code>--bare</code></td><td>Пропустить ВСЁ автообнаружение — для воспроизводимых CI-запусков. <strong>⚠ Также пропускает OAuth/keychain — логин по подписке в bare-режиме НЕ работает</strong>; в доках сказано, что bare «станет умолчанием для <code>-p</code> в будущем релизе» — изменение, от которого стоит запиниться.</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Приоритет аутентификации в headless (выше — сильнее):</strong> креды облачных провайдеров →
+  <code>ANTHROPIC_AUTH_TOKEN</code> → <code>ANTHROPIC_API_KEY</code> (<em>«в неинтерактивном режиме ключ используется
+  всегда, если присутствует»</em> — случайно экспортированный ключ молча угоняет вашу подписку;
+  <code>unset</code> его) → <code>apiKeyHelper</code> → <code>CLAUDE_CODE_OAUTH_TOKEN</code> (из
+  <code>claude setup-token</code>: официальный годовой <strong>подписочный</strong> токен для CI, принимаемый
+  <code>anthropics/claude-code-action</code> как первоклассный вход) → OAuth подписки из <code>/login</code> —
+  умолчание Pro/Max. <strong>Итог: <code>claude -p</code> на залогиненной Pro/Max-машине просто работает на
+  подписке — так задумано, уже сегодня.</strong></p>
+  <p class="src">Источники: code.claude.com/docs <code>headless.md</code>, <code>agent-sdk/overview.md</code> (получены 2026-07-07, доки обновлены 2026-07-06); <code>claude-code-action/action.yml</code>.</p>
+
+  <h3>5.2 Хронология политики — с датами и источниками</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Дата</th><th>Событие</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">2025-07-28</td><td>Объявлены недельные лимиты для Pro/Max (в силе с 08-28), поверх скользящего 5-часового окна. Причины: пользователи, гоняющие Claude Code «по сути 24/7», шеринг аккаунтов, перепродажа. Один пользователь, по сообщениям, потребил «десятки тысяч долларов» на плане за $200.</td><td><span class="badge b-good">ФАКТ</span></td></tr>
+      <tr><td class="tab">2026-01-09</td><td>Молчаливые серверные проверки: сторонние инструменты с OAuth-токенами Pro/Max начинают получать <em>«This credential is only authorized for use with Claude Code and cannot be used for other API requests.»</em></td><td><span class="badge b-good">ФАКТ</span></td></tr>
+      <tr><td class="tab">2026-02-19</td><td>Потребительские ToS формализуют это: OAuth-креды Free/Pro/Max — <strong>только для Claude Code и claude.ai</strong>; использование в любом другом продукте — по сообщениям, включая собственный Agent SDK Anthropic — нарушает ToS.</td><td><span class="badge b-good">ФАКТ</span> <span class="badge b-warn">деталь про SDK не проверена</span></td></tr>
+      <tr><td class="tab">2026-04-04</td><td>Правоприменение с 12PM PT: подписки больше не покрывают использование через сторонние инструменты (первым назван OpenClaw — фреймворк на 247k★; «все сторонние обвязки в ближайшие недели»). Компенсация: кредит на месяц / скидки на бандлы / возврат. Через четыре дня Anthropic выпускает <strong>Managed Agents</strong> (хостируемые агенты на API) — что широко прочитано как «санкционированная замена сторонней агентной инфраструктуры».</td><td><span class="badge b-good">ФАКТ</span> (несколько изданий)</td></tr>
+      <tr><td class="tab">2026-04-04</td><td>По одному вторичному источнику: Pro/Max отрезаны от «большинства сторонних агентных фреймворков»; для подписчиков официальные Agent Teams описаны как «единственный полностью поддерживаемый вариант мультиагентной оркестрации».</td><td><span class="badge b-warn">СООБЩЕСТВО</span></td></tr>
+      <tr><td class="tab">2026-06-15</td><td><strong>Программное использование отделено от интерактивной квоты:</strong> Agent SDK, скрипты <code>claude -p</code>, GitHub Actions, сторонние приложения теперь берут из отдельного месячного пула кредитов — <strong>$20 Pro / $100 Max 5x / $200 Max 20x, по прейскуранту API</strong>. «Набор текста в Claude Code в вашем терминале не затронут».</td><td><span class="badge b-good">ФАКТ, средн. увер.</span> (вторичные гайды + ADR ralph; первичное уведомление не найдено)</td></tr>
+      <tr><td class="tab">2026-06-15</td><td>Мейнтейнер Ralph фиксирует то же в ADR 0001, пивотится на провайдеро-агностичные адаптеры как хедж и <em>отвергает</em> программное управление интерактивным TUI как «враждебное биллинговому замыслу вендора и, вероятно, против условий».</td><td><span class="badge b-good">ФАКТ</span> (что ADR это говорит)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Источники: HN 44713757/44713837; Natural20, ridakaddir.com (янв); Winbuzzer, MLQ, HN 46549823 (фев);
+  BigGo, marketingagent.blog, TNW, Ewan Mak (апр); гайд ccforeveryone.com (июнь); <code>ralph-claude-code/docs/adr/0001</code>.</p>
+
+  <h3>5.3 Что это значит для gosleep сегодня (2026-07-07)</h3>
+  <div class="cards">
+    <div class="card t-good">
+      <div class="ct">Интерактивный tmux + Agent Teams — защищённая поверхность</div>
+      <p>Текущий подход gosleep остаётся на <strong>интерактивной квоте</strong> (5-часовое + недельные окна) —
+      намного щедрее на доллар, чем кредиты по API-ставкам; явно не затронут ни одной волной ограничений; и это
+      именно та поверхность, которую Anthropic раз за разом оставляла подписчикам, отрезая всё остальное.</p>
+    </div>
+    <div class="card t-warn">
+      <div class="ct"><code>claude -p</code> — легально, поддерживается, ограничено бюджетом</div>
+      <p>Всё ещё работает на подписочном логине, но с ~06-15 берёт из программного пула по прейскуранту API.
+      Активный ночной headless-флот на Max 20x (≈$200/мес кредита) может сжечь его за считанные дни. Использовать
+      для <strong>ограниченного клея</strong> — генерация отчётов, проверки watchdog'а, CI — а не как основной двигатель.</p>
+    </div>
+    <div class="card t-crit">
+      <div class="ct">Сторонние обвязки на OAuth — никогда</div>
+      <p>Заблокировано технически (2026-01-09), запрещено в ToS (02-19), коммерчески прекращено (04-04). Никогда не
+      подавать подписочный OAuth-токен во что-либо, кроме Claude Code / claude.ai — включая Agent SDK.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Реалистичный риск — ужесточение, а не запрет</div>
+      <p>Anthropic только что построила <em>систему тарификации</em> headless — не тарифицируют то, что собираются
+      убить. Митигируем: каждый автономный цикл деградирует до «ждать окна» (паттерн Ralph), плюс запасной путь
+      конфигурации с <code>ANTHROPIC_API_KEY</code> (тот же CLI, одна env-переменная), по умолчанию ВЫКЛ.</p>
+    </div>
+  </div>
+
+  <h3>5.4 Матрица подходов</h3>
+  <div class="tw"><table class="matrix">
+    <thead><tr><th>Подход</th><th>На подписке?</th><th>Ночная автономия</th><th>Надзор</th><th>Риск закрытия/ToS</th><th>Вердикт</th></tr></thead>
+    <tbody>
+      <tr><td>A · Интерактивный Claude Code + Agent Teams в tmux <em>(текущий gosleep)</em></td><td><span class="badge b-good">✓ интерактивная квота</span> — щедрее всех по $/токен</td><td>Средне-высокая: флот работает, пока хватает квоты; нужен живой лид (пульс/будильники); потолок — недельные лимиты</td><td>Лучший в классе: каждая панель наблюдаема/рулима; человек может подключиться в любой момент</td><td><span class="badge b-good">Низкий</span> — официальная поверхность; Agent Teams пока за экспериментальным флагом</td><td><strong>Оставить основным двигателем</strong></td></tr>
+      <tr><td>B · Циклы <code>claude -p</code> (в стиле ralph)</td><td><span class="badge b-good">✓</span> — официальный CLI; с ~06-15 берёт из программного пула кредитов</td><td>Высокая: cron-ится, зацикливается, есть паттерны автоожидания квоты</td><td>Частичный: JSON/stream-логи, файлы статуса; руление между итерациями через <code>--resume</code></td><td><span class="badge b-warn">Низк.-средн.</span> — тарифы могут перекрутить; запиниться от смены умолчания <code>--bare</code></td><td><strong>Взять для ограниченного клея</strong> (ночной отчёт, проверки watchdog'а), не как двигатель</td></tr>
+      <tr><td>C · Agent SDK + API-ключ</td><td><span class="badge b-crit">✗ на подписке</span> — нужен API-ключ</td><td>Высокая</td><td>Полный программный (хуки, canUseTool, сессии)</td><td><span class="badge b-good">Низкий с API-ключом</span></td><td>Только если владелец примет API-биллинг — <strong>не сейчас</strong></td></tr>
+      <tr><td>D · Облачные Routines (плановые агенты claude.ai)</td><td><span class="badge b-good">✓ требует подписочный логин</span> (выставленный API-ключ <em>ломает</em> фичу)</td><td>Высокая: cron ≥1ч / запуск по API / GitHub-триггеры; полностью автономно, без промптов разрешений</td><td>Низкий во время запуска (облачная сессия; результаты падают в репо/PR)</td><td><span class="badge b-warn">Средний</span> — research preview, поверхность может измениться</td><td><strong>Взять как ночной триггер/watchdog</strong>, когда стабилизируется; обернуть тонким скиллом</td></tr>
+      <tr><td>E · Managed Agents (API-сервис, 2026-04-08)</td><td><span class="badge b-crit">✗ API-биллинг</span></td><td>Высокая: хостируемые сессии, cron-деплои, outcomes/rubrics</td><td>Средний: потоки событий, webhooks, подтверждение инструментов</td><td><span class="badge b-good">Низкий</span> (стратегическая ставка Anthropic)</td><td>«Взрослый» эндшпиль, если gosleep когда-нибудь перейдёт на API — наблюдать, не строить на нём</td></tr>
+      <tr><td>F · Сторонние обвязки (Ruflo и т.п.) на подписке</td><td><span class="badge b-crit">✗ запрещено</span></td><td>—</td><td>—</td><td><span class="badge b-crit">Максимальный (риск аккаунта)</span></td><td><strong>Никогда</strong></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout good">
+    <div class="ct">Рекомендация — A + D + B, именно в этом порядке</div>
+    <p><strong>A остаётся двигателем</strong>: единственный подход, который одновременно работает на щедрой
+    интерактивной квоте, удовлетворяет требованию владельца о надзоре и сидит на поверхности, которую Anthropic
+    раз за разом защищала. <strong>D — недостающий ночной кусок</strong>: нативно для подписки, cron/GitHub-триггеры —
+    им запускать или будить флот ночью и гонять watchdog/отчёты, вместо того чтобы держать живым оркестратора,
+    привязанного к ноутбуку. <strong>B — детерминированный клей</strong>: headless-однострочники с
+    <code>--output-format json</code> + <code>--max-budget-usd</code> + строгим <code>--allowedTools</code>,
+    отслеживая расход кредита через <code>total_cost_usd</code>. Из первоклассных поверхностей есть ещё
+    <code>/loop</code> + локальные плановые задачи — «Routines для бедных».</p>
+  </div>
+  <p class="src">Источники: официальные доки <code>headless.md</code>, <code>routines.md</code>, <code>scheduled-tasks.md</code>, <code>agent-teams</code>; анализ в <code>03-headless-subscription-landscape.md</code> §§1-3.</p>
+</section>
+<!-- ==================== 6 ЭКОСИСТЕМА ==================== -->
+<section class="sec" id="ecosystem">
+  <h2><span class="secnum">6</span>Широкая экосистема — 2025–2026</h2>
+  <p class="sub">Весь ландшафт сегодня сортируется одним вопросом: <strong>как инструмент спавнит Claude?</strong>
+  (а) интерактивный <code>claude</code> в tmux/PTY → подписка ОК; (б) циклы <code>claude -p</code> → подписка ОК
+  сегодня, через тарифицируемый программный пул; (в) Agent SDK / сырой API → только API-ключ, использование
+  подписки запрещено. Механизмы спавна ниже проверены по клонированным исходникам там, где это отмечено.</p>
+
+  <p><strong>Первая партия (Anthropic) — санкционированный набор.</strong> Claude Code поставляет четыре
+  мультиагентных примитива: <strong>сабагенты</strong>, <strong>скиллы</strong>, <strong>Agent Teams</strong>
+  (~февраль 2026, экспериментальный флаг; лид спавнит тиммейтов с собственными контекстными окнами, обменом
+  сообщениями и общим списком задач — поверхность gosleep) и <strong>workflows</strong> (research preview,
+  июнь 2026). Всё работает внутри Claude Code → совместимо с подпиской.</p>
+
+  <h3>6.1 Gastown + Beads (Steve Yegge) — gosleep в 10-кратном масштабе</h3>
+  <div class="grid2">
+    <div class="card">
+      <div class="ct">Модель</div>
+      <p><em>Town</em> содержит <em>Rigs</em> (по одному на репозиторий). У каждого рига есть <em>Crew</em>
+      (рабочее место человека), <em>Polecats</em> (воркеры — <strong>постоянная идентичность, эфемерные
+      сессии</strong>) и <em>Hooks</em> (хранилище на git worktree, переживающее крэши). <em>The Mayor</em> («Мэр») —
+      инстанс Claude Code с полным контекстом воркспейса — координатор, с которым разговариваешь. <em>Convoys</em>
+      группируют работу; конвои с меткой <code>mountain</code> получают автономную детекцию застоя и умный пропуск
+      для запусков масштаба эпиков. Всё рабочее состояние живёт в <strong>Beads</strong> — git-нативном трекере
+      issue от Yegge (~24k★): «память агента» — структурированные данные в git, а не история разговора.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Вердикт для gosleep</div>
+      <p><strong>Спавн (проверен в исходниках):</strong> tmux-сессии с интерактивным <code>claude</code>
+      (<code>internal/polecat/session_manager.go</code>), включая детекцию <strong>«зомби-сессий — tmux жив, а
+      Claude мёртв»</strong>. Совместим с подпиской по построению. Заявка: «4–10 агентов превращаются в хаос →
+      комфортно масштабируйтесь до 20–30». Соответствие 1:1 — Mayor≈оркестратор, polecats≈воркеры,
+      Beads≈Jira/GH+handoff'ы, hooks≈worktree. Чего нет у gosleep и есть у gastown: детекция зомби-сессий,
+      почтовые handoff'ы между агентами, постоянная идентичность воркеров, детекция застоя конвоев. Кодовая база
+      на Go — тащить тяжело, но <em>идеи</em> переносятся дёшево.</p>
+    </div>
+  </div>
+
+  <h3>6.2 Ralph (<code>frankbria/ralph-claude-code</code>) — двигатель ночного цикла</h3>
+  <p>Техника «Ralph Wiggum» Джеффри Хантли (июль 2025): бесконечный shell-цикл, перезапускающий агента с одним и
+  тем же файлом промпта, файловая система как память — знаменит многомесячными запусками. Это самая ухоженная
+  реализация (bash, v0.11.5, 784 теста), и <strong>буквально именная проблема GoSleep — то, что решает её
+  закалка</strong>:</p>
+  <div class="cards">
+    <div class="card t-acc"><div class="ct">Двухусловный exit gate</div>
+      <p>Для выхода нужно ≥2 эвристических индикатора завершения <strong>И</strong> явный
+      <code>EXIT_SIGNAL: true</code> в структурированном статус-блоке — защита и от преждевременного выхода
+      (документ со словом «done»), и от бесконечных циклов.</p></div>
+    <div class="card t-acc"><div class="ct">Circuit breaker</div>
+      <p>CLOSED→HALF_OPEN→OPEN при: 3 цикла без прогресса, 5 циклов одной и той же ошибки, падение вывода &gt;70%,
+      2 цикла отказов в разрешениях; cooldown с автовосстановлением для запусков без присмотра.</p></div>
+    <div class="card t-acc"><div class="ct">Автоожидание квоты</div>
+      <p>4-слойная детекция лимитов (таймаут-страж → структурный <code>rate_limit_event</code> → фильтрованный
+      текст → исчерпание Extra-Usage); режим без присмотра <strong>ждёт сброса окна вместо смерти</strong>.
+      Самый релевантный gosleep паттерн во всей экосистеме.</p></div>
+    <div class="card t-acc"><div class="ct">Детекция вопросов и защита файлов</div>
+      <p>Ловит момент, когда Claude спрашивает вместо того, чтобы действовать (в headless человека нет), и
+      подмешивает корректирующее указание в следующий цикл; гранулярные allowlist'ы + проверка целостности на
+      каждом цикле не дают агенту удалить собственные управляющие файлы.</p></div>
+  </div>
+  <p>Механика цикла: собрать контекст (номер цикла, оставшиеся задачи <code>fix_plan.md</code>, состояние breaker'а,
+  сводка прошлого цикла) → вызвать <code>claude -p --output-format json</code> с <code>--allowedTools</code> и
+  <code>--resume</code> сессии → разобрать JSON → продолжить/выйти. Плюс: rate limiter (100 вызовов/ч), резервные
+  git-ветки + откат, tmux-дашборд мониторинга, очередь из GitHub-issue. Стратегическое чтение (ADR 0001):
+  мейнтейнер ставит на то, что headless уходит на API-кредиты, отказывается от хака с управлением TUI как
+  враждебного ToS и идёт в провайдеро-агностичность. Детали, которые стоит украсть: только Claude и Gemini
+  поддерживают безгоночные предназначенные id сессий (<code>--session-id</code> при создании); «неподдерживаемые
+  фичи деградируют с залогированным предупреждением, никогда — молчаливым сбоем».</p>
+  <p class="src">Источники: <code>.research-cache/ralph-claude-code</code> README, CLAUDE.md, ADR 0001; ghuntley.com/loop; The Register 2026-01-27.</p>
+
+  <h3>6.3 Claude Squad (<code>smtg-ai/claude-squad</code>) — минимальная рубка флота</h3>
+  <p>Один TUI (<code>cs</code>, ~8k★, ставится brew) со списком N <em>инстансов</em>; каждый = git worktree +
+  tmux-сессия; создать/поставить на паузу/возобновить/подключиться; ревью диффов перед применением; опциональный
+  фоновый «yolo»-режим с автоприёмом. <strong>Спавн (проверен в исходниках):</strong>
+  <code>tmux new-session -d -s claudesquad_&lt;name&gt; -c &lt;worktree&gt; claude</code> — чистый интерактивный CLI
+  в tmux, подписочная квота, ноль поверхности ToS. Ни координации агентов между собой, ни планировщика — рубка
+  флота, а не оркестратор. Значение для gosleep: независимый зрелый проект сошёлся на <em>точно таком же</em>
+  паттерне спавна; конкретные заимствования — изоляция worktree на инстанс и UX паузы/резюма.</p>
+  <p class="src">Источник: <code>.research-cache/claude-squad</code> <code>session/tmux/</code>, README.</p>
+
+  <h3>6.4 Короткий хвост</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Инструмент</th><th>Что это</th><th>Спавн / аутентификация</th><th>Вердикт для gosleep</th></tr></thead>
+    <tbody>
+      <tr><td>Ruflo (экс-claude-flow)</td><td>Роевые топологии «hive-mind/queen», 87 MCP-инструментов, 31,1k★ — самый зазвездованный оркестратор; заявления о производительности (84,8% SWE-bench) оспариваются сообществом</td><td>SDK/API → <span class="badge b-crit">только API-ключ; для Pro/Max заблокирован с апреля 2026</span></td><td><strong>Избегать</strong> — запрещённая для подписки категория, много хайпа, тяжёлая поверхность зависимостей</td></tr>
+      <tr><td>vibe-kanban (BloopAI)</td><td>Kanban-доска над параллельными агентами (10+ CLI); карточка = воркспейс с веткой/терминалом/ревью диффа</td><td>Локальные CLI → <span class="badge b-good">✓ подписка</span></td><td>Компания закрылась 2026-04-10; поддерживается сообществом — риск сопровождения</td></tr>
+      <tr><td>Conductor / Crystal</td><td>Десктопные UI (Mac/Electron); каждая сессия Claude Code в изолированном worktree с ревью диффа/PR</td><td>Официальный CLI → <span class="badge b-good">✓ подписка</span></td><td>Только параллелизм под присмотром человека; без автономии; GUI-форма не совместима с tmux/скиллами</td></tr>
+      <tr><td>ccpm (automazeio)</td><td>На shell: GitHub Issues как слой координации — issue → worktree → агент с отчётом обратно в тред; ~7,9k★</td><td>Официальный CLI → <span class="badge b-good">✓ подписка</span></td><td>Философски ближе всех к зеркалированию Jira/GitHub у gosleep; стоит наблюдать</td></tr>
+      <tr><td>Mission Control (builderz-labs)</td><td>Self-hosted дашборд диспетчеризации/мониторинга/контроля трат <em>поверх</em> исполнителя (Ruflo или Claude Squad); ~3,8k★</td><td>н/д (слой сверху)</td><td>Слой-дашборд, не исполнитель</td></tr>
+      <tr><td>Swarm SDK (parruda)</td><td>Низкоуровневые примитивы для сборки сессий Claude Code в рои; оркестратор пишете сами</td><td>по-разному</td><td>DIY-уровень — эту роль у gosleep уже играет скилл</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Источники: веб-обзор + инспекция клонированных исходников, <code>03-headless-subscription-landscape.md</code> §4; счётчики звёзд — вторичные данные.</p>
+</section>
+<!-- ==================== 7 МАТРИЦА ==================== -->
+<section class="sec" id="matrix">
+  <h2><span class="secnum">7</span>Сравнительная матрица</h2>
+  <p class="sub">Семь систем бок о бок — шесть сильнейших внешних референсов плюс gosleep в сегодняшнем виде
+  (по <code>skill/orchestrating-delivery-agents/SKILL.md</code> и леджеру проекта). Сначала — gosleep сегодня,
+  для читателя без контекста:</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 880 336" role="img" aria-label="Диаграмма текущей архитектуры gosleep">
+      <defs>
+        <marker id="arw-gs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" class="ar"/>
+        </marker>
+      </defs>
+      <rect x="16" y="30" width="200" height="60" rx="8" class="bxs"/>
+      <text x="30" y="53">Владелец (человек)</text>
+      <text x="30" y="71" class="ts">границы · утренняя очередь</text>
+      <line x1="116" y1="90" x2="116" y2="128" class="ln" marker-start="url(#arw-gs)" marker-end="url(#arw-gs)"/>
+      <rect x="16" y="130" width="200" height="104" rx="8" class="bxa"/>
+      <text x="30" y="153">Оркестратор</text>
+      <text x="30" y="171" class="ts">лид Claude Code, интерактивный tmux</text>
+      <text x="30" y="188" class="ts">сам не выполняет ничего</text>
+      <text x="30" y="205" class="ts">само-пульс каждые 5–10 мин</text>
+      <text x="30" y="222" class="ts">ролл на ~70% контекста → handoff</text>
+      <line x1="216" y1="160" x2="288" y2="120" class="ln" marker-end="url(#arw-gs)"/>
+      <line x1="216" y1="190" x2="288" y2="190" class="ln" marker-end="url(#arw-gs)"/>
+      <text x="252" y="146" class="tm" text-anchor="middle">спавн ·</text>
+      <text x="252" y="160" class="tm" text-anchor="middle">SendMessage ⇅</text>
+      <rect x="290" y="80" width="220" height="58" rx="8" class="bxs"/>
+      <text x="304" y="103">Цикл-воркер (панель tmux)</text>
+      <text x="304" y="121" class="ts">один кусок контекста → handoff</text>
+      <rect x="290" y="152" width="220" height="58" rx="8" class="bxs"/>
+      <text x="304" y="175">Ревьюер / верификатор (панель)</text>
+      <text x="304" y="193" class="ts">одноразовый · дешёвый тир · watchdog</text>
+      <rect x="290" y="224" width="220" height="40" rx="8" class="bx"/>
+      <text x="304" y="249" class="tm">лимит: ~3 панели одновременно (fork)</text>
+      <line x1="510" y1="109" x2="580" y2="80" class="ln" marker-end="url(#arw-gs)"/>
+      <line x1="510" y1="181" x2="580" y2="196" class="ln" marker-end="url(#arw-gs)"/>
+      <text x="545" y="70" class="tm" text-anchor="middle">handoff'ы</text>
+      <text x="545" y="212" class="tm" text-anchor="middle">PR'ы</text>
+      <rect x="582" y="30" width="282" height="98" rx="8" class="bxg"/>
+      <text x="596" y="53">Леджер на диске — docs/handoff/</text>
+      <text x="596" y="71" class="ts">ORCHESTRATION-STATE.md (атомарно temp→rename)</text>
+      <text x="596" y="88" class="ts">датированные handoff'ы NN-ГГГГ-ММ-ДД</text>
+      <text x="596" y="105" class="ts">блок TELEMETRY: токены по циклам</text>
+      <rect x="582" y="152" width="282" height="58" rx="8" class="bxs"/>
+      <text x="596" y="175">Jira (GSL) + GitHub</text>
+      <text x="596" y="193" class="ts">ветка эпика · коммит на задачу · один PR на эпик</text>
+      <rect x="16" y="278" width="264" height="46" rx="8" class="bxc"/>
+      <text x="30" y="298" class="tc">ДЫРА · за оркестратором никто не следит</text>
+      <text x="30" y="314" class="tc">(нет внешнего watchdog'а)</text>
+      <rect x="298" y="278" width="264" height="46" rx="8" class="bxc"/>
+      <text x="312" y="298" class="tc">ДЫРА · нет уведомлений</text>
+      <text x="312" y="314" class="tc">(парковки и застои молчаливы)</text>
+      <rect x="580" y="278" width="284" height="46" rx="8" class="bxc"/>
+      <text x="594" y="298" class="tc">ДЫРА · нет ночного планировщика</text>
+      <text x="594" y="314" class="tc">(нет резюма с учётом окон квоты)</text>
+    </svg>
+    <p class="figcap">Рис. 7a — gosleep сегодня: интерактивный оркестратор на Agent Teams, одноразовые воркеры,
+    всё состояние на диске — и три дыры, в которые целится это исследование, отмечены красным.
+    Источник: <code>skill/orchestrating-delivery-agents/SKILL.md</code>, память проекта (правило пульса, лимит панелей).</p>
+  </div>
+
+  <div class="tw"><table class="matrix">
+    <thead><tr>
+      <th>Измерение</th><th>AutoSK</th><th>Warren</th><th>Overstory</th><th>Gastown</th><th>Ralph</th><th>Claude Squad</th><th class="hl">gosleep (сейчас)</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Что это</td><td>Файловый трекер задач + движок workflow + демон</td><td>Control plane для эфемерных облачных агентов в песочницах</td><td>Локальный мультиагентный рой с почтовой шиной (архив)</td><td>Менеджер мультиагентного воркспейса (Mayor + polecats + Beads)</td><td>Закалённый цикл <code>claude -p</code></td><td>TUI-рубка параллельных инстансов</td><td class="hl">Оркестратор на скилле поверх Agent Teams</td></tr>
+      <tr><td>Статус</td><td>Активен, соло, v0.2.4, 27★</td><td>Очень активен, v0.9.10, dogfooding</td><td><span class="badge b-crit">архив 2026-05-28</span></td><td>Очень активен, v1.x, ~24k★ (Beads)</td><td>Активен, v0.11.5, 784 теста</td><td>Зрелый, ~8k★</td><td class="hl">Активен, внутренний</td></tr>
+      <tr><td>Механизм спавна</td><td>Подпроцесс <code>claude -p</code> stream-json</td><td>Запуски в bwrap-песочницах burrow (делегировано)</td><td><code>claude -p</code> headless или интерактивный tmux</td><td>tmux + интерактивный <code>claude</code> (проверено)</td><td>Цикл <code>claude -p --output-format json</code> + <code>--resume</code></td><td><code>tmux new-session … claude</code> (проверено)</td><td class="hl">Тиммейты Agent Teams в панелях tmux, интерактивно</td></tr>
+      <tr><td>Совместимость с подпиской</td><td><span class="badge b-good">✓ нативно</span> (ноль кода ключей)</td><td><span class="badge b-crit">✗ нужен API-ключ</span></td><td><span class="badge b-good">✓ едет на логине CLI</span></td><td><span class="badge b-good">✓ интерактивная квота</span></td><td><span class="badge b-good">✓</span> через программный пул</td><td><span class="badge b-good">✓ интерактивная квота</span></td><td class="hl"><span class="badge b-good">✓ интерактивная квота</span></td></tr>
+      <tr><td>Хранилище состояния</td><td>Простые файлы <code>.autosk/</code>, атомарная запись, golden-тесты байтов</td><td>Событийный лог SQLite (опц. Postgres)</td><td>SQLite-почта + sessions.json + файлы чекпоинтов</td><td>Beads (issue в git) + worktree-«hooks»</td><td>Файловая система: <code>PROMPT.md</code>, <code>fix_plan.md</code>, <code>status.json</code></td><td>Worktree на инстанс + состояние приложения</td><td class="hl">Файлы: STATE-леджер + датированные handoff'ы, атомарно temp→rename</td></tr>
+      <tr><td>Изоляция</td><td>Принадлежит агенту: worktree или docker</td><td>bwrap-песочница на запуск</td><td>Git worktree на воркера</td><td>Hooks на worktree</td><td>Опционально Docker/E2B</td><td>Worktree на инстанс</td><td class="hl">Один редактирующий воркер на дерево, последовательно</td></tr>
+      <tr><td>Надзор / watchdog</td><td>Только kickback + лимиты визитов; watchdog'а зависаний нет</td><td>4 слоя: внешний restart policy, супервизор, механический 45-мин heartbeat-watchdog, детекторы — всё детерминировано</td><td>4 уровня, вкл. ИИ-триаж + агент-монитор; сам координатор не отслеживается на зависания</td><td>Детекция зомби-сессий; детекция застоя конвоев</td><td>Circuit breaker + exit gate + детекция вопросов</td><td>Нет (следит человек)</td><td class="hl">Само-пульс + часы терпения + watchdog верификатора; <strong>над оркестратором — никого</strong></td></tr>
+      <tr><td>Бюджеты циклов</td><td>3 поправки / лимиты визитов шага, персистентно и сбрасываемо человеком</td><td>Лимиты стоимости на лету (fail open), бюджет паузы 30 мин, ретраи healer + cooldown</td><td><code>maxTriagePerTick</code>; уровни эскалации</td><td>Логика пропуска конвоев</td><td>Rate limiter 100/ч, пороги breaker'а, двухусловный exit gate</td><td>—</td><td class="hl">Потолки циклов/токенов, loop guard (тот же NEXT), телеметрия на цикл</td></tr>
+      <tr><td>Восстановление после крэша</td><td>Собрать-и-запарковать; <code>session_id</code> захвачен, но не используется</td><td>Переподключение на загрузке (приёмочные тесты); re-wake из транскрипта; reap собирает частичную работу</td><td>Сверка ZFC; резюм с чекпоинтов; <strong>координатор не авто-перезапускается</strong></td><td>Hooks переживают крэши; постоянная идентичность</td><td>Резюм сессии (24ч); откатные git-ветки</td><td>Пауза/резюм инстансов</td><td class="hl">Холодный старт: прочесть леджер + свежий handoff, сверить, переподключиться — вручную</td></tr>
+      <tr><td>Планирование / автономия</td><td><span class="badge b-crit">нет</span> — ни cron, ни авто-резюма</td><td>Cron-триггеры + патрули nightwatch/bugwatch; последовательные plan-run с PR-гейтом</td><td>Свободный патруль (монитор)</td><td>Автономные конвои (mountain)</td><td>Цикл и <em>есть</em> планировщик; автоожидание квоты</td><td><span class="badge b-crit">нет</span></td><td class="hl"><span class="badge b-crit">нет</span> — только пульс, взводимый владельцем</td></tr>
+      <tr><td>Руление</td><td>Interrupt посреди хода через stream-json stdin</td><td>Steer-через-инбокс на границе хода</td><td>Почта/nudge; tmux attach</td><td>Разговор с Мэром</td><td>Корректирующее указание в следующем цикле</td><td>tmux attach</td><td class="hl">SendMessage посреди цикла + tmux attach</td></tr>
+      <tr><td>UI</td><td>CLI + TUI + Tauri GUI (десктоп)</td><td>Web SPA + CLI + HTTP</td><td>CLI + web-UI <code>ov serve</code></td><td>CLI (есть hosted-вариант)</td><td>tmux-дашборд мониторинга</td><td>TUI</td><td class="hl">Панели tmux + отчёты ≤12 строк + леджер</td></tr>
+      <tr><td>Мобильный / удалённый</td><td>iOS TestFlight (только удалённо; без TLS, без push)</td><td>Web (self-hosted)</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="hl">—</td></tr>
+      <tr><td>Уведомления</td><td><span class="badge b-crit">нет</span> (парковки молчат)</td><td>Входящие webhooks (healer); исходящих нет</td><td>Только внутренняя почта</td><td>—</td><td>—</td><td>—</td><td class="hl"><span class="badge b-crit">нет</span> (дыра)</td></tr>
+      <tr><td>Масштаб</td><td>Глобальный пул на 4 воркера</td><td>Последовательно по замыслу (plan-runs); мультиворкерное размещение</td><td>Рои по 20 агентов (само-опровергнуто)</td><td>20–30 агентов</td><td>1 зацикленный агент</td><td>N независимых инстансов</td><td class="hl">~3 панели одновременно</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Источники: §§2–6 выше; колонка gosleep — из <code>skill/orchestrating-delivery-agents/SKILL.md</code>, <code>CLAUDE.md</code>, заметок памяти проекта.</p>
+</section>
+
+<!-- ==================== 8 ЧТО БЕРЁМ ==================== -->
+<section class="sec" id="adopt">
+  <h2><span class="secnum">8</span>Что берёт gosleep — объединённый ранжированный план</h2>
+  <p class="sub">Дедуплицировано по всем трём исследованиям. Уровень 1 = делать сейчас, по рычагу; уровень 2 =
+  следующие, дешёвые или наполовину готовые; затем явный список «не брать». Метки источников:
+  <span class="badge b-neu">ASK</span> AutoSK · <span class="badge b-neu">W/O</span> Warren/Overstory ·
+  <span class="badge b-neu">ECO</span> отчёт по экосистеме.</p>
+
+  <h3>Уровень 1 — шесть ходов, меняющих суть gosleep</h3>
+  <ol class="rank">
+    <li><span class="rt">Heartbeat-файл + внешний механический watchdog с бюджетом рестартов и эскалацией человеку</span>
+      <span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-warn">У сред</span><span class="badge b-good">Р низ</span><span class="badge b-neu">W/O</span></span>
+      <p>Каждый пульс оркестратора дописывает <code>{ts, context%, флот}</code> в фиксированный файл (запись —
+      ПЕРВОЕ действие пульса). launchd-агент каждые 2–5 минут проверяет: сессия существует / heartbeat свежий /
+      context% под потолком; мёртв → респавн по протоколу холодного старта (переподключиться, не респавнить
+      воркеров); застой → один nudge, потом kill по явному id; бюджет 3-за-60-мин, потом стоп и эскалация.
+      Семантика супервизора и watchdog'а Warren, пересаженная на tmux. Убирает «оркестратор умер в 3 часа ночи,
+      флот простоял до утра» — самую большую дыру.</p></li>
+    <li><span class="rt">Park-to-human как единственный сток отказов, с пояснительной запиской</span>
+      <span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span><span class="badge b-neu">ASK</span></span>
+      <p>Каждый отказ — крэш, нет handoff'а, лимит, kill watchdog'ом, структурный дрейф — сходится в ОДНО
+      запаркованное состояние с машинно-написанным объяснением, образуя утреннюю очередь владельца. У gosleep есть
+      BLOCKED_ON_HUMAN; это обобщает его до <em>универсального</em> стока с аудируемым полем причины.</p></li>
+    <li><span class="rt">Персистентные, сбрасываемые человеком бюджеты циклов — полный словарь</span>
+      <span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span><span class="badge b-neu">ASK</span><span class="badge b-neu">ECO</span></span>
+      <p>Три уровня AutoSK (поправки хода ×3 → лимиты визитов шага → парковка), слитые с порогами breaker'а Ralph
+      (без прогресса ×3, та же ошибка ×5, коллапс вывода, отказ разрешений ×2) и двухусловным exit gate. Счётчики
+      живут в леджере/файлах задач, не в памяти — владелец может «помиловать» запаркованную задачу из любого
+      редактора, а утреннее состояние аудируемо.</p></li>
+    <li><span class="rt">Автоожидание квоты, выращенное до планирования флота с учётом окон</span>
+      <span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-warn">У сред</span><span class="badge b-good">Р низ</span><span class="badge b-neu">ECO</span><span class="badge b-neu">ASK</span></span>
+      <p>Детектировать исчерпание лимитов подписки (4-слойная детекция Ralph), чисто усыпить флот и автоматически
+      возобновиться по сбросу окна — вместо «AutoSK запарковал всё в час ночи». Этого не делает никто в ландшафте;
+      это именная функция gosleep.</p></li>
+    <li><span class="rt">Push-уведомления по парковке (ntfy / Telegram / APNs)</span>
+      <span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span><span class="badge b-neu">ASK</span></span>
+      <p>В момент, когда работа паркуется на человека — или watchdog эскалирует, — телефон владельца знает.
+      Ни один инструмент обзора этого не имеет; это и есть разница между «работает без присмотра» и
+      «на этом можно спокойно спать».</p></li>
+    <li><span class="rt">Восстановление = переподключение + сверка, никогда слепой респавн (закалить холодный старт)</span>
+      <span class="ver"><span class="badge b-good">Ц выс</span><span class="badge b-good">У низ</span><span class="badge b-good">Р низ</span><span class="badge b-neu">W/O</span></span>
+      <p>Паттерн <code>recover.ts</code> Warren: пройти долговечное состояние, переподключиться к живым воркерам,
+      показать частичные спавны; re-wake = свежий оркестратор, засеянный из леджера, никогда не «оживление»
+      мёртвого контекста. В скилле уже почти закодировано — сделать это промптом респавна для watchdog'а и
+      покрыть приёмочным тестом.</p></li>
+  </ol>
+
+  <h3>Уровень 2 — следующие, по порядку</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Заимствование</th><th>Источник</th><th>Заметка</th></tr></thead>
+    <tbody>
+      <tr><td class="tab">7</td><td>Обвязка <code>claude -p</code> stream-json для ограниченного клея (точные флаги, steer-через-interrupt, очередь follow-up)</td><td><span class="badge b-neu">ASK</span></td><td>Ночные отчёты, триаж watchdog'а, CI-проверки — в пределах программного пула, с <code>--max-budget-usd</code>.</td></tr>
+      <tr><td class="tab">8</td><td>Детали дизайна watchdog'а: вкл по умолчанию, single-flight-тики, изоляция ошибок по воркеру, щедрые пороги (масштаб 45 мин), исключить долго-простаивающие интерактивные сессии, конфиг падает громко</td><td><span class="badge b-neu">W/O</span></td><td>Разница между страховочной сетью и граблями.</td></tr>
+      <tr><td class="tab">9</td><td>Сбор-через-reap при kill + запись <code>worker_died</code> в леджер</td><td><span class="badge b-neu">W/O</span></td><td>Убивая зависшего воркера, всё равно собрать закоммиченное (ветку, заметки); ни одна задача не исчезает молча.</td></tr>
+      <tr><td class="tab">10</td><td>Человеческие гейты с таймаутами</td><td><span class="badge b-neu">W/O</span></td><td>Каждая пауза «спросить владельца» несёт бюджет времени; по истечении — продолжить с записанным предупреждением; спящий владелец не заклинит флот.</td></tr>
+      <tr><td class="tab">11</td><td>Детекция зомби-сессий (tmux жив ≠ Claude жив) в проверке пульса</td><td><span class="badge b-neu">ECO</span></td><td>Проверено Gastown'ом; дёшево добавить в ранжирование живости.</td></tr>
+      <tr><td class="tab">12</td><td>Закалка атомарной записи: добавить fsync(файла)+fsync(каталога) к существующему temp→rename</td><td><span class="badge b-neu">ASK</span></td><td>Крэш никогда не порвёт handoff.</td></tr>
+      <tr><td class="tab">13</td><td>Последовательное исполнение плана с PR-гейтом, резюмируемое с «следующего открытого ребёнка»</td><td><span class="badge b-neu">W/O</span></td><td>Совпадает с «один коммит на задачу» и лимитом ~3 панелей; экономика STEELMAN и так против веера.</td></tr>
+      <tr><td class="tab">14</td><td>Обёртка бюджетной телеметрии: каждый headless-вызов логирует <code>total_cost_usd</code> + session id в TELEMETRY-леджер; алерт на N% месячного программного кредита</td><td><span class="badge b-neu">ECO</span></td><td>Расширяет существующий блок телеметрии по циклам.</td></tr>
+      <tr><td class="tab">15</td><td>Память об отказах: каждое вмешательство watchdog'а дописывает структурированную запись в файл выводов</td><td><span class="badge b-neu">W/O</span></td><td>Питает ретро и настройку порогов — институциональная память о том, как умирают агенты.</td></tr>
+      <tr><td class="tab">16</td><td>Дисциплина промпта воркера: «quality gates are terminal, not advisory… оставь работу открытой вместо объявления успеха»; воркеры коммитят, оркестратор пушит</td><td><span class="badge b-neu">W/O</span></td><td>Вставить в шаблон цикл-воркера.</td></tr>
+      <tr><td class="tab">17</td><td>Объявленные handoff'ы: transit как явный сигнал с ограниченным kickback-переспросом</td><td><span class="badge b-neu">ASK</span></td><td>COMPLETE-отчёт становится валидируемым, машинно-проверяемым сигналом, а не прозой.</td></tr>
+      <tr><td class="tab">18</td><td>Однонаправленная машина состояний воркера с CAS-защитой (<code>completed</code> — липкий)</td><td><span class="badge b-neu">W/O</span></td><td>Поздний тик watchdog'а не может переквалифицировать чистый выход.</td></tr>
+      <tr><td class="tab">19</td><td>Прототип официальных Routines: один ночной триггер «разбудить флот / прогнать очередь / выслать отчёт», обёрнутый тонким скиллом</td><td><span class="badge b-neu">ECO</span></td><td>Research preview — держать заменяемым; локально оценить <code>/loop</code> + плановые задачи как запасной вариант.</td></tr>
+      <tr><td class="tab">20</td><td><code>claude setup-token</code> для CI; файл политических ограждений (никакого OAuth вне официальных поверхностей; проверка <code>unset ANTHROPIC_API_KEY</code> в install/doctor)</td><td><span class="badge b-neu">ECO</span></td><td>CI на подписке без API-ключа; будущие агенты не забредут на запрещённую территорию.</td></tr>
+      <tr><td class="tab">21</td><td>Изоляция worktree-на-воркера там, где позволяют сборки; проба PATH через логин-шелл для всего, что спавнится из launchd</td><td><span class="badge b-neu">ECO</span> <span class="badge b-neu">ASK</span></td><td>Оговорка из скилла: в свежем worktree нет <code>node_modules</code>/<code>.env.local</code> — секвенирование часто выигрывает.</td></tr>
+      <tr><td class="tab">22</td><td>Пилот ночного оркестратора в tick-режиме (вариант E)</td><td><span class="badge b-neu">W/O</span></td><td>Прототипировать после стабилизации уровня 1; днём интерактивно, ночью tick-режим; сравнить пропускную способность и отказы.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Явно НЕ берём</h3>
+  <ul>
+    <li><strong>Ruflo / claude-flow</strong> — только API, запрещённая для подписки категория, перегрет хайпом.</li>
+    <li><strong>vibe-kanban</strong> — компания закрылась 2026-04-10; риск сопровождения.</li>
+    <li><strong>GUI-менеджеры (Conductor / Crystal)</strong> — неправильная форма для системы на tmux/скиллах.</li>
+    <li><strong>Хаки с управлением TUI (в стиле maestro-p)</strong> — враждебны ToS по ADR Ralph; и не нужны — Agent Teams санкционированы.</li>
+    <li><strong>Парные оркестраторы (active/standby)</strong> — риск split-brain; никто не выпустил; лишние надзорные этажи себя не оправдали (Overstory задепрекейтил собственный).</li>
+    <li><strong>Постоянные ИИ-патрули</strong> — Overstory построил, Warren удалил; ИИ — только в ограниченном триаже по аномалии.</li>
+    <li><strong>Тащить Beads / БД</strong> — Jira + GH Issues + handoff-файлы уже играют эту роль; файлы выиграли спор о состоянии дважды (AutoSK v2 и наш собственный леджер).</li>
+  </ul>
+
+  <div class="callout good">
+    <div class="ct">Стратегия в один абзац</div>
+    <p>Двигатель оставить ровно там, где он есть — интерактивные Agent Teams на интерактивной квоте подписки,
+    поверхности, которую Anthropic продолжает защищать. Обернуть его надзором уровня Warren (heartbeat + глупый
+    внешний watchdog + бюджет рестартов), дисциплиной отказов уровня AutoSK (park-to-human с причинами,
+    персистентные бюджеты) и закалкой циклов уровня Ralph (breaker, exit gate, автоожидание квоты). Затем выпустить
+    две функции, которых нет ни у кого — push-по-парковке и резюм с учётом окон, — и gosleep по построению станет
+    самой безопасной вещью в этом ландшафте, на которой можно спать.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Метод и происхождение данных.</strong> Составлено 2026-07-07/08 из трёх первичных исследований,
+  подготовленных исследовательскими воркерами для GSL-41:
+  <code>docs/research/2026-07-07-orchestration/01-autosk.md</code> (репозиторий клонирован @ <code>fd4c22e</code>),
+  <code>02-warren-overstory.md</code> (warren @ <code>c3508c5</code>, overstory @ <code>ff38f3f</code>),
+  <code>03-headless-subscription-landscape.md</code> (официальные доки получены 2026-07-07; gastown, claude-squad,
+  ralph-claude-code клонированы в <code>.research-cache/</code>). Все выводы — статический анализ, ни один
+  инструмент не запускался. Известные оговорки: цифры программного кредита от 2026-06-15 опираются на вторичные
+  гайды + ADR Ralph (первичное уведомление Help-Center не найдено); анонс 2026-04-04 восстановлен по прессе;
+  счётчики звёзд короткого хвоста — вторичные данные. Колонка gosleep отражает
+  <code>skill/orchestrating-delivery-agents/SKILL.md</code> на ветке <code>GSL-41-orchestration-research</code>.</p>
+  <p><a href="../index.html">English version of this report →</a></p>
+</footer>
+
+</div>
+</body>
+</html>

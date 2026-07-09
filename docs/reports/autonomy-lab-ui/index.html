@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoSleep — Autonomy, Question Buffer, Laboratory, UI &amp; Mobile</title>
+<style>
+/* ============================================================
+   DESIGN SYSTEM — self-contained, no external resources
+   Accents: indigo (autonomy), teal (data), amber (attention)
+   Severity ramp: blocker / decision / clarify / fyi
+   ============================================================ */
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#fbfcfe;
+  --ink:#161a2b; --ink2:#3a4157; --ink3:#69708a; --faint:#9aa0b8;
+  --line:#e2e5f0; --line2:#d0d5e6;
+  --accent:#5a54e0;      /* indigo */
+  --accent-soft:#ecebff;
+  --teal:#0f9aa8; --teal-soft:#dff5f7;
+  --amber:#c9820a; --amber-soft:#fdf0d6;
+  --blocker:#d63b4b; --blocker-soft:#fbe3e6;
+  --decision:#c9820a; --decision-soft:#fdf0d6;
+  --clarify:#2f74d0; --clarify-soft:#e2edfb;
+  --fyi:#6b7392; --fyi-soft:#eceef5;
+  --ok:#159a63; --ok-soft:#dcf5e9;
+  --mono:'SF Mono',ui-monospace,'Cascadia Code','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --shadow:0 1px 2px rgba(20,26,43,.05),0 6px 22px rgba(20,26,43,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0c0e18; --bg2:#0a0c14; --card:#151826; --card2:#191d2e;
+    --ink:#eceeffb0; --ink:#e8ebf7; --ink2:#b9c0d8; --ink3:#8b93b0; --faint:#6a7291;
+    --line:#262b3f; --line2:#333a54;
+    --accent:#8f8bff; --accent-soft:#232248;
+    --teal:#39c9d6; --teal-soft:#123037;
+    --amber:#e6a63a; --amber-soft:#3a2e12;
+    --blocker:#ff6b78; --blocker-soft:#3a1a1f;
+    --decision:#e6a63a; --decision-soft:#3a2e12;
+    --clarify:#6fa8f0; --clarify-soft:#16263f;
+    --fyi:#9aa2c4; --fyi-soft:#20243a;
+    --ok:#43c98a; --ok-soft:#12321f;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#fbfcfe;
+  --ink:#161a2b; --ink2:#3a4157; --ink3:#69708a; --faint:#9aa0b8;
+  --line:#e2e5f0; --line2:#d0d5e6;
+  --accent:#5a54e0; --accent-soft:#ecebff;
+  --teal:#0f9aa8; --teal-soft:#dff5f7;
+  --amber:#c9820a; --amber-soft:#fdf0d6;
+  --blocker:#d63b4b; --blocker-soft:#fbe3e6;
+  --decision:#c9820a; --decision-soft:#fdf0d6;
+  --clarify:#2f74d0; --clarify-soft:#e2edfb;
+  --fyi:#6b7392; --fyi-soft:#eceef5;
+  --ok:#159a63; --ok-soft:#dcf5e9;
+  --shadow:0 1px 2px rgba(20,26,43,.05),0 6px 22px rgba(20,26,43,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e18; --bg2:#0a0c14; --card:#151826; --card2:#191d2e;
+  --ink:#e8ebf7; --ink2:#b9c0d8; --ink3:#8b93b0; --faint:#6a7291;
+  --line:#262b3f; --line2:#333a54;
+  --accent:#8f8bff; --accent-soft:#232248;
+  --teal:#39c9d6; --teal-soft:#123037;
+  --amber:#e6a63a; --amber-soft:#3a2e12;
+  --blocker:#ff6b78; --blocker-soft:#3a1a1f;
+  --decision:#e6a63a; --decision-soft:#3a2e12;
+  --clarify:#6fa8f0; --clarify-soft:#16263f;
+  --fyi:#9aa2c4; --fyi-soft:#20243a;
+  --ok:#43c98a; --ok-soft:#12321f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.6;font-size:16px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.topbar .row{display:flex;align-items:center;gap:14px;height:56px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+.brand .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--teal));display:inline-block;box-shadow:0 0 0 3px var(--accent-soft)}
+.brand small{font-weight:500;color:var(--ink3);font-size:12px}
+.nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.nav a{font-size:12.5px;color:var(--ink2);text-decoration:none;padding:6px 9px;border-radius:8px;white-space:nowrap}
+.nav a:hover{background:var(--accent-soft);color:var(--accent)}
+.themebtn{border:1px solid var(--line2);background:var(--card);color:var(--ink2);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+.themebtn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ---------- hero ---------- */
+.hero{padding:60px 0 34px;border-bottom:1px solid var(--line);
+  background:
+    radial-gradient(900px 380px at 12% -8%,var(--accent-soft),transparent 60%),
+    radial-gradient(700px 340px at 96% 0%,var(--teal-soft),transparent 55%);
+}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px;letter-spacing:.5px;color:var(--accent);background:var(--card);border:1px solid var(--line2);padding:5px 11px;border-radius:999px;text-transform:uppercase}
+h1.title{font-size:clamp(28px,4.6vw,46px);line-height:1.08;margin:16px 0 10px;letter-spacing:-.5px;font-weight:800}
+.subtitle{font-size:clamp(16px,2vw,20px);color:var(--ink2);max-width:820px;margin:0 0 8px}
+.hero-meta{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:11.5px;color:var(--ink2);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.chip b{color:var(--accent)}
+
+/* ---------- sections ---------- */
+section{padding:46px 0;border-bottom:1px solid var(--line)}
+.sec-kicker{font-family:var(--mono);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);font-weight:600}
+h2{font-size:clamp(22px,3vw,31px);margin:8px 0 6px;letter-spacing:-.3px;font-weight:800}
+h3{font-size:19px;margin:30px 0 8px;font-weight:700;letter-spacing:-.2px}
+h4{font-size:15px;margin:20px 0 6px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.4px}
+p{margin:10px 0}
+.lead{font-size:17.5px;color:var(--ink2);max-width:860px}
+a.ref{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
+sup.fn{font-family:var(--mono);font-size:10px;color:var(--teal);font-weight:700;padding-left:1px}
+strong{color:var(--ink);font-weight:700}
+em{color:var(--ink2)}
+code{font-family:var(--mono);font-size:.86em;background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink)}
+
+/* ---------- cards & grid ---------- */
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:860px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px;box-shadow:var(--shadow)}
+.card.tint{background:var(--card2)}
+.card h4{margin-top:0}
+.card .num{font-family:var(--mono);font-size:30px;font-weight:800;color:var(--accent);line-height:1}
+.card .lbl{font-size:12.5px;color:var(--ink3);margin-top:4px}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:6px;text-transform:uppercase;vertical-align:middle}
+.b-block{background:var(--blocker-soft);color:var(--blocker)}
+.b-dec{background:var(--decision-soft);color:var(--decision)}
+.b-clar{background:var(--clarify-soft);color:var(--clarify)}
+.b-fyi{background:var(--fyi-soft);color:var(--fyi)}
+.b-ok{background:var(--ok-soft);color:var(--ok)}
+.b-t1{background:var(--accent-soft);color:var(--accent)}
+.b-t2{background:var(--teal-soft);color:var(--teal)}
+.b-t3{background:var(--amber-soft);color:var(--amber)}
+
+/* ---------- callouts ---------- */
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 12px 12px 0;padding:14px 18px;margin:18px 0}
+.callout.teal{border-color:var(--teal);background:var(--teal-soft)}
+.callout.amber{border-color:var(--amber);background:var(--amber-soft)}
+.callout.rot{border-color:var(--blocker);background:var(--blocker-soft)}
+.callout .t{font-weight:800;margin-bottom:3px;display:flex;gap:8px;align-items:center}
+.callout p{margin:4px 0}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:16px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+th{background:var(--bg2);text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap}
+.vhi{color:var(--ok);font-weight:700}
+.vmed{color:var(--amber);font-weight:700}
+.vlo{color:var(--ink3);font-weight:700}
+
+/* ---------- code blocks ---------- */
+pre{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:15px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:var(--ink2);margin:14px 0}
+pre .k{color:var(--accent);font-weight:600}
+pre .s{color:var(--teal)}
+pre .c{color:var(--faint);font-style:italic}
+pre .n{color:var(--amber)}
+
+/* ---------- figure / svg ---------- */
+figure{margin:20px 0}
+.figbox{background:var(--card2);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);overflow-x:auto}
+figcaption{font-size:12.5px;color:var(--ink3);margin-top:9px;font-family:var(--mono)}
+svg{max-width:100%;height:auto;display:block}
+
+/* ---------- device mockup frame ---------- */
+.device{border:1px solid var(--line2);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);background:var(--card);margin:16px 0}
+.device-bar{display:flex;align-items:center;gap:7px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--line)}
+.device-bar .tl{display:flex;gap:6px}
+.device-bar .tl i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.device-bar .tl i:nth-child(1){background:#ff5f57}
+.device-bar .tl i:nth-child(2){background:#febc2e}
+.device-bar .tl i:nth-child(3){background:#28c840}
+.device-bar .url{font-family:var(--mono);font-size:11px;color:var(--ink3);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 10px;flex:1}
+.device-body{padding:0}
+.appnav{display:flex;gap:2px;padding:8px 12px;background:var(--card2);border-bottom:1px solid var(--line);overflow-x:auto}
+.appnav .logo{font-weight:800;font-size:12px;letter-spacing:.5px;color:var(--accent);margin-right:8px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.appnav .logo .dot{width:14px;height:14px;border-radius:5px;background:linear-gradient(135deg,var(--accent),var(--teal))}
+.appnav a{font-size:11.5px;color:var(--ink3);padding:4px 9px;border-radius:7px;white-space:nowrap;text-decoration:none}
+.appnav a.on{background:var(--accent);color:#fff;font-weight:600}
+.screen{padding:16px}
+.screen-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.screen-h .t{font-weight:800;font-size:15px}
+.screen-h .s{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+
+/* runway strip */
+.runway{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 14px}
+.runway .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.runway .big{font-family:var(--mono);font-weight:800;font-size:18px;color:var(--ink)}
+.runway .bind{font-size:11.5px;color:var(--blocker);background:var(--blocker-soft);border-radius:6px;padding:2px 8px;font-family:var(--mono)}
+.gauges{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:680px){.gauges{grid-template-columns:repeat(3,1fr)}}
+.gauge{font-size:10.5px}
+.gauge .gl{color:var(--ink3);font-family:var(--mono);display:flex;justify-content:space-between;margin-bottom:3px}
+.gauge .track{height:7px;border-radius:99px;background:var(--line2);overflow:hidden}
+.gauge .fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--accent))}
+.gauge.warn .fill{background:linear-gradient(90deg,var(--amber),var(--blocker))}
+.gauge.bindg .track{box-shadow:0 0 0 2px var(--blocker-soft)}
+
+/* two-col digest */
+.digcols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:680px){.digcols{grid-template-columns:1fr}}
+.dcard{border:1px solid var(--line);border-radius:10px;padding:12px 13px;background:var(--card2)}
+.dcard .dh{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);font-weight:700;margin-bottom:9px;display:flex;justify-content:space-between}
+.qitem{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px dashed var(--line)}
+.qitem:first-of-type{border-top:none}
+.qitem .ib{flex-shrink:0;margin-top:1px}
+.qitem .qt{font-size:12.5px;color:var(--ink);line-height:1.4}
+.qitem .qm{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:2px}
+.li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink2);padding:5px 0}
+.li .dotm{width:6px;height:6px;border-radius:50%;background:var(--ok);margin-top:7px;flex-shrink:0}
+
+/* timeline rows */
+.tl-row{display:grid;grid-template-columns:58px 120px 110px 1fr;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;align-items:center}
+.tl-row:hover{background:var(--accent-soft)}
+.tl-row .ts{font-family:var(--mono);color:var(--ink3)}
+.tl-row .act{font-family:var(--mono);color:var(--accent);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-row .ty{font-family:var(--mono);color:var(--teal);font-size:11px}
+.tl-row .dt{color:var(--ink2);font-family:var(--mono);font-size:11.5px}
+.tl-row.inc{background:var(--blocker-soft)}
+.tl-row.inc .act{color:var(--blocker)}
+@media(max-width:680px){.tl-row{grid-template-columns:50px 1fr;row-gap:2px}.tl-row .ty{display:none}}
+
+/* task board */
+.taskrow{display:grid;grid-template-columns:88px 1fr 120px 96px;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line);font-size:12.5px}
+.taskrow .key{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.st{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.st.done{background:var(--ok-soft);color:var(--ok)}
+.st.prog{background:var(--clarify-soft);color:var(--clarify)}
+.st.todo{background:var(--fyi-soft);color:var(--fyi)}
+.taskrow .lk{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.taskrow .lk a,.taskrow .lk span{color:var(--accent)}
+@media(max-width:680px){.taskrow{grid-template-columns:80px 1fr;row-gap:2px}.taskrow .lk,.taskrow .own{grid-column:2}}
+
+/* fleet cards */
+.fleet{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:680px){.fleet{grid-template-columns:1fr}}
+.fcard{border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--card2)}
+.fcard .fh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.fcard .fn{font-family:var(--mono);font-weight:700;font-size:12.5px}
+.dot-st{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.run{background:var(--ok)} .idle{background:var(--amber)} .queued{background:var(--fyi)} .term{background:var(--faint)}
+.fcard .fm{font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.7}
+.mini-track{height:5px;border-radius:99px;background:var(--line2);margin-top:6px;overflow:hidden}
+.mini-track .mf{height:100%;background:linear-gradient(90deg,var(--teal),var(--accent))}
+
+/* question window cards */
+.qwin{display:flex;flex-direction:column;gap:9px}
+.qcard{border:1px solid var(--line);border-left-width:4px;border-radius:9px;padding:11px 13px;background:var(--card2)}
+.qcard.k-block{border-left-color:var(--blocker)}
+.qcard.k-dec{border-left-color:var(--decision)}
+.qcard.k-clar{border-left-color:var(--clarify)}
+.qcard.k-fyi{border-left-color:var(--fyi)}
+.qcard .qch{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.qcard .qq{font-size:13px;color:var(--ink);font-weight:600;line-height:1.4}
+.qcard .qmeta{font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.countdown{font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:700}
+.pushed{font-family:var(--mono);font-size:10px;color:var(--ok)}
+
+.foot{padding:40px 0 70px;color:var(--ink3);font-size:13px}
+.foot h3{color:var(--ink)}
+ol.src{font-size:12.5px;color:var(--ink2);line-height:1.7;padding-left:22px}
+ol.src li{margin:4px 0}
+ol.src code{font-size:11px}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.pill{font-family:var(--mono);font-size:11px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;color:var(--ink2)}
+hr.soft{border:none;border-top:1px dashed var(--line);margin:26px 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink3);margin:10px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:4px;display:inline-block}
+.toc{columns:2;column-gap:24px;font-size:13.5px}
+@media(max-width:680px){.toc{columns:1}}
+.toc a{color:var(--ink2);text-decoration:none;display:block;padding:4px 0;border-bottom:1px solid var(--line)}
+.toc a:hover{color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);font-size:11px;margin-right:6px}
+</style>
+</head>
+<body>
+
+<!-- ======================= TOP BAR ======================= -->
+<div class="topbar">
+  <div class="wrap row">
+    <div class="brand"><span class="dot"></span> GoSleep&nbsp;Lab <small>· GSL-41 research dossier</small></div>
+    <nav class="nav">
+      <a href="#overview">Overview</a>
+      <a href="#problem">Problem</a>
+      <a href="#laboratory">Laboratory</a>
+      <a href="#questions">Question&nbsp;buffer</a>
+      <a href="#ui">UI</a>
+      <a href="#mobile">Mobile</a>
+      <a href="#recommendations">Recs</a>
+    </nav>
+    <button class="themebtn" id="tt">◐ Theme</button>
+  </div>
+</div>
+
+<!-- ======================= HERO ======================= -->
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">● The owner sleeps · the work runs · the work documents itself</span>
+    <h1 class="title">Autonomy, the Question&nbsp;Buffer,<br>the Laboratory, UI&nbsp;&amp;&nbsp;Mobile</h1>
+    <p class="subtitle">A design dossier for turning GoSleep from a system where documentation is written <em>by convention or on request</em> into one where it is produced <strong>by itself</strong> — where a fleet of agents works overnight, buffers its own questions, and greets the owner in the morning with one place that shows everything.</p>
+    <div class="hero-meta">
+      <span class="chip">Phase <b>GSL-41</b> · writer-autonomy</span>
+      <span class="chip">Reference: <b>tasty-lunch</b> 828 docs / 523 commits</span>
+      <span class="chip">Source: <b>05-lab-ui-mobile-autonomy</b> + <b>01-autosk</b></span>
+      <span class="chip">Compiled <b>2026-07-08</b></span>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= OVERVIEW ======================= -->
+<section id="overview">
+  <div class="wrap">
+    <div class="sec-kicker">00 · The thesis</div>
+    <h2>One sentence, six moving parts</h2>
+    <p class="lead">Every artifact a delivery system produces sits somewhere on a spectrum of <strong>how deterministically it can be generated</strong>. The reference project (tasty-lunch) proved the two ends of that spectrum with brutal clarity: the <em>narrative</em> layer, enforced by skill conventions, scaled to 197 files without a hiccup — and the one artifact that required <em>regeneration</em>, a hand-built wiki status hub, rotted within a month. The Laboratory is the machine that wires the whole spectrum together so nothing rots and nothing needs a human's hand at 3 a.m.</p>
+
+    <div class="grid g4" style="margin-top:22px">
+      <div class="card"><div class="num">0</div><div class="lbl">tokens spent by the Tier-1 event layer — hooks fire whether or not the model cooperates</div></div>
+      <div class="card"><div class="num">4</div><div class="lbl">question types (BLOCKER / DECISION / CLARIFY / FYI), each with its own night behavior &amp; push rule</div></div>
+      <div class="card"><div class="num">7</div><div class="lbl">dashboard screens, regenerated from data — never hand-edited, therefore never rotting</div></div>
+      <div class="card"><div class="num">min()</div><div class="lbl">the autonomy runway = the nearest of six independent exhaustion clocks</div></div>
+    </div>
+
+    <div class="callout teal" style="margin-top:24px">
+      <div class="t">▲ The core inversion</div>
+      <p>Today <code>AskUserQuestion</code> is the primary interface for a question — and at night it just <strong>blocks a pane</strong> until someone wakes up. The Laboratory inverts this: the durable <strong>question record</strong> becomes primary (it survives sessions, feeds the dashboard, the digest, and push), and a live prompt is raised only when the owner is actually present. Absent → queue, take the reversible default, keep working, surface it in the morning.</p>
+    </div>
+
+    <h3>What you are looking at</h3>
+    <div class="toc">
+      <a href="#problem"><b>01</b> The problem &amp; the tasty-lunch lesson — conventions scale, hubs rot</a>
+      <a href="#laboratory"><b>02</b> The Laboratory — three tiers of decreasing determinism</a>
+      <a href="#questions"><b>03</b> The question buffer — typology, queue, manifest, learning loop, digest</a>
+      <a href="#ui"><b>04</b> Orchestration UI — 7 screens, mockups &amp; the autonomy runway</a>
+      <a href="#mobile"><b>05</b> Mobile — official Remote Control vs. the DIY autosk path</a>
+      <a href="#recommendations"><b>06</b> Ranked recommendations (value / effort / risk)</a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PROBLEM ======================= -->
+<section id="problem">
+  <div class="wrap">
+    <div class="sec-kicker">01 · The problem</div>
+    <h2>Docs today: written by convention or on request. The goal: by itself.</h2>
+    <p class="lead">GoSleep already has a strong base — every task leaves a paper trail <em>by rule, not by favor</em>. But nothing records events <em>as they happen</em>, questions to the owner have no home, and the dashboards that would tie it all together don't self-update. The lesson for what to build — and what never to build — comes from the reference project.</p>
+
+    <h3>The tasty-lunch lesson: conventions scale, hand-built hubs rot</h3>
+    <p>tasty-lunch is the same skills lineage as GoSleep: one solo owner + an AI orchestrator, 523 commits in ~a month, 828 docs on disk<sup class="fn">1</sup>. Reading its whole documentation tree sorts every artifact into a clean verdict — and the verdict is the design brief for the Laboratory.</p>
+
+    <div class="grid g2" style="margin-top:6px">
+      <div class="card">
+        <h4 style="color:var(--ok)">✓ What scaled — by convention</h4>
+        <p style="font-size:13.5px;color:var(--ink2)"><strong>197 dev_history files.</strong> <strong>94+ handoffs</strong>, numbered 01→94, each with a machine-parseable telemetry footer. <strong>19 lessons-learned</strong>, each citing a real incident and closing with a rule carried into the next cycle. The cycle prompts hard-code <em>“invoke /handoff”</em> — the “owner asks for a handoff” era is already over. Uniformity across 197 files <em>is</em> the evidence that convention-enforcement works at scale.</p>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--blocker)">✗ What rotted — hand-built, then abandoned</h4>
+        <p style="font-size:13.5px;color:var(--ink2)">The <strong>wiki status hub</strong> was hand-built once and never regenerated. It still reads <em>“Phase 1 in progress, 1 of 9 epics done”</em> — while delivery had reached <strong>Phase 23</strong>. No generator, no CI check, so it died within a month. Separately, <strong>81%</strong> of the <code>reports/</code> tree was never committed (a whole 155-file report set never landed) — scratch with no policy.</p>
+      </div>
+    </div>
+
+    <div class="callout rot">
+      <div class="t">⚠ The one rule this dossier is built around</div>
+      <p><strong>Anything that must be <em>regenerated</em> to stay true will rot unless a script regenerates it.</strong> 197 append-only narrative files survived because writing them is part of “done.” The single artifact needing regeneration died the moment a human stopped hand-editing it. → The Laboratory's dashboard must be <strong>script-regenerated from data, never hand-edited HTML.</strong></p>
+    </div>
+
+    <h3>GoSleep today — who writes what, on what trigger</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Artifact</th><th>Producer</th><th>Trigger today</th><th>Auto or manual?</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Dev history</strong> (per task)</td><td>Cycle worker</td><td>Convention: “written right after the commit lands”</td><td><span class="badge b-ok">Auto by convention</span></td></tr>
+          <tr><td><strong>Handoff</strong> (dated, numbered)</td><td>Cycle worker / orchestrator</td><td>Context low, boundary, blocker, or “write a handoff”</td><td><span class="badge b-dec">Semi-auto</span> · still fires on agent judgment</td></tr>
+          <tr><td><strong>ORCHESTRATION-STATE.md</strong></td><td>Orchestrator only</td><td>Every status change; telemetry after every worker ends</td><td><span class="badge b-ok">Auto — best we have</span></td></tr>
+          <tr><td><strong>Reviews</strong></td><td>Reviewer teammate</td><td>Boundary review each cycle</td><td><span class="badge b-ok">Auto by convention</span></td></tr>
+          <tr><td><strong>Reports (HTML)</strong></td><td>Report-writer workers</td><td>Owner asks / phase deliverable</td><td><span class="badge b-block">Manual-ish</span> · generators exist, running them is prompted</td></tr>
+          <tr><td><strong>PRD / design / analysis</strong></td><td>Writer worker</td><td>Owner asks</td><td><span class="badge b-block">Manual</span></td></tr>
+          <tr><td><strong>Jira / GitHub cross-links</strong></td><td>Workers</td><td>Issue create / PR open</td><td><span class="badge b-ok">Auto by convention</span></td></tr>
+          <tr><td><strong>Orchestrator memory</strong></td><td>Orchestrator</td><td>Lessons learned</td><td><span class="badge b-fyi">Auto but private</span> · invisible to the repo</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The eight gaps the Laboratory must close</h3>
+    <div class="grid g2">
+      <div class="card tint"><h4>1 · No machine-readable layer</h4><p style="font-size:13px">Everything is Markdown prose. LIVE-STATUS has a <em>grammar</em> but no <em>schema</em>. There is no <code>events.jsonl</code>, no <code>status.json</code> — a dashboard would have to regex a Markdown file.</p></div>
+      <div class="card tint"><h4>2 · No timeline / event feed</h4><p style="font-size:13px">Reconstructing “what happened tonight” = reading STATE + N handoffs + git log + Jira. Nothing records events <em>as they happen</em> in one timestamped place.</p></div>
+      <div class="card tint"><h4>3 · No aggregated morning view</h4><p style="font-size:13px">The At-a-glance section of STATE is the closest thing, but it's overwritten (no history), links to nothing, and mixes owner info with orchestrator self-instructions.</p></div>
+      <div class="card tint"><h4>4 · Questions have no home <span class="badge b-block">#1 gap</span></h4><p style="font-size:13px">A blocker becomes a synchronous <code>AskUserQuestion</code> (dies with the session) or a buried handoff paragraph. Nothing queues, types, or tracks questions across workers. <strong>At night AskUserQuestion just blocks a pane.</strong></p></div>
+      <div class="card tint"><h4>5 · Reports don't self-update</h4><p style="font-size:13px"><code>docs/report/</code> has generators but no trigger wiring them to delivery events. A landed task refreshes no dashboard.</p></div>
+      <div class="card tint"><h4>6 · Artifacts aren't cross-indexed</h4><p style="font-size:13px">Nothing links “GSL-38 → commit f12092e → dev_history → review finding → handoff 11 → Jira/GH.” Each dir has, at best, its own README.</p></div>
+      <div class="card tint"><h4>7 · Worker telemetry is self-reported prose</h4><p style="font-size:13px">Token counts arrive inside a SendMessage; nothing validates or aggregates beyond one running-total line.</p></div>
+      <div class="card tint"><h4>8 · No push path at all</h4><p style="font-size:13px">A parked question at 01:00 is discovered at 09:00 — only if the owner opens the terminal. (autosk has the same gap.<sup class="fn">2</sup>)</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LABORATORY ======================= -->
+<section id="laboratory">
+  <div class="wrap">
+    <div class="sec-kicker">02 · The Laboratory</div>
+    <h2>Three tiers of decreasing determinism</h2>
+    <p class="lead">The tasty-lunch evidence sorts every artifact by <em>how it must be produced</em>. That sort is the architecture: a deterministic event floor that costs nothing, the existing convention-driven narrative in the middle, and a bounded synthesis job on top that regenerates everything derived. The wiki rotted because it had the middle tier without the floor or the roof.</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 940 520" role="img" aria-label="Three-tier Laboratory architecture">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--ink3)"/></marker>
+            <marker id="aha" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--accent)"/></marker>
+          </defs>
+          <!-- Tier 1 -->
+          <rect x="20" y="20" width="410" height="150" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="38" y="46" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--accent)">TIER 1 · EVENTS — deterministic, 0 tokens</text>
+          <text x="38" y="66" font-family="var(--sans)" font-size="11.5" fill="var(--ink2)">Claude Code hooks fire whether or not the model cooperates.</text>
+          <!-- hook chips -->
+          <g font-family="var(--mono)" font-size="10">
+            <rect x="38" y="80" width="118" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="46" y="95" fill="var(--ink2)">SubagentStart/Stop</text>
+            <rect x="164" y="80" width="96" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="172" y="95" fill="var(--ink2)">TeammateIdle</text>
+            <rect x="268" y="80" width="140" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="276" y="95" fill="var(--ink2)">PostToolUse (git/Jira)</text>
+            <rect x="38" y="108" width="104" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="46" y="123" fill="var(--ink2)">StopFailure</text>
+            <rect x="150" y="108" width="128" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="158" y="123" fill="var(--ink2)">Task Created/Done</text>
+            <rect x="286" y="108" width="122" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="294" y="123" fill="var(--ink2)">Pre/PostCompact</text>
+          </g>
+          <text x="38" y="152" font-family="var(--mono)" font-size="10.5" fill="var(--accent)">+ lab-emit one-liners (question.posed, decision.made, verify.verdict)</text>
+
+          <!-- Tier 2 -->
+          <rect x="20" y="188" width="410" height="128" rx="12" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.5"/>
+          <text x="38" y="214" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--teal)">TIER 2 · NARRATIVE — by convention (today)</text>
+          <text x="38" y="234" font-family="var(--sans)" font-size="11.5" fill="var(--ink2)">Existing skills, unchanged. Already part of “done.”</text>
+          <g font-family="var(--mono)" font-size="10">
+            <rect x="38" y="248" width="88" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="46" y="263" fill="var(--ink2)">handoffs</text>
+            <rect x="134" y="248" width="98" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="142" y="263" fill="var(--ink2)">dev_history</text>
+            <rect x="240" y="248" width="80" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="248" y="263" fill="var(--ink2)">reviews</text>
+            <rect x="328" y="248" width="80" height="22" rx="6" fill="var(--card)" stroke="var(--line2)"/><text x="336" y="263" fill="var(--ink2)">RCA/lessons</text>
+          </g>
+          <text x="38" y="298" font-family="var(--sans)" font-size="11" fill="var(--ink3)">Delta: add one <tspan font-family="var(--mono)">lab-emit handoff.written</tspan> line — the machine footer.</text>
+
+          <!-- data lake -->
+          <rect x="20" y="334" width="410" height="166" rx="12" fill="var(--card2)" stroke="var(--line2)" stroke-width="1.5"/>
+          <text x="38" y="360" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--ink)">docs/lab/ — machine layer on disk</text>
+          <g font-family="var(--mono)" font-size="10" fill="var(--ink2)">
+            <text x="38" y="382">events/2026-07-08.jsonl · append-only, daily</text>
+            <text x="38" y="400">questions/queue.jsonl · decisions/manifest.md</text>
+            <text x="38" y="418">telemetry.jsonl · status.json (derived)</text>
+            <text x="38" y="436">digest/…-morning.md · site/ (generated HTML)</text>
+            <text x="38" y="454">scratch/ · gitignored temps</text>
+          </g>
+          <text x="38" y="480" font-family="var(--sans)" font-size="10.5" fill="var(--ink3)">Atomic writes (temp+rename); append-only JSONL never rewritten.</text>
+
+          <!-- Tier 3 -->
+          <rect x="510" y="188" width="410" height="180" rx="12" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.5"/>
+          <text x="528" y="214" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--amber)">TIER 3 · SYNTHESIS — the chronicler</text>
+          <text x="528" y="234" font-family="var(--sans)" font-size="11.5" fill="var(--ink2)">A bounded, schedulable job — NOT a live pane teammate.</text>
+          <text x="528" y="254" font-family="var(--mono)" font-size="10.5" fill="var(--ink2)">claude -p --max-budget-usd  (or cheap-tier)</text>
+          <g font-family="var(--sans)" font-size="11" fill="var(--ink2)">
+            <text x="528" y="280">• build scripts → status.json + site/ (static HTML)</text>
+            <text x="528" y="300">• the Library cross-index</text>
+            <text x="528" y="320">• the morning digest</text>
+            <text x="528" y="340">• poll-fill: reconcile gh / Jira / git log</text>
+          </g>
+          <text x="528" y="360" font-family="var(--mono)" font-size="10" fill="var(--amber)">crash-safe: data goes stale, delivery never stalls</text>
+
+          <!-- outputs -->
+          <rect x="510" y="386" width="196" height="52" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="528" y="410" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Static dashboard</text>
+          <text x="528" y="426" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">7 screens · committable · file://</text>
+
+          <rect x="724" y="386" width="196" height="52" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="742" y="410" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Morning digest</text>
+          <text x="742" y="426" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">+ optional push “ready”</text>
+
+          <rect x="510" y="452" width="410" height="48" rx="10" fill="var(--card)" stroke="var(--line2)"/>
+          <text x="528" y="474" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">The owner, in the morning ☕</text>
+          <text x="528" y="490" font-family="var(--sans)" font-size="10.5" fill="var(--ink3)">one place shows everything · every claim links to its artifact</text>
+
+          <!-- arrows -->
+          <line x1="225" y1="170" x2="225" y2="186" stroke="var(--accent)" stroke-width="2" marker-end="url(#aha)"/>
+          <line x1="225" y1="316" x2="225" y2="332" stroke="var(--teal)" stroke-width="2" marker-end="url(#ah)"/>
+          <path d="M430 400 C 480 400, 480 300, 508 280" fill="none" stroke="var(--ink3)" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="452" y="332" font-family="var(--mono)" font-size="9" fill="var(--ink3)">reads</text>
+          <line x1="608" y1="368" x2="608" y2="384" stroke="var(--accent)" stroke-width="2" marker-end="url(#aha)"/>
+          <line x1="822" y1="368" x2="822" y2="384" stroke="var(--accent)" stroke-width="2" marker-end="url(#aha)"/>
+          <line x1="608" y1="438" x2="608" y2="450" stroke="var(--ink3)" stroke-width="2" marker-end="url(#ah)"/>
+          <line x1="822" y1="438" x2="760" y2="450" stroke="var(--ink3)" stroke-width="2" marker-end="url(#ah)"/>
+        </svg>
+      </div>
+      <figcaption>Fig. 1 — The Laboratory. T1 events (0 tokens) and T2 narrative (already paid) both land in <code>docs/lab/</code>; the T3 chronicler reads that lake on a schedule and regenerates the dashboard + digest. The wiki rotted because it had T2 with no T1 floor and no T3 roof.</figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Tier</th><th>Producer</th><th>Determinism</th><th>Cost</th><th>What it generates</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-t1">T1 · Events</span></td>
+            <td>Claude Code hooks (<code>.claude/settings.json</code>, <code>async:true</code>)</td>
+            <td>Mechanical — fires whether or not the model cooperates</td>
+            <td><strong>0 tokens</strong>, ~0 latency</td>
+            <td>The timeline: session/worker lifecycle, tool activity, commits, Jira transitions, failures</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-t2">T2 · Narrative</span></td>
+            <td>Agents by convention (existing skills)</td>
+            <td>Behavioral — enforced by briefs + evals</td>
+            <td>Already paid (part of delivery)</td>
+            <td>Handoffs, dev_history, reviews, RCAs — the human story</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-t3">T3 · Synthesis</span></td>
+            <td>The chronicler — <code>claude -p</code> glue or cheap-tier</td>
+            <td>Scripted trigger, model-assisted content</td>
+            <td>Small, budgeted (<code>--max-budget-usd</code>)</td>
+            <td>Dashboard regen, indexes, morning digest, cross-links, freshness checks</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Tier 1 — the deterministic event layer</h3>
+    <p>Adopt the envelope from the repo's own <code>event-schema.md</code> draft: <code>{ts, run_id, seq, actor, type, data}</code> plus <code>session_id</code>/<code>agent_id</code> from hook input. Its open caveat — “verify hook capabilities at build time” — is now resolved: the current hooks catalog covers every event type it proposed.<sup class="fn">3</sup></p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Event type</th><th>Concrete hook (verified 2026-07-07)</th></tr></thead>
+        <tbody>
+          <tr><td><code>agent.spawned / terminated</code></td><td><code>SubagentStart</code> / <code>SubagentStop</code> (carry <code>agent_type</code>, <code>agent_id</code>); <code>SessionStart/End</code> for panes</td></tr>
+          <tr><td><code>agent.idle</code></td><td><strong><code>TeammateIdle</code></strong> — fires as a teammate goes idle (the pulse's blind spot, now free)</td></tr>
+          <tr><td><code>tool.call</code> → <code>vcs.commit</code></td><td><code>PostToolUse</code> matcher <code>Bash(git commit *)</code>; matcher <code>mcp__atlassian__.*</code> → <code>tracker.issue.*</code></td></tr>
+          <tr><td><code>handoff.written</code></td><td><code>PostToolUse</code> matcher <code>Write|Edit</code> with <code>if</code> on <code>docs/handoff/*</code></td></tr>
+          <tr><td>failures / quota</td><td><strong><code>StopFailure</code></strong> matchers <code>rate_limit|overloaded|server_error</code> — the quota-window detector, for free</td></tr>
+          <tr><td>questions / permissions</td><td><code>Notification</code>, <code>PermissionRequest</code>, <code>PermissionDenied</code></td></tr>
+          <tr><td>task board</td><td><code>TaskCreated</code> / <code>TaskCompleted</code></td></tr>
+          <tr><td>context health</td><td><code>PreCompact</code> / <code>PostCompact</code> (compaction on the orchestrator = a red flag)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="t">Why T1 matters most</div>
+      <p><strong>Liveness derived from artifacts, not self-report.</strong> A wedged agent can't report it's wedged — but its event stream simply stops. The same stream that feeds the dashboard is a better pulse input than <code>tmux capture-pane</code>. Two producers complement the hooks: <strong>explicit <code>lab-emit</code></strong> one-liners for semantic events hooks can't infer (<code>cycle.started</code>, <code>question.posed</code>, <code>decision.made</code>), and <strong>poll-fill</strong> — the chronicler reconciles <code>gh pr list</code> / Jira JQL / <code>git log</code> for anything the local hooks missed (a PR merged from the web).</p>
+    </div>
+
+    <h3>On-disk layout — machine layer beside the human layer</h3>
+    <pre><span class="c">docs/lab/                          # machine-first; committable except scratch</span>
+  events/2026-07-08.jsonl          <span class="c"># T1 + explicit events, append-only, daily</span>
+  status.json                      <span class="c"># snapshot: generated FROM events + STATE each pass</span>
+  questions/queue.jsonl            <span class="c"># §03 — open questions (append + status-patch)</span>
+  questions/archive.jsonl          <span class="c"># answered/expired, moved by the chronicler</span>
+  decisions/manifest.md            <span class="c"># §03 — owner-sovereign; the ONLY hand-edited file here</span>
+  decisions/log.jsonl              <span class="c"># every autonomous decision + every owner answer</span>
+  telemetry.jsonl                  <span class="c"># per-cycle token/cost lines (STATE grammar)</span>
+  digest/2026-07-08-morning.md     <span class="c"># T3-generated digest (one per active day)</span>
+  site/                            <span class="c"># T3-generated static HTML dashboard; never hand-edited</span>
+  scratch/                         <span class="c"># gitignored: the tasty-lunch 81%-uncommitted lesson</span></pre>
+    <p style="font-size:13.5px;color:var(--ink3)">Rules inherited from existing discipline: atomic writes (same-dir temp + rename) for every non-append file; append-only JSONL never rewritten (corrections are new records with <code>supersedes:&lt;seq&gt;</code>); <code>ORCHESTRATION-STATE.md</code> <strong>stays authoritative</strong> — <code>status.json</code> is derived, and on conflict STATE + live git win.</p>
+
+    <h3>Tier 3 — the “Laboratory” dashboard, and why it is static</h3>
+    <p><strong>Static HTML regenerated from <code>docs/lab/</code> data — no server in v1.</strong> This matches the proven <code>build-*.py</code> pattern, works from <code>file://</code>, survives the machine being off, is committable (thus readable from GitHub on a phone), and <em>cannot rot the way the wiki did — because no one edits it by hand.</em> Regeneration triggers: (a) chronicler at every cycle boundary; (b) a debounced <code>PostToolUse</code> hook on writes to <code>docs/lab/</code>; (c) on-demand. Live steering is <em>not</em> this dashboard's job — that's Remote Control / the terminal (§05).</p>
+
+    <div class="callout amber">
+      <div class="t">The chronicler is NOT a fourth live agent</div>
+      <p>It is a bounded, schedulable job — headless one-shot with strict <code>--allowedTools</code> + budget caps. Keeping it out of the teammate roster preserves the <strong>spawn-cap-3</strong> budget and means a chronicler crash can never stall delivery: the data layer just goes stale until the next tick, and <strong>the dashboard shows its own staleness</strong> (generated-at stamp + max event age on every page). This is the anti-wiki-rot alarm built in.</p>
+    </div>
+
+    <h3>The 7-screen information architecture</h3>
+    <div class="grid g3">
+      <div class="card tint"><h4>1 · Overview</h4><p style="font-size:12.5px">The morning screen. Digest rendered + runway strip + questions summary. Default landing.</p></div>
+      <div class="card tint"><h4>2 · Timeline</h4><p style="font-size:12.5px">The event feed, newest-first, filterable by actor / type / severity; incident markers pinned.</p></div>
+      <div class="card tint"><h4>3 · Tasks</h4><p style="font-size:12.5px">Board keyed by Jira key: status, GH issue/PR links, commit SHAs, dev_history link per task.</p></div>
+      <div class="card tint"><h4>4 · Questions</h4><p style="font-size:12.5px">The §03 queue: open (by type), answered (who/when), auto-resolved (with the default used).</p></div>
+      <div class="card tint"><h4>5 · Fleet</h4><p style="font-size:12.5px">Per-agent cards: state, model, spawned/ended, tokens, last-event age.</p></div>
+      <div class="card tint"><h4>6 · Cost</h4><p style="font-size:12.5px">Telemetry series: per-cycle tokens, cumulative vs ceiling, per-model split, quota-window events.</p></div>
+      <div class="card tint" style="grid-column:span 3;border-color:var(--accent)"><h4 style="color:var(--accent)">7 · Library — the generated cross-index (kills gap #6)</h4><p style="font-size:12.5px">Handoffs (numbered), dev_history (per task), reviews, reports, research, RCAs — each row with date, task keys touched, and links. This is the index that ties “GSL-38 → commit → dev_history → review → handoff → Jira/GH” together, generated, never hand-maintained.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= QUESTION BUFFER ======================= -->
+<section id="questions">
+  <div class="wrap">
+    <div class="sec-kicker">03 · The question buffer</div>
+    <h2>Buffer-and-continue: the autonomy pattern that lets the owner sleep</h2>
+    <p class="lead">The community describes three maturity levels of night behavior<sup class="fn">4</sup>: (a) <strong>park</strong> on any question (autosk), (b) <strong>pause with a budget</strong> then auto-resolve, (c) <strong>buffer-and-continue</strong> — log the question, take the reversible default, keep working, surface everything in the morning. (c) is named as “the ideal for GoSleep; least implemented in public code.” tasty-lunch already field-tested a primitive version (<code>OWNER-QUESTIONS.md</code> / <code>OWNER-DECISIONS</code>). This is the full design.</p>
+
+    <h3>Four types, four behaviors</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Type</th><th>Definition</th><th>Night behavior</th><th>Push?</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-block">BLOCKER</span></td>
+            <td>Work can't proceed AND no safe default exists: credentials, denylist actions (force-push, prod deploy, destructive migration), irreversible forks</td>
+            <td>Park the affected <em>item only</em> (not the fleet); reroute workers to unblocked work; queue the question</td>
+            <td><strong>Yes, immediately</strong> (unless quiet-hours says batch)</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-dec">DECISION</span></td>
+            <td>A genuine fork with viable branches, but a defensible default exists</td>
+            <td>Record question + chosen default + <code>auto_apply_at</code> deadline: <em>“if unanswered by T, I do X.”</em> Keep working until T, then apply &amp; log <code>decision.made</code></td>
+            <td>Yes, batched (digest), unless high-impact</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-clar">CLARIFY</span></td>
+            <td>Ambiguity with an obviously-reasonable reading</td>
+            <td>Proceed with the default <em>immediately</em>; record as answered-by-default so the owner can veto retroactively</td>
+            <td>No — digest only</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-fyi">FYI</span></td>
+            <td>No answer needed: incidents recovered, budget thresholds crossed, policy rules tripped</td>
+            <td>Record</td>
+            <td>No — digest only (unless severity ≥ incident)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 940 300" role="img" aria-label="Question lifecycle">
+          <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--ink3)"/></marker></defs>
+          <!-- origin -->
+          <rect x="18" y="120" width="120" height="56" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="78" y="145" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Agent hits</text>
+          <text x="78" y="162" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">a question</text>
+          <!-- classify -->
+          <polygon points="205,148 250,118 295,148 250,178" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.5"/>
+          <text x="250" y="152" text-anchor="middle" font-family="var(--mono)" font-size="10" font-weight="700" fill="var(--teal)">classify</text>
+          <line x1="138" y1="148" x2="203" y2="148" stroke="var(--ink3)" stroke-width="1.6" marker-end="url(#a2)"/>
+          <!-- four lanes -->
+          <g font-family="var(--mono)" font-size="10">
+            <rect x="340" y="24" width="150" height="40" rx="8" fill="var(--blocker-soft)" stroke="var(--blocker)"/><text x="352" y="42" fill="var(--blocker)" font-weight="700">BLOCKER</text><text x="352" y="57" fill="var(--ink2)" font-size="9">park item · push now</text>
+            <rect x="340" y="96" width="150" height="40" rx="8" fill="var(--decision-soft)" stroke="var(--decision)"/><text x="352" y="114" fill="var(--decision)" font-weight="700">DECISION</text><text x="352" y="129" fill="var(--ink2)" font-size="9">default + deadline</text>
+            <rect x="340" y="168" width="150" height="40" rx="8" fill="var(--clarify-soft)" stroke="var(--clarify)"/><text x="352" y="186" fill="var(--clarify)" font-weight="700">CLARIFY</text><text x="352" y="201" fill="var(--ink2)" font-size="9">proceed now</text>
+            <rect x="340" y="240" width="150" height="40" rx="8" fill="var(--fyi-soft)" stroke="var(--fyi)"/><text x="352" y="258" fill="var(--fyi)" font-weight="700">FYI</text><text x="352" y="273" fill="var(--ink2)" font-size="9">record only</text>
+          </g>
+          <line x1="272" y1="140" x2="338" y2="46" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="285" y1="148" x2="338" y2="116" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="285" y1="150" x2="338" y2="186" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="272" y1="158" x2="338" y2="258" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <!-- queue -->
+          <rect x="540" y="96" width="150" height="112" rx="10" fill="var(--card2)" stroke="var(--line2)" stroke-width="1.5"/>
+          <text x="615" y="120" text-anchor="middle" font-family="var(--mono)" font-size="11" font-weight="700" fill="var(--ink)">queue.jsonl</text>
+          <text x="615" y="140" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink3)">append-only</text>
+          <text x="615" y="156" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink3)">dedup by</text>
+          <text x="615" y="170" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink3)">(task, hash)</text>
+          <text x="615" y="192" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--teal)">seen_by: [w1,w2…]</text>
+          <line x1="490" y1="44" x2="538" y2="120" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="490" y1="116" x2="538" y2="130" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="490" y1="188" x2="538" y2="150" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="490" y1="260" x2="538" y2="175" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <!-- outputs -->
+          <rect x="740" y="40" width="180" height="46" rx="9" fill="var(--card)" stroke="var(--blocker)" stroke-width="1.4"/>
+          <text x="830" y="60" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="700" fill="var(--ink)">Push (BLOCKER)</text>
+          <text x="830" y="76" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">phone · now</text>
+          <rect x="740" y="98" width="180" height="46" rx="9" fill="var(--card)" stroke="var(--amber)" stroke-width="1.4"/>
+          <text x="830" y="118" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="700" fill="var(--ink)">Morning digest</text>
+          <text x="830" y="134" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">everything, batched</text>
+          <rect x="740" y="156" width="180" height="46" rx="9" fill="var(--card)" stroke="var(--ok)" stroke-width="1.4"/>
+          <text x="830" y="176" text-anchor="middle" font-family="var(--sans)" font-size="11" font-weight="700" fill="var(--ink)">Answer → log.jsonl</text>
+          <text x="830" y="192" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">learning loop feeds manifest</text>
+          <line x1="690" y1="120" x2="738" y2="63" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <line x1="690" y1="140" x2="738" y2="121" stroke="var(--ink3)" stroke-width="1.4" marker-end="url(#a2)"/>
+          <path d="M830 202 C 830 250, 615 250, 615 210" fill="none" stroke="var(--ok)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+        </svg>
+      </div>
+      <figcaption>Fig. 2 — The question lifecycle. A live <code>AskUserQuestion</code> becomes just one delivery channel of a durable record; the record is primary. Dedup collapses five workers hitting the same ambiguity into one morning item with a <code>seen_by</code> list.</figcaption>
+    </figure>
+
+    <h3>Queue format on disk — <code>docs/lab/questions/queue.jsonl</code></h3>
+    <pre>{<span class="s">"id"</span>:<span class="s">"q-2026-07-08-003"</span>, <span class="s">"ts"</span>:<span class="s">"2026-07-08T01:12:40Z"</span>, <span class="s">"type"</span>:<span class="s">"DECISION"</span>,
+ <span class="s">"from"</span>:<span class="s">"orchestrator"</span>, <span class="s">"task"</span>:<span class="s">"GSL-45"</span>, <span class="s">"links"</span>:{<span class="s">"jira"</span>:<span class="s">"GSL-45"</span>,<span class="s">"gh"</span>:<span class="s">"#52"</span>,<span class="s">"pr"</span>:<span class="s">"#56"</span>},
+ <span class="s">"question"</span>:<span class="s">"PR #56 conflicts in README after main moved; rebase or merge main in?"</span>,
+ <span class="s">"options"</span>:[{<span class="s">"label"</span>:<span class="s">"rebase"</span>,<span class="s">"pros"</span>:<span class="s">"linear history"</span>,<span class="s">"cons"</span>:<span class="s">"rewrites commits"</span>},
+            {<span class="s">"label"</span>:<span class="s">"merge main in"</span>,<span class="s">"pros"</span>:<span class="s">"no rewrite"</span>,<span class="s">"cons"</span>:<span class="s">"merge bubble"</span>}],
+ <span class="s">"default"</span>:<span class="s">"merge main in"</span>, <span class="s">"default_rationale"</span>:<span class="s">"no-force-push standing rule; reversible"</span>,
+ <span class="s">"reversibility"</span>:<span class="s">"high"</span>, <span class="s">"impact_if_wrong"</span>:<span class="s">"cosmetic history"</span>,
+ <span class="s">"auto_apply_at"</span>:<span class="s">"2026-07-08T10:00:00Z"</span>, <span class="s">"status"</span>:<span class="s">"open"</span>}
+
+<span class="c">// resolution appends a patch record, never a rewrite:</span>
+{<span class="s">"re"</span>:<span class="s">"q-2026-07-08-003"</span>,<span class="s">"status"</span>:<span class="s">"answered"</span>,<span class="s">"answer"</span>:<span class="s">"merge main in"</span>,<span class="s">"answered_by"</span>:<span class="s">"owner"</span>,<span class="s">"channel"</span>:<span class="s">"telegram"</span>}</pre>
+    <p style="font-size:13.5px;color:var(--ink3)"><strong>Dedup rule</strong> (the “question spam” pitfall): before posing, grep open records for the same <code>(task, question-hash)</code>; five workers hitting the same ambiguity = ONE morning item with a <code>seen_by</code> list.</p>
+
+    <h3>The decision manifest — “decide it yourself, by the owner's manifest”</h3>
+    <p><code>docs/lab/decisions/manifest.md</code> is <strong>owner-sovereign</strong> — the one hand-edited file in <code>docs/lab/</code>. Agents READ it every cycle, PROPOSE changes as a diff in the digest, and <strong>never edit it silently.</strong> It gives the policy that is scattered across “Standing rules” in STATE, memory files, and chat directives a single home the tooling can read and the owner can version. Its autonomy tiers mirror the orchestrating skill's authority/denylist — it invents no new policy.</p>
+    <pre><span class="c"># Decision manifest — &lt;owner&gt; — vN (updated YYYY-MM-DD)</span>
+<span class="k">## 1. Always autonomous</span> <span class="c">(never ask, always log)</span>
+- merge green PRs on delivery branches; advance phases; reversible in-repo work
+- recover transient worker errors with one continue-nudge (validated 2026-07-07)
+<span class="k">## 2. Decide-by-default</span> <span class="c">(queue a DECISION, apply default at deadline)</span>
+- deadlines: night → 10:00 next morning; day → +2h
+- merge strategy → regular merge; model policy → Fable 5 / Opus-mechanical; N=2 evals
+<span class="k">## 3. Always ask, never default</span> <span class="c">(= the denylist, verbatim)</span>
+- force-push/history rewrite; delete branches/tags/releases; prod deploys; secret rotation;
+  destructive DB migrations; external comms; delete cloud resources; spend beyond ceiling
+<span class="k">## 4. Escalation &amp; channels</span>
+- quiet hours 00:00-08:30: push ONLY BLOCKER; else batch into the 06:30 digest
+- channel order: Claude-app push → Telegram → (morning) digest
+<span class="k">## 5. Budget &amp; runway</span>
+- token ceiling per phase: N; on 80% → FYI; on 100% → BUDGET_EXCEEDED = BLOCKER
+<span class="k">## 6. Standing preferences</span> <span class="c">(style, language, review strictness…)</span></pre>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4>Learning loop — questions-per-night → 0</h4>
+        <p style="font-size:13.5px">Every answer (live or queued) appends to <code>decisions/log.jsonl</code> with full context. Periodically the chronicler mines it: the same question-shape answered the same way ≥2–3× becomes a <strong>manifest candidate</strong> in the digest — <em>“You chose ‘regular merge’ 3× — promote to §2 decide-by-default?”</em> The owner approves by editing the manifest (or replying “yes”). This directly shrinks future question volume — <strong>the real autonomy metric.</strong></p>
+      </div>
+      <div class="card">
+        <h4>Presence-aware delivery</h4>
+        <p style="font-size:13.5px">A synchronous <code>AskUserQuestion</code> is raised only when the owner is <em>present</em> — the official <code>CLAUDE_CLIENT_PRESENCE_FILE</code> marker (Remote Control), or simply “owner sent a message within N minutes.” Absent → queue + push per type. Present → ask live, then <em>still</em> log the answer to the queue — the learning loop needs it either way.</p>
+      </div>
+    </div>
+
+    <h3>The morning digest — the deliverable that defines “GoSleep worked”</h3>
+    <p>Generated at the manifest's wake time (scheduled task / cron / Routine) and on-demand; written to <code>digest/YYYY-MM-DD-morning.md</code>, rendered on the Overview screen, optionally pushed “digest ready.” Sections, in owner-priority order:</p>
+    <div class="grid g3">
+      <div class="card tint"><h4 style="color:var(--blocker)">1 · Waiting for you</h4><p style="font-size:12px">Open BLOCKERs, then DECISIONs with their deadlines.</p></div>
+      <div class="card tint"><h4 style="color:var(--teal)">2 · Decided for you</h4><p style="font-size:12px">Every auto-resolution with the manifest rule cited (provenance discipline).</p></div>
+      <div class="card tint"><h4 style="color:var(--ok)">3 · What shipped</h4><p style="font-size:12px">Tasks / PRs / commits with links.</p></div>
+      <div class="card tint"><h4 style="color:var(--amber)">4 · Incidents</h4><p style="font-size:12px">What broke, what recovered, RCA links.</p></div>
+      <div class="card tint"><h4>5 · Cost &amp; runway</h4><p style="font-size:12px">Tokens vs ceiling, quota events.</p></div>
+      <div class="card tint"><h4>6 · Manifest candidates</h4><p style="font-size:12px">The learning-loop proposals + tomorrow's plan.</p></div>
+    </div>
+    <div class="callout amber">
+      <div class="t">The digest is as important as the work</div>
+      <p>An unreviewable night is a failed night <em>even if all PRs merged</em>. Everything in the digest links into the dashboard / Library — provenance is the discipline (it descends directly from tasty-lunch's OWNER-RATIFIED / OWNER-ACQUIESCED-DEFAULT PRD tags).</p>
+    </div>
+
+    <h3>Integration with the pulse — minimal deltas</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Existing mechanism</th><th>The one change</th></tr></thead>
+        <tbody>
+          <tr><td><strong>PULSE</strong> (every 5–10 min self-check)</td><td>Also scan <code>queue.jsonl</code>: newly answered → act; DECISIONs past <code>auto_apply_at</code> → apply default, emit <code>decision.made</code>; BLOCKERs idle too long → re-push per manifest</td></tr>
+          <tr><td><strong>BLOCKED_ON_HUMAN</strong></td><td>Becomes “queue + reroute,” not “stop”: write the record, push per type, park only the affected item, continue everything unblocked</td></tr>
+          <tr><td><strong>Worker briefs</strong></td><td>+1 line: “emit ownable questions via <code>lab-emit question</code> with type + default + reversibility; CONTINUE on the default if type ≤ DECISION; never block your pane on a human”</td></tr>
+          <tr><td><strong>ORCHESTRATION-STATE.md</strong></td><td>Stays the authority; LIVE-STATUS gains one field: <code>questions: open=N (B/D/C/F)</code></td></tr>
+          <tr><td><strong>Handoffs</strong></td><td>Now also reference open question ids — a replacement orchestrator inherits the queue trivially (it's on disk anyway)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= UI ======================= -->
+<section id="ui">
+  <div class="wrap">
+    <div class="sec-kicker">04 · Orchestration UI</div>
+    <h2>What the owner sees — 7 screens &amp; the “can I go to sleep?” gauge</h2>
+    <p class="lead">v1 is the read-only static dashboard of §02. The mockups below are visual sketches of the key screens — the added value on top of the ASCII drafts in the research: exactly what the owner should be able to open, on a laptop or through the GitHub repo on a phone. Live steering (autosk's state-aware composer, replay-then-tail transcripts) is the v2 interactive layer.<sup class="fn">5</sup></p>
+
+    <h3 id="runway">The autonomy runway — <code>min()</code> over six exhaustion clocks</h3>
+    <p>One composite headline answers the owner's night-time question — <em>“can I go to sleep?”</em> — with evidence, not vibes. It is the nearest of six independent clocks, the binding constraint highlighted:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Clock</th><th>Source</th><th>Exhaustion means</th></tr></thead>
+        <tbody>
+          <tr><td>Orchestrator context</td><td>Self-reported % at each pulse, cross-checked vs the ~8–15-cycle roll heuristic (never trust the number alone — the “fabricated 80% vs real 63%” lesson)</td><td>Roll needed → planned, not fatal (if handoff discipline holds)</td></tr>
+          <tr><td>Token / cost ceiling</td><td><code>telemetry.jsonl</code> cumulative vs manifest §5 ceiling</td><td>BUDGET_EXCEEDED = BLOCKER</td></tr>
+          <tr><td>Quota window</td><td><code>StopFailure(rate_limit/overloaded)</code> events + <code>/usage</code>-style probes</td><td>Fleet quiesces until the window resets (show the reset ETA)</td></tr>
+          <tr><td>Fleet slots</td><td>Live panes vs spawn-cap 3</td><td>Queueing, not stopping</td></tr>
+          <tr><td>Open BLOCKERs</td><td><code>questions/queue.jsonl</code></td><td>Affected items parked</td></tr>
+          <tr><td>Work remaining</td><td>Task board (To Do count)</td><td>Done = idle — the good ending</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== MOCKUP: OVERVIEW / MORNING ===== -->
+    <h3>Screen 1 — Overview (the morning screen)</h3>
+    <div class="device">
+      <div class="device-bar"><div class="tl"><i></i><i></i><i></i></div><div class="url">file:///…/docs/lab/site/index.html · or github.com/ainstance-labs/gosleep</div></div>
+      <div class="appnav">
+        <span class="logo"><span class="dot"></span>GOSLEEP&nbsp;LAB</span>
+        <a class="on" href="#">Overview</a><a>Timeline</a><a>Tasks</a><a>Questions</a><a>Fleet</a><a>Cost</a><a>Library</a>
+      </div>
+      <div class="screen">
+        <div class="screen-h"><span class="t">Morning digest — 2026-07-08</span><span class="s">night run 23:10 → 05:47 · generated 06:30 · max event age 12m</span></div>
+
+        <div class="runway">
+          <div class="top">
+            <span class="big">RUNWAY ≈ 4h</span>
+            <span class="bind">binding: quota window resets 03:00</span>
+          </div>
+          <div class="gauges">
+            <div class="gauge"><div class="gl"><span>ctx</span><span>42%</span></div><div class="track"><div class="fill" style="width:42%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>budget</span><span>45%</span></div><div class="track"><div class="fill" style="width:45%"></div></div></div>
+            <div class="gauge warn bindg"><div class="gl"><span>quota</span><span>~4h</span></div><div class="track"><div class="fill" style="width:70%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>slots</span><span>2/3</span></div><div class="track"><div class="fill" style="width:66%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>blockers</span><span>1</span></div><div class="track"><div class="fill" style="width:20%"></div></div></div>
+            <div class="gauge"><div class="gl"><span>backlog</span><span>5</span></div><div class="track"><div class="fill" style="width:55%"></div></div></div>
+          </div>
+        </div>
+
+        <div class="digcols">
+          <div class="dcard">
+            <div class="dh"><span>✓ Done tonight</span><span>4</span></div>
+            <div class="li"><span class="dotm"></span>3 research files complete (01, 03, 04)</div>
+            <div class="li"><span class="dotm"></span>GSL-42 Done → merged @898297c</div>
+            <div class="li"><span class="dotm"></span>PR #56 opened (GSL-41 epic)</div>
+            <div class="li"><span class="dotm" style="background:var(--amber)"></span>2 incidents, both recovered (RCA ↗)</div>
+          </div>
+          <div class="dcard">
+            <div class="dh"><span>⧗ Waiting for you</span><span>3</span></div>
+            <div class="qitem"><span class="ib"><span class="badge b-block">Blocker</span></span><div><div class="qt">Vercel token expired — deploy parked</div><div class="qm">creds · pushed 01:12 ✓ · item parked only</div></div></div>
+            <div class="qitem"><span class="ib"><span class="badge b-dec">Decision</span></span><div><div class="qt">PR #56 merge strategy after conflict</div><div class="qm">default: merge main in · auto-applies 10:00</div></div></div>
+            <div class="qitem"><span class="ib"><span class="badge b-fyi">FYI</span></span><div><div class="qt">SC-19 polish deferred again</div><div class="qm">digest only</div></div></div>
+          </div>
+        </div>
+
+        <div class="dcard" style="margin-top:12px">
+          <div class="dh"><span>⚙ Decided for you — every rule cited</span><span>2</span></div>
+          <div class="qitem"><span class="ib"><span class="badge b-clar">Clarify</span></span><div><div class="qt">Kept res-warren-2 after an API blip → one continue-nudge</div><div class="qm">manifest §1 · rule: transient-error-recover (validated 2026-07-07)</div></div></div>
+          <div class="qitem"><span class="ib"><span class="badge b-clar">Clarify</span></span><div><div class="qt">Queued res-labui instead of a 4th pane</div><div class="qm">manifest §1 · rule: spawn-cap-3</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MOCKUP: TIMELINE + TASKS ===== -->
+    <div class="grid g2" style="margin-top:8px">
+      <div>
+        <h3>Screen 2 — Timeline</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a class="on">Timeline</a><a>Tasks</a><a>Questions</a></div>
+          <div class="screen" style="padding:6px 0">
+            <div style="padding:6px 12px;font-family:var(--mono);font-size:10.5px;color:var(--ink3)">filter: [all actors ▾] [all types ▾] [≥ info ▾]</div>
+            <div class="tl-row"><span class="ts">23:04</span><span class="act">res-headless-2</span><span class="ty">cycle.ended</span><span class="dt">COMPLETE 03 @36609B</span></div>
+            <div class="tl-row"><span class="ts">23:01</span><span class="act">orchestrator</span><span class="ty">agent.spawned</span><span class="dt">res-loops (pane %91)</span></div>
+            <div class="tl-row"><span class="ts">23:00</span><span class="act">orchestrator</span><span class="ty">telemetry</span><span class="dt">cycle=3 out=33k in=310k</span></div>
+            <div class="tl-row inc"><span class="ts">20:57</span><span class="act">res-warren-2</span><span class="ty">stop.failure</span><span class="dt">server_error → nudged ⚠</span></div>
+            <div class="tl-row"><span class="ts">20:41</span><span class="act">res-warren-2</span><span class="ty">vcs.commit</span><span class="dt">research file 14.5K</span></div>
+            <div class="tl-row"><span class="ts">20:20</span><span class="act">chronicler</span><span class="ty">site.rebuilt</span><span class="dt">7 screens · 41 events</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>Screen 3 — Tasks</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a>Timeline</a><a class="on">Tasks</a><a>Questions</a></div>
+          <div class="screen" style="padding:6px 0">
+            <div class="taskrow"><span class="key">GSL-42</span><span class="st done">✅ Done</span><span class="lk">#49 · @898297c</span><span class="lk"><span>hist ↗</span></span></div>
+            <div class="taskrow"><span class="key">GSL-43</span><span class="st prog">🔵 InPrg</span><span class="lk">#50 · res-warren-2</span><span class="lk"><span>hist ↗</span></span></div>
+            <div class="taskrow"><span class="key">GSL-44</span><span class="st prog">🔵 InPrg</span><span class="lk">#51 · res-loops</span><span class="lk"><span>hist ↗</span></span></div>
+            <div class="taskrow"><span class="key">GSL-45</span><span class="st todo">⚪ ToDo</span><span class="lk">#52 · queued</span><span class="lk"><span>—</span></span></div>
+            <div class="taskrow" style="background:var(--accent-soft)"><span class="key">GSL-41</span><span class="st prog">epic</span><span class="lk">→ PR #56 (open)</span><span class="lk"><span>rollup ↗</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MOCKUP: QUESTIONS + FLEET ===== -->
+    <div class="grid g2" style="margin-top:8px">
+      <div>
+        <h3>Screen 4 — Questions window</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a>Timeline</a><a>Tasks</a><a class="on">Questions</a></div>
+          <div class="screen">
+            <div class="qwin">
+              <div class="qcard k-block">
+                <div class="qch"><span class="badge b-block">Blocker</span><span class="pushed">push ✓ 01:12</span></div>
+                <div class="qq">Vercel token expired — deploy step can't proceed</div>
+                <div class="qmeta"><span>creds · GSL-40</span><span>age 41m</span><span>item parked (fleet running)</span></div>
+              </div>
+              <div class="qcard k-dec">
+                <div class="qch"><span class="badge b-dec">Decision</span><span class="countdown">auto-applies in 2h 13m</span></div>
+                <div class="qq">PR #56 conflict — rebase or merge main in?</div>
+                <div class="qmeta"><span>default: merge main in</span><span>reversible · cosmetic</span></div>
+              </div>
+              <div class="qcard k-dec">
+                <div class="qch"><span class="badge b-dec">Decision</span><span class="countdown">auto-applies in 3h</span></div>
+                <div class="qq">SC-19 polish now vs defer to next phase?</div>
+                <div class="qmeta"><span>default: defer</span><span>low impact</span></div>
+              </div>
+              <div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px 2px 2px">── answered tonight ──</div>
+              <div class="qcard k-clar" style="opacity:.75">
+                <div class="qch"><span class="badge b-clar">Clarify</span><span class="pushed">by default</span></div>
+                <div class="qq">RU mirror scope → per manifest §6</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>Screen 5 — Fleet</h3>
+        <div class="device">
+          <div class="appnav"><span class="logo"><span class="dot"></span>LAB</span><a>Overview</a><a>Tasks</a><a class="on">Fleet</a><a>Cost</a></div>
+          <div class="screen">
+            <div class="fleet">
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st run"></span>orchestrator</span><span class="st done">ctx 42%</span></div>
+                <div class="fm">Fable 5 · pulse 04:31 · cycles 33<br>last event 30s</div>
+              </div>
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st run"></span>res-warren-2</span><span class="st prog">RUNNING</span></div>
+                <div class="fm">GSL-43 · pane %88 · 02 @36997B<br>last event 90s</div>
+                <div class="mini-track"><div class="mf" style="width:74%"></div></div>
+              </div>
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st run"></span>res-loops</span><span class="st prog">RUNNING</span></div>
+                <div class="fm">GSL-44 · pane %91 · 04 @35596B<br>last event 4m</div>
+                <div class="mini-track"><div class="mf" style="width:66%"></div></div>
+              </div>
+              <div class="fcard">
+                <div class="fh"><span class="fn"><span class="dot-st queued"></span>res-labui</span><span class="st todo">QUEUED</span></div>
+                <div class="fm">waiting: slot 4 &gt; cap 3<br>reason: spawn-cap-3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Widgets beyond the basic IA</h3>
+    <div class="grid g2">
+      <div class="card tint"><h4>Laboratory self-health</h4><p style="font-size:13px">Docs-freshness meters: dashboard generated-at, dev_history coverage (tasks Done <em>with</em> a history file ÷ tasks Done), handoff age vs last session boundary, index staleness. The system documents itself, so it must also <em>grade</em> itself — the anti-wiki-rot alarm.</p></div>
+      <div class="card tint"><h4>Spawn queue</h4><p style="font-size:13px">Who's waiting for a slot and why (today this lives only in LIVE-STATUS prose). Surfaced as a Fleet card in QUEUED state with its reason.</p></div>
+      <div class="card tint"><h4>Incident pins</h4><p style="font-size:13px">Incident records (e.g. the <code>kill-pane -a</code> class) are pinned to the top of the Timeline until their RCA link exists — a visible “unclosed loop” marker.</p></div>
+      <div class="card tint"><h4>Who consumes which surface</h4><p style="font-size:13px">Owner morning → Overview/digest. Owner awake → Timeline/Fleet (raw tmux panes stay the live view). Owner remote → push → phone. Orchestrator itself → <code>status.json</code> + queue at pulse (cheaper than re-deriving from prose STATE).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= MOBILE ======================= -->
+<section id="mobile">
+  <div class="wrap">
+    <div class="sec-kicker">05 · Mobile</div>
+    <h2>Official Remote Control vs. the DIY autosk path</h2>
+    <p class="lead">The single highest-value mobile feature for an owner-asleep system is <strong>push on a parked question.</strong> autosk proves the daemon-side steering is the easy 90% — but leaves exactly the three gaps GoSleep must not inherit: <strong>no TLS, no relay, no push.</strong> The official Remote Control (launched 2026-02-24) closes all three on-subscription. Build on it, don't rebuild it.</p>
+
+    <h3>The contrast — autosk's transport vs. Remote Control</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Dimension</th><th>autosk (DIY reference)<sup class="fn">2</sup></th><th>Official Remote Control<sup class="fn">6</sup></th></tr></thead>
+        <tbody>
+          <tr><td>Transport</td><td>Raw TCP JSON-RPC on <code>0.0.0.0:7077</code> by default</td><td>Outbound-HTTPS-only, no inbound ports</td></tr>
+          <tr><td>Encryption</td><td><span class="vlo">None</span> — token crosses the wire in cleartext</td><td><span class="vhi">TLS + short-lived scoped creds</span></td></tr>
+          <tr><td>Auth</td><td>32-byte token file, auth-before-anything</td><td>QR pairing to claude.ai/code + iOS/Android app; Trusted Devices</td></tr>
+          <tr><td>Push notifications</td><td><span class="vlo">Zero APNs code</span> — phone must be foreground</td><td><span class="vhi">Built-in mobile push</span> — “when Claude decides” + “actions required”</td></tr>
+          <tr><td>Reach</td><td>Same LAN, or a VPN/tunnel you build yourself (undocumented)</td><td>Anywhere — relayed through claude.ai</td></tr>
+          <tr><td>Auth model</td><td>Subscription-native (spawns the logged-in <code>claude</code> CLI)</td><td><strong>Subscription-only by design</strong></td></tr>
+          <tr><td>What it steers</td><td>Any session the daemon owns</td><td>ONE paired session — the owner steers the orchestrator, not individual worker panes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="t">The verdict</div>
+      <p>autosk's gaps <em>are</em> GoSleep's opportunity — and Remote Control already fills them, on-subscription, E2E-encrypted, with push. Building our own mobile client/daemon transport (the autosk path) is <strong>unjustified now that #1 exists.</strong> The research preview status is the only risk.</p>
+    </div>
+
+    <h3>The recommended stack — layered, all official-first</h3>
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 940 340" role="img" aria-label="Recommended mobile stack">
+          <!-- phone -->
+          <rect x="30" y="70" width="150" height="210" rx="20" fill="var(--card2)" stroke="var(--line2)" stroke-width="2"/>
+          <rect x="44" y="92" width="122" height="150" rx="6" fill="var(--card)" stroke="var(--line)"/>
+          <text x="105" y="60" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--ink)">Owner's phone 🌙</text>
+          <g font-family="var(--mono)" font-size="8.5" fill="var(--ink2)">
+            <rect x="52" y="102" width="106" height="24" rx="5" fill="var(--blocker-soft)"/><text x="60" y="112" fill="var(--blocker)" font-weight="700">! BLOCKER push</text><text x="60" y="122">Vercel token expired</text>
+            <rect x="52" y="132" width="106" height="24" rx="5" fill="var(--accent-soft)"/><text x="60" y="142" fill="var(--accent)" font-weight="700">Remote Control</text><text x="60" y="152">steer orchestrator</text>
+            <rect x="52" y="162" width="106" height="24" rx="5" fill="var(--teal-soft)"/><text x="60" y="172" fill="var(--teal)" font-weight="700">Telegram</text><text x="60" y="182">reply "1" → applies</text>
+            <rect x="52" y="192" width="106" height="42" rx="5" fill="var(--card2)" stroke="var(--line)"/><text x="60" y="204" fill="var(--ink3)" font-weight="700">GitHub (dashboard)</text><text x="60" y="216">static HTML, private,</text><text x="60" y="227">already authed</text>
+          </g>
+          <!-- layers -->
+          <g>
+            <rect x="270" y="30" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="284" y="50" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">1 · Remote Control on the orchestrator</text>
+            <text x="284" y="66" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">steer + permission approvals + “Claude decides” push · E2E · TLS</text>
+
+            <rect x="270" y="86" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--teal)" stroke-width="1.6"/>
+            <text x="284" y="106" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">2 · Hook → ntfy (self-hosted / ACL'd)</text>
+            <text x="284" y="122" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">fleet + Lab events RC can't see · works with NO session up</text>
+
+            <rect x="270" y="142" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--amber)" stroke-width="1.6"/>
+            <text x="284" y="162" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">3 · Channels / Telegram — the answer path</text>
+            <text x="284" y="178" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">reply “1” → orchestrator applies option 1, logs channel=telegram</text>
+
+            <rect x="270" y="198" width="330" height="46" rx="9" fill="var(--card)" stroke="var(--fyi)" stroke-width="1.6"/>
+            <text x="284" y="218" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">4 · Tailscale + Blink/mosh — break-glass</text>
+            <text x="284" y="234" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">full tmux attach when the nice paths fail · E2E WireGuard</text>
+
+            <rect x="270" y="254" width="330" height="46" rx="9" fill="var(--card2)" stroke="var(--line2)" stroke-width="1.4"/>
+            <text x="284" y="274" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="var(--ink)">5 · Static dashboard via GitHub</text>
+            <text x="284" y="290" font-family="var(--mono)" font-size="9.5" fill="var(--ink3)">committable HTML, readable on phone, zero extra infra</text>
+          </g>
+          <!-- targets -->
+          <rect x="670" y="60" width="240" height="90" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="790" y="84" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--accent)">The orchestrator session</text>
+          <text x="790" y="104" text-anchor="middle" font-family="var(--sans)" font-size="10.5" fill="var(--ink2)">the entity the owner talks to</text>
+          <text x="790" y="120" text-anchor="middle" font-family="var(--sans)" font-size="10.5" fill="var(--ink2)">— the correct single session</text>
+          <text x="790" y="136" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">to expose</text>
+
+          <rect x="670" y="170" width="240" height="120" rx="10" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="1.4"/>
+          <text x="790" y="192" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="var(--teal)">The fleet + Laboratory</text>
+          <text x="790" y="212" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink2)">worker panes · docs/lab events</text>
+          <text x="790" y="228" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink2)">BLOCKER · digest-ready</text>
+          <text x="790" y="244" text-anchor="middle" font-family="var(--sans)" font-size="10" fill="var(--ink2)">quota parked · incident</text>
+          <text x="790" y="266" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">the push path that works</text>
+          <text x="790" y="279" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--ink3)">when no RC session is up</text>
+
+          <!-- connectors -->
+          <line x1="180" y1="120" x2="268" y2="53" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="3 3"/>
+          <line x1="180" y1="150" x2="268" y2="165" stroke="var(--amber)" stroke-width="1.4" stroke-dasharray="3 3"/>
+          <line x1="600" y1="53" x2="668" y2="90" stroke="var(--accent)" stroke-width="1.6"/>
+          <line x1="600" y1="109" x2="668" y2="200" stroke="var(--teal)" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <figcaption>Fig. 3 — The recommended mobile stack. Remote Control exposes the orchestrator (the one session the owner talks to); hook→ntfy covers fleet-level events Remote Control can't see; Telegram is the reply path; Tailscale is break-glass; the static dashboard rides GitHub for free.</figcaption>
+    </figure>
+
+    <h3>The full pattern survey</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Pattern</th><th>Best for</th><th>Cons</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Official Remote Control</strong></td><td>Steering + permission approvals + push, subscription-native, E2E</td><td>Research preview; local process must stay alive; mirrors ONE session</td></tr>
+          <tr><td>2</td><td><strong>Channels</strong> (Telegram/Discord/iMessage)</td><td>The inbound answer path for the queue — reply from bed</td><td>Plugin setup; message-shaped, not dashboard-shaped</td></tr>
+          <tr><td>3</td><td><strong>Dispatch</strong> (app → Desktop)</td><td>Zero-setup task injection (“morning: also do X”)</td><td>Requires Desktop running; not a monitoring surface</td></tr>
+          <tr><td>4</td><td><strong>Hook-driven push</strong> (ntfy / Pushover)</td><td>Fleet-level events RC can't see; ~10 lines; tap-to-tmux</td><td>One-way; DIY topic auth</td></tr>
+          <tr><td>5</td><td><strong>SSH/mosh + Tailscale</strong></td><td>Full control — attach any pane, kill, restart; works when all else is broken</td><td>Poor phone reading UX; no push by itself</td></tr>
+          <tr><td>6</td><td>Web-tmux wrappers (VibeTunnel, ttyd)</td><td>Pane-level browser view</td><td>DIY auth/TLS burden; superseded by 1+5</td></tr>
+          <tr><td>7</td><td>Third-party companions (Omnara-class)</td><td>Polished mobile UX today</td><td>Third-party in the auth path = the category the 2026 crackdowns hit — verify first</td></tr>
+          <tr><td>8</td><td>autosk-style own client</td><td>Total control</td><td>Cost + gaps (TLS/push/relay); unjustified now #1 exists</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= RECOMMENDATIONS ======================= -->
+<section id="recommendations">
+  <div class="wrap">
+    <div class="sec-kicker">06 · Recommendations</div>
+    <h2>Ranked by value / effort / risk</h2>
+    <p class="lead">The order is a build sequence: the deterministic event floor first (everything else consumes it), then the autonomy layer that lets the owner sleep, then the surfaces that show the night.</p>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--ok)"></span>High value</span>
+      <span><span class="sw" style="background:var(--amber)"></span>Medium</span>
+      <span><span class="sw" style="background:var(--fyi)"></span>Low / defer</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Recommendation</th><th>V</th><th>E</th><th>R</th><th>Why now</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>T1 hook chronicler → <code>events/*.jsonl</code></strong></td><td class="vhi">HIGH</td><td class="vhi">LOW</td><td class="vhi">LOW</td><td>Zero-token, model-independent timeline; the foundation every other item consumes; resolves event-schema's open caveat</td></tr>
+          <tr><td>2</td><td><strong>Question buffer + typology + queue file</strong></td><td class="vhi">HIGH</td><td class="vhi">LOW</td><td class="vhi">LOW</td><td>Kills the #1 autonomy gap (AskUserQuestion blocking panes); needs only a helper + brief lines + one PULSE step</td></tr>
+          <tr><td>3</td><td><strong>Decision manifest</strong></td><td class="vhi">HIGH</td><td class="vhi">LOW</td><td class="vhi">LOW</td><td>Makes “decide it yourself” auditable (every auto-decision cites its rule); prerequisite for defaults-with-deadlines</td></tr>
+          <tr><td>4</td><td><strong>Remote Control + push on the orchestrator</strong></td><td class="vhi">HIGH</td><td class="vhi">LOW</td><td class="vmed">LOW-MED</td><td>The sleep-safety net: BLOCKER push + steer-from-bed, subscription-native; preview status is the only risk</td></tr>
+          <tr><td>5</td><td><strong>Morning digest</strong></td><td class="vhi">HIGH</td><td class="vmed">MED</td><td class="vhi">LOW</td><td>The single owner-facing deliverable that defines “GoSleep worked”; bounded <code>claude -p</code> glue</td></tr>
+          <tr><td>6</td><td><strong>Static dashboard</strong> (Overview+Timeline+Questions+Library first)</td><td class="vmed">MED-HI</td><td class="vmed">MED</td><td class="vhi">LOW</td><td>Anti-wiki-rot by construction; reuses the <code>build-*.py</code> pattern; defer Fleet/Cost if needed</td></tr>
+          <tr><td>7</td><td><strong>Hook → ntfy fleet-level push</strong></td><td class="vmed">MED</td><td class="vhi">LOW</td><td class="vhi">LOW</td><td>Ten lines; covers what RC's per-session push can't; self-host or ACL the topic</td></tr>
+          <tr><td>8</td><td>Machine footers in T2 artifacts</td><td class="vmed">MED</td><td class="vhi">LOW</td><td class="vhi">LOW</td><td>One-line skill additions; makes the narrative layer indexable without parsing prose</td></tr>
+          <tr><td>9</td><td>Docs integrity gate (port <code>check-docs-anchors.mjs</code>)</td><td class="vmed">MED</td><td class="vmed">MED</td><td class="vhi">LOW</td><td>The only mechanically-enforced docs quality in the reference; start as a local gate</td></tr>
+          <tr><td>10</td><td>Learning loop → manifest candidates</td><td class="vmed">MED</td><td class="vmed">MED</td><td class="vhi">LOW</td><td>Ship after 2–3 weeks of <code>decisions/log</code> data; questions-per-night is the KPI</td></tr>
+          <tr><td>11</td><td>Channels / Telegram inbound answers</td><td class="vmed">MED</td><td class="vmed">MED</td><td class="vmed">MED</td><td>High comfort, plugin-maintenance cost; evaluate after 1–7 land</td></tr>
+          <tr><td>12</td><td>v2 interactive dashboard (SSE / composer)</td><td class="vmed">MED</td><td class="vlo">HIGH</td><td class="vmed">MED</td><td>Only after the JSONL layer proves itself; the data contract makes v2 a pure consumer swap</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout rot">
+      <div class="t">⛔ Explicitly do NOT build</div>
+      <p>Our own mobile client/daemon transport (the autosk path — #8). A live chronicler teammate holding a pane slot. Hand-edited status/wiki pages of any kind (the rot lesson). Third-party subscription-auth bridges (2026 policy crackdown category).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SOURCES ======================= -->
+<footer class="foot">
+  <div class="wrap">
+    <h3>Sources &amp; provenance</h3>
+    <div class="pill-row">
+      <span class="pill">Primary reads (high confidence)</span>
+      <span class="pill">Verified capability substrate (official docs)</span>
+      <span class="pill">Design proposals (medium confidence)</span>
+    </div>
+    <ol class="src">
+      <li id="s1"><b>tasty-lunch docs system</b> — full-tree traversal (<code>~/Documents/dev/tasty/tasty-lunch/docs/</code>, 828 files, 523 commits); one read-only Explore subagent, 2026-07-07. Per-file counts are the agent's report, spot-checkable at cited paths. → <code>docs/research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md</code> §1.</li>
+      <li id="s2"><b>autosk transport &amp; gaps</b> (raw TCP, no TLS, no push, iOS remote-only) — static analysis of clone @ <code>fd4c22e</code>, anchored to file:line. → <code>docs/research/2026-07-07-orchestration/01-autosk.md</code> §§5–6, 8.</li>
+      <li id="s3"><b>Claude Code hooks catalog</b> — <code>code.claude.com/docs/en/hooks</code>, fetched 2026-07-07 (resolves the <code>event-schema.md</code> caveat). Individual event version-gating not pinned; TeammateIdle documented but untested on this machine.</li>
+      <li id="s4"><b>Autonomy maturity levels &amp; question-spam pitfall</b> — sibling findings <code>04-loop-engineering.md</code> §§3.6–3.9 (warren's <code>question_posed</code> events cited secondhand; <code>02-warren-overstory.md</code> was mid-write).</li>
+      <li id="s5"><b>UI patterns</b> (state-aware composer, replay-then-tail transcript) — <code>01-autosk.md</code> §5; landscape fleet cockpits — <code>03-headless-subscription-landscape.md</code> §4. v2/interactive layer.</li>
+      <li id="s6"><b>Official Remote Control</b> — <code>code.claude.com/docs/en/remote-control</code> (launched 2026-02-24; push ≥2.1.110; presence file; Trusted Devices), + Channels/Dispatch comparison, verified 2026-07-07. No hands-on test of RC under an Agent-Teams LEAD session.</li>
+    </ol>
+    <hr class="soft">
+    <p style="font-size:12px;color:var(--faint)">GoSleep Lab · GSL-41 orchestration research · writer-autonomy worker · compiled 2026-07-08. This is a design dossier — the Laboratory / question-buffer / UI / mobile designs are proposals, validated by convergence with sibling findings and tasty-lunch precedent, not by running code. Self-contained; no external resources; light &amp; dark theme.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('tt');
+  function cur(){var t=root.getAttribute('data-theme');if(t)return t;return matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+  btn.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);btn.textContent=n==='dark'?'☀ Light':'◐ Dark';});
+})();
+</script>
+</body>
+</html>

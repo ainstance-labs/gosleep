@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loop Engineering — Field Guide & Adoption Plan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ============================ THEME TOKENS ============================ */
+:root{
+  --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef1f7; --surface-3:#e6eaf2;
+  --border:#dde2ec; --border-strong:#c6cdda;
+  --text:#171a21; --text-muted:#5b6472; --text-faint:#8a93a3;
+  --accent:#4f46e5; --accent-soft:#eae8fd;
+  --accent2:#0e7490; --accent2-soft:#d7f0f6;
+  --accent3:#b45309; --accent3-soft:#fbeecf;
+  --good:#047857; --good-soft:#d5f0e3;
+  --warn:#b45309; --warn-soft:#fbeecf;
+  --bad:#c02626; --bad-soft:#fbe0e0;
+  --shadow:0 1px 2px rgba(17,20,30,.05), 0 6px 20px rgba(17,20,30,.06);
+  --shadow-lg:0 8px 40px rgba(17,20,30,.12);
+  --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Menlo",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0c0f14; --surface:#141922; --surface-2:#1a212c; --surface-3:#222b38;
+    --border:#28313f; --border-strong:#3a4656;
+    --text:#e7ebf2; --text-muted:#9aa5b5; --text-faint:#6b7686;
+    --accent:#8b93f8; --accent-soft:#20223f;
+    --accent2:#38bdd8; --accent2-soft:#122a31;
+    --accent3:#e6a23c; --accent3-soft:#2e2413;
+    --good:#34d399; --good-soft:#10281f;
+    --warn:#e6a23c; --warn-soft:#2e2413;
+    --bad:#f87171; --bad-soft:#2f1717;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35);
+    --shadow-lg:0 10px 44px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef1f7; --surface-3:#e6eaf2;
+  --border:#dde2ec; --border-strong:#c6cdda;
+  --text:#171a21; --text-muted:#5b6472; --text-faint:#8a93a3;
+  --accent:#4f46e5; --accent-soft:#eae8fd;
+  --accent2:#0e7490; --accent2-soft:#d7f0f6;
+  --accent3:#b45309; --accent3-soft:#fbeecf;
+  --good:#047857; --good-soft:#d5f0e3;
+  --warn:#b45309; --warn-soft:#fbeecf;
+  --bad:#c02626; --bad-soft:#fbe0e0;
+  --shadow:0 1px 2px rgba(17,20,30,.05), 0 6px 20px rgba(17,20,30,.06);
+  --shadow-lg:0 8px 40px rgba(17,20,30,.12);
+}
+:root[data-theme="dark"]{
+  --bg:#0c0f14; --surface:#141922; --surface-2:#1a212c; --surface-3:#222b38;
+  --border:#28313f; --border-strong:#3a4656;
+  --text:#e7ebf2; --text-muted:#9aa5b5; --text-faint:#6b7686;
+  --accent:#8b93f8; --accent-soft:#20223f;
+  --accent2:#38bdd8; --accent2-soft:#122a31;
+  --accent3:#e6a23c; --accent3-soft:#2e2413;
+  --good:#34d399; --good-soft:#10281f;
+  --warn:#e6a23c; --warn-soft:#2e2413;
+  --bad:#f87171; --bad-soft:#2f1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35);
+  --shadow-lg:0 10px 44px rgba(0,0,0,.5);
+}
+
+/* ============================ BASE ============================ */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans); line-height:1.6;
+  font-size:clamp(15px,.4vw + 14px,16.5px);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 clamp(16px,4vw,40px)}
+h1,h2,h3,h4{line-height:1.22; letter-spacing:-.012em; margin:0}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font-family:var(--mono); font-size:.86em}
+code{background:var(--surface-2); border:1px solid var(--border); border-radius:5px; padding:.08em .38em}
+sup a{font-size:.7em; padding:0 1px; color:var(--accent2); font-weight:700}
+mark{background:var(--accent3-soft); color:var(--text); padding:0 .22em; border-radius:3px}
+
+/* ============================ TOP NAV ============================ */
+.topbar{
+  position:sticky; top:0; z-index:50; backdrop-filter:blur(12px);
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  border-bottom:1px solid var(--border);
+}
+.topbar-inner{display:flex; align-items:center; gap:14px; padding:9px clamp(16px,4vw,40px); max-width:1180px; margin:0 auto}
+.brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:-.02em; font-size:.98rem; white-space:nowrap}
+.brand .dot{width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 12px var(--accent)}
+.navlinks{display:flex; gap:2px; margin-left:auto; overflow-x:auto; scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{color:var(--text-muted); font-size:.82rem; font-weight:600; padding:6px 10px; border-radius:7px; white-space:nowrap}
+.navlinks a:hover{color:var(--text); background:var(--surface-2); text-decoration:none}
+.langbtn,.themebtn{
+  border:1px solid var(--border-strong); background:var(--surface); color:var(--text);
+  border-radius:8px; padding:6px 11px; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap;
+  font-family:var(--sans);
+}
+.langbtn:hover,.themebtn:hover{background:var(--surface-2)}
+.themebtn{padding:6px 9px}
+
+/* ============================ HERO ============================ */
+.hero{padding:clamp(38px,7vw,74px) 0 clamp(26px,4vw,40px); position:relative; overflow:hidden}
+.hero::before{
+  content:""; position:absolute; inset:0; z-index:-1; opacity:.5;
+  background:
+    radial-gradient(60% 90% at 82% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(50% 80% at 8% 0%, var(--accent2-soft), transparent 55%);
+}
+.eyebrow{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); font-weight:700; margin-bottom:16px}
+.eyebrow .pip{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 10px var(--accent2)}
+.hero h1{font-size:clamp(2rem,5.4vw,3.6rem); font-weight:850; letter-spacing:-.03em; max-width:16ch}
+.hero .lede{font-size:clamp(1.02rem,1.4vw,1.28rem); color:var(--text-muted); max-width:60ch; margin-top:18px}
+.hero .lede strong{color:var(--text)}
+.metabar{display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:26px}
+.metatag{display:inline-flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 13px; font-size:.8rem; color:var(--text-muted); box-shadow:var(--shadow)}
+.metatag b{color:var(--text); font-weight:700}
+
+/* ============================ SECTION SCAFFOLD ============================ */
+section{padding:clamp(30px,5vw,58px) 0; scroll-margin-top:64px; border-top:1px solid var(--border)}
+.sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px; flex-wrap:wrap}
+.sec-num{font-family:var(--mono); font-size:.86rem; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:7px; padding:3px 9px}
+.sec-head h2{font-size:clamp(1.5rem,3vw,2.1rem); font-weight:820; letter-spacing:-.02em}
+.sec-sub{color:var(--text-muted); font-size:1.02rem; max-width:74ch; margin:6px 0 26px}
+.lead-p{max-width:74ch}
+.lead-p + .lead-p{margin-top:14px}
+
+/* ============================ CARDS ============================ */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:15px; padding:22px 22px; box-shadow:var(--shadow)}
+.grid{display:grid; gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:880px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* stat tiles */
+.stat{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px; box-shadow:var(--shadow); position:relative; overflow:hidden}
+.stat::after{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent)}
+.stat.a2::after{background:var(--accent2)} .stat.a3::after{background:var(--accent3)} .stat.gd::after{background:var(--good)} .stat.bd::after{background:var(--bad)}
+.stat .k{font-size:clamp(1.7rem,3.4vw,2.5rem); font-weight:840; letter-spacing:-.03em; line-height:1}
+.stat .l{color:var(--text-muted); font-size:.86rem; margin-top:8px}
+.stat .l b{color:var(--text)}
+
+/* callouts */
+.callout{border-left:4px solid var(--accent); background:var(--surface-2); border-radius:0 12px 12px 0; padding:15px 18px; margin:18px 0}
+.callout.warn{border-color:var(--warn); background:var(--warn-soft)}
+.callout.good{border-color:var(--good); background:var(--good-soft)}
+.callout.bad{border-color:var(--bad); background:var(--bad-soft)}
+.callout .ct{font-weight:800; font-size:.82rem; letter-spacing:.03em; text-transform:uppercase; display:block; margin-bottom:5px; color:var(--text-muted)}
+
+/* term chips inline glossary */
+.term{border-bottom:1.5px dotted var(--accent2); cursor:help; font-weight:600}
+
+/* ============================ TIMELINE (SVG) ============================ */
+.tl-scroll{overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch}
+.tl-scroll svg{display:block; min-width:940px}
+.tl-cap{color:var(--text-faint); font-size:.8rem; margin-top:6px}
+.phase-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px}
+@media(max-width:880px){.phase-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.phase-row{grid-template-columns:1fr}}
+.phase{background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:16px; box-shadow:var(--shadow)}
+.phase .yr{font-family:var(--mono); font-size:.76rem; font-weight:700; color:var(--accent2)}
+.phase h4{font-size:1rem; margin:5px 0 7px}
+.phase p{font-size:.88rem; color:var(--text-muted); margin:0}
+
+/* ============================ PATTERN CATALOG ============================ */
+.pat{display:flex; flex-direction:column; gap:0; background:var(--surface); border:1px solid var(--border); border-radius:15px; box-shadow:var(--shadow); overflow:hidden}
+.pat-head{display:flex; align-items:flex-start; gap:13px; padding:18px 20px; background:linear-gradient(180deg,var(--surface-2),transparent)}
+.pat-ix{flex:none; width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-family:var(--mono); font-weight:800; font-size:.9rem; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.pat-head h3{font-size:1.12rem; font-weight:780}
+.pat-head .aka{font-size:.8rem; color:var(--text-faint); margin-top:2px}
+.pat-body{padding:4px 20px 20px; display:flex; flex-direction:column; gap:13px}
+.pat-block .lab{font-size:.7rem; letter-spacing:.09em; text-transform:uppercase; font-weight:800; color:var(--text-faint); display:flex; align-items:center; gap:6px; margin-bottom:5px}
+.pat-block.ess .lab::before{content:"◆"; color:var(--accent)}
+.pat-block.impl .lab::before{content:"▚"; color:var(--accent2)}
+.pat-block.pit .lab::before{content:"▲"; color:var(--warn)}
+.pat-block p{margin:0; font-size:.92rem}
+.pat-block.pit p{color:var(--text-muted)}
+.srcs{display:flex; flex-wrap:wrap; gap:6px; margin-top:2px}
+.src{font-size:.73rem; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:2px 8px; color:var(--text-muted); font-family:var(--mono)}
+
+/* ============================ TABLES ============================ */
+.table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:13px; box-shadow:var(--shadow); -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; min-width:640px; font-size:.9rem; background:var(--surface)}
+thead th{position:sticky; top:0; text-align:left; background:var(--surface-3); color:var(--text); font-weight:750; padding:12px 14px; border-bottom:2px solid var(--border-strong); font-size:.82rem; letter-spacing:.01em}
+tbody td{padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface-2)}
+td b, th b{font-weight:750}
+.pill{display:inline-flex; align-items:center; gap:5px; font-size:.76rem; font-weight:750; border-radius:999px; padding:2px 9px; white-space:nowrap}
+.pill.yes{background:var(--good-soft); color:var(--good)}
+.pill.part{background:var(--warn-soft); color:var(--warn)}
+.pill.no{background:var(--bad-soft); color:var(--bad)}
+.pill.dot::before{content:"●"; font-size:.7em}
+
+/* effort/value chips */
+.chip{display:inline-flex; align-items:center; gap:5px; font-size:.72rem; font-weight:750; border-radius:6px; padding:2px 8px; border:1px solid var(--border)}
+.chip.low{background:var(--good-soft); color:var(--good); border-color:transparent}
+.chip.med{background:var(--warn-soft); color:var(--warn); border-color:transparent}
+.chip.high{background:var(--bad-soft); color:var(--bad); border-color:transparent}
+
+/* ============================ CODE ============================ */
+pre{background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:10px; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:.82rem; line-height:1.55; margin:14px 0}
+pre .cm{color:var(--text-faint)}
+pre .kw{color:var(--accent)}
+pre .st{color:var(--good)}
+
+/* ============================ RANKED ADOPTION ============================ */
+.rank{display:flex; flex-direction:column; gap:14px}
+.rankitem{display:grid; grid-template-columns:52px 1fr; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); position:relative}
+.rankitem.mvp{border-color:var(--accent); background:linear-gradient(180deg,var(--accent-soft),transparent 60%)}
+.rankn{width:52px; height:52px; border-radius:12px; display:grid; place-items:center; font-family:var(--mono); font-weight:840; font-size:1.5rem; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); align-self:start}
+.rankitem.tail .rankn{background:linear-gradient(135deg,var(--text-faint),var(--accent2))}
+.rankbody h4{font-size:1.08rem; display:flex; flex-wrap:wrap; align-items:center; gap:9px}
+.rankbody .solves{margin:9px 0 0; font-size:.92rem}
+.rankbody .solves b{color:var(--accent2)}
+.metaline{display:flex; flex-wrap:wrap; gap:8px; margin-top:11px}
+.mvp-badge{font-size:.68rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#fff; background:var(--accent); border-radius:5px; padding:2px 7px}
+
+/* two-col prose */
+.cols{columns:2; column-gap:34px}
+.cols p{break-inside:avoid; margin:0 0 12px}
+@media(max-width:720px){.cols{columns:1}}
+
+/* footnotes / sources */
+.sources{font-size:.85rem}
+.sources ol{margin:0; padding-left:22px; color:var(--text-muted)}
+.sources li{margin-bottom:8px; break-inside:avoid}
+.sources li b{color:var(--text)}
+.src-grid{columns:2; column-gap:34px}
+@media(max-width:720px){.src-grid{columns:1}}
+
+/* misc */
+.divider{height:1px; background:var(--border); margin:26px 0}
+.kicker{font-family:var(--mono); font-size:.76rem; color:var(--accent2); font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px}
+ul.clean{list-style:none; padding:0; margin:0}
+ul.clean li{position:relative; padding-left:22px; margin-bottom:9px}
+ul.clean li::before{content:"→"; position:absolute; left:0; color:var(--accent); font-weight:800}
+ul.tick{list-style:none; padding:0; margin:0}
+ul.tick li{position:relative; padding-left:24px; margin-bottom:9px}
+ul.tick li::before{content:"✓"; position:absolute; left:0; color:var(--good); font-weight:800}
+ul.cross li::before{content:"✕"; color:var(--bad)}
+footer.pagefoot{border-top:1px solid var(--border); padding:34px 0 60px; color:var(--text-faint); font-size:.84rem}
+footer.pagefoot .wrap>div{max-width:74ch}
+.arc{background:var(--surface-2); border:1px dashed var(--border-strong); border-radius:12px; padding:16px 18px; font-size:.95rem; margin:18px 0; text-align:center}
+.arc b{color:var(--accent)}
+@media print{.topbar{display:none} body{background:#fff}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>Loop&nbsp;Engineering</div>
+    <nav class="navlinks">
+      <a href="#what">What it is</a>
+      <a href="#timeline">Canon</a>
+      <a href="#catalog">10 patterns</a>
+      <a href="#economics">Cache economics</a>
+      <a href="#antirunaway">Anti-runaway</a>
+      <a href="#gap">Gap vs gosleep</a>
+      <a href="#adopt">Adoption plan</a>
+      <a href="#conclusion">Takeaways</a>
+    </nav>
+    <a class="langbtn" href="RU/index.html" title="Русская версия">RU</a>
+    <button class="themebtn" id="themeToggle" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="pip"></span>GSL-41 · Orchestration research · 2026-07</div>
+    <h1>Loop engineering, explained from zero</h1>
+    <p class="lede">How the community learned to run a coding agent <strong>overnight, unattended, past any single memory</strong> — the canon, a catalogue of ten reusable patterns, and exactly where <strong>gosleep</strong> stands against it.</p>
+    <div class="metabar">
+      <span class="metatag">📎 Source of record: <b>04-loop-engineering.md</b></span>
+      <span class="metatag">🎯 Lens: <b>an orchestrator that runs while the owner sleeps</b></span>
+      <span class="metatag">🧩 <b>10 patterns</b> · <b>8 ranked adoptions</b></span>
+      <span class="metatag">🌗 Light / dark · self-contained</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ==================================================================== -->
+<!-- 0. TL;DR -->
+<!-- ==================================================================== -->
+<section id="tldr" style="border-top:none">
+  <div class="sec-head"><span class="sec-num">TL;DR</span><h2>The whole report in six numbers</h2></div>
+  <p class="sec-sub">If you read nothing else: this is a mature engineering discipline with dated origins and named patterns. We are strong on the worker side and have one structural blind spot on the orchestrator side.</p>
+  <div class="grid g3">
+    <div class="stat a2"><div class="k">2025-07</div><div class="l">The founding document — Geoffrey Huntley's <b>“Ralph”</b> loop: <code>while :; do cat PROMPT.md | claude-code; done</code>. A whole discipline grew from that one line.</div></div>
+    <div class="stat"><div class="k">3 eras</div><div class="l"><b>2024</b> “the agent is a loop” → <b>2025</b> “put a loop around the agent” → <b>2026</b> “engineer that loop like production infra”.</div></div>
+    <div class="stat a3"><div class="k">5&nbsp;min</div><div class="l">The prompt-cache lifetime silently dropped from <b>1&nbsp;hour → 5&nbsp;min on 2026-03-06</b>. It now dictates how often an idle loop should wake.</div></div>
+    <div class="stat gd"><div class="k">8 / 15</div><div class="l">gosleep already meets or beats the canon on <b>8 of 15</b> patterns — all on the worker side (state, batons, patience, verification).</div></div>
+    <div class="stat bd"><div class="k">1 gap</div><div class="l">Every missing capability is one facet of a single hole: <b>the orchestrator as a self-scheduling, self-healing loop</b>.</div></div>
+    <div class="stat"><div class="k">3 items</div><div class="l">The minimum “owner goes to sleep” package: <b>self-pulse + night mode + question buffer</b>. All LOW-to-MED effort.</div></div>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 1. WHAT IT IS -->
+<!-- ==================================================================== -->
+<section id="what">
+  <div class="sec-head"><span class="sec-num">01</span><h2>What “loop engineering” actually is</h2></div>
+  <p class="sec-sub">Every term below is introduced from scratch. You do not need to know any of this vocabulary going in.</p>
+
+  <p class="lead-p"><b>One sentence:</b> loop engineering is the discipline of wrapping a coding agent in an <em>outer control loop</em> — restart it fresh, feed it saved state from disk, check its progress, and decide to continue / stop / escalate — so useful work keeps flowing <mark>past any single memory window and without a human pressing “continue”.</mark></p>
+
+  <p class="lead-p" style="margin-top:14px">The insight that started the field is almost embarrassingly simple. An LLM agent is <em>already</em> a loop: the model thinks, calls a tool, reads the result, thinks again — round and round until it decides to stop. But that loop lives inside one <b>context window</b> (the finite amount of text a model can hold at once), and it dies when that window fills up. The community's answer was to <b>put a <code>while true</code> around the whole agent</b> and make the filesystem + git the memory that survives each restart. Everything since — stop conditions, budgets, circuit breakers, checkpoints — is engineering discipline layered onto that <code>while true</code>.</p>
+
+  <div class="callout">
+    <span class="ct">The core mental model — two loops, nested</span>
+    <b>Inner loop</b> = the agent's own think→tool→observe cycle, inside one context window. It is bounded by the window, and it's the model vendor's problem. <b>Outer loop</b> = the harness that re-invokes a <em>fresh</em> agent across windows — the <code>while true</code>. It is bounded only by <em>your</em> guards, and it is <em>your</em> problem. <b>Loop engineering = engineering the outer loop.</b>
+  </div>
+
+  <div class="kicker">A vocabulary map — every one of these appears again below</div>
+  <div class="grid g2" style="margin-top:6px">
+    <div class="card">
+      <ul class="clean" style="font-size:.94rem">
+        <li><b>Inner loop</b> — the agent's think→tool→observe cycle inside one context window.</li>
+        <li><b>Outer loop</b> — the harness that re-invokes the agent across windows (the <code>while true</code>).</li>
+        <li><b>Harness</b> — everything around the model: tools, state files, restart logic, guards. “Harness engineering” ≈ “loop engineering”; the latter stresses the restart cycle.</li>
+        <li><b>Stop condition / definition-of-done</b> — a machine-checkable test that ends the outer loop (not “the model feels done”).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <ul class="clean" style="font-size:.94rem">
+        <li><b>Circuit breaker / loop guard</b> — detectors that halt a loop making no progress (runaway protection).</li>
+        <li><b>Checkpoint &amp; resume</b> — durable state written at each boundary so a fresh agent can continue from disk.</li>
+        <li><b>Heartbeat</b> — a periodic “I'm alive / anything to do?” tick, usually cheap.</li>
+        <li><b>Watchdog</b> — a separate process that watches the loop and intervenes when it wedges.</li>
+        <li><b>Park / escalate</b> — routing a stuck task to a human queue instead of retrying forever.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 2. TIMELINE / CANON -->
+<!-- ==================================================================== -->
+<section id="timeline">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Where it came from — the canon, with dates</h2></div>
+  <p class="sec-sub">A short, sourced chronology. Each node is a primary document that was actually fetched or read from source.</p>
+
+  <div class="tl-scroll" aria-label="Canon timeline">
+    <svg viewBox="0 0 960 260" role="img" aria-labelledby="tl-title">
+      <title id="tl-title">Loop-engineering canon timeline, 2024 to 2026</title>
+      <defs>
+        <linearGradient id="axis" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--accent2)"/>
+          <stop offset="1" stop-color="var(--accent)"/>
+        </linearGradient>
+      </defs>
+      <!-- axis -->
+      <line x1="40" y1="132" x2="920" y2="132" stroke="url(#axis)" stroke-width="4" stroke-linecap="round"/>
+      <!-- era bands -->
+      <text x="40" y="30" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--accent2)">ERA 1 · the agent is a loop</text>
+      <text x="360" y="30" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--accent)">ERA 2 · a loop around the agent</text>
+      <text x="720" y="30" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--accent3)">ERA 3 · loop engineering</text>
+
+      <!-- nodes: helper positions -->
+      <!-- Node 1 -->
+      <circle cx="90" cy="132" r="9" fill="var(--surface)" stroke="var(--accent2)" stroke-width="3"/>
+      <text x="90" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">2024-12</text>
+      <text x="90" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">“Agent = loop”</text>
+      <text x="90" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">Anthropic + T. Ball</text>
+
+      <!-- Node 2 -->
+      <circle cx="250" cy="132" r="11" fill="var(--accent2)" stroke="var(--surface)" stroke-width="3"/>
+      <text x="250" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--accent2)" font-weight="700">2025-07-14</text>
+      <text x="250" y="160" text-anchor="middle" font-size="12.5" font-weight="800" fill="var(--text)">Ralph loop</text>
+      <text x="250" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">Huntley — founding doc</text>
+
+      <!-- Node 3 -->
+      <circle cx="430" cy="132" r="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>
+      <text x="430" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">2025-11-26</text>
+      <text x="430" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">Anthropic harness</text>
+      <text x="430" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">initializer + coder split</text>
+
+      <!-- Node 4 -->
+      <circle cx="590" cy="132" r="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>
+      <text x="590" y="188" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">late 2025</text>
+      <text x="590" y="212" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">Canonization</text>
+      <text x="590" y="228" text-anchor="middle" font-size="11" fill="var(--text-muted)">plugin · ralph-cc · Gas Town</text>
+
+      <!-- Node 5: cache cliff -->
+      <circle cx="720" cy="132" r="9" fill="var(--accent3)" stroke="var(--surface)" stroke-width="3"/>
+      <text x="720" y="112" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--accent3)" font-weight="700">2026-03-06</text>
+      <text x="720" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text)">Cache TTL cliff</text>
+      <text x="720" y="176" text-anchor="middle" font-size="11" fill="var(--text-muted)">1h → 5min</text>
+
+      <!-- Node 6 -->
+      <circle cx="850" cy="132" r="10" fill="var(--surface)" stroke="var(--accent3)" stroke-width="3"/>
+      <text x="850" y="188" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--text-muted)">2026-04 → 06</text>
+      <text x="850" y="212" text-anchor="middle" font-size="12.5" font-weight="800" fill="var(--text)">“Loop engineering”</text>
+      <text x="850" y="228" text-anchor="middle" font-size="11" fill="var(--text-muted)">Osmani names it</text>
+    </svg>
+  </div>
+  <p class="tl-cap">↔ Scroll horizontally on a narrow screen. Sources fetched or read from source (see §Sources).</p>
+
+  <div class="phase-row">
+    <div class="phase">
+      <div class="yr">PHASE 0 · 2024 → early 2025</div>
+      <h4>The agent <em>is</em> a loop</h4>
+      <p>Anthropic's “Building effective agents” <sup><a href="#s1">1</a></sup> and Thorsten Ball's “How to build an agent” popularise the observation that a coding agent is ~300 lines: model + tools + a while-loop. That's the <b>inner</b> loop. Its hard limit: the context window.</p>
+    </div>
+    <div class="phase">
+      <div class="yr">PHASE 1 · 2025-07-14</div>
+      <h4>The Ralph loop</h4>
+      <p>Geoffrey Huntley ships the founding document of outer-loop engineering <sup><a href="#s2">2</a></sup>. Named after Ralph Wiggum (The Simpsons): try the same thing over and over until it works. Deliberately dumb orchestration; all determinism lives in <code>PROMPT.md</code> + specs on disk. Field claim: “shipped 6 repos overnight”.</p>
+    </div>
+    <div class="phase">
+      <div class="yr">PHASE 2 · 2025-11 → late 2025</div>
+      <h4>Canonization</h4>
+      <p>Anthropic's harness engineering write-up <sup><a href="#s3">3</a></sup> formalises the same shape (initializer + coding agent). The vendor ships an official <b>ralph-wiggum plugin</b> <sup><a href="#s5">5</a></sup>. Community hardens it into production runners (<b>ralph-claude-code</b> <sup><a href="#s6">6</a></sup>); Steve Yegge's <b>Gas Town</b> <sup><a href="#s7">7</a></sup> scales it to an org-chart of loops.</p>
+    </div>
+    <div class="phase">
+      <div class="yr">PHASE 3 · 2026</div>
+      <h4>It gets a name</h4>
+      <p>Addy Osmani systematises the vocabulary <sup><a href="#s4">4</a></sup> (30+ hours autonomous coding, 11k-line app in one run) and in June 2026 popularises the term <b>“loop engineering”</b>. An explainer wave follows. Consensus five blocks: <b>find work → act → verify → remember → repeat on a trigger.</b></p>
+    </div>
+  </div>
+
+  <div class="arc">The arc in one line: <b>2024</b> “the agent is a loop” → <b>2025</b> “put a loop around the agent” (Ralph) → <b>2026</b> “engineer that loop like production infrastructure” (loop engineering).</div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 3. PATTERN CATALOG -->
+<!-- ==================================================================== -->
+<section id="catalog">
+  <div class="sec-head"><span class="sec-num">03</span><h2>The pattern catalogue — ten reusable moves</h2></div>
+  <p class="sec-sub">Everything the field has learned, factored into ten patterns. Each card: <b>◆ the essence</b> in plain words · <b>▚ where it is implemented</b> (real systems) · <b>▲ the pitfalls</b> that bite people.</p>
+
+  <div class="grid" style="gap:18px">
+
+    <!-- 3.1 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">1</div><div><h3>Outer loop vs inner loop</h3><div class="aka">the load-bearing distinction — everything else hangs off it</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>The <b>inner</b> loop (model→tool→observe) is bounded by one context window and is the vendor's problem. The <b>outer</b> loop (spawn a fresh agent → point it at durable state → check progress → decide continue/stop/escalate) is bounded only by your guards and is <b>yours</b>. Loop engineering is engineering the outer loop.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>Ralph's one-liner; Anthropic's initializer / coding-agent split; every runner below.</p><div class="srcs"><span class="src">ghuntley/ralph</span><span class="src">anthropic harness</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Conflating the two loops. Inner-loop tricks (compaction, bigger windows) delay but never remove the need for an outer loop — Osmani: <em>context rot degrades performance well before token limits</em>, so a fresh-context restart beats stretching a tired one.</p></div>
+      </div>
+    </div>
+
+    <!-- 3.2 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">2</div><div><h3>Stop conditions &amp; definition-of-done</h3><div class="aka">how the loop knows it is actually finished</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>The loop must end on a <b>machine-checkable test declared before the run</b> — never on the model “feeling done”. State done as <em>data</em>, not prose.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>Anthropic: a JSON <b>feature list</b> (200+ items all starting <code>failing</code>; done = all <code>passing</code>; the spec forbids editing/removing tests). Carson's <code>prd.json</code> stories flip <code>passes:false→true</code>; exits only on <code>&lt;promise&gt;COMPLETE&lt;/promise&gt;</code> AND all-pass, with a hard <code>max_iterations</code> backstop. ralph-claude-code has the most-engineered exit anywhere: a <b>dual-condition gate</b> (≥2 accumulated completion signals AND explicit <code>EXIT_SIGNAL:true</code>) plus a safety force-exit.</p><div class="srcs"><span class="src">anthropic feature-list</span><span class="src">snarktank/ralph</span><span class="src">ralph-claude-code</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Single-signal exits (model declares victory early — Anthropic saw this constantly). The model editing the done-predicate itself (hence “don't touch tests” clauses). Stale exit signals surviving a restart (ralph-cc clears <code>.exit_signals</code> between sessions).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.3 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">3</div><div><h3>Budget guards / token ceilings</h3><div class="aka">hard caps that survive a restart</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>Hard, <b>mechanism-level</b> caps on iterations, calls, tokens, and dollars — because a cap that only lives in the prompt does not self-enforce under pressure.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>ralph-claude-code: <code>MAX_CALLS_PER_HOUR=100</code> (hourly reset), optional cumulative token cap, per-run sandbox <code>MAX_COST</code> in USD, 15-min per-call timeout. autosk persists visit-count budgets in <code>task.json</code>, human-resettable. warren adds the hard-won rule that a <b>malformed budget must fail OPEN</b> — a budget typo must never silently cancel every run.</p><div class="srcs"><span class="src">ralph-claude-code</span><span class="src">autosk task.json</span><span class="src">warren</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Budgets that only exist in the prompt (ignored). Budgets without persistence (a restarted loop forgets it already spent the ceiling). Budgets that fail <em>closed</em> on a config typo (warren's lesson — kills every run).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.4 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">4</div><div><h3>Checkpoint &amp; resume</h3><div class="aka">write state at every boundary so anyone can continue from disk</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>Every iteration ends by writing <b>durable state</b> (a commit + a progress note), so any next iteration — same loop or a cold restart days later — resumes from disk, not from memory.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>Anthropic: <code>claude-progress.txt</code> + descriptive commits; the <em>initializer agent</em> exists purely to create this resume surface. Carson: memory is <em>only</em> git history + append-only <code>progress.txt</code> + <code>prd.json</code> flags, and he checkpoints <em>knowledge</em> too — appending codebase gotchas to <code>AGENTS.md</code> so later iterations inherit them. warren routes even watchdog-killed runs “through reap, not bare finalize” so partial committed work is never lost.</p><div class="srcs"><span class="src">anthropic progress.txt</span><span class="src">snarktank AGENTS.md</span><span class="src">warren reap</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Checkpointing to chat/scrollback (lost on compaction). Resuming a <em>stale</em> session instead of fresh context (a session-hijacking bug class). Progress files that grow unbounded. Trusting the checkpoint over live git (gosleep already handles this with atomic temp+rename and “live git wins”).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.5 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">5</div><div><h3>Self-pacing &amp; the cache window</h3><div class="aka">deciding when to wake next — and why 5 minutes matters</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>An unattended loop must decide <b>when to wake next</b>. Fixed cron is either wasteful (nothing changed) or slow (something urgent). The 2026 refinement: pick intervals against the <b>prompt-cache lifetime</b>, because cache economics dominate the cost of an idle loop. Fully unpacked in <a href="#economics">§04</a>.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>OpenClaw's canonical <b>heartbeat vs cron</b> split: a heartbeat is a periodic turn in the <em>main</em> session that reads a tiny stable checklist and batches all checks into one turn; cron is detached isolated jobs. Cost levers: isolated sessions (~100K → 2–5K tokens/run), cheap model, active-hours windows. Claude Code's own <code>ScheduleWakeup</code> / dynamic <code>/loop</code> encodes exactly the cache-window rule (“don't pick 300s”).</p><div class="srcs"><span class="src">OpenClaw heartbeat</span><span class="src">ScheduleWakeup</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Polling every N min “to be safe” — each tick is a full agent turn (burnout-by-token-bill). Wake-ups that re-trigger expensive work instead of cheap triage. A heartbeat whose session context grows forever (answer: isolated session + tiny checklist). Fixed cron with no “nothing to do → say OK and exit cheap” fast path.</p></div>
+      </div>
+    </div>
+
+    <!-- 3.6 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">6</div><div><h3>Overnight / unattended</h3><div class="aka">running while the human sleeps; a reviewable morning, not raw logs</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>The loop runs while the human sleeps. Every human touchpoint is either <b>removed</b> (auto-approve within scoped permissions), <b>deferred</b> (morning queue), or <b>fatal</b> (park). The morning deliverable is a <em>reviewable digest</em>, not raw logs.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>The Ralph lineage (“ship features in your sleep… come back to completed features, passing tests, committed code”). ralph-cc's explicit <b>unattended mode</b> auto-waits through the 5-hour subscription limit instead of exiting. OpenClaw's morning-brief cron + active-hours + “only wake the human for alerts”. Gas Town runs the whole town on patrols and hands the owner a morning-readable <b>capability ledger</b>. autosk's <b>park-to-human</b> morning queue.</p><div class="srcs"><span class="src">geocod.io ralph</span><span class="src">ralph-cc unattended</span><span class="src">OpenClaw brief</span><span class="src">Gas Town ledger</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Auto-approving beyond scoped permissions (community consensus keeps merge/deploy/destructive human-gated even at max autonomy). Rate-limit windows misread as errors. Waking to 40 unlabeled branches — <b>the digest is as important as the work</b>. No rollback path.</p></div>
+      </div>
+    </div>
+
+    <!-- 3.7 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">7</div><div><h3>Question buffering</h3><div class="aka">don't stop the whole loop on one question</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>Overnight, a blocking question is a stall. Three answers, increasing in sophistication: <b>(a) park</b> the task and move on; <b>(b) pause with a budget</b> — wait for an async human answer, auto-resolve on timeout; <b>(c) buffer &amp; continue</b> — log the question, take the reversible default, keep working, surface the buffer in the morning digest. (c) is the ideal for gosleep and the least implemented in public code.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>warren is the most concrete: workers emit <code>question_posed</code> onto an event log → the run flips to <code>paused</code>; a human answers via API, OR the <b>pause budget</b> expires and the run proceeds. Questions are events, not modal dialogs. autosk uses park-to-human as a universal sink. OpenClaw rate-limits the question <em>channel</em> by design (batch, suppress OK-noise). Osmani: “delegated approval with full execution-state preservation”.</p><div class="srcs"><span class="src">warren pause-budget</span><span class="src">autosk park</span><span class="src">OpenClaw suppress</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Parking too eagerly (one ambiguous lint rule shouldn't stall a feature — that's what buffer-and-default is for). Answering with <em>irreversible</em> defaults (buffering only works when the default is cheap to undo). Question spam — the buffer needs dedup (same question from 5 cycles = 1 morning item).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.8 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">8</div><div><h3>Verification loops</h3><div class="aka">a fresh judge, because the generator can't grade its own homework</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>The generator must not grade its own work. A separate stage — a fresh agent, a test suite, or a browser — verifies each increment <b>before</b> the done-flag flips; <b>ratchets</b> stop regressions (a metric may only go up).</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>Anthropic's decisive finding: Claude marked features done prematurely <b>until given browser automation</b> (Puppeteer MCP) to test “like a user”. Osmani's planner/worker/<b>judge</b> split + <b>test ratchets</b>. Huntley's “backpressure”: compilers and static analyzers wired in so a bad iteration can't advance. Gas Town: the Refinery reviews worker output; the Witness verifies progress independently of the worker's own claims.</p><div class="srcs"><span class="src">anthropic puppeteer</span><span class="src">osmani judge</span><span class="src">gastown witness</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>A verifier that shares the generator's context (inherits its assumptions — fresh context is the whole point). Verification the model can edit (test deletion). A verifier that hangs and freezes the loop (gosleep's E17 watchdog exists for exactly this; ralph's per-call timeout is the loop-level equivalent).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.9 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">9</div><div><h3>Anti-runaway protections</h3><div class="aka">a spinning loop is worse than a stopped one</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>A loop that spins without progress burns budget and can damage the tree — worse than a stopped loop. Detection is <b>multi-signal</b> (progress, error repetition, output shape); response is <b>staged</b> (halt → cooldown → human). Fully worked in <a href="#antirunaway">§05</a>.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>ralph-claude-code's full Nygard-style <b>circuit breaker</b> (CLOSED/HALF_OPEN/OPEN; opens on 3 no-progress loops, 5 same-error loops, &gt;70% output decline, or 2 permission-denial loops; 30-min cooldown then probing). Gas Town's <b>watchdog chain</b> (Witness → Deacon → Boot-the-Dog checks the Deacon every 5 min) with the hard rule <b>never declare an agent stuck from a single store</b>. warren derives heartbeat from the newest event row and self-arms by default.</p><div class="srcs"><span class="src">ralph circuit_breaker.sh</span><span class="src">gastown boot</span><span class="src">warren liveness</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>Single-signal stuck-detection. Watchdogs nobody watches (Boot exists because the Deacon itself died in practice). Kill paths that destroy partial work (warren's reap rule). Self-reported heartbeats — a wedged agent can't report; derive liveness from <em>artifacts</em> (events, commits, file mtimes).</p></div>
+      </div>
+    </div>
+
+    <!-- 3.10 -->
+    <div class="pat">
+      <div class="pat-head"><div class="pat-ix">10</div><div><h3>State-on-disk</h3><div class="aka">the filesystem + git ARE the loop's memory</div></div></div>
+      <div class="pat-body">
+        <div class="pat-block ess"><span class="lab">Essence</span><p>The filesystem + git <b>are</b> the loop's memory. Everything needed to decide “what next” must be re-derivable from disk by a reader with zero prior context.</p></div>
+        <div class="pat-block impl"><span class="lab">Where</span><p>Every serious system converges on the same trio: <b>(1) work state</b> — <code>prd.json</code> flags / feature-list JSON / Beads ledger / <code>task.json</code> counters / event log. <b>(2) narrative</b> — append-only <code>progress.txt</code> / capability ledger / <code>AGENTS.md</code> accumulation (the loop improves its own future prompts). <b>(3) loop-control state</b> — <code>.ralph/</code> exit signals + circuit-breaker JSON + metrics, heartbeat stores, pause/visit budgets.</p><div class="srcs"><span class="src">all systems</span></div></div>
+        <div class="pat-block pit"><span class="lab">Pitfalls</span><p>State only in the session (dies with it). Non-atomic writes (truncated batons — gosleep's temp+rename rule). Human-unreadable state (the owner must triage from a phone — autosk's human-resettable JSON counters are the exemplar). Prose walls instead of structured state.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 4. ECONOMICS -->
+<!-- ==================================================================== -->
+<section id="economics">
+  <div class="sec-head"><span class="sec-num">04</span><h2>The economics of self-pacing</h2></div>
+  <p class="sec-sub">Why an idle loop's cost is dominated by one number you can't see on a dashboard — the prompt-cache lifetime.</p>
+
+  <div class="grid g2" style="align-items:start">
+    <div>
+      <p class="lead-p"><b>First, what the prompt cache is.</b> When you send a big prompt (system instructions, the standing state file, the checklist) to a model, the provider can <em>cache</em> that prefix. If you send almost the same prompt again <em>soon</em>, you pay a fraction of the price for the cached part. The catch: the cache has a <b>lifetime (TTL)</b>. Miss the window and the next call re-pays full price for the whole prefix — a <b>cache miss</b>.</p>
+      <p class="lead-p" style="margin-top:14px"><b>What changed.</b> Anthropic's default cache TTL silently dropped from <b>1 hour → 5 minutes on 2026-03-06</b>. Loops that polled every 15–30 minutes were tuned for the old 1-hour window; overnight they suddenly ate a full cache miss on <em>every single tick</em> — community reports of <b>+30–60% effective cost</b>.</p>
+      <div class="callout warn">
+        <span class="ct">The emergent rule</span>
+        <b>Poll inside the cache window (&lt;5 min) or commit to long sleeps (20–30 min+) and eat exactly ONE cache miss.</b> The worst possible cadence is <em>just past the TTL</em> — say 6–10 minutes — where you pay a full miss every time and gain nothing for it.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="kicker">Cadence decision — which regime am I in?</div>
+      <table style="min-width:0; font-size:.86rem">
+        <thead><tr><th>Interval</th><th>Cache</th><th>Use when</th></tr></thead>
+        <tbody>
+          <tr><td><b>&lt; 5 min</b><br><span style="color:var(--text-muted)">60–270s</span></td><td><span class="pill yes dot">warm</span></td><td>Actively wedging a stall / watching external state the harness can't notify you about (CI, deploy).</td></tr>
+          <tr><td><b>~5 min</b><br><span style="color:var(--text-muted)">300s</span></td><td><span class="pill no dot">worst</span></td><td><b>Avoid.</b> Just past the TTL — pays a full miss without amortizing it. Drop to 270s or jump to 1200s+.</td></tr>
+          <tr><td><b>20–30 min+</b><br><span style="color:var(--text-muted)">1200s+</span></td><td><span class="pill part dot">1 miss</span></td><td>Workers grinding, nothing urgent, or idle. One cache miss, amortized over a long wait.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:.82rem; color:var(--text-muted); margin:12px 0 0">This table is directly encoded in Claude Code's <code>ScheduleWakeup</code> guidance (“don't pick 300s”) — the tool the gosleep orchestrator would use to arm its self-pulse.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">The cheap-triage principle</span>
+    Because every wake-up is a full agent turn, the wake-up must do the <em>least</em> work that answers “anything to do?”. OpenClaw's heartbeat shape: read a tiny <b>stable</b> checklist (so the cache stays valid), batch all the checks into one turn, and take a <b>“nothing changed → say OK and exit”</b> fast path. A wake-up that re-runs an expensive slash command instead of a cheap triage is the classic self-inflicted wound (Claude Code bug #54086).
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 5. ANTI-RUNAWAY REFERENCE -->
+<!-- ==================================================================== -->
+<section id="antirunaway">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Anti-runaway, at reference quality</h2></div>
+  <p class="sec-sub">Two production systems solved “stop a loop that's spinning” properly. Their code carries lessons no design doc conveys — every one of these is a scar from a real incident.</p>
+
+  <div class="grid g2" style="align-items:start">
+    <!-- ralph-claude-code -->
+    <div class="card">
+      <div class="kicker" style="color:var(--accent)">Reference A — ralph-claude-code</div>
+      <h3 style="font-size:1.2rem; margin-bottom:6px">The dual exit gate + circuit breaker</h3>
+      <p style="color:var(--text-muted); font-size:.92rem; margin:0 0 14px">v0.11.x, 784 tests — the bash one-liner turned into a production loop runner.</p>
+
+      <p style="font-weight:700; font-size:.85rem; margin:0 0 6px">The dual-condition exit — done needs BOTH:</p>
+      <ul class="tick" style="font-size:.9rem">
+        <li>≥2 accumulated completion indicators across recent loops (tracked in <code>.exit_signals</code> JSON), <b>AND</b></li>
+        <li>the agent's explicit <code>EXIT_SIGNAL: true</code> in its response.</li>
+      </ul>
+      <p style="font-size:.9rem; margin:10px 0 0">Plus a <b>safety force-exit</b> after 5 consecutive <code>EXIT_SIGNAL=true</code> in case the normal path wedges; and <code>STATUS: COMPLETE</code> with <code>EXIT_SIGNAL:false</code> explicitly <em>continues</em>. Exit signals are cleared between sessions so a stale one can't fire.</p>
+
+      <div class="divider"></div>
+      <p style="font-weight:700; font-size:.85rem; margin:0 0 6px">The circuit breaker — a Nygard state machine in <code>circuit_breaker.sh</code>:</p>
+      <div class="grid g3" style="gap:8px; margin:8px 0">
+        <div style="text-align:center; background:var(--good-soft); border-radius:9px; padding:8px 4px"><b style="color:var(--good)">CLOSED</b><br><span style="font-size:.76rem; color:var(--text-muted)">normal flow</span></div>
+        <div style="text-align:center; background:var(--warn-soft); border-radius:9px; padding:8px 4px"><b style="color:var(--warn)">HALF_OPEN</b><br><span style="font-size:.76rem; color:var(--text-muted)">probing</span></div>
+        <div style="text-align:center; background:var(--bad-soft); border-radius:9px; padding:8px 4px"><b style="color:var(--bad)">OPEN</b><br><span style="font-size:.76rem; color:var(--text-muted)">tripped</span></div>
+      </div>
+      <p style="font-size:.88rem; margin:6px 0 0"><b>Opens on any of:</b> 3 loops with no progress · 5 loops with the same error · &gt;70% output decline · 2 permission-denial loops. Then a <b>30-min cooldown → HALF_OPEN</b> (one cheap probe) — it doesn't hard-stop, it retries once. All thresholds env-configurable; state persisted as JSON. Progress = git commits within a loop, but git motion <em>never</em> counts as completion.</p>
+    </div>
+
+    <!-- gastown -->
+    <div class="card">
+      <div class="kicker" style="color:var(--accent2)">Reference B — Gas Town</div>
+      <h3 style="font-size:1.2rem; margin-bottom:6px">The watchdog chain, and its scars</h3>
+      <p style="color:var(--text-muted); font-size:.92rem; margin:0 0 14px">Steve Yegge's industrial-scale org-chart of loops — read from Go source.</p>
+
+      <p style="font-weight:700; font-size:.85rem; margin:0 0 6px">Who watches whom:</p>
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:.82rem; margin-bottom:12px">
+        <span class="src">Witness → workers</span><span style="color:var(--text-faint)">·</span>
+        <span class="src">Deacon → system</span><span style="color:var(--text-faint)">·</span>
+        <span class="src">Boot → the Deacon, every 5 min</span>
+      </div>
+      <p style="font-size:.9rem; margin:0 0 10px"><b>Boot</b> is not a dumb timer — it's a fresh LLM triage agent on each daemon tick, choosing one of four actions: <code>start / wake / nudge / nothing</code>. A <code>flock</code> + marker file keeps it single-flight (it can't overlap itself).</p>
+
+      <p style="font-weight:700; font-size:.85rem; margin:8px 0 6px">Production war-wounds (each is a fixed incident):</p>
+      <ul class="clean" style="font-size:.87rem">
+        <li><b>Startup grace period</b> — the heartbeat check was killing freshly-started sessions before they could write a first heartbeat (issue #567). Every watchdog needs a warm-up exemption.</li>
+        <li><b>Counter + cooldown, never one-shot</b> — force-kill only after <b>3 consecutive</b> ping failures, then a <b>5-min cooldown</b> between kills.</li>
+        <li><b>Zombie debounce</b> — needs <b>≥3 consecutive</b> cycles of “tmux session exists but no agent process” before restart. Pane-alive and process-alive are <em>different</em> signals that diverge routinely during handoffs.</li>
+        <li><b>Crash-loop backoff</b> — a RestartTracker with exponential backoff (warren independently evolved the same 5-restarts-in-60s budget).</li>
+        <li><b>Mass-death detection</b> — many deaths at once is a <em>different</em> (systemic) failure than one death.</li>
+        <li><b>Bounded fan-out</b> — the watchdog checks rigs in a worker pool with per-rig timeouts, so one slow rig can't block all others.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout bad">
+    <span class="ct">The distilled lesson for gosleep's watchdog-above-the-orchestrator</span>
+    Every watchdog decision must be <b>(a) counter-debounced</b>, <b>(b) cooldown-limited</b>, <b>(c) exempt during warm-up</b>, and <b>(d) the watchdog itself single-flight + rate-limited</b>. A naïve “STATE file is stale → restart the orchestrator” script <em>will</em> fire on false positives its first night — a session between turns, a fresh start mid-write, a transient handoff gap. Debouncing is not gold-plating; it's the difference between a watchdog and a self-inflicted outage.
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 6. GAP ANALYSIS -->
+<!-- ==================================================================== -->
+<section id="gap">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Gap analysis — the canon vs. gosleep's skill</h2></div>
+  <p class="sec-sub">Read against <code>skill/orchestrating-delivery-agents</code> as of 2026-07-07. The headline: <b>we are at-or-above canon on worker-side loop safety, and below canon on orchestrator-side loop mechanics.</b></p>
+
+  <div class="grid g3" style="margin-bottom:22px">
+    <div class="stat gd"><div class="k">8</div><div class="l"><b>Meet or beat</b> the canon — outer loop, state-on-disk, checkpoint, budget, patience/liveness, verification, authority model, loop guard (base).</div></div>
+    <div class="stat a3"><div class="k">2</div><div class="l"><b>Partial</b> — definition-of-done (per-cycle only), watchdog chain (we watch workers; nothing watches us).</div></div>
+    <div class="stat bd"><div class="k">5</div><div class="l"><b>Missing</b> — self-pulse, auto-restart-after-death, question buffer, night mode, dynamic wake pacing. All orchestrator-side.</div></div>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th style="min-width:220px">Canon pattern</th><th style="min-width:110px">In our skill?</th><th style="min-width:300px">Gap / what adoption gives</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Outer loop</b> (cycle-workers, fresh context per chunk)</td><td><span class="pill yes dot">Core</span></td><td>The heart of the skill. —</td></tr>
+        <tr><td><b>State-on-disk</b> (ORCHESTRATION-STATE.md, atomic writes, handoffs)</td><td><span class="pill yes dot">Strong</span></td><td>Atomic temp+rename, live-git-wins, correction mechanics. <b>Matches or exceeds canon.</b></td></tr>
+        <tr><td><b>Checkpoint &amp; resume</b> (handoff batons, cold-start protocol)</td><td><span class="pill yes dot">Strong</span></td><td>Missing only Carson's <em>knowledge</em> checkpoint — no standing “append learnings to a LEARNINGS/AGENTS file each cycle” step (→ adoption #7).</td></tr>
+        <tr><td><b>Definition-of-done</b></td><td><span class="pill part dot">Partial</span></td><td>Per-cycle DONE via reports/PRs; roadmap-level done is implicit. No machine-checkable feature-list/prd.json equivalent — “phase done” is judgment, not data (→ adoption #5).</td></tr>
+        <tr><td><b>Budget guards / token ceilings</b></td><td><span class="pill yes dot">Yes</span></td><td>TELEMETRY block, aggregate ceiling, BUDGET_EXCEEDED fork. But the ceiling is orchestrator-enforced <em>prose</em>, not a mechanism; no per-hour caps; no dollar caps.</td></tr>
+        <tr><td><b>Loop guard</b> (non-advancing NEXT, no-new-PR)</td><td><span class="pill yes dot">Yes</span></td><td>Cruder than ralph's breaker: no same-error / output-decline signals, no cooldown/HALF_OPEN retry — ours stops, never probes (→ adoption #6).</td></tr>
+        <tr><td><b>Patience clocks / liveness ranking</b></td><td><span class="pill yes dot">Strong</span></td><td>Two clocks, finalize exception, E17 watchdog. Single-store lesson already learned; Gas Town's cross-check rule <em>confirms</em> our design.</td></tr>
+        <tr><td><b>Verification loops</b> (fresh verifier, watchdog)</td><td><span class="pill yes dot">Strong</span></td><td>VERIFY-REQUEST, cheap-tier verifier, steps.log watchdog. Missing only the <em>test-ratchet</em> concept (quality may only go up).</td></tr>
+        <tr><td><b>Overnight authority model</b></td><td><span class="pill yes dot">Yes</span></td><td>Denylist + reversible-green autonomy is exactly the community consensus. <b>Already canon-grade.</b></td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Orchestrator self-pulse / armed wake-up</b></td><td><span class="pill no dot">Missing</span></td><td><b>THE gap.</b> Owner mandate exists in memory (check every 5–10 min, never end a turn without an armed wake-up) but the skill defines <em>no mechanism</em> — no ScheduleWakeup/Monitor/cron, no cadence policy, no cache-window economics (→ adoption #1).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Auto-restart after orchestrator death</b></td><td><span class="pill no dot">Missing</span></td><td>A cold-start protocol exists but <em>something must invoke it</em>. No watchdog-above-the-orchestrator (Gas Town's Boot; warren's supervisor). Today: a dead orchestrator = fleet orphaned until the human notices (→ adoption #4).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Question buffering / park queue</b></td><td><span class="pill no dot">Missing</span></td><td>Only BLOCKED_ON_HUMAN (modal — stalls that thread). No park-and-continue, no pause budget, no morning question queue with dedup (→ adoption #3).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Self-pacing / night mode</b></td><td><span class="pill no dot">Missing</span></td><td>No active-hours, no morning-digest deliverable, no quiet-hours notification policy (→ adoption #2).</td></tr>
+        <tr style="background:var(--bad-soft)"><td><b>⚑ Dynamic self-planning of wake intervals</b></td><td><span class="pill no dot">Missing</span></td><td>Canon: match the interval to what you're waiting for; respect the 5-min cache TTL (poll &lt;5m or sleep 20m+, never just past the window). Part of adoption #1.</td></tr>
+        <tr><td><b>Anti-runaway: watchdog chain</b></td><td><span class="pill part dot">Partial</span></td><td>The orchestrator watches workers; nothing watches the orchestrator. The Boot-the-Dog layer is missing (same as auto-restart row).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="ct">The one-line diagnosis</span>
+    We are at-or-above canon on worker-side loop safety (state, batons, patience, verification, telemetry) and below canon on orchestrator-side loop mechanics. <b>Every ❌ row is a facet of one missing capability: the orchestrator as a self-scheduling, self-healing loop.</b> The skill quietly assumes an orchestrator that stays awake because a human keeps its session warm.
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 7. ADOPTION PLAN -->
+<!-- ==================================================================== -->
+<section id="adopt">
+  <div class="sec-head"><span class="sec-num">07</span><h2>What to adopt, ranked</h2></div>
+  <p class="sec-sub">Ranking = value for “owner-sleeps” ÷ effort. Each item names the mechanic, what it detects/solves, and the build cost. Items <b>1 + 2 + 3</b> together are the minimum viable “owner goes to sleep” package.</p>
+
+  <div class="callout good" style="margin-top:0">
+    <span class="ct">Minimum viable “owner sleeps” package</span>
+    <b>#1 self-pulse</b> (never doze off) <b>+ #2 night mode &amp; morning digest</b> (a reviewable morning) <b>+ #3 question buffer</b> (don't stall on questions). All LOW-to-MED effort, no new infrastructure. <b>#4</b> makes it survive the orchestrator's own death; <b>#5–#8</b> raise long-run quality and economy.
+  </div>
+
+  <div class="rank">
+
+    <!-- 1 -->
+    <div class="rankitem mvp">
+      <div class="rankn">1</div>
+      <div class="rankbody">
+        <h4>Armed self-pulse with cache-aware pacing <span class="mvp-badge">MVP</span></h4>
+        <p style="margin:8px 0 0; font-size:.94rem">The orchestrator <b>never ends a turn while the fleet is live without a scheduled wake-up</b> (<code>ScheduleWakeup</code> in Claude Code; a cron/<code>sleep</code> wrapper elsewhere). A pulse is a <b>cheap triage tick</b>: read STATE, probe liveness signals, act only on deltas — OpenClaw's heartbeat shape (tiny stable checklist, “OK → do nothing” fast path). Cadence from the canon: <b>&lt;5 min</b> while actively wedging a stall (cache warm), <b>20–30 min</b> while workers grind (one amortized miss).</p>
+        <p class="solves"><b>Solves:</b> the whole “orchestrator dozes off / turn ends and nobody watches” class — the owner's pulse-rule mandate, finally mechanized.</p>
+        <div class="metaline"><span class="chip low">EFFORT · LOW</span><span class="chip low">VALUE · HIGH</span><span class="chip">skill text + a pacing table; the tools already exist</span></div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="rankitem mvp">
+      <div class="rankn">2</div>
+      <div class="rankbody">
+        <h4>Night mode + morning digest <span class="mvp-badge">MVP</span></h4>
+        <p style="margin:8px 0 0; font-size:.94rem">A declared unattended window. During it, <code>AskUserQuestion</code> is forbidden except for denylist items; every would-be question goes to the buffer (#3). At window end the orchestrator writes <code>docs/handoff/MORNING-DIGEST-&lt;date&gt;.md</code>: work landed, verdicts, parked items, buffered questions, budget spent vs ceiling.</p>
+        <p class="solves"><b>Solves:</b> the owner waking to 40 branches and no narrative; makes “go to sleep” an explicit mode with tightened rails.</p>
+        <div class="metaline"><span class="chip med">EFFORT · LOW-MED</span><span class="chip low">VALUE · HIGH</span><span class="chip">protocol + template; no new infra</span></div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="rankitem mvp">
+      <div class="rankn">3</div>
+      <div class="rankbody">
+        <h4>Question buffer with pause-budget defaults <span class="mvp-badge">MVP</span></h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Three-tier triage of any fork that isn't denylist: <b>(a)</b> reversible + low-stakes → take the default, log the question+choice to <code>QUESTIONS.md</code> (buffer-and-continue); <b>(b)</b> material but not dangerous → warren-style pause <em>that task</em> with a budget, park it, reassign the worker to the next unblocked task; <b>(c)</b> denylist/irreversible → BLOCKED_ON_HUMAN as today. Dedup identical questions across cycles.</p>
+        <p class="solves"><b>Solves:</b> overnight stalls on questions — today every ambiguity stops a thread until morning.</p>
+        <div class="metaline"><span class="chip med">EFFORT · MED</span><span class="chip low">VALUE · HIGH</span><span class="chip">protocol in worker template + orchestrator triage rules</span></div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="rankitem">
+      <div class="rankn">4</div>
+      <div class="rankbody">
+        <h4>Watchdog above the orchestrator (the Boot layer)</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">An external, dumb, non-LLM check (cron script or cheap Monitor loop): “has <code>ORCHESTRATION-STATE.md</code> mtime / the TELEMETRY line advanced in N min while <code>open_workers&gt;0</code>?” If stale → notify the owner AND/OR relaunch a fresh orchestrator pointed at the cold-start protocol, under a warren-style restart budget (e.g. 3/night, then page the owner). Liveness derived from <em>artifacts</em> (file mtime, git), never self-report. <b>Apply §05's debounce lessons</b> — counter-debounce, cooldown, warm-up grace, single-flight.</p>
+        <p class="solves"><b>Solves:</b> a dead/compacted orchestrator orphaning a live fleet overnight — the one failure the skill cannot self-recover from.</p>
+        <div class="metaline"><span class="chip med">EFFORT · MED</span><span class="chip low">VALUE · HIGH</span><span class="chip">small script + skill section; the cold-start protocol it triggers already exists</span></div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="rankitem">
+      <div class="rankn">5</div>
+      <div class="rankbody">
+        <h4>Machine-checkable definition-of-done per phase</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Adopt the feature-list/prd.json pattern: each epic carries a JSON checklist with <code>passes</code> flags flipped only after verification; loop-level done = all-passing + PR merged, not “worker said COMPLETE”. Ban done-predicate edits (Anthropic's “unacceptable” clause) in worker briefs.</p>
+        <p class="solves"><b>Solves:</b> premature victory across cycle boundaries; gives the loop guard a real predicate to check.</p>
+        <div class="metaline"><span class="chip med">EFFORT · MED</span><span class="chip med">VALUE · MED</span><span class="chip">fits the existing Jira-mirrored task structure</span></div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="rankitem">
+      <div class="rankn">6</div>
+      <div class="rankbody">
+        <h4>Circuit-breaker upgrade for the loop guard</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Extend the existing loop guard with ralph-claude-code's signals: same-error-N-times across cycles, output/progress decline, and a <b>cooldown + HALF_OPEN probe</b> (one cheap retry after a pause) instead of a hard STOP. Counters persisted in STATE and human-resettable (autosk's phone-editable counters).</p>
+        <p class="solves"><b>Solves:</b> both false-halts (a transient flake tripping the guard permanently) and busy-runaways the current two-signal guard misses.</p>
+        <div class="metaline"><span class="chip med">EFFORT · MED</span><span class="chip med">VALUE · MED</span><span class="chip">extends an existing mechanism</span></div>
+      </div>
+    </div>
+
+    <!-- 7 -->
+    <div class="rankitem">
+      <div class="rankn">7</div>
+      <div class="rankbody">
+        <h4>Per-cycle learnings checkpoint (the AGENTS.md pattern)</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">Workers append codebase gotchas to a standing LEARNINGS file that the next brief points at; the loop's prompts improve as it runs (Carson's most-copied trick). We already do this for automation-traps only — <b>generalize it</b>.</p>
+        <p class="solves"><b>Solves:</b> every fresh cycle re-discovering the same traps.</p>
+        <div class="metaline"><span class="chip low">EFFORT · LOW</span><span class="chip med">VALUE · MED</span><span class="chip">generalize an existing registry</span></div>
+      </div>
+    </div>
+
+    <!-- 8 -->
+    <div class="rankitem tail">
+      <div class="rankn">8</div>
+      <div class="rankbody">
+        <h4>Sleep-time consolidation (idle-gap compute)</h4>
+        <p style="margin:8px 0 0; font-size:.94rem">While workers grind and the orchestrator waits, spend idle wake-ups on cheap memory work: compress old STATE log entries, distill the night's LEARNINGS, pre-draft the morning digest. The research cousin is Letta's <b>sleep-time compute</b> (paper 2025-04): background agents share memory with the primary and rewrite it asynchronously — reported up to <b>+18% accuracy</b> and <b>2.5× lower cost/query</b> by precomputing during idle. Distinction worth keeping sharp: Ralph loops do <em>more work</em> overnight; sleep-time compute makes <em>the next day's work cheaper &amp; smarter</em>.</p>
+        <p class="solves"><b>Solves:</b> STATE-file sprawl and morning-digest latency — for free, during waits.</p>
+        <div class="metaline"><span class="chip low">EFFORT · LOW</span><span class="chip">VALUE · nice-to-have</span><span class="chip">a standing “if nothing to triage, do one consolidation chore” clause</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 8. CONCLUSION -->
+<!-- ==================================================================== -->
+<section id="conclusion">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Takeaways</h2></div>
+  <div class="grid g2" style="align-items:start">
+    <div class="card">
+      <div class="kicker">What the field settled</div>
+      <ul class="clean" style="font-size:.95rem">
+        <li>Loop engineering is a <b>real, dated discipline</b> — not a metaphor. It has a founding document (Ralph, 2025-07), a vendor blessing (Anthropic harness, 2025-11), and a name (2026-06).</li>
+        <li>The whole field is <b>one idea plus discipline</b>: <code>while true</code> around the agent, with the filesystem + git as memory — then stop conditions, budgets, breakers, checkpoints layered on.</li>
+        <li>The 2026 frontier is <b>economic</b>: the 5-minute cache TTL now dictates wake cadence, and idle cost dominates overnight bills.</li>
+        <li>The two hardest-won lessons are both about <b>not trusting a single signal</b>: don't trust the model's “I'm done”, and don't trust one heartbeat store to declare an agent stuck.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="kicker">What it means for gosleep</div>
+      <ul class="tick" style="font-size:.95rem">
+        <li>Our <b>worker side is already canon-grade or better</b> — state, batons, patience clocks, verification, telemetry, authority model. Keep it.</li>
+        <li>Our one structural hole is the <b>orchestrator as a self-scheduling, self-healing loop</b>. Every missing capability is a facet of that.</li>
+        <li>The fix is <b>mostly prose + templates</b>, not infrastructure: adoptions #1–#3 (self-pulse, night mode, question buffer) are the sleep-enabling minimum, all LOW-to-MED effort.</li>
+        <li>#4 (a debounced watchdog above the orchestrator) is what turns “runs overnight” into “<b>survives its own death</b> overnight”. Build it with §05's scars in mind — debounce or it fires false the first night.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- SOURCES -->
+<!-- ==================================================================== -->
+<section id="sources" class="sources">
+  <div class="sec-head"><span class="sec-num">§</span><h2>Sources</h2></div>
+  <p class="sec-sub">Primary documents fetched from the web or read from source in <code>.research-cache/</code>. Full derivation: <code>docs/research/2026-07-07-orchestration/04-loop-engineering.md</code>.</p>
+  <div class="src-grid">
+    <ol>
+      <li id="s1"><b>Anthropic — “Building effective agents”</b> (Dec 2024) &amp; Thorsten Ball, “How to build an agent”. The agent-is-a-loop observation. <span style="color:var(--text-faint)">anthropic.com/engineering/building-effective-agents</span></li>
+      <li id="s2"><b>Geoffrey Huntley — “Ralph Wiggum as a software engineer”</b> (2025-07-14). Founding document of outer-loop engineering. <span style="color:var(--text-faint)">ghuntley.com/ralph</span> · follow-up: github.com/ghuntley/how-to-ralph-wiggum</li>
+      <li id="s3"><b>Anthropic Engineering — “Effective harnesses for long-running agents”</b> (2025-11-26). Initializer + coding-agent split; feature-list done; Puppeteer verification finding. <span style="color:var(--text-faint)">anthropic.com/engineering/effective-harnesses-for-long-running-agents</span></li>
+      <li id="s4"><b>Addy Osmani — “Long-running Agents”</b> (2026-04-28) + the June 2026 “loop engineering” term wave. 30+ hrs autonomous coding; planner/worker/judge; test ratchets. <span style="color:var(--text-faint)">addyosmani.com/blog/long-running-agents</span></li>
+      <li id="s5"><b>anthropics/claude-code — ralph-wiggum plugin</b>. In-session Stop-hook loop; <code>--max-iterations</code> as “primary safety mechanism”; completion = exact-string promise match. <span style="color:var(--text-faint)">github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum</span></li>
+    </ol>
+    <ol start="6">
+      <li id="s6"><b>frankbria/ralph-claude-code</b> (v0.11.x, 784 tests). Dual exit gate; Nygard circuit breaker; per-hour/cost budgets; unattended mode. <span style="color:var(--text-faint)">github.com/frankbria/ralph-claude-code</span></li>
+      <li id="s7"><b>Gas Town</b> (Steve Yegge). Witness → Deacon → Boot watchdog chain; heartbeat divergence rule; startup grace, zombie debounce, crash-loop backoff. <span style="color:var(--text-faint)">read from .research-cache/gastown Go source</span></li>
+      <li id="s8"><b>OpenClaw</b> (Peter Steinberger; started as Clawdbot, 2025-11). Heartbeat vs cron split; isolated sessions; active-hours; morning brief. <span style="color:var(--text-faint)">docs.openclaw.ai/gateway/heartbeat</span></li>
+      <li id="s9"><b>snarktank/ralph</b> (Ryan Carson). <code>prd.json</code> passes-flags; append-only progress.txt; AGENTS.md knowledge checkpoint; run archiving. <span style="color:var(--text-faint)">github.com/snarktank/ralph</span></li>
+      <li id="s10"><b>Letta — sleep-time compute</b> (Packer/Wooders, UC Berkeley Sky Lab; paper Apr 2025). Background agents rewrite shared memory during idle; +18% accuracy, 2.5× cost reduction. <span style="color:var(--text-faint)">letta.com/blog/sleep-time-compute</span></li>
+      <li><b>Supporting:</b> geocod.io “Ship features in your sleep with Ralph loops” (2026-01-27); loopengineering.run taxonomy; autosk (neighbor notes 01); warren/overstory (neighbor notes 02); smtg-ai/claude-squad (README-level); Claude Code <code>ScheduleWakeup</code> / bug #54086 / feature #28229.</li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer class="pagefoot">
+  <div class="wrap">
+    <div>
+      <b>Loop Engineering — Field Guide &amp; Adoption Plan.</b> Compiled for the gosleep GSL-41 orchestration-research phase, 2026-07.
+      Every claim traces to <code>docs/research/2026-07-07-orchestration/04-loop-engineering.md</code> and the primary sources above.
+      Self-contained: no external scripts, fonts, or network requests. · <a href="RU/index.html">Русская версия →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeToggle');
+  function sysDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+  var saved=null; try{saved=localStorage.getItem('le-theme');}catch(e){}
+  if(saved){root.setAttribute('data-theme',saved);}
+  function cur(){return root.getAttribute('data-theme')||(sysDark()?'dark':'light');}
+  function label(){btn.textContent=cur()==='dark'?'☀':'☾';}
+  label();
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    try{localStorage.setItem('le-theme',next);}catch(e){}
+    label();
+  });
+  // active-section highlight in nav
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){var id=a.getAttribute('href').slice(1); var s=document.getElementById(id); if(s)map[id]=a;});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ links.forEach(function(l){l.style.color='';l.style.background='';});
+        var a=map[e.target.id]; if(a){a.style.color='var(--text)';a.style.background='var(--surface-2)';}}});
+    },{rootMargin:'-45% 0px -50% 0px'});
+    Object.keys(map).forEach(function(id){io.observe(document.getElementById(id));});
+  }
+})();
+</script>
+</body>
+</html>
