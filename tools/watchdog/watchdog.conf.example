@@ -1,0 +1,40 @@
+# gosleep watchdog configuration — copy to tools/watchdog/watchdog.conf and edit.
+# (watchdog.conf is machine-local runtime config; do NOT commit it.)
+#
+# Precedence: this file > WD_* environment variables > built-in defaults.
+# Every value is validated at startup; invalid config fails LOUDLY (exit 78) —
+# a silently mis-armed watchdog is worse than none (warren invariant).
+
+# --- topology ---------------------------------------------------------------
+# tmux session the orchestrator + worker panes live in (Agent Teams = split panes).
+#WD_TMUX_SESSION="gosleep"
+
+# How to find the orchestrator pane. Resolution order:
+#   1) first pane of the window named WD_ORCH_WINDOW_NAME
+#   2) the explicit WD_ORCH_PANE_TARGET (session:window.pane)
+#WD_ORCH_WINDOW_NAME="orchestrator"
+#WD_ORCH_PANE_TARGET="gosleep:0.0"
+
+# Binaries (launchd runs with a minimal PATH; set absolute paths if needed).
+#WD_TMUX_BIN="/opt/homebrew/bin/tmux"
+#WD_CLAUDE_BIN="claude"
+
+# --- paths -------------------------------------------------------------------
+# Heartbeat file — fixed by the skill contract (Heartbeat protocol, GSL-51).
+#WD_HEARTBEAT_FILE="<repo>/docs/handoff/.orchestrator-heartbeat"
+# Watchdog ledger — append-only JSONL, never truncated (see LEDGER.md).
+#WD_LEDGER_FILE="<repo>/docs/handoff/.watchdog-ledger.jsonl"
+# Runtime state (markers, counters, logs) — lives in gitignored .artifacts/.
+#WD_STATE_DIR="<repo>/.artifacts/watchdog"
+
+# --- thresholds (seconds / percent) -------------------------------------------
+# Heartbeat older than this = stale (orchestrator pulse is 5-10 min).
+#WD_HB_STALE_SECS=900
+# After a nudge, how long the orchestrator gets to refresh the heartbeat
+# before kill + re-wake.
+#WD_NUDGE_GRACE_SECS=240
+# context_pct at/above this -> "write handoff now". The orchestrator self-rolls
+# at ~70%; the watchdog ceiling sits above that as the enforcement backstop.
+#WD_CONTEXT_CEILING_PCT=80
+# After a handoff request, how long before kill + re-wake from the handoff.
+#WD_HANDOFF_WAIT_SECS=600

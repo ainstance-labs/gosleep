@@ -74,4 +74,5 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 
 - [GSL-50 — Commit orchestration ledger (handoffs 13, 14 + STATE)](GSL-50-phase-gsl49-cycle1-ledger.md)
 - [GSL-51 — Heartbeat protocol: orchestrator liveness on disk (skill)](GSL-51-phase-gsl49-heartbeat.md)
+- [GSL-52 — launchd plist + watchdog.sh skeleton — mechanical 0-LLM consumer of the heartbeat](GSL-52-phase-gsl49-watchdog-skeleton.md)
 - [GSL-56 — Cold-start re-wake: watchdog-driven orchestrator restart (skill + brief template)](GSL-56-phase-gsl49-rewake.md)
