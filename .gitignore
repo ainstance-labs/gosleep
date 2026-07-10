@@ -9,6 +9,9 @@
 .artifacts/
 docs/reviews/
 
+# Orchestrator heartbeat — runtime liveness signal + its atomic temp (GSL-51), never committed
+docs/handoff/.orchestrator-heartbeat*
+
 # Node
 node_modules/
 
