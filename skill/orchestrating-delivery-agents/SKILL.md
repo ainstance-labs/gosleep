@@ -432,6 +432,48 @@ record. Before appending, check open records for the same `(task, question-hash)
 appends a `seen_by` patch to the existing record, never a second question (mechanics in the
 Question queue section).
 
+## Question queue — `docs/lab/questions/queue.jsonl`
+
+The buffer's durable home. **Append-only JSONL:** a record is NEVER rewritten — every status
+change is a NEW patch record `{"re":"<id>", ...}` appended after it; corrections append a
+superseding record, never edit history (the C8/ledger discipline). All writes go through the
+helper — **`tools/lab/lab-emit.sh`** — which owns id generation, dedup and atomic append (mkdir
+lock + single-line `O_APPEND`); never hand-append concurrently.
+
+One question record (05 §4.2 schema; full field reference in `docs/lab/questions/README.md`):
+```json
+{"id":"q-2026-07-08-003","ts":"2026-07-08T01:12:40Z","type":"DECISION","from":"orchestrator",
+ "task":"GSL-45","links":{"jira":"GSL-45","gh":"#52"},
+ "question":"PR #56 conflicts after main moved; rebase or merge main into the epic branch?",
+ "options":[{"label":"rebase","pros":"linear history","cons":"rewrites unpushed commits"},
+            {"label":"merge main in","pros":"no rewrite","cons":"merge bubble"}],
+ "default":"merge main in","default_rationale":"no-force-push standing rule; reversible",
+ "reversibility":"high","impact_if_wrong":"cosmetic history",
+ "auto_apply_at":"2026-07-08T10:00:00Z","status":"open","qhash":"ab12cd34ef"}
+```
+Patch records: answered `{"re":…,"status":"answered","answer":…,"answered_by":"owner","channel":…}` ·
+auto-resolved `{"re":…,"status":"auto-resolved","applied":…}` · duplicate `{"re":…,"seen_by":"<worker>"}`.
+Current status = fold of the question record + its patches (last wins): `open` (BLOCKER/DECISION
+awaiting) · `answered` · `auto-resolved` (default applied at deadline) · `answered-by-default`
+(CLARIFY) · `noted` (FYI).
+
+**Helper commands:**
+- **Pose:** `tools/lab/lab-emit.sh question --type DECISION --from <actor> --task GSL-45
+  --question "…" --default "…" --default-rationale "…" --reversibility high|med|low
+  [--auto-apply-at ISO] [--link jira=GSL-45] [--option "label|pros|cons"] [--high-impact]` —
+  prints the new id, or `DUPLICATE <id>` when deduped. A DECISION without an explicit deadline
+  gets the manifest §2 default (posed at night → 10:00 local; day → +2h). DECISION/CLARIFY
+  REQUIRE `--default` — a fork with no defensible default is a BLOCKER, reclassify it.
+- **Answer / resolve:** `lab-emit.sh answer --re <id> --answer "…" --by owner --channel telegram` ·
+  `lab-emit.sh resolve --re <id> --applied "…"` (deadline hit → default applied).
+- **Read:** `lab-emit.sh list` (open) · `list --due` (DECISIONs past deadline — act on these at
+  every pulse) · `list --count` (one-liner for LIVE-STATUS) · `list --status all --json`.
+
+**Git policy:** queue.jsonl is LIVE project data — committed at ledger boundaries exactly like
+STATE and handoffs (it is the owner's phone-readable, phone-answerable surface), never
+gitignored. Answered/expired records are compacted to `archive.jsonl` by the Phase-4 chronicler;
+until it exists the queue just grows (it's tiny).
+
 ## Quota auto-wait — session-limit quiesce & resume
 
 The subscription quota window is account-wide: when it exhausts (`You've hit your session limit`,

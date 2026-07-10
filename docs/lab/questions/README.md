@@ -1,0 +1,43 @@
+# questions/queue.jsonl — the typed question buffer
+
+The durable home of every ownable question (skill `orchestrating-delivery-agents`, sections
+"Question buffer" + "Question queue"; PRD Phase 3 R3.2; design 05 §4.2). Written ONLY via
+`tools/lab/lab-emit.sh` (id generation, dedup, locking). Append-only: records are never edited —
+every status change is a new patch record appended after the original.
+
+## Record schema (question record)
+
+```json
+{"id":"q-2026-07-08-003", "ts":"2026-07-08T01:12:40Z", "type":"DECISION",
+ "from":"orchestrator", "task":"GSL-45", "links":{"jira":"GSL-45","gh":"#52"},
+ "question":"…", "options":[{"label":"…","pros":"…","cons":"…"}],
+ "default":"…", "default_rationale":"…", "reversibility":"high",
+ "impact_if_wrong":"…", "auto_apply_at":"2026-07-08T10:00:00Z",
+ "status":"open", "qhash":"ab12cd34ef"}
+```
+
+- `type`: `BLOCKER | DECISION | CLARIFY | FYI` (typology in the skill).
+- `status` (current = fold of question record + later patches, last wins):
+  `open` (BLOCKER/DECISION awaiting) · `answered` (by owner/orchestrator, with channel) ·
+  `auto-resolved` (default applied at `auto_apply_at`) · `answered-by-default` (CLARIFY —
+  proceeded immediately, owner may veto retroactively) · `noted` (FYI).
+- `auto_apply_at`: DECISION only; defaulted by the helper per manifest §2 (night → 10:00 local,
+  day → +2h) when not passed explicitly.
+- `qhash`: dedup key = sha256(task|normalized question)[:10]; a second worker posing the same
+  open question becomes a `{"re":<id>,"seen_by":"<worker>"}` patch, never a new record.
+
+## Patch records
+
+```json
+{"re":"q-…","ts":"…","status":"answered","answer":"…","answered_by":"owner","channel":"telegram"}
+{"re":"q-…","ts":"…","status":"auto-resolved","applied":"…"}
+{"re":"q-…","ts":"…","seen_by":"cycle-14"}
+```
+
+## Reading
+
+`lab-emit.sh list` (open) · `list --due` (DECISIONs past deadline — the pulse acts on these) ·
+`list --count` (the LIVE-STATUS `questions:` line) · `list --status all --json` (everything,
+folded). Answered/expired records are compacted into `archive.jsonl` by the Phase-4 chronicler;
+until then the queue just grows (it is tiny). Owner may answer from a phone by editing nothing:
+reply via any channel and the orchestrator appends the `answered` patch.
