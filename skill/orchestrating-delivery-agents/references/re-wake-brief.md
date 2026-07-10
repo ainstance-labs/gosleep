@@ -14,7 +14,7 @@ the brief only pins the facts the watchdog knows and the unattended deltas.
 | Placeholder | Meaning |
 |---|---|
 | `{{PROJECT_DIR}}` | Absolute path of the project the chain runs in |
-| `{{REASON}}` | Why the watchdog fired: `dead-session` \| `stale-heartbeat` \| `zombie` \| `context-ceiling` |
+| `{{REASON}}` | Why the watchdog fired — the watchdog's decision reason verbatim: `dead_session` \| `stale_after_nudge` \| `zombie_confirmed_<n>_cycles` \| `handoff_overdue` (dictionary owned by `tools/watchdog/watchdog.sh`; keep in sync) |
 | `{{RESTART_N}}` / `{{RESTART_BUDGET}}` | This restart's index and the window budget (restart-budget tooling, GSL-53) |
 | `{{TS}}` | UTC ISO-8601 timestamp when the watchdog fired |
 

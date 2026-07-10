@@ -96,3 +96,30 @@ end-to-end (≤2 ticks) pending a live-fleet run — the decision path is smoke-
 **Links:** Jira [GSL-52](https://ainstance-labs.atlassian.net/browse/GSL-52) ·
 GitHub [#60](https://github.com/ainstance-labs/gosleep/issues/60) · Epic
 [GSL-49](https://ainstance-labs.atlassian.net/browse/GSL-49) / [#57](https://github.com/ainstance-labs/gosleep/issues/57)
+
+---
+
+## Review fixes (2026-07-10, epic review C1/M1/M2 — `docs/reviews/REVIEW-gsl49.md`) → v0.5.0
+
+- **C1 (CRITICAL) — identity-verified targeting.** Positional pane resolution (first pane of the
+  window → `session:0.0` fallback) removed entirely: after the orchestrator dies, the first pane
+  of its window is typically a live WORKER, and the old resolver would nudge/kill it. The target
+  now comes ONLY from the heartbeat's own `pane` field (GSL-51 protocol extension), verified to
+  exist in the session (`probe_pane_exists`). Anything less than `verified`
+  (`no_field`/`invalid_field`/`not_found`) on a live session → new decision `identity_unverified`:
+  `kill_refused reason=identity_unverified` in the ledger + escalation — no nudge, no kill, no
+  re-wake on a guess. Startup grace still shields a just-(re)started session whose first
+  pane-bearing heartbeat isn't written yet. `WD_ORCH_PANE_TARGET` deleted; `WD_ORCH_WINDOW_NAME`
+  survives only to name the re-wake window.
+- **M2 — kill verified, never re-wake after a failed kill.** `act_kill` now checks the kill rc AND
+  re-lists to confirm the pane is gone; failure → `kill_failed` ledger event + escalation and the
+  restart is ABORTED (a surviving pane + a fresh orchestrator = two live orchestrators).
+- **M1 — re-wake brief consumed.** `build_rewake_prompt` extracts the BRIEF-START/END block from
+  `references/re-wake-brief.md` (`WD_REWAKE_BRIEF`) and substitutes
+  `{{PROJECT_DIR}}/{{REASON}}/{{RESTART_N}}/{{RESTART_BUDGET}}/{{TS}}`; the brief's REASON
+  dictionary re-synced to the watchdog's actual reasons; inline fallback only when the template is
+  missing (ledger event `rewake_brief_missing`).
+- Verified: `bash tools/watchdog/smoke.sh` → **65 passed, 0 failed** (was 52; +6 scenarios /
+  +7 asserts covering the three branches: worker-first-pane refuse, identity detail, grace shield,
+  brief substitution + placeholder sweep + RESTART_N progression + fallback, kill-failure
+  no-re-wake). LEDGER.md, watchdog.conf.example and runbook §§2–3/6/8 updated to match.

@@ -94,3 +94,16 @@ referenced, not duplicated), C7/C8 (durable-state seeding, atomic STATE writes).
 **Links:** Jira [GSL-56](https://ainstance-labs.atlassian.net/browse/GSL-56) ·
 GitHub [#64](https://github.com/ainstance-labs/gosleep/issues/64) · Epic
 [GSL-49](https://ainstance-labs.atlassian.net/browse/GSL-49) / [#57](https://github.com/ainstance-labs/gosleep/issues/57)
+
+---
+
+## Review fixes (2026-07-10, epic review M1 — `docs/reviews/REVIEW-gsl49.md`)
+
+«Nothing consumes the brief yet» (Problems remaining above) closed: `watchdog.sh v0.5.0`
+implements the extract-substitute-inject contract — BRIEF-START/END block extracted, the five
+placeholders substituted, result passed as the fresh session's first prompt (smoke-asserted,
+incl. a no-leftover-`{{...}}` sweep and RESTART_N progression). The `{{REASON}}` dictionary in
+this file's placeholder table was re-synced to the watchdog's actual decision reasons
+(`dead_session | stale_after_nudge | zombie_confirmed_<n>_cycles | handoff_overdue`) — the
+hyphenated draft values never matched the implementation. Fallback: template missing →
+inline prompt + `rewake_brief_missing` ledger warning.

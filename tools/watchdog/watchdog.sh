@@ -10,6 +10,12 @@
 #   * Liveness is judged from DURABLE ON-DISK STATE ONLY (heartbeat file mtime
 #     + last parseable line), cross-checked against tmux session liveness.
 #     Never from pane-content scraping, never from a single store. (C7)
+#   * POSITIVE IDENTITY (review C1): the orchestrator pane is identified ONLY
+#     from the heartbeat's own "pane" field ($TMUX_PANE, GSL-51). Positional
+#     guessing (first pane of a window, session:0.0) is FORBIDDEN — after the
+#     orchestrator dies, the first pane of its window is typically a live
+#     WORKER. Unverifiable identity in a live session -> kill_refused
+#     (reason=identity_unverified) + escalate; never nudge/kill/re-wake a guess.
 #   * fresh heartbeat + dead session  = dead        -> re-wake
 #   * stale heartbeat + live session  = divergence  -> ONE nudge first;
 #     still stale after the nudge grace -> kill (EXPLICIT pane id only) + re-wake
@@ -36,12 +42,18 @@
 #     records it in the ledger FIRST. Committed work is never silently lost.
 #     Ledger format: tools/watchdog/LEDGER.md
 #   * Re-wake = the EXISTING cold-start protocol (re-attach to live workers,
-#     never respawn them). This script contains ZERO LLM calls; the only
-#     `claude` invocation is spawning the interactive replacement orchestrator.
+#     never respawn them). The first prompt is built from the skill's re-wake
+#     brief template (references/re-wake-brief.md, BRIEF-START/END markers,
+#     {{...}} placeholders — GSL-56 contract); inline fallback ONLY if the
+#     template is missing (ledger-warned). This script contains ZERO LLM calls;
+#     the only `claude` invocation is spawning the replacement orchestrator.
 #
 # Safety invariants:
 #   * kill only by explicit resolved pane id matching ^%[0-9]+$ —
 #     NEVER kill-pane -a (2026-07-07 lesson: -a killed a live fleet).
+#   * kill success is VERIFIED (rc + re-list, review M2): a pane that survives
+#     the kill -> kill_failed + escalate, NO re-wake — a surviving pane plus
+#     a fresh orchestrator would mean two live orchestrators (double dispatch).
 #   * No launchctl / system mutation here. Installation is the owner's call
 #     (see install-watchdog.sh, which only renders files + prints instructions).
 #
@@ -55,7 +67,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.4.0 (GSL-55)"
+WD_VERSION="0.5.0 (GSL-49 review fixes C1/M1/M2)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -89,12 +101,19 @@ fi
 : "${WD_LEDGER_FILE:="$WD_REPO_ROOT/docs/handoff/.watchdog-ledger.jsonl"}"
 : "${WD_STATE_DIR:="$WD_REPO_ROOT/.artifacts/watchdog"}"
 
-# tmux topology (Agent Teams = orchestrator + worker split panes, one session)
+# tmux topology (Agent Teams = orchestrator + worker split panes, one session).
+# The orchestrator pane is identified ONLY from the heartbeat's "pane" field
+# (review C1) — there is deliberately NO positional pane target here.
+# WD_ORCH_WINDOW_NAME only names the window a re-woken orchestrator spawns in.
 : "${WD_TMUX_SESSION:="gosleep"}"
-: "${WD_ORCH_PANE_TARGET:="${WD_TMUX_SESSION}:0.0"}"   # fallback resolver
-: "${WD_ORCH_WINDOW_NAME:="orchestrator"}"             # preferred resolver
+: "${WD_ORCH_WINDOW_NAME:="orchestrator"}"
 : "${WD_TMUX_BIN:="tmux"}"
 : "${WD_CLAUDE_BIN:="claude"}"
+
+# Re-wake brief template (GSL-56 contract, review M1): extracted between the
+# BRIEF-START/END markers with {{...}} placeholders substituted. If the file
+# is missing the watchdog falls back to a minimal inline prompt (ledger-warned).
+: "${WD_REWAKE_BRIEF:="$WD_REPO_ROOT/skill/orchestrating-delivery-agents/references/re-wake-brief.md"}"
 
 # Thresholds (seconds / percent) — every one config-overridable
 : "${WD_HB_STALE_SECS:=900}"        # heartbeat older than this = stale (pulse is 5-10 min)
@@ -127,6 +146,7 @@ fi
 : "${WD_TEST_ORCH_PANE:=}"
 : "${WD_TEST_SESSION_CREATED:=}"    # epoch of session start (grace tests)
 : "${WD_TEST_PROC_ALIVE:=1}"        # agent process detected under the pane (zombie tests)
+: "${WD_TEST_KILL_FAILS:=0}"        # simulate a failed force-kill (M2 tests)
 
 if [ "$WD_TEST_MODE" = "1" ]; then
   DRY_RUN=1
@@ -208,7 +228,7 @@ marker_age() {
 }
 
 # --- heartbeat reading -----------------------------------------------------
-HB_EXISTS=0 HB_AGE="" HB_LAST="" HB_STATUS="" HB_CTX="" HB_WORKERS="" HB_CYCLE=""
+HB_EXISTS=0 HB_AGE="" HB_LAST="" HB_STATUS="" HB_CTX="" HB_WORKERS="" HB_CYCLE="" HB_PANE=""
 
 hb_field_int() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p"; }
 hb_field_str() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p"; }
@@ -227,6 +247,7 @@ read_heartbeat() {
     HB_CTX="$(hb_field_int context_pct)"
     HB_WORKERS="$(hb_field_int open_workers)"
     HB_CYCLE="$(hb_field_int cycle)"
+    HB_PANE="$(hb_field_str pane)"
   fi
 }
 
@@ -238,18 +259,32 @@ probe_session_alive() {
   "$WD_TMUX_BIN" has-session -t "$WD_TMUX_SESSION" 2>/dev/null
 }
 
-# Resolve the orchestrator pane to an EXPLICIT pane id (%N).
-# Order: (1) first pane of the window named $WD_ORCH_WINDOW_NAME,
-#        (2) the configured $WD_ORCH_PANE_TARGET.
+# Does an explicit pane id currently exist inside the watched session?
+probe_pane_exists() { # $1 = pane id (%N)
+  if [ "$WD_TEST_MODE" = "1" ]; then [ -n "$1" ] && [ "$1" = "$WD_TEST_ORCH_PANE" ]; return; fi
+  "$WD_TMUX_BIN" list-panes -s -t "$WD_TMUX_SESSION" -F '#{pane_id}' 2>/dev/null | grep -qx -- "$1"
+}
+
+# POSITIVE identification of the orchestrator pane (review C1). The ONLY source
+# of truth is the heartbeat's own "pane" field ($TMUX_PANE — the orchestrator
+# names itself, GSL-51). Positional guessing (first pane of a window,
+# session:0.0) is FORBIDDEN: after the orchestrator pane dies, the first pane
+# of its window is typically a live WORKER — nudging/killing it masks the death
+# and destroys in-flight work. A correct-looking id of the WRONG pane passes
+# the ^%[0-9]+$ gate; only self-declared identity is trusted.
+# Sets: ORCH_PANE (the verified id or "") and PANE_IDENTITY
+# (verified | no_field | invalid_field | not_found). Call directly — NOT in
+# a command substitution (it must set globals).
+ORCH_PANE="" PANE_IDENTITY=""
 resolve_orch_pane() {
-  if [ "$WD_TEST_MODE" = "1" ]; then echo "$WD_TEST_ORCH_PANE"; return 0; fi
-  local pane=""
-  pane="$("$WD_TMUX_BIN" list-panes -t "${WD_TMUX_SESSION}:${WD_ORCH_WINDOW_NAME}" \
-            -F '#{pane_id}' 2>/dev/null | head -n 1 || true)"
-  if [ -z "$pane" ]; then
-    pane="$("$WD_TMUX_BIN" display-message -p -t "$WD_ORCH_PANE_TARGET" '#{pane_id}' 2>/dev/null || true)"
+  ORCH_PANE=""
+  if [ -z "$HB_PANE" ]; then PANE_IDENTITY="no_field"; return 0; fi
+  if ! [[ "$HB_PANE" =~ ^%[0-9]+$ ]]; then PANE_IDENTITY="invalid_field"; return 0; fi
+  if probe_pane_exists "$HB_PANE"; then
+    PANE_IDENTITY="verified"; ORCH_PANE="$HB_PANE"
+  else
+    PANE_IDENTITY="not_found"
   fi
-  echo "$pane"
 }
 
 probe_session_created() { # epoch the tmux session was created (empty if unknown)
@@ -314,18 +349,44 @@ act_request_handoff() { # $1=pane
   ledger_emit "handoff_requested" "target=$1" "context_pct=${HB_CTX}" "ceiling=$WD_CONTEXT_CEILING_PCT"
 }
 
+# act_kill outcome for the caller: refused (safety gate) | failed (kill did
+# not stick — review M2) | killed. Only "killed" may be followed by a re-wake.
+KILL_OUTCOME=""
 act_kill() { # $1=pane — EXPLICIT id only; refuses anything else. NEVER -a.
-  local pane="$1"
+  local pane="$1" rc=0
+  KILL_OUTCOME="refused"
   if ! [[ "$pane" =~ ^%[0-9]+$ ]]; then
     log "REFUSING kill: '$pane' is not an explicit pane id (%N). kill-pane -a is forbidden."
     ledger_emit "kill_refused" "target=$pane" "reason=not_explicit_pane_id"
     return 1
   fi
   if [ "$DRY_RUN" = "1" ]; then
+    if [ "$WD_TEST_MODE" = "1" ] && [ "$WD_TEST_KILL_FAILS" = "1" ]; then
+      KILL_OUTCOME="failed"
+      log "kill FAILED (test-injected): $pane would survive the kill"
+      ledger_emit "kill_failed" "target=$pane" "reason=test_injected_failure"
+      return 1
+    fi
     log "[dry-run] would kill-pane -t $pane (explicit id)"
   else
-    "$WD_TMUX_BIN" kill-pane -t "$pane"
+    # Review M2: a failed kill must NEVER be followed by a re-wake — a
+    # surviving pane + a fresh orchestrator = two live orchestrators
+    # (double dispatch). Check the rc AND re-list to confirm the pane is gone.
+    "$WD_TMUX_BIN" kill-pane -t "$pane" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      KILL_OUTCOME="failed"
+      log "kill-pane -t $pane FAILED (rc=$rc) — the pane may still be alive"
+      ledger_emit "kill_failed" "target=$pane" "reason=kill_pane_rc_$rc"
+      return 1
+    fi
+    if probe_pane_exists "$pane"; then
+      KILL_OUTCOME="failed"
+      log "kill-pane -t $pane returned 0 but the pane STILL EXISTS — treating as kill failure"
+      ledger_emit "kill_failed" "target=$pane" "reason=pane_survived_kill"
+      return 1
+    fi
   fi
+  KILL_OUTCOME="killed"
   ledger_emit "kill" "target=$pane" "reason=${DECISION_REASON:-unspecified}"
 }
 
@@ -368,17 +429,38 @@ reap() {
     "head=${head:-unknown}" "snapshot=$rf"
 }
 
+# Build the fresh orchestrator's first prompt (review M1): consume the re-wake
+# brief template shipped with the skill (GSL-56 contract) — extract the block
+# between the BRIEF-START/END markers, substitute the placeholders the watchdog
+# knows. {{REASON}} carries DECISION_REASON verbatim (the reason dictionary
+# lives in re-wake-brief.md — keep the two in sync). {{RESTART_N}} is THIS
+# restart's index (record_restart has already run when act_rewake calls us).
+# Inline fallback ONLY if the template is missing or markerless (ledger-warned).
 build_rewake_prompt() {
   local prompt_file="$WD_STATE_DIR/rewake-prompt.txt"
-  cat > "$prompt_file" <<EOF
-You are a REPLACEMENT orchestrator, re-woken by the mechanical watchdog (tools/watchdog/watchdog.sh) at $(iso_ts). Reason: ${DECISION_REASON:-unknown}.
-Follow the orchestrating-delivery-agents skill, section "Recovering / cold-starting an in-progress chain", exactly:
+  local n ts
+  n="$(restarts_in_window)"
+  ts="$(iso_ts)"
+  if [ -f "$WD_REWAKE_BRIEF" ] && grep -q 'BRIEF-START' "$WD_REWAKE_BRIEF"; then
+    sed -n '/BRIEF-START/,/BRIEF-END/p' "$WD_REWAKE_BRIEF" | sed '1d;$d' \
+      | sed -e "s|{{PROJECT_DIR}}|$WD_REPO_ROOT|g" \
+            -e "s|{{REASON}}|${DECISION_REASON:-unknown}|g" \
+            -e "s|{{RESTART_N}}|$n|g" \
+            -e "s|{{RESTART_BUDGET}}|$WD_RESTART_BUDGET|g" \
+            -e "s|{{TS}}|$ts|g" > "$prompt_file"
+  else
+    log "WARNING: re-wake brief template missing/markerless ($WD_REWAKE_BRIEF) — inline fallback prompt" >&2
+    ledger_emit "rewake_brief_missing" "path=$WD_REWAKE_BRIEF" "fallback=inline"
+    cat > "$prompt_file" <<EOF
+You are a REPLACEMENT orchestrator, re-woken by the mechanical watchdog (tools/watchdog/watchdog.sh) at $ts. Reason: ${DECISION_REASON:-unknown}. This is restart $n of $WD_RESTART_BUDGET in the current window. No human is present.
+Follow the orchestrating-delivery-agents skill, sections "Recovering / cold-starting an in-progress chain" AND "Re-wake — automated restart by watchdog" (unattended deltas), exactly:
 1. Read ORCHESTRATION-STATE.md AND the highest-numbered docs/handoff/NN-*.md FIRST (on-disk before any live probes).
 2. Read the watchdog ledger tail: $WD_LEDGER_FILE (your predecessor's death and this restart are recorded there). Append a CORRECTION/restart note to the STATE log.
 3. Confirm reality: tmux list-panes, git log/status, gh pr list, tracker.
 4. RE-ATTACH to live workers — do NOT respawn or duplicate them; never spawn until every pane is positively accounted for.
 5. Append your first heartbeat line right after orientation (you are inside the startup-grace window; your first write ends it).
 EOF
+  fi
   echo "$prompt_file"
 }
 
@@ -487,7 +569,16 @@ do_restart() {
     # Route-through-reap: collect state + ledger record BEFORE the kill.
     reap "$pane" "orchestrator"
     if ! act_kill "$pane"; then
-      DECISION="kill_refused"
+      if [ "$KILL_OUTCOME" = "failed" ]; then
+        # Review M2: the kill did not stick — the old pane may still be alive.
+        # Re-waking anyway would risk TWO live orchestrators (double dispatch):
+        # escalate and stop; the owner (or a later successful kill) resolves it.
+        DECISION="kill_failed"
+        DECISION_REASON="kill_failed:${DECISION_REASON}"
+        escalate "force-kill failed for the orchestrator pane $pane (${DECISION_REASON}) — NOT re-waking: a surviving pane plus a fresh orchestrator would double-dispatch. Intervene manually (tmux attach) or wait for the next tick."
+      else
+        DECISION="kill_refused"
+      fi
       return 0
     fi
     marker_write "last-kill"
@@ -526,16 +617,14 @@ decide_and_act() {
   fi
 
   if probe_session_alive; then session_alive=1; fi
-  pane="$(resolve_orch_pane)"
 
-  # 2. Dead session (or unresolvable orchestrator pane) — cross-check rule:
-  #    fresh heartbeat + dead session = dead. Re-wake via cold-start.
-  if [ "$session_alive" = "0" ] || [ -z "$pane" ]; then
+  # 2. Dead session — cross-check rule: fresh heartbeat + dead session = dead.
+  #    Re-wake via cold-start (no kill: there is nothing left to kill).
+  if [ "$session_alive" = "0" ]; then
     # Mass-death detection (Gastown): the WHOLE session gone while the last
     # heartbeat recorded >= N live workers is a systemic failure (tmux server
     # died, reboot, sleep) — do NOT restart blindly, escalate to the owner.
-    if [ "$session_alive" = "0" ] && is_uint "$HB_WORKERS" \
-       && [ "$HB_WORKERS" -ge "$WD_MASS_DEATH_WORKERS" ]; then
+    if is_uint "$HB_WORKERS" && [ "$HB_WORKERS" -ge "$WD_MASS_DEATH_WORKERS" ]; then
       DECISION="mass_death"; DECISION_REASON="session_gone_with_${HB_WORKERS}_workers"
       ledger_emit "mass_death" "open_workers=$HB_WORKERS" "reason=whole_session_gone"
       ledger_emit "worker_died" "count=$HB_WORKERS" "reason=whole_session_gone" \
@@ -546,20 +635,41 @@ decide_and_act() {
     fi
     # Below mass-death threshold but the session took recorded workers with it:
     # their death must still be on the record (overstory worker_died mail).
-    if [ "$session_alive" = "0" ] && is_uint "$HB_WORKERS" && [ "$HB_WORKERS" -ge 1 ]; then
+    if is_uint "$HB_WORKERS" && [ "$HB_WORKERS" -ge 1 ]; then
       ledger_emit "worker_died" "count=$HB_WORKERS" "reason=session_gone" \
         "observed=heartbeat_recorded"
     fi
-    if [ "$session_alive" = "0" ]; then
-      DECISION="rewake"; DECISION_REASON="dead_session"
-    else
-      DECISION="rewake"; DECISION_REASON="orchestrator_pane_missing"
-    fi
+    DECISION="rewake"; DECISION_REASON="dead_session"
     do_restart ""
     return 0
   fi
 
-  # 3. Live session + fresh heartbeat.
+  # 3. Live session: POSITIVE IDENTITY GATE (review C1). The orchestrator pane
+  #    is resolved ONLY from the heartbeat's own "pane" field and must exist in
+  #    the session. Anything less than "verified" means every possible target
+  #    is a guess — and a guessed pane may be a live WORKER (the C1 failure:
+  #    orchestrator dies, first pane of its window is now a worker; a nudge
+  #    feeds it prompts, a kill destroys its in-flight work). So: never nudge,
+  #    never kill, never re-wake on a guess — refuse and escalate.
+  resolve_orch_pane
+  if [ "$PANE_IDENTITY" != "verified" ]; then
+    # A fresh session may not have written its first (pane-bearing) heartbeat
+    # yet — same warm-up exemption as staleness (Gastown #567).
+    if in_startup_grace; then
+      DECISION="ok_grace"; DECISION_REASON="startup_grace_${WD_STARTUP_GRACE_SECS}s"
+      counter_clear "zombie"
+      return 0
+    fi
+    DECISION="identity_unverified"; DECISION_REASON="pane_identity_${PANE_IDENTITY}"
+    counter_clear "zombie"   # identity lost = the consecutive-cycle chain is broken
+    ledger_emit "kill_refused" "target=${HB_PANE:-none}" "reason=identity_unverified" \
+      "identity=$PANE_IDENTITY"
+    escalate "cannot positively identify the orchestrator pane (${PANE_IDENTITY}; heartbeat pane='${HB_PANE:-none}') in live session '$WD_TMUX_SESSION' — refusing to nudge/kill/re-wake a guessed pane (review C1)"
+    return 0
+  fi
+  pane="$ORCH_PANE"
+
+  # 4. Live session + fresh heartbeat (verified pane).
   if hb_is_fresh; then
     marker_clear "nudge"
     counter_clear "zombie"
@@ -584,8 +694,8 @@ decide_and_act() {
     return 0
   fi
 
-  # 4. Live session + stale/missing heartbeat.
-  # 4a. Startup grace (Gastown #567): a fresh session that hasn't written its
+  # 5. Live session + stale heartbeat (verified pane).
+  # 5a. Startup grace (Gastown #567): a fresh session that hasn't written its
   #     first heartbeat yet is exempt from staleness for the warm-up window.
   if in_startup_grace; then
     DECISION="ok_grace"; DECISION_REASON="startup_grace_${WD_STARTUP_GRACE_SECS}s"
@@ -593,7 +703,7 @@ decide_and_act() {
     return 0
   fi
 
-  # 4b. Zombie debounce: pane exists but no agent process under it. Judged by
+  # 5b. Zombie debounce: pane exists but no agent process under it. Judged by
   #     TWO sources (stale heartbeat AND process scan), and only after
   #     WD_ZOMBIE_CYCLES consecutive cycles — transient gaps during handoffs
   #     diverge routinely (Gastown mayorZombieCount >= 3).
@@ -611,7 +721,7 @@ decide_and_act() {
   fi
   counter_clear "zombie"
 
-  # 4c. Write-divergence: process alive but heartbeat stale.
+  # 5c. Write-divergence: process alive but heartbeat stale.
   #     One nudge first; still stale after the grace -> kill + re-wake.
   local nage; nage="$(marker_age nudge)"
   if [ -z "$nage" ]; then

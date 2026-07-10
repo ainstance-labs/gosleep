@@ -32,9 +32,11 @@ Event types and their extra fields:
 | `nudge` | `target` (pane id), `reason`, `hb_age` | stale heartbeat, live session → one send-keys nudge |
 | `handoff_requested` | `target`, `context_pct`, `ceiling` | context_pct ≥ ceiling → "write handoff now" |
 | `reap` | `role` (`orchestrator`\|`session`), `target` (pane id or `session`), `reason`, `branch`, `head` (short SHA), `snapshot` (path) | ALWAYS before a kill and before any restart — state collected first |
-| `kill` | `target` (explicit pane id), `reason` | force-kill of the orchestrator pane (post-reap) |
-| `kill_refused` | `target`, `reason` | kill target failed the explicit-`%N`-id safety check |
+| `kill` | `target` (explicit pane id), `reason` | force-kill of the orchestrator pane (post-reap, existence-verified afterwards) |
+| `kill_refused` | `target`, `reason` (`not_explicit_pane_id` \| `identity_unverified`), `identity` (on identity refusals: `no_field` \| `invalid_field` \| `not_found`) | kill/nudge target failed a safety check: not an explicit `%N` id, OR the live session's heartbeat does not positively name an existing orchestrator pane (review C1) — no action taken, escalation follows |
+| `kill_failed` | `target`, `reason` (`kill_pane_rc_<n>` \| `pane_survived_kill` \| `test_injected_failure`) | kill-pane failed or the pane survived it (review M2) — NO re-wake (a surviving pane + a fresh orchestrator = double dispatch); escalation follows |
 | `orchestrator_restarted` | `reason`, `hb_age`, `open_workers`, `cycle` | re-wake spawned via the cold-start protocol |
+| `rewake_brief_missing` | `path`, `fallback` | warning: the re-wake brief template was missing/markerless; the inline fallback prompt was used |
 | `worker_died` | `count`, `reason` (`whole_session_gone`\|`session_gone`), `observed` | recorded workers lost with the session (observed from heartbeat vs tmux — the watchdog kills only the orchestrator, never workers) |
 | `mass_death` | `open_workers`, `reason` | whole session gone with ≥ `WD_MASS_DEATH_WORKERS` recorded workers → escalation instead of blind restart |
 | `escalation` | `reason`, `restarts_in_window`, `budget`, `window_secs` | restart budget exhausted or mass death — owner must intervene |
@@ -61,3 +63,5 @@ the branch and `head` survive in the ledger line even if snapshots are cleaned.
 Within one tick: `reap` is ALWAYS written before its `kill`, and `kill` before
 `orchestrator_restarted`. Budget/cooldown gates run before reap — a deferred or
 budget-escalated tick produces no reap and no kill, only `escalation`.
+A `kill_failed` (or `kill_refused`) aborts the restart: no `kill`, no
+`orchestrator_restarted` follow — only an `escalation`.

@@ -9,11 +9,13 @@
 # tmux session the orchestrator + worker panes live in (Agent Teams = split panes).
 #WD_TMUX_SESSION="gosleep"
 
-# How to find the orchestrator pane. Resolution order:
-#   1) first pane of the window named WD_ORCH_WINDOW_NAME
-#   2) the explicit WD_ORCH_PANE_TARGET (session:window.pane)
+# How the orchestrator pane is found: identity comes ONLY from the "pane"
+# field of the heartbeat line ($TMUX_PANE — the orchestrator names itself,
+# GSL-51 protocol). There is NO positional fallback (review C1: after the
+# orchestrator dies, "first pane of the window" is typically a live WORKER).
+# Unverifiable identity in a live session -> kill_refused + escalation.
+# WD_ORCH_WINDOW_NAME only names the window a re-woken orchestrator spawns in.
 #WD_ORCH_WINDOW_NAME="orchestrator"
-#WD_ORCH_PANE_TARGET="gosleep:0.0"
 
 # Binaries (launchd runs with a minimal PATH; set absolute paths if needed).
 #WD_TMUX_BIN="/opt/homebrew/bin/tmux"
@@ -26,6 +28,11 @@
 #WD_LEDGER_FILE="<repo>/docs/handoff/.watchdog-ledger.jsonl"
 # Runtime state (markers, counters, logs) — lives in gitignored .artifacts/.
 #WD_STATE_DIR="<repo>/.artifacts/watchdog"
+# Re-wake brief template (GSL-56): the fresh orchestrator's first prompt is
+# built from this file (BRIEF-START/END block, {{...}} placeholders). If the
+# file is missing, a minimal inline prompt is used and the ledger warns
+# (event rewake_brief_missing).
+#WD_REWAKE_BRIEF="<repo>/skill/orchestrating-delivery-agents/references/re-wake-brief.md"
 
 # --- thresholds (seconds / percent) -------------------------------------------
 # Heartbeat older than this = stale (orchestrator pulse is 5-10 min).

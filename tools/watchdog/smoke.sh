@@ -60,11 +60,18 @@ stale_hb() { # $1=file $2=json-line  (mtime pushed 30 min back)
   touch -t "$(date -v-30M +%Y%m%d%H%M.%S)" "$1"
 }
 
-HB_OK='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok"}'
-HB_SOLO='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":1,"status":"ok"}'
-HB_HIGH_CTX='{"ts":"2026-07-10T03:00:00Z","cycle":14,"context_pct":85,"open_workers":2,"status":"ok"}'
-HB_QUIESCED='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":50,"open_workers":0,"status":"quiesced"}'
-HB_ROLLING='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":72,"open_workers":2,"status":"rolling"}'
+# All healthy fixtures carry the C1 identity field: "pane" = the orchestrator's
+# own $TMUX_PANE (%42 in tests — matches WD_TEST_ORCH_PANE when it should exist).
+HB_OK='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%42"}'
+HB_SOLO='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":1,"status":"ok","pane":"%42"}'
+HB_HIGH_CTX='{"ts":"2026-07-10T03:00:00Z","cycle":14,"context_pct":85,"open_workers":2,"status":"ok","pane":"%42"}'
+HB_QUIESCED='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":50,"open_workers":0,"status":"quiesced","pane":"%42"}'
+HB_ROLLING='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":72,"open_workers":2,"status":"rolling","pane":"%42"}'
+# C1 fixtures: heartbeat names a pane that no longer exists (%4 — the dead
+# orchestrator; the only LIVE pane, %42, is a worker) / carries no pane at all.
+HB_ORPHAN='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4"}'
+HB_NOPANE='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok"}'
+HB_BADPANE='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"orchestrator"}'
 
 # run_case NAME EXPECTED_DECISION SESSION_ALIVE PANE HB_KIND HB_JSON [setup-fn]
 # Extra per-case env (e.g. WD_TEST_PROC_ALIVE=0) via global CASE_ENV, cleared after.
@@ -120,10 +127,12 @@ echo "== decision scenarios (dry-run, injected probes) =="
 run_case  ok-fresh-alive            ok                  1     %42   fresh    "$HB_OK"
 run_case  dead-session-fresh-hb     rewake              0     ""    fresh    "$HB_SOLO"
 run_case  dead-session-stale-hb     rewake              0     ""    stale    "$HB_SOLO"
-run_case  pane-missing-session-up   rewake              1     ""    fresh    "$HB_OK"
+# Live session but the heartbeat's pane is gone / absent: identity can no longer
+# be verified -> refuse + escalate, never guess (review C1; was: blind rewake/nudge).
+run_case  pane-missing-session-up   identity_unverified 1     ""    fresh    "$HB_OK"
 run_case  stale-first-tick          nudged              1     %42   stale    "$HB_OK"
 run_case  stale-after-nudge         kill_rewake         1     %42   stale    "$HB_OK"      seed_old_nudge
-run_case  missing-hb-alive          nudged              1     %42   missing  ""
+run_case  missing-hb-alive          identity_unverified 1     %42   missing  ""
 run_case  quiesced-dead-session     ok_quiesced         0     ""    fresh    "$HB_QUIESCED"
 run_case  rolling-fresh             waiting_successor   0     ""    fresh    "$HB_ROLLING"
 run_case  ctx-ceiling-first-tick    handoff_requested   1     %42   fresh    "$HB_HIGH_CTX"
@@ -183,7 +192,9 @@ CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 30))"
 run_case  grace-session-created     ok_grace            1     %42   missing  ""
 run_case  grace-last-started        ok_grace            1     %42   missing  ""             seed_last_started
 CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 500))"
-run_case  grace-expired             nudged              1     %42   missing  ""
+# Grace expired with no heartbeat at all -> no pane identity -> refuse (C1);
+# pre-C1 this was a positional nudge into whatever pane came first.
+run_case  grace-expired             identity_unverified 1     %42   missing  ""
 
 # (b) zombie debounce — 3 consecutive cycles / F1-S3
 CASE_ENV="WD_TEST_PROC_ALIVE=0"
@@ -302,6 +313,81 @@ if ! grep -q '"event":"reap"' "$WORK/budget-exhausted/ledger.jsonl" \
   ok "no reap on budget-escalated / cooldown-deferred ticks (gates first)"
 else
   bad "reap emitted on a gated tick"
+fi
+
+echo "== review-fix scenarios (C1 identity / M1 brief / M2 kill-verify) =="
+# --- C1: positive pane identity. The main failure the epic exists for:
+# orchestrator pane (%4) dies, a WORKER (%42) is now the first live pane of the
+# window. The watchdog must refuse to touch it — never nudge/kill/re-wake a guess.
+run_case  c1-orch-dead-worker-lives identity_unverified 1     %42   stale    "$HB_ORPHAN"
+run_case  c1-no-pane-field          identity_unverified 1     %42   stale    "$HB_NOPANE"
+run_case  c1-invalid-pane-field     identity_unverified 1     %42   fresh    "$HB_BADPANE"
+# Startup grace still shields the identity gate (a just-re-woken orchestrator's
+# heartbeat still names its dead predecessor's pane until the first write).
+CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 30))"
+run_case  c1-grace-shields-identity ok_grace            1     %42   stale    "$HB_ORPHAN"
+
+L="$WORK/c1-orch-dead-worker-lives/ledger.jsonl"
+if grep '"event":"kill_refused"' "$L" | grep -q '"reason":"identity_unverified"' \
+   && ! grep -q '"event":"kill"' "$L" \
+   && ! grep -q '"event":"nudge"' "$L" \
+   && ! grep -q '"event":"orchestrator_restarted"' "$L" \
+   && grep -q '"event":"escalation"' "$L"; then
+  ok "C1: unverified identity -> kill_refused(identity_unverified) + escalate; NO nudge/kill/re-wake"
+else
+  bad "C1: identity refusal wrong (worker pane was touched or no escalation)"
+fi
+if grep '"event":"kill_refused"' "$WORK/c1-orch-dead-worker-lives/ledger.jsonl" | grep -q '"identity":"not_found"' \
+   && grep '"event":"kill_refused"' "$WORK/c1-no-pane-field/ledger.jsonl" | grep -q '"identity":"no_field"' \
+   && grep '"event":"kill_refused"' "$WORK/c1-invalid-pane-field/ledger.jsonl" | grep -q '"identity":"invalid_field"'; then
+  ok "C1: identity detail recorded (not_found / no_field / invalid_field)"
+else
+  bad "C1: identity detail missing from kill_refused lines"
+fi
+
+# --- M1: the re-wake prompt is built FROM the skill's re-wake-brief.md
+# (BRIEF-START/END block) with the watchdog placeholders substituted.
+P="$WORK/dead-session-fresh-hb/state/rewake-prompt.txt"
+if [ -f "$P" ] && grep -q "re-woken automatically by the mechanical watchdog" "$P" \
+   && grep -q "The previous orchestrator of $REPO_ROOT is gone (reason: dead_session)" "$P" \
+   && grep -q "restart 1/3" "$P"; then
+  ok "M1: re-wake prompt built from re-wake-brief.md (PROJECT_DIR/REASON/RESTART_N/BUDGET substituted)"
+else
+  bad "M1: re-wake prompt not built from the brief template (see $P)"
+fi
+if [ -f "$P" ] && ! grep -qE '\{\{(PROJECT_DIR|REASON|RESTART_N|RESTART_BUDGET|TS)\}\}' "$P"; then
+  ok "M1: no unsubstituted watchdog placeholders remain in the prompt"
+else
+  bad "M1: unsubstituted placeholders left in the prompt"
+fi
+if grep -q "restart 3/3" "$WORK/budget-available/state/rewake-prompt.txt" 2>/dev/null; then
+  ok "M1: RESTART_N reflects the budget window (3rd restart -> 'restart 3/3')"
+else
+  bad "M1: RESTART_N wrong for the 3rd in-window restart"
+fi
+CASE_ENV="WD_REWAKE_BRIEF=/nonexistent/re-wake-brief.md"
+run_case  m1-brief-missing-fallback rewake              0     ""    fresh    "$HB_SOLO"
+if grep -q '"event":"rewake_brief_missing"' "$WORK/m1-brief-missing-fallback/ledger.jsonl" \
+   && grep -q "REPLACEMENT orchestrator" "$WORK/m1-brief-missing-fallback/state/rewake-prompt.txt"; then
+  ok "M1: missing brief -> inline fallback + rewake_brief_missing ledger warning"
+else
+  bad "M1: brief-missing fallback path broken"
+fi
+
+# --- M2: a kill that does not stick must NEVER be followed by a re-wake
+# (a surviving pane + a fresh orchestrator = two live orchestrators).
+CASE_ENV="WD_TEST_KILL_FAILS=1"
+run_case  m2-kill-fails-no-rewake   kill_failed         1     %42   stale    "$HB_OK"      seed_old_nudge
+L="$WORK/m2-kill-fails-no-rewake/ledger.jsonl"
+if grep -q '"event":"kill_failed"' "$L" \
+   && ! grep -q '"event":"kill"' "$L" \
+   && ! grep -q '"event":"orchestrator_restarted"' "$L" \
+   && grep -q '"event":"escalation"' "$L" \
+   && grep -q '"event":"reap"' "$L" \
+   && [ ! -f "$WORK/m2-kill-fails-no-rewake/state/last-kill.marker" ]; then
+  ok "M2: failed kill -> kill_failed + escalate; reap kept, NO re-wake, no last-kill marker"
+else
+  bad "M2: kill-failure handling wrong (re-wake after failed kill?)"
 fi
 
 echo "== side-effect assertions =="
