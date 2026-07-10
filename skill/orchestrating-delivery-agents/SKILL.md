@@ -166,7 +166,7 @@ replacement orchestrator. Structure (in this order):
    progress (N/M tasks), which cycle is running on which worker, latest review verdicts, the standing
    model/verification policy, what's next. The owner must understand the situation in one glance —
    no key-soup, no abbreviations invented mid-chain.
-2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | questions: open=N (xB/yD/zC/wF) | status=...` — the `questions:` field is `tools/lab/lab-emit.sh list --count` verbatim, refreshed whenever the queue changes.
+2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | questions: open=N (xB/yD/zC/wF) lines=L | status=...` — the `questions:` field is `tools/lab/lab-emit.sh list --count` verbatim, refreshed whenever the queue changes.
 3. **TELEMETRY block (cumulative, persisted each change):** `cycles_completed=N | tokens_total=T | tokens_workers=W | tokens_orchestrator=O | open_workers=[name,...]`. A rolled-over or restarted orchestrator reads this block to resume cumulative tallies — never reset to zero.
 
    **MANDATORY STEP — after EVERY worker terminates:** APPEND one structured line to the TELEMETRY
@@ -329,15 +329,17 @@ order — they are the whole tick:
 4. **Progress probe** — ONE `git log` (or handoff-dir mtime) against the SHA stored in STATE:
    movement = grinding. No movement is STILL green while item 6's clocks are unexpired — idle ≠
    stuck.
-5. **Queue quiet** — ONE `tools/lab/lab-emit.sh list --due` returns nothing AND the queue
-   line-count matches the census noted in LIVE-STATUS (growth = new records/answer patches to
-   triage — see the queue-triage actions in the Question queue section).
+5. **Queue quiet** — ONE `tools/lab/lab-emit.sh list --count` reports the same `lines=L` as the
+   census in LIVE-STATUS AND `list --due` returns nothing (growth of `lines=` = new records/answer
+   patches to triage — see the queue-triage actions in the Question queue section). Compare
+   `lines=`, not `open=`: a `seen_by` dedup patch grows the file without moving any open-count.
 6. **No expired clocks** — patience windows, breaker `next_probe`, quota ETA, mode boundary
    (night/morning), BLOCKER re-push timer (manifest §4) all un-crossed.
 
 **ALL green → HEARTBEAT_OK:** write nothing to STATE (log nothing on no-change), read nothing
-further — no handoff bodies, no STATE rewrite, no extra probes — re-arm per the cadence table, end
-the turn. Target cost: ≤4–5 cheap tool calls, zero file reads beyond the probes.
+further — no handoff bodies, no STATE rewrite, no extra probes — re-arm per the cadence table, then
+end the turn with a one-line owner-visible status TEXT (Turn-order rule — the text is never the
+overhead you trim). Target cost: ≤4–5 cheap tool calls, zero file reads beyond the probes.
 
 **ANY check non-green → leave the fast-path** and triage ONLY that delta through its own tree
 (idle/liveness, finalize exception, mode boundary, breaker, quota-wait). The fast-path is an exit
@@ -348,9 +350,10 @@ Worked example (night, stable fleet, long-waiting cadence):
 [tick 03:41] hb appended: {"ts":"2026-07-10T03:41:07Z","cycle":13,"context_pct":44,
              "open_workers":2,"status":"ok","mode":"night","pane":"%4"}
 inbox: empty | panes: %5 %7 — matches LIVE-STATUS | git probe: worker branch
-@ a1b2c3d -> a9e8f7c (moved — grinding) | queue: --due empty, 14 lines = census |
+@ a1b2c3d -> a9e8f7c (moved — grinding) | queue: --due empty, lines=14 = LIVE-STATUS census |
 clocks: patience 12m/45m, breaker CLOSED, no quota-wait, night until 08:30 — none expired
-=> HEARTBEAT_OK. Nothing written, nothing else read. ScheduleWakeup 1500s. End turn.
+=> HEARTBEAT_OK. Nothing written, nothing else read. ScheduleWakeup 1500s.
+   → final TEXT to owner: "night, 2 workers grinding, queue quiet — next tick 25m." End turn.
 ```
 
 ## Night mode — activeHours
@@ -413,14 +416,16 @@ answer is logged back to the queue — the learning loop needs it whether it cam
 | Type | When (classification) | Orchestrator behavior | Wakes the owner at night? |
 |---|---|---|---|
 | **BLOCKER** | Work cannot proceed AND no safe default exists: missing credentials, any denylist action, an irreversible fork | Park ONLY the affected item (park-per-task, never park-the-fleet); reroute workers to unblocked work; queue the record | **Yes — push immediately** (the only type that may wake the owner; manifest quiet-hours may batch even this) |
-| **DECISION** | A genuine fork with viable branches AND a defensible, reversible default | Queue the record with `default`, `default_rationale`, `reversibility` and an `auto_apply_at` deadline ("if unanswered by T, I do X"); keep working elsewhere; at T apply the default and log `decision.made` | No — batched into the morning digest, unless the record is marked high-impact |
+| **DECISION** | A genuine fork with viable branches AND a defensible, reversible default | Queue the record with `default`, `default_rationale`, `reversibility` and an `auto_apply_at` deadline ("if unanswered by T, I do X"); keep working elsewhere; at T apply the default and log `decision.made` | No — batched into the morning digest; `--high-impact` raises its RANK inside digest §1, never its channel |
 | **CLARIFY** | Ambiguity with one obviously-reasonable reading | Take the default IMMEDIATELY; record as answered-by-default so the owner can veto retroactively | No — digest only |
-| **FYI** | No answer needed: recovered incidents, thresholds crossed, policy rules tripped | Record only | No — digest only (unless severity ≥ incident) |
+| **FYI** | No answer needed: recovered incidents, thresholds crossed, policy rules tripped | Record only | No — digest only |
 
 **Classification rules — apply in order, first match wins:**
 1. **No safe default** (credentials, denylist, irreversible-if-wrong)? → **BLOCKER**.
    Irreversibility alone forces BLOCKER: buffer-and-default is licensed by reversibility — never
-   default an irreversible fork, however confident the default feels.
+   default an irreversible fork, however confident the default feels. The helper enforces this
+   mechanically: `--reversibility` is REQUIRED on DECISION/CLARIFY and `low` is rejected
+   ("reclassify as BLOCKER"); a BLOCKER takes no `--default`.
 2. **Real fork + defensible reversible default?** → **DECISION**. The record must say what the
    default is, why it is defensible, and when it auto-applies.
 3. **One obviously-reasonable reading?** → **CLARIFY** — proceeding is cheaper than asking; the
@@ -434,7 +439,10 @@ DECISION/CLARIFY/FYI — everything that continues without a human.
 question row delegates here): **BLOCKER is the only question type on the night critical list** —
 it may push/wake immediately, alongside the existing critical escalations (denylist hit,
 mass-death, restart-budget exhaustion, breaker OPEN, `BUDGET_EXCEEDED`). DECISION/CLARIFY/FYI
-never wake anyone: they buffer into the queue and surface at the morning boundary. Day mode uses
+never wake anyone: they buffer into the queue and surface at the morning boundary. **No flag and no
+severity promotes a non-BLOCKER onto the night channel** — `--high-impact` ranks a record inside the
+digest, it never changes how the record is delivered. If a fork is genuinely wake-worthy it IS a
+BLOCKER by classification rule 1; that is the whole point of the typology. Day mode uses
 the SAME records — the only day/night difference is the delivery channel (live ask vs
 queue+digest), never the record or its type.
 
@@ -473,8 +481,11 @@ awaiting) · `answered` · `auto-resolved` (default applied at deadline) · `ans
   --question "…" --default "…" --default-rationale "…" --reversibility high|med|low
   [--auto-apply-at ISO] [--link jira=GSL-45] [--option "label|pros|cons"] [--high-impact]` —
   prints the new id, or `DUPLICATE <id>` when deduped. A DECISION without an explicit deadline
-  gets the manifest §2 default (posed at night → 10:00 local; day → +2h). DECISION/CLARIFY
-  REQUIRE `--default` — a fork with no defensible default is a BLOCKER, reclassify it.
+  gets the manifest §2 default (+2h, clamped so it never lands before 10:00 local — the owner must
+  be able to SEE it before it applies). DECISION/CLARIFY REQUIRE `--default` AND
+  `--reversibility high|med` — a fork with no defensible default, or an irreversible one
+  (`--reversibility low`), is a BLOCKER, reclassify it; a BLOCKER takes no `--default`. The helper
+  rejects all three violations.
 - **Answer / resolve:** `lab-emit.sh answer --re <id> --answer "…" --by owner --channel telegram` ·
   `lab-emit.sh resolve --re <id> --applied "…"` (deadline hit → default applied).
 - **Read:** `lab-emit.sh list` (open) · `list --due` (DECISIONs past deadline — act on these at
@@ -492,11 +503,15 @@ until it exists the queue just grows (it's tiny).
 - **DECISION past `auto_apply_at`** (`list --due`): apply the default NOW, then
   `resolve --re <id> --applied "<default>"` + `decision --re <id> --decision "<default>"
   --rule "manifest §…"`. An expired deadline is an expired clock — it never rides to the next tick.
+  (Only a DECISION can be due: the helper refuses to attach a default to anything irreversible.)
 - **BLOCKER idle too long** (manifest §4.blocker-repush): re-escalate per the manifest channel
   order — at night ONE push only; the repeat lands in the digest.
 
-**LIVE-STATUS carries the queue census:** a `questions: open=N (xB/yD/zC/wF)` field — the
-`lab-emit.sh list --count` line verbatim — refreshed whenever the queue changes. Session-boundary
+**LIVE-STATUS carries the queue census:** a `questions: open=N (xB/yD/zC/wF) lines=L` field — the
+`lab-emit.sh list --count` line verbatim — refreshed whenever the queue changes. `lines=L` is the
+raw append-only line count: it is what HEARTBEAT_OK check 5 compares against (open-counts miss
+`seen_by` patches entirely) and a cheap tamper/rollback check on a file that may only grow.
+Session-boundary
 handoffs (the orchestrator's dated handoff, and any worker handoff that raised questions) list
 the OPEN question ids: the replacement orchestrator inherits the queue from disk anyway — the ids
 make the link explicit and greppable.
@@ -558,7 +573,8 @@ chronicler mechanizes generation; the template lives in `docs/lab/digest/README.
 
 **Sections in owner-priority order (05 §4.5) — each one read FROM DISK, never from session memory:**
 1. **Waiting for you** — open BLOCKERs first, then DECISIONs with deadline countdown
-   (`lab-emit.sh list`, `list --due`).
+   (`lab-emit.sh list`, `list --due`) — `high_impact:true` records rank above the rest within each
+   group (that flag is a digest RANK, never a night-wake channel).
 2. **Decided for you** — every auto-resolution/autonomous decision WITH its manifest rule cited
    (`decisions/log.jsonl`; provenance — an uncited decision is a defect).
 3. **What shipped** — tasks/PRs/commits with links (`git log`, `gh pr list`, tracker).

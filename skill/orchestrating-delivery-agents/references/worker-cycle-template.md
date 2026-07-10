@@ -44,7 +44,9 @@ orchestrator ("<<orchestrator-name>>") coordinates only — it does not execute.
 - **Ownable questions never block your pane.** If you hit a fork you'd normally ask a human about,
   classify it (BLOCKER / DECISION / CLARIFY / FYI — skill "Question buffer" section) and emit a typed
   record: `tools/lab/lab-emit.sh question --type <T> --from <<cycle-name>> --task <KEY> --question "..."
-  --default "..." --reversibility high|med|low`, then CONTINUE on the default if type ≤ DECISION.
+  --default "..." --reversibility high|med`, then CONTINUE on the default if type ≤ DECISION.
+  DECISION/CLARIFY require BOTH `--default` and `--reversibility`; if the fork is irreversible
+  (`low`) the helper rejects it — that is your signal to re-emit it as `--type BLOCKER` (no default).
   Only a BLOCKER (no safe default: credentials, denylist, irreversible) parks — and it parks only the
   affected task: report it under `BLOCKED_ON_HUMAN` with the queue id and move to unblocked work.
 - **Never force-push a shared branch.** On push rejection: `git fetch` + rebase/merge `origin/<branch>`, re-run gates, push.

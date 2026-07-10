@@ -9,10 +9,13 @@
 #            [--reversibility high|med|low] [--impact "..."] [--auto-apply-at ISO-UTC]
 #            [--link k=v ...] [--option "label|pros|cons" ...] [--high-impact]
 #            -> prints the new id, or "DUPLICATE <id>" when deduped into an open record
+#            DECISION/CLARIFY REQUIRE --default AND --reversibility high|med (low ⇒ BLOCKER,
+#            reclassify); BLOCKER takes NO --default (manifest §3: no default, ever).
 #   answer   --re q-ID --answer "..." [--by owner|orchestrator] [--channel CH]
 #   resolve  --re q-ID --applied "..."          # deadline hit -> default applied
 #   list     [--status open|all|answered|auto-resolved|answered-by-default|noted]
 #            [--type T] [--task KEY] [--due] [--json] [--count]
+#            --count -> "open=N (xB/yD/zC/wF) lines=L" (the LIVE-STATUS questions: field verbatim)
 #   decision --decision "..." (--re q-ID | --question "...") [--task KEY]
 #            [--rule "manifest §N.bullet"] [--by orchestrator|owner] [--channel CH]
 #            -> appends to decisions/log.jsonl (GSL-77); an ORCHESTRATOR decision
@@ -53,6 +56,7 @@ DLOCK = os.path.join(DDIR, ".log.lock")
 
 TYPES    = ("BLOCKER", "DECISION", "CLARIFY", "FYI")
 STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted")
+REVERSIBILITY = ("high", "med", "low")
 
 def die(msg):
     print("lab-emit: error: %s" % msg, file=sys.stderr)
@@ -172,12 +176,16 @@ def parse_flags(argv, spec, multi=()):
     return out
 
 def default_deadline():
-    """Manifest §2 defaults: posed in the night window (00:00–08:30 local) -> today 10:00 local; day -> +2h."""
-    loc = datetime.now().astimezone()
-    if loc.hour < 8 or (loc.hour == 8 and loc.minute < 30):
-        d = loc.replace(hour=10, minute=0, second=0, microsecond=0)
-    else:
-        d = loc + timedelta(hours=2)
+    """Manifest §2 default: +2h, clamped so no default ever applies before 10:00 LOCAL.
+
+    The deadline is a moment the owner can plausibly SEE the question (morning digest at
+    activeHours start + an hour of veto cushion) — so we clamp where the deadline LANDS, not
+    when the question was posed. A DECISION raised at 23:30 would otherwise auto-apply at 01:30,
+    inside the night window, hours before the digest that was supposed to show it.
+    """
+    d = datetime.now().astimezone() + timedelta(hours=2)
+    if d.hour < 10:                       # lands in the night / pre-digest window
+        d = d.replace(hour=10, minute=0, second=0, microsecond=0)
     return iso_utc(d)
 
 def next_id(records):
@@ -202,8 +210,25 @@ def cmd_question(argv):
     if typ not in TYPES:
         die("--type must be one of %s" % "|".join(TYPES))
     question = a.get("question") or die("--question is required")
-    if typ in ("DECISION", "CLARIFY") and not a.get("default"):
-        die("%s requires --default (a %s without a default is a BLOCKER)" % (typ, typ))
+    # Typology guard (skill "Question buffer", classification rule 1; manifest §3): buffer-and-default
+    # is LICENSED BY REVERSIBILITY. An irreversible fork is never decided by default — it is a BLOCKER.
+    # This is the only mechanical backstop between a mis-typed question and an unattended irreversible act.
+    if typ in ("DECISION", "CLARIFY"):
+        if not a.get("default"):
+            die("%s requires --default (a %s without a default is a BLOCKER)" % (typ, typ))
+        rev = (a.get("reversibility") or "").strip().lower()
+        if not rev:
+            die("%s requires --reversibility high|med (typology, skill \"Question buffer\"); "
+                "an irreversible fork is a BLOCKER" % typ)
+        if rev not in REVERSIBILITY:
+            die("--reversibility must be one of %s" % "|".join(REVERSIBILITY))
+        if rev == "low":
+            die("reversibility=low forces BLOCKER — an irreversible fork is never decided by default "
+                "(skill \"Question buffer\" rule 1; manifest §3): reclassify as --type BLOCKER")
+        a["reversibility"] = rev
+    if typ == "BLOCKER" and a.get("default"):
+        die("BLOCKER takes no --default (manifest §3: no default, ever); "
+            "a fork WITH a defensible reversible default is a DECISION, reclassify it")
     frm  = a.get("from", "orchestrator")
     task = a.get("task", "")
     links = {}
@@ -280,8 +305,11 @@ def cmd_list(argv):
     if a.get("count"):
         opens = [m for m in merged if m.get("status") == "open"]
         by = {t: sum(1 for m in opens if m.get("type") == t) for t in TYPES}
-        print("open=%d (%dB/%dD/%dC/%dF)" % (len(opens), by["BLOCKER"], by["DECISION"],
-                                             by["CLARIFY"], by["FYI"]))
+        # lines= is the raw append-only line count: the HEARTBEAT_OK check-5 census (growth = new
+        # records/patches to triage) and a cheap tamper/rollback check on an append-only file.
+        lines = sum(1 for _ in open(QUEUE, encoding="utf-8")) if os.path.exists(QUEUE) else 0
+        print("open=%d (%dB/%dD/%dC/%dF) lines=%d" % (len(opens), by["BLOCKER"], by["DECISION"],
+                                                      by["CLARIFY"], by["FYI"], lines))
         return
     now = iso_utc()
     rows = []

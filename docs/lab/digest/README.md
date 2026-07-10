@@ -13,6 +13,7 @@
 
 ## 1. Waiting for you (N)
 <!-- сначала открытые BLOCKER, затем DECISION с обратным отсчётом; из lab-emit.sh list -->
+<!-- внутри каждой группы записи с high_impact:true идут выше (это РАНГ в дайджесте, а не право будить ночью) -->
 - ! BLOCKER  q-… — <вопрос> — parked: <task>; поднят HH:MM [jira|gh|pr]
 - ? DECISION q-… — <вопрос> — default: "<default>"; auto-applies HH:MM (через Xh Ym) [links]
 
