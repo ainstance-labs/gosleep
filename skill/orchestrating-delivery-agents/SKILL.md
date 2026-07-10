@@ -145,7 +145,7 @@ human) always terminates.
   journal's last `START` line pinpoints the frozen step. Identify hung automation processes by their flags
   (e.g. `--allow-pre-commit-input`) + recent start time — NEVER the human's own browser. See edge case E17
   in `references/lifecycle-and-edge-cases.md`.
-- **Stay lean:** don't probe on every idle — probe on a timer (stall start, then ~5 min) or a `Monitor` poll loop; keep probes terse and compare a stored SHA in the state file; log nothing on no-change.
+- **Stay lean:** don't probe on every idle — probe on a timer (stall start, then ~270s — the cadence table's active-monitoring tier) or a `Monitor` poll loop; keep probes terse and compare a stored SHA in the state file; log nothing on no-change.
 
 ## Terminating + chaining
 
@@ -224,8 +224,14 @@ pulse makes the chain supervisable at any moment.
   watchdog refuses to act on a live session and escalates to the owner instead). Optional:
   `status` — `"ok"` (default) · `"rolling"` (dated
   handoff written, successor orchestrator expected — write as the LAST act before exiting a session)
-  · `"quiesced"` (chain deliberately ended; `open_workers` MUST be 0 — tells the watchdog NOT to
-  restart anything); `note` (free text, ≤80 chars).
+  · `"quiesced"` (deliberately not progressing — tells the watchdog NOT to restart anything,
+  whatever tmux says. Two forms: **chain done** — `open_workers` MUST be 0, the stand-down is
+  permanent; **quota-wait** — `note` MUST carry `quota-wait until <ISO ETA>` and `open_workers`
+  stays the REAL count of held workers; this form's stand-down is **ETA-bounded**: once the noted
+  ETA is more than `WD_QUOTA_GRACE_SECS` (default 900s) in the past, the watchdog treats you as
+  re-wakeable again — the alarm-clock backstop, see Quota auto-wait section); `mode` — `"night"` while inside the declared night window
+  (see Night mode section; omitted or `"day"` otherwise — the mode must be readable from disk);
+  `note` (free text, ≤80 chars).
 - **Atomic append, self-truncating** (same-directory hidden temp + rename, the STATE-file convention):
   ```bash
   hb="docs/handoff/.orchestrator-heartbeat"
@@ -240,7 +246,8 @@ pulse makes the chain supervisable at any moment.
   heartbeat carries no verifiable pane id is never guessed at — the watchdog refuses
   (`kill_refused reason=identity_unverified`) and escalates to the owner;
   `context_pct` ≥ ceiling → "write handoff now" + fresh orchestrator from the handoff;
-  `status:"quiesced"` → no restart. **Startup grace:** a fresh orchestrator is exempt from staleness
+  `status:"quiesced"` → no restart (quota-wait form: only until the noted reset ETA is > grace
+  overdue — then normal supervision resumes; see Quota auto-wait). **Startup grace:** a fresh orchestrator is exempt from staleness
   for a warm-up window (~90–120 s — Gastown #567: heartbeat checks killed freshly-started sessions
   before they could write one), so write your FIRST heartbeat during cold-start orientation, right
   after the on-disk reads. **Never judged from a single store:** the watchdog cross-checks heartbeat
@@ -250,10 +257,197 @@ pulse makes the chain supervisable at any moment.
 - **Relation to the pulse rule:** the standing pulse (self-check on a short cadence while the fleet
   is live; never end a turn without an armed wake-up) is the heartbeat *generator*. Heartbeat-first
   makes each pulse externally observable, and a turn that ends with no armed wake-up also stops the
-  heartbeat — so silent quiesce is caught too. (Pulse cadence/economics are their own policy; this
+  heartbeat — so silent quiesce is caught too. (Pulse cadence/economics are the next section; this
   section fixes only WHAT gets written and WHEN.)
 
-## Recovering / cold-starting an in-progress chain
+## Pulse cadence — self-pacing on cache windows
+
+**The armed-wake-up rule (HARD):** a turn that ends while `open_workers > 0` MUST end with an armed
+wake-up (`ScheduleWakeup`; a cron/`sleep` wrapper on surfaces without it). No exceptions — not "the
+worker will message me anyway" (a wedged worker won't), not "nothing to do right now" (that is what
+a cheap tick is for). An unarmed turn with a live fleet = silent quiesce: the pulse stops, the
+heartbeat goes stale, and the watchdog's next move is a nudge at YOUR pane. Ending a turn = exactly
+one of three states: **(a)** a wake-up is armed (the normal live-fleet case); **(b)** the chain is
+done — final heartbeat `status:"quiesced"`, `open_workers:0`; **(c)** a session boundary — final
+heartbeat `status:"rolling"` (successor expected; every worker already terminated per the roll
+HARD GATE) with NO wake-up armed: an armed wake-up would re-invoke the old session alongside its
+successor — two live orchestrators, the exact failure this skill exists to prevent. Nothing else.
+
+**The pulse is a cheap triage tick, not a work turn:** heartbeat first, then read STATE + probe
+only for deltas (new reports, git movement vs the stored SHA, expired patience clocks), act only on
+what changed. Nothing changed → write nothing, re-arm, end the turn (see the HEARTBEAT_OK
+fast-path). Never let a wake-up re-trigger heavy work — re-running a slash command, re-reading
+handoffs, re-auditing the tree on every tick is the documented hazard (claude-code #54086).
+
+**Cadence table — pick the delay by what you are waiting for, priced against the ~5-min prompt-cache
+TTL** (a tick inside the TTL reads your context from cache almost for free; a tick past it re-reads
+everything cold — one cache miss — so a miss must buy a LONG sleep to amortize):
+
+| Mode | Delay | When | Economics |
+|---|---|---|---|
+| **Active monitoring** | **~270s** | Unsticking a stall, verifier running under its watchdog, report/termination expected within minutes, quota-reset ETA imminent | Inside the cache TTL — context stays warm, ticks are near-free; the only mode where fast polling is rational |
+| **Stable waiting** | **~540s** | Workers mid-cycle and healthy, next boundary expected in ~10–20 min | One cache miss per tick, amortized ≥2× vs dead-zone ticking; keeps the heartbeat comfortably fresher than the watchdog's staleness clock |
+| **Long waiting** | **1200–1800s** | Workers deep in long cycles, night idle, nothing actionable expected for 20+ min | One cache miss buys the whole sleep; the cheapest healthy cadence there is |
+| **Dead zone** | **≥300s and <540s — NEVER** | — | Worst of both: pays the full cache miss without amortizing it. Half-open on purpose: 540s itself is the stable-waiting floor, not the zone. "I'll check in 5 minutes" (300s) is exactly this trap — think in cache windows, not round minutes |
+
+**Watchdog alignment:** any standing delay at or above the watchdog's staleness threshold
+(`WD_HB_STALE_SECS`, default 900s) schedules your own false-stale nudge — the watchdog interrupts
+the sleep you deliberately chose. Long-waiting cadence (1200–1800s) therefore requires the owner to
+raise `WD_HB_STALE_SECS` in `watchdog.conf` above the longest standing delay (e.g. 2100s for
+unattended/night operation); with the default threshold, cap standing delays below ~840s. Never
+resolve the conflict by skipping heartbeats or by silently ignoring nudges.
+
+**Cadence anti-patterns:**
+- **Unarmed end-of-turn with a live fleet** — the #1 violation; everything above exists to prevent it.
+- **Round-number thinking** — "wait 5 minutes" lands in the dead zone every time. 270s or 540s+.
+- **Polling faster than the awaited thing changes** — a worker mid-45-min-cycle polled at 270s is
+  ~10 wasted ticks; match the delay to the expected boundary, then step down to active monitoring
+  as it approaches.
+- **Heavy wake-ups** — a pulse that spawns, audits, or re-reads files "while I'm here" stops being
+  a triage tick; heavy actions happen because a DELTA demanded them, never because you woke up.
+- **Sleeping just past a threshold** — either just past the cache TTL (dead zone) or just past
+  `WD_HB_STALE_SECS` (self-inflicted nudge). Sleep decisively short or decisively long.
+
+### HEARTBEAT_OK fast-path — the minimal tick
+
+When every worker is alive and its files are growing, the pulse must cost almost nothing
+(OpenClaw heartbeat: a tiny STABLE checklist; "HEARTBEAT_OK → do nothing"). Run these checks in
+order — they are the whole tick:
+
+1. **Heartbeat written** (FIRST act — always, fast-path or not).
+2. **Inbox empty** — no worker reports, no owner messages waiting.
+3. **Fleet census unchanged** — one `tmux list-panes` (or `/workflows` glance): same pane ids/count
+   as LIVE-STATUS.
+4. **Progress probe** — ONE `git log` (or handoff-dir mtime) against the SHA stored in STATE:
+   movement = grinding. No movement is STILL green while item 5's clocks are unexpired — idle ≠
+   stuck.
+5. **No expired clocks** — patience windows, breaker `next_probe`, quota ETA, mode boundary
+   (night/morning) all un-crossed.
+
+**ALL green → HEARTBEAT_OK:** write nothing to STATE (log nothing on no-change), read nothing
+further — no handoff bodies, no STATE rewrite, no extra probes — re-arm per the cadence table, end
+the turn. Target cost: ≤3–4 cheap tool calls, zero file reads beyond the probes.
+
+**ANY check non-green → leave the fast-path** and triage ONLY that delta through its own tree
+(idle/liveness, finalize exception, mode boundary, breaker, quota-wait). The fast-path is an exit
+ramp for healthy ticks, never a way to skip a delta you already saw.
+
+Worked example (night, stable fleet, long-waiting cadence):
+```
+[tick 03:41] hb appended: {"ts":"2026-07-10T03:41:07Z","cycle":13,"context_pct":44,
+             "open_workers":2,"status":"ok","mode":"night","pane":"%4"}
+inbox: empty | panes: %5 %7 — matches LIVE-STATUS | git probe: worker branch
+@ a1b2c3d -> a9e8f7c (moved — grinding) | clocks: patience 12m/45m, breaker
+CLOSED, no quota-wait, night until 08:30 — none expired
+=> HEARTBEAT_OK. Nothing written, nothing else read. ScheduleWakeup 1500s. End turn.
+```
+
+## Night mode — activeHours
+
+The owner declares **activeHours** — the attended window in the owner's local time. Outside it the
+chain runs in **`mode=night`**: interactivity is *loosened* (nobody will answer), rails are
+*tightened* (nobody will catch a mistake). Night mode is the standing-schedule generalization of
+the re-wake unattended deltas — same buffering discipline, entered by the clock instead of by a
+watchdog restart.
+
+- **Where declared:** a dated line in the STATE file's Standing rules, e.g.
+  `activeHours: 09:00–24:00 local (night = 00:00–08:30)`. Default when undeclared: night =
+  00:00–08:30. (The Phase-3 decision manifest becomes the canonical home when it exists; the
+  Standing-rules line moves there.) The owner saying "я спать" / "going to sleep" = enter night
+  mode NOW regardless of clock; "I'm back" = day mode now. Derive the mode at every pulse from the
+  clock + standing overrides — it is never a memory-only flag.
+- **What changes at night** (everything else — telemetry, heartbeat, patience clocks, termination
+  gates — is mode-independent):
+
+| Behavior | Day | Night |
+|---|---|---|
+| Questions at genuine forks | `AskUserQuestion` (Decision forks section) | **AskUserQuestion FORBIDDEN except denylist items.** Non-denylist question → append to `QUESTIONS-PENDING` in STATE (the re-wake mechanic), take the reversible default or park ONLY the affected item, continue on unblocked work |
+| Escalations | Notify the owner directly | **Buffered** into STATE + surfaced at the morning boundary — EXCEPT critical: denylist hit, mass-death, restart-budget exhaustion, circuit-breaker OPEN, `BUDGET_EXCEEDED`. Critical still escalates immediately (watchdog hook / push when it exists) |
+| Work selection | Owner may steer mid-cycle | Autonomous reversible green delivery only; at a milestone boundary continue into the next unblocked phase (owner mandate 2026-07-10) — do not stop to ask |
+| Idle cadence | Per cadence table | Long-waiting tier (1200–1800s) is the default between boundaries; step down only for an active stall/verifier |
+| Irreversible actions | Denylist → `BLOCKED_ON_HUMAN` | Same denylist, zero exceptions — night grants NO extra authority |
+
+- **Heartbeat records the mode:** add the optional `mode` field to every heartbeat line while in
+  night mode — `"mode":"night"` (omitted or `"day"` otherwise; see Heartbeat protocol). The mode
+  must be readable from disk by the watchdog/owner/replacement orchestrator — never context-only.
+- **Entering night** (first pulse past the window edge, or the owner's sign-off): append a
+  `MODE → night` line to the STATE log, write the heartbeat with `mode:"night"`, confirm the
+  wake-up is armed. One-time owner setup for unattended nights: raise `WD_HB_STALE_SECS` in
+  `watchdog.conf` above the long-waiting tier (e.g. 2100s) and set the night restart budget
+  (e.g. 3 per night window) — see `tools/watchdog/watchdog.conf.example`.
+- **Morning boundary** (first pulse at/after activeHours start): append `MODE → day` to the STATE
+  log; drop `mode:"night"` from the heartbeat; **surface the night's buffer** — every open
+  `QUESTIONS-PENDING` item and every buffered escalation goes into ONE compact owner-facing summary
+  (the Phase-3 morning digest when it exists; until then a short message + pointer to the STATE
+  section). Buffered items are never silently dropped: they stay open in STATE until answered or
+  superseded. Then resume day-mode escalation behavior.
+- **A question buffered at night is not a stalled chain:** park only the affected task, reroute the
+  worker to unblocked work, keep pulsing. `BLOCKED_ON_HUMAN` panes at night are reserved for
+  denylist items alone.
+
+## Quota auto-wait — session-limit quiesce & resume
+
+The subscription quota window is account-wide: when it exhausts (`You've hit your session limit`,
+`StopFailure(rate_limit)`), you AND every worker stop being able to run turns at once. This is not
+a failure — it is scheduled weather with a known reset time. The chain must wait it out quietly
+and resume itself (validated in production 2026-07-07→08), not die, not park silently, and not let
+the watchdog burn its restart budget on re-wakes that are guaranteed to hit the same limit.
+
+**Detection — multi-signal, never one error string** (ralph #183 lesson: a timeout misread as a
+rate limit parks a healthy fleet):
+1. Your own turn/tool call fails naming the session limit or `rate_limit`.
+2. A worker's report / StopFailure names it.
+3. The WHOLE fleet goes silent simultaneously right after heavy usage — suspect quota before
+   suspecting N independent bugs; confirm via signal 1/2 before quiescing.
+4. Distinguish from transient `overloaded` / `server_error`: those retry with backoff and do NOT
+   quiesce; only a limit with a reset window does.
+
+**Quiesce protocol (in this order):**
+1. **Determine the reset ETA:** the limit message usually names it; else quota-window start + 5h.
+   When uncertain, **err LATE, never early** — every resume mechanism (your armed wake-up AND the
+   watchdog backstop, step 5) keys off this ETA: an ETA declared too early re-wakes into a
+   still-closed window and burns restart budget; too late merely resumes later. (An overestimated
+   ETA still gets a free probe at +3600s — the wake-up cap in step 5.)
+2. **Hold the fleet — kill nothing, spawn nothing.** Workers are held, not stuck: their panes keep
+   in-flight state and resume free of charge when the window opens. Best-effort `SendMessage` to
+   each live worker: *"quota-wait until <ETA> — hold; finish nothing heavy; do not start new
+   steps."* (They likely can't act on it until reset — that's fine, it's queued.)
+3. **STATE:** LIVE-STATUS gets `status=quota-wait until=<ISO ETA>`; append a log line
+   `QUOTA-WAIT entered (signal=<...>, eta=<...>)`.
+4. **Heartbeat:** `status:"quiesced"`, `note:"quota-wait until <ISO ETA>"`, `open_workers` = the
+   REAL count of held workers (the quota-wait form — Heartbeat protocol above). This single line is
+   what tells the watchdog to stand down: quiesced is checked FIRST, before staleness, so the
+   heartbeat going stale during the wait (you can't write while limited) triggers no nudge/kill.
+5. **Arm ONE wake-up and STAY in the session:** delay = `min(3600, ETA − now + ~120s margin)`
+   (3600s is the wake-up cap). Be honest about what this buys: a tick that fires while the window
+   is still closed cannot run a turn (step 4's own premise — you can't write while limited), so it
+   can NEVER re-arm a next hop, and no retry/queue semantics are guaranteed by the harness. There
+   is no multi-hop "chain." ETA within ~3600s → your wake-up fires past the reset and resumes you
+   directly. ETA further out → the armed wake-up dies under the limit (accept it — it still
+   doubles as a free early probe in case the ETA was overestimated) and resume falls to the
+   **watchdog's alarm-clock backstop** (contract v0.5.1): the `quiesced` shield is ETA-bounded —
+   once the `note`'s reset ETA is more than `WD_QUOTA_GRACE_SECS` (default 900s) in the past, the
+   watchdog stops standing down and runs its normal tree: stale heartbeat + live pane → ONE nudge
+   (which lands, since the window is open by now) → kill + re-wake only if the nudge doesn't take.
+   Do NOT write a handoff and exit — the armed wake-up is the fast resume path, the backstop the
+   guaranteed one; the first tick that RUNS is your evidence the window opened.
+
+**Resume protocol (first successful tick):**
+1. Heartbeat `status:"ok"` (+ `mode` per the clock) — this one write re-enters watchdog supervision.
+2. STATE: `QUOTA-WAIT exited (waited <X>m)`; restore LIVE-STATUS.
+3. Re-census the fleet (`tmux list-panes` / `/workflows`) — a pane may have died during the wait;
+   reconcile per the cold-start rules before acting.
+4. Un-hold workers (`SendMessage`: *"quota window reset — resume"*), resume normal pulse cadence.
+
+**Residual risk (accepted, documented):** the resume path is layered, not absolute. (1) **No
+watchdog installed** → an ETA beyond ~3600s has no automatic resume: the single armed wake-up dies
+under the limit and the chain waits for the owner. (2) **The backstop keys off YOUR declared ETA:**
+declared too early, the watchdog nudges/re-wakes into a still-closed window and burns restart
+budget right before it's needed — that is why step 1 says err late. (3) **A pane that dies DURING
+the wait** stays down until ETA + grace — the shield suppresses earlier re-wakes on purpose (they
+would fail serially and exhaust the budget); a whole-session death with ≥2 recorded workers
+escalates to the owner (mass-death rule) instead of restarting blindly. In every branch the ETA in
+the heartbeat `note` tells the owner at a glance why everything is quiet.
 
 After compaction, crash, or a fresh session days later — **do NOT reconstruct from memory and do NOT
 "spawn fresh to be safe":**
@@ -357,8 +551,65 @@ wait, surface `BLOCKED_ON_HUMAN` — do not roll.
 - Agree a **max cycle count and/or aggregate-token ceiling** up front; after EVERY worker terminates, APPEND one telemetry line to the TELEMETRY block of ORCHESTRATION-STATE.md (format and example in the STATE file section above — do this BEFORE spawning the next cycle; never defer).
 - **Mandatory TELEMETRY in every worker brief:** every cycle brief MUST include a requirement that the worker reports a telemetry line at the end of its COMPLETE report: `tokens_out=N tokens_in=N cache_read=N`. Tally each cycle into the STATE TELEMETRY block before spawning the next cycle. This is not optional — it is the only way cumulative cost tracking stays accurate.
 - **Token recovery when a dead worker failed to report tokens:** (1) RECOVER — range-read ONLY the `## ORCHESTRATOR REPORT` block of the dead worker's handoff file (the existing read-exception covers exactly this — see "Common mistakes"); extract token counts from that block. (2) If the report block is absent or the file cannot be found: report the verified subtotal from other cycles with the gap EXPLICITLY FLAGGED — e.g. `tokens_this_cycle=UNRECOVERED — gap flagged; cumulative excludes this cycle`. NEVER fabricate an aggregate to fill the gap. NEVER say "data not available" and move on as if the cost didn't happen. The gap must be visible in the TELEMETRY block.
-- On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork.
-- **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no new merged PR, = stuck → STOP and ask the human. A chain with no forward progress is a runaway, even if it looks busy.
+- On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork. A ceiling is a hard budget
+  boundary, NOT a breaker signal — it never cools down and never HALF_OPEN-probes.
+- **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no
+  new merged PR, = no forward progress. A chain with no forward progress is a runaway, even if it
+  looks busy. These two signals do not hard-stop on their own anymore — they feed the circuit
+  breaker (next section), which stages the response: OPEN → cooldown → one probe → owner.
+
+## Circuit breaker — staged anti-runaway (extends the loop guard)
+
+A bare hard-STOP loop guard has two overnight failure modes: a transient flake trips it
+PERMANENTLY (false halt — nobody is awake to un-stick it), and runaway shapes it doesn't watch
+(the same error recurring cycle after cycle, output quietly shrinking) spin unnoticed. The breaker
+keeps the loop-guard signals, adds ralph's, and stages the response with state + cooldown + a
+single probe (ralph-claude-code `lib/circuit_breaker.sh`; counters human-resettable per autosk).
+
+**States:** `CLOSED` (normal) → `OPEN` (tripped) → `HALF_OPEN` (one probe after cooldown) →
+`CLOSED` on success / back to `OPEN` on failure.
+
+**Trip signals — counted at every cycle boundary, persisted in STATE:**
+
+| Signal | Trips at (default) | Counting rule |
+|---|---|---|
+| Non-advancing `NEXT` (loop guard) | 2 consecutive cycles | same/unchanged `NEXT` across a boundary = +1; any advance resets |
+| No new merged PR (loop guard) | 3 cycles (owner-set) | resets on any merge |
+| Same error signature | 3 consecutive cycles | signature = first line of the failing gate/tool error, paths/timestamps normalized; a DIFFERENT error resets the count (new information ≠ spinning) |
+| Output/progress decline | 2 consecutive cycles | cycle produced < ~30% of the chain's typical substance (commits + report content — ralph's >70% decline); git motion counts toward progress, never toward completion |
+
+Any single signal at threshold → **OPEN**.
+
+**On OPEN:** spawn nothing new (live workers finish NATURALLY — the breaker never kills productive
+work); write the breaker line to STATE (below); escalate to the owner — OPEN is on the night-mode
+critical list, so it escalates immediately even at night; append `note:"breaker=OPEN"` to the next
+heartbeat. Keep pulsing (long-waiting cadence): supervising the wind-down and honoring the cooldown
+still need a live pulse.
+
+**Cooldown → HALF_OPEN → probe:** after the cooldown (default 30 min) move to `HALF_OPEN` and run
+EXACTLY ONE probe cycle — the smallest unblocked task, fresh context, normal worker tier. Probe
+advances for real (gates green + a genuine commit/PR advance, and the tripping signal did not
+recur) → `CLOSED`, zero the counters, log `BREAKER closed by probe`. Probe fails or re-trips →
+back to `OPEN`, escalate again, DOUBLE the cooldown (cap ~2h), and run NO further probes until the
+owner resets — a repeatedly-OPEN breaker is an owner problem, not a retry problem.
+
+**The breaker line — STATE persistence + manual reset.** One line, kept next to the TELEMETRY
+block, updated atomically at every cycle boundary:
+```
+breaker=CLOSED since=<ISO ts> next_probe=- counters: next_same=0/2 no_pr=0/3 err_same=0/3 decline=0/2 last_error_sig=""
+```
+Human-resettable (autosk phone-editable counters): the owner edits the line to `breaker=CLOSED`
+with zeroed counters — from a phone via the repo if need be. The orchestrator re-reads the line
+every pulse and OBEYS THE FILE (STATE is the authority): never argue with a manual reset — log
+`BREAKER manually reset by owner` and resume. A replacement/re-woken orchestrator inherits the
+line as-is: **a restart does not reset the breaker** (that would mask the bug the breaker caught).
+
+**Adjacent rails — related, never conflated:**
+- **Watchdog restart budget** (GSL-53) guards orchestrator DEATH loops at the process level; the
+  breaker guards a LIVE chain that stopped producing. Both exist to stop masking a real bug.
+- **Re-wake anti-crash-loop** ("predecessors died at the same point → don't charge in") is the
+  post-restart cousin; an OPEN breaker line in STATE binds a re-woken orchestrator too.
+- **`BUDGET_EXCEEDED`** is a ceiling: STOP + fork, no cooldown, no probe.
 
 ## Security & worker authority
 
@@ -466,7 +717,11 @@ A new project has no handoffs. Before cycle #1:
 
 | Situation | Do |
 |---|---|
-| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN read STATE / probe workers. |
+| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / clocks — all green = re-arm + end turn, nothing else read or written. |
+| Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). |
+| Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → `QUESTIONS-PENDING` + reversible default; escalations buffered except critical; long-waiting cadence. |
+| Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; surface ALL buffered questions/escalations in ONE owner summary. Buffered items stay open in STATE until answered — never silently dropped. |
+| Session limit hit (`You've hit your session limit` / StopFailure rate_limit) | Quiesce: hold workers (no kills, no spawns), STATE `status=quota-wait until=<ETA>`, heartbeat `status:"quiesced"` + `note:"quota-wait until <ETA>"` (`open_workers` = real count), arm ONE wake-up `min(3600s, ETA+~120s)` — a limited tick can't re-arm, so no hop chains; ETA > 1h out → resume falls to the watchdog alarm-clock (quiesced shield drops past ETA + `WD_QUOTA_GRACE_SECS`). STAY in session. First tick that runs = resume: heartbeat ok, re-census, un-hold. |
 | Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
@@ -483,7 +738,8 @@ A new project has no handoffs. Before cycle #1:
 | Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
 | Live git/gh contradicts handoff | Live truth wins: overwrite LIVE-STATUS block + append `CORRECTION:` note to cycle log (atomic via hidden temp). Never carry contradicted IDs forward. |
 | Late-arriving ID (PR#/issue# after TBD written) | Find the TBD placeholder line in STATE; replace in-place (idempotent). Never add a second line; never leave TBD standing. |
-| Cost ceiling / loop guard | Cumulative totals in TELEMETRY block → STOP + ask when ceiling hit or same NEXT twice. |
+| Cost ceiling | Cumulative totals in TELEMETRY block → STOP + surface `BUDGET_EXCEEDED` when hit. Ceiling ≠ breaker: no cooldown, no probe. |
+| Breaker signal at threshold (same `NEXT` ×2 / no new PR ×3 / same error ×3 / output decline ×2) | OPEN: spawn nothing, breaker line in STATE, escalate (critical — even at night), keep pulsing. Cooldown 30m → ONE HALF_OPEN probe → CLOSED on real advance; re-trip → OPEN, cooldown ×2, no more probes until owner reset (edit the breaker line). Restart never resets the breaker. |
 | Dead worker's tokens not reported | (1) Range-read ONLY the `## ORCHESTRATOR REPORT` block in its handoff — extract tokens from there. (2) If still unrecoverable: record `tokens_this_cycle=UNRECOVERED — gap flagged` in TELEMETRY. NEVER say "unavailable" and move on. |
 | Irreversible action requested | Denylist → `BLOCKED_ON_HUMAN`. |
 
@@ -522,12 +778,35 @@ A new project has no handoffs. Before cycle #1:
 - **"I'm low on context and a worker is busy mid-cycle — I'll shut it down so I can roll at a clean boundary."** → **NO. Killing a productive worker to force a roll boundary is orphaning by another name — you lose its in-progress output.** The clean boundary must arrive NATURALLY (worker self-quiesces with COMPLETE, then you terminate). Wait for the natural COMPLETE or let it finish its current task and self-quiesce. NEVER send `shutdown_request` or kill a productive live worker to roll faster. If you truly cannot wait, surface `BLOCKED_ON_HUMAN`.
 - **"The worker didn't report its tokens, so I'll note it as unavailable and move on."** → **NO. RECOVER first:** range-read ONLY the `## ORCHESTRATOR REPORT` block of the dead worker's handoff file (the read-exception covers this). If tokens are in that block, extract and tally them. If truly unrecoverable, record `tokens_this_cycle=UNRECOVERED — gap flagged` in the TELEMETRY block. NEVER fabricate totals; NEVER omit the gap as if the cycle had zero cost.
 - "Nothing changed this pulse — I'll skip the heartbeat write." → No. The heartbeat proves LIVENESS, not progress. Skip it and the watchdog's staleness clock runs toward a false restart of a healthy chain. Write it FIRST, every pulse.
+- **"Workers are busy — I'll end my turn; they'll message me when done."** → No. A live fleet with
+  no armed wake-up is a silent quiesce: a wedged worker never messages, the pulse stops, the
+  heartbeat goes stale. EVERY turn with `open_workers > 0` ends with `ScheduleWakeup` (cadence
+  table). "I'll check back in 5 minutes" is doubly wrong — unarmed intent AND the ≥300/<540s dead zone.
 - **"The watchdog re-woke me — I'll ask the owner how to proceed." / "Predecessor died, so its
   workers must be dead too — I'll respawn the fleet."** → No, twice. Re-wake is UNATTENDED: buffer
   questions in STATE (`QUESTIONS-PENDING`) and continue on unblocked work — only denylist items
   park. And a dead orchestrator does NOT invalidate its workers: re-census (`tmux list-panes`,
   `/workflows`) and ADOPT live workers; re-spawning them is double-dispatch.
-- "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
+- **"Session limit hit — I'll write a handoff and exit; the watchdog will restart me after reset."**
+  → No. Re-wakes during the limit fail serially and burn the restart budget; the watchdog
+  deliberately stands down until ETA + grace (the alarm-clock backstop), so exiting early just
+  delays resume to the backstop's worst case. Quiesce IN PLACE: hold workers, `note:"quota-wait
+  until <ETA>"`, arm ONE `min(3600s, ETA+~120s)` wake-up, stay in the session — the wake-up is the
+  fast resume path; the watchdog's expired-ETA re-wake is the guaranteed one.
+- **"Quota exhausted — the workers are stuck, I'll kill them and respawn fresh after reset."** → No.
+  They are held, not stuck: panes keep in-flight state and resume free when the window opens.
+  Killing them trades a free resume for a paid rebuild. Kill nothing, spawn nothing, wait.
+- **"It's 3am but this question genuinely matters — I'll AskUserQuestion / ping the owner."** → No.
+  In night mode ONLY denylist items may wake the owner. Everything else: `QUESTIONS-PENDING` +
+  reversible default (or park just that item) + reroute the worker + surface it at the morning
+  boundary. A 3am question the owner can't answer is a stalled pane, not diligence.
+- "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR / same error again) →
+  Breaker signal: count it in the STATE breaker line; at threshold → OPEN, not "one more cycle".
+- **"The breaker is OPEN but I'm confident the next cycle will work — I'll spawn it."** → No. OPEN
+  means NO new spawns, full stop. The path back is exactly one: cooldown → ONE HALF_OPEN probe →
+  CLOSED only on a real advance. A failed probe returns to OPEN and waits for the OWNER's manual
+  reset (edit the breaker line) — never a second probe on your own initiative, and a restart/re-wake
+  never resets the breaker either.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 
 ## Reference files

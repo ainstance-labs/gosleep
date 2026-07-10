@@ -30,6 +30,7 @@ Event types and their extra fields:
 | event | extra fields | emitted when |
 |---|---|---|
 | `nudge` | `target` (pane id), `reason`, `hb_age` | stale heartbeat, live session → one send-keys nudge |
+| `quota_wait_expired` | `eta` (ISO from the heartbeat note), `overdue_secs`, `grace_secs` | a quiesced quota-wait heartbeat's reset ETA is > `WD_QUOTA_GRACE_SECS` in the past (GSL-65 review M1) → the quiesced shield drops and the normal decision tree runs on the SAME tick; its events (`nudge`/`kill`/`orchestrator_restarted`/`mass_death`…) follow this line |
 | `handoff_requested` | `target`, `context_pct`, `ceiling` | context_pct ≥ ceiling → "write handoff now" |
 | `reap` | `role` (`orchestrator`\|`session`), `target` (pane id or `session`), `reason`, `branch`, `head` (short SHA), `snapshot` (path) | ALWAYS before a kill and before any restart — state collected first |
 | `kill` | `target` (explicit pane id), `reason` | force-kill of the orchestrator pane (post-reap, existence-verified afterwards) |

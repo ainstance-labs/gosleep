@@ -11,11 +11,11 @@
 
 ## LIVE-STATUS
 
-`EPIC GSL-49 COMPLETE 2026-07-10 | PR #66 MERGED → main @ 878f438 (10 коммитов: 8 задач + 2 ревью-фикса) | GH #57..#65 закрыты | Jira: эпик+задачи Done | ветка удалена лок+origin | fleet: gsl49-finalizer terminating → EMPTY | леджер (STATE) uncommitted на main → housekeeping задачей 1 следующего эпика | NEXT: setup «AutoSK Anatomy v2» (GSL-58, CODE-ONLY) → Phase 2 PRD | next Jira=GSL-58, GH=#67 | policy: Fable 5 + Opus-механика, NO Workflow, PULSE ~270s, max 3 panes, kill-pane by id.`
+`EPIC GSL-58 COMPLETE 2026-07-10 | PR #74 MERGED → main @ a217393 (6 коммитов) | GH #67..#73 закрыты | Jira: эпик+задачи Done | ветка удалена | fleet: gsl58-finalizer terminating → EMPTY | леджер (STATE) uncommitted → housekeeping задачей 1 следующего эпика | NEXT: setup Phase 2 PRD (self-pulse + night mode) | next Jira=GSL-65, GH=#75 | policy: Fable 5 + Opus-механика, NO Workflow, PULSE ~270s, max 3 panes, kill-pane by id.`
 
 ## TELEMETRY (cumulative — never reset; append one line per cycle)
 
-`cycles_completed≈53 | open_workers=[writer-landscape (Fable), writer-headless (Fable)] (+res-labui terminating) | prior-run tokens not surfaced per-cycle.`
+`cycles_completed≈59 | open_workers=[writer-landscape (Fable), writer-headless (Fable)] (+res-labui terminating) | prior-run tokens not surfaced per-cycle.`
 - `hardening arc (PRs #35/#42/#47): see handoff 12.`
 - `cycle=1 worker=gsl41-setup model=claude-opus-4-8 tokens_out=~14000 tokens_in=~120000 cache_read=~90000 | running: cycles=31 total≈224000`
 - `cycle=2a workers=res-* (first spawn) model=claude-fable-5 KILLED by orchestrator kill-pane error — tokens_this_cycle=UNRECOVERED — gap flagged`
@@ -41,6 +41,12 @@
 - `cycle=21 worker=gsl49-reviewer model=claude-fable-5 tokens_out=~14000 tokens_in=~95000 cache_read=~380000 | running: cycles=51 total≈3130000 (+2a gap)`
 - `cycle=22 worker=gsl49-fixer model=claude-fable-5 tokens_out=~15000 tokens_in=~95000 cache_read=~1100000 | running: cycles=52 total≈3240000 (+2a gap)`
 - `cycle=23 worker=gsl49-finalizer model=claude-opus-4-8 tokens_out=~3500 tokens_in=~62000 cache_read=~55000 | running: cycles=53 total≈3306000 (+2a gap)`
+- `cycle=24 worker=gsl58-setup model=claude-opus-4-8 tokens_out=~7000 tokens_in=~95000 cache_read=~120000 | running: cycles=54 total≈3408000 (+2a gap)`
+- `cycle=25 worker=res-anatomy model=claude-fable-5 tokens_out=~620000 (вкл. 2 Explore-субагента 299k+281k) tokens_in≈3M cache_read≈2.5M (est) | running: cycles=55 total≈4030000 (+2a gap)`
+- `cycle=26 worker=writer-anatomy model=claude-fable-5 tokens_out=~92000 tokens_in=~36000 cache_read=~1300000 | running: cycles=56 total≈4158000 (+2a gap)`
+- `cycle=27 worker=gsl58-mechanic model=claude-opus-4-8 tokens_out=~6100 tokens_in=~98000 cache_read=~61000 | running: cycles=57 total≈4262000 (+2a gap)`
+- `cycle=28 worker=gsl58-reviewer model=claude-fable-5 tokens_out=~11000 tokens_in=~28000 cache_read=~310000 | running: cycles=58 total≈4301000 (+2a gap)`
+- `cycle=29 worker=gsl58-finalizer model=claude-opus-4-8 tokens_out=~1500 tokens_in=~34000 cache_read=~0 | running: cycles=59 total≈4337000 (+2a gap)`
 - interim (not final): ≈4k/90k/60k на паузе — финальная строка при COMPLETE.
 
 ## Standing rules / decisions
@@ -105,3 +111,11 @@
 - **Cycle 21 (gsl49-reviewer, Fable) DONE ~08:15:** REVIEW-gsl49.md — C1 позиционный pane-резолв (убьёт живого воркера в сценарии «оркестратор умер, воркеры живы»; воркер даже может маскировать смерть своим heartbeat) / M1 re-wake-brief.md не потребляется watchdog.sh (inline-текст без N/M и unattended-правил) / M2 провал kill-pane игнорируется → double-dispatch / M3+8 minor follow-up. Вердикт FIX (C1+M1+M2) → MERGE. Всё остальное по спеке.
 - **Cycle 22 (gsl49-fixer, Fable) DONE ~08:37:** C1 — heartbeat обязан нести "pane":"$TMUX_PANE" (SKILL.md) + watchdog v0.5.0 резолв только из hb-pane со сверкой, unverified → kill_refused+escalate, позиционный fallback УДАЛЁН; M1 — brief читается (BRIEF-START/END, 5 плейсхолдеров, REASON-словарь синхронизирован, fallback + rewake_brief_missing); M2 — act_kill: rc + re-list, провал → kill_failed + отмена re-wake. smoke 65/65; install.sh identical; runbook/LEDGER обновлены; push → PR #66 (4f520e7..7be1b5b). Коммиты 0377298 + 7be1b5b.
 - **Cycle 23 (gsl49-finalizer, Opus) DONE ~08:35:** PR #66 merged REGULAR @ 878f438 (06:32Z); #57 авто + #58..#65 вручную закрыты; Jira эпик Done; ветка удалена лок+remote; checkout main через fetch main:main без stash — леджер цел. ЭПИК GSL-49 ЗАВЕРШЁН END-TO-END (setup → 8 задач → PR → ревью с CRITICAL-catch → фиксы → merge).
+
+### 2026-07-10 — Phase GSL-58: AutoSK Anatomy v2 (CODE-ONLY по решению владельца)
+- **Cycle 24 (gsl58-setup, Opus) DONE ~08:42:** эпик GSL-58=GH #67; задачи GSL-59..64 = GH #68..#73; GSL-59 леджер b38b768 Done; ветка запушена; prompts-файл не тронут.
+- **Cycle 25 (res-anatomy, Fable) DONE ~09:00:** GSL-60..63 все Done — 02-pi-agent.md (pi=earendil-works/pi, subscription-native OAuth PKCE, RPC: fork/get_entries-cursor/host bash; agent_settled = истинный сигнал завершения, autosk сидит на agent_end — латентная гонка; supervisor-ловушки: exit(1) до RPC-канала, нет uncaughtException в rpc mode, bash без таймаута; packages/orchestrator — first-party N×`pi --mode rpc` супервизор, ПРЯМОЙ prior art), 03-tui.md (gocui/lazygit-стек, 11 паттернов: push-redraw+CAS, owner-anchored composer, fail-open markdown; partial-фреймы не рендерятся), 04-unmerged-prs.md (6 PR одного контрибьютора, осиротели v1→v2; error matrix/cancel precedence/content-hash), 05-site-delta.md (FROZEN 12 дней). БЭКЛОГ+: отдельный разбор pi/packages/orchestrator (кандидат эпика). NOT covered: pi non-Anthropic провайдеры, interactive pi internals, orchestrator глубже 2 файлов.
+- **Cycle 26 (writer-anatomy, Fable) DONE ~09:27:** GSL-64 отчёт autosk-anatomy EN 135K + RU 175K (полный перевод); hero 8 плиток + FROZEN-бейдж, словарик 15 терминов, §2 pi-стек помодульно (+agent_settled на пальцах, 5 ловушек, packages/orchestrator prior art), §3 словарь протоколов 4 таблицы, §4 конфиги, §5 24 отказа, §6 TUI 11 паттернов, §7 PRs, §8 zero-delta, §9 adopt 23 пункта; 3 sequence-SVG; self-contained верифицирован; всё с file:line. Ограничение: браузерный рендер-смоук не гонялся (структурная валидация). Jira Done.
+- **Cycle 27 (gsl58-mechanic, Opus) DONE ~09:33:** 5 коммитов (60 ba2177d, 61 1763dde, 62 a293a94, 63 4b4d3ab, 64 19274b5) + dev_history + индекс; PR #74 CLEAN (Implements/чеклист/Mirrors #67/Closes #67..#73); эпик In Review; push b38b768..19274b5. next GH=#75.
+- **Cycle 28 (gsl58-reviewer, Fable) DONE ~09:40:** REVIEW-gsl58.md — 0C/0M/1minor (off-by-one go.mod:8-9→9-10); 14 проб против autosk@fd4c22e + pi@34582ef ПОДТВЕРЖДЕНЫ (agent_settled drain-loop verbatim; packages/orchestrator спавнит pi --mode rpc; OAuth PKCE S256; exit(1)-до-RPC); HTML self-contained/doctype/charset/lang ok; RU полная (h2 9=9); гигиена 6 коммитов/dev_history/PR body ok. Вердикт MERGE.
+- **Cycle 29 (gsl58-finalizer, Opus) DONE ~09:44:** PR #74 merged REGULAR @ a217393 (07:38Z); issues #68..#73 закрыты (#67 ранее); Jira эпик Done; ветка удалена лок+remote; checkout через fetch main:main без stash. ЭПИК GSL-58 ЗАВЕРШЁН END-TO-END (setup → research → отчёт EN+RU → PR → ревью MERGE с построчной сверкой → merge).

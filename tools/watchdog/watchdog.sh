@@ -21,7 +21,17 @@
 #     still stale after the nudge grace -> kill (EXPLICIT pane id only) + re-wake
 #   * context_pct >= ceiling          -> send-keys "write handoff now";
 #     handoff overdue -> kill + re-wake (fresh orchestrator reads the handoff)
-#   * status:"quiesced"               -> chain deliberately ended, NEVER restart
+#   * status:"quiesced"               -> deliberately not progressing. Two
+#     forms (GSL-69): chain ended (open_workers=0) -> NEVER restart, whatever
+#     tmux/staleness say. quota-wait (note carries "quota-wait until <ETA>",
+#     open_workers = held workers) -> stand down while the ETA holds, but the
+#     shield is ETA-BOUNDED (GSL-65 review M1): a limited orchestrator cannot
+#     run turns, so the wake-up it armed cannot survive the wait — once the
+#     ETA is > WD_QUOTA_GRACE_SECS in the past the watchdog IS the alarm
+#     clock: quiesced stops shielding and the normal decision tree applies
+#     (nudge first — it lands now that the window is open; kill + re-wake only
+#     if the nudge doesn't take). No/unparseable ETA = shield stays up (fail
+#     safe: never kill on a guess).
 #   * status:"rolling" + fresh hb     -> successor expected, wait
 #   * restart budget (default 3-in-60-min, warren RestartBudget) with
 #     exponential backoff (base 1s, cap 16s); exhausted -> NO kill, NO restart,
@@ -67,7 +77,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.5.0 (GSL-49 review fixes C1/M1/M2)"
+WD_VERSION="0.5.1 (GSL-65 review M1: quota-wait ETA alarm-clock backstop)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -116,10 +126,16 @@ fi
 : "${WD_REWAKE_BRIEF:="$WD_REPO_ROOT/skill/orchestrating-delivery-agents/references/re-wake-brief.md"}"
 
 # Thresholds (seconds / percent) — every one config-overridable
-: "${WD_HB_STALE_SECS:=900}"        # heartbeat older than this = stale (pulse is 5-10 min)
+: "${WD_HB_STALE_SECS:=900}"        # heartbeat older than this = stale (GSL-67 cadence:
+                                    # ~270/~540s ticks; raise to ~2100 for the 1200-1800s
+                                    # long-waiting/night tier — see watchdog.conf.example)
 : "${WD_NUDGE_GRACE_SECS:=240}"     # after a nudge, how long before kill+re-wake
 : "${WD_CONTEXT_CEILING_PCT:=80}"   # orchestrator self-rolls at ~70%; watchdog forces above that
 : "${WD_HANDOFF_WAIT_SECS:=600}"    # after "write handoff now", how long before kill+re-wake
+: "${WD_QUOTA_GRACE_SECS:=900}"     # quota-wait quiesce: how far past the note's reset ETA the
+                                    # stand-down holds; beyond it the quiesced shield drops
+                                    # (alarm-clock backstop, GSL-65 review M1). Keep LONGER than
+                                    # the orchestrator's own ~120s resume margin
 
 # Restart budget (PRD R1.3; warren RestartBudget). Persistent across watchdog
 # restarts (file-backed). Exhausted budget = NO kill, NO restart, escalate.
@@ -167,6 +183,7 @@ is_uint() { [[ "${1:-}" =~ ^[0-9]+$ ]]; }
 validate_config() {
   local k
   for k in WD_HB_STALE_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
+           WD_QUOTA_GRACE_SECS \
            WD_RESTART_BUDGET WD_RESTART_WINDOW_SECS WD_BACKOFF_BASE_SECS WD_BACKOFF_CAP_SECS \
            WD_ESCALATE_REPEAT_SECS WD_STARTUP_GRACE_SECS WD_ZOMBIE_CYCLES WD_KILL_COOLDOWN_SECS \
            WD_MASS_DEATH_WORKERS WD_MIN_TICK_INTERVAL_SECS WD_LOCK_STALE_SECS; do
@@ -228,7 +245,7 @@ marker_age() {
 }
 
 # --- heartbeat reading -----------------------------------------------------
-HB_EXISTS=0 HB_AGE="" HB_LAST="" HB_STATUS="" HB_CTX="" HB_WORKERS="" HB_CYCLE="" HB_PANE=""
+HB_EXISTS=0 HB_AGE="" HB_LAST="" HB_STATUS="" HB_CTX="" HB_WORKERS="" HB_CYCLE="" HB_PANE="" HB_NOTE=""
 
 hb_field_int() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p"; }
 hb_field_str() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p"; }
@@ -248,10 +265,39 @@ read_heartbeat() {
     HB_WORKERS="$(hb_field_int open_workers)"
     HB_CYCLE="$(hb_field_int cycle)"
     HB_PANE="$(hb_field_str pane)"
+    HB_NOTE="$(hb_field_str note)"
   fi
 }
 
 hb_is_fresh() { [ "$HB_EXISTS" = "1" ] && is_uint "$HB_AGE" && [ "$HB_AGE" -lt "$WD_HB_STALE_SECS" ]; }
+
+# GSL-69 quota-wait ETA (GSL-65 review M1). Parses "quota-wait until <ISO>" out
+# of the heartbeat note. Sets QUOTA_ETA_STATE:
+#   none    — no ETA in the note, or an unparseable one (fail SAFE: an
+#             unreadable ETA keeps the quiesced shield up — never kill on a
+#             guess; a chain-done quiesce has no ETA and never restarts)
+#   pending — ETA + grace still ahead: stand down, the wait is legitimate
+#   expired — ETA more than WD_QUOTA_GRACE_SECS in the past: the orchestrator's
+#             own armed wake-up provably failed (a limited tick cannot re-arm),
+#             the shield drops and the normal decision tree applies
+QUOTA_ETA_STATE="none" QUOTA_ETA_EPOCH="" QUOTA_ETA_ISO=""
+quota_eta_check() {
+  QUOTA_ETA_STATE="none"; QUOTA_ETA_EPOCH=""; QUOTA_ETA_ISO=""
+  local iso
+  iso="$(printf '%s' "$HB_NOTE" | sed -nE 's/.*quota-wait until ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?Z).*/\1/p')"
+  [ -z "$iso" ] && return 0
+  case "$iso" in *:*:*Z) : ;; *) iso="${iso%Z}:00Z" ;; esac  # seconds optional
+  QUOTA_ETA_ISO="$iso"
+  # BSD date (the launchd target box) first, GNU date fallback.
+  QUOTA_ETA_EPOCH="$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" +%s 2>/dev/null \
+                   || date -u -d "$iso" +%s 2>/dev/null || true)"
+  if ! is_uint "$QUOTA_ETA_EPOCH"; then QUOTA_ETA_EPOCH=""; return 0; fi
+  if [ $(( $(now_epoch) - QUOTA_ETA_EPOCH )) -gt "$WD_QUOTA_GRACE_SECS" ]; then
+    QUOTA_ETA_STATE="expired"
+  else
+    QUOTA_ETA_STATE="pending"
+  fi
+}
 
 # --- tmux probes (injectable in test mode) ---------------------------------
 probe_session_alive() {
@@ -605,11 +651,26 @@ decide_and_act() {
   local pane session_alive=0
   read_heartbeat
 
-  # 1. Deliberate end states first — quiesced NEVER restarts, whatever tmux says.
+  # 1. Deliberate end states first. Chain-done quiesced NEVER restarts, whatever
+  #    tmux says — but the quota-wait form is ETA-BOUNDED (GSL-65 review M1):
+  #    a limited orchestrator cannot run turns, so the wake-up it armed cannot
+  #    survive the wait. Once the note's reset ETA is > WD_QUOTA_GRACE_SECS in
+  #    the past, the shield drops and the NORMAL tree below applies: stale +
+  #    live pane -> ONE nudge (which lands — the window is open by now), kill +
+  #    re-wake only if the nudge doesn't take; dead-session / mass-death rules
+  #    unchanged. No ETA or an unparseable one keeps the shield up (fail safe).
   if [ "$HB_STATUS" = "quiesced" ]; then
-    DECISION="ok_quiesced"; DECISION_REASON="status_quiesced"
-    marker_clear "nudge"; marker_clear "handoff-request"; marker_clear "escalated"
-    return 0
+    quota_eta_check
+    if [ "$QUOTA_ETA_STATE" = "expired" ]; then
+      local overdue=$(( $(now_epoch) - QUOTA_ETA_EPOCH ))
+      log "quota-wait ETA expired: eta=$QUOTA_ETA_ISO overdue=${overdue}s (> ${WD_QUOTA_GRACE_SECS}s grace) — quiesced shield drops, normal decision tree applies"
+      ledger_emit "quota_wait_expired" "eta=$QUOTA_ETA_ISO" \
+        "overdue_secs=$overdue" "grace_secs=$WD_QUOTA_GRACE_SECS"
+    else
+      DECISION="ok_quiesced"; DECISION_REASON="status_quiesced"
+      marker_clear "nudge"; marker_clear "handoff-request"; marker_clear "escalated"
+      return 0
+    fi
   fi
   if [ "$HB_STATUS" = "rolling" ] && hb_is_fresh; then
     DECISION="waiting_successor"; DECISION_REASON="status_rolling_fresh"

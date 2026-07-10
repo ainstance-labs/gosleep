@@ -66,6 +66,23 @@ HB_OK='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2
 HB_SOLO='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":1,"status":"ok","pane":"%42"}'
 HB_HIGH_CTX='{"ts":"2026-07-10T03:00:00Z","cycle":14,"context_pct":85,"open_workers":2,"status":"ok","pane":"%42"}'
 HB_QUIESCED='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":50,"open_workers":0,"status":"quiesced","pane":"%42"}'
+# GSL-69: the quota-wait form of quiesced — open_workers>0 + reset ETA in note.
+# The quiesced gate must hold even with a STALE heartbeat in a LIVE session
+# (a limited orchestrator cannot write; nudging/killing it would burn the
+# restart budget on re-wakes guaranteed to hit the same limit).
+# GSL-65 review M1: the shield is ETA-BOUNDED — fixtures are generated RELATIVE
+# to now (a hard-coded ETA would itself expire and flip the expected decision):
+# future / past-within-grace ETA -> stand down; ETA past the 900s grace ->
+# shield drops, normal tree applies; unparseable ETA -> fail-safe stand-down.
+iso_at() { date -u -r "$1" +%Y-%m-%dT%H:%M:%SZ; }  # BSD date (same box as launchd)
+QW_ETA_FUTURE="$(iso_at $((NOW + 7200)))"
+QW_ETA_RECENT="$(iso_at $((NOW - 300)))"    # past, but inside the default 900s grace
+QW_ETA_EXPIRED="$(iso_at $((NOW - 3600)))"  # past the grace: alarm-clock territory
+HB_QUOTA_WAIT='{"ts":"2026-07-10T03:00:00Z","cycle":16,"context_pct":55,"open_workers":2,"status":"quiesced","note":"quota-wait until '"$QW_ETA_FUTURE"'","pane":"%42"}'
+HB_QUOTA_RECENT='{"ts":"2026-07-10T03:00:00Z","cycle":16,"context_pct":55,"open_workers":2,"status":"quiesced","note":"quota-wait until '"$QW_ETA_RECENT"'","pane":"%42"}'
+HB_QUOTA_EXPIRED='{"ts":"2026-07-10T03:00:00Z","cycle":16,"context_pct":55,"open_workers":2,"status":"quiesced","note":"quota-wait until '"$QW_ETA_EXPIRED"'","pane":"%42"}'
+HB_QUOTA_EXPIRED_SOLO='{"ts":"2026-07-10T03:00:00Z","cycle":16,"context_pct":55,"open_workers":1,"status":"quiesced","note":"quota-wait until '"$QW_ETA_EXPIRED"'","pane":"%42"}'
+HB_QUOTA_BADETA='{"ts":"2026-07-10T03:00:00Z","cycle":16,"context_pct":55,"open_workers":2,"status":"quiesced","note":"quota-wait until soon","pane":"%42"}'
 HB_ROLLING='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":72,"open_workers":2,"status":"rolling","pane":"%42"}'
 # C1 fixtures: heartbeat names a pane that no longer exists (%4 — the dead
 # orchestrator; the only LIVE pane, %42, is a worker) / carries no pane at all.
@@ -134,9 +151,40 @@ run_case  stale-first-tick          nudged              1     %42   stale    "$H
 run_case  stale-after-nudge         kill_rewake         1     %42   stale    "$HB_OK"      seed_old_nudge
 run_case  missing-hb-alive          identity_unverified 1     %42   missing  ""
 run_case  quiesced-dead-session     ok_quiesced         0     ""    fresh    "$HB_QUIESCED"
+run_case  quota-wait-stale-live     ok_quiesced         1     %42   stale    "$HB_QUOTA_WAIT"
 run_case  rolling-fresh             waiting_successor   0     ""    fresh    "$HB_ROLLING"
 run_case  ctx-ceiling-first-tick    handoff_requested   1     %42   fresh    "$HB_HIGH_CTX"
 run_case  ctx-ceiling-overdue       kill_rewake         1     %42   fresh    "$HB_HIGH_CTX" seed_old_handoff
+
+echo "== quota-wait ETA backstop (GSL-65 review M1, contract v0.5.1) =="
+# Shield holds: ETA within grace / ETA unparseable (fail safe — never kill on a guess).
+run_case  quota-eta-recent-live     ok_quiesced         1     %42   stale    "$HB_QUOTA_RECENT"
+run_case  quota-eta-unparseable     ok_quiesced         1     %42   stale    "$HB_QUOTA_BADETA"
+# Shield drops past ETA + grace: the wake-up the orchestrator armed died under
+# the limit (a limited tick cannot re-arm) — the watchdog is the alarm clock.
+# Live pane -> ONE nudge first (it lands: the window is open by now); still
+# stale after the nudge grace -> kill + re-wake.
+run_case  quota-eta-expired-nudge   nudged              1     %42   stale    "$HB_QUOTA_EXPIRED"
+run_case  quota-eta-expired-kill    kill_rewake         1     %42   stale    "$HB_QUOTA_EXPIRED" seed_old_nudge
+# Dead session past ETA + grace: plain re-wake (1 recorded worker)...
+run_case  quota-eta-expired-dead    rewake              0     ""    fresh    "$HB_QUOTA_EXPIRED_SOLO"
+# ...but >=2 recorded workers still routes through mass-death (escalate, never blind-restart).
+run_case  quota-eta-expired-massd   mass_death          0     ""    fresh    "$HB_QUOTA_EXPIRED"
+
+if grep -q '"event":"quota_wait_expired"' "$WORK/quota-eta-expired-nudge/ledger.jsonl" \
+   && grep -q '"event":"nudge"' "$WORK/quota-eta-expired-nudge/ledger.jsonl"; then
+  ok "expired ETA -> quota_wait_expired recorded, then the normal nudge path"
+else
+  bad "expired ETA: quota_wait_expired/nudge missing from ledger"
+fi
+if ! grep -qE '"event":"(quota_wait_expired|nudge|kill|orchestrator_restarted)"' \
+     "$WORK/quota-eta-recent-live/ledger.jsonl" 2>/dev/null \
+   && ! grep -qE '"event":"(quota_wait_expired|nudge|kill|orchestrator_restarted)"' \
+     "$WORK/quota-eta-unparseable/ledger.jsonl" 2>/dev/null; then
+  ok "ETA within grace / unparseable -> shield holds (no expiry event, no action)"
+else
+  bad "shield broke early (acted on a pending or unparseable ETA)"
+fi
 
 echo "== restart budget scenarios (GSL-53) =="
 #         name                      expected            alive pane  hb       json           seed
@@ -413,6 +461,13 @@ if grep -q '"event":"orchestrator_restarted"' "$WORK/quiesced-dead-session/ledge
   bad "quiesced chain was restarted (must never happen)"
 else
   ok "quiesced chain not restarted"
+fi
+# GSL-69: quota-wait quiesce (open_workers>0, note ETA) with a STALE heartbeat
+# in a LIVE session must produce NO nudge, NO kill, NO restart.
+if grep -qE '"event":"(nudge|kill|orchestrator_restarted)"' "$WORK/quota-wait-stale-live/ledger.jsonl" 2>/dev/null; then
+  bad "quota-wait quiesce was nudged/killed/restarted (must never happen)"
+else
+  ok "quota-wait quiesce left alone (stale hb + live session)"
 fi
 
 echo "== config validation (must fail LOUDLY) =="

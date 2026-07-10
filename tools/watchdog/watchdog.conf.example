@@ -35,7 +35,14 @@
 #WD_REWAKE_BRIEF="<repo>/skill/orchestrating-delivery-agents/references/re-wake-brief.md"
 
 # --- thresholds (seconds / percent) -------------------------------------------
-# Heartbeat older than this = stale (orchestrator pulse is 5-10 min).
+# Heartbeat older than this = stale. The default (900) matches the day-mode
+# pulse cadence (active ~270s / stable ~540s ticks, GSL-67 cadence table).
+# NIGHT MODE (GSL-68): the skill's long-waiting tier deliberately sleeps
+# 1200-1800s between pulses — with the default 900 every such sleep triggers a
+# false-stale nudge. For unattended/night operation raise this ABOVE the
+# longest standing delay, e.g. 2100. (The orchestrator marks night in the
+# heartbeat's optional "mode" field; the watchdog does not parse it — this
+# threshold is how the owner aligns the two.)
 #WD_HB_STALE_SECS=900
 # After a nudge, how long the orchestrator gets to refresh the heartbeat
 # before kill + re-wake.
@@ -45,6 +52,17 @@
 #WD_CONTEXT_CEILING_PCT=80
 # After a handoff request, how long before kill + re-wake from the handoff.
 #WD_HANDOFF_WAIT_SECS=600
+# Quota-wait alarm-clock backstop (GSL-69 + GSL-65 review M1, contract v0.5.1):
+# a quiesced heartbeat whose note carries "quota-wait until <ISO ETA>" stands
+# the watchdog down — but only while the ETA holds. A limited orchestrator
+# cannot run turns, so the single wake-up it armed cannot survive the wait;
+# once the ETA is more than this many seconds in the past, quiesced stops
+# shielding and the normal decision tree applies (ONE nudge first — it lands
+# now that the window is open; kill + re-wake only if the nudge doesn't take).
+# Keep this LONGER than the orchestrator's own ~120s resume margin so
+# self-resume always wins the race. No/unparseable ETA = shield stays up
+# (fail safe); chain-done quiesced (open_workers=0, no ETA) never restarts.
+#WD_QUOTA_GRACE_SECS=900
 
 # --- restart budget + escalation (PRD R1.3; warren RestartBudget) --------------
 # Max restarts per sliding window. Exhausted budget = NO kill, NO restart —
