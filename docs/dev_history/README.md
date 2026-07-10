@@ -69,3 +69,14 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-46 — Report: Autonomy, question buffer, Laboratory, UI & mobile (EN+RU)](GSL-46-phase-gsl41-cycle1-report-autonomy-lab-ui.md)
 - [GSL-47 — Report: Loop engineering (EN+RU)](GSL-47-phase-gsl41-cycle1-report-loop-engineering.md)
 - [GSL-48 — PRD — GoSleep evolution plan (orchestration v-next)](GSL-48-phase-gsl41-cycle1-prd-gosleep-evolution.md)
+
+## Epic GSL-49 — Watchdog над оркестратором (PRD Phase 1)
+
+- [GSL-50 — Commit orchestration ledger (handoffs 13, 14 + STATE)](GSL-50-phase-gsl49-cycle1-ledger.md)
+- [GSL-51 — Heartbeat protocol: orchestrator liveness on disk (skill)](GSL-51-phase-gsl49-heartbeat.md)
+- [GSL-52 — launchd plist + watchdog.sh skeleton — mechanical 0-LLM consumer of the heartbeat](GSL-52-phase-gsl49-watchdog-skeleton.md)
+- [GSL-53 — Restart budget (3-in-60-min) + exponential backoff + owner escalation](GSL-53-phase-gsl49-restart-budget.md)
+- [GSL-54 — Gastown-debounce: startup grace, zombie×3, kill cooldown, mass-death, single-flight](GSL-54-phase-gsl49-gastown-debounce.md)
+- [GSL-55 — Route-through-reap на kill + формат watchdog-ledger (no silently vanished work)](GSL-55-phase-gsl49-route-through-reap.md)
+- [GSL-56 — Cold-start re-wake: watchdog-driven orchestrator restart (skill + brief template)](GSL-56-phase-gsl49-rewake.md)
+- [GSL-57 — Runbook: watchdog operations for the owner (docs/runbooks/watchdog.md)](GSL-57-phase-gsl49-runbook.md)

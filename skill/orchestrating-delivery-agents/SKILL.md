@@ -1,6 +1,6 @@
 ---
 name: orchestrating-delivery-agents
-description: Use when delivery work — a roadmap, migration, or multi-epic feature — is too large for one agent's context; when you keep manually restarting an agent that ran out of context; when a human wants to watch and steer agents at boundaries; or when resuming / cold-starting a fresh orchestrator onto an already-in-progress agent chain after the previous orchestrator was compacted, crashed, or restarted.
+description: Use when delivery work — a roadmap, migration, or multi-epic feature — is too large for one agent's context; when you keep manually restarting an agent that ran out of context; when a human wants to watch and steer agents at boundaries; or when resuming / cold-starting a fresh orchestrator onto an already-in-progress agent chain after the previous orchestrator was compacted, crashed, or restarted — including when a mechanical watchdog has just re-woken you with a re-wake brief.
 ---
 
 # Orchestrating Delivery Agents
@@ -198,6 +198,61 @@ This file — not chat scrollback — is ground truth for you and any replacemen
 human section current every time LIVE-STATUS changes; compress old log entries rather than letting
 them sprawl.
 
+## Heartbeat protocol — orchestrator liveness on disk
+
+An external mechanical watchdog (non-LLM; launchd/cron script) may sit above you and judge YOUR
+liveness. It judges from **durable on-disk state ONLY** — file mtime + parseable content — never from
+chat self-report or pane-content scraping (a wedged agent can't report; a dead one can't say so).
+The heartbeat file is that signal. Write it even when no watchdog is installed — one tiny write per
+pulse makes the chain supervisable at any moment.
+
+- **Path:** `docs/handoff/.orchestrator-heartbeat` — project-scoped, next to the STATE file. Runtime
+  state, NOT history: gitignore it (pattern `docs/handoff/.orchestrator-heartbeat*` — covers the
+  `.tmp` too); never commit it.
+- **When:** the **FIRST act of every pulse / wake-up tick** — before reading STATE, before probing
+  workers, before anything else. Write-first is the mid-pulse-wedge mitigation: a wedged orchestrator
+  never starts its NEXT pulse, so mtime stops advancing and staleness is observable within one pulse
+  interval. Also write a final line at every session boundary (see `status`).
+- **Format — append ONE JSON line** (JSONL; the watchdog reads `tail -1` + `stat` mtime):
+  `{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4"}`
+  Required: `ts` (UTC ISO-8601) · `cycle` (current cycle N) · `context_pct` (your HONEST estimate —
+  the watchdog compares it to the roll ceiling; a fabricated number defeats roll-at-~70%) ·
+  `open_workers` (count of live workers) · `pane` (YOUR OWN tmux pane id — literally `$TMUX_PANE`;
+  this self-declared id is the watchdog's ONLY way to tell which pane is you: it nudges/kills the
+  pane named here and NOTHING else. Positional guessing is forbidden on its side — after you die,
+  the "first pane of the window" is typically a live WORKER. Omit or mangle this field and the
+  watchdog refuses to act on a live session and escalates to the owner instead). Optional:
+  `status` — `"ok"` (default) · `"rolling"` (dated
+  handoff written, successor orchestrator expected — write as the LAST act before exiting a session)
+  · `"quiesced"` (chain deliberately ended; `open_workers` MUST be 0 — tells the watchdog NOT to
+  restart anything); `note` (free text, ≤80 chars).
+- **Atomic append, self-truncating** (same-directory hidden temp + rename, the STATE-file convention):
+  ```bash
+  hb="docs/handoff/.orchestrator-heartbeat"
+  line='{"ts":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"'"${TMUX_PANE:-}"'"}'
+  { [ -f "$hb" ] && tail -n 199 "$hb"; printf '%s\n' "$line"; } > "$hb.tmp" && mv "$hb.tmp" "$hb"
+  ```
+  Same-dir rename is atomic — a crash mid-write can't leave a truncated file; `tail -n 199` caps the
+  file at 200 lines so it stays compact forever.
+- **How the watchdog reads it (contract — know it so you don't fight it):** heartbeat mtime older
+  than its threshold → one nudge, then kill (explicit id ONLY) + re-wake via the cold-start protocol
+  — and the nudge/kill target is taken EXCLUSIVELY from your `pane` field: a live session whose
+  heartbeat carries no verifiable pane id is never guessed at — the watchdog refuses
+  (`kill_refused reason=identity_unverified`) and escalates to the owner;
+  `context_pct` ≥ ceiling → "write handoff now" + fresh orchestrator from the handoff;
+  `status:"quiesced"` → no restart. **Startup grace:** a fresh orchestrator is exempt from staleness
+  for a warm-up window (~90–120 s — Gastown #567: heartbeat checks killed freshly-started sessions
+  before they could write one), so write your FIRST heartbeat during cold-start orientation, right
+  after the on-disk reads. **Never judged from a single store:** the watchdog cross-checks heartbeat
+  age against tmux/session liveness before declaring you stuck (fresh heartbeat + dead session =
+  dead; stale heartbeat + live session = write-divergence → nudge first). One missed write won't kill
+  you — that is not a license to skip writes.
+- **Relation to the pulse rule:** the standing pulse (self-check on a short cadence while the fleet
+  is live; never end a turn without an armed wake-up) is the heartbeat *generator*. Heartbeat-first
+  makes each pulse externally observable, and a turn that ends with no armed wake-up also stops the
+  heartbeat — so silent quiesce is caught too. (Pulse cadence/economics are their own policy; this
+  section fixes only WHAT gets written and WHEN.)
+
 ## Recovering / cold-starting an in-progress chain
 
 After compaction, crash, or a fresh session days later — **do NOT reconstruct from memory and do NOT
@@ -212,6 +267,51 @@ After compaction, crash, or a fresh session days later — **do NOT reconstruct 
 3. Confirm reality: `tmux list-panes`; `/workflows` survivors; `git fetch && git log origin/main..origin/<branch>`; `gh pr list`; tracker; highest-numbered handoff.
 4. Reconcile: alive-in-file-but-gone = cycle ended (chain from its handoff); alive-with-no-report = in-flight (apply the idle tree, do NOT assume dead); adopt or terminate orphans BEFORE spawning. **When live git/gh contradicts the handoff: live truth wins — immediately overwrite LIVE-STATUS and append a CORRECTION note to the log (see Handoffs section for the exact mechanics).**
 5. Never spawn until every pane/task is positively accounted for.
+6. Once oriented (steps 1–3 done), append your first heartbeat line (Heartbeat protocol above) — you
+   are inside the watchdog's startup-grace window; your first write is what ends it.
+
+## Re-wake — automated restart by watchdog
+
+When the mechanical watchdog declares the orchestrator dead, wedged, or over the context ceiling,
+it kills the old session (explicit id ONLY) and starts a fresh `claude` session seeded with a
+**re-wake brief** — the template in `references/re-wake-brief.md` (the watchdog script reads that
+file and substitutes the `{{...}}` placeholders; keep template and this section in sync). Re-wake
+is the cold-start protocol above run **unattended**: same steps, same on-disk-first order, plus
+the deltas below. It never "resumes" the dead session — the fresh orchestrator is seeded purely
+from durable state (STATE → newest dated handoff → heartbeat tail), never from the corpse's
+context or transcript.
+
+**If your session opened with a re-wake brief, you are that fresh orchestrator.** Run cold-start
+steps 1–6 exactly, with these deltas:
+
+| Manual cold-start | Watchdog re-wake (unattended) |
+|---|---|
+| A human started you and can answer questions | **Nobody is present.** NEVER block on AskUserQuestion: append the question to a `QUESTIONS-PENDING` section in STATE, take the reversible default or park only the affected item, and continue on unblocked work. Only denylist items stay parked as `BLOCKED_ON_HUMAN`. |
+| Restarting was a human's decision | Restart is **counted** — the watchdog's restart budget (GSL-53 tooling: N-in-window + backoff, escalate-and-STOP on exhaustion). The brief carries `restart N of M`; treat a high N as a signal, not trivia. |
+| Predecessor usually rolled cleanly (dated handoff written) | Predecessor likely died mid-flight: the newest handoff may be stale or truncated — apply the suspect-handoff rules; live git/gh wins. |
+
+**Idempotency — reconcile-then-dispatch, never double-dispatch:**
+- Fleet re-census BEFORE any acting step: `tmux list-panes`, `/workflows`. A live worker is
+  **ADOPTED** — leave it running, record it in LIVE-STATUS, apply the normal idle/liveness tree.
+  Never re-spawn a live worker: the prior orchestrator's death does not invalidate its workers.
+- Never spawn until every pane/task is positively accounted for (cold-start rule 5, verbatim).
+- Running the same brief twice must be harmless: if STATE already records this restart AND the
+  heartbeat is advancing again, another orchestrator beat you — exit quietly (no writes, no spawns).
+
+**First acts, in order:** (1) on-disk reads (STATE → newest handoff → `tail -5` heartbeat);
+(2) fleet census + reconcile; (3) FIRST heartbeat line — `status:"ok"`, `note:"re-wake: <reason>"`
+(this ends the watchdog's startup grace); (4) restart record appended to the STATE log:
+`- ORCHESTRATOR RESTARTED (re-wake; reason=<...>; restart N/M; adopted=[...])`; (5) resume the
+pulse — never end a turn without an armed wake-up while workers are live.
+
+**Anti-crash-loop — the watchdog's half vs yours.** The watchdog owns the budget: after N restarts
+in the window it STOPS restarting and escalates to the owner (GSL-53 — "never mask an orchestrator
+bug with a restart loop"); do not re-implement that here. YOUR half: read the heartbeat tail and
+STATE log for prior re-wake records. If predecessors died repeatedly at the same point, do NOT
+charge into that same action — park the item and advance on a different unblocked path; if nothing
+is safe to advance, wind down deliberately (supervise live workers to natural COMPLETE, spawn
+nothing new, write a dated handoff naming the killer, end with a `status:"quiesced"` heartbeat
+once `open_workers` is 0) so the watchdog stops instead of burning budget on the same wall.
 
 ## Orchestrator self-monitoring (roll before you're compacted)
 
@@ -224,7 +324,10 @@ start a fresh orchestrator pointed at BOTH the STATE file and the dated handoff,
 the cumulative telemetry + budget tallies** from the TELEMETRY block so the new orchestrator resumes
 running totals rather than resetting to zero, then exit. Do this at EVERY session boundary (restart,
 roll, compaction, or planned pause) — updating only the STATE file is not enough. Plan to roll roughly
-every **~8–15 cycles** rather than assuming immortality.
+every **~8–15 cycles** rather than assuming immortality. Last act before exiting the session: append
+a `status:"rolling"` heartbeat line (Heartbeat protocol above) so the watchdog expects a successor
+instead of counting you dead; if the chain is DONE (no successor, no live workers), append
+`status:"quiesced"` with `open_workers:0` instead.
 
 **HARD GATE — before any roll/compact/handoff/fresh-orchestrator, confirm EVERY worker is TERMINATED.**
 "I'm low on context" does not override this rule. Rationalization ("I'll roll now and the worker will
@@ -363,6 +466,8 @@ A new project has no handoffs. Before cycle #1:
 
 | Situation | Do |
 |---|---|
+| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN read STATE / probe workers. |
+| Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
 | About to roll / compact / hand off to fresh orchestrator | HARD GATE: confirm EVERY worker TERMINATED first (pane gone from re-list or `TaskStop` success). Never roll with a live worker. |
@@ -374,6 +479,7 @@ A new project has no handoffs. Before cycle #1:
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
+| Session opened with a re-wake brief (watchdog restart) | Cold-start steps 1–6 + unattended deltas: ADOPT live workers (never re-spawn), buffer questions in STATE (`QUESTIONS-PENDING`, no AskUserQuestion-block), heartbeat `note:"re-wake: <reason>"`, restart record in the log. |
 | Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
 | Live git/gh contradicts handoff | Live truth wins: overwrite LIVE-STATUS block + append `CORRECTION:` note to cycle log (atomic via hidden temp). Never carry contradicted IDs forward. |
 | Late-arriving ID (PR#/issue# after TBD written) | Find the TBD placeholder line in STATE; replace in-place (idempotent). Never add a second line; never leave TBD standing. |
@@ -385,6 +491,7 @@ A new project has no handoffs. Before cycle #1:
 
 - **Reading heavy files yourself** (handoff bodies, source, transcripts) → orchestrator runs out of context. Relay paths + compact reports. The ONE narrow exception: a **range-read of ONLY the top `## ORCHESTRATOR REPORT` block** of a **DEAD worker's HANDOFF FILE** to recover a lost report. This exception never covers: (a) any transcript (dead or live), (b) a live worker's files, (c) reading the full handoff file, or (d) any other heavy file. Do not stretch it.
 - **Keeping chain state only in chat** → a compaction/restart orphans workers. State lives in `ORCHESTRATION-STATE.md`.
+- **Heartbeat written last / skipped on a "nothing changed" pulse / committed to git / fabricated `context_pct`** → the watchdog either restarts a healthy orchestrator or trusts a corpse. The heartbeat is the FIRST act of EVERY pulse (a pulse with nothing to do still writes it), gitignored, honest numbers only.
 - **Rolling with only STATE updated, no dated handoff** → the next orchestrator has no resume point; it must probe live tools blind. Write a dated `docs/handoff/NN-...md` at EVERY session boundary.
 - **Spawning a replacement before confirming termination** → duplicate/destructive work.
 - **Killing on the first idle** → you kill productive workers. Patience + liveness-rank + git first.
@@ -414,6 +521,12 @@ A new project has no handoffs. Before cycle #1:
 - **"I'm low on context, I'll roll / compact / start a fresh orchestrator now."** (while a worker is alive and unterminated) → **HARD BLOCK. You will orphan the live worker.** "Low on context" never overrides the termination gate. The ONLY safe sequences: (A) wait for the worker's COMPLETE `SendMessage` report → confirm terminated → THEN roll; or (B) send `shutdown_request` → receive `approve:true` → confirm dead (pane gone from re-list or `TaskStop` success) → THEN roll. Example correct action: *"My context is at 73%. I have a live worker (cycle-13). I will wait for its COMPLETE report before rolling. I will NOT hand off yet."* If you cannot wait or terminate, surface `BLOCKED_ON_HUMAN`.
 - **"I'm low on context and a worker is busy mid-cycle — I'll shut it down so I can roll at a clean boundary."** → **NO. Killing a productive worker to force a roll boundary is orphaning by another name — you lose its in-progress output.** The clean boundary must arrive NATURALLY (worker self-quiesces with COMPLETE, then you terminate). Wait for the natural COMPLETE or let it finish its current task and self-quiesce. NEVER send `shutdown_request` or kill a productive live worker to roll faster. If you truly cannot wait, surface `BLOCKED_ON_HUMAN`.
 - **"The worker didn't report its tokens, so I'll note it as unavailable and move on."** → **NO. RECOVER first:** range-read ONLY the `## ORCHESTRATOR REPORT` block of the dead worker's handoff file (the read-exception covers this). If tokens are in that block, extract and tally them. If truly unrecoverable, record `tokens_this_cycle=UNRECOVERED — gap flagged` in the TELEMETRY block. NEVER fabricate totals; NEVER omit the gap as if the cycle had zero cost.
+- "Nothing changed this pulse — I'll skip the heartbeat write." → No. The heartbeat proves LIVENESS, not progress. Skip it and the watchdog's staleness clock runs toward a false restart of a healthy chain. Write it FIRST, every pulse.
+- **"The watchdog re-woke me — I'll ask the owner how to proceed." / "Predecessor died, so its
+  workers must be dead too — I'll respawn the fleet."** → No, twice. Re-wake is UNATTENDED: buffer
+  questions in STATE (`QUESTIONS-PENDING`) and continue on unblocked work — only denylist items
+  park. And a dead orchestrator does NOT invalidate its workers: re-census (`tmux list-panes`,
+  `/workflows`) and ADOPT live workers; re-spawning them is double-dispatch.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 
@@ -421,5 +534,6 @@ A new project has no handoffs. Before cycle #1:
 
 - `references/worker-cycle-template.md` — the reusable cycle-worker prompt, handoff-body skeleton, compact-report contract, idempotent-creates (find-or-create by stable key + reconcile late-arriving IDs) and security hard rules.
 - `references/lifecycle-and-edge-cases.md` — spawn mechanics per surface (incl. background-only mode), liveness signals, the full edge-case catalog with correct handling.
+- `references/re-wake-brief.md` — the machine-consumed prompt template a mechanical watchdog passes to a fresh orchestrator session after killing/losing the previous one (placeholders + unattended rules; see "Re-wake" section).
 
 **Related skills:** `superpowers:writing-plans` (plan a milestone before cycles), `handoff` (REQUIRED at orchestrator session boundaries — a baton format helper), `delivery-workflow` + `using-jira` (one team's delivery mechanics workers follow), `superpowers:dispatching-parallel-agents` (pure fan-out), `superpowers:receiving-code-review` (apply review findings with judgment).

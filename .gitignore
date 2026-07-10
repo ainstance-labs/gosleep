@@ -9,6 +9,12 @@
 .artifacts/
 docs/reviews/
 
+# Orchestrator heartbeat — runtime liveness signal + its atomic temp (GSL-51), never committed
+docs/handoff/.orchestrator-heartbeat*
+
+# Watchdog ledger — runtime record beside the heartbeat (GSL-55, format: tools/watchdog/LEDGER.md)
+docs/handoff/.watchdog-*
+
 # Node
 node_modules/
 

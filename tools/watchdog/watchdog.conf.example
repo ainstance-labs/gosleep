@@ -1,0 +1,88 @@
+# gosleep watchdog configuration — copy to tools/watchdog/watchdog.conf and edit.
+# (watchdog.conf is machine-local runtime config; do NOT commit it.)
+#
+# Precedence: this file > WD_* environment variables > built-in defaults.
+# Every value is validated at startup; invalid config fails LOUDLY (exit 78) —
+# a silently mis-armed watchdog is worse than none (warren invariant).
+
+# --- topology ---------------------------------------------------------------
+# tmux session the orchestrator + worker panes live in (Agent Teams = split panes).
+#WD_TMUX_SESSION="gosleep"
+
+# How the orchestrator pane is found: identity comes ONLY from the "pane"
+# field of the heartbeat line ($TMUX_PANE — the orchestrator names itself,
+# GSL-51 protocol). There is NO positional fallback (review C1: after the
+# orchestrator dies, "first pane of the window" is typically a live WORKER).
+# Unverifiable identity in a live session -> kill_refused + escalation.
+# WD_ORCH_WINDOW_NAME only names the window a re-woken orchestrator spawns in.
+#WD_ORCH_WINDOW_NAME="orchestrator"
+
+# Binaries (launchd runs with a minimal PATH; set absolute paths if needed).
+#WD_TMUX_BIN="/opt/homebrew/bin/tmux"
+#WD_CLAUDE_BIN="claude"
+
+# --- paths -------------------------------------------------------------------
+# Heartbeat file — fixed by the skill contract (Heartbeat protocol, GSL-51).
+#WD_HEARTBEAT_FILE="<repo>/docs/handoff/.orchestrator-heartbeat"
+# Watchdog ledger — append-only JSONL, never truncated (see LEDGER.md).
+#WD_LEDGER_FILE="<repo>/docs/handoff/.watchdog-ledger.jsonl"
+# Runtime state (markers, counters, logs) — lives in gitignored .artifacts/.
+#WD_STATE_DIR="<repo>/.artifacts/watchdog"
+# Re-wake brief template (GSL-56): the fresh orchestrator's first prompt is
+# built from this file (BRIEF-START/END block, {{...}} placeholders). If the
+# file is missing, a minimal inline prompt is used and the ledger warns
+# (event rewake_brief_missing).
+#WD_REWAKE_BRIEF="<repo>/skill/orchestrating-delivery-agents/references/re-wake-brief.md"
+
+# --- thresholds (seconds / percent) -------------------------------------------
+# Heartbeat older than this = stale (orchestrator pulse is 5-10 min).
+#WD_HB_STALE_SECS=900
+# After a nudge, how long the orchestrator gets to refresh the heartbeat
+# before kill + re-wake.
+#WD_NUDGE_GRACE_SECS=240
+# context_pct at/above this -> "write handoff now". The orchestrator self-rolls
+# at ~70%; the watchdog ceiling sits above that as the enforcement backstop.
+#WD_CONTEXT_CEILING_PCT=80
+# After a handoff request, how long before kill + re-wake from the handoff.
+#WD_HANDOFF_WAIT_SECS=600
+
+# --- restart budget + escalation (PRD R1.3; warren RestartBudget) --------------
+# Max restarts per sliding window. Exhausted budget = NO kill, NO restart —
+# escalate to the owner instead ("never mask an orchestrator bug with a
+# restart loop"). File-backed: survives watchdog restarts. For a night window
+# the owner may set e.g. 3 restarts / 8h.
+#WD_RESTART_BUDGET=3
+#WD_RESTART_WINDOW_SECS=3600
+# Exponential backoff before each re-wake: min(cap, base * 2^restarts_in_window).
+#WD_BACKOFF_BASE_SECS=1
+#WD_BACKOFF_CAP_SECS=16
+# Re-escalate at most this often while the orchestrator is still down.
+#WD_ESCALATE_REPEAT_SECS=3600
+# Optional executable called with the escalation message — the phase-6 push
+# (ntfy / Claude-app) extension point. Must be executable; validated at start.
+#WD_ESCALATE_HOOK=""
+
+# --- Gastown debounce rails (PRD R1.4) -----------------------------------------
+# Warm-up exemption from staleness for a freshly started session (Gastown #567:
+# heartbeat checks killed sessions before they could write their first line).
+#WD_STARTUP_GRACE_SECS=120
+# "pane-alive != process-alive" becomes a zombie only after this many
+# CONSECUTIVE cycles (transient gaps during handoffs diverge routinely).
+#WD_ZOMBIE_CYCLES=3
+# Minimum gap between force-kills.
+#WD_KILL_COOLDOWN_SECS=300
+# Whole session gone while the last heartbeat recorded >= N workers = systemic
+# failure (tmux server death / reboot / sleep) -> escalate, never blind-restart.
+#WD_MASS_DEATH_WORKERS=2
+# The watchdog itself: single-flight lock (stale locks stolen after
+# WD_LOCK_STALE_SECS) + self rate-limit between ticks.
+#WD_MIN_TICK_INTERVAL_SECS=60
+#WD_LOCK_STALE_SECS=900
+# Process expected somewhere under the orchestrator pane's process tree.
+#WD_AGENT_PROC_REGEX="claude"
+
+# NOTE on --dry-run: external actions (send-keys/kill/spawn/notify/sleep) are
+# suppressed, but the watchdog's OWN state (markers, restart history, ledger
+# lines flagged dry_run) IS written — that is what makes sequences testable.
+# For diagnosis against a live installation, point WD_STATE_DIR at a scratch
+# copy so a manual dry-run tick can't consume the real budget/markers.

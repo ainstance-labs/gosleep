@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  gosleep watchdog — launchd LaunchAgent template (GSL-52).
+  launchd (not cron): survives reboots and handles wake-from-sleep on macOS.
+
+  DO NOT load this template directly. Render it with install-watchdog.sh
+  (substitutes __REPO_ROOT__ / __INTERVAL__ / __PATH__), then loading it is
+  the OWNER'S decision — see the printed instructions / runbook (GSL-57).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gosleep.watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO_ROOT__/tools/watchdog/watchdog.sh</string>
+    </array>
+
+    <!-- Tick every __INTERVAL__ seconds (PRD R1.2: 2-5 min). -->
+    <key>StartInterval</key>
+    <integer>__INTERVAL__</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>WorkingDirectory</key>
+    <string>__REPO_ROOT__</string>
+
+    <!-- launchd default PATH misses homebrew (tmux) and user bins (claude). -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__PATH__</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__REPO_ROOT__/.artifacts/watchdog/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__REPO_ROOT__/.artifacts/watchdog/launchd.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
