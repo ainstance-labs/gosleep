@@ -98,3 +98,7 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-69 — Quota auto-wait: детекция session-limit + quiesce/resume + ETA (skill + smoke)](GSL-69-phase-gsl65-quota-auto-wait.md)
 - [GSL-70 — Circuit-breaker: same-error/output-decline + cooldown/HALF_OPEN + ручной сброс (skill)](GSL-70-phase-gsl65-circuit-breaker.md)
 - [GSL-71 — HEARTBEAT_OK fast-path + сводка фазы GSL-65 (skill + docs)](GSL-71-phase-gsl65-heartbeat-ok-docs.md)
+
+## Epic GSL-72 — Question buffer + decision manifest (PRD Phase 3)
+
+- [GSL-73 — Commit orchestration ledger (handoffs 17, 18 + STATE)](GSL-73-phase-gsl72-cycle1-ledger.md)
