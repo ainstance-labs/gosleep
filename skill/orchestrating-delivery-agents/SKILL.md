@@ -273,10 +273,18 @@ heartbeat `status:"rolling"` (successor expected; every worker already terminate
 HARD GATE) with NO wake-up armed: an armed wake-up would re-invoke the old session alongside its
 successor — two live orchestrators, the exact failure this skill exists to prevent. Nothing else.
 
+**Turn order (HARD, owner-visibility):** arm the wake-up MID-turn — never as the turn's final act.
+The turn MUST end with a final TEXT message to the owner (even a one-line status). A turn whose
+last output is a tool call renders NOTHING in the owner's chat: the fleet looks alive in tmux while
+the orchestrator looks mute — an owner-facing dead-stall (observed 2026-07-10: owner saw zero
+messages across many turns). Order inside every turn: tools first (probes, STATE patches,
+SendMessage, `ScheduleWakeup`) → owner-visible text LAST. Never treat a tool result like
+"nothing more to do this turn" as permission to end the turn silently.
+
 **The pulse is a cheap triage tick, not a work turn:** heartbeat first, then read STATE + probe
 only for deltas (new reports, git movement vs the stored SHA, expired patience clocks), act only on
-what changed. Nothing changed → write nothing, re-arm, end the turn (see the HEARTBEAT_OK
-fast-path). Never let a wake-up re-trigger heavy work — re-running a slash command, re-reading
+what changed. Nothing changed → write nothing, re-arm, end the turn with a one-line owner-visible
+status text (see the HEARTBEAT_OK fast-path). Never let a wake-up re-trigger heavy work — re-running a slash command, re-reading
 handoffs, re-auditing the tree on every tick is the documented hazard (claude-code #54086).
 
 **Cadence table — pick the delay by what you are waiting for, priced against the ~5-min prompt-cache
