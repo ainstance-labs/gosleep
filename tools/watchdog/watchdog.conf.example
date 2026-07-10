@@ -52,6 +52,17 @@
 #WD_CONTEXT_CEILING_PCT=80
 # After a handoff request, how long before kill + re-wake from the handoff.
 #WD_HANDOFF_WAIT_SECS=600
+# Quota-wait alarm-clock backstop (GSL-69 + GSL-65 review M1, contract v0.5.1):
+# a quiesced heartbeat whose note carries "quota-wait until <ISO ETA>" stands
+# the watchdog down — but only while the ETA holds. A limited orchestrator
+# cannot run turns, so the single wake-up it armed cannot survive the wait;
+# once the ETA is more than this many seconds in the past, quiesced stops
+# shielding and the normal decision tree applies (ONE nudge first — it lands
+# now that the window is open; kill + re-wake only if the nudge doesn't take).
+# Keep this LONGER than the orchestrator's own ~120s resume margin so
+# self-resume always wins the race. No/unparseable ETA = shield stays up
+# (fail safe); chain-done quiesced (open_workers=0, no ETA) never restarts.
+#WD_QUOTA_GRACE_SECS=900
 
 # --- restart budget + escalation (PRD R1.3; warren RestartBudget) --------------
 # Max restarts per sliding window. Exhausted budget = NO kill, NO restart —

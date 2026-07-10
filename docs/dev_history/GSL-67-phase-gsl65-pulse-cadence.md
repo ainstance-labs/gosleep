@@ -75,3 +75,16 @@ candidate.
 
 **Verified by running** `./install.sh` → all 5 skills installed; `diff -rq skill/orchestrating-delivery-agents/
 ~/.claude/skills/orchestrating-delivery-agents/` → identical.
+
+## Review fixes (2026-07-10, REVIEW-gsl65 M2 / m1 / m2 / m3)
+
+- **M2 — rolling exit carve-out.** "Ending a turn = quiesced+0 or armed. Nothing else" excluded
+  the legitimate roll boundary; a literal reader would arm a wake-up before rolling and
+  double-dispatch against the successor. Now exactly three exits: armed wake-up / final
+  `quiesced`+`open_workers:0` / final `status:"rolling"` with **NO** wake-up armed (workers
+  already terminated per the roll HARD GATE).
+- **m1 — dead zone made half-open:** ≥300s and <540s; 540s itself is the stable-tier floor
+  (table row, quick-ref, common-mistakes aligned).
+- **m3 — Monitoring probe timer:** "~5 min" → ~270s (active-monitoring tier).
+- **m2 — watchdog.sh `WD_HB_STALE_SECS` comment:** stale "pulse is 5-10 min" → GSL-67 cadence
+  (~270/~540s ticks; raise to ~2100 for the long-waiting/night tier).

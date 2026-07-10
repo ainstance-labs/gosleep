@@ -145,7 +145,7 @@ human) always terminates.
   journal's last `START` line pinpoints the frozen step. Identify hung automation processes by their flags
   (e.g. `--allow-pre-commit-input`) + recent start time — NEVER the human's own browser. See edge case E17
   in `references/lifecycle-and-edge-cases.md`.
-- **Stay lean:** don't probe on every idle — probe on a timer (stall start, then ~5 min) or a `Monitor` poll loop; keep probes terse and compare a stored SHA in the state file; log nothing on no-change.
+- **Stay lean:** don't probe on every idle — probe on a timer (stall start, then ~270s — the cadence table's active-monitoring tier) or a `Monitor` poll loop; keep probes terse and compare a stored SHA in the state file; log nothing on no-change.
 
 ## Terminating + chaining
 
@@ -225,9 +225,11 @@ pulse makes the chain supervisable at any moment.
   `status` — `"ok"` (default) · `"rolling"` (dated
   handoff written, successor orchestrator expected — write as the LAST act before exiting a session)
   · `"quiesced"` (deliberately not progressing — tells the watchdog NOT to restart anything,
-  whatever tmux says. Two forms: **chain done** — `open_workers` MUST be 0; **quota-wait** —
-  `note` MUST carry `quota-wait until <ISO ETA>` and `open_workers` stays the REAL count of held
-  workers — see Quota auto-wait section); `mode` — `"night"` while inside the declared night window
+  whatever tmux says. Two forms: **chain done** — `open_workers` MUST be 0, the stand-down is
+  permanent; **quota-wait** — `note` MUST carry `quota-wait until <ISO ETA>` and `open_workers`
+  stays the REAL count of held workers; this form's stand-down is **ETA-bounded**: once the noted
+  ETA is more than `WD_QUOTA_GRACE_SECS` (default 900s) in the past, the watchdog treats you as
+  re-wakeable again — the alarm-clock backstop, see Quota auto-wait section); `mode` — `"night"` while inside the declared night window
   (see Night mode section; omitted or `"day"` otherwise — the mode must be readable from disk);
   `note` (free text, ≤80 chars).
 - **Atomic append, self-truncating** (same-directory hidden temp + rename, the STATE-file convention):
@@ -244,7 +246,8 @@ pulse makes the chain supervisable at any moment.
   heartbeat carries no verifiable pane id is never guessed at — the watchdog refuses
   (`kill_refused reason=identity_unverified`) and escalates to the owner;
   `context_pct` ≥ ceiling → "write handoff now" + fresh orchestrator from the handoff;
-  `status:"quiesced"` → no restart. **Startup grace:** a fresh orchestrator is exempt from staleness
+  `status:"quiesced"` → no restart (quota-wait form: only until the noted reset ETA is > grace
+  overdue — then normal supervision resumes; see Quota auto-wait). **Startup grace:** a fresh orchestrator is exempt from staleness
   for a warm-up window (~90–120 s — Gastown #567: heartbeat checks killed freshly-started sessions
   before they could write one), so write your FIRST heartbeat during cold-start orientation, right
   after the on-disk reads. **Never judged from a single store:** the watchdog cross-checks heartbeat
@@ -263,8 +266,12 @@ pulse makes the chain supervisable at any moment.
 wake-up (`ScheduleWakeup`; a cron/`sleep` wrapper on surfaces without it). No exceptions — not "the
 worker will message me anyway" (a wedged worker won't), not "nothing to do right now" (that is what
 a cheap tick is for). An unarmed turn with a live fleet = silent quiesce: the pulse stops, the
-heartbeat goes stale, and the watchdog's next move is a nudge at YOUR pane. Ending a turn = either
-the chain is done (`status:"quiesced"`, `open_workers:0`) or a wake-up is armed. Nothing else.
+heartbeat goes stale, and the watchdog's next move is a nudge at YOUR pane. Ending a turn = exactly
+one of three states: **(a)** a wake-up is armed (the normal live-fleet case); **(b)** the chain is
+done — final heartbeat `status:"quiesced"`, `open_workers:0`; **(c)** a session boundary — final
+heartbeat `status:"rolling"` (successor expected; every worker already terminated per the roll
+HARD GATE) with NO wake-up armed: an armed wake-up would re-invoke the old session alongside its
+successor — two live orchestrators, the exact failure this skill exists to prevent. Nothing else.
 
 **The pulse is a cheap triage tick, not a work turn:** heartbeat first, then read STATE + probe
 only for deltas (new reports, git movement vs the stored SHA, expired patience clocks), act only on
@@ -281,7 +288,7 @@ everything cold — one cache miss — so a miss must buy a LONG sleep to amorti
 | **Active monitoring** | **~270s** | Unsticking a stall, verifier running under its watchdog, report/termination expected within minutes, quota-reset ETA imminent | Inside the cache TTL — context stays warm, ticks are near-free; the only mode where fast polling is rational |
 | **Stable waiting** | **~540s** | Workers mid-cycle and healthy, next boundary expected in ~10–20 min | One cache miss per tick, amortized ≥2× vs dead-zone ticking; keeps the heartbeat comfortably fresher than the watchdog's staleness clock |
 | **Long waiting** | **1200–1800s** | Workers deep in long cycles, night idle, nothing actionable expected for 20+ min | One cache miss buys the whole sleep; the cheapest healthy cadence there is |
-| **Dead zone** | **300–540s — NEVER** | — | Worst of both: pays the full cache miss without amortizing it. "I'll check in 5 minutes" (300s) is exactly this trap — think in cache windows, not round minutes |
+| **Dead zone** | **≥300s and <540s — NEVER** | — | Worst of both: pays the full cache miss without amortizing it. Half-open on purpose: 540s itself is the stable-waiting floor, not the zone. "I'll check in 5 minutes" (300s) is exactly this trap — think in cache windows, not round minutes |
 
 **Watchdog alignment:** any standing delay at or above the watchdog's staleness threshold
 (`WD_HB_STALE_SECS`, default 900s) schedules your own false-stale nudge — the watchdog interrupts
@@ -396,8 +403,11 @@ rate limit parks a healthy fleet):
    quiesce; only a limit with a reset window does.
 
 **Quiesce protocol (in this order):**
-1. **Determine the reset ETA:** the limit message usually names it; else quota-window start + 5h;
-   truly unknown → assume the top of the next hour and re-probe on each wake.
+1. **Determine the reset ETA:** the limit message usually names it; else quota-window start + 5h.
+   When uncertain, **err LATE, never early** — every resume mechanism (your armed wake-up AND the
+   watchdog backstop, step 5) keys off this ETA: an ETA declared too early re-wakes into a
+   still-closed window and burns restart budget; too late merely resumes later. (An overestimated
+   ETA still gets a free probe at +3600s — the wake-up cap in step 5.)
 2. **Hold the fleet — kill nothing, spawn nothing.** Workers are held, not stuck: their panes keep
    in-flight state and resume free of charge when the window opens. Best-effort `SendMessage` to
    each live worker: *"quota-wait until <ETA> — hold; finish nothing heavy; do not start new
@@ -408,11 +418,19 @@ rate limit parks a healthy fleet):
    REAL count of held workers (the quota-wait form — Heartbeat protocol above). This single line is
    what tells the watchdog to stand down: quiesced is checked FIRST, before staleness, so the
    heartbeat going stale during the wait (you can't write while limited) triggers no nudge/kill.
-5. **Arm the wake-up chain and STAY in the session:** delay = `min(3600, ETA − now + ~120s margin)`;
-   an ETA beyond 3600s = chained hops of ≤3600s. Do NOT write a handoff and exit: `quiesced`
-   suppresses the watchdog, so your armed chain is the ONLY resume path. Ticks that fire while
-   still limited simply fail and the next hop carries the chain; the first tick that RUNS is your
-   evidence the window opened.
+5. **Arm ONE wake-up and STAY in the session:** delay = `min(3600, ETA − now + ~120s margin)`
+   (3600s is the wake-up cap). Be honest about what this buys: a tick that fires while the window
+   is still closed cannot run a turn (step 4's own premise — you can't write while limited), so it
+   can NEVER re-arm a next hop, and no retry/queue semantics are guaranteed by the harness. There
+   is no multi-hop "chain." ETA within ~3600s → your wake-up fires past the reset and resumes you
+   directly. ETA further out → the armed wake-up dies under the limit (accept it — it still
+   doubles as a free early probe in case the ETA was overestimated) and resume falls to the
+   **watchdog's alarm-clock backstop** (contract v0.5.1): the `quiesced` shield is ETA-bounded —
+   once the `note`'s reset ETA is more than `WD_QUOTA_GRACE_SECS` (default 900s) in the past, the
+   watchdog stops standing down and runs its normal tree: stale heartbeat + live pane → ONE nudge
+   (which lands, since the window is open by now) → kill + re-wake only if the nudge doesn't take.
+   Do NOT write a handoff and exit — the armed wake-up is the fast resume path, the backstop the
+   guaranteed one; the first tick that RUNS is your evidence the window opened.
 
 **Resume protocol (first successful tick):**
 1. Heartbeat `status:"ok"` (+ `mode` per the clock) — this one write re-enters watchdog supervision.
@@ -421,11 +439,15 @@ rate limit parks a healthy fleet):
    reconcile per the cold-start rules before acting.
 4. Un-hold workers (`SendMessage`: *"quota window reset — resume"*), resume normal pulse cadence.
 
-**Residual risk (accepted, documented):** if the orchestrator pane dies DURING quota-wait, the
-`quiesced` heartbeat also stops the watchdog from re-waking — the chain stays down until the owner
-(or the reset + a manual start). This is the right trade: re-wakes during the limit would fail
-serially and exhaust the restart budget right before it's needed. The ETA in the heartbeat `note`
-tells the owner at a glance why everything is quiet.
+**Residual risk (accepted, documented):** the resume path is layered, not absolute. (1) **No
+watchdog installed** → an ETA beyond ~3600s has no automatic resume: the single armed wake-up dies
+under the limit and the chain waits for the owner. (2) **The backstop keys off YOUR declared ETA:**
+declared too early, the watchdog nudges/re-wakes into a still-closed window and burns restart
+budget right before it's needed — that is why step 1 says err late. (3) **A pane that dies DURING
+the wait** stays down until ETA + grace — the shield suppresses earlier re-wakes on purpose (they
+would fail serially and exhaust the budget); a whole-session death with ≥2 recorded workers
+escalates to the owner (mass-death rule) instead of restarting blindly. In every branch the ETA in
+the heartbeat `note` tells the owner at a glance why everything is quiet.
 
 After compaction, crash, or a fresh session days later — **do NOT reconstruct from memory and do NOT
 "spawn fresh to be safe":**
@@ -696,10 +718,10 @@ A new project has no handoffs. Before cycle #1:
 | Situation | Do |
 |---|---|
 | Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / clocks — all green = re-arm + end turn, nothing else read or written. |
-| Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER 300–540s (dead zone). |
+| Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). |
 | Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → `QUESTIONS-PENDING` + reversible default; escalations buffered except critical; long-waiting cadence. |
 | Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; surface ALL buffered questions/escalations in ONE owner summary. Buffered items stay open in STATE until answered — never silently dropped. |
-| Session limit hit (`You've hit your session limit` / StopFailure rate_limit) | Quiesce: hold workers (no kills, no spawns), STATE `status=quota-wait until=<ETA>`, heartbeat `status:"quiesced"` + `note:"quota-wait until <ETA>"` (`open_workers` = real count), arm ≤3600s wake-up hops to ETA, STAY in session. First tick that runs = resume: heartbeat ok, re-census, un-hold. |
+| Session limit hit (`You've hit your session limit` / StopFailure rate_limit) | Quiesce: hold workers (no kills, no spawns), STATE `status=quota-wait until=<ETA>`, heartbeat `status:"quiesced"` + `note:"quota-wait until <ETA>"` (`open_workers` = real count), arm ONE wake-up `min(3600s, ETA+~120s)` — a limited tick can't re-arm, so no hop chains; ETA > 1h out → resume falls to the watchdog alarm-clock (quiesced shield drops past ETA + `WD_QUOTA_GRACE_SECS`). STAY in session. First tick that runs = resume: heartbeat ok, re-census, un-hold. |
 | Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
@@ -759,16 +781,18 @@ A new project has no handoffs. Before cycle #1:
 - **"Workers are busy — I'll end my turn; they'll message me when done."** → No. A live fleet with
   no armed wake-up is a silent quiesce: a wedged worker never messages, the pulse stops, the
   heartbeat goes stale. EVERY turn with `open_workers > 0` ends with `ScheduleWakeup` (cadence
-  table). "I'll check back in 5 minutes" is doubly wrong — unarmed intent AND the 300–540s dead zone.
+  table). "I'll check back in 5 minutes" is doubly wrong — unarmed intent AND the ≥300/<540s dead zone.
 - **"The watchdog re-woke me — I'll ask the owner how to proceed." / "Predecessor died, so its
   workers must be dead too — I'll respawn the fleet."** → No, twice. Re-wake is UNATTENDED: buffer
   questions in STATE (`QUESTIONS-PENDING`) and continue on unblocked work — only denylist items
   park. And a dead orchestrator does NOT invalidate its workers: re-census (`tmux list-panes`,
   `/workflows`) and ADOPT live workers; re-spawning them is double-dispatch.
 - **"Session limit hit — I'll write a handoff and exit; the watchdog will restart me after reset."**
-  → No. Re-wakes during the limit fail serially and burn the restart budget; and your `quiesced`
-  exit heartbeat stops the watchdog anyway. Quiesce IN PLACE: hold workers, `note:"quota-wait until
-  <ETA>"`, arm the ≤3600s wake-up chain, stay in the session — the chain is the only resume path.
+  → No. Re-wakes during the limit fail serially and burn the restart budget; the watchdog
+  deliberately stands down until ETA + grace (the alarm-clock backstop), so exiting early just
+  delays resume to the backstop's worst case. Quiesce IN PLACE: hold workers, `note:"quota-wait
+  until <ETA>"`, arm ONE `min(3600s, ETA+~120s)` wake-up, stay in the session — the wake-up is the
+  fast resume path; the watchdog's expired-ETA re-wake is the guaranteed one.
 - **"Quota exhausted — the workers are stuck, I'll kill them and respawn fresh after reset."** → No.
   They are held, not stuck: panes keep in-flight state and resume free when the window opens.
   Killing them trades a free resume for a paid rebuild. Kill nothing, spawn nothing, wait.

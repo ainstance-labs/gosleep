@@ -83,3 +83,20 @@ detection); production experience 2026-07-07→08.
 
 **Verified by running** `./install.sh` + `diff -rq` global → identical;
 `bash tools/watchdog/smoke.sh` → **67/67 PASS** (was 65; +2 quota-wait).
+
+## Review fixes (2026-07-10, REVIEW-gsl65 M1)
+
+- **M1 — resume-chain honesty.** Step 5's multi-hop wake-up chain contradicted its own premise:
+  a tick that fires while limited can't run a turn, so it can never re-arm the next hop — at
+  ETA > 1h the chain died on hop one while `quiesced` muzzled the watchdog. Replaced with a
+  two-layer mechanism: (a) **ONE** honest wake-up at `min(3600, ETA−now+120s)` — fast resume
+  path + free early probe for overestimated ETAs; (b) watchdog contract extended to **v0.5.1**:
+  the quiesced shield is now **ETA-bounded** — a quota-wait `note` ETA more than
+  `WD_QUOTA_GRACE_SECS` (default 900s) in the past drops the shield and the NORMAL decision
+  tree applies (nudge lands post-reset; kill+re-wake only if it doesn't take). Fail-safe:
+  no/unparseable ETA keeps the shield up; chain-done quiesced never restarts.
+- Code: `quota_eta_check` + quiesced-gate rewrite in watchdog.sh, new `WD_QUOTA_GRACE_SECS`
+  knob (validated; conf.example), ledger event `quota_wait_expired` (LEDGER.md). smoke.sh:
+  time-relative quota fixtures + 6 cases + 2 ledger asserts → **75/75 PASS**.
+- SKILL.md aligned end-to-end: step 1 err-late guidance, step 5 rewritten, residual risk now
+  names all three layers explicitly, heartbeat contract + quick-ref + common-mistakes rows.
