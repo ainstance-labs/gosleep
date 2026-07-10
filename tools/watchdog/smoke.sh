@@ -102,6 +102,13 @@ run_case() {
 seed_old_nudge()   { echo $((NOW - 400)) > "$1/state/nudge.marker"; }
 seed_old_handoff() { echo $((NOW - 700)) > "$1/state/handoff-request.marker"; }
 
+# GSL-53 seeds: restart-budget history + escalation marker
+seed_3_recent_restarts() { { echo $((NOW-300)); echo $((NOW-600)); echo $((NOW-900)); } > "$1/state/restarts.history"; }
+seed_2_recent_restarts() { { echo $((NOW-300)); echo $((NOW-600)); } > "$1/state/restarts.history"; }
+seed_3_old_restarts()    { { echo $((NOW-7200)); echo $((NOW-7300)); echo $((NOW-7400)); } > "$1/state/restarts.history"; }
+seed_exhausted_and_escalated() { seed_3_recent_restarts "$1"; echo $((NOW-60)) > "$1/state/escalated.marker"; }
+seed_escalated_only()    { echo $((NOW-60)) > "$1/state/escalated.marker"; }
+
 echo "== decision scenarios (dry-run, injected probes) =="
 #         name                      expected            alive pane  hb       json
 run_case  ok-fresh-alive            ok                  1     %42   fresh    "$HB_OK"
@@ -115,6 +122,49 @@ run_case  quiesced-dead-session     ok_quiesced         0     ""    fresh    "$H
 run_case  rolling-fresh             waiting_successor   0     ""    fresh    "$HB_ROLLING"
 run_case  ctx-ceiling-first-tick    handoff_requested   1     %42   fresh    "$HB_HIGH_CTX"
 run_case  ctx-ceiling-overdue       kill_rewake         1     %42   fresh    "$HB_HIGH_CTX" seed_old_handoff
+
+echo "== restart budget scenarios (GSL-53) =="
+#         name                      expected            alive pane  hb       json           seed
+run_case  budget-exhausted          escalated           0     ""    fresh    "$HB_OK"       seed_3_recent_restarts
+run_case  budget-available          rewake              0     ""    fresh    "$HB_OK"       seed_2_recent_restarts
+run_case  budget-window-pruned      rewake              0     ""    fresh    "$HB_OK"       seed_3_old_restarts
+run_case  escalation-suppressed     escalated           0     ""    fresh    "$HB_OK"       seed_exhausted_and_escalated
+run_case  ok-clears-escalated       ok                  1     %42   fresh    "$HB_OK"       seed_escalated_only
+
+# Budget exhausted: escalation in ledger, NO restart, marker written.
+if grep -q '"event":"escalation"' "$WORK/budget-exhausted/ledger.jsonl" \
+   && ! grep -q '"event":"orchestrator_restarted"' "$WORK/budget-exhausted/ledger.jsonl" \
+   && [ -f "$WORK/budget-exhausted/state/escalated.marker" ]; then
+  ok "exhausted budget -> escalation, no restart, marker set (F1-S4)"
+else
+  bad "exhausted budget: expected escalation + no restart + marker"
+fi
+# Budget available: restart happened, recorded (3 lines now), backoff 4s (n=2).
+if grep -q '"event":"orchestrator_restarted"' "$WORK/budget-available/ledger.jsonl" \
+   && [ "$(wc -l < "$WORK/budget-available/state/restarts.history" | tr -d ' ')" = "3" ] \
+   && grep -q 'would backoff 4s' "$WORK/budget-available/output.txt"; then
+  ok "budget available -> backoff 4s (n=2), restart recorded (2->3 in window)"
+else
+  bad "budget available: expected restart + history=3 + backoff 4s"
+fi
+# Window pruning: old restarts don't count; restart allowed again.
+if grep -q '"event":"orchestrator_restarted"' "$WORK/budget-window-pruned/ledger.jsonl"; then
+  ok "restarts outside the window are pruned (budget refreshes)"
+else
+  bad "window pruning failed: old restarts still blocking"
+fi
+# Fresh escalation marker suppresses a duplicate notification.
+if [ "$(grep -c '"event":"escalation"' "$WORK/escalation-suppressed/ledger.jsonl" 2>/dev/null || echo 0)" = "0" ]; then
+  ok "repeat escalation suppressed while marker is fresh"
+else
+  bad "duplicate escalation despite fresh marker"
+fi
+# Healthy tick clears the escalation marker (new episode can re-escalate).
+if [ ! -f "$WORK/ok-clears-escalated/state/escalated.marker" ]; then
+  ok "healthy tick clears escalated marker"
+else
+  bad "escalated marker not cleared on healthy tick"
+fi
 
 echo "== side-effect assertions =="
 # kill+rewake path must log the kill and the restart to the ledger, dry-run flagged.

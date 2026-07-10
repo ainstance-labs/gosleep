@@ -17,6 +17,10 @@
 #     handoff overdue -> kill + re-wake (fresh orchestrator reads the handoff)
 #   * status:"quiesced"               -> chain deliberately ended, NEVER restart
 #   * status:"rolling" + fresh hb     -> successor expected, wait
+#   * restart budget (default 3-in-60-min, warren RestartBudget) with
+#     exponential backoff (base 1s, cap 16s); exhausted -> NO kill, NO restart,
+#     escalate to the owner instead — "never mask an orchestrator bug with a
+#     restart loop" (warren supervisor/main.ts:12-14)
 #   * Re-wake = the EXISTING cold-start protocol (re-attach to live workers,
 #     never respawn them). This script contains ZERO LLM calls; the only
 #     `claude` invocation is spawning the interactive replacement orchestrator.
@@ -37,7 +41,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.1.0 (GSL-52)"
+WD_VERSION="0.2.0 (GSL-53)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -84,6 +88,16 @@ fi
 : "${WD_CONTEXT_CEILING_PCT:=80}"   # orchestrator self-rolls at ~70%; watchdog forces above that
 : "${WD_HANDOFF_WAIT_SECS:=600}"    # after "write handoff now", how long before kill+re-wake
 
+# Restart budget (PRD R1.3; warren RestartBudget). Persistent across watchdog
+# restarts (file-backed). Exhausted budget = NO kill, NO restart, escalate.
+: "${WD_RESTART_BUDGET:=3}"         # max restarts per window (owner may set 3/night)
+: "${WD_RESTART_WINDOW_SECS:=3600}" # sliding budget window
+: "${WD_BACKOFF_BASE_SECS:=1}"      # exponential backoff base
+: "${WD_BACKOFF_CAP_SECS:=16}"      # exponential backoff cap
+: "${WD_ESCALATE_REPEAT_SECS:=3600}"# re-escalate at most this often while still down
+: "${WD_ESCALATE_HOOK:=}"           # optional executable: called with the escalation
+                                    # message (phase-6 push / ntfy extension point)
+
 # Test-mode probe injection (smoke tests only; forces dry-run for safety)
 : "${WD_TEST_MODE:=0}"
 : "${WD_TEST_SESSION_ALIVE:=0}"
@@ -107,10 +121,17 @@ is_uint() { [[ "${1:-}" =~ ^[0-9]+$ ]]; }
 
 validate_config() {
   local k
-  for k in WD_HB_STALE_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS; do
+  for k in WD_HB_STALE_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
+           WD_RESTART_BUDGET WD_RESTART_WINDOW_SECS WD_BACKOFF_BASE_SECS WD_BACKOFF_CAP_SECS \
+           WD_ESCALATE_REPEAT_SECS; do
     is_uint "${!k}" || die_config "$k must be a non-negative integer, got: '${!k}'"
   done
   [ "$WD_CONTEXT_CEILING_PCT" -le 100 ] || die_config "WD_CONTEXT_CEILING_PCT must be <= 100"
+  [ "$WD_RESTART_BUDGET" -ge 1 ] || die_config "WD_RESTART_BUDGET must be >= 1"
+  [ "$WD_BACKOFF_CAP_SECS" -ge "$WD_BACKOFF_BASE_SECS" ] || die_config "WD_BACKOFF_CAP_SECS must be >= WD_BACKOFF_BASE_SECS"
+  if [ -n "$WD_ESCALATE_HOOK" ] && [ ! -x "$WD_ESCALATE_HOOK" ]; then
+    die_config "WD_ESCALATE_HOOK is set but not executable: $WD_ESCALATE_HOOK"
+  fi
   [ -n "$WD_TMUX_SESSION" ] || die_config "WD_TMUX_SESSION must not be empty"
   [ -d "$WD_REPO_ROOT" ] || die_config "WD_REPO_ROOT does not exist: $WD_REPO_ROOT"
   if [ "$WD_TEST_MODE" != "1" ]; then
@@ -283,6 +304,87 @@ EOF
     "hb_age=${HB_AGE:-0}" "open_workers=${HB_WORKERS:-0}" "cycle=${HB_CYCLE:-0}"
 }
 
+# --- restart budget + backoff + escalation (PRD R1.3) ------------------------
+# Persistent history: one epoch per line; pruned to the sliding window on read.
+restarts_in_window() {
+  local hist="$WD_STATE_DIR/restarts.history" cutoff
+  if [ ! -f "$hist" ]; then echo 0; return 0; fi
+  cutoff=$(( $(now_epoch) - WD_RESTART_WINDOW_SECS ))
+  awk -v c="$cutoff" '$1 >= c' "$hist" > "$hist.tmp" && mv "$hist.tmp" "$hist"
+  wc -l < "$hist" | tr -d ' '
+}
+
+record_restart() {
+  echo "$(now_epoch)" >> "$WD_STATE_DIR/restarts.history"
+}
+
+# delay = min(cap, base * 2^n), n = restarts already spent in the window
+backoff_secs() {
+  local n d i=0
+  n="$(restarts_in_window)"
+  d="$WD_BACKOFF_BASE_SECS"
+  while [ "$i" -lt "$n" ] && [ "$d" -lt "$WD_BACKOFF_CAP_SECS" ]; do
+    d=$(( d * 2 )); i=$(( i + 1 ))
+  done
+  [ "$d" -gt "$WD_BACKOFF_CAP_SECS" ] && d="$WD_BACKOFF_CAP_SECS"
+  echo "$d"
+}
+
+# Escalate to the owner: ledger + local notify + optional hook (phase-6 push
+# extension point). At most once per WD_ESCALATE_REPEAT_SECS while still down.
+escalate() {
+  local reason="$1" n eage msg
+  n="$(restarts_in_window)"
+  eage="$(marker_age escalated)"
+  if [ -n "$eage" ] && [ "$eage" -lt "$WD_ESCALATE_REPEAT_SECS" ]; then
+    log "escalation suppressed (already escalated ${eage}s ago): $reason"
+    return 0
+  fi
+  msg="gosleep watchdog ESCALATION: $reason — $n restarts in the last ${WD_RESTART_WINDOW_SECS}s (budget $WD_RESTART_BUDGET). NOT restarting again; the orchestrator stays down until you intervene or the window frees. Ledger: $WD_LEDGER_FILE"
+  log "ESCALATION: $msg"
+  ledger_emit "escalation" "reason=$reason" "restarts_in_window=$n" \
+    "budget=$WD_RESTART_BUDGET" "window_secs=$WD_RESTART_WINDOW_SECS"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "[dry-run] would notify owner (osascript notification + hook)"
+  else
+    if command -v osascript >/dev/null 2>&1; then
+      osascript -e "display notification \"$(printf '%s' "$msg" | cut -c1-200)\" with title \"gosleep watchdog\"" 2>/dev/null || true
+    fi
+    if [ -n "$WD_ESCALATE_HOOK" ]; then
+      "$WD_ESCALATE_HOOK" "$msg" || log "WARNING: escalate hook failed (rc=$?)"
+    fi
+  fi
+  marker_write "escalated"
+}
+
+# The ONLY gate through which any kill/restart may pass.
+# $1 = pane to kill first ("" = none). Sets DECISION on refusal/escalation.
+do_restart() {
+  local pane="${1:-}" n delay
+  n="$(restarts_in_window)"
+  if [ "$n" -ge "$WD_RESTART_BUDGET" ]; then
+    DECISION="escalated"
+    DECISION_REASON="restart_budget_exhausted(${n}/${WD_RESTART_BUDGET}):${DECISION_REASON}"
+    escalate "restart budget exhausted (${DECISION_REASON})"
+    return 0
+  fi
+  if [ -n "$pane" ]; then
+    if ! act_kill "$pane"; then
+      DECISION="kill_refused"
+      return 0
+    fi
+  fi
+  delay="$(backoff_secs)"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "[dry-run] would backoff ${delay}s before re-wake (restart $((n+1))/$WD_RESTART_BUDGET in window)"
+  else
+    log "backoff ${delay}s before re-wake (restart $((n+1))/$WD_RESTART_BUDGET in window)"
+    sleep "$delay"
+  fi
+  record_restart
+  act_rewake
+}
+
 # --- decision --------------------------------------------------------------
 DECISION="" DECISION_REASON=""
 
@@ -293,7 +395,7 @@ decide_and_act() {
   # 1. Deliberate end states first — quiesced NEVER restarts, whatever tmux says.
   if [ "$HB_STATUS" = "quiesced" ]; then
     DECISION="ok_quiesced"; DECISION_REASON="status_quiesced"
-    marker_clear "nudge"; marker_clear "handoff-request"
+    marker_clear "nudge"; marker_clear "handoff-request"; marker_clear "escalated"
     return 0
   fi
   if [ "$HB_STATUS" = "rolling" ] && hb_is_fresh; then
@@ -312,7 +414,7 @@ decide_and_act() {
     else
       DECISION="rewake"; DECISION_REASON="orchestrator_pane_missing"
     fi
-    act_rewake
+    do_restart ""
     return 0
   fi
 
@@ -328,12 +430,13 @@ decide_and_act() {
       elif [ "$hage" -ge "$WD_HANDOFF_WAIT_SECS" ]; then
         DECISION="kill_rewake"; DECISION_REASON="handoff_overdue"
         marker_clear "handoff-request"
-        act_kill "$pane" && act_rewake
+        do_restart "$pane"
       else
         DECISION="waiting_handoff"; DECISION_REASON="handoff_requested_${hage}s_ago"
       fi
     else
       marker_clear "handoff-request"
+      marker_clear "escalated"
       DECISION="ok"; DECISION_REASON="fresh_heartbeat_live_session"
     fi
     return 0
@@ -349,7 +452,7 @@ decide_and_act() {
   elif [ "$nage" -ge "$WD_NUDGE_GRACE_SECS" ]; then
     DECISION="kill_rewake"; DECISION_REASON="stale_after_nudge"
     marker_clear "nudge"
-    act_kill "$pane" && act_rewake
+    do_restart "$pane"
   else
     DECISION="waiting_nudge"; DECISION_REASON="nudged_${nage}s_ago"
   fi

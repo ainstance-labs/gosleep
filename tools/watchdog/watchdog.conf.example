@@ -38,3 +38,25 @@
 #WD_CONTEXT_CEILING_PCT=80
 # After a handoff request, how long before kill + re-wake from the handoff.
 #WD_HANDOFF_WAIT_SECS=600
+
+# --- restart budget + escalation (PRD R1.3; warren RestartBudget) --------------
+# Max restarts per sliding window. Exhausted budget = NO kill, NO restart —
+# escalate to the owner instead ("never mask an orchestrator bug with a
+# restart loop"). File-backed: survives watchdog restarts. For a night window
+# the owner may set e.g. 3 restarts / 8h.
+#WD_RESTART_BUDGET=3
+#WD_RESTART_WINDOW_SECS=3600
+# Exponential backoff before each re-wake: min(cap, base * 2^restarts_in_window).
+#WD_BACKOFF_BASE_SECS=1
+#WD_BACKOFF_CAP_SECS=16
+# Re-escalate at most this often while the orchestrator is still down.
+#WD_ESCALATE_REPEAT_SECS=3600
+# Optional executable called with the escalation message — the phase-6 push
+# (ntfy / Claude-app) extension point. Must be executable; validated at start.
+#WD_ESCALATE_HOOK=""
+
+# NOTE on --dry-run: external actions (send-keys/kill/spawn/notify/sleep) are
+# suppressed, but the watchdog's OWN state (markers, restart history, ledger
+# lines flagged dry_run) IS written — that is what makes sequences testable.
+# For diagnosis against a live installation, point WD_STATE_DIR at a scratch
+# copy so a manual dry-run tick can't consume the real budget/markers.
