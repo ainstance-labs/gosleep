@@ -225,7 +225,9 @@ pulse makes the chain supervisable at any moment.
   `status` — `"ok"` (default) · `"rolling"` (dated
   handoff written, successor orchestrator expected — write as the LAST act before exiting a session)
   · `"quiesced"` (chain deliberately ended; `open_workers` MUST be 0 — tells the watchdog NOT to
-  restart anything); `note` (free text, ≤80 chars).
+  restart anything); `mode` — `"night"` while inside the declared night window (see Night mode
+  section; omitted or `"day"` otherwise — the mode must be readable from disk); `note` (free text,
+  ≤80 chars).
 - **Atomic append, self-truncating** (same-directory hidden temp + rename, the STATE-file convention):
   ```bash
   hb="docs/handoff/.orchestrator-heartbeat"
@@ -296,6 +298,49 @@ resolve the conflict by skipping heartbeats or by silently ignoring nudges.
   a triage tick; heavy actions happen because a DELTA demanded them, never because you woke up.
 - **Sleeping just past a threshold** — either just past the cache TTL (dead zone) or just past
   `WD_HB_STALE_SECS` (self-inflicted nudge). Sleep decisively short or decisively long.
+
+## Night mode — activeHours
+
+The owner declares **activeHours** — the attended window in the owner's local time. Outside it the
+chain runs in **`mode=night`**: interactivity is *loosened* (nobody will answer), rails are
+*tightened* (nobody will catch a mistake). Night mode is the standing-schedule generalization of
+the re-wake unattended deltas — same buffering discipline, entered by the clock instead of by a
+watchdog restart.
+
+- **Where declared:** a dated line in the STATE file's Standing rules, e.g.
+  `activeHours: 09:00–24:00 local (night = 00:00–08:30)`. Default when undeclared: night =
+  00:00–08:30. (The Phase-3 decision manifest becomes the canonical home when it exists; the
+  Standing-rules line moves there.) The owner saying "я спать" / "going to sleep" = enter night
+  mode NOW regardless of clock; "I'm back" = day mode now. Derive the mode at every pulse from the
+  clock + standing overrides — it is never a memory-only flag.
+- **What changes at night** (everything else — telemetry, heartbeat, patience clocks, termination
+  gates — is mode-independent):
+
+| Behavior | Day | Night |
+|---|---|---|
+| Questions at genuine forks | `AskUserQuestion` (Decision forks section) | **AskUserQuestion FORBIDDEN except denylist items.** Non-denylist question → append to `QUESTIONS-PENDING` in STATE (the re-wake mechanic), take the reversible default or park ONLY the affected item, continue on unblocked work |
+| Escalations | Notify the owner directly | **Buffered** into STATE + surfaced at the morning boundary — EXCEPT critical: denylist hit, mass-death, restart-budget exhaustion, circuit-breaker OPEN, `BUDGET_EXCEEDED`. Critical still escalates immediately (watchdog hook / push when it exists) |
+| Work selection | Owner may steer mid-cycle | Autonomous reversible green delivery only; at a milestone boundary continue into the next unblocked phase (owner mandate 2026-07-10) — do not stop to ask |
+| Idle cadence | Per cadence table | Long-waiting tier (1200–1800s) is the default between boundaries; step down only for an active stall/verifier |
+| Irreversible actions | Denylist → `BLOCKED_ON_HUMAN` | Same denylist, zero exceptions — night grants NO extra authority |
+
+- **Heartbeat records the mode:** add the optional `mode` field to every heartbeat line while in
+  night mode — `"mode":"night"` (omitted or `"day"` otherwise; see Heartbeat protocol). The mode
+  must be readable from disk by the watchdog/owner/replacement orchestrator — never context-only.
+- **Entering night** (first pulse past the window edge, or the owner's sign-off): append a
+  `MODE → night` line to the STATE log, write the heartbeat with `mode:"night"`, confirm the
+  wake-up is armed. One-time owner setup for unattended nights: raise `WD_HB_STALE_SECS` in
+  `watchdog.conf` above the long-waiting tier (e.g. 2100s) and set the night restart budget
+  (e.g. 3 per night window) — see `tools/watchdog/watchdog.conf.example`.
+- **Morning boundary** (first pulse at/after activeHours start): append `MODE → day` to the STATE
+  log; drop `mode:"night"` from the heartbeat; **surface the night's buffer** — every open
+  `QUESTIONS-PENDING` item and every buffered escalation goes into ONE compact owner-facing summary
+  (the Phase-3 morning digest when it exists; until then a short message + pointer to the STATE
+  section). Buffered items are never silently dropped: they stay open in STATE until answered or
+  superseded. Then resume day-mode escalation behavior.
+- **A question buffered at night is not a stalled chain:** park only the affected task, reroute the
+  worker to unblocked work, keep pulsing. `BLOCKED_ON_HUMAN` panes at night are reserved for
+  denylist items alone.
 
 ## Recovering / cold-starting an in-progress chain
 
@@ -512,6 +557,8 @@ A new project has no handoffs. Before cycle #1:
 |---|---|
 | Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN read STATE / probe workers. |
 | Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER 300–540s (dead zone). |
+| Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → `QUESTIONS-PENDING` + reversible default; escalations buffered except critical; long-waiting cadence. |
+| Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; surface ALL buffered questions/escalations in ONE owner summary. Buffered items stay open in STATE until answered — never silently dropped. |
 | Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
@@ -576,6 +623,10 @@ A new project has no handoffs. Before cycle #1:
   questions in STATE (`QUESTIONS-PENDING`) and continue on unblocked work — only denylist items
   park. And a dead orchestrator does NOT invalidate its workers: re-census (`tmux list-panes`,
   `/workflows`) and ADOPT live workers; re-spawning them is double-dispatch.
+- **"It's 3am but this question genuinely matters — I'll AskUserQuestion / ping the owner."** → No.
+  In night mode ONLY denylist items may wake the owner. Everything else: `QUESTIONS-PENDING` +
+  reversible default (or park just that item) + reroute the worker + surface it at the morning
+  boundary. A 3am question the owner can't answer is a stalled pane, not diligence.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 

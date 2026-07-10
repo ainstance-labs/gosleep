@@ -94,3 +94,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 
 - [GSL-66 — Commit orchestration ledger (handoff 16 + STATE)](GSL-66-phase-gsl65-cycle1-ledger.md)
 - [GSL-67 — Таблица каденции пульса (cache-окна) + правило armed-wake-up (skill)](GSL-67-phase-gsl65-pulse-cadence.md)
+- [GSL-68 — Night mode / activeHours — режим и переключение поведения вопросов (skill)](GSL-68-phase-gsl65-night-mode.md)

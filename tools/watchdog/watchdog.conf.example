@@ -35,7 +35,14 @@
 #WD_REWAKE_BRIEF="<repo>/skill/orchestrating-delivery-agents/references/re-wake-brief.md"
 
 # --- thresholds (seconds / percent) -------------------------------------------
-# Heartbeat older than this = stale (orchestrator pulse is 5-10 min).
+# Heartbeat older than this = stale. The default (900) matches the day-mode
+# pulse cadence (active ~270s / stable ~540s ticks, GSL-67 cadence table).
+# NIGHT MODE (GSL-68): the skill's long-waiting tier deliberately sleeps
+# 1200-1800s between pulses — with the default 900 every such sleep triggers a
+# false-stale nudge. For unattended/night operation raise this ABOVE the
+# longest standing delay, e.g. 2100. (The orchestrator marks night in the
+# heartbeat's optional "mode" field; the watchdog does not parse it — this
+# threshold is how the owner aligns the two.)
 #WD_HB_STALE_SECS=900
 # After a nudge, how long the orchestrator gets to refresh the heartbeat
 # before kill + re-wake.
