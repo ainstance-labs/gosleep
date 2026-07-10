@@ -84,3 +84,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 ## Epic GSL-58 — AutoSK Anatomy v2 — помодульный код-анализ (CODE-ONLY)
 
 - [GSL-59 — Commit orchestration ledger (handoff 15 + STATE)](GSL-59-phase-gsl58-cycle1-ledger.md)
+- [GSL-60 — pi-agent internals — помодульный разбор (earendil-works/pi, code-only)](GSL-60-phase-gsl58-pi-agent.md)
