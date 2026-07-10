@@ -165,7 +165,7 @@ HANDOFF_FILE: <path>
 CYCLE_STATUS: COMPLETE | CONTINUE
 DONE_THIS_CYCLE: <3-6 bullets: task ids, commits, PR #s>
 NEXT: <exact next task + command>
-BLOCKED_ON_HUMAN: <specifics, or "none">
+BLOCKED_ON_HUMAN: <queue id (q-…) + specifics, or "none">
 TELEMETRY: <~tokens, wall-clock this cycle>
 ```
 

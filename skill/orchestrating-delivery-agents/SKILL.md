@@ -166,7 +166,7 @@ replacement orchestrator. Structure (in this order):
    progress (N/M tasks), which cycle is running on which worker, latest review verdicts, the standing
    model/verification policy, what's next. The owner must understand the situation in one glance —
    no key-soup, no abbreviations invented mid-chain.
-2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | status=...`.
+2. **LIVE-STATUS block (machine, overwritten each change):** `cycle N | worker=<name> (model) id=<pane|task> tree=<path> branch=<b>@<sha> | latest handoff=<path> | questions: open=N (xB/yD/zC/wF) | status=...` — the `questions:` field is `tools/lab/lab-emit.sh list --count` verbatim, refreshed whenever the queue changes.
 3. **TELEMETRY block (cumulative, persisted each change):** `cycles_completed=N | tokens_total=T | tokens_workers=W | tokens_orchestrator=O | open_workers=[name,...]`. A rolled-over or restarted orchestrator reads this block to resume cumulative tallies — never reset to zero.
 
    **MANDATORY STEP — after EVERY worker terminates:** APPEND one structured line to the TELEMETRY
@@ -319,14 +319,17 @@ order — they are the whole tick:
 3. **Fleet census unchanged** — one `tmux list-panes` (or `/workflows` glance): same pane ids/count
    as LIVE-STATUS.
 4. **Progress probe** — ONE `git log` (or handoff-dir mtime) against the SHA stored in STATE:
-   movement = grinding. No movement is STILL green while item 5's clocks are unexpired — idle ≠
+   movement = grinding. No movement is STILL green while item 6's clocks are unexpired — idle ≠
    stuck.
-5. **No expired clocks** — patience windows, breaker `next_probe`, quota ETA, mode boundary
-   (night/morning) all un-crossed.
+5. **Queue quiet** — ONE `tools/lab/lab-emit.sh list --due` returns nothing AND the queue
+   line-count matches the census noted in LIVE-STATUS (growth = new records/answer patches to
+   triage — see the queue-triage actions in the Question queue section).
+6. **No expired clocks** — patience windows, breaker `next_probe`, quota ETA, mode boundary
+   (night/morning), BLOCKER re-push timer (manifest §4) all un-crossed.
 
 **ALL green → HEARTBEAT_OK:** write nothing to STATE (log nothing on no-change), read nothing
 further — no handoff bodies, no STATE rewrite, no extra probes — re-arm per the cadence table, end
-the turn. Target cost: ≤3–4 cheap tool calls, zero file reads beyond the probes.
+the turn. Target cost: ≤4–5 cheap tool calls, zero file reads beyond the probes.
 
 **ANY check non-green → leave the fast-path** and triage ONLY that delta through its own tree
 (idle/liveness, finalize exception, mode boundary, breaker, quota-wait). The fast-path is an exit
@@ -337,8 +340,8 @@ Worked example (night, stable fleet, long-waiting cadence):
 [tick 03:41] hb appended: {"ts":"2026-07-10T03:41:07Z","cycle":13,"context_pct":44,
              "open_workers":2,"status":"ok","mode":"night","pane":"%4"}
 inbox: empty | panes: %5 %7 — matches LIVE-STATUS | git probe: worker branch
-@ a1b2c3d -> a9e8f7c (moved — grinding) | clocks: patience 12m/45m, breaker
-CLOSED, no quota-wait, night until 08:30 — none expired
+@ a1b2c3d -> a9e8f7c (moved — grinding) | queue: --due empty, 14 lines = census |
+clocks: patience 12m/45m, breaker CLOSED, no quota-wait, night until 08:30 — none expired
 => HEARTBEAT_OK. Nothing written, nothing else read. ScheduleWakeup 1500s. End turn.
 ```
 
@@ -473,6 +476,22 @@ awaiting) · `answered` · `auto-resolved` (default applied at deadline) · `ans
 STATE and handoffs (it is the owner's phone-readable, phone-answerable surface), never
 gitignored. Answered/expired records are compacted to `archive.jsonl` by the Phase-4 chronicler;
 until it exists the queue just grows (it's tiny).
+
+**Every pulse scans the queue — triage actions, in order:**
+- **Newly answered** (the owner replied via any channel): act on the answer — append the
+  `answer` patch if the channel didn't, log it (`lab-emit.sh decision --re <id> --by owner
+  --channel <ch>`), un-park the affected task and reroute a worker back onto it.
+- **DECISION past `auto_apply_at`** (`list --due`): apply the default NOW, then
+  `resolve --re <id> --applied "<default>"` + `decision --re <id> --decision "<default>"
+  --rule "manifest §…"`. An expired deadline is an expired clock — it never rides to the next tick.
+- **BLOCKER idle too long** (manifest §4.blocker-repush): re-escalate per the manifest channel
+  order — at night ONE push only; the repeat lands in the digest.
+
+**LIVE-STATUS carries the queue census:** a `questions: open=N (xB/yD/zC/wF)` field — the
+`lab-emit.sh list --count` line verbatim — refreshed whenever the queue changes. Session-boundary
+handoffs (the orchestrator's dated handoff, and any worker handoff that raised questions) list
+the OPEN question ids: the replacement orchestrator inherits the queue from disk anyway — the ids
+make the link explicit and greppable.
 
 ## Decision manifest — decide by the owner's manifest
 
@@ -838,6 +857,7 @@ Guardrails matter MORE with no human in the loop.
 ## Handoffs
 
 - Workers write their own (structure in `references/worker-cycle-template.md`) — self-contained, every fact from a live tool, **resume-point first**, plus a top `## ORCHESTRATOR REPORT` block.
+- **Session-boundary handoffs list open question-queue ids** (`q-…`): the successor inherits the queue from disk anyway (Question queue section) — naming the ids makes the inheritance explicit and greppable.
 - **Write atomically** (write a same-directory hidden temp `docs/handoff/.NN-...md.tmp`, then rename into `NN-...md` — same-dir rename is atomic and project-scoped) so a worker dying mid-write can't leave a truncated baton; rename a detected partial to `.partial`.
 - **Numbering is not automatic** — derive the next number deterministically (read the dir, max `NN`, +1).
 - **Live git wins over any handoff.** The newest handoff is NOT auto-trustworthy if its author died: sanity-check its branch/commits/PR/IDs against `git log`/`gh pr list` and that it isn't truncated; if suspect, fall back to the prior handoff + committed state.
@@ -867,6 +887,13 @@ Proceed autonomously on reversible green delivery (merge green PRs, advance phas
 irreversible/destructive actions, ambiguous product decisions, a completed milestone with no unblocked
 next step, `BUDGET_EXCEEDED`, or a worker the escape-hatch escalated.
 
+**The fork LIST is unchanged, but the mechanical response is "queue + reroute", never "stop the
+fleet"** (Phase 3): write the typed record FIRST (Question buffer section), deliver per
+type/presence (live AskUserQuestion when the owner is present; queue + push-per-type when not),
+park ONLY the affected item, continue everything unblocked. `BLOCKED_ON_HUMAN` marks the parked
+ITEM — carried with its queue id (`BLOCKED_ON_HUMAN q-…`) — it is the state of one task, never
+the state of the chain.
+
 ## Starting a chain from zero
 
 A new project has no handoffs. Before cycle #1:
@@ -878,7 +905,9 @@ A new project has no handoffs. Before cycle #1:
 
 | Situation | Do |
 |---|---|
-| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / clocks — all green = re-arm + end turn, nothing else read or written. |
+| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / clocks — all green = re-arm + end turn, nothing else read or written. |
+| Queue delta on a pulse (new answer / `--due` hit / stale BLOCKER) | Answered → act + `decision --re <id> --by owner` + un-park/reroute back. Expired DECISION → apply default + `resolve` + `decision` citing the manifest rule. Stale BLOCKER → re-push per manifest §4. Then refresh `questions:` in LIVE-STATUS. |
+| Worker hits an ownable fork (would block on a human) | Typed record via `lab-emit.sh question` (worker emits it, or you do), type per the classification rules; park ONLY that task — `BLOCKED_ON_HUMAN q-…` is an ITEM state, not a chain state; reroute the worker to unblocked work. The fleet never parks on a question. |
 | Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). |
 | Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → typed record in the question queue + reversible default; escalations buffered except critical; long-waiting cadence. |
 | Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; write `docs/lab/digest/YYYY-MM-DD-morning.md` (7 sections, template in `docs/lab/digest/README.md`; auto-decisions cite manifest rules) + ONE owner line with the path. Buffered items stay open in the queue until answered — never silently dropped. |
