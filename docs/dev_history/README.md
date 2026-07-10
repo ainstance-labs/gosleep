@@ -93,3 +93,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 ## Epic GSL-65 — Self-pulse + night mode (PRD Phase 2)
 
 - [GSL-66 — Commit orchestration ledger (handoff 16 + STATE)](GSL-66-phase-gsl65-cycle1-ledger.md)
+- [GSL-67 — Таблица каденции пульса (cache-окна) + правило armed-wake-up (skill)](GSL-67-phase-gsl65-pulse-cadence.md)

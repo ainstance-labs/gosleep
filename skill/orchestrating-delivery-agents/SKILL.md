@@ -250,8 +250,52 @@ pulse makes the chain supervisable at any moment.
 - **Relation to the pulse rule:** the standing pulse (self-check on a short cadence while the fleet
   is live; never end a turn without an armed wake-up) is the heartbeat *generator*. Heartbeat-first
   makes each pulse externally observable, and a turn that ends with no armed wake-up also stops the
-  heartbeat — so silent quiesce is caught too. (Pulse cadence/economics are their own policy; this
+  heartbeat — so silent quiesce is caught too. (Pulse cadence/economics are the next section; this
   section fixes only WHAT gets written and WHEN.)
+
+## Pulse cadence — self-pacing on cache windows
+
+**The armed-wake-up rule (HARD):** a turn that ends while `open_workers > 0` MUST end with an armed
+wake-up (`ScheduleWakeup`; a cron/`sleep` wrapper on surfaces without it). No exceptions — not "the
+worker will message me anyway" (a wedged worker won't), not "nothing to do right now" (that is what
+a cheap tick is for). An unarmed turn with a live fleet = silent quiesce: the pulse stops, the
+heartbeat goes stale, and the watchdog's next move is a nudge at YOUR pane. Ending a turn = either
+the chain is done (`status:"quiesced"`, `open_workers:0`) or a wake-up is armed. Nothing else.
+
+**The pulse is a cheap triage tick, not a work turn:** heartbeat first, then read STATE + probe
+only for deltas (new reports, git movement vs the stored SHA, expired patience clocks), act only on
+what changed. Nothing changed → write nothing, re-arm, end the turn (see the HEARTBEAT_OK
+fast-path). Never let a wake-up re-trigger heavy work — re-running a slash command, re-reading
+handoffs, re-auditing the tree on every tick is the documented hazard (claude-code #54086).
+
+**Cadence table — pick the delay by what you are waiting for, priced against the ~5-min prompt-cache
+TTL** (a tick inside the TTL reads your context from cache almost for free; a tick past it re-reads
+everything cold — one cache miss — so a miss must buy a LONG sleep to amortize):
+
+| Mode | Delay | When | Economics |
+|---|---|---|---|
+| **Active monitoring** | **~270s** | Unsticking a stall, verifier running under its watchdog, report/termination expected within minutes, quota-reset ETA imminent | Inside the cache TTL — context stays warm, ticks are near-free; the only mode where fast polling is rational |
+| **Stable waiting** | **~540s** | Workers mid-cycle and healthy, next boundary expected in ~10–20 min | One cache miss per tick, amortized ≥2× vs dead-zone ticking; keeps the heartbeat comfortably fresher than the watchdog's staleness clock |
+| **Long waiting** | **1200–1800s** | Workers deep in long cycles, night idle, nothing actionable expected for 20+ min | One cache miss buys the whole sleep; the cheapest healthy cadence there is |
+| **Dead zone** | **300–540s — NEVER** | — | Worst of both: pays the full cache miss without amortizing it. "I'll check in 5 minutes" (300s) is exactly this trap — think in cache windows, not round minutes |
+
+**Watchdog alignment:** any standing delay at or above the watchdog's staleness threshold
+(`WD_HB_STALE_SECS`, default 900s) schedules your own false-stale nudge — the watchdog interrupts
+the sleep you deliberately chose. Long-waiting cadence (1200–1800s) therefore requires the owner to
+raise `WD_HB_STALE_SECS` in `watchdog.conf` above the longest standing delay (e.g. 2100s for
+unattended/night operation); with the default threshold, cap standing delays below ~840s. Never
+resolve the conflict by skipping heartbeats or by silently ignoring nudges.
+
+**Cadence anti-patterns:**
+- **Unarmed end-of-turn with a live fleet** — the #1 violation; everything above exists to prevent it.
+- **Round-number thinking** — "wait 5 minutes" lands in the dead zone every time. 270s or 540s+.
+- **Polling faster than the awaited thing changes** — a worker mid-45-min-cycle polled at 270s is
+  ~10 wasted ticks; match the delay to the expected boundary, then step down to active monitoring
+  as it approaches.
+- **Heavy wake-ups** — a pulse that spawns, audits, or re-reads files "while I'm here" stops being
+  a triage tick; heavy actions happen because a DELTA demanded them, never because you woke up.
+- **Sleeping just past a threshold** — either just past the cache TTL (dead zone) or just past
+  `WD_HB_STALE_SECS` (self-inflicted nudge). Sleep decisively short or decisively long.
 
 ## Recovering / cold-starting an in-progress chain
 
@@ -467,6 +511,7 @@ A new project has no handoffs. Before cycle #1:
 | Situation | Do |
 |---|---|
 | Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN read STATE / probe workers. |
+| Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER 300–540s (dead zone). |
 | Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
 | About to spawn next cycle | Confirm prior worker TERMINATED (per surface). |
@@ -522,6 +567,10 @@ A new project has no handoffs. Before cycle #1:
 - **"I'm low on context and a worker is busy mid-cycle — I'll shut it down so I can roll at a clean boundary."** → **NO. Killing a productive worker to force a roll boundary is orphaning by another name — you lose its in-progress output.** The clean boundary must arrive NATURALLY (worker self-quiesces with COMPLETE, then you terminate). Wait for the natural COMPLETE or let it finish its current task and self-quiesce. NEVER send `shutdown_request` or kill a productive live worker to roll faster. If you truly cannot wait, surface `BLOCKED_ON_HUMAN`.
 - **"The worker didn't report its tokens, so I'll note it as unavailable and move on."** → **NO. RECOVER first:** range-read ONLY the `## ORCHESTRATOR REPORT` block of the dead worker's handoff file (the read-exception covers this). If tokens are in that block, extract and tally them. If truly unrecoverable, record `tokens_this_cycle=UNRECOVERED — gap flagged` in the TELEMETRY block. NEVER fabricate totals; NEVER omit the gap as if the cycle had zero cost.
 - "Nothing changed this pulse — I'll skip the heartbeat write." → No. The heartbeat proves LIVENESS, not progress. Skip it and the watchdog's staleness clock runs toward a false restart of a healthy chain. Write it FIRST, every pulse.
+- **"Workers are busy — I'll end my turn; they'll message me when done."** → No. A live fleet with
+  no armed wake-up is a silent quiesce: a wedged worker never messages, the pulse stops, the
+  heartbeat goes stale. EVERY turn with `open_workers > 0` ends with `ScheduleWakeup` (cadence
+  table). "I'll check back in 5 minutes" is doubly wrong — unarmed intent AND the 300–540s dead zone.
 - **"The watchdog re-woke me — I'll ask the owner how to proceed." / "Predecessor died, so its
   workers must be dead too — I'll respawn the fleet."** → No, twice. Re-wake is UNATTENDED: buffer
   questions in STATE (`QUESTIONS-PENDING`) and continue on unblocked work — only denylist items
