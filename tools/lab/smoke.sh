@@ -77,9 +77,30 @@ ID5="$("$LE" question --type DECISION --from smoke --task GSL-96 --question "exp
   --default "yes" --auto-apply-at 2999-01-01T00:00:00Z >/dev/null
 "$LE" list --due | grep -q GSL-95 && bad "--due leaks future deadline" || ok "--due excludes future deadline"
 
+echo "== decision log (GSL-77) =="
+DLOG="$GOSLEEP_LAB_DIR/decisions/log.jsonl"
+DID1="$("$LE" decision --re "$ID5" --decision "yes" --rule "manifest §2.deadlines")"
+[[ "$DID1" =~ ^d-[0-9]{4}-[0-9]{2}-[0-9]{2}-001$ ]] && ok "decision id ($DID1)" || bad "decision id ($DID1)"
+tail -1 "$DLOG" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["re"] and r["question"]=="expired one?" and r["task"]=="GSL-96" and r["type"]=="DECISION" and r["qshape"] and r["rule"].startswith("manifest §")' \
+  && ok "decision pulls queue context via --re" || bad "decision context via --re"
+"$LE" decision --decision "no rule given" --question "x?" >/dev/null 2>&1 \
+  && bad "orchestrator decision w/o --rule accepted" || ok "orchestrator decision w/o --rule rejected"
+"$LE" decision --decision "owner said so" --question "ship it?" --by owner >/dev/null \
+  && ok "owner decision w/o rule accepted" || bad "owner decision w/o rule"
+
+echo "== learning loop: candidates (GSL-77) =="
+for t in GSL-90 GSL-91 GSL-92; do
+  "$LE" decision --decision "regular merge" --task "$t" \
+    --question "merge strategy for PR #4$t after main moved?" --rule "manifest §2.merge-strategy" >/dev/null
+done
+"$LE" candidates | grep -q 'CANDIDATE ×3: "regular merge"' && ok "3× same shape+answer -> candidate" || bad "candidates ×3"
+"$LE" candidates --min 4 | grep -q 'regular merge' && bad "--min 4 leaks ×3 group" || ok "--min respected"
+"$LE" candidates --json | python3 -c 'import json,sys; rows=[json.loads(l) for l in sys.stdin]; g=[r for r in rows if r["decision"]=="regular merge"][0]; assert g["count"]==3 and len(g["tasks"])==3' \
+  && ok "candidates --json (shape folds across tasks/#refs)" || bad "candidates --json"
+
 echo "== append-only discipline =="
 [[ "$(head -1 "$QUEUE")" == "$LINE1" ]] && ok "first line never rewritten" || bad "first line changed"
-[[ -d "$GOSLEEP_LAB_DIR/questions/.queue.lock" ]] && bad "lock leaked" || ok "lock released"
+[[ -d "$GOSLEEP_LAB_DIR/questions/.queue.lock" || -d "$GOSLEEP_LAB_DIR/decisions/.log.lock" ]] && bad "lock leaked" || ok "locks released"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

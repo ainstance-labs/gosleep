@@ -13,6 +13,14 @@
 #   resolve  --re q-ID --applied "..."          # deadline hit -> default applied
 #   list     [--status open|all|answered|auto-resolved|answered-by-default|noted]
 #            [--type T] [--task KEY] [--due] [--json] [--count]
+#   decision --decision "..." (--re q-ID | --question "...") [--task KEY]
+#            [--rule "manifest §N.bullet"] [--by orchestrator|owner] [--channel CH]
+#            -> appends to decisions/log.jsonl (GSL-77); an ORCHESTRATOR decision
+#               REQUIRES --rule (provenance, F3-S3); --re pulls question/task/type
+#               context from the queue record automatically
+#   candidates [--min N] [--json]               # learning-loop scan (GSL-77):
+#            same question-shape decided the same way >= N (default 3) times
+#            -> manifest-candidate lines for the morning digest
 #
 # Discipline (skill "Question queue" section):
 #   * append-only JSONL — a record is NEVER rewritten; every status change is a NEW
@@ -39,6 +47,9 @@ LAB   = os.environ["LAB_DIR"]
 QDIR  = os.path.join(LAB, "questions")
 QUEUE = os.path.join(QDIR, "queue.jsonl")
 LOCK  = os.path.join(QDIR, ".queue.lock")
+DDIR  = os.path.join(LAB, "decisions")
+DLOG  = os.path.join(DDIR, "log.jsonl")
+DLOCK = os.path.join(DDIR, ".log.lock")
 
 TYPES    = ("BLOCKER", "DECISION", "CLARIFY", "FYI")
 STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted")
@@ -55,34 +66,38 @@ def qhash(task, question):
     norm = re.sub(r"\s+", " ", question.strip().lower())
     return hashlib.sha256(("%s|%s" % (task or "", norm)).encode()).hexdigest()[:10]
 
-class QueueLock:
+class DirLock:
     """mkdir-based exclusive lock (portable; macOS ships no flock(1)). Steals stale (>30s) locks."""
+    def __init__(self, path=LOCK):
+        self.path = path
     def __enter__(self):
         for _ in range(200):
             try:
-                os.makedirs(QDIR, exist_ok=True)
-                os.mkdir(LOCK)
+                os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                os.mkdir(self.path)
                 return self
             except FileExistsError:
                 try:
-                    if time.time() - os.stat(LOCK).st_mtime > 30:
-                        os.rmdir(LOCK)
+                    if time.time() - os.stat(self.path).st_mtime > 30:
+                        os.rmdir(self.path)
                         continue
                 except FileNotFoundError:
                     continue
                 time.sleep(0.05)
-        die("could not acquire queue lock (%s)" % LOCK)
+        die("could not acquire lock (%s)" % self.path)
     def __exit__(self, *a):
         try:
-            os.rmdir(LOCK)
+            os.rmdir(self.path)
         except FileNotFoundError:
             pass
 
-def read_records():
-    if not os.path.exists(QUEUE):
+QueueLock = DirLock
+
+def read_jsonl(path):
+    if not os.path.exists(path):
         return []
     recs = []
-    with open(QUEUE, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for n, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -112,10 +127,26 @@ def fold(records):
                     s[k] = r[k]
     return state
 
-def append_record(obj):
-    os.makedirs(QDIR, exist_ok=True)
-    with open(QUEUE, "a", encoding="utf-8") as f:
+def append_jsonl(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+def read_records():
+    return read_jsonl(QUEUE)
+
+def append_record(obj):
+    append_jsonl(QUEUE, obj)
+
+def qshape(question):
+    """Task-agnostic question SHAPE for the learning loop: numbers/keys/paths collapsed."""
+    s = question.strip().lower()
+    s = re.sub(r"[a-z]+-\d+", "<key>", s)          # GSL-45, tlm-8 ...
+    s = re.sub(r"#\d+", "<ref>", s)                # #52
+    s = re.sub(r"\S*/\S+", "<path>", s)            # paths/urls
+    s = re.sub(r"\d+", "<n>", s)
+    s = re.sub(r"\s+", " ", s)
+    return hashlib.sha256(s.encode()).hexdigest()[:10]
 
 def parse_flags(argv, spec, multi=()):
     """spec: {'--flag': 'key'}; multi flags accumulate into lists; bare flags in spec map to True."""
@@ -276,12 +307,75 @@ def cmd_list(argv):
                 m.get("status", "?"), m.get("auto_apply_at") or "-",
                 len(m.get("seen_by", [])), q))
 
+def cmd_decision(argv):
+    a = parse_flags(argv, {"--re": "re", "--decision": "decision", "--question": "question",
+                           "--task": "task", "--rule": "rule", "--by": "by",
+                           "--channel": "channel"})
+    if not a.get("decision"):
+        die("--decision is required")
+    by = a.get("by", "orchestrator")
+    if by == "orchestrator" and not a.get("rule"):
+        die("an orchestrator decision REQUIRES --rule \"manifest §N.bullet\" (provenance, F3-S3); "
+            "no citable rule -> it is a DECISION record with a deadline, not an autonomous act")
+    question, task, qtype = a.get("question", ""), a.get("task", ""), ""
+    if a.get("re"):
+        m = fold(read_records()).get(a["re"]) or die("no queue record with id %s" % a["re"])
+        question = question or m.get("question", "")
+        task = task or m.get("task", "")
+        qtype = m.get("type", "")
+    if not question:
+        die("--question is required when --re is not given (the learning loop mines shapes)")
+    with DirLock(DLOCK):
+        recs = read_jsonl(DLOG)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        pat = re.compile(r"^d-%s-(\d{3})$" % re.escape(today))
+        n = max([int(m.group(1)) for r in recs for m in [pat.match(r.get("id", ""))] if m] or [0])
+        rec = {"id": "d-%s-%03d" % (today, n + 1), "ts": iso_utc(), "re": a.get("re", ""),
+               "task": task, "type": qtype, "question": question, "qshape": qshape(question),
+               "decision": a["decision"], "made_by": by, "rule": a.get("rule", ""),
+               "channel": a.get("channel", "")}
+        append_jsonl(DLOG, rec)
+        print(rec["id"])
+
+def cmd_candidates(argv):
+    a = parse_flags(argv, {"--min": "min", "--json": "!json"})
+    try:
+        need = int(a.get("min", "3"))
+    except ValueError:
+        die("--min expects an integer")
+    groups = {}
+    for r in read_jsonl(DLOG):
+        if not r.get("qshape") or not r.get("decision"):
+            continue
+        key = (r["qshape"], re.sub(r"\s+", " ", r["decision"].strip().lower()))
+        g = groups.setdefault(key, {"count": 0, "sample": r.get("question", ""),
+                                    "decision": r["decision"], "tasks": [], "rules": set(),
+                                    "ids": []})
+        g["count"] += 1
+        g["ids"].append(r["id"])
+        if r.get("task") and r["task"] not in g["tasks"]:
+            g["tasks"].append(r["task"])
+        if r.get("rule"):
+            g["rules"].add(r["rule"])
+    for (shape, _), g in sorted(groups.items(), key=lambda kv: -kv[1]["count"]):
+        if g["count"] < need:
+            continue
+        if a.get("json"):
+            g["rules"] = sorted(g["rules"])
+            print(json.dumps({"qshape": shape, **g}, ensure_ascii=False))
+        else:
+            print('CANDIDATE ×%d: "%s" — for "%s" (tasks: %s%s) → promote to manifest §2?' % (
+                g["count"], g["decision"], g["sample"][:70],
+                ",".join(g["tasks"]) or "-",
+                "; rules cited: " + ", ".join(sorted(g["rules"])) if g["rules"] else ""))
+
 def main():
     if len(sys.argv) < 2:
-        die("usage: lab-emit.sh question|answer|resolve|list ...")
+        die("usage: lab-emit.sh question|answer|resolve|list|decision|candidates ...")
     cmd, argv = sys.argv[1], sys.argv[2:]
     fn = {"question": cmd_question, "answer": cmd_answer,
-          "resolve": cmd_resolve, "list": cmd_list}.get(cmd)
+          "resolve": cmd_resolve, "list": cmd_list,
+          "decision": cmd_decision, "candidates": cmd_candidates}.get(cmd)
     if not fn:
         die("unknown subcommand %r" % cmd)
     fn(argv)

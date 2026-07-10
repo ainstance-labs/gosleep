@@ -105,3 +105,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-74 — Типология вопросов: 4 типа, 4 поведения — BLOCKER/DECISION/CLARIFY/FYI (skill + worker-template)](GSL-74-phase-gsl72-question-typology.md)
 - [GSL-75 — lab-emit: queue.jsonl схема + dedup helper — append-only, patch-записи, smoke 21/21](GSL-75-phase-gsl72-lab-emit-queue.md)
 - [GSL-76 — decisions/manifest.md — owner-sovereign манифест решений, 6 секций, provenance-правило](GSL-76-phase-gsl72-decision-manifest.md)
+- [GSL-77 — decisions/log.jsonl + learning loop — provenance-принуждение, qshape, candidates ×3](GSL-77-phase-gsl72-decision-log-learning-loop.md)

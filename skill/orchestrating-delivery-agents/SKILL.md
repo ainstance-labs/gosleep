@@ -500,6 +500,26 @@ rule wins and the divergence is escalated to the owner.
    not autonomous, it is a DECISION record waiting for its deadline (or a BLOCKER if no
    defensible default exists). Provenance is what makes "decided for you" auditable in the digest.
 
+## Learning loop — answers become manifest rules
+
+Every answer — live, buffered, or auto-applied — lands in `docs/lab/decisions/log.jsonl` via
+`tools/lab/lab-emit.sh decision --re <q-id> --decision "…" --rule "manifest §N.bullet"
+[--by owner --channel …]`. The queue patch (`answer`/`resolve`) records WHAT happened to the
+question; the decision log records WHY — the two appends travel together. `--rule` is REQUIRED
+for `made_by=orchestrator` (the helper enforces it — provenance is mechanical, not politeness);
+owner answers may omit it.
+
+**Mining (the loop):** at the morning boundary — and any time the log has grown — run
+`lab-emit.sh candidates`. Same question-SHAPE (task keys / numbers / paths normalized away)
+decided the same way ≥3 times → a candidate line for the digest's "Manifest candidates" section:
+*"CANDIDATE ×3: 'regular merge' — promote to manifest §2?"*. The owner promotes by editing the
+manifest (or replying "yes" via a channel — then YOU make the edit and log it as an
+owner-decision); agents NEVER promote candidates themselves.
+
+**KPI: questions-per-night → 0 for recurring shapes** — the real autonomy metric. A shape that
+keeps recurring without becoming a manifest rule is a process bug: surface it explicitly in the
+digest, don't keep answering it by hand.
+
 ## Quota auto-wait — session-limit quiesce & resume
 
 The subscription quota window is account-wide: when it exhausts (`You've hit your session limit`,
