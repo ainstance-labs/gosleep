@@ -21,7 +21,11 @@
 #     still stale after the nudge grace -> kill (EXPLICIT pane id only) + re-wake
 #   * context_pct >= ceiling          -> send-keys "write handoff now";
 #     handoff overdue -> kill + re-wake (fresh orchestrator reads the handoff)
-#   * status:"quiesced"               -> chain deliberately ended, NEVER restart
+#   * status:"quiesced"               -> deliberately not progressing, NEVER
+#     restart, whatever tmux/staleness say. Two forms (GSL-69): chain ended
+#     (open_workers=0) or quota-wait (note carries "quota-wait until <ETA>",
+#     open_workers = held workers; the orchestrator resumes ITSELF via its
+#     armed wake-up chain after the window resets — the watchdog stands down)
 #   * status:"rolling" + fresh hb     -> successor expected, wait
 #   * restart budget (default 3-in-60-min, warren RestartBudget) with
 #     exponential backoff (base 1s, cap 16s); exhausted -> NO kill, NO restart,

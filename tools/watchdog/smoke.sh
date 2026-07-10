@@ -66,6 +66,11 @@ HB_OK='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2
 HB_SOLO='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":1,"status":"ok","pane":"%42"}'
 HB_HIGH_CTX='{"ts":"2026-07-10T03:00:00Z","cycle":14,"context_pct":85,"open_workers":2,"status":"ok","pane":"%42"}'
 HB_QUIESCED='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":50,"open_workers":0,"status":"quiesced","pane":"%42"}'
+# GSL-69: the quota-wait form of quiesced — open_workers>0 + reset ETA in note.
+# The quiesced gate must hold even with a STALE heartbeat in a LIVE session
+# (a limited orchestrator cannot write; nudging/killing it would burn the
+# restart budget on re-wakes guaranteed to hit the same limit).
+HB_QUOTA_WAIT='{"ts":"2026-07-10T03:00:00Z","cycle":16,"context_pct":55,"open_workers":2,"status":"quiesced","note":"quota-wait until 2026-07-10T07:00:00Z","pane":"%42"}'
 HB_ROLLING='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":72,"open_workers":2,"status":"rolling","pane":"%42"}'
 # C1 fixtures: heartbeat names a pane that no longer exists (%4 — the dead
 # orchestrator; the only LIVE pane, %42, is a worker) / carries no pane at all.
@@ -134,6 +139,7 @@ run_case  stale-first-tick          nudged              1     %42   stale    "$H
 run_case  stale-after-nudge         kill_rewake         1     %42   stale    "$HB_OK"      seed_old_nudge
 run_case  missing-hb-alive          identity_unverified 1     %42   missing  ""
 run_case  quiesced-dead-session     ok_quiesced         0     ""    fresh    "$HB_QUIESCED"
+run_case  quota-wait-stale-live     ok_quiesced         1     %42   stale    "$HB_QUOTA_WAIT"
 run_case  rolling-fresh             waiting_successor   0     ""    fresh    "$HB_ROLLING"
 run_case  ctx-ceiling-first-tick    handoff_requested   1     %42   fresh    "$HB_HIGH_CTX"
 run_case  ctx-ceiling-overdue       kill_rewake         1     %42   fresh    "$HB_HIGH_CTX" seed_old_handoff
@@ -413,6 +419,13 @@ if grep -q '"event":"orchestrator_restarted"' "$WORK/quiesced-dead-session/ledge
   bad "quiesced chain was restarted (must never happen)"
 else
   ok "quiesced chain not restarted"
+fi
+# GSL-69: quota-wait quiesce (open_workers>0, note ETA) with a STALE heartbeat
+# in a LIVE session must produce NO nudge, NO kill, NO restart.
+if grep -qE '"event":"(nudge|kill|orchestrator_restarted)"' "$WORK/quota-wait-stale-live/ledger.jsonl" 2>/dev/null; then
+  bad "quota-wait quiesce was nudged/killed/restarted (must never happen)"
+else
+  ok "quota-wait quiesce left alone (stale hb + live session)"
 fi
 
 echo "== config validation (must fail LOUDLY) =="
