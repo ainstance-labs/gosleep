@@ -88,3 +88,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-61 — Go TUI internals autosk — gocui/lazygit стек, 11 паттернов](GSL-61-phase-gsl58-tui.md)
 - [GSL-62 — Разбор unmerged PRs autosk — 6 осиротевших PR одного контрибьютора](GSL-62-phase-gsl58-unmerged-prs.md)
 - [GSL-63 — Re-fetch autosk.app — zero delta, проект FROZEN](GSL-63-phase-gsl58-site-delta.md)
+- [GSL-64 — Отчёт AutoSK Anatomy — EN+RU dashboard](GSL-64-phase-gsl58-report.md)
