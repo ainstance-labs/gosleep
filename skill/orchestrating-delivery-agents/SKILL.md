@@ -350,10 +350,10 @@ chain runs in **`mode=night`**: interactivity is *loosened* (nobody will answer)
 the re-wake unattended deltas — same buffering discipline, entered by the clock instead of by a
 watchdog restart.
 
-- **Where declared:** a dated line in the STATE file's Standing rules, e.g.
-  `activeHours: 09:00–24:00 local (night = 00:00–08:30)`. Default when undeclared: night =
-  00:00–08:30. (The Phase-3 decision manifest becomes the canonical home when it exists; the
-  Standing-rules line moves there.) The owner saying "я спать" / "going to sleep" = enter night
+- **Where declared:** `docs/lab/decisions/manifest.md` §4 (`§4.active-hours`) — the canonical
+  home (Decision manifest section); a dated line in the STATE file's Standing rules may mirror or
+  temporarily override it, e.g. `activeHours: 09:00–24:00 local (night = 00:00–08:30)`. Default
+  when neither declares: night = 00:00–08:30. The owner saying "я спать" / "going to sleep" = enter night
   mode NOW regardless of clock; "I'm back" = day mode now. Derive the mode at every pulse from the
   clock + standing overrides — it is never a memory-only flag.
 - **What changes at night** (everything else — telemetry, heartbeat, patience clocks, termination
@@ -473,6 +473,32 @@ awaiting) · `answered` · `auto-resolved` (default applied at deadline) · `ans
 STATE and handoffs (it is the owner's phone-readable, phone-answerable surface), never
 gitignored. Answered/expired records are compacted to `archive.jsonl` by the Phase-4 chronicler;
 until it exists the queue just grows (it's tiny).
+
+## Decision manifest — decide by the owner's manifest
+
+`docs/lab/decisions/manifest.md` — **owner-sovereign**: the ONE hand-edited file in `docs/lab/`.
+Agents READ it every cycle, PROPOSE changes as a diff in the morning digest ("Manifest
+candidates"), and NEVER edit it silently. It formalizes what was scattered across STATE Standing
+rules, memory files and chat directives — six sections: (1) always-autonomous; (2)
+decide-by-default + default deadlines; (3) always-ask = the denylist VERBATIM from this skill;
+(4) escalation & channels + activeHours (the night window's canonical home — the Night mode
+section's Standing-rules line defers to manifest §4); (5) budget & runway; (6) standing
+preferences. Sections 1/3 mirror this skill's existing authority/denylist — the manifest gives
+existing policy a home the tooling can read, it never invents policy; on divergence the STRICTER
+rule wins and the divergence is escalated to the owner.
+
+**The decision rule — "решай сам по манифесту" (run at every fork, day or night):**
+1. Covered by **§1 always-autonomous**? → act now, log the decision citing the rule
+   (`manifest §1.<bullet>`).
+2. Covered by **§3 always-ask / denylist**? → BLOCKER, no default, ever — night grants no
+   exceptions.
+3. Everything between → **DECISION record with a default + deadline**: pick the defensible
+   default (manifest §2 names the standing ones), queue it via
+   `lab-emit.sh question --type DECISION --default … [--auto-apply-at …]` (deadline defaults per
+   §2.deadlines), keep working elsewhere, apply the default at the deadline.
+4. **Every autonomous decision cites its manifest rule** — a decision you cannot tie to a rule is
+   not autonomous, it is a DECISION record waiting for its deadline (or a BLOCKER if no
+   defensible default exists). Provenance is what makes "decided for you" auditable in the digest.
 
 ## Quota auto-wait — session-limit quiesce & resume
 
