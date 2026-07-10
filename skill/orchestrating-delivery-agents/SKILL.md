@@ -376,11 +376,11 @@ watchdog restart.
   `watchdog.conf` above the long-waiting tier (e.g. 2100s) and set the night restart budget
   (e.g. 3 per night window) — see `tools/watchdog/watchdog.conf.example`.
 - **Morning boundary** (first pulse at/after activeHours start): append `MODE → day` to the STATE
-  log; drop `mode:"night"` from the heartbeat; **surface the night's buffer** — every open
-  question-queue record and every buffered escalation goes into ONE compact owner-facing summary
-  (the Phase-3 morning digest when it exists; until then a short message + pointer to the STATE
-  section). Buffered items are never silently dropped: they stay open in STATE until answered or
-  superseded. Then resume day-mode escalation behavior.
+  log; drop `mode:"night"` from the heartbeat; **write the morning digest** (Morning digest
+  section) — every open question-queue record and every buffered escalation surfaces there, and
+  the owner gets ONE compact line + the digest path. Buffered items are never silently dropped:
+  they stay open in the queue until answered or superseded. Then resume day-mode escalation
+  behavior.
 - **A question buffered at night is not a stalled chain:** park only the affected task, reroute the
   worker to unblocked work, keep pulsing. `BLOCKED_ON_HUMAN` panes at night are reserved for
   denylist items alone.
@@ -519,6 +519,32 @@ owner-decision); agents NEVER promote candidates themselves.
 **KPI: questions-per-night → 0 for recurring shapes** — the real autonomy metric. A shape that
 keeps recurring without becoming a manifest rule is a process bug: surface it explicitly in the
 digest, don't keep answering it by hand.
+
+## Morning digest — the night on one screen
+
+*The digest is as important as the work: an unreviewable night is a failed night even if every PR
+merged.* At the **morning boundary** (first pulse at/after activeHours start — the Night mode
+section's `MODE → day` step) — and on-demand when the owner asks "what happened" — write
+`docs/lab/digest/YYYY-MM-DD-morning.md`. One per day WITH activity (an empty night writes none).
+Not append-only → atomic write (same-dir temp + rename). You write it yourself until the Phase-4
+chronicler mechanizes generation; the template lives in `docs/lab/digest/README.md`.
+
+**Sections in owner-priority order (05 §4.5) — each one read FROM DISK, never from session memory:**
+1. **Waiting for you** — open BLOCKERs first, then DECISIONs with deadline countdown
+   (`lab-emit.sh list`, `list --due`).
+2. **Decided for you** — every auto-resolution/autonomous decision WITH its manifest rule cited
+   (`decisions/log.jsonl`; provenance — an uncited decision is a defect).
+3. **What shipped** — tasks/PRs/commits with links (`git log`, `gh pr list`, tracker).
+4. **Incidents** — what broke/recovered: restarts N/M, breaker trips, quota-waits, RCA links.
+5. **Cost & runway** — TELEMETRY night/cumulative vs ceiling, quota events, slots, breaker line.
+6. **Manifest candidates** — `lab-emit.sh candidates` output verbatim (Learning loop section).
+7. **Next** — today's plan: next unblocked tasks/phases.
+
+**Rules:** every item links into its artifact (queue id / PR / commit / dev_history) — a linkless
+item is blind; a question seen by 5 workers is ONE item (`seen_by` did the dedup); the digest
+SHOWS buffered items but never closes them — records stay open until answered or auto-applied.
+After writing it, send the owner ONE compact line + the digest path — the digest IS the morning
+summary; never paste its body into chat.
 
 ## Quota auto-wait — session-limit quiesce & resume
 
@@ -855,7 +881,7 @@ A new project has no handoffs. Before cycle #1:
 | Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / clocks — all green = re-arm + end turn, nothing else read or written. |
 | Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). |
 | Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → typed record in the question queue + reversible default; escalations buffered except critical; long-waiting cadence. |
-| Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; surface ALL buffered questions/escalations in ONE owner summary. Buffered items stay open in STATE until answered — never silently dropped. |
+| Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; write `docs/lab/digest/YYYY-MM-DD-morning.md` (7 sections, template in `docs/lab/digest/README.md`; auto-decisions cite manifest rules) + ONE owner line with the path. Buffered items stay open in the queue until answered — never silently dropped. |
 | Session limit hit (`You've hit your session limit` / StopFailure rate_limit) | Quiesce: hold workers (no kills, no spawns), STATE `status=quota-wait until=<ETA>`, heartbeat `status:"quiesced"` + `note:"quota-wait until <ETA>"` (`open_workers` = real count), arm ONE wake-up `min(3600s, ETA+~120s)` — a limited tick can't re-arm, so no hop chains; ETA > 1h out → resume falls to the watchdog alarm-clock (quiesced shield drops past ETA + `WD_QUOTA_GRACE_SECS`). STAY in session. First tick that runs = resume: heartbeat ok, re-census, un-hold. |
 | Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
 | Worker idle, no report | Liveness-rank check (report/pane/`/workflows`/git). Idle ≠ stopped, idle ≠ stuck. |
