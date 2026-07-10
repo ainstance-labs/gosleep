@@ -87,3 +87,17 @@ C7 (liveness from durable state only) and C8 (atomic temp+rename) satisfied.
 **Links:** Jira [GSL-51](https://ainstance-labs.atlassian.net/browse/GSL-51) ·
 GitHub [#59](https://github.com/ainstance-labs/gosleep/issues/59) · Epic
 [GSL-49](https://ainstance-labs.atlassian.net/browse/GSL-49) / [#57](https://github.com/ainstance-labs/gosleep/issues/57)
+
+---
+
+## Review fixes (2026-07-10, epic review C1 — `docs/reviews/REVIEW-gsl49.md`)
+
+The heartbeat line now **requires a `pane` field** — the orchestrator's own tmux pane id,
+literally `$TMUX_PANE`. The review found the watchdog resolved its nudge/kill target
+*positionally* (first pane of the window / `session:0.0`); in the epic's main scenario —
+orchestrator dead, workers alive in the same window — that target is a live WORKER. Self-declared
+identity in the heartbeat is the only trustworthy source, so the protocol carries it: format line,
+required-fields list and the atomic snippet in SKILL.md updated (`"pane":"'"${TMUX_PANE:-}"'"`),
+plus the contract note that a live session without a verifiable `pane` is never guessed at — the
+watchdog refuses (`kill_refused reason=identity_unverified`) and escalates. Re-verified:
+`./install.sh` → global copy identical (diff). Consumer side: see GSL-52 review-fixes block.

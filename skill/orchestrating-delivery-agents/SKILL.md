@@ -214,23 +214,31 @@ pulse makes the chain supervisable at any moment.
   never starts its NEXT pulse, so mtime stops advancing and staleness is observable within one pulse
   interval. Also write a final line at every session boundary (see `status`).
 - **Format — append ONE JSON line** (JSONL; the watchdog reads `tail -1` + `stat` mtime):
-  `{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok"}`
+  `{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4"}`
   Required: `ts` (UTC ISO-8601) · `cycle` (current cycle N) · `context_pct` (your HONEST estimate —
   the watchdog compares it to the roll ceiling; a fabricated number defeats roll-at-~70%) ·
-  `open_workers` (count of live workers). Optional: `status` — `"ok"` (default) · `"rolling"` (dated
+  `open_workers` (count of live workers) · `pane` (YOUR OWN tmux pane id — literally `$TMUX_PANE`;
+  this self-declared id is the watchdog's ONLY way to tell which pane is you: it nudges/kills the
+  pane named here and NOTHING else. Positional guessing is forbidden on its side — after you die,
+  the "first pane of the window" is typically a live WORKER. Omit or mangle this field and the
+  watchdog refuses to act on a live session and escalates to the owner instead). Optional:
+  `status` — `"ok"` (default) · `"rolling"` (dated
   handoff written, successor orchestrator expected — write as the LAST act before exiting a session)
   · `"quiesced"` (chain deliberately ended; `open_workers` MUST be 0 — tells the watchdog NOT to
   restart anything); `note` (free text, ≤80 chars).
 - **Atomic append, self-truncating** (same-directory hidden temp + rename, the STATE-file convention):
   ```bash
   hb="docs/handoff/.orchestrator-heartbeat"
-  line='{"ts":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","cycle":12,"context_pct":41,"open_workers":2,"status":"ok"}'
+  line='{"ts":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"'"${TMUX_PANE:-}"'"}'
   { [ -f "$hb" ] && tail -n 199 "$hb"; printf '%s\n' "$line"; } > "$hb.tmp" && mv "$hb.tmp" "$hb"
   ```
   Same-dir rename is atomic — a crash mid-write can't leave a truncated file; `tail -n 199` caps the
   file at 200 lines so it stays compact forever.
 - **How the watchdog reads it (contract — know it so you don't fight it):** heartbeat mtime older
-  than its threshold → one nudge, then kill (explicit id ONLY) + re-wake via the cold-start protocol;
+  than its threshold → one nudge, then kill (explicit id ONLY) + re-wake via the cold-start protocol
+  — and the nudge/kill target is taken EXCLUSIVELY from your `pane` field: a live session whose
+  heartbeat carries no verifiable pane id is never guessed at — the watchdog refuses
+  (`kill_refused reason=identity_unverified`) and escalates to the owner;
   `context_pct` ≥ ceiling → "write handoff now" + fresh orchestrator from the handoff;
   `status:"quiesced"` → no restart. **Startup grace:** a fresh orchestrator is exempt from staleness
   for a warm-up window (~90–120 s — Gastown #567: heartbeat checks killed freshly-started sessions
