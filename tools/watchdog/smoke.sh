@@ -160,7 +160,7 @@ else
   bad "window pruning failed: old restarts still blocking"
 fi
 # Fresh escalation marker suppresses a duplicate notification.
-if [ "$(grep -c '"event":"escalation"' "$WORK/escalation-suppressed/ledger.jsonl" 2>/dev/null || echo 0)" = "0" ]; then
+if ! grep -q '"event":"escalation"' "$WORK/escalation-suppressed/ledger.jsonl" 2>/dev/null; then
   ok "repeat escalation suppressed while marker is fresh"
 else
   bad "duplicate escalation despite fresh marker"
@@ -258,6 +258,50 @@ if echo "$out" | grep -q "stealing stale" && echo "$out" | grep -q "DECISION=ok"
   ok "stale lock (crashed tick) stolen, tick proceeds"
 else
   bad "stale lock not stolen"
+fi
+
+echo "== route-through-reap + ledger scenarios (GSL-55) =="
+# Ordering guarantee: reap BEFORE kill BEFORE orchestrator_restarted.
+L="$WORK/stale-after-nudge/ledger.jsonl"
+rl="$(grep -n '"event":"reap"' "$L" | head -1 | cut -d: -f1 || true)"
+kl="$(grep -n '"event":"kill"' "$L" | head -1 | cut -d: -f1 || true)"
+ol="$(grep -n '"event":"orchestrator_restarted"' "$L" | head -1 | cut -d: -f1 || true)"
+if [ -n "$rl" ] && [ -n "$kl" ] && [ -n "$ol" ] && [ "$rl" -lt "$kl" ] && [ "$kl" -lt "$ol" ]; then
+  ok "ledger order: reap -> kill -> orchestrator_restarted"
+else
+  bad "ledger order wrong (reap=$rl kill=$kl restart=$ol)"
+fi
+# Reap snapshot exists and carries the post-mortem sections.
+snap="$(ls "$WORK/stale-after-nudge/state/reaps/"*.txt 2>/dev/null | head -1 || true)"
+if [ -n "$snap" ] && grep -q "heartbeat tail" "$snap" && grep -q "git snapshot" "$snap"; then
+  ok "reap snapshot written (heartbeat tail + git snapshot sections)"
+else
+  bad "reap snapshot missing or incomplete"
+fi
+# The ledger reap line preserves branch + HEAD (committed work never silently lost).
+if grep '"event":"reap"' "$L" | grep -q '"branch":"' && grep '"event":"reap"' "$L" | grep -q '"head":"'; then
+  ok "reap ledger line records branch + HEAD"
+else
+  bad "reap ledger line missing branch/head"
+fi
+# Session death takes recorded workers with it -> worker_died on the record.
+if grep '"event":"worker_died"' "$WORK/dead-session-fresh-hb/ledger.jsonl" | grep -q '"count":1' \
+   && grep -q '"event":"reap"' "$WORK/dead-session-fresh-hb/ledger.jsonl"; then
+  ok "dead session -> worker_died(count=1) + reap before restart"
+else
+  bad "dead session: worker_died/reap missing"
+fi
+if grep '"event":"worker_died"' "$WORK/mass-death/ledger.jsonl" | grep -q '"count":2'; then
+  ok "mass death -> worker_died(count=2) recorded"
+else
+  bad "mass death: worker_died missing"
+fi
+# Gates run BEFORE reap: an exhausted budget or a cooldown-deferred kill reaps nothing.
+if ! grep -q '"event":"reap"' "$WORK/budget-exhausted/ledger.jsonl" \
+   && ! grep -q '"event":"reap"' "$WORK/kill-cooldown-defers/ledger.jsonl" 2>/dev/null; then
+  ok "no reap on budget-escalated / cooldown-deferred ticks (gates first)"
+else
+  bad "reap emitted on a gated tick"
 fi
 
 echo "== side-effect assertions =="

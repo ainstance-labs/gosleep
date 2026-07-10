@@ -30,6 +30,11 @@
 #       kill cooldown  — >= 5 min between force-kills
 #       mass-death     — whole session gone with >=2 workers recorded = systemic
 #                        failure -> escalate, do NOT restart blindly
+#   * route-through-reap (warren reap / overstory worker_died): NO silent kill —
+#     before any kill/restart the watchdog collects state (heartbeat tail, git
+#     branch+HEAD, pane inventory, pane capture) into a reap snapshot and
+#     records it in the ledger FIRST. Committed work is never silently lost.
+#     Ledger format: tools/watchdog/LEDGER.md
 #   * Re-wake = the EXISTING cold-start protocol (re-attach to live workers,
 #     never respawn them). This script contains ZERO LLM calls; the only
 #     `claude` invocation is spawning the interactive replacement orchestrator.
@@ -50,7 +55,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.3.0 (GSL-54)"
+WD_VERSION="0.4.0 (GSL-55)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -324,6 +329,45 @@ act_kill() { # $1=pane — EXPLICIT id only; refuses anything else. NEVER -a.
   ledger_emit "kill" "target=$pane" "reason=${DECISION_REASON:-unspecified}"
 }
 
+# Route-through-reap (PRD R1.5): collect the dying component's state into a
+# snapshot + ledger line BEFORE any kill. "No silently vanished work."
+# $1 = pane id or "" (none to capture) ; $2 = role label for the snapshot name
+reap() {
+  local pane="${1:-}" role="${2:-orchestrator}" rf branch head
+  mkdir -p "$WD_STATE_DIR/reaps"
+  rf="$WD_STATE_DIR/reaps/$(now_epoch)-${role}.txt"
+  {
+    echo "reap @ $(iso_ts) role=$role pane=${pane:-none} reason=${DECISION_REASON:-unspecified}"
+    echo "--- heartbeat tail (last 5) ---"
+    tail -n 5 "$WD_HEARTBEAT_FILE" 2>/dev/null || echo "(no heartbeat file)"
+    echo "--- git snapshot ($WD_REPO_ROOT) ---"
+    git -C "$WD_REPO_ROOT" branch --show-current 2>/dev/null || echo "(git unavailable)"
+    git -C "$WD_REPO_ROOT" log --oneline -5 2>/dev/null || true
+    git -C "$WD_REPO_ROOT" status --porcelain 2>/dev/null | head -20 || true
+    echo "--- tmux pane inventory ---"
+    if [ "$WD_TEST_MODE" = "1" ]; then
+      echo "(test mode: pane inventory skipped)"
+    else
+      "$WD_TMUX_BIN" list-panes -s -t "$WD_TMUX_SESSION" \
+        -F '#{pane_id} #{window_name} dead=#{pane_dead} cmd=#{pane_current_command}' 2>/dev/null \
+        || echo "(session gone)"
+    fi
+    if [ -n "$pane" ]; then
+      echo "--- pane capture tail ($pane, last 60 lines) ---"
+      if [ "$WD_TEST_MODE" = "1" ]; then
+        echo "(test mode: capture skipped)"
+      else
+        "$WD_TMUX_BIN" capture-pane -p -t "$pane" 2>/dev/null | tail -60 || echo "(capture failed)"
+      fi
+    fi
+  } > "$rf"
+  branch="$(git -C "$WD_REPO_ROOT" branch --show-current 2>/dev/null || echo unknown)"
+  head="$(git -C "$WD_REPO_ROOT" log -1 --format=%h 2>/dev/null || echo unknown)"
+  ledger_emit "reap" "role=$role" "target=${pane:-session}" \
+    "reason=${DECISION_REASON:-unspecified}" "branch=${branch:-unknown}" \
+    "head=${head:-unknown}" "snapshot=$rf"
+}
+
 build_rewake_prompt() {
   local prompt_file="$WD_STATE_DIR/rewake-prompt.txt"
   cat > "$prompt_file" <<EOF
@@ -440,11 +484,17 @@ do_restart() {
       log "kill deferred: last force-kill ${kage}s ago (< ${WD_KILL_COOLDOWN_SECS}s cooldown)"
       return 0
     fi
+    # Route-through-reap: collect state + ledger record BEFORE the kill.
+    reap "$pane" "orchestrator"
     if ! act_kill "$pane"; then
       DECISION="kill_refused"
       return 0
     fi
     marker_write "last-kill"
+  else
+    # Restart without a kill (dead session/pane): still reap what's reapable
+    # (git snapshot, heartbeat tail) so the restart is never a silent event.
+    reap "" "orchestrator"
   fi
   delay="$(backoff_secs)"
   if [ "$DRY_RUN" = "1" ]; then
@@ -488,8 +538,17 @@ decide_and_act() {
        && [ "$HB_WORKERS" -ge "$WD_MASS_DEATH_WORKERS" ]; then
       DECISION="mass_death"; DECISION_REASON="session_gone_with_${HB_WORKERS}_workers"
       ledger_emit "mass_death" "open_workers=$HB_WORKERS" "reason=whole_session_gone"
+      ledger_emit "worker_died" "count=$HB_WORKERS" "reason=whole_session_gone" \
+        "observed=heartbeat_vs_tmux"
+      reap "" "session"
       escalate "mass death: whole tmux session '$WD_TMUX_SESSION' gone with $HB_WORKERS live workers recorded — systemic failure, not restarting blindly"
       return 0
+    fi
+    # Below mass-death threshold but the session took recorded workers with it:
+    # their death must still be on the record (overstory worker_died mail).
+    if [ "$session_alive" = "0" ] && is_uint "$HB_WORKERS" && [ "$HB_WORKERS" -ge 1 ]; then
+      ledger_emit "worker_died" "count=$HB_WORKERS" "reason=session_gone" \
+        "observed=heartbeat_recorded"
     fi
     if [ "$session_alive" = "0" ]; then
       DECISION="rewake"; DECISION_REASON="dead_session"
