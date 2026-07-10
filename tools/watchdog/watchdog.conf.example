@@ -55,6 +55,25 @@
 # (ntfy / Claude-app) extension point. Must be executable; validated at start.
 #WD_ESCALATE_HOOK=""
 
+# --- Gastown debounce rails (PRD R1.4) -----------------------------------------
+# Warm-up exemption from staleness for a freshly started session (Gastown #567:
+# heartbeat checks killed sessions before they could write their first line).
+#WD_STARTUP_GRACE_SECS=120
+# "pane-alive != process-alive" becomes a zombie only after this many
+# CONSECUTIVE cycles (transient gaps during handoffs diverge routinely).
+#WD_ZOMBIE_CYCLES=3
+# Minimum gap between force-kills.
+#WD_KILL_COOLDOWN_SECS=300
+# Whole session gone while the last heartbeat recorded >= N workers = systemic
+# failure (tmux server death / reboot / sleep) -> escalate, never blind-restart.
+#WD_MASS_DEATH_WORKERS=2
+# The watchdog itself: single-flight lock (stale locks stolen after
+# WD_LOCK_STALE_SECS) + self rate-limit between ticks.
+#WD_MIN_TICK_INTERVAL_SECS=60
+#WD_LOCK_STALE_SECS=900
+# Process expected somewhere under the orchestrator pane's process tree.
+#WD_AGENT_PROC_REGEX="claude"
+
 # NOTE on --dry-run: external actions (send-keys/kill/spawn/notify/sleep) are
 # suppressed, but the watchdog's OWN state (markers, restart history, ledger
 # lines flagged dry_run) IS written — that is what makes sequences testable.

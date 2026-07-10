@@ -61,11 +61,14 @@ stale_hb() { # $1=file $2=json-line  (mtime pushed 30 min back)
 }
 
 HB_OK='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok"}'
+HB_SOLO='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_workers":1,"status":"ok"}'
 HB_HIGH_CTX='{"ts":"2026-07-10T03:00:00Z","cycle":14,"context_pct":85,"open_workers":2,"status":"ok"}'
 HB_QUIESCED='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":50,"open_workers":0,"status":"quiesced"}'
 HB_ROLLING='{"ts":"2026-07-10T03:00:00Z","cycle":15,"context_pct":72,"open_workers":2,"status":"rolling"}'
 
 # run_case NAME EXPECTED_DECISION SESSION_ALIVE PANE HB_KIND HB_JSON [setup-fn]
+# Extra per-case env (e.g. WD_TEST_PROC_ALIVE=0) via global CASE_ENV, cleared after.
+CASE_ENV=""
 run_case() {
   local name="$1" expected="$2" alive="$3" pane="$4" hb_kind="$5" hb_json="$6" setup="${7:-}"
   local dir="$WORK/$name"
@@ -77,16 +80,19 @@ run_case() {
   esac
   [ -n "$setup" ] && "$setup" "$dir"
   local out rc=0
+  # shellcheck disable=SC2086
   out="$(
-    WD_CONFIG=/dev/null \
+    env WD_CONFIG=/dev/null \
     WD_TEST_MODE=1 \
     WD_TEST_SESSION_ALIVE="$alive" \
     WD_TEST_ORCH_PANE="$pane" \
     WD_STATE_DIR="$dir/state" \
     WD_HEARTBEAT_FILE="$dir/hb" \
     WD_LEDGER_FILE="$dir/ledger.jsonl" \
+    $CASE_ENV \
     bash "$WD" --dry-run 2>&1
   )" || rc=$?
+  CASE_ENV=""
   echo "$out" > "$dir/output.txt"
   if [ "$rc" -ne 0 ]; then
     bad "$name: watchdog exited rc=$rc (expected 0)"
@@ -112,8 +118,8 @@ seed_escalated_only()    { echo $((NOW-60)) > "$1/state/escalated.marker"; }
 echo "== decision scenarios (dry-run, injected probes) =="
 #         name                      expected            alive pane  hb       json
 run_case  ok-fresh-alive            ok                  1     %42   fresh    "$HB_OK"
-run_case  dead-session-fresh-hb     rewake              0     ""    fresh    "$HB_OK"
-run_case  dead-session-stale-hb     rewake              0     ""    stale    "$HB_OK"
+run_case  dead-session-fresh-hb     rewake              0     ""    fresh    "$HB_SOLO"
+run_case  dead-session-stale-hb     rewake              0     ""    stale    "$HB_SOLO"
 run_case  pane-missing-session-up   rewake              1     ""    fresh    "$HB_OK"
 run_case  stale-first-tick          nudged              1     %42   stale    "$HB_OK"
 run_case  stale-after-nudge         kill_rewake         1     %42   stale    "$HB_OK"      seed_old_nudge
@@ -125,10 +131,10 @@ run_case  ctx-ceiling-overdue       kill_rewake         1     %42   fresh    "$H
 
 echo "== restart budget scenarios (GSL-53) =="
 #         name                      expected            alive pane  hb       json           seed
-run_case  budget-exhausted          escalated           0     ""    fresh    "$HB_OK"       seed_3_recent_restarts
-run_case  budget-available          rewake              0     ""    fresh    "$HB_OK"       seed_2_recent_restarts
-run_case  budget-window-pruned      rewake              0     ""    fresh    "$HB_OK"       seed_3_old_restarts
-run_case  escalation-suppressed     escalated           0     ""    fresh    "$HB_OK"       seed_exhausted_and_escalated
+run_case  budget-exhausted          escalated           0     ""    fresh    "$HB_SOLO"     seed_3_recent_restarts
+run_case  budget-available          rewake              0     ""    fresh    "$HB_SOLO"     seed_2_recent_restarts
+run_case  budget-window-pruned      rewake              0     ""    fresh    "$HB_SOLO"     seed_3_old_restarts
+run_case  escalation-suppressed     escalated           0     ""    fresh    "$HB_SOLO"     seed_exhausted_and_escalated
 run_case  ok-clears-escalated       ok                  1     %42   fresh    "$HB_OK"       seed_escalated_only
 
 # Budget exhausted: escalation in ledger, NO restart, marker written.
@@ -164,6 +170,94 @@ if [ ! -f "$WORK/ok-clears-escalated/state/escalated.marker" ]; then
   ok "healthy tick clears escalated marker"
 else
   bad "escalated marker not cleared on healthy tick"
+fi
+
+echo "== Gastown debounce scenarios (GSL-54) =="
+seed_last_started()      { echo $((NOW - 30)) > "$1/state/last-started.marker"; }
+seed_zombie_2()          { echo 2 > "$1/state/zombie.count"; }
+seed_zombie_2_recover()  { echo 2 > "$1/state/zombie.count"; }
+seed_nudged_and_cooldown() { echo $((NOW - 400)) > "$1/state/nudge.marker"; echo $((NOW - 60)) > "$1/state/last-kill.marker"; }
+
+# (a) startup grace — Gastown #567 / F1-S2
+CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 30))"
+run_case  grace-session-created     ok_grace            1     %42   missing  ""
+run_case  grace-last-started        ok_grace            1     %42   missing  ""             seed_last_started
+CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 500))"
+run_case  grace-expired             nudged              1     %42   missing  ""
+
+# (b) zombie debounce — 3 consecutive cycles / F1-S3
+CASE_ENV="WD_TEST_PROC_ALIVE=0"
+run_case  zombie-first-cycle        zombie_watch        1     %42   stale    "$HB_OK"
+CASE_ENV="WD_TEST_PROC_ALIVE=0"
+run_case  zombie-third-cycle        kill_rewake         1     %42   stale    "$HB_OK"       seed_zombie_2
+run_case  zombie-recovers           nudged              1     %42   stale    "$HB_OK"       seed_zombie_2_recover
+
+# (c) kill cooldown  (d) mass-death
+run_case  kill-cooldown-defers      kill_deferred       1     %42   stale    "$HB_OK"       seed_nudged_and_cooldown
+run_case  mass-death                mass_death          0     ""    fresh    "$HB_OK"
+
+if [ "$(cat "$WORK/zombie-first-cycle/state/zombie.count" 2>/dev/null)" = "1" ]; then
+  ok "zombie counter incremented to 1 (no kill on first divergence)"
+else
+  bad "zombie counter wrong after first cycle"
+fi
+if grep -qE 'zombie_confirmed_3_cycles' "$WORK/zombie-third-cycle/output.txt" \
+   && grep -q '"event":"orchestrator_restarted"' "$WORK/zombie-third-cycle/ledger.jsonl"; then
+  ok "zombie confirmed only on 3rd consecutive cycle -> kill+re-wake (F1-S3)"
+else
+  bad "zombie 3-cycle confirmation failed"
+fi
+if [ ! -f "$WORK/zombie-recovers/state/zombie.count" ]; then
+  ok "process reappears -> zombie counter reset (consecutive, not cumulative)"
+else
+  bad "zombie counter not reset on recovery"
+fi
+if ! grep -q '"event":"kill"' "$WORK/kill-cooldown-defers/ledger.jsonl" 2>/dev/null; then
+  ok "kill within cooldown deferred (no kill event)"
+else
+  bad "kill executed despite cooldown"
+fi
+if grep -q '"event":"mass_death"' "$WORK/mass-death/ledger.jsonl" \
+   && grep -q '"event":"escalation"' "$WORK/mass-death/ledger.jsonl" \
+   && ! grep -q '"event":"orchestrator_restarted"' "$WORK/mass-death/ledger.jsonl"; then
+  ok "mass death -> escalate, no blind restart"
+else
+  bad "mass death handling wrong"
+fi
+
+# (e) single-flight + rate limit — the watchdog itself is debounced
+dir="$WORK/rate-limit"; mkdir -p "$dir/state"; fresh_hb "$dir/hb" "$HB_OK"
+env1="WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_TEST_SESSION_ALIVE=1 WD_TEST_ORCH_PANE=%42 WD_STATE_DIR=$dir/state WD_HEARTBEAT_FILE=$dir/hb WD_LEDGER_FILE=$dir/ledger.jsonl"
+# shellcheck disable=SC2086
+out1="$(env $env1 bash "$WD" --dry-run 2>&1)" || true
+# shellcheck disable=SC2086
+out2="$(env $env1 bash "$WD" --dry-run 2>&1)" || true
+if echo "$out1" | grep -q "DECISION=ok" && echo "$out2" | grep -q "rate-limited"; then
+  ok "second tick within min interval is rate-limited"
+else
+  bad "rate limit failed (out2: $(echo "$out2" | tail -1))"
+fi
+
+dir="$WORK/lock-held"; mkdir -p "$dir/state/tick.lock"; fresh_hb "$dir/hb" "$HB_OK"
+# shellcheck disable=SC2086
+out="$(env WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_TEST_SESSION_ALIVE=1 WD_TEST_ORCH_PANE=%42 \
+      WD_STATE_DIR="$dir/state" WD_HEARTBEAT_FILE="$dir/hb" WD_LEDGER_FILE="$dir/ledger.jsonl" \
+      bash "$WD" --dry-run 2>&1)" || true
+if echo "$out" | grep -q "single-flight" && ! echo "$out" | grep -q "DECISION="; then
+  ok "fresh lock held -> tick exits without acting (single-flight)"
+else
+  bad "single-flight lock not respected"
+fi
+
+dir="$WORK/lock-stale"; mkdir -p "$dir/state/tick.lock"; fresh_hb "$dir/hb" "$HB_OK"
+touch -t "$(date -v-30M +%Y%m%d%H%M.%S)" "$dir/state/tick.lock"
+out="$(env WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_TEST_SESSION_ALIVE=1 WD_TEST_ORCH_PANE=%42 \
+      WD_STATE_DIR="$dir/state" WD_HEARTBEAT_FILE="$dir/hb" WD_LEDGER_FILE="$dir/ledger.jsonl" \
+      bash "$WD" --dry-run 2>&1)" || true
+if echo "$out" | grep -q "stealing stale" && echo "$out" | grep -q "DECISION=ok"; then
+  ok "stale lock (crashed tick) stolen, tick proceeds"
+else
+  bad "stale lock not stolen"
 fi
 
 echo "== side-effect assertions =="

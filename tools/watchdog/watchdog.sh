@@ -21,6 +21,15 @@
 #     exponential backoff (base 1s, cap 16s); exhausted -> NO kill, NO restart,
 #     escalate to the owner instead — "never mask an orchestrator bug with a
 #     restart loop" (warren supervisor/main.ts:12-14)
+#   * Gastown debounce rails (every watchdog decision counter-debounced,
+#     cooldown-limited, warm-up-exempt; the watchdog itself single-flight +
+#     rate-limited — 04 §7.1):
+#       startup grace  — fresh session exempt from staleness ~120s (issue #567)
+#       zombie         — pane-alive != process-alive only after 3 consecutive
+#                        cycles AND a stale heartbeat (never a single source)
+#       kill cooldown  — >= 5 min between force-kills
+#       mass-death     — whole session gone with >=2 workers recorded = systemic
+#                        failure -> escalate, do NOT restart blindly
 #   * Re-wake = the EXISTING cold-start protocol (re-attach to live workers,
 #     never respawn them). This script contains ZERO LLM calls; the only
 #     `claude` invocation is spawning the interactive replacement orchestrator.
@@ -41,7 +50,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.2.0 (GSL-53)"
+WD_VERSION="0.3.0 (GSL-54)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -94,14 +103,25 @@ fi
 : "${WD_RESTART_WINDOW_SECS:=3600}" # sliding budget window
 : "${WD_BACKOFF_BASE_SECS:=1}"      # exponential backoff base
 : "${WD_BACKOFF_CAP_SECS:=16}"      # exponential backoff cap
-: "${WD_ESCALATE_REPEAT_SECS:=3600}"# re-escalate at most this often while still down
+: "${WD_ESCALATE_REPEAT_SECS:=3600}" # re-escalate at most this often while still down
 : "${WD_ESCALATE_HOOK:=}"           # optional executable: called with the escalation
                                     # message (phase-6 push / ntfy extension point)
+
+# Gastown debounce rails (PRD R1.4) — each threshold config-overridable
+: "${WD_STARTUP_GRACE_SECS:=120}"   # warm-up exemption from staleness (Gastown #567)
+: "${WD_ZOMBIE_CYCLES:=3}"          # consecutive pane-alive/process-dead ticks before zombie
+: "${WD_KILL_COOLDOWN_SECS:=300}"   # minimum gap between force-kills
+: "${WD_MASS_DEATH_WORKERS:=2}"     # session gone with >= this many recorded workers = systemic
+: "${WD_MIN_TICK_INTERVAL_SECS:=60}" # watchdog self rate-limit (launchd tick is 180s)
+: "${WD_LOCK_STALE_SECS:=900}"      # steal a single-flight lock older than this (crashed tick)
+: "${WD_AGENT_PROC_REGEX:=claude}"  # process expected under the orchestrator pane
 
 # Test-mode probe injection (smoke tests only; forces dry-run for safety)
 : "${WD_TEST_MODE:=0}"
 : "${WD_TEST_SESSION_ALIVE:=0}"
 : "${WD_TEST_ORCH_PANE:=}"
+: "${WD_TEST_SESSION_CREATED:=}"    # epoch of session start (grace tests)
+: "${WD_TEST_PROC_ALIVE:=1}"        # agent process detected under the pane (zombie tests)
 
 if [ "$WD_TEST_MODE" = "1" ]; then
   DRY_RUN=1
@@ -123,9 +143,12 @@ validate_config() {
   local k
   for k in WD_HB_STALE_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
            WD_RESTART_BUDGET WD_RESTART_WINDOW_SECS WD_BACKOFF_BASE_SECS WD_BACKOFF_CAP_SECS \
-           WD_ESCALATE_REPEAT_SECS; do
+           WD_ESCALATE_REPEAT_SECS WD_STARTUP_GRACE_SECS WD_ZOMBIE_CYCLES WD_KILL_COOLDOWN_SECS \
+           WD_MASS_DEATH_WORKERS WD_MIN_TICK_INTERVAL_SECS WD_LOCK_STALE_SECS; do
     is_uint "${!k}" || die_config "$k must be a non-negative integer, got: '${!k}'"
   done
+  [ "$WD_ZOMBIE_CYCLES" -ge 1 ] || die_config "WD_ZOMBIE_CYCLES must be >= 1"
+  [ -n "$WD_AGENT_PROC_REGEX" ] || die_config "WD_AGENT_PROC_REGEX must not be empty"
   [ "$WD_CONTEXT_CEILING_PCT" -le 100 ] || die_config "WD_CONTEXT_CEILING_PCT must be <= 100"
   [ "$WD_RESTART_BUDGET" -ge 1 ] || die_config "WD_RESTART_BUDGET must be >= 1"
   [ "$WD_BACKOFF_CAP_SECS" -ge "$WD_BACKOFF_BASE_SECS" ] || die_config "WD_BACKOFF_CAP_SECS must be >= WD_BACKOFF_BASE_SECS"
@@ -222,6 +245,46 @@ resolve_orch_pane() {
     pane="$("$WD_TMUX_BIN" display-message -p -t "$WD_ORCH_PANE_TARGET" '#{pane_id}' 2>/dev/null || true)"
   fi
   echo "$pane"
+}
+
+probe_session_created() { # epoch the tmux session was created (empty if unknown)
+  if [ "$WD_TEST_MODE" = "1" ]; then echo "$WD_TEST_SESSION_CREATED"; return 0; fi
+  "$WD_TMUX_BIN" display-message -p -t "$WD_TMUX_SESSION" '#{session_created}' 2>/dev/null || true
+}
+
+# pane-alive != process-alive (Gastown: the two signals diverge routinely).
+# Walks the pane's process tree (<=6 generations) looking for the agent.
+probe_agent_process_alive() { # $1 = pane id
+  if [ "$WD_TEST_MODE" = "1" ]; then [ "$WD_TEST_PROC_ALIVE" = "1" ]; return; fi
+  local pid gen all kids depth=0
+  pid="$("$WD_TMUX_BIN" display-message -p -t "$1" '#{pane_pid}' 2>/dev/null || true)"
+  is_uint "$pid" || return 1
+  all="$pid"; gen="$pid"
+  while [ -n "$gen" ] && [ "$depth" -lt 6 ]; do
+    kids="$(pgrep -P "$(printf '%s' "$gen" | tr ' ' ',')" 2>/dev/null | tr '\n' ' ' | sed 's/ $//' || true)"
+    [ -z "$kids" ] && break
+    all="$all $kids"; gen="$kids"; depth=$(( depth + 1 ))
+  done
+  ps -o command= -p "$(printf '%s' "$all" | tr ' ' ',')" 2>/dev/null | grep -qE "$WD_AGENT_PROC_REGEX"
+}
+
+# --- counters (consecutive-cycle debounce, e.g. zombie) ----------------------
+counter_path()  { echo "$WD_STATE_DIR/$1.count"; }
+counter_read()  { local v; v="$(cat "$(counter_path "$1")" 2>/dev/null || echo 0)"; is_uint "$v" && echo "$v" || echo 0; }
+counter_incr()  { local v; v="$(( $(counter_read "$1") + 1 ))"; echo "$v" > "$(counter_path "$1")"; echo "$v"; }
+counter_clear() { rm -f "$(counter_path "$1")"; }
+
+# --- startup grace (Gastown #567: don't judge a fresh session by heartbeat) --
+# Sources (youngest wins): last-started marker (watchdog's own re-wake) and
+# tmux session_created (owner started it manually).
+in_startup_grace() {
+  local now v
+  now="$(now_epoch)"
+  v="$(marker_read last-started)"
+  if is_uint "$v" && [ $(( now - v )) -lt "$WD_STARTUP_GRACE_SECS" ]; then return 0; fi
+  v="$(probe_session_created)"
+  if is_uint "$v" && [ $(( now - v )) -lt "$WD_STARTUP_GRACE_SECS" ]; then return 0; fi
+  return 1
 }
 
 # --- actions (dry-run aware) ------------------------------------------------
@@ -369,10 +432,19 @@ do_restart() {
     return 0
   fi
   if [ -n "$pane" ]; then
+    # Kill cooldown (Gastown): >= WD_KILL_COOLDOWN_SECS between force-kills.
+    local kage; kage="$(marker_age last-kill)"
+    if [ -n "$kage" ] && [ "$kage" -lt "$WD_KILL_COOLDOWN_SECS" ]; then
+      DECISION="kill_deferred"
+      DECISION_REASON="kill_cooldown(${kage}s<${WD_KILL_COOLDOWN_SECS}s):${DECISION_REASON}"
+      log "kill deferred: last force-kill ${kage}s ago (< ${WD_KILL_COOLDOWN_SECS}s cooldown)"
+      return 0
+    fi
     if ! act_kill "$pane"; then
       DECISION="kill_refused"
       return 0
     fi
+    marker_write "last-kill"
   fi
   delay="$(backoff_secs)"
   if [ "$DRY_RUN" = "1" ]; then
@@ -409,6 +481,16 @@ decide_and_act() {
   # 2. Dead session (or unresolvable orchestrator pane) — cross-check rule:
   #    fresh heartbeat + dead session = dead. Re-wake via cold-start.
   if [ "$session_alive" = "0" ] || [ -z "$pane" ]; then
+    # Mass-death detection (Gastown): the WHOLE session gone while the last
+    # heartbeat recorded >= N live workers is a systemic failure (tmux server
+    # died, reboot, sleep) — do NOT restart blindly, escalate to the owner.
+    if [ "$session_alive" = "0" ] && is_uint "$HB_WORKERS" \
+       && [ "$HB_WORKERS" -ge "$WD_MASS_DEATH_WORKERS" ]; then
+      DECISION="mass_death"; DECISION_REASON="session_gone_with_${HB_WORKERS}_workers"
+      ledger_emit "mass_death" "open_workers=$HB_WORKERS" "reason=whole_session_gone"
+      escalate "mass death: whole tmux session '$WD_TMUX_SESSION' gone with $HB_WORKERS live workers recorded — systemic failure, not restarting blindly"
+      return 0
+    fi
     if [ "$session_alive" = "0" ]; then
       DECISION="rewake"; DECISION_REASON="dead_session"
     else
@@ -421,6 +503,7 @@ decide_and_act() {
   # 3. Live session + fresh heartbeat.
   if hb_is_fresh; then
     marker_clear "nudge"
+    counter_clear "zombie"
     if is_uint "$HB_CTX" && [ "$HB_CTX" -ge "$WD_CONTEXT_CEILING_PCT" ]; then
       local hage; hage="$(marker_age handoff-request)"
       if [ -z "$hage" ]; then
@@ -442,8 +525,35 @@ decide_and_act() {
     return 0
   fi
 
-  # 4. Live session + stale/missing heartbeat = write-divergence.
-  #    One nudge first; still stale after the grace -> kill + re-wake.
+  # 4. Live session + stale/missing heartbeat.
+  # 4a. Startup grace (Gastown #567): a fresh session that hasn't written its
+  #     first heartbeat yet is exempt from staleness for the warm-up window.
+  if in_startup_grace; then
+    DECISION="ok_grace"; DECISION_REASON="startup_grace_${WD_STARTUP_GRACE_SECS}s"
+    counter_clear "zombie"
+    return 0
+  fi
+
+  # 4b. Zombie debounce: pane exists but no agent process under it. Judged by
+  #     TWO sources (stale heartbeat AND process scan), and only after
+  #     WD_ZOMBIE_CYCLES consecutive cycles — transient gaps during handoffs
+  #     diverge routinely (Gastown mayorZombieCount >= 3).
+  if ! probe_agent_process_alive "$pane"; then
+    local zc; zc="$(counter_incr zombie)"
+    if [ "$zc" -ge "$WD_ZOMBIE_CYCLES" ]; then
+      DECISION="kill_rewake"; DECISION_REASON="zombie_confirmed_${zc}_cycles"
+      counter_clear "zombie"
+      marker_clear "nudge"
+      do_restart "$pane"
+    else
+      DECISION="zombie_watch"; DECISION_REASON="zombie_${zc}_of_${WD_ZOMBIE_CYCLES}"
+    fi
+    return 0
+  fi
+  counter_clear "zombie"
+
+  # 4c. Write-divergence: process alive but heartbeat stale.
+  #     One nudge first; still stale after the grace -> kill + re-wake.
   local nage; nage="$(marker_age nudge)"
   if [ -z "$nage" ]; then
     DECISION="nudged"; DECISION_REASON="stale_heartbeat"
@@ -458,18 +568,37 @@ decide_and_act() {
   fi
 }
 
-# --- single-flight lock (basic; hardened with rate-limit in GSL-54) ---------
+# --- single-flight lock + self rate-limit (Gastown: the watchdog itself is
+# --- single-flight and rate-limited so it can't fire on every tick) ----------
 LOCK_DIR=""
 release_lock() { [ -n "$LOCK_DIR" ] && rmdir "$LOCK_DIR" 2>/dev/null || true; }
 
 acquire_lock() {
   LOCK_DIR="$WD_STATE_DIR/tick.lock"
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    log "another watchdog tick is running (lock held: $LOCK_DIR) — exiting (single-flight)"
-    LOCK_DIR=""
-    exit 0
+    # Steal only a provably stale lock (crashed tick), never a live one.
+    local lm
+    lm="$(file_mtime "$LOCK_DIR" || true)"
+    if is_uint "$lm" && [ $(( $(now_epoch) - lm )) -ge "$WD_LOCK_STALE_SECS" ]; then
+      log "stealing stale single-flight lock (age >= ${WD_LOCK_STALE_SECS}s — crashed tick)"
+      rm -rf "$LOCK_DIR"
+      if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        log "lock contention after steal — exiting (single-flight)"
+        LOCK_DIR=""; exit 0
+      fi
+    else
+      log "another watchdog tick is running (lock held: $LOCK_DIR) — exiting (single-flight)"
+      LOCK_DIR=""; exit 0
+    fi
   fi
   trap release_lock EXIT
+  # Rate limit: refuse to run more often than WD_MIN_TICK_INTERVAL_SECS.
+  local tage; tage="$(marker_age last-tick)"
+  if [ -n "$tage" ] && [ "$tage" -lt "$WD_MIN_TICK_INTERVAL_SECS" ]; then
+    log "rate-limited: last tick ${tage}s ago < ${WD_MIN_TICK_INTERVAL_SECS}s — exiting"
+    exit 0
+  fi
+  marker_write "last-tick"
 }
 
 # --- main --------------------------------------------------------------------
