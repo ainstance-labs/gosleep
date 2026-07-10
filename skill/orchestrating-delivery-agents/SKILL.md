@@ -495,8 +495,65 @@ wait, surface `BLOCKED_ON_HUMAN` — do not roll.
 - Agree a **max cycle count and/or aggregate-token ceiling** up front; after EVERY worker terminates, APPEND one telemetry line to the TELEMETRY block of ORCHESTRATION-STATE.md (format and example in the STATE file section above — do this BEFORE spawning the next cycle; never defer).
 - **Mandatory TELEMETRY in every worker brief:** every cycle brief MUST include a requirement that the worker reports a telemetry line at the end of its COMPLETE report: `tokens_out=N tokens_in=N cache_read=N`. Tally each cycle into the STATE TELEMETRY block before spawning the next cycle. This is not optional — it is the only way cumulative cost tracking stays accurate.
 - **Token recovery when a dead worker failed to report tokens:** (1) RECOVER — range-read ONLY the `## ORCHESTRATOR REPORT` block of the dead worker's handoff file (the existing read-exception covers exactly this — see "Common mistakes"); extract token counts from that block. (2) If the report block is absent or the file cannot be found: report the verified subtotal from other cycles with the gap EXPLICITLY FLAGGED — e.g. `tokens_this_cycle=UNRECOVERED — gap flagged; cumulative excludes this cycle`. NEVER fabricate an aggregate to fill the gap. NEVER say "data not available" and move on as if the cost didn't happen. The gap must be visible in the TELEMETRY block.
-- On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork.
-- **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no new merged PR, = stuck → STOP and ask the human. A chain with no forward progress is a runaway, even if it looks busy.
+- On ceiling → STOP and surface `BUDGET_EXCEEDED` as a decision fork. A ceiling is a hard budget
+  boundary, NOT a breaker signal — it never cools down and never HALF_OPEN-probes.
+- **Loop guard:** two consecutive cycles with the same / non-advancing `NEXT`, or N cycles with no
+  new merged PR, = no forward progress. A chain with no forward progress is a runaway, even if it
+  looks busy. These two signals do not hard-stop on their own anymore — they feed the circuit
+  breaker (next section), which stages the response: OPEN → cooldown → one probe → owner.
+
+## Circuit breaker — staged anti-runaway (extends the loop guard)
+
+A bare hard-STOP loop guard has two overnight failure modes: a transient flake trips it
+PERMANENTLY (false halt — nobody is awake to un-stick it), and runaway shapes it doesn't watch
+(the same error recurring cycle after cycle, output quietly shrinking) spin unnoticed. The breaker
+keeps the loop-guard signals, adds ralph's, and stages the response with state + cooldown + a
+single probe (ralph-claude-code `lib/circuit_breaker.sh`; counters human-resettable per autosk).
+
+**States:** `CLOSED` (normal) → `OPEN` (tripped) → `HALF_OPEN` (one probe after cooldown) →
+`CLOSED` on success / back to `OPEN` on failure.
+
+**Trip signals — counted at every cycle boundary, persisted in STATE:**
+
+| Signal | Trips at (default) | Counting rule |
+|---|---|---|
+| Non-advancing `NEXT` (loop guard) | 2 consecutive cycles | same/unchanged `NEXT` across a boundary = +1; any advance resets |
+| No new merged PR (loop guard) | 3 cycles (owner-set) | resets on any merge |
+| Same error signature | 3 consecutive cycles | signature = first line of the failing gate/tool error, paths/timestamps normalized; a DIFFERENT error resets the count (new information ≠ spinning) |
+| Output/progress decline | 2 consecutive cycles | cycle produced < ~30% of the chain's typical substance (commits + report content — ralph's >70% decline); git motion counts toward progress, never toward completion |
+
+Any single signal at threshold → **OPEN**.
+
+**On OPEN:** spawn nothing new (live workers finish NATURALLY — the breaker never kills productive
+work); write the breaker line to STATE (below); escalate to the owner — OPEN is on the night-mode
+critical list, so it escalates immediately even at night; append `note:"breaker=OPEN"` to the next
+heartbeat. Keep pulsing (long-waiting cadence): supervising the wind-down and honoring the cooldown
+still need a live pulse.
+
+**Cooldown → HALF_OPEN → probe:** after the cooldown (default 30 min) move to `HALF_OPEN` and run
+EXACTLY ONE probe cycle — the smallest unblocked task, fresh context, normal worker tier. Probe
+advances for real (gates green + a genuine commit/PR advance, and the tripping signal did not
+recur) → `CLOSED`, zero the counters, log `BREAKER closed by probe`. Probe fails or re-trips →
+back to `OPEN`, escalate again, DOUBLE the cooldown (cap ~2h), and run NO further probes until the
+owner resets — a repeatedly-OPEN breaker is an owner problem, not a retry problem.
+
+**The breaker line — STATE persistence + manual reset.** One line, kept next to the TELEMETRY
+block, updated atomically at every cycle boundary:
+```
+breaker=CLOSED since=<ISO ts> next_probe=- counters: next_same=0/2 no_pr=0/3 err_same=0/3 decline=0/2 last_error_sig=""
+```
+Human-resettable (autosk phone-editable counters): the owner edits the line to `breaker=CLOSED`
+with zeroed counters — from a phone via the repo if need be. The orchestrator re-reads the line
+every pulse and OBEYS THE FILE (STATE is the authority): never argue with a manual reset — log
+`BREAKER manually reset by owner` and resume. A replacement/re-woken orchestrator inherits the
+line as-is: **a restart does not reset the breaker** (that would mask the bug the breaker caught).
+
+**Adjacent rails — related, never conflated:**
+- **Watchdog restart budget** (GSL-53) guards orchestrator DEATH loops at the process level; the
+  breaker guards a LIVE chain that stopped producing. Both exist to stop masking a real bug.
+- **Re-wake anti-crash-loop** ("predecessors died at the same point → don't charge in") is the
+  post-restart cousin; an OPEN breaker line in STATE binds a re-woken orchestrator too.
+- **`BUDGET_EXCEEDED`** is a ceiling: STOP + fork, no cooldown, no probe.
 
 ## Security & worker authority
 
@@ -625,7 +682,8 @@ A new project has no handoffs. Before cycle #1:
 | Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
 | Live git/gh contradicts handoff | Live truth wins: overwrite LIVE-STATUS block + append `CORRECTION:` note to cycle log (atomic via hidden temp). Never carry contradicted IDs forward. |
 | Late-arriving ID (PR#/issue# after TBD written) | Find the TBD placeholder line in STATE; replace in-place (idempotent). Never add a second line; never leave TBD standing. |
-| Cost ceiling / loop guard | Cumulative totals in TELEMETRY block → STOP + ask when ceiling hit or same NEXT twice. |
+| Cost ceiling | Cumulative totals in TELEMETRY block → STOP + surface `BUDGET_EXCEEDED` when hit. Ceiling ≠ breaker: no cooldown, no probe. |
+| Breaker signal at threshold (same `NEXT` ×2 / no new PR ×3 / same error ×3 / output decline ×2) | OPEN: spawn nothing, breaker line in STATE, escalate (critical — even at night), keep pulsing. Cooldown 30m → ONE HALF_OPEN probe → CLOSED on real advance; re-trip → OPEN, cooldown ×2, no more probes until owner reset (edit the breaker line). Restart never resets the breaker. |
 | Dead worker's tokens not reported | (1) Range-read ONLY the `## ORCHESTRATOR REPORT` block in its handoff — extract tokens from there. (2) If still unrecoverable: record `tokens_this_cycle=UNRECOVERED — gap flagged` in TELEMETRY. NEVER say "unavailable" and move on. |
 | Irreversible action requested | Denylist → `BLOCKED_ON_HUMAN`. |
 
@@ -684,7 +742,13 @@ A new project has no handoffs. Before cycle #1:
   In night mode ONLY denylist items may wake the owner. Everything else: `QUESTIONS-PENDING` +
   reversible default (or park just that item) + reroute the worker + surface it at the morning
   boundary. A 3am question the owner can't answer is a stalled pane, not diligence.
-- "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR) → Loop guard: STOP, ask.
+- "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR / same error again) →
+  Breaker signal: count it in the STATE breaker line; at threshold → OPEN, not "one more cycle".
+- **"The breaker is OPEN but I'm confident the next cycle will work — I'll spawn it."** → No. OPEN
+  means NO new spawns, full stop. The path back is exactly one: cooldown → ONE HALF_OPEN probe →
+  CLOSED only on a real advance. A failed probe returns to OPEN and waits for the OWNER's manual
+  reset (edit the breaker line) — never a second probe on your own initiative, and a restart/re-wake
+  never resets the breaker either.
 - "Full authority, so I'll force-push / deploy / drop-table." → Denylist → `BLOCKED_ON_HUMAN`.
 
 ## Reference files
