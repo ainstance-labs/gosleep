@@ -301,6 +301,40 @@ resolve the conflict by skipping heartbeats or by silently ignoring nudges.
 - **Sleeping just past a threshold** — either just past the cache TTL (dead zone) or just past
   `WD_HB_STALE_SECS` (self-inflicted nudge). Sleep decisively short or decisively long.
 
+### HEARTBEAT_OK fast-path — the minimal tick
+
+When every worker is alive and its files are growing, the pulse must cost almost nothing
+(OpenClaw heartbeat: a tiny STABLE checklist; "HEARTBEAT_OK → do nothing"). Run these checks in
+order — they are the whole tick:
+
+1. **Heartbeat written** (FIRST act — always, fast-path or not).
+2. **Inbox empty** — no worker reports, no owner messages waiting.
+3. **Fleet census unchanged** — one `tmux list-panes` (or `/workflows` glance): same pane ids/count
+   as LIVE-STATUS.
+4. **Progress probe** — ONE `git log` (or handoff-dir mtime) against the SHA stored in STATE:
+   movement = grinding. No movement is STILL green while item 5's clocks are unexpired — idle ≠
+   stuck.
+5. **No expired clocks** — patience windows, breaker `next_probe`, quota ETA, mode boundary
+   (night/morning) all un-crossed.
+
+**ALL green → HEARTBEAT_OK:** write nothing to STATE (log nothing on no-change), read nothing
+further — no handoff bodies, no STATE rewrite, no extra probes — re-arm per the cadence table, end
+the turn. Target cost: ≤3–4 cheap tool calls, zero file reads beyond the probes.
+
+**ANY check non-green → leave the fast-path** and triage ONLY that delta through its own tree
+(idle/liveness, finalize exception, mode boundary, breaker, quota-wait). The fast-path is an exit
+ramp for healthy ticks, never a way to skip a delta you already saw.
+
+Worked example (night, stable fleet, long-waiting cadence):
+```
+[tick 03:41] hb appended: {"ts":"2026-07-10T03:41:07Z","cycle":13,"context_pct":44,
+             "open_workers":2,"status":"ok","mode":"night","pane":"%4"}
+inbox: empty | panes: %5 %7 — matches LIVE-STATUS | git probe: worker branch
+@ a1b2c3d -> a9e8f7c (moved — grinding) | clocks: patience 12m/45m, breaker
+CLOSED, no quota-wait, night until 08:30 — none expired
+=> HEARTBEAT_OK. Nothing written, nothing else read. ScheduleWakeup 1500s. End turn.
+```
+
 ## Night mode — activeHours
 
 The owner declares **activeHours** — the attended window in the owner's local time. Outside it the
@@ -661,7 +695,7 @@ A new project has no handoffs. Before cycle #1:
 
 | Situation | Do |
 |---|---|
-| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN read STATE / probe workers. |
+| Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / clocks — all green = re-arm + end turn, nothing else read or written. |
 | Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER 300–540s (dead zone). |
 | Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → `QUESTIONS-PENDING` + reversible default; escalations buffered except critical; long-waiting cadence. |
 | Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; surface ALL buffered questions/escalations in ONE owner summary. Buffered items stay open in STATE until answered — never silently dropped. |
