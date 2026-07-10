@@ -43,9 +43,10 @@ in-progress chain" plus the "Re-wake — automated restart by watchdog" deltas E
    `- ORCHESTRATOR RESTARTED (re-wake; reason={{REASON}}; restart {{RESTART_N}}/{{RESTART_BUDGET}}; adopted=[...])`.
 6. Resume the pulse. Never end a turn without an armed wake-up while workers are live.
 
-**Unattended rules:** NEVER block on AskUserQuestion — append each question to a
-`QUESTIONS-PENDING` section in ORCHESTRATION-STATE.md and continue on unblocked work; only
-denylist items stay parked as BLOCKED_ON_HUMAN. If the heartbeat tail / STATE log shows
+**Unattended rules:** NEVER block on AskUserQuestion — append each question as a typed record to
+the question queue (`docs/lab/questions/queue.jsonl`; skill "Question buffer" section — fall back
+to a `QUESTIONS-PENDING` section in ORCHESTRATION-STATE.md only if the queue tooling is missing)
+and continue on unblocked work; only denylist items stay parked as BLOCKED_ON_HUMAN. If the heartbeat tail / STATE log shows
 predecessors dying repeatedly at the same point, do NOT repeat that action — park the item and
 take a different unblocked path; if nothing is safe, wind down deliberately (dated handoff +
 `status:"quiesced"` heartbeat once no workers remain live) instead of crashing into the wall a

@@ -361,7 +361,7 @@ watchdog restart.
 
 | Behavior | Day | Night |
 |---|---|---|
-| Questions at genuine forks | `AskUserQuestion` (Decision forks section) | **AskUserQuestion FORBIDDEN except denylist items.** Non-denylist question → append to `QUESTIONS-PENDING` in STATE (the re-wake mechanic), take the reversible default or park ONLY the affected item, continue on unblocked work |
+| Questions at genuine forks | `AskUserQuestion` (Decision forks section) — still log the record to the question queue | **AskUserQuestion FORBIDDEN except denylist items (= BLOCKER type).** Classify + append a typed record to the question queue (Question buffer section), take the reversible default (CLARIFY / DECISION-with-deadline) or park ONLY the affected item (BLOCKER), continue on unblocked work |
 | Escalations | Notify the owner directly | **Buffered** into STATE + surfaced at the morning boundary — EXCEPT critical: denylist hit, mass-death, restart-budget exhaustion, circuit-breaker OPEN, `BUDGET_EXCEEDED`. Critical still escalates immediately (watchdog hook / push when it exists) |
 | Work selection | Owner may steer mid-cycle | Autonomous reversible green delivery only; at a milestone boundary continue into the next unblocked phase (owner mandate 2026-07-10) — do not stop to ask |
 | Idle cadence | Per cadence table | Long-waiting tier (1200–1800s) is the default between boundaries; step down only for an active stall/verifier |
@@ -377,13 +377,60 @@ watchdog restart.
   (e.g. 3 per night window) — see `tools/watchdog/watchdog.conf.example`.
 - **Morning boundary** (first pulse at/after activeHours start): append `MODE → day` to the STATE
   log; drop `mode:"night"` from the heartbeat; **surface the night's buffer** — every open
-  `QUESTIONS-PENDING` item and every buffered escalation goes into ONE compact owner-facing summary
+  question-queue record and every buffered escalation goes into ONE compact owner-facing summary
   (the Phase-3 morning digest when it exists; until then a short message + pointer to the STATE
   section). Buffered items are never silently dropped: they stay open in STATE until answered or
   superseded. Then resume day-mode escalation behavior.
 - **A question buffered at night is not a stalled chain:** park only the affected task, reroute the
   worker to unblocked work, keep pulsing. `BLOCKED_ON_HUMAN` panes at night are reserved for
   denylist items alone.
+
+## Question buffer — four question types, four behaviors
+
+The #1 autonomy gap is a question that stops a pane: a synchronous `AskUserQuestion` at 03:00
+blocks work until morning and dies with the session. Phase-3 inversion: **the question RECORD is
+primary; a live `AskUserQuestion` is just one delivery channel**, raised for the same record only
+when the owner is present (owner messaged within ~15 min, or said "I'm back"). Owner absent →
+write the record to the question queue (`docs/lab/questions/queue.jsonl` — see the Question queue
+section) and behave per type below. The queue supersedes the STATE `QUESTIONS-PENDING` mechanic
+as the buffer's home — same discipline (buffer, default, reroute), but durable typed records on
+disk instead of ad-hoc STATE lines; night mode and re-wake briefs both write HERE. Either way the
+answer is logged back to the queue — the learning loop needs it whether it came live or buffered.
+
+**Typology — classify EVERY ownable question BEFORE acting on it:**
+
+| Type | When (classification) | Orchestrator behavior | Wakes the owner at night? |
+|---|---|---|---|
+| **BLOCKER** | Work cannot proceed AND no safe default exists: missing credentials, any denylist action, an irreversible fork | Park ONLY the affected item (park-per-task, never park-the-fleet); reroute workers to unblocked work; queue the record | **Yes — push immediately** (the only type that may wake the owner; manifest quiet-hours may batch even this) |
+| **DECISION** | A genuine fork with viable branches AND a defensible, reversible default | Queue the record with `default`, `default_rationale`, `reversibility` and an `auto_apply_at` deadline ("if unanswered by T, I do X"); keep working elsewhere; at T apply the default and log `decision.made` | No — batched into the morning digest, unless the record is marked high-impact |
+| **CLARIFY** | Ambiguity with one obviously-reasonable reading | Take the default IMMEDIATELY; record as answered-by-default so the owner can veto retroactively | No — digest only |
+| **FYI** | No answer needed: recovered incidents, thresholds crossed, policy rules tripped | Record only | No — digest only (unless severity ≥ incident) |
+
+**Classification rules — apply in order, first match wins:**
+1. **No safe default** (credentials, denylist, irreversible-if-wrong)? → **BLOCKER**.
+   Irreversibility alone forces BLOCKER: buffer-and-default is licensed by reversibility — never
+   default an irreversible fork, however confident the default feels.
+2. **Real fork + defensible reversible default?** → **DECISION**. The record must say what the
+   default is, why it is defensible, and when it auto-applies.
+3. **One obviously-reasonable reading?** → **CLARIFY** — proceeding is cheaper than asking; the
+   record exists so the owner can veto after the fact.
+4. **Nothing to answer?** → **FYI**.
+
+Severity shorthand: `BLOCKER > DECISION > CLARIFY > FYI`; "type ≤ DECISION" means
+DECISION/CLARIFY/FYI — everything that continues without a human.
+
+**Night-mode wiring** (the table above IS the night question policy — the Night mode section's
+question row delegates here): **BLOCKER is the only question type on the night critical list** —
+it may push/wake immediately, alongside the existing critical escalations (denylist hit,
+mass-death, restart-budget exhaustion, breaker OPEN, `BUDGET_EXCEEDED`). DECISION/CLARIFY/FYI
+never wake anyone: they buffer into the queue and surface at the morning boundary. Day mode uses
+the SAME records — the only day/night difference is the delivery channel (live ask vs
+queue+digest), never the record or its type.
+
+**Dedup before posing (question-spam guard):** five workers hitting the same ambiguity = ONE
+record. Before appending, check open records for the same `(task, question-hash)`; a duplicate
+appends a `seen_by` patch to the existing record, never a second question (mechanics in the
+Question queue section).
 
 ## Quota auto-wait — session-limit quiesce & resume
 
@@ -480,7 +527,7 @@ steps 1–6 exactly, with these deltas:
 
 | Manual cold-start | Watchdog re-wake (unattended) |
 |---|---|
-| A human started you and can answer questions | **Nobody is present.** NEVER block on AskUserQuestion: append the question to a `QUESTIONS-PENDING` section in STATE, take the reversible default or park only the affected item, and continue on unblocked work. Only denylist items stay parked as `BLOCKED_ON_HUMAN`. |
+| A human started you and can answer questions | **Nobody is present.** NEVER block on AskUserQuestion: append a typed record to the question queue (Question buffer section), take the reversible default or park only the affected item, and continue on unblocked work. Only denylist items (BLOCKER) stay parked as `BLOCKED_ON_HUMAN`. |
 | Restarting was a human's decision | Restart is **counted** — the watchdog's restart budget (GSL-53 tooling: N-in-window + backoff, escalate-and-STOP on exhaustion). The brief carries `restart N of M`; treat a high N as a signal, not trivia. |
 | Predecessor usually rolled cleanly (dated handoff written) | Predecessor likely died mid-flight: the newest handoff may be stale or truncated — apply the suspect-handoff rules; live git/gh wins. |
 
@@ -719,7 +766,7 @@ A new project has no handoffs. Before cycle #1:
 |---|---|
 | Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / clocks — all green = re-arm + end turn, nothing else read or written. |
 | Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) — ALWAYS. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). |
-| Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → `QUESTIONS-PENDING` + reversible default; escalations buffered except critical; long-waiting cadence. |
+| Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → typed record in the question queue + reversible default; escalations buffered except critical; long-waiting cadence. |
 | Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; surface ALL buffered questions/escalations in ONE owner summary. Buffered items stay open in STATE until answered — never silently dropped. |
 | Session limit hit (`You've hit your session limit` / StopFailure rate_limit) | Quiesce: hold workers (no kills, no spawns), STATE `status=quota-wait until=<ETA>`, heartbeat `status:"quiesced"` + `note:"quota-wait until <ETA>"` (`open_workers` = real count), arm ONE wake-up `min(3600s, ETA+~120s)` — a limited tick can't re-arm, so no hop chains; ETA > 1h out → resume falls to the watchdog alarm-clock (quiesced shield drops past ETA + `WD_QUOTA_GRACE_SECS`). STAY in session. First tick that runs = resume: heartbeat ok, re-census, un-hold. |
 | Ending a session (roll / chain done) | Final heartbeat line: `status:"rolling"` (successor expected) or `status:"quiesced"` + `open_workers:0` (chain done — watchdog must not restart). |
@@ -734,7 +781,7 @@ A new project has no handoffs. Before cycle #1:
 | Silent + no git progress, dirty tree | Directive nudge (commit/revert WIP); still stuck → `BLOCKED_ON_HUMAN`. |
 | Check progress | `git fetch` then `git log origin/main..origin/<branch>`; `gh pr view <n>`. Never the transcript. |
 | Lost the thread (compaction/restart) | Read `ORCHESTRATION-STATE.md` + confirm reality; never "spawn fresh to be safe". |
-| Session opened with a re-wake brief (watchdog restart) | Cold-start steps 1–6 + unattended deltas: ADOPT live workers (never re-spawn), buffer questions in STATE (`QUESTIONS-PENDING`, no AskUserQuestion-block), heartbeat `note:"re-wake: <reason>"`, restart record in the log. |
+| Session opened with a re-wake brief (watchdog restart) | Cold-start steps 1–6 + unattended deltas: ADOPT live workers (never re-spawn), buffer questions as typed queue records (no AskUserQuestion-block), heartbeat `note:"re-wake: <reason>"`, restart record in the log. |
 | Worker just terminated | APPEND telemetry line to ORCHESTRATION-STATE.md TELEMETRY block NOW (before spawning next cycle): `cycle=N worker=<name> model=<model> tokens_out=<N> tokens_in=<N> cache_read=<N> \| running: cycles=N total_tokens=T` |
 | Live git/gh contradicts handoff | Live truth wins: overwrite LIVE-STATUS block + append `CORRECTION:` note to cycle log (atomic via hidden temp). Never carry contradicted IDs forward. |
 | Late-arriving ID (PR#/issue# after TBD written) | Find the TBD placeholder line in STATE; replace in-place (idempotent). Never add a second line; never leave TBD standing. |
@@ -784,8 +831,8 @@ A new project has no handoffs. Before cycle #1:
   table). "I'll check back in 5 minutes" is doubly wrong — unarmed intent AND the ≥300/<540s dead zone.
 - **"The watchdog re-woke me — I'll ask the owner how to proceed." / "Predecessor died, so its
   workers must be dead too — I'll respawn the fleet."** → No, twice. Re-wake is UNATTENDED: buffer
-  questions in STATE (`QUESTIONS-PENDING`) and continue on unblocked work — only denylist items
-  park. And a dead orchestrator does NOT invalidate its workers: re-census (`tmux list-panes`,
+  questions as typed records in the question queue and continue on unblocked work — only denylist
+  items park. And a dead orchestrator does NOT invalidate its workers: re-census (`tmux list-panes`,
   `/workflows`) and ADOPT live workers; re-spawning them is double-dispatch.
 - **"Session limit hit — I'll write a handoff and exit; the watchdog will restart me after reset."**
   → No. Re-wakes during the limit fail serially and burn the restart budget; the watchdog
@@ -797,9 +844,10 @@ A new project has no handoffs. Before cycle #1:
   They are held, not stuck: panes keep in-flight state and resume free when the window opens.
   Killing them trades a free resume for a paid rebuild. Kill nothing, spawn nothing, wait.
 - **"It's 3am but this question genuinely matters — I'll AskUserQuestion / ping the owner."** → No.
-  In night mode ONLY denylist items may wake the owner. Everything else: `QUESTIONS-PENDING` +
-  reversible default (or park just that item) + reroute the worker + surface it at the morning
-  boundary. A 3am question the owner can't answer is a stalled pane, not diligence.
+  In night mode ONLY BLOCKER-type items (denylist, credentials, irreversible) may wake the owner.
+  Everything else: typed record in the question queue + reversible default (or park just that
+  item) + reroute the worker + surface it at the morning boundary. A 3am question the owner can't
+  answer is a stalled pane, not diligence.
 - "It's been merged, I'll keep chaining." (same `NEXT` twice / no new PR / same error again) →
   Breaker signal: count it in the STATE breaker line; at threshold → OPEN, not "one more cycle".
 - **"The breaker is OPEN but I'm confident the next cycle will work — I'll spawn it."** → No. OPEN
