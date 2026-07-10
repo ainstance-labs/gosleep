@@ -108,3 +108,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-77 — decisions/log.jsonl + learning loop — provenance-принуждение, qshape, candidates ×3](GSL-77-phase-gsl72-decision-log-learning-loop.md)
 - [GSL-78 — Morning digest — шаблон 7 секций, provenance-цитаты, morning boundary пишет файл](GSL-78-phase-gsl72-morning-digest.md)
 - [GSL-79 — PULSE-дельты — queue-скан в HEARTBEAT_OK, apply-at-deadline, LIVE-STATUS questions, BLOCKED_ON_HUMAN → queue+reroute](GSL-79-phase-gsl72-pulse-deltas.md)
+- [GSL-80 — Сводка фазы GSL-72 — что дала Phase 3, статус критериев, указатели, что дальше](GSL-80-phase-gsl72-summary.md)
