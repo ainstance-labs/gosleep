@@ -69,3 +69,7 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-46 — Report: Autonomy, question buffer, Laboratory, UI & mobile (EN+RU)](GSL-46-phase-gsl41-cycle1-report-autonomy-lab-ui.md)
 - [GSL-47 — Report: Loop engineering (EN+RU)](GSL-47-phase-gsl41-cycle1-report-loop-engineering.md)
 - [GSL-48 — PRD — GoSleep evolution plan (orchestration v-next)](GSL-48-phase-gsl41-cycle1-prd-gosleep-evolution.md)
+
+## Epic GSL-49 — Watchdog над оркестратором (PRD Phase 1)
+
+- [GSL-50 — Commit orchestration ledger (handoffs 13, 14 + STATE)](GSL-50-phase-gsl49-cycle1-ledger.md)
