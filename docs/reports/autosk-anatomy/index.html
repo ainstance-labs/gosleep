@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoSK Anatomy — bone by bone (GSL-58)</title>
+<style>
+:root{
+  --bg:#f4f5f8; --surface:#ffffff; --surface2:#eef0f5; --ink:#1c2333; --muted:#5d6678;
+  --border:#e2e5ec; --accent:#4c5cd4; --accent-ink:#3948b0; --accent-soft:#eceefb;
+  --accent2:#0c8f80; --accent2-soft:#e0f4f1;
+  --ok:#1b7a4b; --ok-bg:#e2f3e9; --warn:#8a5a00; --warn-bg:#fdf0d3; --bad:#b3261e; --bad-bg:#fbe7e6;
+  --frozen:#1f6a86; --frozen-bg:#dff0f7; --code-bg:#eef0f4;
+  --shadow:0 1px 2px rgba(15,20,40,.06),0 6px 18px rgba(15,20,40,.05);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --serif:ui-serif,Georgia,'Times New Roman',serif;
+}
+@media (prefers-color-scheme: dark){
+:root{
+  --bg:#0d1017; --surface:#151a24; --surface2:#1d2331; --ink:#e6e9f2; --muted:#96a1b5;
+  --border:#2a3244; --accent:#8b9af5; --accent-ink:#a5b1f7; --accent-soft:#242b4c;
+  --accent2:#3ecfbc; --accent2-soft:#123a37;
+  --ok:#5fd08c; --ok-bg:#123120; --warn:#f0c060; --warn-bg:#3a2d0e; --bad:#f0908a; --bad-bg:#3f1b19;
+  --frozen:#7fc6de; --frozen-bg:#123240; --code-bg:#1d2331; --shadow:none;
+}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:.86em;background:var(--code-bg);padding:1px 5px;border-radius:5px;word-break:break-word}
+h1,h2,h3{font-family:var(--serif);line-height:1.25;letter-spacing:-.01em}
+h1{font-size:2.3rem;margin:.2em 0 .25em}
+h2{font-size:1.55rem;margin:0 0 .6em}
+h3{font-size:1.15rem;margin:1.4em 0 .5em}
+h4{margin:1.2em 0 .4em;font-size:1rem}
+p{margin:.55em 0}
+ul,ol{margin:.5em 0 .8em;padding-left:1.4em}
+li{margin:.3em 0}
+section{margin:42px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+.card+.card{margin-top:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:840px){.grid2{grid-template-columns:1fr}}
+/* hero */
+.hero{border-top:4px solid var(--accent);position:relative}
+.kicker{font-family:var(--mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
+.hero .sub{color:var(--muted);font-size:1.05rem;max-width:62rem}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:.85rem;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:20px}
+.tile{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px 14px}
+.tile .v{font-size:1.35rem;font-weight:750;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.tile .l{font-size:.76rem;color:var(--muted);margin-top:2px;line-height:1.35}
+.tile .v .u{font-size:.85rem;font-weight:600;color:var(--muted)}
+/* badges */
+.b{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.7rem;font-weight:750;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;border:1px solid transparent;vertical-align:middle}
+.b.ok{color:var(--ok);background:var(--ok-bg)}
+.b.warn{color:var(--warn);background:var(--warn-bg)}
+.b.bad{color:var(--bad);background:var(--bad-bg)}
+.b.info{color:var(--accent-ink);background:var(--accent-soft)}
+.b.teal{color:var(--accent2);background:var(--accent2-soft)}
+.b.frozen{color:var(--frozen);background:var(--frozen-bg)}
+.b.mut{color:var(--muted);background:var(--surface2);border-color:var(--border)}
+/* nav */
+nav.toc{position:sticky;top:0;z-index:50;background:var(--bg);padding:10px 0;margin:18px 0 6px;border-bottom:1px solid var(--border)}
+nav.toc .row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+nav.toc a{flex:0 0 auto;font-size:.8rem;font-weight:650;color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 12px}
+nav.toc a:hover{border-color:var(--accent);text-decoration:none;color:var(--accent-ink)}
+/* section headers */
+.sh{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.sh .num{font-family:var(--mono);font-weight:700;font-size:.9rem;color:var(--accent-ink);background:var(--accent-soft);border-radius:8px;padding:2px 9px;flex:0 0 auto}
+.sh h2{margin:0}
+/* tables */
+.scroll{overflow-x:auto;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:640px}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:2px solid var(--border);background:var(--surface2);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tbody tr:nth-child(even){background:color-mix(in srgb,var(--surface2) 45%,transparent)}
+td code{white-space:nowrap}
+td .wb{white-space:normal;word-break:break-word}
+tr.gh td{background:var(--accent-soft);color:var(--accent-ink);font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase}
+/* callouts */
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 11px 11px 0;padding:12px 16px;margin:14px 0}
+.callout.ok{border-color:var(--ok);background:var(--ok-bg)}
+.callout.warn{border-color:var(--warn);background:var(--warn-bg)}
+.callout.bad{border-color:var(--bad);background:var(--bad-bg)}
+.callout.frozen{border-color:var(--frozen);background:var(--frozen-bg)}
+.callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+/* module cards */
+.modcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 22px;box-shadow:var(--shadow);margin-top:16px}
+.modhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px}
+.modhead .path{font-family:var(--mono);font-weight:700;font-size:.92rem;color:var(--accent-ink)}
+.src{font-size:.76rem;color:var(--muted);font-family:var(--mono);margin-top:10px;line-height:1.5}
+.src::before{content:"⌁ ";color:var(--accent2)}
+/* figures */
+.fig{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin:18px 0}
+.fig-title{font-weight:750;font-size:.95rem;margin-bottom:4px}
+.fig-sub{font-size:.82rem;color:var(--muted);margin-bottom:10px}
+.seqwrap{overflow-x:auto}
+svg.seq{width:100%;height:auto;min-width:760px;display:block}
+svg.seq text{font-family:var(--mono);font-size:12px;fill:var(--ink)}
+svg.seq text.sub{font-size:10.5px;fill:var(--muted)}
+svg.seq text.hd{font-weight:700;font-size:12.5px}
+svg.seq text.danger{fill:var(--bad);font-weight:700}
+svg.seq text.good{fill:var(--ok);font-weight:700}
+svg.seq text.acc{fill:var(--accent-ink);font-weight:700}
+svg.seq .actor{fill:var(--accent-soft);stroke:var(--accent)}
+svg.seq .actor2{fill:var(--accent2-soft);stroke:var(--accent2)}
+svg.seq .life{stroke:var(--border);stroke-width:1.5;stroke-dasharray:4 5}
+svg.seq .msg{stroke:var(--ink);stroke-width:1.4;fill:none}
+svg.seq .ret{stroke:var(--accent2);stroke-width:1.3;fill:none;stroke-dasharray:6 4}
+svg.seq .evt{stroke:var(--accent2);stroke-width:1.3;fill:none}
+svg.seq .badmsg{stroke:var(--bad);stroke-width:1.5;fill:none}
+svg.seq .frame{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:7 5;rx:8}
+svg.seq .note{fill:var(--surface2);stroke:var(--border)}
+svg.seq .note-bad{fill:var(--bad-bg);stroke:var(--bad)}
+svg.seq .note-ok{fill:var(--ok-bg);stroke:var(--ok)}
+svg.seq .ah{fill:var(--ink)}
+svg.seq .ah2{fill:var(--accent2)}
+svg.seq .ahb{fill:var(--bad)}
+/* glossary */
+dl.gloss{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:.9rem}
+dl.gloss dt{font-family:var(--mono);font-weight:700;color:var(--accent-ink);white-space:nowrap}
+dl.gloss dd{margin:0;color:var(--muted)}
+@media(max-width:700px){dl.gloss{grid-template-columns:1fr}dl.gloss dd{margin-bottom:6px}}
+/* misc */
+.tag{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+hr.sep{border:none;border-top:1px solid var(--border);margin:26px 0}
+footer{margin-top:56px;color:var(--muted);font-size:.85rem}
+.small{font-size:.85rem;color:var(--muted)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:.9rem}
+.kv .k{color:var(--muted);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ HERO ============ -->
+<header class="card hero">
+  <div class="kicker">gosleep research · wave 2 · GSL-58 / GSL-64</div>
+  <h1>AutoSK Anatomy</h1>
+  <p class="sub">A bone-by-bone dissection of <strong>autosk</strong> — a local-first task tracker + workflow engine for coding agents by solo author <code>wierdbytes</code> — with a module-level anatomy of its second agent runtime <strong>pi</strong> (earendil-works/pi), its Go TUI, its six orphaned pull requests, and its now-frozen public surface. Everything here is sourced from static reads of the code; every claim carries a <code>file:line</code> or URL anchor.</p>
+  <div class="meta">
+    <span><strong>Date:</strong> 2026-07-10</span>
+    <span><strong>Repo:</strong> <a href="https://github.com/wierdbytes/autosk">github.com/wierdbytes/autosk</a> @ <code>fd4c22e</code> (v0.2.4)</span>
+    <span><strong>pi runtime:</strong> <a href="https://github.com/earendil-works/pi">earendil-works/pi</a> @ <code>34582ef</code></span>
+    <span><strong>Site:</strong> <a href="https://autosk.app">autosk.app</a></span>
+    <span><strong>Status:</strong> <span class="b frozen">FROZEN — 12 days of silence</span></span>
+  </div>
+  <div class="tiles">
+    <div class="tile"><div class="v">374 <span class="u">commits</span></div><div class="l">1 contributor, 6.5 weeks of life (2026-05-13 → 06-28)</div></div>
+    <div class="tile"><div class="v">12 <span class="u">days</span></div><div class="l">zero commits / releases / site edits since v0.2.4 (2026-06-28)</div></div>
+    <div class="tile"><div class="v">27★ / 5</div><div class="l">stars / forks — byte-identical to the 07-07 baseline; adoption flat</div></div>
+    <div class="tile"><div class="v">2 <span class="u">runtimes</span></div><div class="l">agents driven as children: <code>claude -p</code> stream-json · <code>pi --mode rpc</code> JSONL</div></div>
+    <div class="tile"><div class="v">505 <span class="u">lines</span></div><div class="l"><code>PiDriver</code> — the entire pi wire driver, read line-by-line</div></div>
+    <div class="tile"><div class="v">30 / 20+</div><div class="l">pi RPC commands / event types in the protocol dictionary (§3)</div></div>
+    <div class="tile"><div class="v">~15.7k <span class="u">LOC</span></div><div class="l">Go CLI/TUI (119 files) — gocui/lazygit stack, 11 patterns judged (§6)</div></div>
+    <div class="tile"><div class="v">+13,434</div><div class="l">lines added across 6 unmerged PRs — 0 merged, 0 reviewed (§7)</div></div>
+  </div>
+</header>
+
+<!-- ============ NAV ============ -->
+<nav class="toc"><div class="row">
+  <a href="#s1">1 · Executive summary</a>
+  <a href="#s2">2 · pi-agent anatomy</a>
+  <a href="#s3">3 · Protocol dictionary</a>
+  <a href="#s4">4 · Config surface</a>
+  <a href="#s5">5 · Failure modes</a>
+  <a href="#s6">6 · TUI</a>
+  <a href="#s7">7 · Unmerged PRs</a>
+  <a href="#s8">8 · Site delta</a>
+  <a href="#s9">9 · Adopt list</a>
+</div></nav>
+
+<!-- ============ GLOSSARY ============ -->
+<section class="card">
+  <h3 style="margin-top:0">How to read this report — the vocabulary</h3>
+  <p class="small">Every term below is used throughout. Nothing else is assumed.</p>
+  <dl class="gloss">
+    <dt>autosk</dt><dd>the product: a file-based task tracker + workflow engine + three front ends (CLI, TUI, GUI) for coding agents. MIT, local-first.</dd>
+    <dt>autoskd</dt><dd>the daemon — a Bun/TypeScript process compiled to a standalone binary. Sole owner of all state; everything else is a JSON-RPC client of it.</dd>
+    <dt>.autosk/</dt><dd>the per-project state directory: <code>tasks/&lt;id&gt;/task.json</code>, <code>comments.jsonl</code>, <code>sessions/*.json(l)</code>. Plain files, no database.</dd>
+    <dt>task / workflow / step</dt><dd>a task is a file-backed ticket (<code>new → work → done|cancel|human</code>); a workflow is a directed graph of steps written in TypeScript; each step is owned by an agent.</dd>
+    <dt>session</dt><dd>one run of one agent on one task step — a spawned child process plus its transcript.</dd>
+    <dt>agent runtime / harness</dt><dd>the external CLI that actually talks to the LLM: <code>claude</code> (Claude Code) or <code>pi</code>. autosk spawns it headless and speaks its wire protocol.</dd>
+    <dt>driver</dt><dd>the daemon-side class that owns one child process and translates its wire protocol (stream-json or JSONL-RPC) into engine events.</dd>
+    <dt>transit</dt><dd>the tool call an agent must make to end its step: <code>autosk_transit {to: "&lt;step&gt;|done|cancel|human"}</code>. Declared by the model, validated and committed by the host.</dd>
+    <dt>kickback / corrections</dt><dd>if a turn ends without a transit (or the workflow rejects it), the host re-prompts the model with a correction message; budget = 3 attempts by default.</dd>
+    <dt>park / human</dt><dd>the universal failure sink: any unrecoverable condition sets the task’s status to <code>human</code> — parked, waiting for a person. Never a silent retry.</dd>
+    <dt>pi</dt><dd>an independent, actively developed TypeScript coding-agent CLI (earendil-works/pi, “pi.dev”). autosk drives it exactly like <code>claude</code> — a second, structurally twin harness.</dd>
+    <dt>AgentDefinition</dt><dd>the tiny contract an autosk agent implements: <code>{onRun, onSteer, onFollowup, onAbort}</code>. Everything runtime-specific hides behind it.</dd>
+    <dt>MCP</dt><dd>Model Context Protocol — how tools are exposed to a model. autosk mints a per-session HTTP MCP server with a bearer token.</dd>
+    <dt>worktree</dt><dd>a disposable git checkout (<code>git worktree</code>) an agent works in, so the real repo stays clean until a step lands.</dd>
+    <dt>JSONL / stream-json</dt><dd>both wire protocols are newline-delimited JSON over stdio: pi calls its dialect “RPC mode”; Claude Code calls its dialect “stream-json”.</dd>
+  </dl>
+</section>
+
+<!-- ============ 1. EXECUTIVE SUMMARY ============ -->
+<section id="s1">
+  <div class="sh"><span class="num">§1</span><h2>Executive summary — the full picture after two waves</h2></div>
+
+  <div class="card">
+    <h3 style="margin-top:0">What autosk is</h3>
+    <p><strong>autosk</strong> is one senior engineer’s complete answer to “how do I run coding agents as a pipeline instead of a chat window.” Three layers: (1) a <em>file-based task tracker</em> living under <code>.autosk/</code> inside your repo; (2) an opt-in <em>workflow engine</em> where each workflow is a directed graph of steps written as TypeScript code, each step owned by an agent that a daemon spawns and supervises; (3) three front ends — the <code>autosk</code> CLI, the <code>autosk lazy</code> terminal UI, and a Tauri desktop/iPhone GUI — all pure JSON-RPC clients of the single daemon. Stack: Go (CLI/TUI), Bun/TypeScript (daemon <code>autoskd</code>, compiled to a standalone binary), Tauri/React (GUI), Astro (site). Explicitly inspired by beads, pi.dev and sandcastle <span class="tag">(README.md:16-19)</span>.</p>
+    <p>The mechanism that makes it interesting for gosleep: <strong>agents are headless CLI child processes speaking newline-delimited JSON over stdio</strong> — no PTY, no tmux, no SDK. The daemon spawns <code>claude -p --output-format stream-json …</code> or <code>pi --mode rpc</code>, drives the wire protocol through a ~500-line driver, and forces every step to end in an explicit, host-validated <em>transit</em> tool call. Every failure mode converges on one sink: park the task to <code>human</code> and write an explanatory comment. Auth is subscription-native — the daemon simply runs the operator’s already-logged-in CLI; not a single API key exists in the codebase.</p>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="card">
+      <h3 style="margin-top:0">Wave 1 → Wave 2: what each pass added</h3>
+      <p><strong>Wave 1</strong> <span class="tag">(2026-07-07, 01-autosk.md)</span> mapped the organism: architecture, state &amp; crash recovery, the three bounded loops, subscription auth, UI/mobile, weaknesses, and a first adopt list.</p>
+      <p><strong>Wave 2</strong> <span class="tag">(2026-07-10, this report)</span> dissected the bones:</p>
+      <ul>
+        <li><strong>pi stack</strong> — every file of <code>@autosk/pi-agent</code> + <code>@autosk/pi-tools</code> read line-by-line, plus a deep read of the pi runtime itself at today’s HEAD (§2, §3).</li>
+        <li><strong>Go TUI</strong> — 119 files, framework verdict, refresh machinery, 11 steal/avoid patterns (§6).</li>
+        <li><strong>6 unmerged PRs</strong> — all from one outside contributor, all orphaned by the v2 rewrite (§7).</li>
+        <li><strong>Site re-fetch</strong> — zero delta; the project is frozen (§8).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">The engine in six sentences</h3>
+      <ol>
+        <li>An operator (or agent) creates tasks; <code>autosk enroll</code> attaches a task to a workflow graph and sets it to <code>work</code>.</li>
+        <li>A single scheduler loop with a global 4-worker FIFO pool scans for schedulable tasks and <em>claims each by creating a queued session</em> — session-creation-as-claim prevents double dispatch <span class="tag">(engine.ts:391-453)</span>.</li>
+        <li>The step’s agent spawns a fresh headless child (<code>claude -p</code> or <code>pi --mode rpc</code>) with a prompt carrying the task, the valid transitions, and the full comment history — comments are the inter-step memory.</li>
+        <li>The model must end its step by calling the ack-only <code>autosk_transit</code> tool; the host observes the call on the wire, validates it against the workflow (<code>onTransit</code> may reject), and commits it after the turn ends.</li>
+        <li>No transit / rejected transit → kickback re-prompt, 3 attempts; step bounce loops are capped by persisted <code>step_visits</code> counters in <code>task.json</code>.</li>
+        <li>Every exhausted budget, crash, abort, or structural surprise parks the task to <code>human</code> with an engine comment — bounded autonomy, park early, never spin.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="callout frozen">
+    <p><strong>❄ FROZEN — bus-factor-1 materialized on schedule.</strong> HEAD is still <code>fd4c22e</code> (“release v0.2.4”, 2026-06-28T14:45Z); <code>pushed_at</code> = 2026-06-28 — <strong>12 days of total silence</strong> after 6.5 weeks of very high velocity. Stars/forks/issues byte-identical to the 07-07 baseline (27★/5/8). The last real feature was GUI transcript folding (<code>55187d3</code>, 06-28) — polish, not capability. The only external contributor the project ever attracted (6 PRs, +13,434 lines) was never reviewed, commented on, merged, <em>or</em> closed — and the v1→v2 clean-break rewrite silently invalidated 100% of his work (§7). Wave 1 predicted “solo author, will do a clean break again” (01-autosk.md §8.8); reality was simpler: a burst, then silence.</p>
+    <p><strong>Consequence for gosleep:</strong> treat autosk as a <em>frozen reference architecture to mine</em> — not a dependency, not a moving competitor. Its MIT license and stationary HEAD make it a stable donor of ideas. Note the asymmetry: <strong>pi is alive</strong> (HEAD committed today) — the pi <em>runtime</em> is a living option, and its first-party <code>packages/orchestrator</code> is direct prior art for gosleep’s own worker pool (§2.9).</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">What this means for gosleep — five theses</h3>
+    <ol>
+      <li><strong>The driver pattern is the crown jewel.</strong> One engine drives two heterogeneous runtimes behind one 4-method contract; everything protocol-specific lives in a per-runtime driver. gosleep’s worker layer should be exactly this thin (§2, §9 rank 1).</li>
+      <li><strong>The loop-safety vocabulary is complete and small:</strong> turn corrections (×3) → persisted per-step visit caps → park-to-<code>human</code>. Adopt wholesale; the counters living in the task <em>file</em> is what makes overnight autonomy auditable (§5, §9 rank 3).</li>
+      <li><strong>Every gap Wave 1 found is still open</strong> — usage-window-aware scheduling, push-on-park, session resume, TLS/tunnel remote. Nobody is closing them from the autosk side. These remain gosleep’s differentiators (§8).</li>
+      <li><strong>The bug catalog is a gift.</strong> The contributor’s six PRs + pi’s own resilience gaps + the TUI’s forensics form a map of orchestration failure modes — dispatch-while-blocked, cancel-vs-result races, <code>agent_settled</code> vs <code>agent_end</code>, children dying pre-protocol — each with a concrete rule gosleep can adopt before hitting it in production (§5, §7).</li>
+      <li><strong>We take ideas, not dependencies.</strong> Everything worth having is a pattern (≈50–500 lines each), not a library: atomic writes, claim ordering, kickback prompts, headless-hardening checklists. §9 ranks all of them by value/effort/risk.</li>
+    </ol>
+  </div>
+</section>
+<!-- ============ 2. PI-AGENT ANATOMY ============ -->
+<section id="s2">
+  <div class="sh"><span class="num">§2</span><h2>Anatomy of the pi stack — module by module</h2></div>
+
+  <div class="card">
+    <p style="margin-top:0">The “pi stack” inside autosk is <strong>three cooperating pieces on two sides of a process boundary</strong>. pi itself is an external product autosk treats exactly like <code>claude</code>: an operator-installed, operator-authenticated binary found on <code>PATH</code> (<code>$AUTOSK_PI_BIN</code> override <span class="tag">src/index.ts:368</span>).</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Piece</th><th>Runs inside</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>@autosk/pi-agent</code> <span class="wb">(<code>daemon/extensions/pi-agent/</code>)</span></td><td>autosk daemon (Bun)</td><td class="wb">The AgentDefinition: spawns &amp; drives one <code>pi --mode rpc</code> child per workflow step</td></tr>
+        <tr><td><code>pi-transit-extension.ts</code> <span class="wb">(shipped by pi-agent, loaded via <code>pi -e</code>)</span></td><td>the spawned pi process</td><td class="wb">Registers the ack-only <code>autosk_transit</code> tool — the transit channel</td></tr>
+        <tr><td><code>@autosk/pi-tools</code> <span class="wb">(<code>pi-tools/</code>)</span></td><td>the spawned pi process (from pi’s own config)</td><td class="wb"><code>autosk_task</code> / <code>autosk_comment</code> tools, transport-aware (CLI vs MCP)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="src">02-pi-agent.md · clone .research-cache/autosk @ fd4c22e, read line-by-line</p>
+  </div>
+
+  <!-- 2.1 index.ts -->
+  <div class="modcard">
+    <div class="modhead"><span class="path">pi-agent/src/index.ts</span><span class="b info">396 lines</span><span class="b mut">entry · lifecycle · sandbox</span></div>
+    <p><strong>Purpose:</strong> the daemon-side agent. Exposes <code>piAgent(opts)</code> returning an <code>AgentDefinition</code> <code>{onRun, onSteer, onFollowup, onAbort}</code> <span class="tag">(index.ts:136-224)</span>. Deliberately has <em>no name</em> — a pi agent is an <strong>inline step value</strong>: the workflow step key IS the agent name, resolved at run time from <code>ctx.workflows.current.step</code> <span class="tag">(index.ts:43-47)</span>. One named agent <code>"@autosk/pi-agent"</code> is additionally registered so interactive (taskless) chat sessions can open against pi <span class="tag">(index.ts:390-396)</span>.</p>
+    <ul>
+      <li><strong>Options</strong> <span class="tag">(index.ts:48-91)</span>: <code>model</code> (pi spec like <code>"sonnet:high"</code>), <code>thinking</code> (<code>off…xhigh</code>), <code>firstMessage</code>/<code>firstMessageFile</code> (inline wins; the file is read once per daemon process because the extension loader caches modules <span class="tag">index.ts:138-142,341-345</span>), <code>extraArgs</code>, <code>piExtensions</code> (each → <code>-e</code>), <code>piSkills</code> (each → <code>--skill</code>), <code>maxCorrections</code> (default 3), <code>piBin</code>, <code>sandbox</code>.</li>
+      <li><strong>Spawn argv</strong> — <code>buildPiCommand</code> <span class="tag">(index.ts:367-382)</span>: <code>pi --mode rpc [--model M] [--thinking T] -e &lt;transit-extension&gt; [-e …] [--skill …] [extraArgs…]</code>. The transit extension is <em>not injected in interactive mode</em> — a chat session must never offer a tool that would throw <span class="tag">(index.ts:363-365,377)</span>.</li>
+      <li><strong>Project identity travels via env, not cwd:</strong> the child gets <code>AUTOSK_CWD=&lt;projectRoot&gt;</code> + <code>AUTOSK_AGENT=&lt;step&gt;</code> <span class="tag">(index.ts:353-358)</span>, so any <code>autosk</code> CLI the model runs inside a throwaway worktree still resolves the <em>original</em> project and attributes comments to the running step. This one line is the whole worktree-isolation accounting story.</li>
+      <li><strong>The kickback loop is private to the agent</strong> — <code>runTurns</code> <span class="tag">(index.ts:233-278)</span>: send initial prompt → <code>waitForTurnEnd()</code>. <code>aborted</code> → return; <code>exited</code> → <strong>throw</strong> (<code>pi exited (code=N) before recording a transition</code>) → engine fails the session and parks. Transit observed → <code>ctx.transit(target)</code>; rejection → corrective prompt listing valid targets; no transit → kickback prompt. <code>corrections &gt; maxCorrections</code> → return <em>without</em> transit → engine parks the task <code>human</code> with <code>agent_did_not_transit</code>. Identical semantics to claude-agent’s loop — the two runtimes are deliberate structural twins with different wire protocols underneath.</li>
+      <li><strong>Sandbox is a structural interface</strong> (<code>thin?, workspace(), wrap(), endpointFor(), stop()</code> <span class="tag">index.ts:100-118</span>) — workflows can hand in <code>worktreeSandbox()</code>, <code>dockerSandbox()</code>, or anything hand-rolled. Two tool transports <span class="tag">(index.ts:71-90,153-176)</span>: host/worktree → pi-tools shells out to the <code>autosk</code> CLI on PATH, no MCP server minted; <em>thin</em> sandbox (Docker without an <code>autosk</code> binary inside) → the agent mints the per-session HTTP MCP server (<code>ctx.newMCPServer()</code>), rewrites its host via <code>sandbox.endpointFor(port)</code> (→ <code>host.docker.internal</code>), injects <code>AUTOSK_MCP_URL</code> + <code>AUTOSK_MCP_TOKEN</code>; pi-tools then POSTs <code>tools/call</code>. Same tool surface either way. The transit extension file is host FS — a container must bind-mount it at the identical path (<code>roFiles: [TRANSIT_EXTENSION_PATH]</code> <span class="tag">index.ts:171-175</span>).</li>
+      <li><strong>Lifecycle care, three easy-to-miss rules:</strong> the driver registers in <code>liveSessions</code> <em>before the first await</em> so a steer landing during first-message resolution isn’t silently dropped <span class="tag">(index.ts:186-190)</span>; finally-block order = deregister → driver.shutdown → sandbox.stop (a lingering <code>--rm</code> container outlives a killed <code>docker run</code> client) → mcp.close <span class="tag">(index.ts:194-205)</span>; <code>onAbort</code> also best-effort sandbox-stops to cover SIGKILL orphans <span class="tag">(index.ts:211-222)</span>.</li>
+      <li><strong>Chat mode</strong> — <code>runChat</code> <span class="tag">(index.ts:289-322)</span>: spawn pi <em>without</em> the transit extension, send no initial prompt, register the driver, then just <code>await ctx.signal</code>. Composer messages arrive as <code>onFollowup</code>; pi’s <code>agent_start/agent_end</code> are wired to <code>ctx.setActivity("busy"|"idle")</code> so clients can render working-vs-idle <span class="tag">(index.ts:299-302)</span>.</li>
+    </ul>
+    <p class="src">daemon/extensions/pi-agent/src/index.ts:43-396 · pi-tools/README.md:26-38</p>
+  </div>
+
+  <!-- 2.2 driver.ts -->
+  <div class="modcard">
+    <div class="modhead"><span class="path">pi-agent/src/driver.ts</span><span class="b info">505 lines</span><span class="b teal">the wire driver — JSONL RPC client over stdio</span></div>
+    <p><strong>Purpose:</strong> <code>PiDriver</code> wraps the engine’s <code>ChildHandle</code> and speaks pi’s <code>--mode rpc</code> protocol. This single file is the densest concentration of hard-won supervisor knowledge in the whole codebase — each bullet below is a reusable rule for gosleep’s worker harness.</p>
+    <ul>
+      <li><strong>Correlation:</strong> outbound commands get <code>id: "d&lt;n&gt;"</code> and resolve on the matching <code>{type:"response", id}</code> line <span class="tag">(driver.ts:411-421,341-351)</span>; all writes are NDJSON lines <span class="tag">(driver.ts:423-426)</span>. <code>sendPrompt</code> throws if pi rejects the prompt <span class="tag">(driver.ts:195-198)</span>.</li>
+      <li><strong>Line-oriented resync:</strong> non-JSON stdout lines are <em>skipped, not fatal</em> <span class="tag">(driver.ts:299-301)</span> — one garbage line never desyncs the channel.</li>
+      <li><strong>Buffered turn-end queue:</strong> <code>waitForTurnEnd()</code> returns <code>"ended" | "exited" | "aborted"</code>; turn-end events are buffered in a queue so an <code>agent_end</code> racing the <code>await</code> is never lost <span class="tag">(driver.ts:151-153,236-244,393-401)</span>. Rule: never await a turn boundary you didn’t subscribe to before sending the prompt.</li>
+      <li><strong>State-dependent input dispatch + one retry:</strong> idle → <code>{type:"prompt"}</code> starts a fresh turn; streaming+steer → <code>{type:"steer"}</code>; streaming+followup → <code>{type:"follow_up"}</code>. If pi rejects with a <em>state mismatch</em> (our streaming view raced pi’s — detected by substring heuristics over the error text <span class="tag">driver.ts:468-483</span>), retry ONCE with the opposite dispatch shape. Best-effort; never throws <span class="tag">(driver.ts:200-234,453-461)</span>. A direct port of the retired v1 Rust daemon’s <code>dispatch_input</code> (cited at driver.ts:201-211).</li>
+      <li><strong>Partials — two teardown semantics, carefully separated:</strong> a leading+trailing-edge <code>Coalescer</code> bounds <code>message_update</code> snapshots to one emission per 40&nbsp;ms <span class="tag">(driver.ts:50-127)</span>. <code>flush()</code> at message/turn boundaries emits the buffered frame <em>before</em> the durable line commits <span class="tag">(driver.ts:94-110,311-317)</span>; <code>stop()</code> on exit/abort <em>drops</em> the buffered frame so a late timer can never repaint a stale live bubble after the session sealed <span class="tag">(driver.ts:112-126,177-190,403-409)</span>. Only <code>role:"assistant"</code> snapshots stream <span class="tag">(driver.ts:360-371)</span>.</li>
+      <li><strong>Transcript mirroring 1:1:</strong> committed <code>user|assistant|toolResult</code> messages → <code>ctx.log.message</code>; anything with <code>customType</code> → <code>ctx.log.custom</code> <span class="tag">(driver.ts:373-382)</span> — the autosk transcript speaks pi’s message schema natively.</li>
+      <li><strong>Headless hardening:</strong> blocking <code>extension_ui_request</code> dialogs are auto-answered <code>{cancelled:true}</code>; fire-and-forget methods (<code>notify/setStatus/setWidget/setTitle/set_editor_text</code>) are ignored <span class="tag">(driver.ts:129-130,384-389)</span> — a headless run can never hang on a modal. stderr is always drained (a full pipe would deadlock the child), ANSI-stripped (pi bursts terminal control sequences on teardown even in rpc mode), forwarded via <code>warn</code> with a 100-line cap <span class="tag">(driver.ts:135-136,172-176,277-291,489-505)</span>.</li>
+      <li><strong>Shutdown ladder:</strong> <code>abort</code> command → close stdin → 500&nbsp;ms grace → <code>kill()</code>; idempotent <span class="tag">(driver.ts:253-273)</span>. Child exit fails all pending requests with <code>"pi exited"</code> and emits a terminal turn event <span class="tag">(driver.ts:177-187)</span>.</li>
+    </ul>
+    <p class="src">daemon/extensions/pi-agent/src/driver.ts:50-505 — read in full</p>
+  </div>
+
+  <!-- 2.3 prompt.ts + transit extension -->
+  <div class="grid2">
+    <div class="modcard" style="margin-top:16px">
+      <div class="modhead"><span class="path">pi-agent/src/prompt.ts</span><span class="b info">99 lines</span><span class="b mut">prompt factory</span></div>
+      <p><strong>Purpose:</strong> renders the three prompts of the corrections loop.</p>
+      <ul>
+        <li><code>renderInitialPrompt</code> <span class="tag">(prompt.ts:45-73)</span>: <code>firstMessage</code> seed → <em>“You are agent «X» on step «Y» of workflow «Z»”</em> → task id/title/description → an <strong>explicit menu of valid transitions</strong> (the engine’s conservative target superset) → “call <code>autosk_transit</code> exactly once… Do not stop before calling” → full comment history oldest-first (<code>[author] text</code>). Comments are the <strong>inter-step memory</strong> — this is how work crosses fresh-context boundaries.</li>
+        <li><code>kickbackMessage</code> / <code>rejectionMessage</code> <span class="tag">(prompt.ts:76-99)</span>: both re-list valid targets as literal call examples (<code>autosk_transit { "to": "review" }</code>) and state <em>“This is correction attempt N of M. If you ignore it the run will be marked failed.”</em> — budget transparency to the model itself. Cheap, and likely improves compliance.</li>
+      </ul>
+      <p class="src">pi-agent/src/prompt.ts:45-99</p>
+    </div>
+    <div class="modcard" style="margin-top:16px">
+      <div class="modhead"><span class="path">pi-transit-extension.ts</span><span class="b info">56 lines</span><span class="b teal">the transit channel</span></div>
+      <p><strong>Purpose:</strong> the trust boundary. Passed by absolute host path via <code>pi -e</code> and loaded by <em>pi’s</em> toolchain, not the daemon’s <span class="tag">(pi-transit-extension.ts:13-16)</span>. Registers <code>autosk_transit {to: string}</code> whose <code>execute</code> only returns an <strong>ack text</strong> (“transition to X submitted” <span class="tag">:41-53</span>).</p>
+      <ul>
+        <li>The real commit happens daemon-side: <code>PiDriver</code> watches <code>tool_execution_start</code> events for <code>toolName === "autosk_transit"</code> and parses the target — <code>{to}</code> primary, <code>{step}</code>/<code>{status}</code> accepted for robustness; <code>done|cancel|human</code> map to statuses, anything else to a step <span class="tag">(driver.ts:353-358,434-445)</span>.</li>
+        <li>Rationale documented in the file: <em>“core stays closed and no session-scoped daemon RPC is needed”</em> <span class="tag">(:9-11)</span>. Tool description + <code>promptGuidelines</code> both hammer “call exactly once” <span class="tag">(:32-39)</span>.</li>
+        <li><strong>Why this matters:</strong> even a hijacked pi can only <em>request</em> a transition; the daemon validates and commits. The sandboxed process is powerless over workflow state — the right trust boundary for gosleep’s phase gates.</li>
+      </ul>
+      <p class="src">pi-agent/pi-transit-extension.ts:9-53 · driver.ts:353-358,434-445</p>
+    </div>
+  </div>
+
+  <!-- Diagram 1: task lifecycle -->
+  <div class="fig">
+    <div class="fig-title">Sequence · Task lifecycle — enroll → claim → turns → transit / kickback / park</div>
+    <div class="fig-sub">Both runtimes (claude-agent and pi-agent) implement this identically; only the wire protocol under “Agent host ⇄ Model child” differs (figs. 2 and 3).</div>
+    <div class="seqwrap">
+    <svg class="seq" viewBox="0 0 920 665" role="img" aria-label="Task lifecycle sequence diagram">
+      <defs>
+        <marker id="a1m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+        <marker id="a1r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah2"/></marker>
+        <marker id="a1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahb"/></marker>
+      </defs>
+      <!-- actors -->
+      <rect class="actor" x="20" y="14" width="120" height="30" rx="8"/><text class="hd" x="80" y="34" text-anchor="middle">Operator</text>
+      <rect class="actor" x="215" y="14" width="150" height="30" rx="8"/><text class="hd" x="290" y="34" text-anchor="middle">Engine (autoskd)</text>
+      <rect class="actor2" x="470" y="14" width="170" height="30" rx="8"/><text class="hd" x="555" y="34" text-anchor="middle">Agent host (runTurns)</text>
+      <rect class="actor2" x="740" y="14" width="160" height="30" rx="8"/><text class="hd" x="820" y="34" text-anchor="middle">Model child (LLM)</text>
+      <line class="life" x1="80" y1="44" x2="80" y2="640"/>
+      <line class="life" x1="290" y1="44" x2="290" y2="640"/>
+      <line class="life" x1="555" y1="44" x2="555" y2="640"/>
+      <line class="life" x1="820" y1="44" x2="820" y2="640"/>
+      <!-- enroll -->
+      <line class="msg" x1="80" y1="78" x2="290" y2="78" marker-end="url(#a1m)"/>
+      <text x="185" y="70" text-anchor="middle">autosk enroll → status=work, step=dev</text>
+      <!-- claim -->
+      <rect class="note" x="205" y="94" width="260" height="34" rx="7"/>
+      <text x="335" y="108" text-anchor="middle">scan → claim: create queued session</text>
+      <text class="sub" x="335" y="122" text-anchor="middle">session-creation-as-claim · engine.ts:391-453</text>
+      <!-- onRun -->
+      <line class="msg" x1="290" y1="148" x2="555" y2="148" marker-end="url(#a1m)"/>
+      <text x="422" y="140" text-anchor="middle">onRun(ctx)</text>
+      <!-- spawn -->
+      <line class="msg" x1="555" y1="180" x2="820" y2="180" marker-end="url(#a1m)"/>
+      <text x="688" y="164" text-anchor="middle">spawn claude -p / pi --mode rpc</text>
+      <text class="sub" x="688" y="176" text-anchor="middle">initial prompt: task + valid transitions + comments</text>
+      <!-- corrections loop frame -->
+      <rect class="frame" x="440" y="200" width="470" height="205" rx="8"/>
+      <text class="acc" x="452" y="218">loop · corrections ≤ maxCorrections (default 3)</text>
+      <line class="ret" x1="820" y1="242" x2="555" y2="242" marker-end="url(#a1r)"/>
+      <text x="688" y="234" text-anchor="middle">turn ends without transit ⚠</text>
+      <line class="msg" x1="555" y1="274" x2="820" y2="274" marker-end="url(#a1m)"/>
+      <text x="688" y="266" text-anchor="middle">kickback: “correction attempt N of 3”</text>
+      <line class="ret" x1="820" y1="312" x2="555" y2="312" marker-end="url(#a1r)"/>
+      <text x="688" y="304" text-anchor="middle">tool call autosk_transit {to:"review"} (ack-only)</text>
+      <line class="msg" x1="555" y1="344" x2="290" y2="344" marker-end="url(#a1m)"/>
+      <text x="422" y="336" text-anchor="middle">ctx.transit("review") after turn end</text>
+      <line class="badmsg" x1="290" y1="382" x2="820" y2="382" marker-end="url(#a1b)"/>
+      <text class="danger" x="555" y="374" text-anchor="middle">onTransit rejects → rejection prompt re-lists valid targets</text>
+      <!-- accept -->
+      <rect class="note-ok" x="150" y="425" width="420" height="34" rx="7"/>
+      <text class="good" x="360" y="439" text-anchor="middle">accept: task.step = review · seal session · kick next scan</text>
+      <text class="sub" x="360" y="453" text-anchor="middle">position committed BEFORE session seals — no double dispatch</text>
+      <!-- park -->
+      <line class="ret" x1="555" y1="492" x2="290" y2="492" marker-end="url(#a1r)"/>
+      <text x="422" y="484" text-anchor="middle">budget exhausted → return WITHOUT transit</text>
+      <rect class="note-bad" x="150" y="508" width="420" height="34" rx="7"/>
+      <text class="danger" x="360" y="522" text-anchor="middle">PARK: status=human · reason agent_did_not_transit</text>
+      <text class="sub" x="360" y="536" text-anchor="middle">+ engine comment explaining why · the universal failure sink</text>
+      <!-- morning -->
+      <line class="ret" x1="290" y1="576" x2="80" y2="576" marker-end="url(#a1r)"/>
+      <text x="185" y="568" text-anchor="middle">visible in human queue</text>
+      <rect class="note" x="20" y="592" width="440" height="34" rx="7"/>
+      <text x="240" y="606" text-anchor="middle">operator reviews, may reset step_visits in task.json</text>
+      <text class="sub" x="240" y="620" text-anchor="middle">budgets are persisted &amp; human-resettable · transition.ts:80-95</text>
+    </svg>
+    </div>
+    <p class="src">claude-agent/index.ts:225-269 · pi-agent/index.ts:233-278 · engine.ts:391-453 · transition.ts:80-95</p>
+  </div>
+  <!-- 2.4 pi-tools -->
+  <div class="modcard">
+    <div class="modhead"><span class="path">pi-tools/ (@autosk/pi-tools)</span><span class="b info">~1140 lines</span><span class="b mut">pi-side tool surface</span></div>
+    <p><strong>Purpose:</strong> a <em>pi extension</em> the operator installs into pi’s own config (<code>~/.pi/agent/settings.json</code> → <code>packages: ["npm:@autosk/pi-tools"]</code> <span class="tag">README.md:15-23</span>), registering <code>autosk_task</code> (<code>create/update/show/list</code>) and <code>autosk_comment</code> (<code>add/list</code>) <span class="tag">(src/index.ts:26-29)</span>. Deliberately NO transit tool here — transit only exists inside a workflow run, via the injected channel <span class="tag">(index.ts:22-25)</span>.</p>
+    <ul>
+      <li><strong>Transport seam</strong> <span class="tag">(src/mcp.ts:1-22)</span>: each call checks <code>mcpEnabled()</code> (= <code>AUTOSK_MCP_URL</code> set <span class="tag">mcp.ts:49-52</span>). MCP path: JSON-RPC <code>tools/call</code> POST with bearer token, response adapted to the same <code>{content, details, isError}</code> shape the CLI path builds — renderers are transport-oblivious <span class="tag">(mcp.ts:60-97)</span>. CLI path: <code>pi.exec("autosk", […, "--json"])</code> with a 30&nbsp;s default timeout <span class="tag">(cli.ts:4-5,62-109)</span>.</li>
+      <li><strong>Explicit, stable error taxonomy:</strong> <code>aborted | cli_error | missing_binary | parse_error | invalid_args</code> in a typed <code>AutoskCliError</code> with stdio context <span class="tag">(cli.ts:20-48)</span>. Notable heuristic: pi’s <code>exec</code> swallows ENOENT into <code>code=1, empty stdio</code>, so “non-zero + empty stdout + empty stderr” is treated as <strong>missing binary</strong> with an actionable install message <span class="tag">(cli.ts:58-61,92-100,144-147)</span>.</li>
+      <li><strong>Testability seam:</strong> pure argv builders live dependency-free in <code>src/argv.ts</code> (flag names mirror the Go CLI files <code>cmd/autosk/create.go</code>, <code>comment.go</code>) and are the only unit-tested part <span class="tag">(test/argv.test.ts)</span>.</li>
+      <li><strong>Dual rendering:</strong> ships pi-TUI custom renderers (imports <code>Component/Text/truncateToWidth</code> from <code>@earendil-works/pi-tui</code> <span class="tag">task.ts:1-4</span>) so results render as widgets in an interactive pi while headless agents get plain text. Version note: peerDeps pin <code>pi-coding-agent ≥ 0.74.0</code> while pi npm latest is 0.80.6 — loose coupling, drift accepted.</li>
+    </ul>
+    <p class="src">pi-tools/src/{index,mcp,cli,argv}.ts · pi-tools/README.md</p>
+  </div>
+
+  <!-- 2.5 pi runtime -->
+  <h3 style="margin-top:34px">The pi runtime itself — earendil-works/pi @ <code>34582ef</code> <span class="b ok" style="vertical-align:2px">ALIVE — HEAD committed today</span></h3>
+  <div class="card">
+    <p style="margin-top:0">Unlike frozen autosk, pi is actively developed. Cross-pollination finding worth stating up front: <strong>autosk’s own extension loader is adapted from pi’s</strong> — <code>daemon/core/src/extensions/discovery.ts:5</code> cites <code>pi/packages/coding-agent/src/core/extensions/loader.ts</code> as its source. The author didn’t just support pi as a harness; he copied pi’s extension architecture into his daemon.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Package</th><th>npm</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>packages/ai</code></td><td><code>@earendil-works/pi-ai</code></td><td class="wb">Unified LLM API: ~30 providers, OAuth flows, retry/overflow classifiers, streaming event protocol (148 files)</td></tr>
+        <tr><td><code>packages/agent</code></td><td><code>@earendil-works/pi-agent-core</code></td><td class="wb">Provider-agnostic agent loop (<code>agent-loop.ts</code>) + stateful <code>Agent</code></td></tr>
+        <tr><td><code>packages/coding-agent</code></td><td><code>@earendil-works/pi-coding-agent</code></td><td class="wb"><strong><code>pi</code> itself</strong>: CLI, modes (interactive/print/json/rpc), tools, extensions, sessions, settings (163 files)</td></tr>
+        <tr><td><code>packages/tui</code></td><td><code>@earendil-works/pi-tui</code></td><td class="wb">Differential-rendering terminal UI library</td></tr>
+        <tr><td><code>packages/orchestrator</code></td><td><code>@earendil-works/pi-orchestrator</code></td><td class="wb"><strong>Experimental first-party orchestrator</strong> — spawns &amp; supervises multiple <code>pi --mode rpc</code> children. Prior art for gosleep → §2.9</td></tr>
+      </tbody>
+    </table></div>
+    <h4>Entry points &amp; modes</h4>
+    <ul>
+      <li>bin <code>pi</code> → <code>dist/cli.js</code>; a dedicated <strong><code>./rpc-entry</code> subpath export force-prepends <code>--mode rpc</code></strong> so hosts can <code>require.resolve(…)</code> and spawn with node instead of needing <code>pi</code> on PATH <span class="tag">(src/rpc-entry.ts:1-13)</span> — exactly what the orchestrator package does.</li>
+      <li>Mode resolution <span class="tag">(src/main.ts:100-111)</span>: <code>rpc</code> wins; else <code>json</code>; else non-TTY stdio forces <code>print</code>; else interactive. RPC mode seizes raw stdout via <code>takeOverStdout()</code> so ONLY protocol JSONL reaches stdout <span class="tag">(main.ts:541-543, core/output-guard.ts)</span>.</li>
+      <li><strong>Fail-fast trap:</strong> ANY <code>type:"error"</code> startup diagnostic — including “Failed to load extension” — causes <code>process.exit(1)</code> for ALL modes <em>before the RPC channel opens</em> <span class="tag">(main.ts:791-797)</span>. A broken extension ⇒ the child dies with code 1 having emitted <strong>zero JSONL</strong>.</li>
+    </ul>
+    <h4>Session model — an append-only JSONL <em>tree</em>, not a log</h4>
+    <p>Header <code>{type:"session", version:3, id, cwd, parentSession?}</code>, then entries with <code>{id, parentId}</code> links — kinds <code>message | thinking_level_change | model_change | compaction | branch_summary | custom | label | session_info | custom_message</code> <span class="tag">(core/session-manager.ts:30-137)</span>. A mutable <code>leafId</code> advances on append; <code>getBranch</code>/<code>getTree</code> walk the links; <code>fork</code>/<code>clone</code>/<code>switch_session</code> are tree operations — history is never mutated <span class="tag">(session-manager.ts:975-980,1226-1238)</span>. Location: <code>~/.pi/agent/sessions/--&lt;cwd-mangled&gt;--/&lt;timestamp&gt;_&lt;id&gt;.jsonl</code>. Resume surface: <code>-c/--continue</code>, <code>-r/--resume</code> picker, <code>--session &lt;path|id&gt;</code>, <code>--fork</code>, <code>--session-id</code> (create-if-missing), <code>--no-session</code>; on-disk version migration on open <span class="tag">(main.ts:264-355; session-manager.ts:848-850)</span>.</p>
+    <h4>Auth — pi is subscription-native, like claude CLI</h4>
+    <p><code>ANTHROPIC_OAUTH_TOKEN</code> is checked BEFORE <code>ANTHROPIC_API_KEY</code> <span class="tag">(providers/anthropic.ts:14)</span>, plus a full <strong>Claude Pro/Max OAuth PKCE flow</strong> (<code>claude.ai/oauth/authorize</code> → token exchange → refresh) with creds cached in <code>~/.pi/agent/auth.json</code> <span class="tag">(ai/src/utils/oauth/anthropic.ts:232-381)</span>. The whole autosk→pi→Anthropic chain can run on a Claude subscription with zero API keys — a genuine second harness on the same account.</p>
+    <h4>Loop &amp; resilience layers</h4>
+    <ul>
+      <li><strong>Turn cycle</strong> <span class="tag">(agent-loop.ts:155-275)</span>: stream response → if <code>stopReason:"length"</code>, fail ALL tool calls without executing (truncated args are dangerous <span class="tag">agent-loop.ts:383-408</span>) → else execute (parallel or sequential per tool’s <code>executionMode</code>), each through validate→before→execute→after with per-call abort checks; a thrown tool becomes an <code>isError</code> result, never a crash.</li>
+      <li><strong>Steering internals:</strong> <code>steer</code>/<code>follow_up</code> enqueue into a <code>PendingMessageQueue</code> drained <em>between turns</em> — they never interrupt an in-flight LLM call; only <code>abort</code> does (AbortController threaded through the provider call and every tool’s <code>execute(…, signal)</code>) <span class="tag">(agent.ts:123-157,273-297,310-312; agent-loop.ts:668-709)</span>.</li>
+      <li><strong>Retry layers:</strong> session-level auto-retry with exponential backoff (default 3 attempts, base 2&nbsp;s <span class="tag">settings-manager.ts:28-33</span>) gated by a regex classifier that retries overloaded/rate-limit/5xx/network but explicitly NOT quota/billing exhaustion <span class="tag">(ai/src/utils/retry.ts:7-101)</span>; context overflow is a separate path — detected 3 ways incl. “silent overflow” <span class="tag">(overflow.ts:129-158)</span>, triggering auto-compaction with at most ONE recovery retry per turn <span class="tag">(agent-session.ts:1900-1989)</span>.</li>
+      <li><strong>Hard-failure shape:</strong> any loop exception synthesizes a fake assistant message with <code>stopReason: error</code> and emits the normal event sequence <span class="tag">(agent.ts:469-510)</span> — clients always get a well-formed turn end.</li>
+      <li><strong>Tools:</strong> <code>read, bash, edit, write</code> on by default; <code>grep, find, ls</code> exist but OFF <span class="tag">(core/sdk.ts:245)</span>. Truncation 2000 lines / 50&nbsp;KB; bash streams at ≥100&nbsp;ms cadence and spills full output to a temp file when truncated <span class="tag">(bash.ts:301-393)</span>; edit requires unique <code>oldText</code> and serializes same-path mutations. All tool I/O goes through pluggable <code>*Operations</code> seams designed for remote/SSH/container redirection.</li>
+      <li><strong>Extensions load in-process via jiti</strong> (TS-transpiling require <span class="tag">loader.ts:389-395</span>): project <code>.pi/extensions/</code> → global <code>~/.pi/agent/extensions/</code> → explicit <code>-e</code>/settings → npm packages via the <code>"pi"</code> manifest field. ~30 lifecycle events (several can veto/rewrite — <code>tool_call</code>, <code>user_bash</code>, <code>session_before_*</code>); <code>registerTool</code> makes extension tools first-class. <strong>No sandbox by declared policy</strong>: “Real isolation needs to come from the OS” <span class="tag">(docs/security.md:31-37)</span>.</li>
+    </ul>
+    <p class="src">.research-cache/pi @ 34582ef · packages/{ai,agent,coding-agent} · docs/rpc.md, docs/security.md, docs/packages.md</p>
+  </div>
+
+  <!-- Diagram 2: pi RPC -->
+  <div class="fig">
+    <div class="fig-title">Sequence · pi <code>--mode rpc</code> — one turn on the wire, plus fork / cursor / host bash</div>
+    <div class="fig-sub">Solid arrows = host commands (each gets an <code>id</code>); dashed teal = pi responses &amp; events. The one contract everyone gets wrong is highlighted.</div>
+    <div class="seqwrap">
+    <svg class="seq" viewBox="0 0 920 790" role="img" aria-label="pi RPC sequence diagram">
+      <defs>
+        <marker id="a2m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+        <marker id="a2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah2"/></marker>
+      </defs>
+      <rect class="actor" x="60" y="14" width="240" height="30" rx="8"/><text class="hd" x="180" y="34" text-anchor="middle">Host / supervisor (PiDriver)</text>
+      <rect class="actor2" x="600" y="14" width="220" height="30" rx="8"/><text class="hd" x="710" y="34" text-anchor="middle">pi child (--mode rpc)</text>
+      <line class="life" x1="180" y1="44" x2="180" y2="765"/>
+      <line class="life" x1="710" y1="44" x2="710" y2="765"/>
+      <!-- spawn -->
+      <line class="msg" x1="180" y1="76" x2="710" y2="76" marker-end="url(#a2m)"/>
+      <text x="445" y="60" text-anchor="middle">spawn: pi --mode rpc -e /abs/path/pi-transit-extension.ts</text>
+      <text class="sub" x="445" y="72" text-anchor="middle">env: AUTOSK_CWD, AUTOSK_AGENT · stdout seized — protocol JSONL only</text>
+      <rect class="note-bad" x="490" y="90" width="420" height="34" rx="7"/>
+      <text class="danger" x="700" y="104" text-anchor="middle">⚠ any startup diagnostic → process.exit(1) BEFORE the</text>
+      <text class="danger" x="700" y="118" text-anchor="middle">RPC channel opens — zero JSONL emitted (main.ts:791-797)</text>
+      <!-- prompt -->
+      <line class="msg" x1="180" y1="152" x2="710" y2="152" marker-end="url(#a2m)"/>
+      <text x="445" y="144" text-anchor="middle">{id:"d1", type:"prompt", message:"…"}</text>
+      <line class="ret" x1="710" y1="182" x2="180" y2="182" marker-end="url(#a2r)"/>
+      <text x="445" y="174" text-anchor="middle">{id:"d1", type:"response", success:true} — ack after preflight, NOT completion</text>
+      <!-- events -->
+      <line class="evt" x1="710" y1="212" x2="180" y2="212" marker-end="url(#a2r)"/>
+      <text x="445" y="204" text-anchor="middle">{type:"agent_start"}</text>
+      <line class="evt" x1="710" y1="242" x2="180" y2="242" marker-end="url(#a2r)"/>
+      <text x="445" y="234" text-anchor="middle">{type:"message_update", assistantMessageEvent:{text_delta…}} × N</text>
+      <text class="sub" x="445" y="256" text-anchor="middle">host Coalescer caps repaints at 1 per 40 ms (driver.ts:50-127)</text>
+      <line class="evt" x1="710" y1="284" x2="180" y2="284" marker-end="url(#a2r)"/>
+      <text x="445" y="276" text-anchor="middle">{type:"tool_execution_start", toolName:"autosk_transit", args:{to:"review"}}</text>
+      <text class="sub" x="445" y="298" text-anchor="middle">← host OBSERVES the transit here; the tool itself only acks</text>
+      <line class="evt" x1="710" y1="322" x2="180" y2="322" marker-end="url(#a2r)"/>
+      <text x="445" y="314" text-anchor="middle">{type:"message_end"} — durable line, mirrored 1:1 to transcript</text>
+      <line class="evt" x1="710" y1="352" x2="180" y2="352" marker-end="url(#a2r)"/>
+      <text class="danger" x="445" y="344" text-anchor="middle">{type:"agent_end"} — ⚠ NOT the real end</text>
+      <!-- drain frame -->
+      <rect class="frame" x="120" y="368" width="680" height="66" rx="8"/>
+      <text class="acc" x="132" y="386">post-turn drain — invisible to a naive host</text>
+      <line class="evt" x1="710" y1="412" x2="180" y2="412" marker-end="url(#a2r)"/>
+      <text x="445" y="404" text-anchor="middle">auto_retry_start/end · compaction_start/end · queued follow_up turns…</text>
+      <line class="evt" x1="710" y1="462" x2="180" y2="462" marker-end="url(#a2r)"/>
+      <text class="good" x="445" y="454" text-anchor="middle">{type:"agent_settled"} ✓ THE completion signal (docs/rpc.md:848-854)</text>
+      <text class="sub" x="445" y="476" text-anchor="middle">autosk’s PiDriver keys on agent_end (driver.ts:311-318) — latent race, see §2.7</text>
+      <!-- bash -->
+      <line class="msg" x1="180" y1="508" x2="710" y2="508" marker-end="url(#a2m)"/>
+      <text x="445" y="500" text-anchor="middle">{id:"d2", type:"bash", command:"npm test"} — host-side shell</text>
+      <line class="ret" x1="710" y1="538" x2="180" y2="538" marker-end="url(#a2r)"/>
+      <text x="445" y="530" text-anchor="middle">{id:"d2", type:"response", data:{output…}}</text>
+      <text class="danger" x="445" y="552" text-anchor="middle">⚠ NO default timeout — a hung command blocks until abort_bash (bash.ts:24-38)</text>
+      <!-- fork -->
+      <line class="msg" x1="180" y1="584" x2="710" y2="584" marker-end="url(#a2m)"/>
+      <text x="445" y="576" text-anchor="middle">{id:"d3", type:"fork"} / {type:"clone"} — branch the session tree</text>
+      <line class="ret" x1="710" y1="612" x2="180" y2="612" marker-end="url(#a2r)"/>
+      <text x="445" y="604" text-anchor="middle">response: new leaf id (history never mutated)</text>
+      <!-- cursor -->
+      <line class="msg" x1="180" y1="644" x2="710" y2="644" marker-end="url(#a2m)"/>
+      <text x="445" y="636" text-anchor="middle">{id:"d4", type:"get_entries", since:&lt;cursor&gt;} — durable incremental cursor</text>
+      <line class="ret" x1="710" y1="672" x2="180" y2="672" marker-end="url(#a2r)"/>
+      <text x="445" y="664" text-anchor="middle">response: {entries:[…]} — replay-then-tail without a subscription</text>
+      <!-- shutdown -->
+      <rect class="note" x="60" y="696" width="800" height="52" rx="8"/>
+      <text x="460" y="716" text-anchor="middle">shutdown ladder: {type:"abort"} → close stdin (EOF → exit 0) → 500 ms grace → kill() — idempotent (driver.ts:253-273)</text>
+      <text class="sub" x="460" y="734" text-anchor="middle">SIGTERM → 143 · SIGHUP → 129 · child death fails all pending requests with “pi exited” · no uncaughtException handler in rpc mode ⚠</text>
+    </svg>
+    </div>
+    <p class="src">pi: modes/rpc/rpc-mode.ts:385-694 · rpc-types.ts:20-72 · docs/rpc.md · autosk: pi-agent/driver.ts</p>
+  </div>
+
+  <!-- 2.7 settled vs end -->
+  <div class="card" id="settled">
+    <h3 style="margin-top:0">§2.7 · <code>agent_settled</code> vs <code>agent_end</code> — the race, explained simply <span class="b bad">critical detail</span></h3>
+    <p><strong>Plain words:</strong> <code>agent_end</code> means <em>“the worker put the pen down.”</em> It does <u>not</u> mean the session is finished — pi may pick the pen back up <em>by itself</em>, with no new input from you, in three cases:</p>
+    <ol>
+      <li><strong>Auto-retry:</strong> the last turn died on a transient API error (overloaded / 5xx / network) → pi retries with backoff (default 3 attempts, base 2&nbsp;s).</li>
+      <li><strong>Overflow compaction:</strong> the context overflowed → pi compacts the history and re-runs the turn once (<code>_overflowRecoveryAttempted</code> <span class="tag">agent-session.ts:1900-1989</span>).</li>
+      <li><strong>Queued follow-ups:</strong> a <code>follow_up</code> sent mid-turn was queued; the drain loop starts a whole new turn for it.</li>
+    </ol>
+    <p><code>agent_settled</code> fires only when the internal <code>while(_handlePostAgentRun()) agent.continue()</code> drain is done — <em>“the desk is clear, nothing queued, nothing will restart”</em> <span class="tag">(agent-session.ts:1023-1065,534-542; docs/rpc.md:848-854)</span>.</p>
+    <p><strong>The race:</strong> a supervisor that treats <code>agent_end</code> as “done” may — while the session is about to continue on its own — send the next prompt (collides with the retry turn), kill the child (loses the retried result), or read “the final message” (gets a truncated one). <strong>autosk’s <code>PiDriver</code> keys its turn loop on <code>agent_end</code></strong> <span class="tag">(driver.ts:311-318)</span> — workable in practice because autosk treats each turn independently and disables nothing, but it is a latent race with pi’s auto-retry.</p>
+    <div class="callout ok"><p><strong>gosleep rule:</strong> any pi driver we write keys on <code>agent_settled</code>, full stop. More generally: for every harness, identify the event that means “nothing will restart by itself” — and wait for <em>that</em>, not for the first end-shaped event.</p></div>
+  </div>
+
+  <!-- 2.8 supervisor traps -->
+  <div class="card">
+    <h3 style="margin-top:0">§2.8 · pi supervisor traps — how children die without saying goodbye</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Trap</th><th>Mechanism</th><th>Supervisor counter-measure</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="wb"><strong>Exit before the RPC channel exists</strong></td><td class="wb">ANY startup diagnostic — e.g. “Failed to load extension” — triggers <code>process.exit(1)</code> in all modes before RPC opens; the child emits <strong>zero JSONL</strong> <span class="tag">(main.ts:791-797)</span></td><td class="wb">Treat exit-code + stderr as first-class signals; never wait for protocol framing that may never come. Distinguish exit-before-ack from exit-mid-turn (PR #3’s error matrix, §7).</td></tr>
+        <tr><td>2</td><td class="wb"><strong>No <code>uncaughtException</code> handler in rpc mode</strong></td><td class="wb">Only interactive mode installs one <span class="tag">(interactive-mode.ts:3572)</span>; a buggy async extension handler crashes the child mid-flight with no protocol farewell</td><td class="wb">Assume children can vanish silently at any moment; buffer turn-end events, fail pending requests on exit, park the task.</td></tr>
+        <tr><td>3</td><td class="wb"><strong>bash tool has no default timeout</strong></td><td class="wb">A hung command blocks the turn until an explicit <code>abort</code>/<code>abort_bash</code> <span class="tag">(tools/bash.ts:24-38)</span></td><td class="wb">Set explicit timeouts in prompts/config; add a supervisor-side turn watchdog.</td></tr>
+        <tr><td>4</td><td class="wb"><strong>Headless trust silently drops extensions</strong></td><td class="wb">Headless modes never prompt; untrusted project-local extensions are <em>silently skipped</em> unless the cwd is pre-trusted in <code>~/.pi/agent/trust.json</code> <span class="tag">(docs/security.md:29)</span></td><td class="wb">Pre-seed trust for worker worktrees, or pass extensions via <code>-e</code> with absolute paths (autosk’s choice — no trust dependency).</td></tr>
+        <tr><td>5</td><td class="wb"><strong>First-use network dependency</strong></td><td class="wb"><code>rg</code>/<code>fd</code> auto-download to <code>~/.pi/agent/bin</code> at first grep/find unless <code>PI_OFFLINE</code> <span class="tag">(tools-manager.ts:241-358)</span></td><td class="wb">Pre-warm the toolchain or set <code>PI_OFFLINE</code> for air-gapped/deterministic runs.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- 2.9 orchestrator -->
+  <div class="card">
+    <h3 style="margin-top:0">§2.9 · <code>pi packages/orchestrator</code> — first-party prior art for gosleep <span class="b teal">separate follow-up worthy</span></h3>
+    <p>Buried in the pi monorepo is <code>@earendil-works/pi-orchestrator</code> — an <strong>experimental first-party supervisor that spawns and supervises multiple <code>pi --mode rpc</code> children</strong> <span class="tag">(rpc-process.ts:37-61, supervisor.ts:63-343)</span>. This is the protocol author solving <em>gosleep’s exact problem</em> — a worker pool over JSONL-RPC agent children — with insider knowledge of his own protocol’s traps.</p>
+    <ul>
+      <li><strong>Spawn mechanism:</strong> uses the <code>./rpc-entry</code> subpath export — <code>require.resolve("@earendil-works/pi-coding-agent/rpc-entry")</code> then spawn with node. No PATH dependency, <code>--mode rpc</code> force-prepended, version-locked to the installed package <span class="tag">(src/rpc-entry.ts:1-13)</span>.</li>
+      <li><strong>Instance registry:</strong> the supervisor keeps a registry of live child instances (supervisor.ts) — the shape gosleep’s worker-pool API will need: identity, lifecycle state, addressing for steer/abort.</li>
+      <li><strong>Why it matters:</strong> whatever policies it encodes (restart, settled-vs-end handling, backpressure) are the author’s own answers to the traps in §2.8 — worth harvesting before designing gosleep’s pool.</li>
+    </ul>
+    <div class="callout"><p><strong>Research boundary (honesty):</strong> only <code>rpc-process.ts</code> + <code>supervisor.ts</code> were read this wave; the rest of the package is unread and explicitly flagged as a dedicated follow-up task. Questions for that read: child lifecycle state machine; does it key on <code>agent_settled</code>; restart/backoff policy; how the registry addresses children; failure propagation to the caller.</p></div>
+    <p class="src">.research-cache/pi/packages/orchestrator/src/{rpc-process.ts:37-61, supervisor.ts:63-343}</p>
+  </div>
+
+  <!-- Diagram 3: claude stream-json -->
+  <div class="fig">
+    <div class="fig-title">Sequence · claude-agent’s stream-json protocol — including steer via <code>control_request / interrupt</code></div>
+    <div class="fig-sub">The elder twin of the pi driver: same lifecycle, different dialect. This is the wire pattern Wave 1 ranked #1 for gosleep’s own workers.</div>
+    <div class="seqwrap">
+    <svg class="seq" viewBox="0 0 920 660" role="img" aria-label="claude stream-json sequence diagram">
+      <defs>
+        <marker id="a3m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+        <marker id="a3r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah2"/></marker>
+      </defs>
+      <rect class="actor" x="60" y="14" width="250" height="30" rx="8"/><text class="hd" x="185" y="34" text-anchor="middle">ClaudeDriver (autosk daemon)</text>
+      <rect class="actor2" x="610" y="14" width="200" height="30" rx="8"/><text class="hd" x="710" y="34" text-anchor="middle">claude -p child</text>
+      <line class="life" x1="185" y1="44" x2="185" y2="635"/>
+      <line class="life" x1="710" y1="44" x2="710" y2="635"/>
+      <!-- spawn -->
+      <line class="msg" x1="185" y1="88" x2="710" y2="88" marker-end="url(#a3m)"/>
+      <text x="447" y="58" text-anchor="middle">spawn: claude -p --output-format stream-json --input-format stream-json</text>
+      <text x="447" y="72" text-anchor="middle">--verbose --include-partial-messages --replay-user-messages</text>
+      <text class="sub" x="447" y="84" text-anchor="middle">--mcp-config {type:http, url, Bearer token} · --allowedTools mcp__autosk__* · --permission-mode acceptEdits</text>
+      <!-- init -->
+      <line class="ret" x1="710" y1="120" x2="185" y2="120" marker-end="url(#a3r)"/>
+      <text x="447" y="112" text-anchor="middle">{type:"system", subtype:"init", session_id}</text>
+      <text class="sub" x="447" y="134" text-anchor="middle">session_id captured “for future --resume” — unused today (driver.ts:195-196,363)</text>
+      <!-- user prompt -->
+      <line class="msg" x1="185" y1="164" x2="710" y2="164" marker-end="url(#a3m)"/>
+      <text x="447" y="156" text-anchor="middle">{type:"user", message} — initial prompt: task + transitions + comments</text>
+      <!-- partials -->
+      <line class="evt" x1="710" y1="196" x2="185" y2="196" marker-end="url(#a3r)"/>
+      <text x="447" y="188" text-anchor="middle">{type:"stream_event", …} partial deltas × N</text>
+      <text class="sub" x="447" y="210" text-anchor="middle">~40 ms coalescer → ephemeral “partial” channel; cleared when the durable line commits</text>
+      <!-- assistant -->
+      <line class="evt" x1="710" y1="238" x2="185" y2="238" marker-end="url(#a3r)"/>
+      <text x="447" y="230" text-anchor="middle">{type:"assistant"} — durable message, mirrored 1:1 into .autosk transcript</text>
+      <!-- tool use -->
+      <line class="evt" x1="710" y1="272" x2="185" y2="272" marker-end="url(#a3r)"/>
+      <text x="447" y="264" text-anchor="middle">assistant with tool_use: mcp__autosk__transit {to:"review"}</text>
+      <text class="sub" x="447" y="286" text-anchor="middle">driver observes the tool_use on the stream; the MCP server only ACKs (driver.ts:18-21,385-389)</text>
+      <!-- result -->
+      <line class="evt" x1="710" y1="312" x2="185" y2="312" marker-end="url(#a3r)"/>
+      <text x="447" y="304" text-anchor="middle">{type:"result"} — the turn boundary</text>
+      <!-- steer frame -->
+      <rect class="frame" x="120" y="332" width="680" height="102" rx="8"/>
+      <text class="acc" x="132" y="350">steer while the model is streaming (driver.ts:254-272)</text>
+      <line class="msg" x1="185" y1="378" x2="710" y2="378" marker-end="url(#a3m)"/>
+      <text x="447" y="370" text-anchor="middle">{type:"control_request", request:{subtype:"interrupt"}}</text>
+      <line class="msg" x1="185" y1="414" x2="710" y2="414" marker-end="url(#a3m)"/>
+      <text x="447" y="406" text-anchor="middle">{type:"user", message} — the steer text, sent right after the interrupt</text>
+      <!-- followup -->
+      <rect class="note" x="120" y="452" width="680" height="34" rx="7"/>
+      <text x="460" y="466" text-anchor="middle">follow-up = queued host-side, written only after the current turn’s {type:"result"} (driver.ts:487-489)</text>
+      <text class="sub" x="460" y="480" text-anchor="middle">same idea as pi’s PendingMessageQueue — never interrupt unless explicitly steering</text>
+      <!-- kickback -->
+      <line class="msg" x1="185" y1="518" x2="710" y2="518" marker-end="url(#a3m)"/>
+      <text x="447" y="510" text-anchor="middle">kickback: {type:"user"} correction prompt if the turn ended without a transit (≤ 3)</text>
+      <line class="evt" x1="710" y1="550" x2="185" y2="550" marker-end="url(#a3r)"/>
+      <text x="447" y="542" text-anchor="middle">…result → host commits ctx.transit(target) after the turn ends</text>
+      <rect class="note" x="120" y="574" width="680" height="40" rx="8"/>
+      <text x="460" y="592" text-anchor="middle">teardown: close stdin → child exits · crash or exhausted budget → park to human</text>
+      <text class="sub" x="460" y="606" text-anchor="middle">api_retry / api_error system events are merely logged — no backoff, no reschedule (driver.ts:374-376)</text>
+    </svg>
+    </div>
+    <p class="src">daemon/extensions/claude-agent/src/{index.ts:386-413, driver.ts:60-126,254-272,487-489} · 01-autosk.md §2</p>
+  </div>
+</section>
+<!-- ============ 3. PROTOCOL DICTIONARY ============ -->
+<section id="s3">
+  <div class="sh"><span class="num">§3</span><h2>Protocol dictionary — every message of both wire protocols</h2></div>
+  <p class="small">Both protocols are newline-delimited JSON over stdio. pi frames strictly on <code>\n</code> — deliberately NOT Node readline, which also splits on U+2028/U+2029, legal inside JSON strings <span class="tag">(modes/rpc/jsonl.ts:10-58; docs/rpc.md:28-37)</span>. Unknown command type → error response, the loop keeps reading; parse errors never desync it <span class="tag">(rpc-mode.ts:728-775)</span>.</p>
+
+  <div class="card">
+    <h3 style="margin-top:0">A · pi JSONL-RPC — commands (host → child)</h3>
+    <p class="small">Response shape for every command: <code>{id?, type:"response", command, success, data|error}</code>. The <code>prompt</code> ack fires after preflight, <strong>not</strong> after turn completion <span class="tag">(rpc-mode.ts:393-415)</span>.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Command</th><th>Key args</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr class="gh"><td colspan="3">Turn control</td></tr>
+        <tr><td><code>prompt</code></td><td><code>message, images?, streamingBehavior?</code></td><td class="wb">Start a fresh turn. Rejected if a turn is already streaming (→ state-mismatch dance, §2.2).</td></tr>
+        <tr><td><code>steer</code></td><td><code>message</code></td><td class="wb">Queued into <code>PendingMessageQueue</code>, drained <em>between</em> turns via <code>getSteeringMessages()</code> — never interrupts an in-flight LLM call.</td></tr>
+        <tr><td><code>follow_up</code></td><td><code>message</code></td><td class="wb">Like steer, but drained after the current work completes (its own queue + drain mode).</td></tr>
+        <tr><td><code>abort</code></td><td>—</td><td class="wb">The ONLY interrupter: AbortController threaded through the provider call and every tool’s <code>execute(…, signal)</code>.</td></tr>
+        <tr class="gh"><td colspan="3">Session management (the session is an append-only JSONL tree)</td></tr>
+        <tr><td><code>new_session</code> / <code>switch_session</code></td><td><code>id?</code></td><td class="wb">Open a fresh session file / jump to another one.</td></tr>
+        <tr><td><code>fork</code> / <code>clone</code> / <code>get_fork_messages</code></td><td>—</td><td class="wb">Branch the entry tree at the current leaf; history is never mutated.</td></tr>
+        <tr><td><code>get_entries</code></td><td><code>since</code></td><td class="wb"><strong>Durable incremental cursor</strong> — replay-then-tail reads without a subscription. The building block for a supervisor-side transcript mirror.</td></tr>
+        <tr><td><code>get_tree</code> / <code>get_messages</code> / <code>get_last_assistant_text</code></td><td>—</td><td class="wb">Introspect the tree / linear branch / last output.</td></tr>
+        <tr><td><code>set_session_name</code> / <code>export_html</code></td><td><code>name</code> / —</td><td class="wb">Label the session / render a standalone HTML transcript.</td></tr>
+        <tr class="gh"><td colspan="3">Model &amp; reasoning</td></tr>
+        <tr><td><code>set_model</code> / <code>cycle_model</code> / <code>get_available_models</code></td><td><code>model?</code></td><td class="wb">Switch models mid-session (recorded as a <code>model_change</code> entry).</td></tr>
+        <tr><td><code>set_thinking_level</code> / <code>cycle_thinking_level</code></td><td><code>level</code></td><td class="wb"><code>off…xhigh</code>; recorded as a session entry, emits <code>thinking_level_changed</code>.</td></tr>
+        <tr class="gh"><td colspan="3">Queue &amp; resilience knobs</td></tr>
+        <tr><td><code>set_steering_mode</code> / <code>set_follow_up_mode</code></td><td><code>"all" | "one-at-a-time"</code></td><td class="wb">How queued messages drain between turns.</td></tr>
+        <tr><td><code>compact</code> / <code>set_auto_compaction</code></td><td>— / <code>enabled</code></td><td class="wb">Manual / automatic context compaction (overflow recovery path, §2.5).</td></tr>
+        <tr><td><code>set_auto_retry</code> / <code>abort_retry</code></td><td><code>enabled</code> / —</td><td class="wb">Session-level retry with exponential backoff (default 3 × base 2 s) — the reason <code>agent_end</code> ≠ done.</td></tr>
+        <tr class="gh"><td colspan="3">Host utilities</td></tr>
+        <tr><td><code>bash</code> / <code>abort_bash</code></td><td><code>command</code></td><td class="wb"><strong>Host-side shell</strong> outside the agent loop — a supervisor can run commands in the child’s cwd. ⚠ no default timeout.</td></tr>
+        <tr><td><code>get_state</code> / <code>get_session_stats</code> / <code>get_commands</code></td><td>—</td><td class="wb">Streaming state, token/cost stats, available slash commands.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="src">rpc-types.ts:20-72 · rpc-mode.ts:385-694 · docs/rpc.md</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">B · pi JSONL-RPC — events (child → host)</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Event</th><th>Layer</th><th>Meaning / payload</th></tr></thead>
+      <tbody>
+        <tr><td><code>agent_start</code> / <code>agent_end{messages}</code></td><td>loop</td><td class="wb">A run of the agent loop began / ended. <code>agent_end</code> is NOT final — see §2.7.</td></tr>
+        <tr><td><code>turn_start</code> / <code>turn_end</code></td><td>loop</td><td class="wb">One LLM call + its tool executions.</td></tr>
+        <tr><td><code>message_start</code> / <code>message_update</code> / <code>message_end</code></td><td>loop</td><td class="wb">Message lifecycle; streaming deltas ride inside <code>message_update.assistantMessageEvent</code>: <code>text_delta / thinking_delta / toolcall_delta…</code> <span class="tag">(ai/src/types.ts:453-465)</span>. <code>message_end</code> is the durable line.</td></tr>
+        <tr><td><code>tool_execution_start</code> / <code>update</code> / <code>end</code></td><td>loop</td><td class="wb">Tool call lifecycle — where autosk observes <code>autosk_transit</code>.</td></tr>
+        <tr><td><code>agent_settled</code></td><td>session</td><td class="wb"><strong>THE completion signal</strong>: fires only when the post-run drain (retry / compaction / queued follow-ups) is empty.</td></tr>
+        <tr><td><code>queue_update</code></td><td>session</td><td class="wb">Pending steer/follow-up queue changed.</td></tr>
+        <tr><td><code>compaction_start</code> / <code>compaction_end</code></td><td>session</td><td class="wb">Context compaction running (manual or overflow-triggered).</td></tr>
+        <tr><td><code>auto_retry_start</code> / <code>auto_retry_end</code></td><td>session</td><td class="wb">Transient-failure retry in progress — the session will continue by itself.</td></tr>
+        <tr><td><code>entry_appended</code></td><td>session</td><td class="wb">A new entry hit the session file — pairs with the <code>get_entries{since}</code> cursor.</td></tr>
+        <tr><td><code>thinking_level_changed</code></td><td>session</td><td class="wb">Reasoning-effort setting changed.</td></tr>
+        <tr><td><code>extension_error</code></td><td>session</td><td class="wb">An extension handler threw — surfaced as an event <span class="tag">(rpc-mode.ts:347-349)</span>… unless it threw at startup (then: exit 1, §2.8).</td></tr>
+        <tr><td><code>extension_ui_request</code></td><td>session</td><td class="wb">An extension wants interactive UI. Headless hosts must auto-answer <code>{cancelled:true}</code> or hang forever.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="src">packages/agent/src/types.ts:413-429 · core/agent-session.ts:127-153</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">C · claude stream-json — the elder twin’s dialect</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Direction</th><th>Message</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr class="gh"><td colspan="3">Spawn (the full proven flag set)</td></tr>
+        <tr><td>—</td><td class="wb"><code>claude -p --output-format stream-json --input-format stream-json --verbose --include-partial-messages --replay-user-messages</code></td><td class="wb">+ <code>--mcp-config {type:"http", url, headers:{Authorization: Bearer …}}</code>, <code>--allowedTools</code> auto-allowlist, <code>--permission-mode acceptEdits</code> (optionally <code>--dangerously-skip-permissions</code> under worktree isolation), <code>--model/--effort/--append-system-prompt/--bare</code> <span class="tag">(claude-agent/index.ts:386-413)</span></td></tr>
+        <tr class="gh"><td colspan="3">Child → host (stdout)</td></tr>
+        <tr><td>←</td><td><code>{type:"system", subtype:"init", session_id}</code></td><td class="wb">Handshake; <code>session_id</code> captured for future <code>--resume</code> — never used at HEAD.</td></tr>
+        <tr><td>←</td><td><code>{type:"assistant"}</code> / <code>{type:"user"}</code></td><td class="wb">Durable messages (user ones replayed thanks to <code>--replay-user-messages</code>) — mirrored 1:1 into the transcript.</td></tr>
+        <tr><td>←</td><td><code>{type:"stream_event", …}</code></td><td class="wb">Partial deltas; coalesced at ~40 ms into the ephemeral “partial” channel.</td></tr>
+        <tr><td>←</td><td><code>{type:"result"}</code></td><td class="wb">Turn boundary — the ClaudeDriver’s equivalent of <code>agent_end</code>.</td></tr>
+        <tr><td>←</td><td><code>system: api_retry / api_error</code></td><td class="wb">Logged as warnings only — no backoff, no reschedule <span class="tag">(driver.ts:374-376)</span>. The usage-window gap, §5 row 11.</td></tr>
+        <tr class="gh"><td colspan="3">Host → child (stdin)</td></tr>
+        <tr><td>→</td><td><code>{type:"user", message}</code></td><td class="wb">A prompt / kickback / follow-up (follow-ups queued host-side until the current <code>result</code>).</td></tr>
+        <tr><td>→</td><td><code>{type:"control_request", request:{subtype:"interrupt"}}</code></td><td class="wb">Steer: interrupt the streaming turn, then write the steer text as a fresh user message <span class="tag">(driver.ts:254-272)</span>.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="src">daemon/extensions/claude-agent/src/{index.ts, driver.ts} · 01-autosk.md §2</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">D · Bonus: the autoskd client protocol (what CLI/TUI/GUI speak to the daemon)</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Framing</td><td class="wb">One JSON object per line over UDS (or TCP :7077 + <code>meta.auth {token}</code> first); integer-<code>id</code> correlation; <strong>fresh dial per call</strong> — a documented simplicity trade <span class="tag">(rpcclient/client.go:70-94,113-115)</span>. Every project-scoped request carries only <code>{cwd}</code>.</td></tr>
+        <tr><td>Methods</td><td class="wb"><code>task.create/list/update</code> · <code>session.list/get/transcript/abort/input</code> · <code>registry.workflow.*</code> · <code>extension.*</code> · <code>metadata.*</code> — every CLI command is a thin RPC call <span class="tag">(cmd/autosk/*.go)</span>.</td></tr>
+        <tr><td>Streams</td><td class="wb">Two dedicated persistent connections, separate from per-call transport: <code>NoteStream</code> (task/project/session-project subscriptions demuxed into a cap-16 channel) and <code>SessionStream</code> (<code>session.subscribe{id, from_line}</code> → frames <code>message|status|done|error|partial</code>, cap-64) <span class="tag">(notify.go:66-151, stream.go:68-104)</span>. Reconnect is owned by the client UI, with capped backoff 250 ms→5 s.</td></tr>
+        <tr><td>Error codes</td><td class="wb"><code>1001 ProjectNotFound · 1002 InvalidProject · 1003 NotFound · 1004 Conflict (retryable) · 1005 EnvironmentDirty (retired, reserved-not-reused)</code> — mirrors <code>daemon/sdk/src/proto.ts</code> <span class="tag">(client.go:82-110)</span>.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="src">internal/daemon/rpcclient/{client.go, connector.go, notify.go, stream.go} · 03-tui.md §3</p>
+  </div>
+</section>
+
+<!-- ============ 4. CONFIG SURFACE ============ -->
+<section id="s4">
+  <div class="sh"><span class="num">§4</span><h2>Config surface — autosk + pi, complete inventory</h2></div>
+
+  <div class="card">
+    <h3 style="margin-top:0">autosk</h3>
+    <h4>Environment variables</h4>
+    <div class="scroll"><table>
+      <thead><tr><th>Variable</th><th>Consumed by</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>AUTOSK_CWD</code></td><td>CLI project resolution</td><td class="wb">Project identity for any <code>autosk</code> run inside a worktree — walks up to <code>.autosk/</code> from here instead of cwd <span class="tag">(projectdb.go:35-48)</span>. Injected into every agent child.</td></tr>
+        <tr><td><code>AUTOSK_AGENT</code></td><td>CLI comment attribution</td><td class="wb">Comments created by the agent are attributed to the running step <span class="tag">(pi-agent/index.ts:353-358)</span>.</td></tr>
+        <tr><td><code>AUTOSK_PI_BIN</code> / <code>AUTOSK_CLAUDE_BIN</code></td><td>agent extensions</td><td class="wb">Override the harness binary found on PATH <span class="tag">(pi-agent/index.ts:368)</span>.</td></tr>
+        <tr><td><code>AUTOSK_SOCK</code> / <code>AUTOSKD_BIN</code></td><td>Go client</td><td class="wb">Socket path override; daemon binary for auto-spawn (explicit → env → alongside own binary → PATH) <span class="tag">(client.go:166-186, connector.go:106-123)</span>.</td></tr>
+        <tr><td><code>AUTOSK_NO_AUTOINIT</code> / <code>AUTOSK_AUTOINIT_ASSUME_YES</code></td><td>CLI</td><td class="wb">Escape hatches for the auto-init gate: never prompt in a script / force-create. The interactive y/n prompt fires only if BOTH stdin and stderr are TTYs <span class="tag">(autoinit.go:24-26)</span>.</td></tr>
+        <tr><td><code>AUTOSK_MCP_URL</code> / <code>AUTOSK_MCP_TOKEN</code></td><td>pi-tools inside the sandbox</td><td class="wb">Presence of URL flips the tool transport from CLI-exec to MCP HTTP POST <span class="tag">(mcp.ts:49-52)</span>.</td></tr>
+      </tbody>
+    </table></div>
+    <h4>Files &amp; directories</h4>
+    <div class="scroll"><table>
+      <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;project&gt;/.autosk/</code></td><td class="wb"><code>tasks/&lt;id&gt;/task.json</code> (pretty-printed, human-editable; carries <code>metadata.step_visits</code>), <code>tasks/&lt;id&gt;/comments.jsonl</code>, <code>sessions/&lt;id&gt;.json</code> (meta) + <code>.jsonl</code> (transcript), <code>extensions/*.ts</code>. Atomic writes: temp → fsync → rename → fsync dir <span class="tag">(store/atomic.ts:1-24)</span>.</td></tr>
+        <tr><td><code>~/.autosk/</code></td><td class="wb"><code>daemon.sock</code> (UDS), <code>daemon-token</code> (32 random bytes hex, 0600 — TCP auth), <code>state.json</code> (client-side, e.g. LastSeenChangelog; tempfile+rename, 0600/0700), <code>extensions/</code> (global), <code>packages/</code> (npm-installed extensions).</td></tr>
+      </tbody>
+    </table></div>
+    <h4>Daemon &amp; agent options</h4>
+    <div class="scroll"><table>
+      <thead><tr><th>Knob</th><th>Default</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>autoskd serve --workers</code></td><td>4</td><td class="wb">Global FIFO worker pool shared across ALL projects; interactive chats run off-pool <span class="tag">(engine.ts:48-49,280-287)</span>.</td></tr>
+        <tr><td>TCP listener</td><td><strong>0.0.0.0:7077 ON by default</strong></td><td class="wb">Token-only auth, no TLS; idle-shutdown disabled while TCP is on <span class="tag">(docs/daemon.md:444-458)</span>. The #1 operational risk (§5 row 23).</td></tr>
+        <tr><td><code>piAgent(opts)</code></td><td>—</td><td class="wb"><code>model</code> ("sonnet:high" spec) · <code>thinking</code> off…xhigh · <code>firstMessage/File</code> · <code>extraArgs</code> · <code>piExtensions</code>(-e) · <code>piSkills</code>(--skill) · <code>maxCorrections</code>=3 · <code>piBin</code> · <code>sandbox</code> (structural: <code>thin?, workspace, wrap, endpointFor, stop</code>).</td></tr>
+        <tr><td><code>claudeAgent(opts)</code></td><td>—</td><td class="wb"><code>--permission-mode acceptEdits</code> default; <code>--dangerously-skip-permissions</code> “intended for worktree isolation”; <code>--model/--effort/--append-system-prompt/--bare</code> <span class="tag">(index.ts:99-105,409-413)</span>.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">pi</h3>
+    <h4>Environment variables</h4>
+    <div class="scroll"><table>
+      <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>ANTHROPIC_OAUTH_TOKEN</code></td><td class="wb">Checked BEFORE <code>ANTHROPIC_API_KEY</code> <span class="tag">(providers/anthropic.ts:14)</span> — subscription auth wins; full Claude Pro/Max OAuth PKCE flow caches creds in <code>~/.pi/agent/auth.json</code>.</td></tr>
+        <tr><td><code>ANTHROPIC_API_KEY</code></td><td class="wb">API-key fallback (one of ~30 providers).</td></tr>
+        <tr><td><code>PI_OFFLINE</code></td><td class="wb">Suppresses the <code>rg</code>/<code>fd</code> auto-download at first grep/find use <span class="tag">(tools-manager.ts:241-358)</span>.</td></tr>
+        <tr><td><code>PI_CODING_AGENT_SESSION_DIR</code></td><td class="wb">Session storage override (also <code>--session-dir</code>).</td></tr>
+      </tbody>
+    </table></div>
+    <h4>Files &amp; directories</h4>
+    <div class="scroll"><table>
+      <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>~/.pi/agent/settings.json</code></td><td class="wb">Global settings incl. <code>packages: ["npm:@autosk/pi-tools"]</code>; project <code>.pi/settings.json</code> merged over it <span class="tag">(settings-manager.ts:83-196)</span>.</td></tr>
+        <tr><td><code>~/.pi/agent/models.json · auth.json · trust.json</code></td><td class="wb">Model catalog · cached OAuth/API creds · per-directory trust decisions (headless: untrusted project extensions silently skipped — §2.8).</td></tr>
+        <tr><td><code>~/.pi/agent/sessions/--&lt;cwd-mangled&gt;--/</code></td><td class="wb"><code>&lt;timestamp&gt;_&lt;id&gt;.jsonl</code> — append-only session trees, version-migrated on open.</td></tr>
+        <tr><td><code>~/.pi/agent/bin/</code></td><td class="wb">Auto-downloaded <code>rg</code>/<code>fd</code>.</td></tr>
+        <tr><td><code>&lt;project&gt;/.pi/extensions/</code></td><td class="wb">Project-local extensions (jiti in-process load, trust-gated); npm packages declare the <code>"pi"</code> manifest field <span class="tag">(docs/packages.md:123-187)</span>.</td></tr>
+      </tbody>
+    </table></div>
+    <h4>Flags &amp; defaults that matter to a supervisor</h4>
+    <div class="scroll"><table>
+      <thead><tr><th>Knob</th><th>Values / default</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>--mode</code></td><td><code>rpc | json | print | interactive</code></td><td class="wb"><code>rpc</code> wins; non-TTY stdio forces <code>print</code> otherwise <span class="tag">(main.ts:100-111)</span>. <code>./rpc-entry</code> subpath export force-prepends <code>--mode rpc</code>.</td></tr>
+        <tr><td><code>-e</code> / <code>--skill</code></td><td>paths</td><td class="wb">Explicit extension/skill injection — bypasses trust (autosk’s transit channel rides on this).</td></tr>
+        <tr><td>Sessions</td><td><code>-c/--continue · -r/--resume · --session · --fork · --session-id · --no-session</code></td><td class="wb">Create-if-missing via <code>--session-id</code>; in-memory via <code>--no-session</code>.</td></tr>
+        <tr><td>Auto-retry</td><td>3 attempts, base 2 s</td><td class="wb">Retries overloaded/rate-limit/5xx/network; NOT quota/billing <span class="tag">(retry.ts:7-101)</span>.</td></tr>
+        <tr><td>Tools</td><td><code>read, bash, edit, write</code> ON; <code>grep, find, ls</code> OFF</td><td class="wb">Truncation 2000 lines / 50 KB; bash: no default timeout ⚠.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+<!-- ============ 5. FAILURE MODES ============ -->
+<section id="s5">
+  <div class="sh"><span class="num">§5</span><h2>Failure modes — the consolidated table</h2></div>
+  <p class="small">Every failure mode surfaced across both research waves, with autosk’s answer and the rule gosleep should adopt. Layer legend: <span class="b info">turn</span> inside one model turn · <span class="b teal">child</span> the harness process · <span class="b mut">engine</span> daemon/scheduler · <span class="b warn">ops</span> operations/network · <span class="b bad">ui</span> dashboards.</p>
+  <div class="scroll"><table style="min-width:960px">
+    <thead><tr><th>#</th><th>Failure</th><th>Layer</th><th>What happens</th><th>autosk’s answer</th><th>gosleep rule</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="wb">Turn ends without a transit</td><td><span class="b info">turn</span></td><td class="wb">Model “finishes” without declaring a handoff</td><td class="wb">Kickback re-prompt with valid targets, budget 3 → park <code>agent_did_not_transit</code></td><td class="wb">Adopt verbatim; count down the budget in the prompt itself</td></tr>
+      <tr><td>2</td><td class="wb">Workflow rejects the transition</td><td><span class="b info">turn</span></td><td class="wb"><code>onTransit</code> throws (invalid target, cap hit)</td><td class="wb">Rejection prompt re-lists valid targets as literal call examples; same budget</td><td class="wb">Validation lives host-side; the model only ever <em>requests</em></td></tr>
+      <tr><td>3</td><td class="wb">Step bounce loop (review→dev→review…)</td><td><span class="b mut">engine</span></td><td class="wb">Workflow graph cycles forever</td><td class="wb">Persisted <code>metadata.step_visits</code> caps (e.g. dev ≥ 5) → park + engine comment; human-resettable in task.json</td><td class="wb">Every loop needs a persisted, ownable counter and one park sink</td></tr>
+      <tr><td>4</td><td class="wb">Child exits mid-turn</td><td><span class="b teal">child</span></td><td class="wb"><code>pi exited (code=N)</code> before a transition</td><td class="wb">Driver fails all pending requests, emits terminal turn event; agent throws → session failed → park</td><td class="wb">Child death is a first-class turn outcome (<code>ended|exited|aborted</code>)</td></tr>
+      <tr><td>5</td><td class="wb">Child exits BEFORE the protocol opens</td><td><span class="b teal">child</span></td><td class="wb">pi: any startup diagnostic → exit 1, zero JSONL (§2.8)</td><td class="wb">Nothing special — surfaces as exit</td><td class="wb">Distinguish exit-before-ack vs exit-mid-turn (PR #3’s matrix); read stderr tails</td></tr>
+      <tr><td>6</td><td class="wb">Child crashes without farewell</td><td><span class="b teal">child</span></td><td class="wb">No <code>uncaughtException</code> handler in pi rpc mode</td><td class="wb">Exit handling covers it implicitly</td><td class="wb">Never rely on protocol framing alone; watch the process, not just the stream</td></tr>
+      <tr><td>7</td><td class="wb"><code>agent_end</code> ≠ done race</td><td><span class="b teal">child</span></td><td class="wb">Auto-retry / compaction / queued follow-ups continue a “finished” run</td><td class="wb">⚠ autosk keys on <code>agent_end</code> — latent race (driver.ts:311-318)</td><td class="wb">Key on <code>agent_settled</code>; per-harness, find the “nothing restarts” event (§2.7)</td></tr>
+      <tr><td>8</td><td class="wb">Steer/followup state mismatch</td><td><span class="b teal">child</span></td><td class="wb">Host’s streaming view races the child’s actual state</td><td class="wb">State-dependent dispatch + ONE retry with the opposite shape; best-effort, never throws</td><td class="wb">Adopt the retry-with-opposite-shape idiom for our steer path</td></tr>
+      <tr><td>9</td><td class="wb">Turn-end event lost to an unsubscribed await</td><td><span class="b teal">child</span></td><td class="wb"><code>agent_end</code> arrives while the host isn’t awaiting yet</td><td class="wb">Buffered turn-end queue (driver.ts:151-153)</td><td class="wb">Subscribe before you send; buffer boundaries</td></tr>
+      <tr><td>10</td><td class="wb">Hung tool / bash without timeout</td><td><span class="b teal">child</span></td><td class="wb">Turn blocks forever (pi bash has no default timeout)</td><td class="wb">Nothing — relies on operator abort</td><td class="wb">Explicit timeouts + supervisor-side turn watchdog</td></tr>
+      <tr><td>11</td><td class="wb">Rate limit / usage window exhausted</td><td><span class="b warn">ops</span></td><td class="wb">Subscription window ends at 1am; runs die</td><td class="wb"><code>api_retry/api_error</code> logged as warnings; run dies → park. No backoff, no reschedule</td><td class="wb"><strong>The gosleep differentiator:</strong> usage-window-aware scheduling — quiesce, auto-resume when the window resets</td></tr>
+      <tr><td>12</td><td class="wb">Parks are silent</td><td><span class="b warn">ops</span></td><td class="wb">Nothing notifies anyone on park; work waits unseen</td><td class="wb">None — discovered by opening a UI</td><td class="wb">Push-on-park (ntfy/APNs/Telegram) — the single highest-value mobile feature autosk lacks</td></tr>
+      <tr><td>13</td><td class="wb">Daemon restart</td><td><span class="b mut">engine</span></td><td class="wb">All running/queued sessions orphaned</td><td class="wb">Reap-then-park: sessions → <code>failed: daemon_restart</code>, tasks → human; NO auto-resume; claude session_id captured but unused</td><td class="wb">Invest in resume (<code>claude --resume</code> / pi session tree) early; restarts must not fill the human queue</td></tr>
+      <tr><td>14</td><td class="wb">Double dispatch of one task</td><td><span class="b mut">engine</span></td><td class="wb">Two workers claim the same task</td><td class="wb">Session-creation-as-claim; dispatch re-reads the task fresh; new position committed BEFORE session seals</td><td class="wb">Adopt the claim + commit-ordering pair for parallel workers on shared files</td></tr>
+      <tr><td>15</td><td class="wb">Dispatch of a blocked task</td><td><span class="b mut">engine</span></td><td class="wb">v1 enqueued <code>work</code> tasks with live blockers (PR #1)</td><td class="wb">v2 scan predicate requires “not blocked” at claim time</td><td class="wb">Terminal-only release: <code>done|cancel</code> unblock, <code>human</code> still blocks</td></tr>
+      <tr><td>16</td><td class="wb">Operator cancel vs in-flight agent result</td><td><span class="b mut">engine</span></td><td class="wb">Agent finishes after the task was cancelled → resurrects it (PR #6)</td><td class="wb">v2 prevents mid-run external edits (engine owns status/step during a session)</td><td class="wb">Pick &amp; document precedence: cancel &gt; agent transition, but park-to-human survives cancel (it carries information)</td></tr>
+      <tr><td>17</td><td class="wb">Path-identity aliasing</td><td class="wb"><span class="b mut">engine</span></td><td class="wb">Same project, different casing → duplicate state, orphan worktrees (PR #4)</td><td class="wb">v2 canonicalises via realpath (resolve.ts:14,43-46)</td><td class="wb">Canonicalise (realpath + casing) before using paths as identity — day-one cheap, painful to retrofit</td></tr>
+      <tr><td>18</td><td class="wb">Workflow definition mutates under in-flight work</td><td><span class="b mut">engine</span></td><td class="wb">A step disappears / changes semantics mid-task</td><td class="wb"><code>hazard.ts</code> parks on structural drift; PR #5’s hash-pinned revisions were dropped</td><td class="wb">Pin process definitions by content hash at enroll; migrate only at boundaries</td></tr>
+      <tr><td>19</td><td class="wb">Modal dialog in a headless run</td><td class="wb"><span class="b teal">child</span></td><td class="wb"><code>extension_ui_request</code> blocks forever</td><td class="wb">Auto-answer <code>{cancelled:true}</code>; ignore fire-and-forget UI methods</td><td class="wb">Part of the headless-hardening checklist — apply to every harness</td></tr>
+      <tr><td>20</td><td class="wb">stderr pipe fills → child deadlock</td><td><span class="b teal">child</span></td><td class="wb">Unread pipe backpressure freezes the child</td><td class="wb">Always drain, ANSI-strip, forward via warn with 100-line cap</td><td class="wb">Same checklist</td></tr>
+      <tr><td>21</td><td class="wb">Stale partial repaint after session end</td><td><span class="b bad">ui</span></td><td class="wb">A late coalescer timer repaints a dead “live” bubble</td><td class="wb">Two teardown semantics: flush at boundaries, DROP at death (Coalescer stop)</td><td class="wb">Any live dashboard needs the flush-vs-drop split</td></tr>
+      <tr><td>22</td><td class="wb">Renderer blowup on hostile agent output</td><td><span class="b bad">ui</span></td><td class="wb">Real incident: 27 GB RSS on 100-level blockquotes</td><td class="wb">64 KB input cap, 16-level quote cap, recover()-wrapped render, fall back to raw text</td><td class="wb">Agent output is untrusted input to renderers — cap and fail open</td></tr>
+      <tr><td>23</td><td class="wb">Control plane exposed to the network</td><td><span class="b warn">ops</span></td><td class="wb">TCP 0.0.0.0:7077 by default, token-only, no TLS; token in cleartext; MCP server also on 0.0.0.0</td><td class="wb">Accepted trade for LAN/mobile reach</td><td class="wb">Tunnel-first (Tailscale/SSH) + TLS; never default-bind a code-executing control plane to 0.0.0.0</td></tr>
+      <tr><td>24</td><td class="wb">Unbounded growth</td><td><span class="b warn">ops</span></td><td class="wb">Session metas/transcripts accumulate forever — no GC</td><td class="wb">Documented, accepted</td><td class="wb">Budget retention from day one</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">01-autosk.md §3,§7,§8 · 02-pi-agent.md §1.3,§4.5,§5 · 03-tui.md §6 · 04-unmerged-prs.md §1</p>
+</section>
+
+<!-- ============ 6. TUI ============ -->
+<section id="s6">
+  <div class="sh"><span class="num">§6</span><h2>The Go TUI (<code>autosk lazy</code>) — stack and the 11 patterns</h2></div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Framework verdict <span class="b info">gocui + lazycore — lazygit’s own stack</span></h3>
+    <p><strong>NOT bubbletea.</strong> <code>go.mod:8-9</code> pins <code>jesseduffield/gocui</code> + <code>jesseduffield/lazycore</code>; zero bubbletea imports anywhere. <code>lipgloss</code> + <code>glamour</code> are styling/markdown only, not the event loop. The package doc admits the lineage: <em>“the architecture still mirrors the lazygit shape (gui + state + arrangement + helpers + render) but in fewer files”</em> <span class="tag">(internal/lazy/tui/gui.go:1-14)</span> — one mutex-guarded state struct + 4 panels instead of lazygit’s 35+ context tree. ~15.7k non-test LOC across 119 files.</p>
+    <p><strong>Architecture digest:</strong> every CLI command is a thin RPC call; the TUI’s freshness contract is <em>push-first, poll-fallback</em>: subscribe to daemon <code>task-changed/project-changed/session-changed</code> notes → <code>scheduleRefresh()</code> per notification → 30&nbsp;s safety resync; the poll fallback <em>doubles its interval (cap 30 s) whenever the last fetch took &gt;½ the budget</em> — a circuit breaker born from a real “100%-CPU lazy” incident <span class="tag">(gui.go:169-188,321-372,415-441)</span>. Refresh is CAS-coalescing: spam collapses to one trailing refresh, the latest state always renders <span class="tag">(gui.go:504-546)</span>. The spinner ticks only while a session runs — idle dashboards burn zero cycles <span class="tag">(gui.go:465-502)</span>.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">The 11 patterns, judged for gosleep’s future admin TUI</h3>
+    <div class="scroll"><table style="min-width:900px">
+      <thead><tr><th>#</th><th>Pattern</th><th>Where</th><th>What it does</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="wb"><strong>Push-driven redraw + 30 s safety resync + client-owned reconnect backoff</strong></td><td><span class="tag">gui.go:321-372</span></td><td class="wb">The entire freshness contract for a fleet dashboard in ~80 lines; subscriptions are one-shot, the UI re-subscribes with capped backoff 250 ms→5 s and forces a refresh on every reconnect</td><td><span class="b ok">STEAL</span> #1 by value</td></tr>
+        <tr><td>2</td><td class="wb"><strong>CAS trailing-refresh coalescing</strong></td><td><span class="tag">gui.go:504-546</span></td><td class="wb">A refresh in flight flips a <code>pending</code> flag; the worker loops until it clears — never drops the final update under spam; strictly better than debounce for state dashboards</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>3</td><td class="wb"><strong>Adaptive poll fallback</strong></td><td><span class="tag">gui.go:169-188</span></td><td class="wb">Doubles the tick interval when the backend slows — a dashboard must never DoS its own control plane</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>4</td><td class="wb"><strong>First-keystroke owner-anchored composer</strong></td><td><span class="tag">jobdetail.go:662-714</span></td><td class="wb">The draft’s target session is stamped on the first keystroke, so a live-update reshuffle can’t redirect an in-flight message to a different session</td><td><span class="b ok">STEAL</span> — directly “steer worker N”</td></tr>
+        <tr><td>5</td><td class="wb"><strong>Single binding registry = keys + cheatsheet + options strip</strong></td><td><span class="tag">keys.go:81-366</span></td><td class="wb">One <code>bindingSpecs()</code> drives SetKeybinding AND the <code>?</code> cheatsheet AND the hint strip — help cannot drift from reality</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>6</td><td class="wb"><strong>Live-tail perf recipe</strong></td><td><span class="tag">jobdetail.go:106-297, gui.go:1083-1145</span></td><td class="wb">2 s subscribe debounce + ≤1 update per 30 ms coalescing + pre-rendered-and-joined frames + body-equality short-circuit — spinner frames stay O(1) on long transcripts</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>7</td><td class="wb"><strong>Fail-open, capped markdown</strong></td><td><span class="tag">markdown.go:20-67,251-257</span></td><td class="wb">64 KB input cap, 16-level blockquote cap (prior incident: 27 GB RSS), recover()-wrapped render falling back to raw text — “raw markdown is always preferable to a frozen TUI”</td><td><span class="b ok">STEAL</span> — agent output is untrusted</td></tr>
+        <tr><td>8</td><td class="wb"><strong>Intent-preserving sticky tail</strong></td><td><span class="tag">gui.go:1199-1318</span></td><td class="wb">Transcripts open at bottom, docs at top; auto-tail continues only if the user was already at the bottom — manual scroll-up is never yanked back</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>9</td><td class="wb"><strong>Spinner-only-when-running</strong></td><td><span class="tag">gui.go:465-502</span></td><td class="wb">100 ms animation loop exists only while a session is <code>running</code>; idle dashboard = zero cycles</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>10</td><td class="wb"><strong>Idle-cheap animated presence markers</strong></td><td><span class="tag">render.go:369-375</span></td><td class="wb">1-cell braille spinner (⠋⠙…) in the task list says “an agent works here” at a glance; static <code>&gt;</code> when sessions exist</td><td><span class="b ok">STEAL</span></td></tr>
+        <tr><td>11</td><td class="wb"><strong>Partials decoded but unrendered</strong></td><td><span class="tag">jobdetail.go:225-241</span></td><td class="wb">The stream handler has no <code>case "partial"</code> — the TUI shows nothing during a long assistant turn while the GUI streams live</td><td><span class="b bad">AVOID</span> — wire partials from day one; the daemon side already proves the protocol</td></tr>
+      </tbody>
+    </table></div>
+    <p class="src">03-tui.md §4-§8 · internal/lazy/tui/*</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h4 style="margin-top:0">Known-bug forensics · issue #7 — paste/dictation freeze <span class="b warn">hypothesis</span></h4>
+      <p class="small">No paste-specific handling exists anywhere (grep-verified). Most plausible mechanism: every textarea routes each keystroke through <code>gocui.DefaultEditor.Edit</code> + a full lock→update→layout→render pass <span class="tag">(jobdetail.go:599-610)</span>; a bracketed-paste burst of N chars = N full-dashboard redraws. The code itself flags the per-redraw cost as fine “…if it ever becomes a measurable hotspot” <span class="tag">(keys.go:71-80)</span> — paste is that hotspot. <strong>Lesson:</strong> batch input events before redrawing.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">Known-bug forensics · issue #8 — enroll picker ignores chosen step <span class="b warn">hypothesis</span></h4>
+      <p class="small">No smoking gun found; the nearest pinned bug class is popup z-order/stale-view races <span class="tag">(popup_zorder_test.go:23-30; pinOnTop fix popup.go:418-431)</span> — the enroll picker’s two independently-<code>SetView</code>’d panes are exposed to the same class. <strong>Lesson:</strong> composite popups need one owner for z-order and focus.</p>
+    </div>
+  </div>
+</section>
+<!-- ============ 7. UNMERGED PRS ============ -->
+<section id="s7">
+  <div class="sh"><span class="num">§7</span><h2>The six unmerged PRs — orphans of the v1→v2 clean break</h2></div>
+
+  <div class="callout warn">
+    <p><strong>Headline:</strong> all six open PRs come from <strong>one outside contributor — <code>Conte777</code> (Alexey)</strong> — submitted in a single burst 2026-06-01/02. Three weeks later (v0.2.0, 06-24) the author shipped the v2 clean-break rewrite (doltlite DB → plain files, Go daemon → Bun <code>autoskd</code>, JSON workflows → TS code). Every PR targets v1-only paths that no longer exist at HEAD (<code>internal/daemon/poller|executor</code>, <code>internal/workflow</code>, <code>internal/store/doltlite</code>, <code>extension/runtime</code> — verified absent from the clone). The author never reviewed, commented, merged, or closed any of them. <strong>This is the loudest project-vector fact: the only external contributor got 100% of his work silently invalidated by an unannounced rewrite</strong> — bus-factor-1 in action, exactly as Wave 1 predicted.</p>
+  </div>
+
+  <div class="scroll" style="margin-bottom:16px"><table style="min-width:960px">
+    <thead><tr><th>PR</th><th>Size</th><th>What it fixes / adds</th><th>Quality</th><th>Fate in v2</th><th>gosleep takeaway</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="wb"><strong>#1</strong> fix: skip blocked work tasks</td><td>+229/−19</td>
+        <td class="wb">v1 poller enqueued already-enrolled <code>work</code> tasks even with live blockers; adds a SQL <code>NOT EXISTS</code> guard on <code>task_deps</code>; aligns <code>Ready</code>/<code>IsBlocked</code>: <code>new/work/human</code> block, <code>done/cancel</code> release. Tests at three layers.</td>
+        <td><span class="b ok">high</span></td>
+        <td class="wb">Structurally absorbed — v2’s scan predicate requires “not blocked” at claim time</td>
+        <td class="wb"><strong>Terminal-only release</strong>: <code>done|cancel</code> unblocks, <code>human</code> does NOT — copy this exact status partition</td>
+      </tr>
+      <tr>
+        <td class="wb"><strong>#2</strong> fix: preserve detail scroll under live overlay</td><td>+83/−22</td>
+        <td class="wb">With the job-input overlay visible, manual scroll-up in Detail was misclassified as “at tail” and yanked back to bottom; tracks overlay presence and uses <em>effective visible height</em> for the at-tail test.</td>
+        <td><span class="b ok">good</span></td>
+        <td class="wb">Patch no longer applies (datasource rewired); the bug class likely still lives (#7/#8 are TUI bugs)</td>
+        <td class="wb">At-tail detection must use overlay-reduced viewport height; anchoring sticky across the overlay’s first frame</td>
+      </tr>
+      <tr>
+        <td class="wb"><strong>#3</strong> fix: pi RPC prompt spawning</td><td>+333/−24</td>
+        <td class="wb">v1 wrote the first message as <em>raw stdin text</em> to <code>pi --mode rpc</code> — wrong protocol. Rewrites into a 227-line module: JSONL <code>prompt</code> with id, mini state machine (ack → <code>agent_end</code> → close stdin), auto-answer <code>extension_ui_request</code>, 64 KB <code>TailCapture</code> for stdio, and an <strong>exhaustive exit-code/error matrix</strong>: start failure / prompt rejected / exit-before-ack / exit-before-agent_end / non-zero exit / protocol error — stderr tail appended to every error.</td>
+        <td><span class="b ok">best of six</span></td>
+        <td class="wb">Superseded — v2’s <code>@autosk/pi-agent</code> reimplements it richer (§2)</td>
+        <td class="wb"><strong>The error matrix IS the checklist</strong> for any JSONL child driver — adopt for our <code>claude -p</code> harness</td>
+      </tr>
+      <tr>
+        <td class="wb"><strong>#4</strong> fix: dedupe case-insensitive worktree aliases</td><td>+616/−40</td>
+        <td class="wb">On macOS, the same project addressed with different casing produced duplicate loaded projects and orphaned worktrees. Adds <code>internal/pathcanon</code> (realpath + real directory-entry casing + <code>SameDir</code>), migrates legacy worktrees, prunes stale registrations; concurrency tests.</td>
+        <td><span class="b ok">high</span></td>
+        <td class="wb">Idea independently absorbed — v2 canonicalises via realpath <span class="tag">(resolve.ts:14,43-46)</span></td>
+        <td class="wb">Any daemon keyed by path MUST canonicalise before using paths as identity</td>
+      </tr>
+      <tr>
+        <td class="wb"><strong>#5</strong> feat: workflow packages, global registry, managed revisions</td><td>+11,966/−230 <span class="b warn">60 files</span></td>
+        <td class="wb">Workflows as versioned npm packages; a global registry (XDG, canonical definition hashes) with add/list/sync/adopt; <strong>managed revisions</strong> — updates reconcile by content hash, old revisions preserved under reserved <code>@rev-&lt;hash&gt;</code> names so in-flight tasks never break; TUI markers; 2 SQL migrations.</td>
+        <td><span class="b warn">ambitious</span></td>
+        <td class="wb"><em>Direction vindicated, implementation discarded</em> — v2 ships npm-packaged extensions natively, but <strong>dropped the hash-pinned revisions</strong></td>
+        <td class="wb">Keep what v2 dropped: <strong>revision-pinning of process definitions</strong> so in-flight work never sees its process mutate (pin at enroll, migrate at boundaries)</td>
+      </tr>
+      <tr>
+        <td class="wb"><strong>#6</strong> feat: honour cancel &amp; full signal dates</td><td>+207/−1</td>
+        <td class="wb">(a) v1 race: operator cancels while the agent runs → on exit the executor applied the agent’s transition anyway, resurrecting a cancelled task. Fix: re-read after exit; if <code>status == cancel</code>, discard any transition <em>except</em> <code>human</code>. (b) TUI: multi-day timestamps render full dates.</td>
+        <td><span class="b ok">good</span></td>
+        <td class="wb">v2 solves the race differently — the engine owns <code>status/step</code> during a live session and rejects external edits; the contributor’s semantics are arguably more operator-friendly</td>
+        <td class="wb"><strong>Define cancel precedence explicitly:</strong> cancel beats an agent’s terminal transition, but park-to-human survives cancel (it carries information)</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h4 style="margin-top:0">What the PR set says</h4>
+      <ol class="small">
+        <li><strong>Contributor quality is high</strong> — protocol state machines, conformance and concurrency tests, honest failure reporting. Alexey ran autosk in anger for days and hit real operational races.</li>
+        <li><strong>The bugs he found are a map of orchestration failure modes</strong> — dispatch-while-blocked, cancel-vs-result, live-tail UX, path aliasing, process versioning. Every one has a direct gosleep analogue (§5 rows 15–18).</li>
+        <li><strong>Zero maintainer engagement</strong> + clean-break rewrite = the project does not absorb outside momentum. Mine the code; expect nothing from the community process.</li>
+        <li><strong>Vector:</strong> v2 independently converged with #4/#5’s ideas (canonicalisation, packaged extensions) while dropping #5’s revision safety and choosing “engine owns status” over #6’s cancel-honouring. The rewrite was architectural, not a rejection of these behaviors.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">Ideas worth importing, ranked</h4>
+      <ol class="small">
+        <li><span class="b ok">HIGH</span> #3’s JSONL child-driver <strong>error matrix</strong> (ack-first-prompt, exit-before-ack vs exit-before-end, auto-cancel UI requests, bounded stderr tails)</li>
+        <li><span class="b ok">HIGH</span> #6’s <strong>cancel precedence rule</strong> (cancel &gt; agent transition, except <code>human</code> survives)</li>
+        <li><span class="b warn">MED</span> #1’s <strong>terminal-only blocker release</strong> (<code>done|cancel</code> release; <code>human</code> blocks)</li>
+        <li><span class="b warn">MED</span> #5’s <strong>managed revisions</strong> (content-hash-pinned process definitions)</li>
+        <li><span class="b warn">MED</span> #4’s <strong>path canonicalisation as identity</strong></li>
+        <li><span class="b mut">LOW</span> #2’s <strong>overlay-aware sticky tail</strong> (note for any live dashboard)</li>
+      </ol>
+    </div>
+  </div>
+  <p class="src">gh pr list/view/diff -R wierdbytes/autosk (live 2026-07-10) · 04-unmerged-prs.md</p>
+</section>
+
+<!-- ============ 8. SITE DELTA ============ -->
+<section id="s8">
+  <div class="sh"><span class="num">§8</span><h2>Site re-fetch — zero delta, the project is frozen</h2></div>
+  <div class="card">
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="v">0</div><div class="l">commits / releases / site edits since the 07-07 baseline clone</div></div>
+      <div class="tile"><div class="v">v0.2.4</div><div class="l">still the latest release (2026-06-28); prior cadence was days apart</div></div>
+      <div class="tile"><div class="v">27★ / 5 / 8</div><div class="l">stars / forks / open issues+PRs — byte-identical to 07-07</div></div>
+      <div class="tile"><div class="v">1 <span class="u">page</span></div><div class="l">the whole site: anchor nav only, no subpages, no pricing, no roadmap</div></div>
+    </div>
+    <p><strong>Verified live:</strong> hero “You don’t need a smarter agent. You need a way to run them in loops.” = <code>Hero.astro:20-21</code>; “…a real pipeline you can watch, steer, and trust” = <code>Hero.astro:25</code>; eyebrow “task manager + workflow engine for coding agents” = <code>Hero.astro:16</code>. Live copy == clone source, three verbatim anchors checked. All of Wave 1’s claimed-vs-implemented analysis remains valid.</p>
+    <p><strong>What the site declares</strong> (feature grid, unchanged): “Workflows as code, not config” · “Multi-agent handoffs” · “Guardrails that stop loops” (<code>step_visits</code> caps → park) · “Never lose work” (interrupted → <code>human</code>) · “Agent-owned sandboxes” · “No database — just files” · “Three front ends, one source of truth” · “Bring your own agent” · “Extensions, no build step”. Marketing still stops short of “sleep while it works” autonomy — “loops” means the bounded pipeline loops, not overnight scheduling.</p>
+    <p><strong>Roadmap hints: none.</strong> The only forward-looking signals anywhere: 6 PRs unreviewed since 06-02 (a paused project, not a rejected direction), and the last real feature being GUI transcript folding (<code>55187d3</code>, 06-28) — polish, not capability.</p>
+    <div class="callout frozen"><p><strong>Implications:</strong> (1) bus-factor-1 risk materialized on schedule — treat autosk as a frozen reference to mine, not a dependency or moving competitor; (2) every competitive gap from Wave 1 is still open — nobody is closing them from the autosk side; (3) “run them in loops” is the market framing gosleep competes in — autosk sells bounded in-repo loops; gosleep’s differentiator remains the <em>time</em> dimension (overnight, usage-window-aware, owner-asleep), which the site still doesn’t even gesture at.</p></div>
+    <p class="src">live autosk.app (WebFetch 2026-07-10) · GitHub API repos/wierdbytes/autosk · 05-site-delta.md</p>
+  </div>
+</section>
+
+<!-- ============ 9. ADOPT LIST ============ -->
+<section id="s9">
+  <div class="sh"><span class="num">§9</span><h2>The ranked adopt list for gosleep — value / effort / risk</h2></div>
+  <p class="small">Synthesized from all findings of both waves (01 §9, 02 §5, 03 §8, 04 §3). Value: what it buys gosleep. Effort: cost to adopt. Risk: chance of it biting us. Badges: <span class="b ok">HIGH value / LOW effort / LOW risk</span> are good; <span class="b warn">MED</span>; <span class="b bad">HIGH effort/risk</span> needs care.</p>
+  <div class="scroll"><table style="min-width:980px">
+    <thead><tr><th>#</th><th>Adopt</th><th>Source</th><th>Value</th><th>Effort</th><th>Risk</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="wb"><strong><code>claude -p</code> stream-json bidirectional harness</strong> — exact flag set, steer-via-interrupt, follow-up queuing</td><td class="wb">claude-agent driver · fig. 3</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">A proven, PTY-free worker interface on pure subscription auth — copy verbatim</td></tr>
+      <tr><td>2</td><td class="wb"><strong>Park-to-<code>human</code> as the single failure sink</strong> + engine-authored explanatory comment</td><td class="wb">engine · §5</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Every failure converges on one reviewable queue = the owner’s morning inbox</td></tr>
+      <tr><td>3</td><td class="wb"><strong>Three-tier persisted budgets</strong>: corrections ×3 → <code>step_visits</code> caps → park; human-resettable in the task file</td><td class="wb">transition.ts · fig. 1</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">The complete loop-safety vocabulary in ~100 lines; file-persisted counters make overnight autonomy auditable</td></tr>
+      <tr><td>4</td><td class="wb"><strong>Transit-as-explicit-tool-call</strong>: ack-only tool, host observes the wire, validates, commits; kickback re-prompt within budget</td><td class="wb">both drivers · fig. 1</td><td><span class="b ok">HIGH</span></td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td class="wb">The model must <em>declare</em> handoffs; the sandboxed process stays powerless — gosleep’s phase-gate discipline</td></tr>
+      <tr><td>5</td><td class="wb"><strong>JSONL child-driver error matrix + headless-hardening checklist</strong>: ack-first-prompt; exit-before-ack vs exit-mid-turn; auto-cancel UI requests; drain+strip+cap stderr; non-JSON lines = resync not fatal; bounded output tails</td><td class="wb">PR #3 + driver.ts · §2.2, §7</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Everything that can go wrong driving an agent child, as a checklist — adopt before hitting each item in production</td></tr>
+      <tr><td>6</td><td class="wb"><strong>Fresh-context-per-step + all state in files</strong> (comments as inter-step memory)</td><td class="wb">engine + prompt.ts</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Don’t engineer context survival; engineer step boundaries so nothing needs to survive — validates gosleep’s handoff files</td></tr>
+      <tr><td>7</td><td class="wb"><strong>Key on <code>agent_settled</code>, never <code>agent_end</code></strong> (per-harness: find the “nothing restarts by itself” event)</td><td class="wb">pi docs/rpc.md · §2.7</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">The single most bug-prone contract in pi’s protocol; autosk itself has the latent race</td></tr>
+      <tr><td>8</td><td class="wb"><strong>Cancel-precedence rule</strong>: operator cancel &gt; agent transition; park-to-<code>human</code> survives cancel</td><td class="wb">PR #6 · §7</td><td><span class="b ok">HIGH</span></td><td><span class="b ok">LOW</span></td><td><span class="b warn">MED</span></td><td class="wb">Must be picked and documented either way; the alternative (engine owns status during run) is autosk v2’s choice</td></tr>
+      <tr><td>9</td><td class="wb"><strong>State-dependent input dispatch + one retry on state mismatch</strong></td><td class="wb">driver.ts:200-234</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">The correct answer to the steer-vs-reality race; our <code>claude -p</code> steer path has the same race</td></tr>
+      <tr><td>10</td><td class="wb"><strong>Buffered turn-end queue</strong> — subscribe before send</td><td class="wb">driver.ts:151-153</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Trivial to get wrong; silently loses completions</td></tr>
+      <tr><td>11</td><td class="wb"><strong>Coalescer flush-vs-drop teardown semantics</strong> for streaming partials</td><td class="wb">driver.ts:50-127</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">A stale partial repainting after the terminal frame is a real bug class — engineered away here</td></tr>
+      <tr><td>12</td><td class="wb"><strong>Env-carried project identity</strong> (<code>AUTOSK_CWD</code> pattern) for worktree workers</td><td class="wb">pi-agent/index.ts:353-358</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">cwd-derived identity breaks the moment worktree isolation exists</td></tr>
+      <tr><td>13</td><td class="wb"><strong>Session-creation-as-claim + commit-position-before-seal ordering</strong></td><td class="wb">engine.ts:391-453</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Race-free multi-worker dispatch over shared files, no DB</td></tr>
+      <tr><td>14</td><td class="wb"><strong>Atomic write discipline</strong>: temp-in-dir + fsync file + fsync dir + change-signature echo suppression</td><td class="wb">store/atomic.ts</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Cheap insurance that a crash never tears a handoff/state file</td></tr>
+      <tr><td>15</td><td class="wb"><strong>Terminal-only blocker release</strong>: <code>done|cancel</code> unblock; <code>human</code> blocks</td><td class="wb">PR #1 · §7</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">The exact status partition for task-graph gating</td></tr>
+      <tr><td>16</td><td class="wb"><strong>Managed revisions</strong>: content-hash-pinned process definitions for in-flight work</td><td class="wb">PR #5 · §7</td><td><span class="b warn">MED</span></td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td class="wb">v2 dropped it; gosleep’s workflow files deserve it — pin at enroll, migrate at boundaries</td></tr>
+      <tr><td>17</td><td class="wb"><strong>Path canonicalisation as identity</strong> (realpath + casing)</td><td class="wb">PR #4 · resolve.ts</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Trivial on day one, painful to retrofit</td></tr>
+      <tr><td>18</td><td class="wb"><strong>Per-session ephemeral MCP server</strong> with bearer token + <code>--allowedTools</code> auto-allowlist</td><td class="wb">claude-agent/index.ts:365-406</td><td><span class="b warn">MED</span></td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td class="wb">Scoped control plane per worker; the allowlist keeps headless runs from dying on permission prompts</td></tr>
+      <tr><td>19</td><td class="wb"><strong>pi as a second subscription-native harness</strong> (OAuth PKCE; fork/get_entries/get_state/bash RPC surface)</td><td class="wb">§2.5 · §3</td><td><span class="b warn">MED</span></td><td><span class="b warn">MED</span></td><td><span class="b warn">MED</span></td><td class="wb">Real diversification: different loop, same account; pi’s RPC is materially richer than stream-json — but it’s a young, fast-moving dependency</td></tr>
+      <tr><td>20</td><td class="wb"><strong>Dedicated read of <code>pi packages/orchestrator</code></strong> before designing gosleep’s worker pool</td><td class="wb">§2.9</td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">First-party prior art by the protocol’s own author — harvest before building</td></tr>
+      <tr><td>21</td><td class="wb"><strong>Admin-TUI freshness kit</strong>: push+resync+backoff, CAS coalescing, adaptive poll, owner-anchored composer, fail-open markdown</td><td class="wb">§6 rows 1-7</td><td><span class="b warn">MED</span></td><td><span class="b warn">MED</span></td><td><span class="b ok">LOW</span></td><td class="wb">When gosleep grows a dashboard, this is the contract to copy — with partials wired from day one</td></tr>
+      <tr><td>22</td><td class="wb"><strong>Prompt-level budget countdown</strong> (“attempt N of M, then failed”)</td><td class="wb">prompt.ts:76-99</td><td><span class="b mut">LOW</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">Cheap; likely improves compliance</td></tr>
+      <tr><td>23</td><td class="wb"><strong>Login-shell PATH probe</strong> before spawning anything from a GUI/launchd context</td><td class="wb">rpc/path-env.ts</td><td><span class="b mut">LOW</span></td><td><span class="b ok">LOW</span></td><td><span class="b ok">LOW</span></td><td class="wb">A classic unattended-run failure solved in ~150 lines</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout ok" style="margin-top:18px">
+    <p><strong>Build-better — the gaps autosk leaves open (gosleep differentiators, all still unclosed as of 2026-07-10):</strong></p>
+    <ul style="margin-bottom:0">
+      <li><strong>Usage-window-aware scheduling:</strong> detect subscription-limit exhaustion, quiesce the fleet, auto-resume when the window resets (autosk just parks — §5 row 11).</li>
+      <li><strong>Push-on-park</strong> (ntfy / APNs / Telegram): notify the owner the moment work needs a human; autosk has zero notification path.</li>
+      <li><strong>Session resume</strong> (<code>claude --resume</code> with the captured session_id; pi’s session tree): daemon restarts and transient failures must not reset in-flight work.</li>
+      <li><strong>TLS/tunnel-first remote access</strong> (Tailscale-assumed / SSH) instead of cleartext-token TCP on 0.0.0.0.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <hr class="sep">
+  <p><strong>Sources.</strong> Research inputs: <code>docs/research/2026-07-07-orchestration/01-autosk.md</code> (baseline, GSL-41) · <code>docs/research/2026-07-10-autosk-anatomy/02-pi-agent.md</code> (GSL-60) · <code>03-tui.md</code> (GSL-61) · <code>04-unmerged-prs.md</code> (GSL-62) · <code>05-site-delta.md</code> (GSL-63). Primary artifacts: clone <code>.research-cache/autosk</code> @ <code>fd4c22e</code> v0.2.4 · clone <code>.research-cache/pi</code> @ <code>34582ef</code> · live <a href="https://autosk.app">autosk.app</a> · GitHub API / <code>gh pr</code> (2026-07-10).</p>
+  <p><strong>Method &amp; limits.</strong> Static reads only; nothing was executed — all runtime-behavior claims derive from code and doc comments. Known coverage gaps inherited from the research: pi’s ~30 non-Anthropic providers, interactive-mode internals, <code>packages/orchestrator</code> beyond rpc-process.ts+supervisor.ts (flagged follow-up); PR #4/#5 diffs assessed via bodies + targeted v2 comparisons, not line-by-line; TUI bug root causes (#7/#8) are reasoned hypotheses, explicitly unconfirmed.</p>
+  <p>GSL-64 · report by writer-anatomy for the gosleep orchestration research · EN is the primary version · <a href="RU/index.html">русская версия →</a></p>
+</footer>
+
+</div>
+</body>
+</html>

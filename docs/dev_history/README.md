@@ -80,3 +80,12 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-55 — Route-through-reap на kill + формат watchdog-ledger (no silently vanished work)](GSL-55-phase-gsl49-route-through-reap.md)
 - [GSL-56 — Cold-start re-wake: watchdog-driven orchestrator restart (skill + brief template)](GSL-56-phase-gsl49-rewake.md)
 - [GSL-57 — Runbook: watchdog operations for the owner (docs/runbooks/watchdog.md)](GSL-57-phase-gsl49-runbook.md)
+
+## Epic GSL-58 — AutoSK Anatomy v2 — помодульный код-анализ (CODE-ONLY)
+
+- [GSL-59 — Commit orchestration ledger (handoff 15 + STATE)](GSL-59-phase-gsl58-cycle1-ledger.md)
+- [GSL-60 — pi-agent internals — помодульный разбор (earendil-works/pi, code-only)](GSL-60-phase-gsl58-pi-agent.md)
+- [GSL-61 — Go TUI internals autosk — gocui/lazygit стек, 11 паттернов](GSL-61-phase-gsl58-tui.md)
+- [GSL-62 — Разбор unmerged PRs autosk — 6 осиротевших PR одного контрибьютора](GSL-62-phase-gsl58-unmerged-prs.md)
+- [GSL-63 — Re-fetch autosk.app — zero delta, проект FROZEN](GSL-63-phase-gsl58-site-delta.md)
+- [GSL-64 — Отчёт AutoSK Anatomy — EN+RU dashboard](GSL-64-phase-gsl58-report.md)
