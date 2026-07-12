@@ -1,0 +1,217 @@
+{
+  "schema": "gosleep.lab.status/1",
+  "generated_at": "2026-07-12T21:25:39Z",
+  "generated_by": "tools/lab/chronicler.sh (GSL-86)",
+  "date": "2026-07-12",
+  "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
+  "staleness": {
+    "max_event_age_s": 99,
+    "max_event_age_human": "1m",
+    "latest_event_ts": "2026-07-12T21:24:00Z",
+    "heartbeat_age_s": 1136,
+    "grade": "fresh",
+    "thresholds_s": {
+      "fresh": 1800,
+      "dead": 10800
+    }
+  },
+  "events": {
+    "total": 36,
+    "today": 36,
+    "days": [
+      "2026-07-12"
+    ],
+    "by_type": {
+      "dev_history.written": 7,
+      "agent.turn_ended": 6,
+      "vcs.commit": 5,
+      "handoff.written": 4,
+      "pane.ended": 3,
+      "pane.started": 3,
+      "tracker.issue.transitioned": 3,
+      "agent.idle": 1,
+      "question.posed": 1,
+      "task.completed": 1,
+      "task.created": 1,
+      "vcs.push": 1
+    },
+    "by_src": {
+      "hook:PostToolUse": 20,
+      "hook:Stop": 6,
+      "hook:SessionEnd": 3,
+      "hook:SessionStart": 3,
+      "emit": 1,
+      "hook:TaskCompleted": 1,
+      "hook:TaskCreated": 1,
+      "hook:TeammateIdle": 1
+    },
+    "by_actor": {
+      "claude": 22,
+      "ef6c3777": 7,
+      "70cbe176": 3,
+      "ca8a1e39": 3,
+      "impl-lab-2": 1
+    },
+    "mechanical_share": 0.972
+  },
+  "questions": {
+    "open": 1,
+    "by_type": {
+      "DECISION": 1
+    },
+    "items": [
+      {
+        "id": "q-2026-07-12-001",
+        "type": "DECISION",
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
+        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
+        "auto_apply_at": "2026-07-13T08:00:00Z",
+        "task": "GSL-86",
+        "high_impact": null
+      }
+    ]
+  },
+  "decisions": {
+    "total": 0,
+    "last": null,
+    "manifest_candidates": []
+  },
+  "delivery": {
+    "branch": "GSL-81-laboratory-auto-doc",
+    "head": "e9a1ccc",
+    "dirty_paths": 18,
+    "commits_on_date": [
+      {
+        "sha": "e9a1ccc",
+        "author": "R",
+        "ts": "2026-07-12T22:59:08+02:00",
+        "subject": "GSL-85 [Repo] docs/lab layout — схема, retention + дисциплина записи (append-only + atomic)"
+      },
+      {
+        "sha": "b0599db",
+        "author": "R",
+        "ts": "2026-07-12T22:50:56+02:00",
+        "subject": "GSL-84 [Tooling] lab-emit semantic events — cycle/question/decision/verify поверх одного писателя"
+      },
+      {
+        "sha": "2e33632",
+        "author": "R",
+        "ts": "2026-07-12T22:46:18+02:00",
+        "subject": "GSL-83 [Tooling] hooks + lab-log.sh — 0-token event capture to events.jsonl"
+      },
+      {
+        "sha": "9a056bb",
+        "author": "R",
+        "ts": "2026-07-12T22:15:58+02:00",
+        "subject": "GSL-82 [Docs] Леджер: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + gitignore/SKILL"
+      },
+      {
+        "sha": "4af66d2",
+        "author": "rommxx",
+        "ts": "2026-07-12T20:20:17+02:00",
+        "subject": "Merge pull request #92 from ainstance-labs/GSL-72-question-buffer"
+      }
+    ],
+    "prs": [
+      {
+        "number": 92,
+        "state": "MERGED",
+        "title": "GSL-72 Question buffer + decision manifest — PRD Phase 3",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/92",
+        "mergedAt": "2026-07-12T18:20:18Z"
+      },
+      {
+        "number": 82,
+        "state": "MERGED",
+        "title": "GSL-65 Self-pulse + night mode — PRD Phase 2",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/82",
+        "mergedAt": "2026-07-10T08:28:46Z"
+      },
+      {
+        "number": 74,
+        "state": "MERGED",
+        "title": "GSL-58 AutoSK Anatomy v2 — помодульный код-анализ",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/74",
+        "mergedAt": "2026-07-10T07:38:38Z"
+      },
+      {
+        "number": 66,
+        "state": "MERGED",
+        "title": "GSL-49 Watchdog над оркестратором — PRD Phase 1",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/66",
+        "mergedAt": "2026-07-10T06:32:18Z"
+      },
+      {
+        "number": 56,
+        "state": "MERGED",
+        "title": "GSL-41 Orchestration deep-research — reports + PRD",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/56",
+        "mergedAt": "2026-07-09T21:34:58Z"
+      },
+      {
+        "number": 47,
+        "state": "MERGED",
+        "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/47",
+        "mergedAt": "2026-07-01T14:00:01Z"
+      },
+      {
+        "number": 42,
+        "state": "MERGED",
+        "title": "GSL-31 Close eval-validated gaps — SC-09 fixed, SC-19 improved (calibration + mechanism-targeted fixes)",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/42",
+        "mergedAt": "2026-06-29T15:38:15Z"
+      },
+      {
+        "number": 35,
+        "state": "MERGED",
+        "title": "GSL-24 Harness hardening v2 — concrete skill fixes for the 4 eval-failed behaviors",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/35",
+        "mergedAt": "2026-06-29T14:55:53Z"
+      },
+      {
+        "number": 27,
+        "state": "MERGED",
+        "title": "GSL-19 Behavioral validation of the hardened skill — efficient run",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/27",
+        "mergedAt": "2026-06-29T12:27:20Z"
+      },
+      {
+        "number": 21,
+        "state": "MERGED",
+        "title": "GSL-15 Vendor all delivery skills — gosleep as source of truth for the full methodology",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/21",
+        "mergedAt": "2026-06-28T17:59:19Z"
+      },
+      {
+        "number": 16,
+        "state": "MERGED",
+        "title": "GSL-7 Harness hardening — close skill-gaps & extend eval coverage",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/16",
+        "mergedAt": "2026-06-28T17:43:38Z"
+      },
+      {
+        "number": 5,
+        "state": "MERGED",
+        "title": "GSL-1 Project initialization — import harness v0, wire tracker + GitHub",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/5",
+        "mergedAt": "2026-06-27T19:27:00Z"
+      }
+    ]
+  },
+  "orchestrator": {
+    "heartbeat": {
+      "ts": "2026-07-12T21:06:43Z",
+      "cycle": 46,
+      "context_pct": 68,
+      "open_workers": 1,
+      "status": "ok",
+      "pane": "%193",
+      "note": "impl-lab-1 (pane %205) terminated confirmed; impl-lab-2 running"
+    },
+    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). cycle=45 impl-lab-1 DONE @ e9a1ccc (GSL-83/84/85 landed, hooks 13/13 live-verified, gates smoke 60/60 + routing 10/10) | cycle=46 worker=**impl-lab-2** (Opus 4.8, spawning) — GSL-86 chronicler (HTML regen + morning digest + status.json через lab-write.sh для kill-9 выживания) + GSL-87 poll-fill (заполнение events.jsonl gaps для не-стреляющих хуков) — три задачи GSL-83 (hooks + tools/lab/lab-log.sh) → GSL-84 (lab-emit semantic events) → GSL-85 (docs/lab layout schema+retention) на той же ветке. orchestrator pane=%193 | latest handoff=docs/handoff/22-2026-07-12-handoff-gsl81-setup.md | questions: open=0 (0B/0D/0C/0F) lines=0 | status=Phase 4 impl foundation in flight. ⚠️ CRITICAL GOTCHA передаётся impl'у: TeammateIdle hook не тестирован на этой машине; воркер обязан ЗАПУСКАТЬ на самом деле и честно логировать деградацию в dev_history. После impl-lab-1 → impl-lab-2 (GSL-86..87 chronicler+poll) → impl-lab-3 (GSL-88..89) → механик PR → ревьюер → (фиксер) → финализатор → Phase 5. gsl81-setup shutdown_request отправлен. next Jira=GSL-90 (после Phase 4), GH=#102. Fleet cap: 3; open_workers=1 (setup terminating) → 2 (setup + impl-lab-1) на пик, потом 1.",
+    "telemetry_last": "cycle=45 worker=impl-lab-1 model=claude-opus-4-8 (транскрипт verify) tokens_out=~416000 tokens_in=~400 cache_read=~36300000 cache_write=~706000 | running: cycles=75 total≈6070000 (+гэпы 2a/32/35) [3 задачи + hooks-verify live-run + smoke 60/60 + routing 10/10 + 3 dev_history — cache_read ожидаемо большой]"
+  },
+  "degraded": [],
+  "narrative": null
+}

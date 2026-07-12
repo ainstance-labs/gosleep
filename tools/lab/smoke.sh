@@ -233,6 +233,119 @@ printf '{"generated_at":"NEXT-PASS"}' | "$LW" --json "$K"
 [[ -z "$(find "$CONC" -name '.killed.json.*.tmp' 2>/dev/null)" ]] \
   && ok "the next write sweeps a killed writer's leftover temp" || bad "stale temp survives"
 
+echo "== chronicler: the T3 regenerator (GSL-86) =="
+CH="$SCRIPT_DIR/chronicler.sh"
+bash -n "$CH" && ok "chronicler.sh: bash -n" || bad "chronicler.sh: bash -n"
+python3 -c "import ast; ast.parse(open('$SCRIPT_DIR/chronicler.py').read())" 2>/dev/null \
+  && ok "chronicler.py: parses" || bad "chronicler.py: syntax error"
+
+# C1 (F4-S4): the chronicler must hold no key. It rides the subscription or it does not run.
+grep -qEi 'api[_-]?key|ANTHROPIC_API|sk-ant|bearer' "$SCRIPT_DIR/chronicler.py" \
+  && bad "C1: an API key appears in chronicler.py" || ok "C1/F4-S4: zero API keys in the chronicler"
+# C3/F4-S4: when it DOES call the LLM, the call is bounded and toolless — both, or neither counts.
+grep -q -- '--max-budget-usd' "$SCRIPT_DIR/chronicler.py" \
+  && grep -q -- '--allowedTools' "$SCRIPT_DIR/chronicler.py" \
+  && ok "C3/F4-S4: claude -p is bounded (--max-budget-usd) and toolless (--allowedTools empty)" \
+  || bad "C3/F4-S4: the narrator call is not bounded/toolless"
+# C5: a bounded job, not the fourth live agent. It must not know how to take a pane at all.
+grep -qEi 'tmux|spawn|Agent tool|teammate' "$SCRIPT_DIR/chronicler.py" \
+  && bad "C5: the chronicler can take a pane" || ok "C5: no tmux/spawn — it cannot hold a pane slot"
+
+# Everything below runs against a THROWAWAY lab (its own --repo), never the live one.
+CR="$WORK/chron-repo"; mkdir -p "$CR/docs/lab/events" "$CR/docs/lab/questions" "$CR/docs/lab/decisions"
+: > "$CR/docs/lab/questions/queue.jsonl"; : > "$CR/docs/lab/decisions/log.jsonl"
+TODAY="$(date -u +%F)"
+OLD_DAY="$(python3 -c "import datetime;print((datetime.date.today()-datetime.timedelta(days=45)).isoformat())")"
+# One event 20 hours old (so the page must grade itself DEAD), plus one superseded pair.
+STALE_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=20)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"c0ffee1"}}\n' "$STALE_TS" "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":2,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"WRONG"}}\n' "$STALE_TS" "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":3,"actor":"w1","type":"vcs.commit","src":"poll-fill","supersedes":2,"data":{"sha":"c0ffee2"}}\n' "$STALE_TS" "$TODAY"
+} > "$CR/docs/lab/events/$TODAY.jsonl"
+printf '{"ts":"%sT10:00:00Z","run_id":"%s","seq":1,"actor":"old","type":"pane.started","src":"hook:SessionStart","data":{}}\n' "$OLD_DAY" "$OLD_DAY" \
+  > "$CR/docs/lab/events/$OLD_DAY.jsonl"
+
+# --dry-run must be exactly that: a plan, not a write.
+bash "$CH" --repo "$CR" --dry-run --quiet --json >/dev/null 2>&1
+[[ ! -f "$CR/docs/lab/status.json" ]] && ok "--dry-run writes nothing" || bad "--dry-run wrote status.json"
+
+RPT="$(bash "$CH" --repo "$CR" --quiet --json 2>/dev/null)"
+jq -e . "$CR/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "status.json is valid JSON" || bad "status.json does not parse"
+[[ -n "$(jq -r '.generated_at // empty' "$CR/docs/lab/status.json")" ]] \
+  && ok "status.json carries generated_at" || bad "status.json has no generated_at"
+
+# F4-S3, the whole point: a dead laboratory must LOOK dead. 20h-old events => grade dead, everywhere.
+[[ "$(jq -r .staleness.grade "$CR/docs/lab/status.json")" == "dead" ]] \
+  && ok "F4-S3: 20h-old events -> status.json grades itself DEAD" || bad "F4-S3: stale data graded fresh"
+for P in index timeline library; do
+  grep -q 'class="stale dead"' "$CR/docs/lab/site/$P.html" \
+    && ok "F4-S3: site/$P.html shows the DEAD banner" || bad "F4-S3: site/$P.html hides its staleness"
+done
+grep -q 'generated_at' "$CR/docs/lab/site/index.html" \
+  && ok "every page carries generated_at (R4.4)" || bad "page has no generated_at"
+# Self-contained: the owner opens it from file://, on a plane, with no CDN in reach.
+grep -qE 'https?://(cdn|fonts|unpkg|cdnjs)' "$CR/docs/lab/site/index.html" \
+  && bad "site/ pulls an external resource (file:// would break)" \
+  || ok "site/ is self-contained (no CDN/font/script fetches)"
+
+# C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
+# Today's file has 3 lines, one of which supersedes another -> a correct fold reports 2.
+[[ "$(jq -r '.events.today' "$CR/docs/lab/status.json")" == "2" ]] \
+  && ok "C8: superseded event folded out of the counts (3 lines -> 2 events)" \
+  || bad "superseded event still counted (no fold): today=$(jq -r '.events.today' "$CR/docs/lab/status.json")"
+grep -q "WRONG" "$CR/docs/lab/site/timeline.html" \
+  && bad "superseded event still rendered in the timeline" \
+  || ok "C8: superseded event is not shown on the timeline"
+
+# The 7-section digest, and every section built from disk.
+DIG="$CR/docs/lab/digest/$TODAY-morning.md"
+SEC="$(grep -c '^## [1-7]\.' "$DIG" 2>/dev/null || echo 0)"
+[[ "$SEC" == "7" ]] && ok "morning digest has all 7 canonical sections" || bad "digest has $SEC/7 sections"
+grep -q 'DEAD' "$DIG" && ok "digest states its own staleness" || bad "digest hides its staleness"
+
+# Retention (docs/lab/README): events are exhaust — 30 days, then pruned. The memory is elsewhere.
+[[ ! -f "$CR/docs/lab/events/$OLD_DAY.jsonl" ]] \
+  && ok "retention: a 45-day-old event log is pruned" || bad "retention: stale event log survives"
+[[ -f "$CR/docs/lab/events/$TODAY.jsonl" ]] \
+  && ok "retention: today's log is untouched" || bad "retention: pruned a live log!"
+
+# F4-S3 from the other side: this throwaway lab has no heartbeat and no STATE file. The chronicler
+# must still produce every page and SAY what it could not read — degrading LOUDLY is the feature,
+# because "section 5 is empty" and "section 5 could not be read" look identical to a sleeping owner.
+echo "$RPT" | jq -e '.ok == true' >/dev/null && ok "missing sources -> still exits ok (degraded, not dead)" \
+  || bad "a missing source killed the chronicler"
+[[ "$(echo "$RPT" | jq -r '[.degraded[].source] | contains(["heartbeat","state"]) | tostring')" == "true" ]] \
+  && ok "the missing sources are reported, not swallowed" || bad "a missing source vanished silently"
+grep -q 'Degraded sources' "$CR/docs/lab/site/index.html" \
+  && ok "the page names its blind spots" || bad "the page hides its blind spots"
+
+# The default pass must not call an LLM at all: the narrator is opt-in (C3).
+echo "$RPT" | jq -e '.narrative == "not requested"' >/dev/null \
+  && ok "C3: the default pass is 0-LLM (narrator is --narrate opt-in)" || bad "C3: default pass calls the LLM"
+
+# A NON-EMPTY queue. This is not a formality: lab-emit --json emits JSONL, not an array, and an empty
+# queue emits nothing — so a naive parser passes every test until the first real question is asked and
+# the chronicler dies on it. It did. The open question must reach status.json, the page, and section 1
+# of the digest, or the owner wakes up to a dashboard that swallowed the thing it exists to surface.
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-86 \
+  --question "chronicler smoke: is the queue folded into the digest?" \
+  --default "yes" --default-rationale "smoke" --reversibility high >/dev/null
+bash "$CH" --repo "$CR" --quiet --json >/dev/null 2>&1
+[[ "$(jq -r '.questions.open' "$CR/docs/lab/status.json")" == "1" ]] \
+  && ok "a non-empty queue is folded into status.json (JSONL, not an array)" \
+  || bad "the open question never reached status.json"
+grep -q 'chronicler smoke' "$CR/docs/lab/site/index.html" \
+  && ok "the open question is shown in 'Waiting for you'" || bad "the dashboard swallowed the question"
+grep -A2 '^## 1\. Waiting for you' "$CR/docs/lab/digest/$TODAY-morning.md" | grep -q 'chronicler smoke' \
+  && ok "the open question leads section 1 of the digest" || bad "digest section 1 lost the question"
+
+# An empty day gets no digest — an empty digest teaches the owner to stop opening them.
+EMPTY="$WORK/chron-empty"; mkdir -p "$EMPTY/docs/lab/events"
+bash "$CH" --repo "$EMPTY" --date 2020-01-01 --quiet --json >/dev/null 2>&1
+[[ ! -f "$EMPTY/docs/lab/digest/2020-01-01-morning.md" ]] \
+  && ok "a day with no activity produces no digest" || bad "empty digest written"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

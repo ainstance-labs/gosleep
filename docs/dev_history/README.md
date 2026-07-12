@@ -116,3 +116,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-83 — T1 event layer: хуки Claude Code + lab-log.sh (envelope → дневной jsonl, 0 токенов; 5 багов нашёл живой прогон)](GSL-83-phase4-cycle45-hooks-lab-log.md)
 - [GSL-84 — lab-emit: семантические события поверх одного писателя; очередь Фазы 3 сама себя зеркалит в таймлайн (smoke 50/50)](GSL-84-phase4-cycle45-lab-emit-semantic.md)
 - [GSL-85 — docs/lab layout: схема, retention, дисциплина записи (append-only + atomic lab-write), проверенные конкуренцией (smoke 58/58)](GSL-85-phase4-cycle45-docs-lab-layout.md)
+- [GSL-86 — Летописец: детерминированный регенератор status.json + site/ + утреннего дайджеста; мёртвая страница выглядит мёртвой (smoke 85/85)](GSL-86-phase4-cycle46-chronicler.md)

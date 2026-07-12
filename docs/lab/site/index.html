@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratory — gosleep lab</title>
+<style>
+:root{--bg:#fbfbfa;--fg:#1a1a19;--dim:#6b6b68;--line:#e3e3e0;--card:#fff;
+      --ok:#1a7f4b;--warn:#a4600a;--dead:#a51d24;--accent:#3b5bdb}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#131315;--fg:#e8e8e6;--dim:#8f8f8b;--line:#2a2a2e;--card:#1b1b1e;
+        --ok:#4ade80;--warn:#fbbf24;--dead:#f87171;--accent:#8ba4ff}}
+*{box-sizing:border-box}
+body{margin:0;padding:1rem;background:var(--bg);color:var(--fg);
+     font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+     max-width:60rem;margin-inline:auto}
+h1{font-size:1.35rem;margin:.2rem 0}
+h2{font-size:1rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);
+   margin:1.8rem 0 .6rem;font-weight:600}
+a{color:var(--accent)}
+.stale{border-radius:.5rem;padding:.7rem .9rem;margin:.8rem 0;font-weight:600;
+       border:1px solid currentColor}
+.stale.fresh{color:var(--ok)} .stale.stale{color:var(--warn)} .stale.dead{color:var(--dead)}
+.stale small{display:block;font-weight:400;color:var(--dim);margin-top:.2rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:.6rem;
+      padding:.8rem .9rem;margin:.5rem 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.5rem}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.7rem .8rem}
+.kpi b{display:block;font-size:1.5rem;line-height:1.2}
+.kpi span{color:var(--dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+td,th{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
+.wrap{overflow-x:auto}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
+.tag{display:inline-block;padding:.05rem .4rem;border-radius:.3rem;border:1px solid var(--line);
+     color:var(--dim);font-size:.72rem}
+.tag.hook{color:var(--ok);border-color:currentColor}
+.tag.emit{color:var(--accent);border-color:currentColor}
+.tag.poll{color:var(--warn);border-color:currentColor}
+footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid var(--line);
+       padding-top:.8rem}
+nav a{margin-right:.9rem}
+</style>
+<h1>Laboratory</h1>
+<nav><a href="index.html">Dashboard</a><a href="timeline.html">Timeline</a><a href="library.html">Library</a></nav>
+<div class="stale fresh">FRESH · last event 1m ago
+  <small>generated_at 2026-07-12T21:25:39Z · latest event 2026-07-12T21:24:00Z
+  · thresholds fresh&le;30m, dead&gt;3h · Live — the laboratory is writing itself right now.</small></div>
+
+<div class="grid"><div class='kpi'><b>36</b><span>events today</span></div><div class='kpi'><b>97%</b><span>mechanical (0-token)</span></div><div class='kpi'><b>1</b><span>open questions</span></div><div class='kpi'><b>5</b><span>commits on 2026-07-12</span></div></div>
+
+<h2>Waiting for you (1)</h2>
+<div class='wrap'><table><tr><th>id</th><th>type</th><th>question</th><th>auto-applies / default</th></tr><tr><td class='mono'>q-2026-07-12-001</td><td><span class='tag'>DECISION</span></td><td>Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?</td><td class='mono'>2026-07-13T08:00:00Z</td></tr></table></div>
+<h2>Delivery</h2>
+<div class="card mono">branch <b>GSL-81-laboratory-auto-doc</b> @ e9a1ccc · 18 dirty path(s)</div>
+<div class='wrap'><table><tr><th>sha</th><th>subject</th><th>author</th></tr><tr><td class='mono'>e9a1ccc</td><td>GSL-85 [Repo] docs/lab layout — схема, retention + дисциплина записи (append-only + atomic)</td><td class='mono'>R</td></tr><tr><td class='mono'>b0599db</td><td>GSL-84 [Tooling] lab-emit semantic events — cycle/question/decision/verify поверх одного писателя</td><td class='mono'>R</td></tr><tr><td class='mono'>2e33632</td><td>GSL-83 [Tooling] hooks + lab-log.sh — 0-token event capture to events.jsonl</td><td class='mono'>R</td></tr><tr><td class='mono'>9a056bb</td><td>GSL-82 [Docs] Леджер: STATE + handoff&#x27;ы 19/20/21 + Stop-hook + багрепорт + gitignore/SKILL</td><td class='mono'>R</td></tr><tr><td class='mono'>4af66d2</td><td>Merge pull request #92 from ainstance-labs/GSL-72-question-buffer</td><td class='mono'>rommxx</td></tr></table></div>
+<div class='card'>No open PRs.</div>
+<h2>Orchestrator</h2>
+<div class='card mono'>{&quot;ts&quot;: &quot;2026-07-12T21:06:43Z&quot;, &quot;cycle&quot;: 46, &quot;context_pct&quot;: 68, &quot;open_workers&quot;: 1, &quot;status&quot;: &quot;ok&quot;, &quot;pane&quot;: &quot;%193&quot;, &quot;note&quot;: &quot;impl-lab-1 (pane %205) terminated confirmed; impl-lab-2 running&quot;}</div>
+<h2>Timeline — 2026-07-12 (last 25 of 36)</h2>
+<div class='wrap'><table><tr><th>utc</th><th>type</th><th>actor</th><th>src</th><th>detail</th></tr><tr><td class='mono'>21:24:00</td><td>question.posed</td><td class='mono'>impl-lab-2</td><td><span class='tag emit'>emit</span></td><td class='mono'>Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезк</td></tr><tr><td class='mono'>21:23:50</td><td>dev_history.written</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/README.md</td></tr><tr><td class='mono'>21:23:36</td><td>dev_history.written</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-86-phase4-cycle46</td></tr><tr><td class='mono'>21:17:59</td><td>pane.ended</td><td class='mono'>70cbe176</td><td><span class='tag hook'>hook:SessionEnd</span></td><td class='mono'></td></tr><tr><td class='mono'>21:17:59</td><td>agent.turn_ended</td><td class='mono'>70cbe176</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>21:17:44</td><td>pane.started</td><td class='mono'>70cbe176</td><td><span class='tag hook'>hook:SessionStart</span></td><td class='mono'></td></tr><tr><td class='mono'>21:17:29</td><td>pane.ended</td><td class='mono'>ca8a1e39</td><td><span class='tag hook'>hook:SessionEnd</span></td><td class='mono'></td></tr><tr><td class='mono'>21:17:29</td><td>agent.turn_ended</td><td class='mono'>ca8a1e39</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>21:17:25</td><td>pane.started</td><td class='mono'>ca8a1e39</td><td><span class='tag hook'>hook:SessionStart</span></td><td class='mono'></td></tr><tr><td class='mono'>21:06:45</td><td>agent.turn_ended</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>21:06:31</td><td>agent.turn_ended</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>21:06:09</td><td>pane.started</td><td class='mono'>claude</td><td><span class='tag hook'>hook:SessionStart</span></td><td class='mono'></td></tr><tr><td class='mono'>21:04:59</td><td>handoff.written</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md</td></tr><tr><td class='mono'>21:04:52</td><td>handoff.written</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md</td></tr><tr><td class='mono'>21:04:19</td><td>pane.ended</td><td class='mono'>claude</td><td><span class='tag hook'>hook:SessionEnd</span></td><td class='mono'></td></tr><tr><td class='mono'>21:04:06</td><td>handoff.written</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md</td></tr><tr><td class='mono'>21:04:01</td><td>task.created</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:TaskCreated</span></td><td class='mono'></td></tr><tr><td class='mono'>21:03:20</td><td>agent.idle</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TeammateIdle</span></td><td class='mono'></td></tr><tr><td class='mono'>21:03:20</td><td>agent.turn_ended</td><td class='mono'>claude</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>21:02:50</td><td>task.completed</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TaskCompleted</span></td><td class='mono'></td></tr><tr><td class='mono'>21:01:26</td><td>vcs.push</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>cd /Users/romanlidovskyi/Documents/dev/harness/gosleep git push 2&gt;&amp;1 | tail -4 echo &quot;=== b</td></tr><tr><td class='mono'>21:01:16</td><td>handoff.written</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/23-2026-07-12-handoff-imp</td></tr><tr><td class='mono'>20:59:08</td><td>vcs.commit</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>e9a1ccc</td></tr><tr><td class='mono'>20:56:51</td><td>tracker.issue.transitioned</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>GSL-85</td></tr><tr><td class='mono'>20:56:45</td><td>vcs.commit</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>1da14bf</td></tr></table></div>
+<div class="card"><a href="timeline.html">Full timeline &rarr;</a></div>
+
+
+<footer>
+  Regenerated by <code>tools/lab/chronicler.sh</code> (GSL-86) — <b>never hand-edit</b>: the next pass
+  overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8).
+  Source of truth for this page: <code>docs/lab/status.json</code>.
+</footer>

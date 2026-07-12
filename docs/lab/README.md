@@ -16,12 +16,50 @@ docs/lab/
   questions/archive.jsonl   # answered/expired, moved by the chronicler                (GSL-86)
   decisions/manifest.md     # owner-sovereign — the ONLY hand-edited file here         (GSL-76)
   decisions/log.jsonl       # every autonomous decision / owner answer, append-only    (GSL-77)
-  digest/YYYY-MM-DD-morning.md  # the morning digest                                   (GSL-78)
+  digest/YYYY-MM-DD-morning.md  # the morning digest — regenerated, not written        (GSL-86)
   status.json               # derived snapshot: events + STATE at the last pass        (GSL-86)
   telemetry.jsonl           # per-cycle token/cost lines (STATE TELEMETRY grammar)
-  site/                     # derived static dashboard — never hand-edited             (Phase 5)
+  site/index.html           # derived static dashboard — never hand-edited             (GSL-86)
+  site/timeline.html        #   …the full timeline + provenance tallies
+  site/library.html         #   …the Library index: digests, handoffs, dev_history, decisions
   scratch/                  # GITIGNORED: temps, partials, hook traces, drop counters
 ```
+
+## The chronicler — the only thing that writes T3
+
+```bash
+tools/lab/chronicler.sh                  # regenerate status.json + site/ + today's digest
+tools/lab/chronicler.sh --narrate        # …+ one bounded claude -p paragraph of prose
+tools/lab/chronicler.sh --dry-run --json # …plan only; print what it would write
+```
+
+It is a **bounded job, not the fourth live agent** (C5): no pane, no spawn slot, it runs at a cycle
+boundary / on demand and exits. Everything it builds is built by deterministic code from files on
+disk; `claude -p` is opt-in glue for one prose paragraph, under `--max-budget-usd` with an empty
+`--allowedTools` (C3, F4-S4). **Kill it and the laboratory is unharmed** — the artifacts age, they do
+not corrupt (`lab-write.sh` is atomic) and they do not lie (see staleness, below). Delivery never
+waits for it (F4-S3).
+
+Sources it reads, and what it does when one is missing: events, queue (folded by `lab-emit`, never
+re-folded here), decisions, `git`, `gh`, the orchestrator heartbeat, and `ORCHESTRATION-STATE.md`.
+Any of them can be absent — the pass still completes, and the gap is **named** in `status.json`
+(`degraded[]`), on the page, and in the digest. "Section 5 is empty" and "section 5 could not be read"
+look identical to a sleeping owner; they are not the same thing.
+
+## Staleness — the contract every derived page signs
+
+`status.json`, all three pages, and the digest carry `generated_at` + max event age and grade
+themselves:
+
+| Grade | Age of the newest event | What it says |
+|---|---|---|
+| `fresh` | ≤ 30 min | the laboratory is writing itself right now |
+| `stale` | ≤ 3 h | delivery may still be running; **this page is not** |
+| `dead` | > 3 h | do not trust anything below without checking git |
+
+Thresholds: `GOSLEEP_FRESH_S` / `GOSLEEP_DEAD_S`. This is the whole reason a page can be trusted at
+07:00 without opening a terminal: **a dead page looks dead.** A stale hub that hides its staleness is
+worse than no hub — that is the tasty-lunch wiki, and it is what killed the last one.
 
 ## Three tiers — and how to tell them apart at a glance
 
