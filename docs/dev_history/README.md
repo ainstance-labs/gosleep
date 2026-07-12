@@ -98,3 +98,14 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-69 — Quota auto-wait: детекция session-limit + quiesce/resume + ETA (skill + smoke)](GSL-69-phase-gsl65-quota-auto-wait.md)
 - [GSL-70 — Circuit-breaker: same-error/output-decline + cooldown/HALF_OPEN + ручной сброс (skill)](GSL-70-phase-gsl65-circuit-breaker.md)
 - [GSL-71 — HEARTBEAT_OK fast-path + сводка фазы GSL-65 (skill + docs)](GSL-71-phase-gsl65-heartbeat-ok-docs.md)
+
+## Epic GSL-72 — Question buffer + decision manifest (PRD Phase 3)
+
+- [GSL-73 — Commit orchestration ledger (handoffs 17, 18 + STATE)](GSL-73-phase-gsl72-cycle1-ledger.md)
+- [GSL-74 — Типология вопросов: 4 типа, 4 поведения — BLOCKER/DECISION/CLARIFY/FYI (skill + worker-template)](GSL-74-phase-gsl72-question-typology.md)
+- [GSL-75 — lab-emit: queue.jsonl схема + dedup helper — append-only, patch-записи, smoke 21/21](GSL-75-phase-gsl72-lab-emit-queue.md)
+- [GSL-76 — decisions/manifest.md — owner-sovereign манифест решений, 6 секций, provenance-правило](GSL-76-phase-gsl72-decision-manifest.md)
+- [GSL-77 — decisions/log.jsonl + learning loop — provenance-принуждение, qshape, candidates ×3](GSL-77-phase-gsl72-decision-log-learning-loop.md)
+- [GSL-78 — Morning digest — шаблон 7 секций, provenance-цитаты, morning boundary пишет файл](GSL-78-phase-gsl72-morning-digest.md)
+- [GSL-79 — PULSE-дельты — queue-скан в HEARTBEAT_OK, apply-at-deadline, LIVE-STATUS questions, BLOCKED_ON_HUMAN → queue+reroute](GSL-79-phase-gsl72-pulse-deltas.md)
+- [GSL-80 — Сводка фазы GSL-72 — что дала Phase 3, статус критериев, указатели, что дальше](GSL-80-phase-gsl72-summary.md)

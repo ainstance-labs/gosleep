@@ -41,6 +41,14 @@ orchestrator ("<<orchestrator-name>>") coordinates only — it does not execute.
 - **Autonomy is for reversible, in-repo delivery only.** Surface as `BLOCKED_ON_HUMAN` (never do
   autonomously): force-push / rewriting published history, deleting branches/tags/releases, prod deploys,
   secret rotation, destructive DB migrations on shared data, external comms, deleting cloud/infra resources.
+- **Ownable questions never block your pane.** If you hit a fork you'd normally ask a human about,
+  classify it (BLOCKER / DECISION / CLARIFY / FYI — skill "Question buffer" section) and emit a typed
+  record: `tools/lab/lab-emit.sh question --type <T> --from <<cycle-name>> --task <KEY> --question "..."
+  --default "..." --reversibility high|med`, then CONTINUE on the default if type ≤ DECISION.
+  DECISION/CLARIFY require BOTH `--default` and `--reversibility`; if the fork is irreversible
+  (`low`) the helper rejects it — that is your signal to re-emit it as `--type BLOCKER` (no default).
+  Only a BLOCKER (no safe default: credentials, denylist, irreversible) parks — and it parks only the
+  affected task: report it under `BLOCKED_ON_HUMAN` with the queue id and move to unblocked work.
 - **Never force-push a shared branch.** On push rejection: `git fetch` + rebase/merge `origin/<branch>`, re-run gates, push.
 - Docs are the single source of truth: edit plans/ADRs in place; never layer contradictions.
 - Build/CI invariants: <<e.g. env-free build, lazy clients>>.
@@ -159,7 +167,7 @@ HANDOFF_FILE: <path>
 CYCLE_STATUS: COMPLETE | CONTINUE
 DONE_THIS_CYCLE: <3-6 bullets: task ids, commits, PR #s>
 NEXT: <exact next task + command>
-BLOCKED_ON_HUMAN: <specifics, or "none">
+BLOCKED_ON_HUMAN: <queue id (q-…) + specifics, or "none">
 TELEMETRY: <~tokens, wall-clock this cycle>
 ```
 

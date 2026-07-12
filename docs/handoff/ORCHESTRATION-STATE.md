@@ -11,11 +11,11 @@
 
 ## LIVE-STATUS
 
-`EPIC GSL-58 COMPLETE 2026-07-10 | PR #74 MERGED → main @ a217393 (6 коммитов) | GH #67..#73 закрыты | Jira: эпик+задачи Done | ветка удалена | fleet: gsl58-finalizer terminating → EMPTY | леджер (STATE) uncommitted → housekeeping задачей 1 следующего эпика | NEXT: setup Phase 2 PRD (self-pulse + night mode) | next Jira=GSL-65, GH=#75 | policy: Fable 5 + Opus-механика, NO Workflow, PULSE ~270s, max 3 panes, kill-pane by id.`
+`EPIC GSL-65 COMPLETE 2026-07-10 | PR #82 MERGED → main @ 135ce1f (7 коммитов вкл. ревью-фикс) | GH #75..#81 закрыты | Jira эпик+задачи Done | remote-ветка удалена; ЛОКАЛЬНАЯ GSL-65-self-pulse-night ещё выбрана (леджер блокирует checkout — приберёт setup Phase 3) | fleet: финализатор terminating → EMPTY | ЯДРО «владелец спит» ГОТОВО (watchdog GSL-49 + pulse/night/quota/breaker GSL-65) | NEXT: handoff 18 → доклад → setup Phase 3 PRD (question buffer) | next Jira=GSL-72, GH=#83.`
 
 ## TELEMETRY (cumulative — never reset; append one line per cycle)
 
-`cycles_completed≈59 | open_workers=[writer-landscape (Fable), writer-headless (Fable)] (+res-labui terminating) | prior-run tokens not surfaced per-cycle.`
+`cycles_completed≈65 | open_workers=[writer-landscape (Fable), writer-headless (Fable)] (+res-labui terminating) | prior-run tokens not surfaced per-cycle.`
 - `hardening arc (PRs #35/#42/#47): see handoff 12.`
 - `cycle=1 worker=gsl41-setup model=claude-opus-4-8 tokens_out=~14000 tokens_in=~120000 cache_read=~90000 | running: cycles=31 total≈224000`
 - `cycle=2a workers=res-* (first spawn) model=claude-fable-5 KILLED by orchestrator kill-pane error — tokens_this_cycle=UNRECOVERED — gap flagged`
@@ -47,6 +47,12 @@
 - `cycle=27 worker=gsl58-mechanic model=claude-opus-4-8 tokens_out=~6100 tokens_in=~98000 cache_read=~61000 | running: cycles=57 total≈4262000 (+2a gap)`
 - `cycle=28 worker=gsl58-reviewer model=claude-fable-5 tokens_out=~11000 tokens_in=~28000 cache_read=~310000 | running: cycles=58 total≈4301000 (+2a gap)`
 - `cycle=29 worker=gsl58-finalizer model=claude-opus-4-8 tokens_out=~1500 tokens_in=~34000 cache_read=~0 | running: cycles=59 total≈4337000 (+2a gap)`
+- `cycle=30 worker=gsl65-setup model=claude-opus-4-8 tokens_out=~6500 tokens_in=~118000 cache_read=~95000 | running: cycles=60 total≈4462000 (+2a gap)`
+- `cycle=31 worker=impl-pulse model=claude-fable-5 tokens_out=~31000 tokens_in=~112000 cache_read=~1450000 (5 задач) | running: cycles=61 total≈4605000 (+2a gap)`
+- `cycle=32 worker=gsl65-mechanic model=claude-opus-4-8 tokens_out=unknown tokens_in=unknown cache_read=unknown (счётчики не отданы воркеру — gap flagged, оценка по аналогии ~5k/100k/60k) | running: cycles=62`
+- `cycle=33 worker=gsl65-reviewer model=claude-fable-5 tokens_out=~7900 tokens_in=~21000 cache_read=~410000 | running: cycles=63`
+- `cycle=34 worker=gsl65-fixer model=claude-fable-5 tokens_out=~14000 tokens_in=~28000 cache_read=~1100000 | running: cycles=64`
+- `cycle=35 worker=gsl65-finalizer model=claude-opus-4-8 tokens_out=unknown tokens_in=unknown cache_read=unknown (gap flagged, est ~3k/50k/30k) | running: cycles=65`
 - interim (not final): ≈4k/90k/60k на паузе — финальная строка при COMPLETE.
 
 ## Standing rules / decisions
@@ -119,3 +125,11 @@
 - **Cycle 27 (gsl58-mechanic, Opus) DONE ~09:33:** 5 коммитов (60 ba2177d, 61 1763dde, 62 a293a94, 63 4b4d3ab, 64 19274b5) + dev_history + индекс; PR #74 CLEAN (Implements/чеклист/Mirrors #67/Closes #67..#73); эпик In Review; push b38b768..19274b5. next GH=#75.
 - **Cycle 28 (gsl58-reviewer, Fable) DONE ~09:40:** REVIEW-gsl58.md — 0C/0M/1minor (off-by-one go.mod:8-9→9-10); 14 проб против autosk@fd4c22e + pi@34582ef ПОДТВЕРЖДЕНЫ (agent_settled drain-loop verbatim; packages/orchestrator спавнит pi --mode rpc; OAuth PKCE S256; exit(1)-до-RPC); HTML self-contained/doctype/charset/lang ok; RU полная (h2 9=9); гигиена 6 коммитов/dev_history/PR body ok. Вердикт MERGE.
 - **Cycle 29 (gsl58-finalizer, Opus) DONE ~09:44:** PR #74 merged REGULAR @ a217393 (07:38Z); issues #68..#73 закрыты (#67 ранее); Jira эпик Done; ветка удалена лок+remote; checkout через fetch main:main без stash. ЭПИК GSL-58 ЗАВЕРШЁН END-TO-END (setup → research → отчёт EN+RU → PR → ревью MERGE с построчной сверкой → merge).
+
+### 2026-07-10 — Phase GSL-65: Self-pulse + night mode (PRD Phase 2)
+- **Cycle 30 (gsl65-setup, Opus) DONE ~09:48:** эпик GSL-65=GH #75; задачи GSL-66..71 = GH #76..#81 (1:1); GSL-66 леджер 270e519 Done; ветка запушена. Phase 2 = 5 контент-задач: каденция пульса (cache-окна+armed-wake-up), night mode/activeHours, quota auto-wait (StopFailure+quiesce/resume+ETA), circuit-breaker (same-error/output-decline+HALF_OPEN), docs+HEARTBEAT_OK fast-path. Решение: один impl-воркер (все правят SKILL.md).
+- **Cycle 31 (impl-pulse, Fable) DONE ~10:08:** GSL-67 f35a2b2 каденция (270/540/1200-1800, dead zone banned, HARD armed-wake-up); GSL-68 b510de8 night mode (QUESTIONS-PENDING, MODE-границы, утренний summary, heartbeat mode); GSL-69 d1fbb42 quota auto-wait (4 сигнала, quiesced+ETA, wake ≤3600s, авто-resume, +2 smoke); GSL-70 79f76bb breaker (NEXT×2/no-PR×3/same-error×3/decline×2, OPEN=стоп+эскалация critical-даже-ночью, HALF_OPEN 1 проба, ручной сброс из STATE); GSL-71 7e9b37c HEARTBEAT_OK fast-path (≤3-4 tool-calls) + сводный dev_history. smoke 67/67; PRD F2-S1/S2/S4 ✓, F2-S3 протокольно (e2e ночной прогон = эксплуатационная проверка, бэклог). Jira все Done.
+- **Cycle 32 (gsl65-mechanic, Opus) DONE ~10:13:** push 270e519..7e9b37c; PR #82 CLEAN; Jira In Review. Телеметрия: unknown (gap flagged). next GH=#83.
+- **Cycle 33 (gsl65-reviewer, Fable) DONE ~10:19:** REVIEW-gsl65.md — 0C/2M/3m; smoke 67/67, install identical, гигиена ок. M1 SKILL.md:411-415 hop-chain vs «can't write while limited»; M2 :266-267 rolling-carve-out отсутствует; m1 540s dead-zone граница, m2/m3 устаревшие комментарии watchdog.sh. Вердикт FIX→MERGE (правки по абзацу, повторное полное ревью не требуется).
+- **Cycle 34 (gsl65-fixer, Fable) DONE ~10:31:** 69a12b9 (7 файлов +204/-39) — M1 двухслойно (wake до ETA+120 без ре-арма + watchdog v0.5.1 будильник: щит quiesced до ETA+grace 900s, потом обычное дерево; chain-done не рестартится никогда); M2 три выхода (rolling без armed, HARD GATE); m1 dead zone [300,540); m2/m3 комментарии. smoke 67→75/75; install identical; push OK.
+- **Cycle 35 (gsl65-finalizer, Opus) DONE ~10:33:** PR #82 merged REGULAR @ 135ce1f (08:28Z); issues #76..#81 закрыты (#75 авто); Jira эпик Done; remote-ветка удалена; local main FF через fetch main:main; локальная ветка осталась выбранной (леджер) — на setup Phase 3. ЭПИК GSL-65 ЗАВЕРШЁН END-TO-END. Телеметрия unknown (gap).
