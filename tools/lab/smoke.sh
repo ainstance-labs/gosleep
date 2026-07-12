@@ -266,10 +266,10 @@ printf '{"ts":"%sT10:00:00Z","run_id":"%s","seq":1,"actor":"old","type":"pane.st
   > "$CR/docs/lab/events/$OLD_DAY.jsonl"
 
 # --dry-run must be exactly that: a plan, not a write.
-bash "$CH" --repo "$CR" --dry-run --quiet --json >/dev/null 2>&1
+bash "$CH" --repo "$CR" --no-poll --dry-run --quiet --json >/dev/null 2>&1
 [[ ! -f "$CR/docs/lab/status.json" ]] && ok "--dry-run writes nothing" || bad "--dry-run wrote status.json"
 
-RPT="$(bash "$CH" --repo "$CR" --quiet --json 2>/dev/null)"
+RPT="$(bash "$CH" --repo "$CR" --no-poll --quiet --json 2>/dev/null)"
 jq -e . "$CR/docs/lab/status.json" >/dev/null 2>&1 \
   && ok "status.json is valid JSON" || bad "status.json does not parse"
 [[ -n "$(jq -r '.generated_at // empty' "$CR/docs/lab/status.json")" ]] \
@@ -331,7 +331,7 @@ echo "$RPT" | jq -e '.narrative == "not requested"' >/dev/null \
 GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-86 \
   --question "chronicler smoke: is the queue folded into the digest?" \
   --default "yes" --default-rationale "smoke" --reversibility high >/dev/null
-bash "$CH" --repo "$CR" --quiet --json >/dev/null 2>&1
+bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(jq -r '.questions.open' "$CR/docs/lab/status.json")" == "1" ]] \
   && ok "a non-empty queue is folded into status.json (JSONL, not an array)" \
   || bad "the open question never reached status.json"
@@ -342,9 +342,98 @@ grep -A2 '^## 1\. Waiting for you' "$CR/docs/lab/digest/$TODAY-morning.md" | gre
 
 # An empty day gets no digest — an empty digest teaches the owner to stop opening them.
 EMPTY="$WORK/chron-empty"; mkdir -p "$EMPTY/docs/lab/events"
-bash "$CH" --repo "$EMPTY" --date 2020-01-01 --quiet --json >/dev/null 2>&1
+bash "$CH" --repo "$EMPTY" --date 2020-01-01 --no-poll --quiet --json >/dev/null 2>&1
 [[ ! -f "$EMPTY/docs/lab/digest/2020-01-01-morning.md" ]] \
   && ok "a day with no activity produces no digest" || bad "empty digest written"
+
+echo "== poll-fill: reconcile-don't-trust (GSL-87) =="
+PF="$SCRIPT_DIR/poll-fill.sh"
+bash -n "$PF" && ok "poll-fill.sh: bash -n" || bad "poll-fill.sh: bash -n"
+python3 -c "import ast; ast.parse(open('$SCRIPT_DIR/poll-fill.py').read())" 2>/dev/null \
+  && ok "poll-fill.py: parses" || bad "poll-fill.py: syntax error"
+grep -qEi 'api[_-]?key|ANTHROPIC_API|sk-ant|bearer' "$SCRIPT_DIR/poll-fill.py" \
+  && bad "C1: an API key appears in poll-fill.py" || ok "C1: zero API keys in poll-fill"
+grep -qE 'claude( -p|\b--print)' "$SCRIPT_DIR/poll-fill.py" \
+  && bad "poll-fill calls an LLM" || ok "poll-fill is 0-LLM (pure reconcile)"
+# It must write through lab-log.sh and nothing else: seq is allocated under a lock, and a hand-appended
+# line has none — a fabricated line would be indistinguishable from a real one, only broken.
+grep -q 'lab-log.sh' "$SCRIPT_DIR/poll-fill.py" \
+  && ok "poll-fill writes only through lab-log.sh (the one writer)" || bad "poll-fill bypasses lab-log"
+
+# The lab is a throwaway dir; the repo it reconciles is the real one (gh refuses to run outside git).
+PL="$WORK/pf-lab"; mkdir -p "$PL/docs/lab/events"
+printf '{"ts":"2026-06-01T00:00:00Z","run_id":"x","seq":1,"actor":"a","type":"pane.started","src":"hook:SessionStart","data":{}}\n' \
+  > "$PL/docs/lab/events/2026-06-01.jsonl"
+
+bash "$PF" --repo "$PL" --git-repo "$REPO_ROOT" --no-git --no-jira --since-days 90 --dry-run --quiet >/dev/null 2>&1
+[[ "$(cat "$PL/docs/lab/events/"*.jsonl | wc -l | tr -d ' ')" == "1" ]] \
+  && ok "--dry-run writes nothing" || bad "--dry-run wrote events"
+
+# THE acceptance case, verbatim from GSL-87: a PR merged outside the CLI shows up in the timeline.
+# PR #92 really was merged from the web — no hook ever saw it. This is not a fixture; it is the fact.
+bash "$PF" --repo "$PL" --git-repo "$REPO_ROOT" --no-git --no-jira --since-days 90 --quiet >/dev/null 2>&1
+cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="vcs.pr.merged")) | length > 0' >/dev/null 2>&1 \
+  && ok "R4.2 acceptance: a PR merged outside the CLI reaches the timeline" \
+  || bad "R4.2: the merged PR never reached the timeline"
+# Provenance is never forged: a reconciled fact must not masquerade as something a hook witnessed.
+cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="vcs.pr.merged")) | all(.src == "poll-fill")' >/dev/null 2>&1 \
+  && ok "reconciled events are tagged src=poll-fill, never src=hook:*" || bad "poll-fill forged a hook provenance"
+cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.src=="poll-fill")) | all(.data.occurred_at != null)' >/dev/null 2>&1 \
+  && ok "each backfilled event carries data.occurred_at (ts = when we learned it)" \
+  || bad "a backfilled event lost the time it actually happened"
+
+# IDEMPOTENCE — the acceptance criterion of GSL-87, stated verbatim: run it twice, the second pass
+# adds zero lines. Keyed on the external identity of the fact, so re-observing it changes nothing.
+N1="$(cat "$PL/docs/lab/events/"*.jsonl | wc -l | tr -d ' ')"
+bash "$PF" --repo "$PL" --git-repo "$REPO_ROOT" --no-git --no-jira --since-days 90 --quiet >/dev/null 2>&1
+N2="$(cat "$PL/docs/lab/events/"*.jsonl | wc -l | tr -d ' ')"
+[[ "$N1" == "$N2" ]] && ok "idempotent: a second pass adds 0 lines ($N1 -> $N2)" \
+  || bad "second pass duplicated events ($N1 -> $N2)"
+
+# It must not re-log what the hooks already caught. Seed a commit the hook "saw", then reconcile git:
+# the sha is already known, so it is not a gap.
+HEAD_SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
+printf '{"ts":"2026-06-01T00:00:01Z","run_id":"x","seq":2,"actor":"a","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"%s"}}\n' \
+  "$HEAD_SHA" >> "$PL/docs/lab/events/2026-06-01.jsonl"
+OUT="$(bash "$PF" --repo "$PL" --git-repo "$REPO_ROOT" --no-gh --no-jira --prehistory --since-days 1 --json --quiet 2>/dev/null)"
+echo "$OUT" | jq -e --arg s "commit:$HEAD_SHA" '[.missing[].key] | contains([$s]) | not' >/dev/null \
+  && ok "a commit the hook already logged is not re-logged (dedup across producers)" \
+  || bad "poll-fill duplicated a hook-caught commit"
+
+# The floor: lab-log stamps ts=now, so backfilling week-old facts would pile them onto TODAY. A log
+# answers only for the period it existed. What is dropped is COUNTED — a silent cap reads as "clean".
+echo "$OUT" | jq -e '.prehistory_skipped != null' >/dev/null \
+  && ok "pre-history is counted, not silently dropped" || bad "dropped facts vanish without a count"
+
+# Jira has no CLI here and we hold no key (C1): the source must be skipped LOUDLY, never quietly.
+J="$(bash "$PF" --repo "$PL" --git-repo "$REPO_ROOT" --no-git --no-gh --json --quiet 2>/dev/null)"
+echo "$J" | jq -e '[.skipped[].source] | contains(["jira"])' >/dev/null \
+  && ok "a Jira feed that is absent is reported as skipped, not passed off as clean" \
+  || bad "the missing Jira feed was swallowed"
+echo "$J" | jq -e '.sources_checked | contains(["jira"]) | not' >/dev/null \
+  && ok "an unreachable source is never counted as checked" || bad "claimed to check an absent source"
+
+# And a Jira feed that IS supplied (the MCP dump path) reconciles — and does not lie about it: JQL
+# proves a STATE, not a transition, so the event type is tracker.issue.updated, never .transitioned.
+printf '[{"key":"GSL-999","status":"Done","updated":"2026-06-15T10:00:00Z","summary":"smoke"}]\n' > "$WORK/jira.json"
+bash "$PF" --repo "$PL" --git-repo "$REPO_ROOT" --no-git --no-gh --jira-json "$WORK/jira.json" --quiet >/dev/null 2>&1
+cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.data.key=="GSL-999")) | length == 1 and (.[0].type == "tracker.issue.updated")' >/dev/null 2>&1 \
+  && ok "a supplied Jira feed lands as tracker.issue.updated (a state, not a claimed transition)" \
+  || bad "the Jira feed was lost, or logged as a transition nobody witnessed"
+
+# The pairing (R4.2 end-to-end): the chronicler runs poll-fill as step 0, so a fact no hook ever saw
+# is reconciled AND rendered in the same pass — which is what "appears in the timeline after a
+# chronicler pass" actually means.
+PAIR="$WORK/pair"; mkdir -p "$PAIR/docs/lab/events"
+printf '{"ts":"2026-06-01T00:00:00Z","run_id":"x","seq":1,"actor":"a","type":"pane.started","src":"hook:SessionStart","data":{}}\n' \
+  > "$PAIR/docs/lab/events/2026-06-01.jsonl"
+GOSLEEP_REPO="$REPO_ROOT" bash "$CH" --repo "$PAIR" --quiet --json >/dev/null 2>&1
+cat "$PAIR/docs/lab/events/"*.jsonl | jq -se 'map(select(.src=="poll-fill")) | length > 0' >/dev/null 2>&1 \
+  && ok "chronicler runs poll-fill as step 0 (a gap is reconciled and rendered in one pass)" \
+  || bad "the chronicler did not reconcile before rendering"
+jq -e '.events.by_src["poll-fill"] > 0' "$PAIR/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "status.json separates reconciled facts from hook-witnessed ones (by_src)" \
+  || bad "status.json cannot tell inference from observation"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

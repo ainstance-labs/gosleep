@@ -3,8 +3,15 @@
 One line per event, append-only, one file per UTC day. Written by `tools/lab/lab-log.sh` — the **only**
 writer. Do not hand-append: `seq` is allocated under a lock, and a hand-written line has none.
 
-Producers: Claude Code hooks (`.claude/settings.json`, 0 tokens), explicit semantic emits
-(`tools/lab/lab-emit.sh event`), and — from GSL-87 — poll-fill reconciliation.
+Producers, and what each one's provenance is worth:
+
+| `src` | Producer | Means |
+|---|---|---|
+| `hook:*` | Claude Code hooks (`.claude/settings.json`) | **Observed** as it happened. 0 tokens, no model cooperation. |
+| `emit` | `tools/lab/lab-emit.sh event` | **Stated** by an agent — meaning a hook cannot see. |
+| `poll-fill` | `tools/lab/poll-fill.sh` (GSL-87) | **Inferred afterwards** from `git` / `gh` / Jira, because no hook saw it: a PR merged from the web, an issue dragged on a phone, a commit the hooks dropped. `ts` = when we learned it; `data.occurred_at` = when it happened. |
+
+All three are true. They are not the same *kind* of true, so they never share a tag.
 
 ## Envelope
 
@@ -57,25 +64,44 @@ Emit with `tools/lab/lab-emit.sh event --type <T> …`. The type is validated ag
 a typo'd type is a line no consumer will ever read — silently useless — so it is an error, not a new
 type. The Phase-3 queue mirrors itself here automatically (`question.*`, `decision.made`).
 
-## Honest verification status (GSL-83)
+## Honest verification status — updated 2026-07-12 (GSL-83 → GSL-87)
 
 Verified against a **real** Claude Code process (`tools/lab/hooks-verify.sh`, 13/13):
 `SessionStart`, `Stop`, `SessionEnd`, `PostToolUse` (a real commit; the logged sha matched).
 
-Wired, payload-mapping unit-tested, **but never yet seen to fire** — nothing can force them on demand:
-`StopFailure` (needs a real rate-limit), `PreCompact`/`PostCompact` (needs a real compaction),
-`Notification`, `TeammateIdle`, `SubagentStart/Stop`, `TaskCreated/Completed`.
+**Settled by a night of actual fleet work, exactly as this section predicted it would be** (cycle 46
+read the log instead of arguing about the docs):
 
-**`TeammateIdle` is the one to distrust** — the PRD flags it as never tested. To settle any of them,
-just look after a night of fleet work:
+| Hook | Verdict | Evidence |
+|---|---|---|
+| `TeammateIdle` → `agent.idle` | ✅ **fires** | one line, 2026-07-12. The PRD's "never tested / most likely to disappoint" turned out to work. |
+| `TaskCreated` / `TaskCompleted` | ✅ **fire** | `task.created`, `task.completed` — both present. |
+| `StopFailure`, `PreCompact`/`PostCompact`, `Notification`, `SubagentStart/Stop` | still unobserved | nothing can force them: they need a real rate-limit, a real compaction, a real idle subagent. |
+
+**And one hook that fires but LIES BY OMISSION — the reason GSL-87 exists.** `PostToolUse` on
+`git commit` missed a real commit (`3f52736`, GSL-86): its message was passed as a heredoc inside a
+command substitution, and the parser lost the `git commit` inside it. A second commit was logged with
+an **empty** `sha`. Both are worse than a missing hook, because the log *looks* complete.
+
+Two consequences, both live:
+
+- **`vcs.commit` from a hook is necessary but not sufficient.** `poll-fill` (below) reconciles
+  `git log` against the timeline every chronicler pass and backfills what the hook dropped. Both of
+  the commits above were recovered that way, tagged `src="poll-fill"`.
+- **`tracker.issue.transitioned` from a hook carries no destination** — the MCP payload has a
+  transition *id*, not a status name, so `data.transition` is empty. It witnesses THAT an issue moved,
+  never WHERE to. poll-fill supplies the state separately as `tracker.issue.updated`.
+
+To re-settle any of this yourself — read the log, do not trust this table:
 
 ```bash
-jq -r .type docs/lab/events/*.jsonl | sort | uniq -c | sort -rn
+jq -r .type docs/lab/events/*.jsonl | sort | uniq -c | sort -rn      # what actually fires
+jq -r 'select(.src=="poll-fill") | .type' docs/lab/events/*.jsonl    # what the hooks MISSED
 ```
 
-If `agent.idle` never appears, it does not fire on this version — replace it with a pulse-side poll
-and say so here. **A hook that silently logs nothing is worse than no hook**, so this file must be
-kept honest: if you learn something new about what fires, edit the table above.
+That second query is the health check for the hook layer: **a growing poll-fill share means a hook is
+rotting.** A hook that silently logs nothing — or logs a commit with no sha — is worse than no hook,
+so keep this section honest: when you learn something new about what fires, edit the table.
 
 ## Debugging: "did the hook even run?"
 
