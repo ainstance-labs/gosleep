@@ -139,9 +139,35 @@ done
 "$LE" candidates --json | python3 -c 'import json,sys; rows=[json.loads(l) for l in sys.stdin]; g=[r for r in rows if r["decision"]=="regular merge"][0]; assert g["count"]==3 and len(g["tasks"])==3' \
   && ok "candidates --json (shape folds across tasks/#refs)" || bad "candidates --json"
 
+echo "== semantic events (GSL-84) =="
+EVENTS="$GOSLEEP_LAB_DIR/events"
+ev_count() { jq -s --arg t "$1" 'map(select(.type==$t)) | length' "$EVENTS"/*.jsonl 2>/dev/null || echo 0; }
+
+# The whole point of GSL-84: Phase-3 acts land in the timeline with NO change at any call site.
+# Everything below was already exercised above — these assertions just check it got MIRRORED.
+[[ "$(ev_count question.posed)" -ge 1 ]]     && ok "question -> question.posed (auto-mirrored)"      || bad "question.posed missing"
+[[ "$(ev_count question.deduped)" -ge 1 ]]   && ok "dedup    -> question.deduped"                     || bad "question.deduped missing"
+[[ "$(ev_count question.answered)" -ge 1 ]]  && ok "answer   -> question.answered"                    || bad "question.answered missing"
+[[ "$(ev_count question.auto_resolved)" -ge 1 ]] && ok "resolve -> question.auto_resolved (decided FOR the owner)" || bad "question.auto_resolved missing"
+[[ "$(ev_count decision.made)" -ge 1 ]]      && ok "decision -> decision.made"                        || bad "decision.made missing"
+
+ESEQ="$("$LE" event --type cycle.started --actor smoke-w1 --task GSL-84 --data cycle=45 --data branch=x)"
+[[ "$ESEQ" =~ ^[0-9]+$ ]] && ok "event prints the allocated seq ($ESEQ)" || bad "event seq ($ESEQ)"
+jq -s -e 'map(select(.type=="cycle.started"))[0] | .src=="emit" and .actor=="smoke-w1" and .task=="GSL-84" and .data.cycle=="45"' "$EVENTS"/*.jsonl >/dev/null \
+  && ok "event envelope: src=emit + actor + task + data" || bad "event envelope"
+"$LE" event --type cycle.startd --actor x >/dev/null 2>&1 && bad "typo'd semantic type accepted" || ok "typo'd semantic type rejected (an event nobody reads is worse than an error)"
+"$LE" event --type verify.verdict --actor reviewer --data-json '{"verdict":"PASS","findings":0}' >/dev/null \
+  && ok "event --data-json" || bad "event --data-json"
+"$LE" help | grep -q 'event ' && ok "help lists the event subcommand" || bad "help"
+
+jq -c . "$EVENTS"/*.jsonl >/dev/null 2>&1 && ok "every event line is valid JSON" || bad "corrupt events jsonl"
+jq -s -e 'map(.seq) == [range(1; length+1)]' "$EVENTS"/*.jsonl >/dev/null \
+  && ok "seq monotonic 1..N across BOTH writers (one allocator)" || bad "seq not monotonic"
+
 echo "== append-only discipline =="
 [[ "$(head -1 "$QUEUE")" == "$LINE1" ]] && ok "first line never rewritten" || bad "first line changed"
 [[ -d "$GOSLEEP_LAB_DIR/questions/.queue.lock" || -d "$GOSLEEP_LAB_DIR/decisions/.log.lock" ]] && bad "lock leaked" || ok "locks released"
+[[ -d "$EVENTS/.events.lock" ]] && bad "events lock leaked" || ok "events lock released"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

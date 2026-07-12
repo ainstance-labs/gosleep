@@ -24,6 +24,19 @@
 #   candidates [--min N] [--json]               # learning-loop scan (GSL-77):
 #            same question-shape decided the same way >= N (default 3) times
 #            -> manifest-candidate lines for the morning digest
+#   event    --type <semantic-type> [--actor A] [--task KEY] [--data k=v ...] [--data-json '{…}']
+#            (GSL-84) explicit SEMANTIC event -> docs/lab/events/YYYY-MM-DD.jsonl, src="emit".
+#            The hooks (GSL-83) see mechanics — a commit, a Jira call, a session dying. They cannot
+#            see MEANING: that a cycle started, that a verdict was reached, that the breaker opened.
+#            That is what a worker states here. Type is validated against SEMANTIC_TYPES: a typo'd
+#            event is an event no consumer will ever read, so it is an error, not a new type.
+#   help     list subcommands
+#
+# GSL-84 also makes the Phase-3 queue self-documenting: question/answer/resolve/decision now MIRROR
+# themselves into the timeline (question.posed / question.answered / question.auto_resolved /
+# question.deduped / decision.made) with NO change at any call site. Writes go through lab-log.sh —
+# one writer, one seq allocator, one envelope. Mirroring is fail-open: the queue is load-bearing,
+# the timeline is derived, so a broken event layer must never cost us a question record.
 #
 # Discipline (skill "Question queue" section):
 #   * append-only JSONL — a record is NEVER rewritten; every status change is a NEW
@@ -41,9 +54,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export LAB_DIR="${GOSLEEP_LAB_DIR:-$REPO_ROOT/docs/lab}"
+export LAB_LOG="$SCRIPT_DIR/lab-log.sh"      # GSL-84: the single writer of events/*.jsonl
 
 exec python3 - "$@" <<'PY'
-import sys, os, json, hashlib, time, re
+import sys, os, json, hashlib, time, re, subprocess
 from datetime import datetime, timedelta, timezone
 
 LAB   = os.environ["LAB_DIR"]
@@ -58,9 +72,53 @@ TYPES    = ("BLOCKER", "DECISION", "CLARIFY", "FYI")
 STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted")
 REVERSIBILITY = ("high", "med", "low")
 
+# The semantic vocabulary (GSL-84). Hooks (GSL-83) capture what a machine can SEE — a commit, a Jira
+# call, a session ending. These are what only an agent KNOWS. Grouped by the producer that emits them:
+SEMANTIC_TYPES = (
+    "run.started", "run.finished",                       # orchestrator: a night begins/ends
+    "cycle.started", "cycle.ended",                      # orchestrator: a delivery cycle (PRD R4.2)
+    "question.posed", "question.answered",               # question buffer (Phase 3) — auto-mirrored
+    "question.auto_resolved", "question.deduped",
+    "decision.made",                                     # decision log (Phase 3) — auto-mirrored
+    "verify.verdict",                                    # reviewer/verifier: PASS/FAIL + why (R4.2)
+    "handoff.written",                                   # handoff skill (GSL-88) — cycle + resume point
+    "agent.message",                                     # report/nudge/shutdown between agents
+    "mode.entered",                                      # night/day mode (Phase 2, GSL-68)
+    "quota.wait_started", "quota.wait_ended",            # quota auto-wait (Phase 2, GSL-69)
+    "breaker.opened", "breaker.closed",                  # circuit breaker (Phase 2, GSL-70)
+    "restart.recorded",                                  # watchdog restart (Phase 1)
+)
+
 def die(msg):
     print("lab-emit: error: %s" % msg, file=sys.stderr)
     sys.exit(1)
+
+
+def emit_event(typ, actor, data, task="", loud=False):
+    """Append ONE semantic event by delegating to lab-log.sh — the single writer (one seq allocator,
+    one lock, one envelope). src="emit" marks provenance: this line needed a model to cooperate,
+    unlike the src="hook:*" lines, which did not.
+
+    MIRRORING IS FAIL-OPEN. The queue and the decision log are load-bearing — a question that goes
+    unrecorded can strand the owner. The timeline is derived. So when mirroring an existing act we
+    swallow failures (loud=False); only an explicit `event` call reports them (loud=True).
+    """
+    args = ["bash", os.environ.get("LAB_LOG", ""), "--type", typ, "--src", "emit",
+            "--actor", actor or os.environ.get("GOSLEEP_ACTOR") or "orchestrator",
+            "--data-json", json.dumps(data, ensure_ascii=False)]
+    if task:
+        args += ["--task", task]
+    if not loud:
+        args += ["--quiet"]
+    try:
+        r = subprocess.run(args, capture_output=True, timeout=10)
+        if loud and r.returncode != 0:
+            die("lab-log failed: %s" % r.stderr.decode().strip())
+        return r.stdout.decode().strip()
+    except Exception as e:
+        if loud:
+            die("lab-log failed: %s" % e)
+        return ""
 
 def iso_utc(dt=None):
     dt = dt or datetime.now(timezone.utc)
@@ -241,6 +299,7 @@ def cmd_question(argv):
     for o in a.get("options", []):
         parts = (o.split("|") + ["", ""])[:3]
         options.append({"label": parts[0], "pros": parts[1], "cons": parts[2]})
+    dup, rec = None, None
     with QueueLock():
         records = read_records()
         h = qhash(task, question)
@@ -248,22 +307,33 @@ def cmd_question(argv):
             if m.get("status") == "open" and m.get("qhash") == h:
                 append_record({"re": qid, "ts": iso_utc(), "seen_by": frm})
                 print("DUPLICATE %s" % qid)
-                return
-        qid = next_id(records)
-        status = {"BLOCKER": "open", "DECISION": "open",
-                  "CLARIFY": "answered-by-default", "FYI": "noted"}[typ]
-        rec = {"id": qid, "ts": iso_utc(), "type": typ, "from": frm, "task": task,
-               "links": links, "question": question, "options": options,
-               "default": a.get("default", ""),
-               "default_rationale": a.get("default_rationale", ""),
-               "reversibility": a.get("reversibility", ""),
-               "impact_if_wrong": a.get("impact_if_wrong", ""),
-               "auto_apply_at": (a.get("auto_apply_at") or default_deadline()) if typ == "DECISION" else a.get("auto_apply_at", ""),
-               "status": status, "qhash": h}
-        if a.get("high_impact"):
-            rec["high_impact"] = True
-        append_record(rec)
-        print(qid)
+                dup = qid
+                break
+        if not dup:
+            qid = next_id(records)
+            status = {"BLOCKER": "open", "DECISION": "open",
+                      "CLARIFY": "answered-by-default", "FYI": "noted"}[typ]
+            rec = {"id": qid, "ts": iso_utc(), "type": typ, "from": frm, "task": task,
+                   "links": links, "question": question, "options": options,
+                   "default": a.get("default", ""),
+                   "default_rationale": a.get("default_rationale", ""),
+                   "reversibility": a.get("reversibility", ""),
+                   "impact_if_wrong": a.get("impact_if_wrong", ""),
+                   "auto_apply_at": (a.get("auto_apply_at") or default_deadline()) if typ == "DECISION" else a.get("auto_apply_at", ""),
+                   "status": status, "qhash": h}
+            if a.get("high_impact"):
+                rec["high_impact"] = True
+            append_record(rec)
+            print(qid)
+    # Mirror into the timeline OUTSIDE the queue lock: lab-log takes its own lock, and holding two
+    # is how a fast path becomes a deadlock. GSL-84 — a question is now an event, for free.
+    if dup:
+        emit_event("question.deduped", frm, {"id": dup, "qtype": typ}, task)
+    else:
+        emit_event("question.posed", frm,
+                   {"id": rec["id"], "qtype": typ, "question": question,
+                    "default": rec["default"], "reversibility": rec["reversibility"],
+                    "auto_apply_at": rec["auto_apply_at"], "status": rec["status"]}, task)
 
 def _patch(argv, spec, required, build, verb):
     a = parse_flags(argv, spec)
@@ -277,23 +347,32 @@ def _patch(argv, spec, required, build, verb):
             die("no record with id %s" % qid)
         append_record(build(a))
         print("%s %s" % (verb, qid))
+    return a, state[qid]                 # for the caller's timeline mirror (outside the lock)
 
 def cmd_answer(argv):
-    _patch(argv,
-           {"--re": "re", "--answer": "answer", "--by": "by", "--channel": "channel"},
-           ("re", "answer"),
-           lambda a: {"re": a["re"], "ts": iso_utc(), "status": "answered",
-                      "answer": a["answer"], "answered_by": a.get("by", "owner"),
-                      "channel": a.get("channel", "terminal")},
-           "answered")
+    a, m = _patch(argv,
+                  {"--re": "re", "--answer": "answer", "--by": "by", "--channel": "channel"},
+                  ("re", "answer"),
+                  lambda a: {"re": a["re"], "ts": iso_utc(), "status": "answered",
+                             "answer": a["answer"], "answered_by": a.get("by", "owner"),
+                             "channel": a.get("channel", "terminal")},
+                  "answered")
+    emit_event("question.answered", a.get("by", "owner"),
+               {"id": a["re"], "qtype": m.get("type", ""), "answer": a["answer"],
+                "channel": a.get("channel", "terminal")}, m.get("task", ""))
 
 def cmd_resolve(argv):
-    _patch(argv,
-           {"--re": "re", "--applied": "applied"},
-           ("re", "applied"),
-           lambda a: {"re": a["re"], "ts": iso_utc(), "status": "auto-resolved",
-                      "applied": a["applied"]},
-           "auto-resolved")
+    a, m = _patch(argv,
+                  {"--re": "re", "--applied": "applied"},
+                  ("re", "applied"),
+                  lambda a: {"re": a["re"], "ts": iso_utc(), "status": "auto-resolved",
+                             "applied": a["applied"]},
+                  "auto-resolved")
+    # The deadline passed and the default was applied with nobody watching. If any event belongs on
+    # the morning timeline, it is this one — it is the system having decided FOR the owner.
+    emit_event("question.auto_resolved", "orchestrator",
+               {"id": a["re"], "qtype": m.get("type", ""), "applied": a["applied"],
+                "question": m.get("question", "")}, m.get("task", ""))
 
 def cmd_list(argv):
     a = parse_flags(argv, {"--status": "status", "--type": "type", "--task": "task",
@@ -364,6 +443,9 @@ def cmd_decision(argv):
                "channel": a.get("channel", "")}
         append_jsonl(DLOG, rec)
         print(rec["id"])
+    emit_event("decision.made", by,
+               {"id": rec["id"], "decision": rec["decision"], "question": question,
+                "rule": rec["rule"], "re": rec["re"]}, task)
 
 def cmd_candidates(argv):
     a = parse_flags(argv, {"--min": "min", "--json": "!json"})
@@ -397,13 +479,56 @@ def cmd_candidates(argv):
                 ",".join(g["tasks"]) or "-",
                 "; rules cited: " + ", ".join(sorted(g["rules"])) if g["rules"] else ""))
 
+def cmd_event(argv):
+    a = parse_flags(argv, {"--type": "type", "--actor": "actor", "--task": "task",
+                           "--data": "data", "--data-json": "data_json"}, multi=("--data",))
+    typ = a.get("type") or die("--type is required (one of: %s)" % " ".join(SEMANTIC_TYPES))
+    if typ not in SEMANTIC_TYPES:
+        # A typo'd type is an event nothing will ever read — silently useless. Better a loud error.
+        die("unknown semantic type %r; must be one of:\n  %s" % (typ, "\n  ".join(SEMANTIC_TYPES)))
+    data = {}
+    if a.get("data_json"):
+        try:
+            data.update(json.loads(a["data_json"]))
+        except ValueError as e:
+            die("--data-json is not valid JSON: %s" % e)
+    for kv in a.get("data", []):
+        if "=" not in kv:
+            die("--data expects k=v, got %r" % kv)
+        k, v = kv.split("=", 1)
+        data[k] = v
+    print(emit_event(typ, a.get("actor", ""), data, a.get("task", ""), loud=True))
+
+def cmd_help(argv):
+    print("""lab-emit — the question queue, the decision log, and the semantic event layer.
+
+  question   --type BLOCKER|DECISION|CLARIFY|FYI --question "..." [--from A] [--task KEY]
+             [--default "..."] [--reversibility high|med] [--option "label|pros|cons"] ...
+  answer     --re q-ID --answer "..." [--by owner|orchestrator] [--channel CH]
+  resolve    --re q-ID --applied "..."
+  list       [--status open|all|...] [--type T] [--task KEY] [--due] [--json] [--count]
+  decision   --decision "..." (--re q-ID | --question "...") [--rule "manifest §N"] [--by WHO]
+  candidates [--min N] [--json]
+  event      --type <semantic-type> [--actor A] [--task KEY] [--data k=v ...] [--data-json '{…}']
+  help
+
+Semantic types (event):
+  %s
+
+question/answer/resolve/decision also MIRROR themselves into docs/lab/events/ automatically
+(src="emit"); the hooks in .claude/settings.json write the mechanical half (src="hook:*").""" %
+          "\n  ".join(SEMANTIC_TYPES))
+
 def main():
     if len(sys.argv) < 2:
-        die("usage: lab-emit.sh question|answer|resolve|list|decision|candidates ...")
+        die("usage: lab-emit.sh question|answer|resolve|list|decision|candidates|event|help ...")
     cmd, argv = sys.argv[1], sys.argv[2:]
+    if cmd in ("-h", "--help"):
+        cmd = "help"
     fn = {"question": cmd_question, "answer": cmd_answer,
           "resolve": cmd_resolve, "list": cmd_list,
-          "decision": cmd_decision, "candidates": cmd_candidates}.get(cmd)
+          "decision": cmd_decision, "candidates": cmd_candidates,
+          "event": cmd_event, "help": cmd_help}.get(cmd)
     if not fn:
         die("unknown subcommand %r" % cmd)
     fn(argv)
