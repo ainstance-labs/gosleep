@@ -169,6 +169,70 @@ echo "== append-only discipline =="
 [[ -d "$GOSLEEP_LAB_DIR/questions/.queue.lock" || -d "$GOSLEEP_LAB_DIR/decisions/.log.lock" ]] && bad "lock leaked" || ok "locks released"
 [[ -d "$EVENTS/.events.lock" ]] && bad "events lock leaked" || ok "events lock released"
 
+echo "== write discipline under concurrency (GSL-85) =="
+LL="$SCRIPT_DIR/lab-log.sh"
+LW="$SCRIPT_DIR/lab-write.sh"
+
+# GSL-84 acceptance, verbatim from Jira: "переживает конкурентную запись (несколько воркеров пишут
+# одновременно — ни одной битой строки)". A fleet writes from 3+ panes at once; interleaved appends
+# are the normal case, not the edge case.
+CONC="$WORK/conc"; mkdir -p "$CONC"
+BEFORE="$(cat "$EVENTS"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')"
+for i in $(seq 1 20); do
+  ( "$LL" --type cycle.started --actor "w$i" --data "n=$i" --quiet >/dev/null 2>&1 ) &
+done
+wait
+AFTER="$(cat "$EVENTS"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')"
+[[ $((AFTER - BEFORE)) -eq 20 ]] && ok "20 concurrent writers -> exactly 20 lines (none lost)" || bad "concurrent append lost lines ($((AFTER-BEFORE))/20)"
+jq -c . "$EVENTS"/*.jsonl >/dev/null 2>&1 && ok "20 concurrent writers -> no torn line (all valid JSON)" || bad "torn line under concurrency"
+jq -s -e 'map(.seq) | (length == (unique | length))' "$EVENTS"/*.jsonl >/dev/null \
+  && ok "seq unique under concurrency (lock holds)" || bad "duplicate seq — the lock does not hold"
+
+# Atomicity of NON-append artifacts: rename(2) replaces the file, it never truncates in place.
+# The inode CHANGING is the deterministic signature of that — a `>` redirect would keep it.
+printf '{"a":1}' | "$LW" --json "$CONC/status.json" && ok "lab-write writes" || bad "lab-write failed"
+INO1="$(stat -f %i "$CONC/status.json")"
+printf '{"a":2,"padding":"%s"}' "$(printf 'x%.0s' {1..5000})" | "$LW" --json "$CONC/status.json"
+INO2="$(stat -f %i "$CONC/status.json")"
+[[ "$INO1" != "$INO2" ]] && ok "atomic: rewrite REPLACES the file (inode $INO1 -> $INO2), never truncates in place" \
+                         || bad "atomic: inode unchanged — this is a torn-read waiting to happen"
+
+# And the behavioural half: hammer it while reading. A reader must never catch a prefix.
+( for i in $(seq 1 60); do printf '{"i":%d,"pad":"%s"}' "$i" "$(printf 'y%.0s' {1..2000})" | "$LW" "$CONC/status.json"; done ) &
+WPID=$!
+TORN=0
+for i in $(seq 1 60); do jq -e . "$CONC/status.json" >/dev/null 2>&1 || TORN=$((TORN+1)); done
+wait $WPID
+[[ "$TORN" -eq 0 ]] && ok "60 rewrites under a concurrent reader -> 0 torn reads" || bad "$TORN torn reads"
+
+printf 'not json' | "$LW" --json "$CONC/bad.json" >/dev/null 2>&1 \
+  && bad "--json accepted invalid JSON (a corrupt status.json breaks every consumer)" \
+  || ok "--json refuses to publish invalid JSON"
+[[ -z "$(find "$CONC" -name '.*.tmp' 2>/dev/null)" ]] && ok "no temp files left behind" || bad "temp files leaked"
+
+# The GSL-85 acceptance, verbatim from Jira: "убийство писателя посередине не оставляет torn-write
+# (файл либо старый целый, либо новый целый)". The chronicler runs under a hard budget cap — being
+# killed mid-write is its NORMAL death, not an exotic one. Stated as a size law, so it cannot flake:
+# whatever the axe timing, the file is one of exactly two sizes — never a prefix in between.
+K="$CONC/killed.json"
+printf '{"generated_at":"OLD"}' | "$LW" --json "$K"
+OLDSZ="$(wc -c < "$K" | tr -d ' ')"
+python3 -c "import json,sys; sys.stdout.write(json.dumps({'generated_at':'NEW','pad':'z'*40000000}))" > "$CONC/big.json"
+NEWSZ="$(wc -c < "$CONC/big.json" | tr -d ' ')"
+"$LW" "$K" < "$CONC/big.json" & KPID=$!
+sleep 0.05; kill -9 $KPID 2>/dev/null; wait $KPID 2>/dev/null
+GOTSZ="$(wc -c < "$K" | tr -d ' ')"
+jq -e . "$K" >/dev/null 2>&1 && { [[ "$GOTSZ" == "$OLDSZ" || "$GOTSZ" == "$NEWSZ" ]]; } \
+  && ok "kill -9 mid-write -> target is the WHOLE old file or the WHOLE new one ($GOTSZ B), never a prefix" \
+  || bad "torn write after kill -9: got $GOTSZ B (old=$OLDSZ new=$NEWSZ)"
+
+# kill -9 leaves no chance to clean up, so the corpse's temp stays. The next pass must sweep it —
+# otherwise a killed chronicler litters docs/lab/ forever.
+touch -t 202001010000 "$CONC/.killed.json.corpse.tmp"
+printf '{"generated_at":"NEXT-PASS"}' | "$LW" --json "$K"
+[[ -z "$(find "$CONC" -name '.killed.json.*.tmp' 2>/dev/null)" ]] \
+  && ok "the next write sweeps a killed writer's leftover temp" || bad "stale temp survives"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

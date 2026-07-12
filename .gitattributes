@@ -1,0 +1,6 @@
+# Append-only JSONL: two branches appending to the same day/queue must MERGE, not conflict.
+# `union` keeps both sides' lines. Caveat (docs/lab/README.md): seq is unique per file, not globally —
+# a union merge can interleave two independent seq runs, so consumers key on the record, not on seq.
+docs/lab/events/*.jsonl   merge=union
+docs/lab/questions/*.jsonl merge=union
+docs/lab/decisions/*.jsonl merge=union

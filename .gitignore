@@ -36,3 +36,11 @@ evals/baselines/
 
 # Claude Code runtime (не коммитить)
 .claude/scheduled_tasks.lock
+
+# Laboratory scratch — temps, partials, hook traces, drop counters (PRD Phase 4 R4.3).
+# Everything ELSE under docs/lab/ IS committed: it is the owner's phone-readable surface.
+docs/lab/scratch/
+# Hidden atomic-write temps: a chronicler killed mid-write (kill -9 = no cleanup)
+# leaves one beside its target. lab-write sweeps them on the next pass; git never sees them.
+docs/lab/.*.tmp
+docs/lab/**/.*.tmp
