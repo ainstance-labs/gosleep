@@ -33,3 +33,6 @@ evals/baselines/
 
 # Research cache — clones of third-party repos for deep-research, not committed
 .research-cache/
+
+# Claude Code runtime (не коммитить)
+.claude/scheduled_tasks.lock
