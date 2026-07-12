@@ -113,3 +113,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 ## Epic GSL-81 — Laboratory (auto-doc) (PRD Phase 4)
 
 - [GSL-82 — Леджер-коммит: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL](GSL-82-phase4-cycle44-ledger.md)
+- [GSL-83 — T1 event layer: хуки Claude Code + lab-log.sh (envelope → дневной jsonl, 0 токенов; 5 багов нашёл живой прогон)](GSL-83-phase4-cycle45-hooks-lab-log.md)

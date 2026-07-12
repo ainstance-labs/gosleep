@@ -1,4 +1,5 @@
 {
+  "$comment": "gosleep hooks. Stop[0] = the owner's turn-must-end-with-text guard (GSL-82) — do not weaken. Everything else = the T1 event layer (GSL-83): tools/lab/lab-log.sh normalizes each hook payload into docs/lab/events/YYYY-MM-DD.jsonl. 0 tokens, no model cooperation. lab-log.sh is fail-open (always exits 0), so a broken event layer can never wedge a session. Hooks are NOT snapshotted — a file watcher reloads this file mid-session, so an edit here hits the LIVE fleet: validate with `jq .` and verify with a real run (tools/lab/hooks-verify.sh).",
   "hooks": {
     "Stop": [
       {
@@ -9,6 +10,109 @@
             "timeout": 10,
             "statusMessage": "Проверка: ход заканчивается текстом владельцу"
           }
+        ]
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "$comment": "ONE hook, no `if`. The `if` field exists (v2.1.85+) and would pre-filter before spawning the process — but a real run on 2.1.207 showed two `if` rules under one matcher BOTH firing on the same call (one action -> two events), and `Bash(git *)` matching a command that only MENTIONED git inside a quoted string. Routing by sub-command prefix inside lab-log.sh is the version we can prove correct; the cost is one process spawn per Bash call.",
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+        ]
+      },
+      {
+        "matcher": "mcp__atlassian__.*",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
         ]
       }
     ]
