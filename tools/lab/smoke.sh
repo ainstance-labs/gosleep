@@ -284,16 +284,29 @@ for P in index timeline library; do
 done
 grep -q 'generated_at' "$CR/docs/lab/site/index.html" \
   && ok "every page carries generated_at (R4.4)" || bad "page has no generated_at"
+# A static file cannot age itself: the baked-in grade judges the DATA at BUILD time. A chronicler that
+# dies at 02:00 while all is fresh would leave a page reading "Live" forever — the stale hub that hides
+# its staleness, which is the one thing F4-S3 exists to prevent. So the banner re-grades when opened,
+# from generated_at + the event age it carries, and can only ever make the verdict WORSE (GSL-89).
+for M in 'id="staleness"' 'data-generated-at' 'data-event-age-s' '<script>'; do
+  grep -q -- "$M" "$CR/docs/lab/site/index.html" || { bad "F4-S3: page cannot re-grade itself (no $M)"; continue; }
+done
+grep -q 'id="staleness"' "$CR/docs/lab/site/index.html" && grep -q 'data-event-age-s' "$CR/docs/lab/site/index.html" \
+  && grep -q '<script>' "$CR/docs/lab/site/index.html" \
+  && ok "F4-S3: the page re-grades its own staleness on open (a frozen 'Live' verdict is the failure)" \
+  || bad "F4-S3: the verdict freezes at build time"
 # Self-contained: the owner opens it from file://, on a plane, with no CDN in reach.
 grep -qE 'https?://(cdn|fonts|unpkg|cdnjs)' "$CR/docs/lab/site/index.html" \
   && bad "site/ pulls an external resource (file:// would break)" \
   || ok "site/ is self-contained (no CDN/font/script fetches)"
 
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
-# Today's file has 3 lines, one of which supersedes another -> a correct fold reports 2.
-[[ "$(jq -r '.events.today' "$CR/docs/lab/status.json")" == "2" ]] \
+# The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.
+# (Counted by TYPE, not by day: these events are 20h old, so since GSL-89 — where a day is keyed on
+# when an event HAPPENED, not on which file it was written into — they are not "today" at all.)
+[[ "$(jq -r '.events.by_type["vcs.commit"] // 0' "$CR/docs/lab/status.json")" == "2" ]] \
   && ok "C8: superseded event folded out of the counts (3 lines -> 2 events)" \
-  || bad "superseded event still counted (no fold): today=$(jq -r '.events.today' "$CR/docs/lab/status.json")"
+  || bad "superseded event still counted (no fold): vcs.commit=$(jq -r '.events.by_type["vcs.commit"] // 0' "$CR/docs/lab/status.json")"
 grep -q "WRONG" "$CR/docs/lab/site/timeline.html" \
   && bad "superseded event still rendered in the timeline" \
   || ok "C8: superseded event is not shown on the timeline"
@@ -379,7 +392,7 @@ cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="vcs.pr.merged")) 
 cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="vcs.pr.merged")) | all(.src == "poll-fill")' >/dev/null 2>&1 \
   && ok "reconciled events are tagged src=poll-fill, never src=hook:*" || bad "poll-fill forged a hook provenance"
 cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.src=="poll-fill")) | all(.data.occurred_at != null)' >/dev/null 2>&1 \
-  && ok "each backfilled event carries data.occurred_at (ts = when we learned it)" \
+  && ok "each backfilled event carries data.occurred_at (since GSL-89 also its ts; logged_at = when we learned it)" \
   || bad "a backfilled event lost the time it actually happened"
 
 # IDEMPOTENCE — the acceptance criterion of GSL-87, stated verbatim: run it twice, the second pass
@@ -434,6 +447,107 @@ cat "$PAIR/docs/lab/events/"*.jsonl | jq -se 'map(select(.src=="poll-fill")) | l
 jq -e '.events.by_src["poll-fill"] > 0' "$PAIR/docs/lab/status.json" >/dev/null 2>&1 \
   && ok "status.json separates reconciled facts from hook-witnessed ones (by_src)" \
   || bad "status.json cannot tell inference from observation"
+
+echo "== lab-log --ts / --supersedes: a backfill lands where it HAPPENED (GSL-89) =="
+bash -n "$LL" && ok "lab-log.sh: bash -n (the writer every hook calls)" || bad "lab-log.sh: bash -n"
+
+TSL="$WORK/tslab"
+NOW_DAY="$(date -u +%F)"
+DA="$(python3 -c "import datetime;print((datetime.date.today()-datetime.timedelta(days=2)).isoformat())")"
+DB="$(python3 -c "import datetime;print((datetime.date.today()-datetime.timedelta(days=1)).isoformat())")"
+
+# Without --ts nothing changes: ts = now, and no logged_at, because nothing was learned after the fact.
+GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type cycle.started --actor smoke --data k=v --quiet
+jq -se --arg d "$NOW_DAY" 'map(select(.type=="cycle.started"))[0] | (.ts|startswith($d)) and (has("logged_at")|not)' \
+  "$TSL/events/$NOW_DAY.jsonl" >/dev/null \
+  && ok "no --ts: ts = now, no logged_at (nothing was learned late)" || bad "--ts changed the default envelope"
+
+# --ts back-dates the EVENT, and both halves of the truth survive: when it HAPPENED (ts) and when we
+# LEARNED it (logged_at). Collapse them and the log can no longer tell observation from hindsight.
+GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type vcs.commit --src poll-fill --actor poll-fill \
+  --ts "${DA}T18:20:18Z" --supersedes "${DA}:4" --data sha=4af66d2 --quiet
+jq -se --arg t "${DA}T18:20:18Z" --arg d "$NOW_DAY" --arg s "${DA}:4" \
+  'map(select(.src=="poll-fill"))[0] | .ts==$t and (.logged_at|startswith($d)) and .supersedes==$s' \
+  "$TSL/events/$NOW_DAY.jsonl" >/dev/null \
+  && ok "--ts = when it happened, logged_at = when we learned it, --supersedes qualified by day" \
+  || bad "--ts / --supersedes did not reach the envelope"
+
+# The line still goes into TODAY's file. The filename is a rotation unit; ts is the semantics. Appending
+# into a past day would mutate a file git already holds — and that retention may already have pruned.
+[[ ! -f "$TSL/events/$DA.jsonl" ]] \
+  && ok "--ts back-dates the event, never the FILE (no past day reopened)" \
+  || bad "--ts appended into a past day's file"
+
+# git says +02:00, Jira says +0300 with millis, gh says Z — and python3.9's fromisoformat takes neither
+# of the last two. A line left carrying an offset sorts HOURS from where it belongs: the timeline is
+# ordered lexically on ts, so normalizing is correctness, not tidiness.
+for TSIN in "${DA}T20:20:18+02:00" "${DA}T21:20:18.123+0300"; do
+  GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type vcs.commit --src poll-fill --ts "$TSIN" --data sha=aaa1111 --quiet
+done
+[[ "$(jq -r 'select(.data.sha=="aaa1111") | .ts' "$TSL/events/$NOW_DAY.jsonl" | sort -u)" == "${DA}T18:20:18Z" ]] \
+  && ok "offset forms (+02:00, +0300 w/ millis) normalize to one UTC instant" \
+  || bad "an offset survived into ts — the line would sort into the wrong hour"
+
+# A malformed backfill is a usage error, never a shrug. lab-log is the ONE writer that can place a line
+# at an instant; a line placed at the WRONG instant is worse than a line never written.
+GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type x --ts garbage --quiet 2>/dev/null \
+  && bad "--ts accepted garbage (a silent fallback to 'now')" || ok "--ts garbage -> loud failure"
+GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type x --supersedes nope --quiet 2>/dev/null \
+  && bad "--supersedes accepted garbage" || ok "--supersedes garbage -> loud failure"
+
+echo "== fold: a cross-day correction retires the right line — and ONLY it (GSL-89) =="
+FD="$WORK/fold-repo"; mkdir -p "$FD/docs/lab/events"
+# Day A: seq 2 is a commit that will later be proven wrong.
+{ printf '{"ts":"%sT10:00:00Z","run_id":"a","seq":1,"actor":"w","type":"pane.started","src":"hook:SessionStart","data":{}}\n' "$DA"
+  printf '{"ts":"%sT10:05:00Z","run_id":"a","seq":2,"actor":"w","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"RETIREME"}}\n' "$DA"
+} > "$FD/docs/lab/events/$DA.jsonl"
+# Day B: seq 2 is an INNOCENT BYSTANDER that happens to carry the same seq number as day A's seq 2 —
+# seq is unique per FILE, not globally. seq 3 corrects day A across the boundary (qualified form);
+# seq 5 corrects day B's own seq 4 with the bare form, which must keep working.
+{ printf '{"ts":"%sT10:00:00Z","run_id":"b","seq":1,"actor":"w","type":"agent.idle","src":"hook:TeammateIdle","data":{}}\n' "$DB"
+  printf '{"ts":"%sT10:01:00Z","run_id":"b","seq":2,"actor":"w","type":"agent.turn_ended","src":"hook:Stop","data":{}}\n' "$DB"
+  printf '{"ts":"%sT10:02:00Z","run_id":"b","seq":3,"actor":"pf","type":"vcs.commit","src":"poll-fill","supersedes":"%s:2","data":{"sha":"c0rrect1"}}\n' "$DB" "$DA"
+  printf '{"ts":"%sT10:03:00Z","run_id":"b","seq":4,"actor":"w","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"SAMEDAYBAD"}}\n' "$DB"
+  printf '{"ts":"%sT10:04:00Z","run_id":"b","seq":5,"actor":"pf","type":"vcs.commit","src":"poll-fill","supersedes":4,"data":{"sha":"c0rrect2"}}\n' "$DB"
+} > "$FD/docs/lab/events/$DB.jsonl"
+bash "$CH" --repo "$FD" --date "$DB" --no-poll --quiet --json >/dev/null 2>&1
+FS="$FD/docs/lab/status.json"
+[[ "$(jq -r '.events.by_type["vcs.commit"] // 0' "$FS")" == "2" ]] \
+  && ok "both forms fold: 4 commit lines -> 2 events (cross-day AND same-day)" \
+  || bad "fold count wrong: vcs.commit=$(jq -r '.events.by_type["vcs.commit"] // 0' "$FS")"
+# THE regression guard. Read as a bare seq, a cross-day reference would retire day B's seq 2 — an
+# unrelated event — instead of day A's. A correction that silently deletes a bystander is worse than
+# the error it corrects, and it would be invisible: the timeline would simply be one event shorter.
+[[ "$(jq -r '.events.by_type["agent.turn_ended"] // 0' "$FS")" == "1" ]] \
+  && ok "the bystander holding the same seq in another file SURVIVES" \
+  || bad "a cross-day correction retired an innocent event that merely shared its seq"
+grep -q "RETIREME" "$FD/docs/lab/site/timeline.html" \
+  && bad "the cross-day superseded line is still rendered" || ok "cross-day: the retired line is gone"
+grep -q "SAMEDAYBAD" "$FD/docs/lab/site/timeline.html" \
+  && bad "the same-day (bare seq) fold regressed" || ok "same-day (bare seq) fold still works"
+
+# A day is WHEN IT HAPPENED, not which file it was written into. A commit recovered this morning from
+# last night must not be counted as today's work — that is exactly the lie poll-fill's floor exists to
+# prevent, and --ts would have reintroduced it if the grouping still keyed on the filename.
+TSR="$WORK/ts-repo"; mkdir -p "$TSR/docs/lab"
+GOSLEEP_LAB_DIR="$TSR/docs/lab" bash "$LL" --type cycle.started --actor smoke --data k=v --quiet
+GOSLEEP_LAB_DIR="$TSR/docs/lab" bash "$LL" --type vcs.commit --src poll-fill --ts "${DA}T18:20:18Z" --data sha=backfil --quiet
+bash "$CH" --repo "$TSR" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(jq -r '.events.total' "$TSR/docs/lab/status.json")" == "2" \
+   && "$(jq -r '.events.today' "$TSR/docs/lab/status.json")" == "1" ]] \
+  && ok "a back-dated line sits in today's FILE but not in today's COUNT (a day is keyed on ts)" \
+  || bad "a back-dated backfill was counted as today's work (today=$(jq -r '.events.today' "$TSR/docs/lab/status.json"))"
+
+# End to end: poll-fill stamps the fact's OWN time — the one-line change the previous cycle predicted.
+PT="$WORK/pf-ts"; mkdir -p "$PT/docs/lab/events"
+printf '{"ts":"%sT00:00:00Z","run_id":"x","seq":1,"actor":"a","type":"pane.started","src":"hook:SessionStart","data":{}}\n' "$DA" \
+  > "$PT/docs/lab/events/$DA.jsonl"
+printf '[{"key":"GSL-998","status":"Done","updated":"%sT12:34:56Z","summary":"backdated"}]\n' "$DB" > "$WORK/jira-ts.json"
+bash "$PF" --repo "$PT" --git-repo "$REPO_ROOT" --no-git --no-gh --jira-json "$WORK/jira-ts.json" --quiet >/dev/null 2>&1
+cat "$PT/docs/lab/events/"*.jsonl | jq -se --arg t "${DB}T12:34:56Z" \
+  'map(select(.data.key=="GSL-998"))[0] | .ts==$t and (.logged_at != null)' >/dev/null 2>&1 \
+  && ok "poll-fill backfills at occurred_at, and still records when it learned it" \
+  || bad "poll-fill stamps 'now' — every recovered fact lands on today's timeline"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

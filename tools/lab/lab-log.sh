@@ -13,18 +13,31 @@
 #   DIRECT MODE (flags) — for the semantic layer (lab-emit, GSL-84) and poll-fill (GSL-87):
 #       lab-log.sh --type cycle.started --actor impl-lab-1 --data k=v --data-json '{"a":1}'
 #                  [--src emit|poll-fill] [--task GSL-83] [--quiet]
+#                  [--ts <ISO>] [--supersedes <seq>|<YYYY-MM-DD>:<seq>]      <- GSL-89: backfill
 #     Prints the allocated seq (unless --quiet).
 #
 # Envelope (docs/design/event-schema.md + 05 §3.2 — attribution fields from the hook input):
-#   {ts, run_id, seq, actor, type, data, src, session_id?, agent_id?, agent_type?, cwd?, task?}
+#   {ts, logged_at?, run_id, seq, actor, type, data, src, supersedes?,
+#    session_id?, agent_id?, agent_type?, cwd?, task?}
 #   src  = "hook:<HookEventName>" | "emit" | "poll-fill"  <- PROVENANCE. Lets any consumer prove
 #          F4-S1 by filtering src=hook:* : those lines cost 0 tokens and needed no model cooperation.
 #   run_id = $GOSLEEP_RUN_ID, else the UTC date (one orchestration run = one night = one daily file).
 #
 # Discipline (R4.3):
 #   * append-only — one O_APPEND single-write() line per event; the file is NEVER rewritten.
-#     Corrections are new records carrying {"supersedes": <seq>}. No temp+rename here: temp+rename
+#     Corrections are new records carrying {"supersedes": …}. No temp+rename here: temp+rename
 #     is for the NON-append artifacts (status.json), an append log must not be rewritten at all.
+#   * --ts back-dates the EVENT, never the FILE. The line still lands in TODAY's daily file — the one
+#     the writer is currently appending to — and carries ts = when it HAPPENED, plus logged_at = when
+#     we LEARNED it. Consumers sort the timeline by ts across every day file (the chronicler globs
+#     events/*.jsonl), so a back-dated line takes its true place without anyone reopening a past day.
+#     Appending into a past day's file would mutate a day that is already committed, and that
+#     retention may already have pruned. The filename is a rotation unit; `ts` is the semantics.
+#   * --supersedes names a (file, seq) coordinate, because seq is unique per FILE, not globally:
+#     `42` = seq 42 in this event's OWN day file; `2026-07-12:42` = seq 42 in THAT day's file. A
+#     cross-day correction written as a bare `42` would retire whichever innocent line happens to
+#     hold seq 42 today. poll-fill reconciles last night's log this morning, so cross-day is the
+#     normal case, not the exotic one — qualify it.
 #   * daily rotation (UTC) keeps any consumer read cheap.
 #   * bounded — GOSLEEP_LAB_MAX_LINES (default 50000) guards a runaway hook loop. At the cap the
 #     script appends ONE lab.capped marker and then drops, counting drops in scratch/ — a lying
@@ -122,6 +135,57 @@ def clamp(v):
     return v
 
 
+# ── backfill: saying WHEN it happened, and WHICH line it retires (GSL-89) ───────────────────
+#
+# Both flags exist for one reader: poll-fill. It reconciles last night's log this morning, so it
+# always speaks about the past — about facts nobody was watching. Until now it could only stamp
+# ts = now and bury the real time in data.occurred_at, which put every recovered commit on TODAY's
+# timeline. These two flags let a correction say the two things it actually knows: when the fact
+# happened, and which earlier line it replaces.
+
+ISO_OFFSET = re.compile(r"([+-]\d{2})(\d{2})$")      # +0300 -> +03:00 (py3.9 fromisoformat is strict)
+SUPERSEDES = re.compile(r"^(\d{4}-\d{2}-\d{2}):(\d+)$")
+
+
+def parse_ts(s):
+    """--ts: the event happened THEN, not now.
+
+    Accepts what the real sources actually emit — `…Z` (git, gh), `…+03:00` / `…+0300` (Jira),
+    fractional seconds — and normalizes to UTC at second resolution. Normalizing is not tidiness:
+    consumers sort the timeline LEXICALLY on ts, so a single line left carrying a +03:00 offset would
+    sort three hours away from where it belongs. A backfill that lands in the wrong place is exactly
+    the bug this flag exists to fix.
+    """
+    t = (s or "").strip()
+    if t[-1:] in ("Z", "z"):
+        t = t[:-1] + "+00:00"
+    t = ISO_OFFSET.sub(r"\1:\2", t)
+    try:
+        dt = datetime.fromisoformat(t)
+    except ValueError:
+        raise SystemExit("lab-log: --ts %r is not ISO-8601 (want e.g. 2026-07-12T18:20:18Z)" % s)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)         # naive means UTC: this whole layer is UTC
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_supersedes(s):
+    """--supersedes: this line RETIRES an earlier one. Append-only means a correction is a new
+    record naming the record it replaces — never an edit of it (R4.3, C8).
+
+    `seq` is unique per FILE, so a reference must carry the file when it crosses a day:
+        42             seq 42 in this event's own day file (same-day correction)
+        2026-07-12:42  seq 42 in that day's file (the cross-day case — poll-fill's normal case)
+    """
+    t = (s or "").strip()
+    m = SUPERSEDES.match(t)
+    if m:
+        return "%s:%d" % (m.group(1), int(m.group(2)))
+    if t.isdigit():
+        return int(t)
+    raise SystemExit("lab-log: --supersedes %r must be <seq> or <YYYY-MM-DD>:<seq>" % s)
+
+
 def last_seq(path):
     """O(1)-ish: read the tail, take the last complete line, trust its seq. Self-healing —
     no sidecar counter to drift out of sync with the file."""
@@ -191,14 +255,22 @@ def emit(ev):
         return ev["seq"]
 
 
-def envelope(typ, actor, data, src, task="", extra=None):
-    ev = {"ts": iso_utc(),
-          "run_id": os.environ.get("GOSLEEP_RUN_ID") or utc_date(),
-          "seq": 0,                                 # replaced under the lock in emit()
-          "actor": actor or "unknown",
-          "type": typ,
-          "src": src,
-          "data": clamp(data or {})}
+def envelope(typ, actor, data, src, task="", extra=None, ts="", supersedes=None):
+    now = iso_utc()
+    ev = {"ts": ts or now}
+    if ts and ts != now:
+        # --ts moved `ts` to WHEN IT HAPPENED, so keep WHEN WE LEARNED IT here. The gap between the
+        # two IS the measurement of how blind the hooks were that night, and this is the only place
+        # it survives — collapse them and the log can no longer tell observation from hindsight.
+        ev["logged_at"] = now
+    ev.update({"run_id": os.environ.get("GOSLEEP_RUN_ID") or utc_date(),
+               "seq": 0,                            # replaced under the lock in emit()
+               "actor": actor or "unknown",
+               "type": typ,
+               "src": src,
+               "data": clamp(data or {})})
+    if supersedes is not None:
+        ev["supersedes"] = supersedes
     if task:
         ev["task"] = task
     for k, v in (extra or {}).items():             # attribution: session_id/agent_id/agent_type/cwd
@@ -470,7 +542,8 @@ def hook_mode():
 
 def direct_mode(argv):
     spec = {"--type": "type", "--actor": "actor", "--data": "data", "--data-json": "data_json",
-            "--src": "src", "--task": "task", "--quiet": "!quiet"}
+            "--src": "src", "--task": "task", "--ts": "ts", "--supersedes": "supersedes",
+            "--quiet": "!quiet"}
     a, i = {}, 0
     while i < len(argv):
         f = argv[i]
@@ -498,7 +571,9 @@ def direct_mode(argv):
         k, v = kv.split("=", 1)
         data[k] = v
     seq = emit(envelope(typ, a.get("actor") or os.environ.get("GOSLEEP_ACTOR", ""), data,
-                        a.get("src", "emit"), a.get("task", "")))
+                        a.get("src", "emit"), a.get("task", ""),
+                        ts=parse_ts(a["ts"]) if a.get("ts") else "",
+                        supersedes=parse_supersedes(a["supersedes"]) if a.get("supersedes") else None))
     if not a.get("quiet"):
         print("dropped (cap)" if seq is None else seq)
 

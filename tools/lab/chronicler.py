@@ -124,14 +124,32 @@ def load_events():
     all_ev.sort(key=lambda e: (e.get("ts", ""), e.get("seq", 0)))
     return all_ev, [os.path.basename(p)[:-6] for p in files]
 
-# A correction never rewrites history — it appends a line pointing at the seq it replaces (C8).
+# A correction never rewrites history — it appends a line pointing at the record it replaces (C8).
 # Consumers must therefore FOLD before they count, or a superseded event is shown twice.
+#
+# A reference is a (file, seq) coordinate, because seq is unique per FILE, not globally (GSL-89):
+#   42             seq 42 in the CORRECTING event's own day file — the same-day form.
+#   2026-07-12:42  seq 42 in THAT day's file — the cross-day form.
+# poll-fill fixes last night's log this morning, so its corrections are cross-day by nature. Read as
+# a bare seq, such a reference would retire whichever innocent line happens to hold seq 42 in TODAY's
+# file — a correction that silently deletes an unrelated event is worse than the error it fixes.
 def fold_superseded(events):
     dead = set()
     for e in events:
         sup = e.get("supersedes")
-        if sup is not None:
-            dead.add((e.get("_day"), sup))
+        if sup is None:
+            continue
+        if isinstance(sup, str) and ":" in sup:
+            day, _, seq = sup.partition(":")
+            try:
+                dead.add((day, int(seq)))
+            except ValueError:
+                continue                      # malformed reference: fold nothing, never guess
+        else:
+            try:
+                dead.add((e.get("_day"), int(sup)))
+            except (TypeError, ValueError):
+                continue
     return [e for e in events if (e.get("_day"), e.get("seq")) not in dead]
 
 def tally(events, key):
@@ -420,6 +438,42 @@ def src_class(src):
     if s == "poll-fill":       return "poll"
     return "emit"
 
+# The grade baked into a page is a verdict about the DATA at the moment the page was BUILT. It cannot
+# answer the question the owner actually asks at 07:00 — "is this page still true?" — because a static
+# file cannot age itself. Kill the chronicler at 02:00 while everything is fresh and the page freezes
+# forever saying "Live": the stale hub that hides its staleness, which is the single thing this phase
+# exists to prevent (F4-S3, the tasty-lunch lesson).
+#
+# So the banner re-grades itself when you open it, from two numbers it already carries: how old the
+# newest event was at build time, plus how long ago the build was. It can only ever make the verdict
+# WORSE — time moves one way, so a re-grade never softens a verdict, and with JS off the build-time
+# verdict simply stands (the old behaviour, never a worse one). No fetches: the page stays file://-safe.
+STALENESS_JS = """<script>
+(function () {
+  var el = document.getElementById("staleness");
+  if (!el) return;
+  var gen = Date.parse(el.dataset.generatedAt);
+  if (isNaN(gen)) return;
+  var built = parseInt(el.dataset.eventAgeS, 10);
+  var pageAge = Math.max(0, (Date.now() - gen) / 1000);
+  var age = isNaN(built) ? pageAge : built + pageAge;   // no event ever logged? then the page's own age
+  var fresh = parseInt(el.dataset.freshS, 10) || 1800;
+  var dead = parseInt(el.dataset.deadS, 10) || 10800;
+  var grade = age <= fresh ? "fresh" : (age <= dead ? "stale" : "dead");
+  var rank = { fresh: 0, stale: 1, dead: 2 };
+  if (rank[grade] <= rank[el.dataset.grade]) return;    // never soften a verdict: time moves one way
+  var s = Math.round(age), human;
+  if (s < 3600) human = Math.floor(s / 60) + "m";
+  else if (s < 86400) human = Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
+  else human = Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
+  el.className = "stale " + grade;
+  el.dataset.grade = grade;
+  document.getElementById("stale-head").textContent =
+    grade.toUpperCase() + " \\u00b7 last event " + human + " ago \\u00b7 re-graded when you opened this page";
+})();
+</script>"""
+
+
 def page(title, status, body):
     st = status["staleness"]
     g = st["grade"]
@@ -428,6 +482,7 @@ def page(title, status, body):
         "stale": "Stale — nothing has been logged for a while. Delivery may still be running; this page is not.",
         "dead":  "DEAD — this page is not being regenerated. Do not trust anything below without checking git.",
     }[g]
+    age_s = st["max_event_age_s"]
     return f"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -435,7 +490,9 @@ def page(title, status, body):
 <style>{CSS}</style>
 <h1>{esc(title)}</h1>
 <nav><a href="index.html">Dashboard</a><a href="timeline.html">Timeline</a><a href="library.html">Library</a></nav>
-<div class="stale {g}">{g.upper()} · last event {esc(st['max_event_age_human'])} ago
+<div class="stale {g}" id="staleness" data-grade="{g}" data-generated-at="{esc(status['generated_at'])}"
+  data-event-age-s="{'' if age_s is None else age_s}" data-fresh-s="{FRESH_S}" data-dead-s="{DEAD_S}"
+  ><span id="stale-head">{g.upper()} · last event {esc(st['max_event_age_human'])} ago</span>
   <small>generated_at {esc(status['generated_at'])} · latest event {esc(st['latest_event_ts'] or 'never')}
   · thresholds fresh&le;{FRESH_S//60}m, dead&gt;{DEAD_S//3600}h · {verdict}</small></div>
 {body}
@@ -444,6 +501,7 @@ def page(title, status, body):
   overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8).
   Source of truth for this page: <code>docs/lab/status.json</code>.
 </footer>
+{STALENESS_JS}
 """
 
 def html_events_table(events, limit=None):
@@ -904,7 +962,12 @@ def main():
 
     events_all, event_days = load_events()
     events_all = fold_superseded(events_all)
-    day_events = [e for e in events_all if e.get("_day") == ARGS["date"]]
+    # Group the day by WHEN IT HAPPENED (ts), not by which file it was written into (_day). Since
+    # GSL-89 a backfilled line lives in today's file carrying yesterday's ts — keyed on the filename,
+    # last night's recovered commits would be counted as "events today" and land in this morning's
+    # digest as today's work. That is the very lie poll-fill's floor was invented to prevent. For a
+    # line written as it happened the two keys agree, so this changes nothing for the hook layer.
+    day_events = [e for e in events_all if (e.get("ts") or "")[:10] == ARGS["date"]]
     questions, candidates = load_questions()
     ctx = {
         "date": ARGS["date"],

@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-12T21:39:16Z",
+  "generated_at": "2026-07-13T05:51:46Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
-  "date": "2026-07-12",
+  "date": "2026-07-13",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 42,
-    "max_event_age_human": "42s",
-    "latest_event_ts": "2026-07-12T21:38:33Z",
-    "heartbeat_age_s": 725,
+    "max_event_age_s": 83,
+    "max_event_age_human": "1m",
+    "latest_event_ts": "2026-07-13T05:50:22Z",
+    "heartbeat_age_s": 936,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,46 +16,53 @@
     }
   },
   "events": {
-    "total": 51,
-    "today": 51,
+    "total": 83,
+    "today": 17,
     "days": [
-      "2026-07-12"
+      "2026-07-12",
+      "2026-07-13"
     ],
     "by_type": {
-      "dev_history.written": 9,
+      "agent.turn_ended": 15,
+      "dev_history.written": 13,
       "tracker.issue.updated": 9,
-      "agent.turn_ended": 7,
-      "vcs.commit": 7,
-      "handoff.written": 4,
-      "tracker.issue.transitioned": 4,
-      "pane.ended": 3,
-      "pane.started": 3,
-      "agent.idle": 1,
-      "question.posed": 1,
-      "task.completed": 1,
-      "task.created": 1,
-      "vcs.push": 1
+      "vcs.commit": 9,
+      "handoff.written": 8,
+      "tracker.issue.transitioned": 7,
+      "pane.ended": 4,
+      "pane.started": 4,
+      "notification.raised": 3,
+      "agent.idle": 2,
+      "agent.terminated": 2,
+      "task.completed": 2,
+      "task.created": 2,
+      "vcs.push": 2,
+      "question.posed": 1
     },
     "by_src": {
-      "hook:PostToolUse": 23,
+      "hook:PostToolUse": 37,
+      "hook:Stop": 15,
       "poll-fill": 11,
-      "hook:Stop": 7,
-      "hook:SessionEnd": 3,
-      "hook:SessionStart": 3,
-      "emit": 1,
-      "hook:TaskCompleted": 1,
-      "hook:TaskCreated": 1,
-      "hook:TeammateIdle": 1
+      "hook:SessionEnd": 4,
+      "hook:SessionStart": 4,
+      "hook:Notification": 3,
+      "hook:SubagentStop": 2,
+      "hook:TaskCompleted": 2,
+      "hook:TaskCreated": 2,
+      "hook:TeammateIdle": 2,
+      "emit": 1
     },
     "by_actor": {
-      "claude": 25,
+      "claude": 40,
+      "ef6c3777": 23,
       "poll-fill": 11,
-      "ef6c3777": 8,
       "70cbe176": 3,
       "ca8a1e39": 3,
+      "a7c5ddb345a6c59a0": 1,
+      "afc648057d400fa02": 1,
       "impl-lab-2": 1
     },
-    "mechanical_share": 0.765
+    "mechanical_share": 0.855
   },
   "questions": {
     "open": 1,
@@ -81,44 +88,14 @@
   },
   "delivery": {
     "branch": "GSL-81-laboratory-auto-doc",
-    "head": "3f52736",
-    "dirty_paths": 11,
+    "head": "548fbf8",
+    "dirty_paths": 21,
     "commits_on_date": [
       {
-        "sha": "3f52736",
+        "sha": "548fbf8",
         "author": "R",
-        "ts": "2026-07-12T23:26:18+02:00",
-        "subject": "GSL-86 [Docs][Tooling] chronicler — static HTML regen + morning digest + status.json"
-      },
-      {
-        "sha": "e9a1ccc",
-        "author": "R",
-        "ts": "2026-07-12T22:59:08+02:00",
-        "subject": "GSL-85 [Repo] docs/lab layout — схема, retention + дисциплина записи (append-only + atomic)"
-      },
-      {
-        "sha": "b0599db",
-        "author": "R",
-        "ts": "2026-07-12T22:50:56+02:00",
-        "subject": "GSL-84 [Tooling] lab-emit semantic events — cycle/question/decision/verify поверх одного писателя"
-      },
-      {
-        "sha": "2e33632",
-        "author": "R",
-        "ts": "2026-07-12T22:46:18+02:00",
-        "subject": "GSL-83 [Tooling] hooks + lab-log.sh — 0-token event capture to events.jsonl"
-      },
-      {
-        "sha": "9a056bb",
-        "author": "R",
-        "ts": "2026-07-12T22:15:58+02:00",
-        "subject": "GSL-82 [Docs] Леджер: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + gitignore/SKILL"
-      },
-      {
-        "sha": "4af66d2",
-        "author": "rommxx",
-        "ts": "2026-07-12T20:20:17+02:00",
-        "subject": "Merge pull request #92 from ainstance-labs/GSL-72-question-buffer"
+        "ts": "2026-07-13T07:31:13+02:00",
+        "subject": "GSL-88 [Skill] handoff skill emits handoff.written semantic event on write"
       }
     ],
     "prs": [
@@ -210,16 +187,16 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-12T21:27:10Z",
-      "cycle": 46,
-      "context_pct": 70,
+      "ts": "2026-07-13T05:36:09Z",
+      "cycle": 47,
+      "context_pct": 78,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse; impl-lab-2 (pane %206) grinding chronicler+poll-fill"
+      "note": "pulse; impl-lab-3 grinding GSL-88/89"
     },
-    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). cycle=45 impl-lab-1 DONE @ e9a1ccc (GSL-83/84/85 landed, hooks 13/13 live-verified, gates smoke 60/60 + routing 10/10) | cycle=46 worker=**impl-lab-2** (Opus 4.8, spawning) — GSL-86 chronicler (HTML regen + morning digest + status.json через lab-write.sh для kill-9 выживания) + GSL-87 poll-fill (заполнение events.jsonl gaps для не-стреляющих хуков) — три задачи GSL-83 (hooks + tools/lab/lab-log.sh) → GSL-84 (lab-emit semantic events) → GSL-85 (docs/lab layout schema+retention) на той же ветке. orchestrator pane=%193 | latest handoff=docs/handoff/22-2026-07-12-handoff-gsl81-setup.md | questions: open=0 (0B/0D/0C/0F) lines=0 | status=Phase 4 impl foundation in flight. ⚠️ CRITICAL GOTCHA передаётся impl'у: TeammateIdle hook не тестирован на этой машине; воркер обязан ЗАПУСКАТЬ на самом деле и честно логировать деградацию в dev_history. После impl-lab-1 → impl-lab-2 (GSL-86..87 chronicler+poll) → impl-lab-3 (GSL-88..89) → механик PR → ревьюер → (фиксер) → финализатор → Phase 5. gsl81-setup shutdown_request отправлен. next Jira=GSL-90 (после Phase 4), GH=#102. Fleet cap: 3; open_workers=1 (setup terminating) → 2 (setup + impl-lab-1) на пик, потом 1.",
-    "telemetry_last": "cycle=45 worker=impl-lab-1 model=claude-opus-4-8 (транскрипт verify) tokens_out=~416000 tokens_in=~400 cache_read=~36300000 cache_write=~706000 | running: cycles=75 total≈6070000 (+гэпы 2a/32/35) [3 задачи + hooks-verify live-run + smoke 60/60 + routing 10/10 + 3 dev_history — cache_read ожидаемо большой]"
+    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). cycle=45 impl-lab-1 DONE @ e9a1ccc | cycle=46 impl-lab-2 DONE @ **101836c** (GSL-86 chronicler + GSL-87 poll-fill; gates smoke 105/105; poll-fill восстановил 2 коммита, которые hook silently missed из-за heredoc в подстановке команд; DECISION q-2026-07-12-001 в очереди — авто-applies 2026-07-13 08:00) | **ORCHESTRATOR ROLLING 2026-07-12 ~21:35** (context ~72%, HARD GATE: impl-lab-2 shutdown_request sent → жду confirm). handoff 25 for fresh orchestrator в работе. Fleet: 1 (impl-lab-2 terminating) → 0 после confirm — три задачи GSL-83 (hooks + tools/lab/lab-log.sh) → GSL-84 (lab-emit semantic events) → GSL-85 (docs/lab layout schema+retention) на той же ветке. orchestrator pane=%193 | latest handoff=docs/handoff/22-2026-07-12-handoff-gsl81-setup.md | questions: open=0 (0B/0D/0C/0F) lines=0 | status=Phase 4 impl foundation in flight. ⚠️ CRITICAL GOTCHA передаётся impl'у: TeammateIdle hook не тестирован на этой машине; воркер обязан ЗАПУСКАТЬ на самом деле и честно логировать деградацию в dev_history. После impl-lab-1 → impl-lab-2 (GSL-86..87 chronicler+poll) → impl-lab-3 (GSL-88..89) → механик PR → ревьюер → (фиксер) → финализатор → Phase 5. gsl81-setup shutdown_request отправлен. next Jira=GSL-90 (после Phase 4), GH=#102. Fleet cap: 3; open_workers=1 (setup terminating) → 2 (setup + impl-lab-1) на пик, потом 1.",
+    "telemetry_last": "cycle=46 worker=impl-lab-2 model=claude-opus-4-8 (транскрипт 993e2c34 verify) tokens_out=~95000 tokens_in=~1000 cache_read=~14000000 cache_write=~600000 | running: cycles=76 total≈6166000 (+гэпы 2a/32/35) [GSL-86 chronicler kill-9 x5 smoke pass; GSL-87 poll-fill idempotence verified + PR#92 live-fact recovered]"
   },
   "degraded": [],
   "narrative": null

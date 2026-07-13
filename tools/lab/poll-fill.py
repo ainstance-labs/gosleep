@@ -105,6 +105,15 @@ def identity_keys(e):
         sha = short(str(d.get("sha") or ""))
         if sha:
             out.append("commit:" + sha)
+        # An EMPTY sha yields no key — deliberately. Do NOT "repair" such a line by binding it to a
+        # nearby commit, however tempting the timestamps look. PostToolUse fires on the COMMAND, not
+        # on its success: on 2026-07-12 seq 4 logged a vcs.commit for a `git commit` that produced
+        # nothing at all (git holds no commit in that minute; the same message landed 2.4 minutes
+        # later as 2e33632, logged separately at seq 6). A sha-less line therefore does not mean "a
+        # commit whose sha we lost" — it can mean "no commit happened". Guessing which commit it was
+        # would launder a phantom into an authoritative record, which is the one failure this layer
+        # must not have. The real commit is backfilled under its own key; --supersedes exists for
+        # corrections whose identity is PROVEN, and here there is no proof.
     elif t.startswith("vcs.pr."):
         num = d.get("pr") or d.get("number")
         if num:
@@ -231,13 +240,18 @@ def emit(ev):
     """Через lab-log.sh — единственного писателя events/*.jsonl. Never a hand-append: seq is
     allocated under a lock, and a hand-written line has none.
 
-    NOTE on ts: lab-log stamps ts = NOW (it has no --ts flag). For a reconciled event that is the
-    honest reading anyway — ts is WHEN WE LEARNED IT, and data.occurred_at is WHEN IT HAPPENED. The
-    two differ precisely because nobody was watching, which is the whole point of this pass. If a
-    later task adds --ts to lab-log (a good idea — see GSL-89), the fix is one line here."""
+    ts (GSL-89 — the one line the previous cycle predicted it would take): a reconciled event is now
+    stamped --ts = data.occurred_at, so it takes its TRUE place in the timeline instead of piling onto
+    the moment we happened to look. lab-log keeps the other half of the truth in `logged_at` — when we
+    learned it. The gap between the two is the honest measure of how blind the hooks were that night;
+    collapsing it would hide exactly what this pass exists to reveal. A source that offers no time
+    (no occurred_at) still falls back to ts = now, as before."""
     cmd = ["bash", os.path.join(TOOLS, "lab-log.sh"),
            "--type", ev["type"], "--src", "poll-fill", "--actor", "poll-fill",
            "--data-json", json.dumps(ev["data"], ensure_ascii=False), "--quiet"]
+    occurred = (ev.get("data") or {}).get("occurred_at")
+    if occurred:
+        cmd += ["--ts", str(occurred)]
     if ev.get("task"):
         cmd += ["--task", ev["task"]]
     p = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO, env=CHILD_ENV)

@@ -9,7 +9,7 @@ Producers, and what each one's provenance is worth:
 |---|---|---|
 | `hook:*` | Claude Code hooks (`.claude/settings.json`) | **Observed** as it happened. 0 tokens, no model cooperation. |
 | `emit` | `tools/lab/lab-emit.sh event` | **Stated** by an agent — meaning a hook cannot see. |
-| `poll-fill` | `tools/lab/poll-fill.sh` (GSL-87) | **Inferred afterwards** from `git` / `gh` / Jira, because no hook saw it: a PR merged from the web, an issue dragged on a phone, a commit the hooks dropped. `ts` = when we learned it; `data.occurred_at` = when it happened. |
+| `poll-fill` | `tools/lab/poll-fill.sh` (GSL-87) | **Inferred afterwards** from `git` / `gh` / Jira, because no hook saw it: a PR merged from the web, an issue dragged on a phone, a commit the hooks dropped. `ts` = when it **happened** (back-dated, GSL-89); `logged_at` = when we **learned** it. |
 
 All three are true. They are not the same *kind* of true, so they never share a tag.
 
@@ -22,9 +22,19 @@ All three are true. They are not the same *kind* of true, so they never share a 
  "session_id":"781cfb8b-…","agent_id":"impl-lab-1","agent_type":"claude","cwd":"/repo"}
 ```
 
+A reconciled line adds the two fields that only hindsight has — when it *really* happened, and which
+earlier line it retires:
+
+```json
+{"ts":"2026-07-12T21:26:18Z","logged_at":"2026-07-13T05:34:31Z","run_id":"2026-07-13","seq":7,
+ "actor":"poll-fill","type":"vcs.commit","src":"poll-fill","supersedes":"2026-07-12:4",
+ "data":{"sha":"3f52736","subject":"GSL-86 …","occurred_at":"2026-07-12T23:26:18+02:00","source":"git"}}
+```
+
 | Field | Meaning |
 |---|---|
-| `ts` | ISO-8601 UTC, second resolution. |
+| `ts` | ISO-8601 UTC, second resolution. **When the event happened.** Written as `now` unless `lab-log --ts` back-dates it. Consumers sort the timeline lexically on this, so it is always normalized to UTC — an offset left in place would sort hours away from where it belongs. |
+| `logged_at` | Present **only** when `ts` was back-dated: when the line was actually written. `ts` says when it happened, `logged_at` says when we found out, and the gap between them is the honest measure of how blind the hooks were that night. Collapse them and the log can no longer tell observation from hindsight. |
 | `run_id` | `$GOSLEEP_RUN_ID`, else the UTC date. One orchestration run = one night = one daily file. |
 | `seq` | Monotonic **within the file**. Allocated under a lock by reading the tail — no sidecar counter to drift. Not globally unique (see README §"What is committed"). |
 | `actor` | Who did it: `agent_id` → `agent_type` → short `session_id`. `$GOSLEEP_ACTOR` overrides. |
@@ -33,7 +43,7 @@ All three are true. They are not the same *kind* of true, so they never share a 
 | `data` | Type-specific. Strings clamped to 500 chars — an event is a pointer, not an archive. |
 | `session_id`, `agent_id`, `agent_type`, `cwd` | Attribution, straight from the hook payload. Present only when the hook supplied them. Per-worker attribution **with zero model cooperation**. |
 | `task` | Optional Jira key (semantic emits). |
-| `supersedes` | Optional. A correction points at the `seq` it replaces — the log is never rewritten. |
+| `supersedes` | Optional. A correction **names the record it retires** — the log is never rewritten (C8). A reference is a *(file, seq)* coordinate, because `seq` is unique per file, not globally: `4` = seq 4 in this event's own day file; `"2026-07-12:4"` = seq 4 in **that** day's file. Written as a bare seq, a cross-day correction would retire whichever innocent line happens to hold seq 4 today. Consumers must **fold before they count** (`chronicler.fold_superseded`), or a corrected event is shown twice. |
 
 ## Vocabulary
 
@@ -45,7 +55,7 @@ All three are true. They are not the same *kind* of true, so they never share a 
 | `agent.spawned` / `agent.terminated` | `SubagentStart` / `SubagentStop` | |
 | `agent.idle` | `TeammateIdle` | ⚠️ never observed yet — see below |
 | `agent.turn_ended` | `Stop` | ✅ verified by a real run |
-| `vcs.commit` / `vcs.push` / `vcs.pr.opened` / `vcs.pr.merged` | `PostToolUse` (Bash) | ✅ verified — the logged sha matched the commit git actually made |
+| `vcs.commit` / `vcs.push` / `vcs.pr.opened` / `vcs.pr.merged` | `PostToolUse` (Bash) | ✅ verified — a logged sha matched the commit git actually made. ⚠️ but an **empty** `sha` may have no commit behind it at all: the hook fires on the command, not on its success (see below) |
 | `tracker.issue.created` / `.transitioned` / `.updated` | `PostToolUse` (`mcp__atlassian__*`, `gh issue create`) | |
 | `handoff.written` / `dev_history.written` | `PostToolUse` (Write/Edit under `docs/handoff/`, `docs/dev_history/`) | ✅ verified |
 | `api.failure` | `StopFailure` | `data.error_type` = `rate_limit\|overloaded\|server_error\|…` — **this is the quota-window detector Phase 2 wanted, for free.** |
@@ -74,23 +84,49 @@ read the log instead of arguing about the docs):
 
 | Hook | Verdict | Evidence |
 |---|---|---|
-| `TeammateIdle` → `agent.idle` | ✅ **fires** | one line, 2026-07-12. The PRD's "never tested / most likely to disappoint" turned out to work. |
+| `TeammateIdle` → `agent.idle` | ✅ **fires** | 2 lines. The PRD's "never tested / most likely to disappoint" turned out to work. |
 | `TaskCreated` / `TaskCompleted` | ✅ **fire** | `task.created`, `task.completed` — both present. |
-| `StopFailure`, `PreCompact`/`PostCompact`, `Notification`, `SubagentStart/Stop` | still unobserved | nothing can force them: they need a real rate-limit, a real compaction, a real idle subagent. |
+| `SubagentStop` → `agent.terminated` | ✅ **fires** | 2 lines (settled in cycle 47, again by reading the log rather than the docs). |
+| `Notification` → `notification.raised` | ✅ **fires** | 3 lines. |
+| `SubagentStart` → `agent.spawned` | ❌ **wired, never fired** | zero lines — while its `Stop` twin has two. The pair is asymmetric; do not sit waiting for `agent.spawned`. Worker spawn is in the log anyway: a teammate IS a session, so it arrives as `pane.started` (4 lines, one per cycle). |
+| `StopFailure` → `api.failure`; `PreCompact` / `PostCompact` → `context.*` | still unobserved | nothing can force them — they need a real rate-limit and a real compaction. All 13 hooks **are** wired in `.claude/settings.json`, so an absence here means the hook never fired, not that nobody asked it to. |
 
 **And one hook that fires but LIES BY OMISSION — the reason GSL-87 exists.** `PostToolUse` on
 `git commit` missed a real commit (`3f52736`, GSL-86): its message was passed as a heredoc inside a
-command substitution, and the parser lost the `git commit` inside it. A second commit was logged with
-an **empty** `sha`. Both are worse than a missing hook, because the log *looks* complete.
+command substitution, and the parser lost the `git commit` inside it. `9a056bb` (GSL-82) never reached
+the log either. Both were recovered by poll-fill. A missing line is bad because the log *looks* complete.
 
-Two consequences, both live:
+**And one line that is worse than missing — it ASSERTS something that never happened** (2026-07-12,
+`seq` 4; found in cycle 47, still in the log). It is a `vcs.commit` with an **empty `sha`**, and there
+is no commit behind it at all: `git` holds nothing in that minute, and the message it carries (GSL-83)
+was committed 2.4 minutes later as `2e33632`, by a different command, logged separately at `seq` 6.
+The hook fires on the **command, not on its success** — `bash_event()` never looks at the exit status,
+so a `git commit` that fails still leaves a line claiming a commit happened.
+
+> Correcting the record: the GSL-87 dev_history reads this line as "`9a056bb`, logged with an empty
+> sha". That was wrong. `9a056bb` was never hook-logged at all (it arrives only as `src="poll-fill"`,
+> `seq` 41), and the empty-sha line is a **phantom**, not a sha-less commit. Verified against `git log`
+> and the log itself, not from memory.
+
+Three consequences, all live:
 
 - **`vcs.commit` from a hook is necessary but not sufficient.** `poll-fill` (below) reconciles
-  `git log` against the timeline every chronicler pass and backfills what the hook dropped. Both of
-  the commits above were recovered that way, tagged `src="poll-fill"`.
+  `git log` against the timeline every chronicler pass and backfills what the hook dropped, tagged
+  `src="poll-fill"`.
+- **An empty `sha` must NEVER be "repaired" into a commit.** It does not mean "a commit whose sha we
+  lost"; it can mean *no commit happened*. poll-fill therefore refuses to bind a sha-less line to a
+  nearby commit, however well the timestamps line up: guessing would launder a phantom into an
+  authoritative record, and an authoritative lie is the one failure this layer cannot survive. The
+  line is left standing as what it is — evidence that a commit was **attempted**. (`--supersedes`
+  exists for corrections whose identity is *proven*. Here there is no proof.)
 - **`tracker.issue.transitioned` from a hook carries no destination** — the MCP payload has a
   transition *id*, not a status name, so `data.transition` is empty. It witnesses THAT an issue moved,
   never WHERE to. poll-fill supplies the state separately as `tracker.issue.updated`.
+
+A related, harmless twin worth knowing before it confuses you: `1da14bf` is in the log with a valid sha
+and a real git object — but it is reachable from no branch (it was amended away; the surviving GSL-85
+commit is `e9a1ccc`). Nothing is wrong here. **The timeline records attempts; `git` records outcomes.**
+They are different questions, and the log is not required to agree with `git log --all`.
 
 To re-settle any of this yourself — read the log, do not trust this table:
 
