@@ -1961,6 +1961,32 @@ grep -q 'git ls-files' "$SHI" && grep -q 'docs/dev_history/GSL-\*.md' "$SHI" \
   && ok "GSL-99 ⭐ both meters print the exact source they read (index glob, boundary event, exclusion)" \
   || bad "GSL-99 ⭐ a self-health meter cannot say where it looked"
 
+# 9. THE PROSE ITSELF. Every assertion above is on a MECHANISM — an id, an attribute, a value — and that
+#    is right: a test that greps rendered prose breaks the day someone rewords a sentence. But a
+#    flawless mechanism can still render a broken SENTENCE, and this build shipped one: `ageText()`
+#    already ends in "old", the caller appended " ago", and the page read "this page was built 0s old
+#    ago" under 246 green tests. No assertion could have seen it, because none of them read English.
+#
+#    So the defect's SIGNATURE is what becomes mechanical: an age is formatted in exactly one place,
+#    and no page may carry its suffix twice. The check has to read the page the way a human does —
+#    "0s old</span> ago" carries no literal "old ago" at all, and the first version of this very test
+#    passed vacuously on the broken build because it grepped the raw HTML. It strips tags first.
+sh_prose() { python3 -c '
+import re, sys, html
+h = open(sys.argv[1], encoding="utf-8").read()
+print(html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", h))))
+' "$1"; }
+# The positive control, and it is not optional: it proves the DETECTOR fires. A "no doubled suffix"
+# test that cannot recognise a doubled suffix is the same green tick over nothing it was written to
+# prevent — which is exactly what the first draft of this test was.
+printf '<div><span class="age">0s old</span> ago</div>\n' > "$WORK/prose-probe.html"
+sh_prose "$WORK/prose-probe.html" | grep -q 'old ago' \
+  && ok "GSL-99: the prose check can actually SEE a doubled suffix across a tag boundary (positive control)" \
+  || bad "GSL-99: the prose check cannot detect the very defect it guards — it would pass vacuously"
+sh_prose "$SHI" | grep -q 'old ago' \
+  && bad "GSL-99: the page prints a doubled age suffix ('… old ago') — ageText() already says 'old'" \
+  || ok "GSL-99: no page doubles the age suffix (the one prose defect 246 mechanism-tests could not see)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

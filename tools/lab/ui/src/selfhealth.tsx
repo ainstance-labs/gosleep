@@ -58,10 +58,12 @@ function Freshness({ h, built }: { h: SelfHealth; built: number }): VNode {
     <div class={"card sh-m " + meterClass(h.grade === "fresh" ? "ok" : h.grade === "stale" ? "gaps" : "unknown")} id="sh-freshness">
       <div class="sh-h">Freshness — two ages, not one</div>
       <div class="sh-row">
-        <span class="sh-k">this page was built</span>
+        {/* `ageText` already ends in "old" (countdown.ts) — the label is phrased to run into it rather
+            than bolting a second suffix on, which is how this line first read "0s old ago". */}
+        <span class="sh-k">this build is</span>
         {/* Age #1: the BUILD's own age. 0s at build; it ticks from the moment the reader opens it. */}
-        <LiveAge id="sh-build-age" ts={h.generated_at} built={built} /> ago
-        <span class="dim mono"> ({h.generated_at})</span>
+        <LiveAge id="sh-build-age" ts={h.generated_at} built={built} />
+        <span class="dim mono"> (built {h.generated_at})</span>
       </div>
       <div class="sh-row">
         <span class="sh-k">its freshest event was</span>
@@ -198,7 +200,7 @@ function Handoffs({ h, built }: { h: SelfHealth; built: number }): VNode {
         <span class="sh-k">last committed handoff</span>
         {x.last ? (
           <>
-            <span class="mono">{x.last.name}</span>, <LiveAge id="sh-handoff-age" ts={x.last.ts} built={built} /> ago
+            <span class="mono">{x.last.name}</span>, <LiveAge id="sh-handoff-age" ts={x.last.ts} built={built} />
           </>
         ) : (
           <Unknown why="no handoff is committed in this checkout" />
@@ -208,7 +210,7 @@ function Handoffs({ h, built }: { h: SelfHealth; built: number }): VNode {
         <span class="sh-k">last cycle boundary</span>
         {x.boundary ? (
           <>
-            <LiveAge id="sh-boundary-age" ts={x.boundary.ts} built={built} /> ago{" "}
+            <LiveAge id="sh-boundary-age" ts={x.boundary.ts} built={built} />{" "}
             <span class="dim mono">
               ({x.boundary.source}, {x.boundary.total} in the log)
             </span>
