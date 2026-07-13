@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-13T11:37:40Z",
+  "generated_at": "2026-07-13T12:22:47Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-13",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 24,
-    "max_event_age_human": "24s",
-    "latest_event_ts": "2026-07-13T11:37:15Z",
-    "heartbeat_age_s": 209,
+    "max_event_age_s": 5,
+    "max_event_age_human": "5s",
+    "latest_event_ts": "2026-07-13T12:22:41Z",
+    "heartbeat_age_s": 1593,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,77 +16,88 @@
     }
   },
   "events": {
-    "total": 222,
-    "today": 156,
+    "total": 316,
+    "today": 250,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 51,
-      "agent.idle": 25,
-      "task.completed": 23,
-      "dev_history.written": 22,
-      "handoff.written": 17,
-      "vcs.commit": 16,
-      "agent.terminated": 15,
-      "tracker.issue.transitioned": 9,
-      "tracker.issue.updated": 9,
-      "pane.ended": 8,
-      "pane.started": 8,
+      "agent.turn_ended": 60,
+      "agent.idle": 36,
+      "dev_history.written": 30,
+      "handoff.written": 29,
+      "task.completed": 27,
+      "agent.terminated": 24,
+      "tracker.issue.updated": 21,
+      "vcs.commit": 18,
+      "tracker.issue.transitioned": 13,
+      "tracker.issue.created": 12,
+      "pane.ended": 10,
+      "pane.started": 10,
+      "task.created": 8,
       "notification.raised": 6,
-      "task.created": 6,
-      "vcs.push": 3,
-      "agent.spawned": 1,
-      "question.posed": 1,
+      "vcs.push": 5,
+      "agent.spawned": 3,
+      "question.posed": 2,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 61,
-      "hook:Stop": 51,
-      "hook:TeammateIdle": 25,
-      "hook:TaskCompleted": 23,
-      "hook:SubagentStop": 15,
+      "hook:PostToolUse": 112,
+      "hook:Stop": 60,
+      "hook:TeammateIdle": 36,
+      "hook:TaskCompleted": 27,
+      "hook:SubagentStop": 24,
       "poll-fill": 15,
-      "hook:SessionEnd": 8,
-      "hook:SessionStart": 8,
+      "hook:SessionEnd": 10,
+      "hook:SessionStart": 10,
+      "hook:TaskCreated": 8,
       "hook:Notification": 6,
-      "hook:TaskCreated": 6,
-      "emit": 3,
-      "hook:SubagentStart": 1
+      "emit": 5,
+      "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 120,
-      "ef6c3777": 62,
+      "claude": 175,
+      "ef6c3777": 77,
       "poll-fill": 15,
+      "a690ba064bba794be": 13,
       "70cbe176": 3,
       "ca8a1e39": 3,
       "aa7a28cca3c73abc5": 2,
+      "ab3b55ad5cc3bfb36": 2,
+      "gsl90-setup": 2,
       "a00bff097e605f499": 1,
       "a0f0f3af9ae562c37": 1,
       "a198207c1aae6407d": 1,
+      "a1a48411925ec4eae": 1,
+      "a1f95c5ec2e2d74ae": 1,
       "a2333b9dfbccdce68": 1,
+      "a2ff6cd2567d65e2b": 1,
       "a3055ba3926e2b839": 1,
       "a32e1a070b23f39b4": 1,
       "a427309da6b948dfd": 1,
+      "a503045747e54a2aa": 1,
       "a5ed2eae40a87789c": 1,
+      "a61075657b8f0649b": 1,
       "a6deecd2645c93e07": 1,
       "a712e803767d9690f": 1,
       "a7c5ddb345a6c59a0": 1,
       "a82b373ecbaf0c23c": 1,
+      "aaea689860c6cccdb": 1,
+      "ac46c415bfdb4e55a": 1,
       "add073ddf009d11cb": 1,
       "afc648057d400fa02": 1,
       "fixer-lab": 1,
       "impl-lab-2": 1,
       "orchestrator": 1
     },
-    "mechanical_share": 0.919
+    "mechanical_share": 0.937
   },
   "questions": {
-    "open": 1,
+    "open": 2,
     "by_type": {
-      "DECISION": 1
+      "DECISION": 2
     },
     "items": [
       {
@@ -97,6 +108,15 @@
         "auto_apply_at": "2026-07-13T08:00:00Z",
         "task": "GSL-86",
         "high_impact": null
+      },
+      {
+        "id": "q-2026-07-13-001",
+        "type": "DECISION",
+        "question": "Фаза 5 (UI) на TypeScript — какой фреймворк рендера? Жёсткое ограничение: страницы обязаны открываться из file://, где fetch() локального JSON запрещён CORS, значит данные вшиваются в HTML на build-time. Это статический генератор, не SPA — и это сужает выбор сильнее, чем обычно.",
+        "default": "Preact + preact-render-to-string + esbuild: build-time SSR в self-contained HTML, ~3 КБ рантайма на островки интерактива (фильтр, обратный отсчёт, переоценка свежести)",
+        "auto_apply_at": "2026-07-14T06:00:00Z",
+        "task": "GSL-92",
+        "high_impact": null
       }
     ]
   },
@@ -106,10 +126,28 @@
     "manifest_candidates": []
   },
   "delivery": {
-    "branch": "GSL-81-laboratory-auto-doc",
-    "head": "63b1c63",
-    "dirty_paths": 10,
+    "branch": "GSL-90-ui-orchestration",
+    "head": "6d934de",
+    "dirty_paths": 17,
     "commits_on_date": [
+      {
+        "sha": "6d934de",
+        "author": "R",
+        "ts": "2026-07-13T14:03:01+02:00",
+        "subject": "GSL-101 [Docs] R4.2 -> MET: доказательство seq 156 привязано к sha; счётчики приёмки пересчитаны"
+      },
+      {
+        "sha": "7b229c7",
+        "author": "R",
+        "ts": "2026-07-13T13:51:54+02:00",
+        "subject": "GSL-91 [Docs] Леджер закрытия Фазы 4 + разбивка Фазы 5"
+      },
+      {
+        "sha": "5fd1de2",
+        "author": "rommxx",
+        "ts": "2026-07-13T13:37:15+02:00",
+        "subject": "Merge pull request #102 from ainstance-labs/GSL-81-laboratory-auto-doc"
+      },
       {
         "sha": "63b1c63",
         "author": "R",
@@ -237,17 +275,28 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T11:34:10Z",
-      "cycle": 51,
-      "context_pct": 72,
+      "ts": "2026-07-13T11:56:13Z",
+      "cycle": 53,
+      "context_pct": 78,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse #4 BLOCKED; owner in conversation but hasnt merged/approved; no repeat ping"
+      "note": "cycle 52 COMPLETE Phase 5 setup GSL-90+10 tasks pushed 7b229c7; DECISION q-001 framework Preact+esbuild default until 2026-07-14 06:00; spawning impl-ui-1 for GSL-92..94"
     },
-    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). cycle=50 fixer-lab DONE ~10:15 — 3 fix-коммита: C1+m1+m3 `977a09e` (lab-log: HEAD FRESH-and-OWN gate + `commit_sha()` anchored на `[<branch> <sha>]`; events/README rewrote для valid-sha phantom case), M1+m2 `b743002` (chronicler: verdict = shared dict page↔JS + `<span id=\"stale-verdict\">` re-graded within only-worsens guard; node+DOM smoke passed for +0h/+45m/+4h), M2+m4+m5 `63b1c63` (R4.2 → ⏳ PENDING; both day logs committed → arithmetic verifiable; F4-S1 stays 3/4 honestly; F4-S3 → MET-after-fix). Gates: **smoke 130/130** (+11), **hooks-verify 14/14** live (+1; own test rewritten — it was coding the C1 defect as criterion), install ok, jsonl valid. PR #102 re-verified CLEAN @ `63b1c63`. Handoff 27 written. **⚠️ CRITICAL for finalizer:** мёрж ТОЛЬКО из GitHub Web UI (не `gh pr merge`) — иначе hook его увидит и R4.2 не закроется. cycle=51 **AWAIT owner's UI merge click** → then spawn finalizer for close/Jira/branch-delete/chronicler-reconcile — три задачи GSL-83 (hooks + tools/lab/lab-log.sh) → GSL-84 (lab-emit semantic events) → GSL-85 (docs/lab layout schema+retention) на той же ветке. orchestrator pane=%193 | latest handoff=docs/handoff/22-2026-07-12-handoff-gsl81-setup.md | questions: open=0 (0B/0D/0C/0F) lines=0 | status=Phase 4 impl foundation in flight. ⚠️ CRITICAL GOTCHA передаётся impl'у: TeammateIdle hook не тестирован на этой машине; воркер обязан ЗАПУСКАТЬ на самом деле и честно логировать деградацию в dev_history. После impl-lab-1 → impl-lab-2 (GSL-86..87 chronicler+poll) → impl-lab-3 (GSL-88..89) → механик PR → ревьюер → (фиксер) → финализатор → Phase 5. gsl81-setup shutdown_request отправлен. next Jira=GSL-90 (после Phase 4), GH=#102. Fleet cap: 3; open_workers=1 (setup terminating) → 2 (setup + i",
+    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). **PHASE 4 CLOSED** @ `5fd1de2` (R4.2 MET через poll-fill reconciler seq 156). cycle 52 gsl90-setup DONE ~11:52 — Epic GSL-90=#103, 10 tasks GSL-91..100=#104..113 pushed @ 7b229c7 (ledger 16 путей / 1509 insertions). **Addendum ~12:00:** R4.2-MET doc fix НЕ folded в GSL-91 (уже был запушен → force-push запрещён); сделан ОТДЕЛЬНЫМ коммитом **GSL-101 = `6d934de`** (GH #114, Jira Done); ветка теперь `GSL-90-ui-orchestration @ 6d934de` (2 коммита от main). Setup catch: моя формулировка «R4.2-MET fix folded» была неверна — fix landed as separate commit. Также setup поймал что «правка на один значок» (merged 0→1) чуть не сломала 5 других счётчиков (vcs.commit 11+3→12+4, Jira 9→11, panes 7/7→9/9, hook-events 162→246 — все выросли от ledger commit'а) — jq-рецепт теперь с двумя колонками по sha, F4-S1 остаётся 3/4 не подкручено. Setup также записал R4.2-wording finding: «вне CLI» — дырявый прокси для «не увиденное ни одним хуком»; путь через CLI (в т.ч. `gh api`) тоже может остаться неувиденным — что и произошло. Formulation НЕ переписан задним числом (тот же жанр, за который M2 понизил PENDING). Jira GSL-91 Done + GSL-101 Done, остальные To Do. DECISION q-2026-07-13-001 framework: **Preact + preact-render-to-string + esbuild** (default до 2026-07-14T06Z, reversibility high, работа НЕ блокируется). **Отклонения setup'а от моего брифа (осознанные):** PRD-семёрка экранов = Overview/Timeline/Tasks/Questions/Fleet/Cost/Library (не fleet/queue/timeline/library/digest/manifest/config); PRD взят как source of truth. Задача 4 разбита на GSL-96/97/98. Добавлена GSL-92 TS-скаффолд (не в PRD, следствие TS-директивы). Явные фиксации setup'а: chronicler.py = data layer, view = TS SSG (file:// diктует SSG), degrade-без-node в GSL-92 = ",
     "telemetry_last": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --ts/--supersedes with (file,seq) coord]"
   },
   "degraded": [],
-  "narrative": null
+  "narrative": null,
+  "ui": {
+    "ok": true,
+    "reason": null,
+    "renderer": "preact-render-to-string (esbuild SSG)",
+    "screens": [
+      "index.html",
+      "timeline.html",
+      "library.html"
+    ],
+    "last_success_at": "2026-07-13T12:22:47Z"
+  }
 }

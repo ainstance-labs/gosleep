@@ -2,7 +2,7 @@
 # gosleep lab — chronicler (GSL-86). The T3 regenerator. Invoked via tools/lab/chronicler.sh.
 # See that wrapper for the full contract; this file is the implementation.
 # python3 stdlib only. 0 API keys (C1).
-import sys, os, re, json, html, subprocess, time, datetime, glob
+import sys, os, re, json, subprocess, time, datetime, glob
 
 # ───────────────────────────── args ─────────────────────────────
 
@@ -388,283 +388,245 @@ def build_status(ctx):
     }
     return status
 
-# ───────────────────────────── build: site/ (static HTML) ─────────────────────
-
-CSS = """
-:root{--bg:#fbfbfa;--fg:#1a1a19;--dim:#6b6b68;--line:#e3e3e0;--card:#fff;
-      --ok:#1a7f4b;--warn:#a4600a;--dead:#a51d24;--accent:#3b5bdb}
-@media (prefers-color-scheme:dark){
-  :root{--bg:#131315;--fg:#e8e8e6;--dim:#8f8f8b;--line:#2a2a2e;--card:#1b1b1e;
-        --ok:#4ade80;--warn:#fbbf24;--dead:#f87171;--accent:#8ba4ff}}
-*{box-sizing:border-box}
-body{margin:0;padding:1rem;background:var(--bg);color:var(--fg);
-     font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-     max-width:60rem;margin-inline:auto}
-h1{font-size:1.35rem;margin:.2rem 0}
-h2{font-size:1rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);
-   margin:1.8rem 0 .6rem;font-weight:600}
-a{color:var(--accent)}
-.stale{border-radius:.5rem;padding:.7rem .9rem;margin:.8rem 0;font-weight:600;
-       border:1px solid currentColor}
-.stale.fresh{color:var(--ok)} .stale.stale{color:var(--warn)} .stale.dead{color:var(--dead)}
-.stale small{display:block;font-weight:400;color:var(--dim);margin-top:.2rem}
-.card{background:var(--card);border:1px solid var(--line);border-radius:.6rem;
-      padding:.8rem .9rem;margin:.5rem 0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.5rem}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.7rem .8rem}
-.kpi b{display:block;font-size:1.5rem;line-height:1.2}
-.kpi span{color:var(--dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
-table{width:100%;border-collapse:collapse;font-size:.86rem}
-td,th{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--dim);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
-.wrap{overflow-x:auto}
-code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
-.tag{display:inline-block;padding:.05rem .4rem;border-radius:.3rem;border:1px solid var(--line);
-     color:var(--dim);font-size:.72rem}
-.tag.hook{color:var(--ok);border-color:currentColor}
-.tag.emit{color:var(--accent);border-color:currentColor}
-.tag.poll{color:var(--warn);border-color:currentColor}
-footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid var(--line);
-       padding-top:.8rem}
-nav a{margin-right:.9rem}
-"""
-
-def esc(x):
-    return html.escape("" if x is None else str(x), quote=True)
-
-def src_class(src):
-    s = str(src or "")
-    if s.startswith("hook:"):  return "hook"
-    if s == "poll-fill":       return "poll"
-    return "emit"
-
-# The grade baked into a page is a verdict about the DATA at the moment the page was BUILT. It cannot
-# answer the question the owner actually asks at 07:00 — "is this page still true?" — because a static
-# file cannot age itself. Kill the chronicler at 02:00 while everything is fresh and the page freezes
-# forever saying "Live": the stale hub that hides its staleness, which is the single thing this phase
-# exists to prevent (F4-S3, the tasty-lunch lesson).
+# ───────────────────── build: render bundle + the TypeScript view layer ─────────────────────
 #
-# So the banner re-grades itself when you open it, from two numbers it already carries: how old the
-# newest event was at build time, plus how long ago the build was. It can only ever make the verdict
-# WORSE — time moves one way, so a re-grade never softens a verdict, and with JS off the build-time
-# verdict simply stands (the old behaviour, never a worse one). No fetches: the page stays file://-safe.
+# THE PYTHON/TYPESCRIPT BOUNDARY (GSL-92). Everything above this line is the DATA layer: it reads
+# the three tiers, folds them, grades them, and computes every number. Everything the owner LOOKS at
+# is rendered by tools/lab/ui/ (Preact, server-rendered once per pass by esbuild). They meet at
+# exactly one artifact — docs/lab/render_bundle.json — and nowhere else.
 #
-# The banner is not the only thing that speaks. The SENTENCE under it — "Live — the laboratory is
-# writing itself right now." — was baked at build time and never re-graded, so a page could open with a
-# red DEAD banner and that sentence still printed beneath it: a page contradicting itself in adjacent
-# lines (REVIEW-gsl81 M1). The dominant signal was honest, the prose was not. Both re-grade now, from
-# ONE source of truth: this dict is rendered into the page AND handed to the JS below, so the two can
-# never drift apart into two different opinions about the same grade.
-VERDICT = {
-    "fresh": "Live — the laboratory is writing itself right now.",
-    "stale": "Stale — nothing has been logged for a while. Delivery may still be running; this page is not.",
-    "dead":  "DEAD — this page is not being regenerated. Do not trust anything below without checking git.",
+# Why the HTML left Python. It used to be here, and it drifted from itself within one phase: the
+# staleness banner re-graded when the page was opened, while the SENTENCE beneath it stayed frozen at
+# build time, so a page could show a red DEAD banner over "Live -- the laboratory is writing itself
+# right now" (REVIEW-gsl81 M1). That is what two renderers of one truth produce, every time, and the
+# fix is not "be careful" -- it is to have one renderer.
+#
+# What did NOT move: the morning digest. It is markdown for a phone at 07:00, not a screen, and it
+# must keep building when node does not exist at all. Below.
+
+UI_DIR = os.path.join(TOOLS, "ui")
+
+# Paired markers the view layer emits into every page (tools/lab/ui/src/page.tsx: DEGRADE_ANCHOR).
+# Python fills the gap between them when it could not run the renderer, and the next successful
+# render writes the empty pair back -- so the banner appears and disappears exactly when it is true.
+UI_DEGRADE_START = "<!--UI-DEGRADE-START-->"
+UI_DEGRADE_END   = "<!--UI-DEGRADE-END-->"
+
+# The closed vocabulary render.sh may answer with. Keep in sync with the header of that script.
+UI_REASONS = {
+    "no-node":      "node is not installed, so the HTML could not be rebuilt",
+    "no-deps":      "the view layer is not bootstrapped (run: cd tools/lab/ui && npm install)",
+    "build-failed": "the renderer failed to build",
+    "bad-bundle":   "the data layer produced a bundle the renderer could not read",
+    "no-renderer":  "tools/lab/ui/render.sh is missing",
 }
 
-STALENESS_JS = """<script>
-(function () {
-  var V = __VERDICTS__;
-  var el = document.getElementById("staleness");
-  if (!el) return;
-  var gen = Date.parse(el.dataset.generatedAt);
-  if (isNaN(gen)) return;
-  var built = parseInt(el.dataset.eventAgeS, 10);
-  var pageAge = Math.max(0, (Date.now() - gen) / 1000);
-  var age = isNaN(built) ? pageAge : built + pageAge;   // no event ever logged? then the page's own age
-  var fresh = parseInt(el.dataset.freshS, 10) || 1800;
-  var dead = parseInt(el.dataset.deadS, 10) || 10800;
-  var grade = age <= fresh ? "fresh" : (age <= dead ? "stale" : "dead");
-  var rank = { fresh: 0, stale: 1, dead: 2 };
-  if (rank[grade] <= rank[el.dataset.grade]) return;    // never soften a verdict: time moves one way
-  var s = Math.round(age), human;
-  if (s < 3600) human = Math.floor(s / 60) + "m";
-  else if (s < 86400) human = Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
-  else human = Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
-  el.className = "stale " + grade;
-  el.dataset.grade = grade;
-  document.getElementById("stale-head").textContent =
-    grade.toUpperCase() + " \\u00b7 last event " + human + " ago \\u00b7 re-graded when you opened this page";
-  var v = document.getElementById("stale-verdict");   // the prose must not outlive the banner's verdict
-  if (v && V[grade]) v.textContent = V[grade];
-})();
-</script>""".replace("__VERDICTS__", json.dumps(VERDICT))     # one source of truth, two renderers
+
+def prev_ui_last_success():
+    """When did the view layer last build successfully? Read it back out of the status.json we are
+    about to overwrite.
+
+    Without this the degrade banner can only say "may be stale" -- true, but useless. With it the
+    banner says stale SINCE WHEN, and the owner can tell at a glance whether he is looking at last
+    night's dashboard or at one from a week ago. It has to be carried forward like this precisely
+    because the last successful build is the one fact a FAILED build cannot know about itself."""
+    try:
+        with open(os.path.join(LAB, "status.json"), encoding="utf-8") as f:
+            return (json.load(f).get("ui") or {}).get("last_success_at")
+    except Exception:
+        return None
 
 
-def page(title, status, body):
-    st = status["staleness"]
-    g = st["grade"]
-    verdict = VERDICT[g]
-    age_s = st["max_event_age_s"]
-    return f"""<!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title)} — gosleep lab</title>
-<style>{CSS}</style>
-<h1>{esc(title)}</h1>
-<nav><a href="index.html">Dashboard</a><a href="timeline.html">Timeline</a><a href="library.html">Library</a></nav>
-<div class="stale {g}" id="staleness" data-grade="{g}" data-generated-at="{esc(status['generated_at'])}"
-  data-event-age-s="{'' if age_s is None else age_s}" data-fresh-s="{FRESH_S}" data-dead-s="{DEAD_S}"
-  ><span id="stale-head">{g.upper()} · last event {esc(st['max_event_age_human'])} ago</span>
-  <small>generated_at {esc(status['generated_at'])} · latest event {esc(st['latest_event_ts'] or 'never')}
-  · thresholds fresh&le;{FRESH_S//60}m, dead&gt;{DEAD_S//3600}h
-  · <span id="stale-verdict">{esc(verdict)}</span></small></div>
-{body}
-<footer>
-  Regenerated by <code>tools/lab/chronicler.sh</code> (GSL-86) — <b>never hand-edit</b>: the next pass
-  overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8).
-  Source of truth for this page: <code>docs/lab/status.json</code>.
-</footer>
-{STALENESS_JS}
-"""
-
-def html_events_table(events, limit=None):
-    rows = []
-    for e in reversed(events if limit is None else events[-limit:]):
-        d = e.get("data") or {}
-        detail = d.get("sha") or d.get("path") or d.get("key") or d.get("question") or \
-                 d.get("error_type") or d.get("decision") or d.get("cmd") or ""
-        rows.append(
-            "<tr><td class='mono'>%s</td><td>%s</td><td class='mono'>%s</td>"
-            "<td><span class='tag %s'>%s</span></td><td class='mono'>%s</td></tr>" % (
-                esc((e.get("ts") or "")[11:19]), esc(e.get("type")), esc(e.get("actor")),
-                src_class(e.get("src")), esc(e.get("src")), esc(str(detail)[:90])))
-    if not rows:
-        return "<div class='card'>No events. Either nothing ran, or the hooks are not firing — " \
-               "check <code>.artifacts/lab/lab-log.err</code>.</div>"
-    return "<div class='wrap'><table><tr><th>utc</th><th>type</th><th>actor</th><th>src</th>" \
-           "<th>detail</th></tr>%s</table></div>" % "".join(rows)
-
-def build_index(ctx, status):
-    ev, day_ev = status["events"], ctx["day_events"]
-    q = status["questions"]
-    d = status["delivery"]
-
-    kpis = "".join([
-        "<div class='kpi'><b>%d</b><span>events today</span></div>" % ev["today"],
-        "<div class='kpi'><b>%d%%</b><span>mechanical (0-token)</span></div>" % round(ev["mechanical_share"] * 100),
-        "<div class='kpi'><b>%d</b><span>open questions</span></div>" % q["open"],
-        "<div class='kpi'><b>%d</b><span>commits on %s</span></div>" % (len(d["commits_on_date"]), ctx["date"]),
-    ])
-
-    if q["items"]:
-        qrows = "".join(
-            "<tr><td class='mono'>%s</td><td><span class='tag'>%s</span></td><td>%s</td>"
-            "<td class='mono'>%s</td></tr>" % (
-                esc(i["id"]), esc(i["type"]), esc(i["question"]),
-                esc(i.get("auto_apply_at") or i.get("default") or ""))
-            for i in q["items"])
-        qhtml = "<div class='wrap'><table><tr><th>id</th><th>type</th><th>question</th>" \
-                "<th>auto-applies / default</th></tr>%s</table></div>" % qrows
-    else:
-        qhtml = "<div class='card'>Nothing is waiting for you. The night decided everything it was " \
-                "licensed to decide.</div>"
-
-    crows = "".join("<tr><td class='mono'>%s</td><td>%s</td><td class='mono'>%s</td></tr>" % (
-        esc(c["sha"]), esc(c["subject"]), esc(c["author"])) for c in d["commits_on_date"])
-    chtml = ("<div class='wrap'><table><tr><th>sha</th><th>subject</th><th>author</th></tr>%s</table></div>"
-             % crows) if crows else "<div class='card'>No commits on %s.</div>" % esc(ctx["date"])
-
-    prs = [p for p in d["prs"] if p.get("state") == "OPEN"]
-    prhtml = ("<div class='card'>" + " · ".join(
-        "<a href='%s'>#%s</a> %s" % (esc(p["url"]), esc(p["number"]), esc(p["title"])) for p in prs)
-        + "</div>") if prs else "<div class='card'>No open PRs.</div>"
-
-    hb = status["orchestrator"]["heartbeat"]
-    hbhtml = "<div class='card mono'>%s</div>" % esc(json.dumps(hb, ensure_ascii=False)) if hb else \
-             "<div class='card'>No heartbeat on disk.</div>"
-
-    degr = ("<h2>Degraded sources</h2><div class='card'>%s</div>" % "<br>".join(
-        "<code>%s</code> — %s" % (esc(x["source"]), esc(x["why"])) for x in status["degraded"])
-    ) if status["degraded"] else ""
-
-    narr = ("<h2>The night, in words</h2><div class='card'>%s</div>" % esc(ctx["narrative"]["text"])
-            ) if ctx.get("narrative") and ctx["narrative"].get("text") else ""
-
-    body = f"""
-<div class="grid">{kpis}</div>
-{narr}
-<h2>Waiting for you ({q['open']})</h2>
-{qhtml}
-<h2>Delivery</h2>
-<div class="card mono">branch <b>{esc(d['branch'])}</b> @ {esc(d['head'])} · {esc(d['dirty_paths'])} dirty path(s)</div>
-{chtml}
-{prhtml}
-<h2>Orchestrator</h2>
-{hbhtml}
-<h2>Timeline — {esc(ctx['date'])} (last 25 of {len(day_ev)})</h2>
-{html_events_table(day_ev, limit=25)}
-<div class="card"><a href="timeline.html">Full timeline &rarr;</a></div>
-{degr}
-"""
-    return page("Laboratory", status, body)
-
-def build_timeline(ctx, status):
-    by_type = "".join("<tr><td>%s</td><td class='mono'>%d</td></tr>" % (esc(k), v)
-                      for k, v in status["events"]["by_type"].items())
-    by_src = "".join("<tr><td><span class='tag %s'>%s</span></td><td class='mono'>%d</td></tr>" % (
-        src_class(k), esc(k), v) for k, v in status["events"]["by_src"].items())
-    body = f"""
-<h2>{esc(ctx['date'])} — {len(ctx['day_events'])} events</h2>
-{html_events_table(ctx['day_events'])}
-<h2>All days — {status['events']['total']} events</h2>
-<div class="grid">
-  <div class="card"><table><tr><th>type</th><th>n</th></tr>{by_type}</table></div>
-  <div class="card"><table><tr><th>provenance</th><th>n</th></tr>{by_src}</table></div>
-</div>
-<div class="card">Provenance is queryable, not claimed:
-<code>jq -r 'select(.src|startswith("hook:")).type' docs/lab/events/*.jsonl</code> — that half of the
-log cost 0 tokens and needed no model's cooperation.</div>
-"""
-    return page("Timeline", status, body)
-
-def build_library(ctx, status):
-    """The Library index (PRD task 4): every T2 narrative artifact, newest first. The raw log is
-    exhaust; THIS is the memory that survives retention."""
+def library_index():
+    """The Library screen's data (PRD R5.2, screen 7). The raw event log is exhaust -- it is pruned
+    at 30 days. THIS is the memory that survives retention, so it is computed from the filesystem
+    itself and never from anyone's recollection of what was written."""
     def listing(subdir, pattern, limit=40):
-        paths = sorted(glob.glob(os.path.join(REPO, subdir, pattern)), reverse=True)[:limit]
-        if not paths:
-            return "<div class='card'>none yet</div>"
         rows = []
-        for p in paths:
-            rel = os.path.relpath(p, REPO)
+        for p in sorted(glob.glob(os.path.join(REPO, subdir, pattern)), reverse=True)[:limit]:
             title = ""
             try:
                 with open(p, encoding="utf-8") as f:
                     for line in f:
                         if line.startswith("# "):
-                            title = line[2:].strip()
+                            title = line[2:].strip()[:110]
                             break
             except OSError:
                 pass
-            rows.append("<tr><td class='mono'><a href='%s'>%s</a></td><td>%s</td></tr>" % (
-                esc(os.path.relpath(p, os.path.join(LAB, "site"))), esc(os.path.basename(p)),
-                esc(title[:110])))
-        return "<div class='wrap'><table><tr><th>file</th><th>title</th></tr>%s</table></div>" % "".join(rows)
+            rows.append({
+                # Relative to site/, so one href works from file:// AND from the GitHub blob view.
+                "href": os.path.relpath(p, os.path.join(LAB, "site")),
+                "name": os.path.basename(p),
+                "title": title,
+            })
+        return rows
 
-    dec = "".join("<tr><td class='mono'>%s</td><td>%s</td><td class='mono'>%s</td></tr>" % (
-        esc((d.get("ts") or "")[:16]), esc(d.get("decision")), esc(d.get("rule") or "—"))
-        for d in reversed(ctx["decisions"][-30:]))
-    dechtml = ("<div class='wrap'><table><tr><th>when</th><th>decision</th><th>manifest rule</th></tr>"
-               "%s</table></div>" % dec) if dec else \
-              "<div class='card'>No autonomous decisions logged yet.</div>"
+    return {
+        "digests":     listing("docs/lab/digest",  "*-morning.md"),
+        "handoffs":    listing("docs/handoff",     "*.md"),
+        "dev_history": listing("docs/dev_history", "GSL-*.md"),
+    }
 
-    body = f"""
-<h2>Morning digests</h2>
-{listing("docs/lab/digest", "*-morning.md")}
-<h2>Handoffs</h2>
-{listing("docs/handoff", "*.md")}
-<h2>Dev history</h2>
-{listing("docs/dev_history", "GSL-*.md")}
-<h2>Decisions ({len(ctx['decisions'])})</h2>
-{dechtml}
-<h2>Contracts</h2>
-<div class="card">
-  <a href="../README.md">docs/lab/README.md</a> — layout, three tiers, write discipline, retention<br>
-  <a href="../events/README.md">events/README.md</a> — envelope + the closed type vocabulary<br>
-  <a href="../status.json">status.json</a> — this dashboard's machine-readable source
-</div>
-"""
-    return page("Library", status, body)
+
+# How many events travel to the view layer. Bounded on purpose: render_bundle.json is COMMITTED, so
+# an unbounded list is a file that grows forever and a git diff nobody can read. The screens show a
+# recent feed and aggregate counts, never the full history -- the full history is the jsonl itself.
+RECENT_CAP = int(os.environ.get("GOSLEEP_RECENT_CAP", 200))
+
+# The envelope carries plenty the screens never show: session_id, cwd, agent_id, and a `raw` copy of
+# whatever the hook was handed. Committing all of it, on every pass, would make the bundle several
+# times its useful size and its diff unreadable -- for fields no page prints. So the feed is
+# PROJECTED down to what a row actually renders. The full envelope is never lost: it is in
+# docs/lab/events/*.jsonl, which is the source of truth this file is derived FROM.
+#
+# `data` is narrowed to the keys the detail column reads (tools/lab/ui/src/components.tsx:
+# eventDetail). Add a key here the day a screen needs it -- not before.
+EVENT_VIEW_KEYS = ("ts", "seq", "actor", "type", "src")
+EVENT_DATA_KEYS = ("sha", "path", "key", "question", "error_type", "decision", "cmd")
+
+
+def project_event(e):
+    d = e.get("data") or {}
+    return dict(
+        {k: e[k] for k in EVENT_VIEW_KEYS if k in e},
+        data={k: d[k] for k in EVENT_DATA_KEYS if k in d},
+    )
+
+
+def build_render_bundle(ctx, status):
+    """The ONE contract with the view layer (tools/lab/ui/src/types.ts mirrors this shape).
+
+    The events travel as ONE recent, cross-day, already-folded list. Not as "the target day": a
+    timeline keyed on today is empty at 00:05 and empty all morning after a quiet night, and an
+    empty feed is indistinguishable from a dead hook layer -- the exact confusion this whole tier
+    exists to prevent. Screens slice it by date when they want a day; every COUNT they print comes
+    from `events` below, computed once, here. A number the renderer works out for itself is a second
+    opinion waiting to disagree with status.json."""
+    return {
+        "schema": "gosleep.lab.render/1",
+        "generated_at": status["generated_at"],
+        "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-92)",
+        "date": ctx["date"],
+        "staleness": status["staleness"],
+        "events": status["events"],
+        "recent_events": [project_event(e) for e in ctx["events"][-RECENT_CAP:]],
+        "recent_cap": RECENT_CAP,
+        "questions": status["questions"],
+        "decisions": {"total": len(ctx["decisions"]), "recent": ctx["decisions"][-30:]},
+        "delivery": status["delivery"],
+        "orchestrator": status["orchestrator"],
+        "library": library_index(),
+        "degraded": DEGRADED,
+        "narrative": ctx.get("narrative"),
+    }
+
+
+def render_site(bundle):
+    """Hand the bundle to the view layer; get {filename: html} back. Never raises.
+
+    node is given no filesystem access at all: it reads stdin, it writes stdout, and Python writes
+    every byte that lands in the repo through lab-write.sh (temp + rename). A renderer killed halfway
+    through page five therefore cannot leave a torn dashboard -- it can only fail, and a failure here
+    is DATA, not an outage."""
+    script = os.path.join(UI_DIR, "render.sh")
+    if not os.path.exists(script):
+        return {"ok": False, "reason": "no-renderer", "hint": script}
+    try:
+        p = subprocess.run(["bash", script],
+                           input=json.dumps(bundle, ensure_ascii=False),
+                           capture_output=True, text=True, timeout=120,
+                           cwd=REPO, env=CHILD_ENV)
+        out = (p.stdout or "").strip()
+        if not out:
+            return {"ok": False, "reason": "build-failed",
+                    "hint": (p.stderr or "render.sh printed nothing").strip()[:400]}
+        return json.loads(out)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "build-failed", "hint": "render.sh timed out after 120s"}
+    except Exception as exc:
+        return {"ok": False, "reason": "build-failed", "hint": str(exc)[:400]}
+
+
+def degrade_banner_html(reason, hint, last_success):
+    """The one piece of markup Python still renders -- and the ONLY one it may.
+
+    This is not a second renderer sneaking back in: it displays no laboratory data, so it has nothing
+    to drift about. It says exactly one thing -- "the thing that draws these pages could not run" --
+    and it exists precisely for the case where the thing that draws these pages cannot run."""
+    when = ("last successful build: %s" % last_success) if last_success else \
+           "these pages have never been built successfully"
+    return ("%s<div class=\"ui-degraded\">&#9888;&#65039; UI build unavailable "
+            "&mdash; this page may be stale<small><b>%s</b> &mdash; %s.<br>"
+            "The DATA is not affected: <code>docs/lab/status.json</code>, the event log and the "
+            "morning digest were all regenerated by this same pass. Only the HTML you are reading "
+            "could not be. Everything below is whatever the last successful build left here "
+            "(%s).<br>%s</small></div>%s") % (
+        UI_DEGRADE_START, esc_min(reason), esc_min(UI_REASONS.get(reason, "unknown reason")),
+        esc_min(when), esc_min(str(hint or "")[:300]), UI_DEGRADE_END)
+
+
+def esc_min(x):
+    """Minimal escaping for the banner. The view layer escapes everything it renders; this is the one
+    string Python still puts on a page, and a `reason` code with a `<` in it is not a licence to
+    inject markup into a file the owner opens."""
+    return (str("" if x is None else x)
+            .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def apply_degrade_banner(reason, hint, last_success):
+    """Stamp the banner across every page already on disk, and leave a page behind if there are none.
+
+    A page that cannot be rebuilt must NEVER look fresh. It may look stale -- that is honest, and it
+    is the entire premise of F4-S3 -- but the owner has to be told, on the page itself, at the top,
+    before he reads a single number that might be from yesterday."""
+    site = os.path.join(LAB, "site")
+    banner = degrade_banner_html(reason, hint, last_success)
+    stamped = []
+    pages = sorted(glob.glob(os.path.join(site, "*.html")))
+
+    for path in pages:
+        try:
+            with open(path, encoding="utf-8") as f:
+                doc = f.read()
+        except OSError as exc:
+            degrade("ui:banner", exc)
+            continue
+        i, j = doc.find(UI_DEGRADE_START), doc.find(UI_DEGRADE_END)
+        if i >= 0 and j > i:
+            # Idempotent: replace whatever sits between the markers (an older banner, or nothing).
+            doc = doc[:i] + banner + doc[j + len(UI_DEGRADE_END):]
+        else:
+            # A page built before the markers existed. Put the banner where a body starts, and if we
+            # cannot even find that, at the very top -- a banner in an odd place beats no banner.
+            k = doc.find("</style>")
+            at = (k + len("</style>")) if k >= 0 else 0
+            doc = doc[:at] + "\n" + banner + doc[at:]
+        lab_write(os.path.relpath(path, REPO), doc)
+        stamped.append(os.path.basename(path))
+
+    if not pages:
+        # Nothing to stamp: a fresh clone that has never had node. An owner who opens index.html and
+        # gets "file not found" learns nothing; one who gets this learns exactly what to run.
+        lab_write("docs/lab/site/index.html", (
+            "<!doctype html>\n<meta charset=\"utf-8\">\n"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+            "<title>gosleep lab &mdash; UI not built</title>\n"
+            "<style>body{font:16px/1.6 -apple-system,system-ui,sans-serif;max-width:44rem;"
+            "margin:3rem auto;padding:0 1rem}"
+            ".ui-degraded{background:#fdeaea;border:2px solid #a51d24;color:#a51d24;border-radius:.5rem;"
+            "padding:.9rem 1rem;font-weight:700}"
+            ".ui-degraded small{display:block;font-weight:400;color:#1a1a19;margin-top:.35rem;"
+            "font-size:.85rem}"
+            "code{background:#f1f1ef;border-radius:.25rem;padding:.05rem .3rem;"
+            "font-family:ui-monospace,Menlo,monospace}</style>\n"
+            + banner +
+            "\n<p>The laboratory's <b>data</b> is fine &mdash; only its <b>view layer</b> has never "
+            "been built on this machine. Read <code>docs/lab/status.json</code> or the morning "
+            "digest in <code>docs/lab/digest/</code> in the meantime.</p>\n"))
+        stamped.append("index.html (placeholder)")
+
+    return stamped
+
 
 SITE_README = """# `docs/lab/site/` — DERIVED. Do not hand-edit.
 
@@ -673,11 +635,18 @@ survives exactly until then, and in the meantime it is a lie with a `generated_a
 
 This is the tasty-lunch-wiki rule (blueprint 05 §1.4-1), and it is the only reason a regenerated hub
 does not rot: **nobody edits it, so nobody has to maintain it.** To change what the page says, change
-what the chronicler *reads* — or change the chronicler.
+what the chronicler *reads* — or change the renderer in `tools/lab/ui/`.
 
-Open `index.html` from `file://` (it is self-contained: no CDN, no fonts, no JS). Every page carries
-`generated_at` + max event age and grades itself fresh / stale / dead, so a chronicler that died in
-the night produces a page that SAYS it died — never a confident-looking page full of yesterday.
+Open `index.html` from `file://`. Each page is self-contained: no CDN, no fonts, no external script —
+the data it needs is inlined at build time, because `file://` cannot `fetch()` a local JSON file.
+There IS a little JavaScript, inlined: every page carries `generated_at` + max event age and RE-GRADES
+itself fresh / stale / dead when you open it. A static file cannot age itself, so a chronicler that
+died in the night would otherwise leave a page confidently reading "Live" forever. With JS off, the
+build-time grade simply stands.
+
+Built by `tools/lab/ui/` (TypeScript + Preact, server-rendered). If node is unavailable the pages are
+NOT regenerated — they stay exactly as they were, under a red banner that says so. A stale page that
+admits it is stale is the product; a fresh-looking page full of yesterday is the failure.
 """
 
 # ───────────────────────────── build: morning digest ─────────────────────────
@@ -1001,14 +970,44 @@ def main():
         status["degraded"] = DEGRADED          # narrate() may have degraded
 
     written = []
+    ui = {"ok": False, "reason": "not-run", "renderer": None, "screens": [],
+          "last_success_at": prev_ui_last_success()}
     try:
+        os.makedirs(os.path.join(LAB, "site"), exist_ok=True) if not ARGS["dry_run"] else None
+
+        bundle = build_render_bundle(ctx, status)
+        written.append(lab_write("docs/lab/render_bundle.json",
+                                 json.dumps(bundle, ensure_ascii=False, indent=2) + "\n", as_json=True))
+
+        # The view layer runs even under --dry-run: rendering is a pure function, and a --dry-run that
+        # skipped it would report "ok" for a pass whose renderer would have failed. It is Python that
+        # withholds the WRITE (lab_write short-circuits), not the renderer that withholds the work.
+        res = render_site(bundle)
+        if res.get("ok"):
+            for name, doc in sorted((res.get("pages") or {}).items()):
+                written.append(lab_write("docs/lab/site/%s" % name, doc))
+            ui = {"ok": True, "reason": None, "renderer": res.get("renderer"),
+                  "screens": res.get("screens") or [], "last_success_at": status["generated_at"]}
+        else:
+            reason, hint = res.get("reason", "build-failed"), res.get("hint", "")
+            degrade("ui", "%s: %s" % (reason, UI_REASONS.get(reason, "?")))
+            last = prev_ui_last_success()
+            ui = {"ok": False, "reason": reason, "hint": str(hint)[:400], "renderer": None,
+                  "screens": [], "last_success_at": last}
+            # Never a false-fresh render: the pages that ARE on disk get told what happened to them.
+            ui["banner_stamped_on"] = apply_degrade_banner(reason, hint, last)
+            log("UI render degraded (%s) — pages left stale under a banner" % reason)
+
+        written.append(lab_write("docs/lab/site/README.md", SITE_README))
+
+        # status.json is written LAST because it is the only artifact that knows how the render went;
+        # it is also the one file a torn write would be catastrophic in, which is why it — like every
+        # other byte here — goes out through lab-write.sh (temp + rename).
+        status["ui"] = ui
+        status["degraded"] = DEGRADED
         written.append(lab_write("docs/lab/status.json",
                                  json.dumps(status, ensure_ascii=False, indent=2) + "\n", as_json=True))
-        os.makedirs(os.path.join(LAB, "site"), exist_ok=True) if not ARGS["dry_run"] else None
-        written.append(lab_write("docs/lab/site/index.html",    build_index(ctx, status)))
-        written.append(lab_write("docs/lab/site/timeline.html", build_timeline(ctx, status)))
-        written.append(lab_write("docs/lab/site/library.html",  build_library(ctx, status)))
-        written.append(lab_write("docs/lab/site/README.md",     SITE_README))
+
         # A day with no activity gets no digest (docs/lab/digest/README.md): an empty digest trains
         # the owner to stop opening them.
         if day_events or ctx["git"]["commits"]:
@@ -1033,6 +1032,7 @@ def main():
         "staleness": status["staleness"]["grade"],
         "max_event_age_human": status["staleness"]["max_event_age_human"],
         "questions_open": status["questions"]["open"],
+        "ui": ui,
         "poll_fill": poll,
         "retention": retention,
         "narrative": (ctx["narrative"] or {}).get("error") or

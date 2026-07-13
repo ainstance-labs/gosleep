@@ -291,13 +291,19 @@ done
 # <script>) is what let 119/119 stay green while the page contradicted itself, so assert the RENDERED
 # verdict instead. It must be read out of the SPAN, never grepped from the file: the JS necessarily
 # carries all three verdicts (that is how it re-grades), so "Live" appears in any page's source.
+#
+# GSL-92 moved the view layer to TypeScript, and with it the verdict map: it used to be a `var V = {…}`
+# emitted into a hand-written <script>, and it is now a JSON data island the SSG renders beside the
+# client bundle (tools/lab/ui/src/page.tsx). The MECHANISM changed; the assertion did not, and must
+# not — the island is still the ONE source both the server-rendered prose and the client re-grade read
+# from, which is the property that stops them drifting into two opinions about one grade.
 V="$(python3 - "$CR/docs/lab/site/index.html" <<'PY'
 import json, re, sys
 h = open(sys.argv[1], encoding="utf-8").read()
 prose = re.search(r'<span id="stale-verdict">(.*?)</span>', h, re.S)
 prose = prose.group(1).strip() if prose else ""
-vmap  = re.search(r'var V = (\{.*?\});', h, re.S)
-vmap  = json.loads(vmap.group(1)) if vmap else {}
+isl   = re.search(r'<script id="verdicts" type="application/json">(.*?)</script>', h, re.S)
+vmap  = json.loads(isl.group(1)) if isl else {}
 ok1 = prose.startswith("DEAD") and "Live" not in prose
 ok2 = 'getElementById("stale-verdict")' in h and set(vmap) == {"fresh", "stale", "dead"}
 print(("PROSE_OK" if ok1 else "PROSE_BAD") + " " + ("REGRADE_OK" if ok2 else "REGRADE_BAD"))
@@ -326,6 +332,91 @@ grep -q 'id="staleness"' "$CR/docs/lab/site/index.html" && grep -q 'data-event-a
 grep -qE 'https?://(cdn|fonts|unpkg|cdnjs)' "$CR/docs/lab/site/index.html" \
   && bad "site/ pulls an external resource (file:// would break)" \
   || ok "site/ is self-contained (no CDN/font/script fetches)"
+
+# ───────────────────── GSL-92: the TypeScript view layer ─────────────────────
+#
+# The renderer moved from chronicler.py to tools/lab/ui/ (Preact, server-rendered by esbuild). The
+# tests above are the CONTRACT it inherited — every id, every data-* attribute, every verdict — and
+# they are asserted against the TS output unchanged. What follows is what the move itself introduced.
+
+# THE POSITIVE CONTROL, and it is not a formality. Above, C8 is asserted by grepping for a sha that
+# must be ABSENT ("WRONG"). A renderer that rendered NOTHING AT ALL would sail through that — and
+# through the two cross-day fold assertions at the bottom of this file — leaving three green ticks
+# over a blank page. So: prove a LIVE sha is on the timeline before trusting that a dead one is not.
+grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
+  && ok "the timeline renders a live event's detail (so the absence-greps below mean something)" \
+  || bad "the timeline renders no event details at all — every 'superseded event is gone' test above is vacuous"
+
+# The ONE contract between the data layer and the view layer. If this is not valid JSON the pages
+# cannot have been built from it, whatever they say.
+jq -e '.schema == "gosleep.lab.render/1"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-92: render_bundle.json is valid and carries its schema" \
+  || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
+[[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
+  && ok "GSL-92: status.json records that the view layer built" \
+  || bad "GSL-92: status.json does not record the render outcome (ui.ok=$(jq -r '.ui.ok' "$CR/docs/lab/status.json"))"
+
+# node is handed stdin and stdout and NOTHING ELSE. Every byte that lands in the repo goes through
+# lab-write.sh (temp + rename), so a renderer killed halfway through page five cannot leave a torn
+# dashboard behind. A writeFile in build.mjs would quietly take that guarantee away.
+grep -qE '\bwriteFile|\bcreateWriteStream|\bappendFile' "$SCRIPT_DIR/ui/build.mjs" \
+  && bad "GSL-92: the renderer writes to the filesystem (it must be a pure stdin->stdout function)" \
+  || ok "GSL-92: the renderer touches no file — Python writes every page through lab-write.sh"
+
+# DEGRADE WITHOUT NODE (the whole reason node was allowed in at all). A laboratory whose dashboard
+# needs a toolchain that may not be there has bought a new way to die at 03:00 — unless it cannot
+# die. Strip node from PATH and the chronicler must: still exit 0, still write status.json and the
+# digest, leave the (now stale) pages exactly where they were, and say so ON EVERY PAGE.
+NN="$WORK/chron-nonode"; mkdir -p "$NN/docs/lab/events"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"n0denix"}}\n' \
+  "$STALE_TS" "$TODAY" > "$NN/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$NN" --no-poll --quiet --json >/dev/null 2>&1          # a good build first
+GOOD_AT="$(jq -r '.ui.last_success_at' "$NN/docs/lab/status.json")"
+grep -q 'n0denix' "$NN/docs/lab/site/timeline.html" \
+  && ok "GSL-92: the good build rendered the event (baseline for the degrade test)" \
+  || bad "GSL-92: the baseline build rendered nothing"
+
+NOJSON="$(env PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$CH" --repo "$NN" --no-poll --quiet --json 2>/dev/null)"
+echo "$NOJSON" | jq -e '.ok == true' >/dev/null 2>&1 \
+  && ok "GSL-92: no node -> the chronicler still exits ok (degraded, never fatal)" \
+  || bad "GSL-92: a missing node killed the chronicler"
+[[ "$(echo "$NOJSON" | jq -r '.ui.reason')" == "no-node" ]] \
+  && ok "GSL-92: the reason is named (no-node), not swallowed" \
+  || bad "GSL-92: the render failure has no machine-readable reason"
+NOK=0
+for P in index timeline library; do
+  grep -q 'class="ui-degraded"' "$NN/docs/lab/site/$P.html" || NOK=1
+  grep -q "last successful build: $GOOD_AT" "$NN/docs/lab/site/$P.html" || NOK=1
+done
+[[ $NOK -eq 0 ]] \
+  && ok "GSL-92: every stale page carries the banner AND names its last successful build" \
+  || bad "GSL-92: a page that could not be rebuilt does not say so (a false-fresh page is the failure)"
+grep -q 'n0denix' "$NN/docs/lab/site/timeline.html" \
+  && ok "GSL-92: the un-rebuilt pages are PRESERVED, not blanked (stale-and-honest beats empty)" \
+  || bad "GSL-92: the degrade path destroyed the pages it could not rebuild"
+[[ "$(jq -r '.staleness.grade' "$NN/docs/lab/status.json")" != "null" ]] \
+  && ok "GSL-92: the DATA layer is unaffected by a missing node (status.json still regenerated)" \
+  || bad "GSL-92: no node took the data layer down with it"
+
+# ...and the banner must LEAVE when it stops being true. A warning that outlives its cause is a
+# warning the owner learns to scroll past.
+bash "$CH" --repo "$NN" --no-poll --quiet --json >/dev/null 2>&1
+BOK=0
+for P in index timeline library; do grep -q 'class="ui-degraded"' "$NN/docs/lab/site/$P.html" && BOK=1; done
+[[ $BOK -eq 0 ]] \
+  && ok "GSL-92: node comes back -> the banner is gone (the injection is idempotent both ways)" \
+  || bad "GSL-92: the degrade banner outlived the degradation"
+
+# A clone that has NEVER had node has no stale page to stamp. "File not found" teaches the owner
+# nothing; a page that names the one command to run teaches him everything.
+FRESH="$WORK/chron-nonode-fresh"; mkdir -p "$FRESH/docs/lab/events"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"cycle.started","src":"emit","data":{}}\n' \
+  "$STALE_TS" "$TODAY" > "$FRESH/docs/lab/events/$TODAY.jsonl"
+env PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$CH" --repo "$FRESH" --no-poll --quiet --json >/dev/null 2>&1
+grep -q 'class="ui-degraded"' "$FRESH/docs/lab/site/index.html" 2>/dev/null \
+  && grep -q 'npm install' "$FRESH/docs/lab/site/index.html" \
+  && ok "GSL-92: a never-built clone gets an honest placeholder naming the fix, not a 404" \
+  || bad "GSL-92: a clone without node leaves the owner with no index.html at all"
 
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
 # The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.

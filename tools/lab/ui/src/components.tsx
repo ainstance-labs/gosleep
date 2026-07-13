@@ -1,0 +1,143 @@
+import type { ComponentChildren, VNode } from "preact";
+import type { LabEvent, RenderBundle } from "./types.js";
+import { VERDICTS } from "./verdicts.js";
+
+// The nav lists screens that EXIST. PRD R5.2 asks for seven (Overview / Timeline / Tasks / Questions
+// / Fleet / Cost / Library); GSL-93 adds the missing four. A nav that links to a page nobody built is
+// a 404 on a phone at 03:00 — the dashboard's first lie about itself.
+export const SCREENS = [
+  { id: "index", file: "index.html", label: "Overview" },
+  { id: "timeline", file: "timeline.html", label: "Timeline" },
+  { id: "library", file: "library.html", label: "Library" },
+] as const;
+
+export type ScreenId = (typeof SCREENS)[number]["id"];
+
+export function Nav({ current }: { current: ScreenId }): VNode {
+  return (
+    <nav>
+      {SCREENS.map((s) => (
+        <a key={s.id} href={s.file} aria-current={s.id === current ? "page" : undefined}>
+          {s.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+/**
+ * The staleness banner. Server-rendered with the build-time verdict, re-graded on open by the client
+ * script (see verdicts.ts for why both must happen, and why they must come from one map).
+ *
+ * The ids and data-* attributes here are a CONTRACT, not decoration: tools/lab/smoke.sh asserts every
+ * one of them, because each was added to close a real defect where the page hid its own rot.
+ */
+export function StaleBanner({ b }: { b: RenderBundle }): VNode {
+  const st = b.staleness;
+  const g = st.grade;
+  return (
+    <div
+      class={`stale ${g}`}
+      id="staleness"
+      data-grade={g}
+      data-generated-at={b.generated_at}
+      data-event-age-s={st.max_event_age_s === null ? "" : String(st.max_event_age_s)}
+      data-fresh-s={String(st.thresholds_s.fresh)}
+      data-dead-s={String(st.thresholds_s.dead)}
+    >
+      <span id="stale-head">
+        {g.toUpperCase()} · last event {st.max_event_age_human} ago
+      </span>
+      <small>
+        generated_at {b.generated_at} · latest event {st.latest_event_ts ?? "never"} · thresholds
+        fresh&le;{Math.floor(st.thresholds_s.fresh / 60)}m, dead&gt;
+        {Math.floor(st.thresholds_s.dead / 3600)}h ·{" "}
+        <span id="stale-verdict">{VERDICTS[g]}</span>
+      </small>
+    </div>
+  );
+}
+
+export function Empty({ children }: { children: ComponentChildren }): VNode {
+  return <div class="card">{children}</div>;
+}
+
+/**
+ * A day is WHEN IT HAPPENED (`ts`), never which file the line was written into. Since GSL-89 a
+ * backfilled line lives in today's file carrying last night's ts — keyed on the file, last night's
+ * recovered commits would show up as today's work, which is the very lie poll-fill's floor exists to
+ * prevent. The bundle's events are already folded, so this is a pure slice.
+ */
+export function eventsOn(b: RenderBundle, date: string): LabEvent[] {
+  return b.recent_events.filter((e) => (e.ts ?? "").slice(0, 10) === date);
+}
+
+export function srcClass(src: string | undefined): string {
+  const s = String(src ?? "");
+  if (s.startsWith("hook:")) return "hook";
+  if (s === "poll-fill") return "poll";
+  return "emit";
+}
+
+/**
+ * One derived column out of an event's free-form `data`. The order matters: the first key that
+ * exists wins, and `sha` leads because a commit is the thing the owner most often wants to click
+ * back to. smoke.sh asserts BOTH directions here — that a live sha is rendered, and that a
+ * superseded one is not — because a renderer that prints nothing at all would pass the second
+ * assertion vacuously.
+ */
+export function eventDetail(e: LabEvent): string {
+  const d = (e.data ?? {}) as Record<string, unknown>;
+  for (const k of ["sha", "path", "key", "question", "error_type", "decision", "cmd"]) {
+    const v = d[k];
+    if (v !== undefined && v !== null && v !== "") return String(v).slice(0, 90);
+  }
+  return "";
+}
+
+export function EventsTable({ events, limit }: { events: LabEvent[]; limit?: number }): VNode {
+  const slice = limit === undefined ? events : events.slice(-limit);
+  const rows = [...slice].reverse();
+  if (rows.length === 0) {
+    return (
+      <Empty>
+        No events. Either nothing ran, or the hooks are not firing — check{" "}
+        <code>.artifacts/lab/lab-log.err</code>.
+      </Empty>
+    );
+  }
+  return (
+    <div class="wrap">
+      <table>
+        <tr>
+          <th>utc</th>
+          <th>type</th>
+          <th>actor</th>
+          <th>src</th>
+          <th>detail</th>
+        </tr>
+        {rows.map((e, i) => (
+          <tr key={`${e.ts}-${e.seq ?? i}`}>
+            <td class="mono">{(e.ts ?? "").slice(11, 19)}</td>
+            <td>{e.type}</td>
+            <td class="mono">{e.actor}</td>
+            <td>
+              <span class={`tag ${srcClass(e.src)}`}>{e.src}</span>
+            </td>
+            <td class="mono">{eventDetail(e)}</td>
+          </tr>
+        ))}
+      </table>
+    </div>
+  );
+}
+
+export function Footer(): VNode {
+  return (
+    <footer>
+      Regenerated by <code>tools/lab/chronicler.sh</code> — <b>never hand-edit</b>: the next pass
+      overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8). Source
+      of truth for this page: <code>docs/lab/render_bundle.json</code>.
+    </footer>
+  );
+}
