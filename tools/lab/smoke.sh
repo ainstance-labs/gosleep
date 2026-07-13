@@ -281,7 +281,34 @@ jq -e . "$CR/docs/lab/status.json" >/dev/null 2>&1 \
 for P in index timeline library; do
   grep -q 'class="stale dead"' "$CR/docs/lab/site/$P.html" \
     && ok "F4-S3: site/$P.html shows the DEAD banner" || bad "F4-S3: site/$P.html hides its staleness"
+  grep -q 'id="stale-verdict"' "$CR/docs/lab/site/$P.html" \
+    && ok "F4-S3: site/$P.html's verdict prose is addressable, so it can be re-graded too" \
+    || bad "F4-S3: site/$P.html bakes its verdict prose (a DEAD banner over 'Live' text)"
 done
+# The banner is not the only thing that speaks. The SENTENCE under it was baked at build time and never
+# re-graded — so a page opened hours later carried a red DEAD banner with "Live — the laboratory is
+# writing itself right now" printed beneath it (REVIEW-gsl81 M1). Asserting the mechanism (an id, a
+# <script>) is what let 119/119 stay green while the page contradicted itself, so assert the RENDERED
+# verdict instead. It must be read out of the SPAN, never grepped from the file: the JS necessarily
+# carries all three verdicts (that is how it re-grades), so "Live" appears in any page's source.
+V="$(python3 - "$CR/docs/lab/site/index.html" <<'PY'
+import json, re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+prose = re.search(r'<span id="stale-verdict">(.*?)</span>', h, re.S)
+prose = prose.group(1).strip() if prose else ""
+vmap  = re.search(r'var V = (\{.*?\});', h, re.S)
+vmap  = json.loads(vmap.group(1)) if vmap else {}
+ok1 = prose.startswith("DEAD") and "Live" not in prose
+ok2 = 'getElementById("stale-verdict")' in h and set(vmap) == {"fresh", "stale", "dead"}
+print(("PROSE_OK" if ok1 else "PROSE_BAD") + " " + ("REGRADE_OK" if ok2 else "REGRADE_BAD"))
+PY
+)"
+[[ "$V" == PROSE_OK* ]] \
+  && ok "F4-S3: the DEAD page's verdict PROSE says DEAD — it never reads 'Live' under a red banner (M1)" \
+  || bad "F4-S3: the page contradicts itself — DEAD banner, 'Live' prose"
+[[ "$V" == *REGRADE_OK ]] \
+  && ok "F4-S3: the prose re-grades on open too (JS rewrites #stale-verdict from all three verdicts)" \
+  || bad "F4-S3: the JS re-grades the banner but leaves the prose frozen at build time"
 grep -q 'generated_at' "$CR/docs/lab/site/index.html" \
   && ok "every page carries generated_at (R4.4)" || bad "page has no generated_at"
 # A static file cannot age itself: the baked-in grade judges the DATA at BUILD time. A chronicler that
