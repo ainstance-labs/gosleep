@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-13T16:19:00Z",
+  "generated_at": "2026-07-13T16:21:41Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-13",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 49,
-    "max_event_age_human": "49s",
-    "latest_event_ts": "2026-07-13T16:18:08Z",
-    "heartbeat_age_s": 828,
+    "max_event_age_s": 147,
+    "max_event_age_human": "2m",
+    "latest_event_ts": "2026-07-13T16:19:12Z",
+    "heartbeat_age_s": 990,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 404,
-    "today": 338,
+    "total": 407,
+    "today": 341,
     "days": [
       "2026-07-12",
       "2026-07-13"
@@ -28,16 +28,16 @@
       "dev_history.written": 37,
       "handoff.written": 36,
       "task.completed": 28,
+      "vcs.commit": 25,
       "agent.terminated": 24,
       "tracker.issue.updated": 24,
-      "vcs.commit": 24,
-      "tracker.issue.transitioned": 21,
+      "tracker.issue.transitioned": 22,
       "pane.ended": 14,
       "pane.started": 14,
       "tracker.issue.created": 12,
+      "vcs.push": 9,
       "notification.raised": 8,
       "task.created": 8,
-      "vcs.push": 8,
       "question.posed": 5,
       "question.auto_resolved": 4,
       "agent.spawned": 3,
@@ -46,7 +46,7 @@
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 145,
+      "hook:PostToolUse": 148,
       "hook:Stop": 90,
       "hook:TeammateIdle": 40,
       "hook:TaskCompleted": 28,
@@ -60,7 +60,7 @@
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 218,
+      "claude": 221,
       "ef6c3777": 85,
       "dd3edd33": 27,
       "poll-fill": 15,
@@ -154,9 +154,15 @@
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "45d7066",
-    "dirty_paths": 30,
+    "head": "fccc720",
+    "dirty_paths": 8,
     "commits_on_date": [
+      {
+        "sha": "fccc720",
+        "author": "R",
+        "ts": "2026-07-13T18:19:00+02:00",
+        "subject": "GSL-97 [UI] Timeline + Library + client JS filter over an inlined island (R5.2/R5.3)"
+      },
       {
         "sha": "45d7066",
         "author": "R",
@@ -370,6 +376,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-13T16:19:00Z"
+    "last_success_at": "2026-07-13T16:21:41Z"
   }
 }
