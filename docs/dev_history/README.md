@@ -125,3 +125,4 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 ## Epic GSL-90 — UI оркестрации, static v1 (PRD Phase 5)
 
 - [GSL-91 — Леджер закрытия Фазы 4 + разбивка Фазы 5: эпик, 10 задач, зеркало в GitHub, ветка; граница Python/TypeScript зафиксирована явно (DECISION q-2026-07-13-001)](GSL-91-phase5-cycle52-ledger.md)
+- [GSL-101 — R4.2 → ✅ MET: доказательство `seq 156` привязано к sha; «вне CLI» оказалось дырявым прокси для «не увиденный ни одним хуком»; счётчики приёмки пересчитаны на обоих sha (F4-S1 честно остаётся 3 из 4)](GSL-101-phase5-cycle52-r42-met.md)
