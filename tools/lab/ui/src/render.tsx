@@ -23,7 +23,7 @@ import { Fleet } from "./screens/fleet.js";
 import { Cost } from "./screens/cost.js";
 import { Library } from "./screens/library.js";
 
-const SCHEMA = "gosleep.lab.render/3";
+const SCHEMA = "gosleep.lab.render/4";
 
 /** One body per screen id. The nav is generated from SCREENS, so a screen listed there and missing
  *  here is a 404 — which is why the loop below builds from SCREENS and would throw on a gap. */

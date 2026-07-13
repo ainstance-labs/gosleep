@@ -1,13 +1,13 @@
 {
-  "schema": "gosleep.lab.render/3",
-  "generated_at": "2026-07-13T13:55:53Z",
+  "schema": "gosleep.lab.render/4",
+  "generated_at": "2026-07-13T14:37:55Z",
   "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
   "date": "2026-07-13",
   "staleness": {
-    "max_event_age_s": 257,
-    "max_event_age_human": "4m",
-    "latest_event_ts": "2026-07-13T13:51:35Z",
-    "heartbeat_age_s": 279,
+    "max_event_age_s": 572,
+    "max_event_age_human": "9m",
+    "latest_event_ts": "2026-07-13T14:28:21Z",
+    "heartbeat_age_s": 586,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -15,55 +15,55 @@
     }
   },
   "events": {
-    "total": 353,
-    "today": 287,
+    "total": 371,
+    "today": 305,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 68,
-      "agent.idle": 37,
-      "dev_history.written": 34,
-      "handoff.written": 33,
+      "agent.turn_ended": 76,
+      "agent.idle": 38,
+      "dev_history.written": 35,
+      "handoff.written": 34,
       "task.completed": 28,
       "agent.terminated": 24,
       "tracker.issue.updated": 24,
-      "vcs.commit": 21,
-      "tracker.issue.transitioned": 17,
-      "pane.ended": 12,
-      "pane.started": 12,
+      "vcs.commit": 22,
+      "tracker.issue.transitioned": 19,
+      "pane.ended": 13,
+      "pane.started": 13,
       "tracker.issue.created": 12,
       "task.created": 8,
       "notification.raised": 7,
-      "vcs.push": 6,
+      "vcs.push": 7,
+      "question.posed": 4,
       "agent.spawned": 3,
-      "question.posed": 3,
       "decision.made": 1,
       "question.auto_resolved": 1,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 131,
-      "hook:Stop": 68,
-      "hook:TeammateIdle": 37,
+      "hook:PostToolUse": 137,
+      "hook:Stop": 76,
+      "hook:TeammateIdle": 38,
       "hook:TaskCompleted": 28,
       "hook:SubagentStop": 24,
       "poll-fill": 15,
-      "hook:SessionEnd": 12,
-      "hook:SessionStart": 12,
-      "emit": 8,
+      "hook:SessionEnd": 13,
+      "hook:SessionStart": 13,
+      "emit": 9,
       "hook:TaskCreated": 8,
       "hook:Notification": 7,
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 196,
+      "claude": 205,
       "ef6c3777": 85,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
-      "dd3edd33": 5,
+      "dd3edd33": 13,
       "70cbe176": 3,
       "ca8a1e39": 3,
       "orchestrator": 3,
@@ -93,157 +93,12 @@
       "afc648057d400fa02": 1,
       "fixer-lab": 1,
       "impl-lab-2": 1,
-      "impl-ui-1": 1
+      "impl-ui-1": 1,
+      "impl-ui-3": 1
     },
     "mechanical_share": 0.935
   },
   "recent_events": [
-    {
-      "ts": "2026-07-13T09:22:18Z",
-      "seq": 87,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:23:20Z",
-      "seq": 88,
-      "actor": "a712e803767d9690f",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:23:20Z",
-      "seq": 89,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:23:20Z",
-      "seq": 90,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:23:53Z",
-      "seq": 91,
-      "actor": "a198207c1aae6407d",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:23:53Z",
-      "seq": 92,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:23:53Z",
-      "seq": 93,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:24:35Z",
-      "seq": 94,
-      "actor": "aa7a28cca3c73abc5",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:24:35Z",
-      "seq": 95,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:24:36Z",
-      "seq": 96,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:25:13Z",
-      "seq": 97,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:29:04Z",
-      "seq": 98,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:29:42Z",
-      "seq": 99,
-      "actor": "claude",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:29:42Z",
-      "seq": 100,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:30:00Z",
-      "seq": 101,
-      "actor": "ef6c3777",
-      "type": "task.created",
-      "src": "hook:TaskCreated",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:30:12Z",
-      "seq": 102,
-      "actor": "ef6c3777",
-      "type": "handoff.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:30:15Z",
-      "seq": 103,
-      "actor": "claude",
-      "type": "pane.ended",
-      "src": "hook:SessionEnd",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:31:06Z",
-      "seq": 104,
-      "actor": "claude",
-      "type": "pane.started",
-      "src": "hook:SessionStart",
-      "data": {}
-    },
     {
       "ts": "2026-07-13T09:31:25Z",
       "seq": 105,
@@ -1864,13 +1719,172 @@
       "type": "agent.turn_ended",
       "src": "hook:Stop",
       "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:57:29Z",
+      "seq": 288,
+      "actor": "claude",
+      "type": "dev_history.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-95-phase5-cycle54-questions-countdown.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:58:03Z",
+      "seq": 289,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "164bfa5",
+        "cmd": "cat > /tmp/gsl95.msg <<'MSG' GSL-95 [UI] Questions deadline countdown (F5-S2) Счётчик пересчитывает себя ПРИ ОТКРЫТИИ страницы, а не показывает число, испечённое на сборке. Страница, собранная в 23:00 с «auto-applies in 2h» и открытая в 04:00, предлагала бы два часа, потраченные три часа назад — это не устаревшее число, а ложь в успокаивающую сторону, единственную, которая имеет значение в четыре утра. Тот же класс дефекта, что баннер свежести (Фаза 4). Одна функция форматирования, двое часов (s"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:58:10Z",
+      "seq": 290,
+      "actor": "claude",
+      "type": "vcs.push",
+      "src": "hook:PostToolUse",
+      "data": {
+        "cmd": "git push -q origin GSL-90-ui-orchestration && git log --oneline -1 && echo \"pushed\" && echo \"=== verify model from transcript ===\" && ls -t ~/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep/*.jsonl 2>/dev/null | head -3"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:58:25Z",
+      "seq": 291,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-95"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:01:58Z",
+      "seq": 292,
+      "actor": "claude",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:01:58Z",
+      "seq": 293,
+      "actor": "claude",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:02:48Z",
+      "seq": 294,
+      "actor": "dd3edd33",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:02:57Z",
+      "seq": 295,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:03:50Z",
+      "seq": 296,
+      "actor": "claude",
+      "type": "pane.ended",
+      "src": "hook:SessionEnd",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:03:54Z",
+      "seq": 297,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:08:45Z",
+      "seq": 298,
+      "actor": "claude",
+      "type": "pane.started",
+      "src": "hook:SessionStart",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:08:57Z",
+      "seq": 299,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:09:05Z",
+      "seq": 300,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:14:35Z",
+      "seq": 301,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-96"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:14:43Z",
+      "seq": 302,
+      "actor": "impl-ui-3",
+      "type": "question.posed",
+      "src": "emit",
+      "data": {
+        "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:16:27Z",
+      "seq": 303,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:18:35Z",
+      "seq": 304,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:28:21Z",
+      "seq": 305,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
     }
   ],
   "recent_cap": 200,
   "questions": {
-    "open": 2,
+    "open": 3,
     "by_type": {
-      "DECISION": 2
+      "DECISION": 3
     },
     "items": [
       {
@@ -1889,6 +1903,15 @@
         "default": "Оставить без потолка: бюджетные часы = unknown, runway = верхняя граница, и страница честно об этом пишет",
         "auto_apply_at": "2026-07-13T14:48:23Z",
         "task": "GSL-94",
+        "high_impact": null
+      },
+      {
+        "id": "q-2026-07-13-003",
+        "type": "DECISION",
+        "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?",
+        "default": "extend chronicler.py and bump the bundle schema to gosleep.lab.render/4",
+        "auto_apply_at": "2026-07-13T16:14:43Z",
+        "task": "GSL-96",
         "high_impact": null
       }
     ]
@@ -1912,9 +1935,9 @@
     "next_event": {
       "axis": "context",
       "label": "orchestrator context",
-      "hours": 8.11,
+      "hours": 4.6,
       "on_exhaustion": "degrades",
-      "why": "self-reported 20%, rising 7.4 %/h -> ceiling 80% in 8.1h"
+      "why": "self-reported 28%, rising 11.3 %/h -> ceiling 80% in 4.6h; roll heuristic (8-15 cycles, 1 done since the roll at 1.1 cyc/h) says 6.2h — taking the shorter"
     },
     "clocks": [
       {
@@ -1922,10 +1945,10 @@
         "label": "orchestrator context",
         "on_exhaustion": "degrades",
         "state": "counting",
-        "hours": 8.11,
+        "hours": 4.6,
         "eta": null,
-        "gauge": "20% of 80%",
-        "why": "self-reported 20%, rising 7.4 %/h -> ceiling 80% in 8.1h",
+        "gauge": "28% of 80%",
+        "why": "self-reported 28%, rising 11.3 %/h -> ceiling 80% in 4.6h; roll heuristic (8-15 cycles, 1 done since the roll at 1.1 cyc/h) says 6.2h — taking the shorter",
         "sources": [
           "docs/handoff/.orchestrator-heartbeat (gitignored)",
           "watchdog.sh WD_CONTEXT_CEILING_PCT=80"
@@ -1938,7 +1961,7 @@
         "state": "unknown",
         "hours": null,
         "eta": null,
-        "gauge": "6,707,000 used, no ceiling",
+        "gauge": "6,870,000 used, no ceiling",
         "why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
         "sources": [
           "docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY",
@@ -1995,26 +2018,26 @@
         "hours": null,
         "eta": null,
         "gauge": "3 To Do (stale)",
-        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (16h 29m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
+        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (17h 11m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
         "sources": [
           "docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)"
         ]
       }
     ],
     "trace": [
-      "8.1h — orchestrator context: self-reported 20%, rising 7.4 %/h -> ceiling 80% in 8.1h",
+      "4.6h — orchestrator context: self-reported 28%, rising 11.3 %/h -> ceiling 80% in 4.6h; roll heuristic (8-15 cycles, 1 done since the roll at 1.1 cyc/h) says 6.2h — taking the shorter",
       "unknown — token budget: no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
       "clear — quota window: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)",
       "clear — pane slots: 2 free slot(s)",
       "clear — open blockers: nothing the fleet is doing is waiting on a human",
-      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (16h 29m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
+      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (17h 11m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
     ]
   },
   "queue": {
-    "open": 2,
-    "total": 3,
+    "open": 3,
+    "total": 4,
     "by_type": {
-      "DECISION": 2
+      "DECISION": 3
     },
     "open_items": [
       {
@@ -2094,6 +2117,25 @@
           "impl-ui-1"
         ],
         "links": {}
+      },
+      {
+        "id": "q-2026-07-13-003",
+        "ts": "2026-07-13T14:14:43Z",
+        "type": "DECISION",
+        "from": "impl-ui-3",
+        "task": "GSL-96",
+        "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?",
+        "options": [],
+        "default": "extend chronicler.py and bump the bundle schema to gosleep.lab.render/4",
+        "default_rationale": "The brief's rule 6 already prescribes how to bump the schema when data is genuinely missing (chronicler.py + render.tsx + smoke.sh together), and the C5 invariant is a WORD denylist, not a no-touch rule. The alternative -- inventing the links in the view -- is precisely the defect the task forbids. Reversible: it is a code change on an unmerged branch.",
+        "reversibility": "high",
+        "impact_if_wrong": "",
+        "auto_apply_at": "2026-07-13T16:14:43Z",
+        "status": "open",
+        "seen_by": [
+          "impl-ui-3"
+        ],
+        "links": {}
       }
     ],
     "closed_items": [
@@ -2156,7 +2198,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-101",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/114",
+        "gh_number": 114,
         "status_age_human": "never"
       },
       {
@@ -2169,7 +2212,8 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-100",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/113",
+        "gh_number": 113,
         "status_age_human": "never"
       },
       {
@@ -2182,7 +2226,8 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-99",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/112",
+        "gh_number": 112,
         "status_age_human": "never"
       },
       {
@@ -2195,7 +2240,8 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-98",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/111",
+        "gh_number": 111,
         "status_age_human": "never"
       },
       {
@@ -2208,7 +2254,8 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-97",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/110",
+        "gh_number": 110,
         "status_age_human": "never"
       },
       {
@@ -2221,7 +2268,8 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-96",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/109",
+        "gh_number": 109,
         "status_age_human": "never"
       },
       {
@@ -2230,11 +2278,30 @@
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
-        "commits": [],
-        "dev_history": [],
+        "commits": [
+          {
+            "sha": "4ea51f5",
+            "subject": "GSL-95 [Docs] Handoff 30 — цикл 54 (impl-ui-2): F5-S2 закрыт; дефолты по таймеру не применяет никто",
+            "ts": "2026-07-13T16:00:02+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4ea51f5"
+          },
+          {
+            "sha": "164bfa5",
+            "subject": "GSL-95 [UI] Questions deadline countdown (F5-S2)",
+            "ts": "2026-07-13T15:58:03+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/164bfa5"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-95-phase5-cycle54-questions-countdown.md",
+            "href": "../../dev_history/GSL-95-phase5-cycle54-questions-countdown.md"
+          }
+        ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-95",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/108",
+        "gh_number": 108,
         "status_age_human": "never"
       },
       {
@@ -2259,7 +2326,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-94",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/107",
+        "gh_number": 107,
         "status_age_human": "never"
       },
       {
@@ -2284,7 +2352,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-93",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/106",
+        "gh_number": 106,
         "status_age_human": "never"
       },
       {
@@ -2309,7 +2378,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-92",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/105",
+        "gh_number": 105,
         "status_age_human": "never"
       },
       {
@@ -2334,7 +2404,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-91",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/104",
+        "gh_number": 104,
         "status_age_human": "never"
       },
       {
@@ -2347,14 +2418,15 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-90",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/103",
+        "gh_number": 103,
         "status_age_human": "never"
       },
       {
         "key": "GSL-89",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:12Z",
-        "status_age_s": 63700,
+        "status_age_s": 66221,
         "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
         "commits": [
           {
@@ -2382,14 +2454,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-89",
-        "gh_url": null,
-        "status_age_human": "17h 41m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/101",
+        "gh_number": 101,
+        "status_age_human": "18h 23m"
       },
       {
         "key": "GSL-88",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:11Z",
-        "status_age_s": 63701,
+        "status_age_s": 66222,
         "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
         "commits": [
           {
@@ -2407,14 +2480,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-88",
-        "gh_url": null,
-        "status_age_human": "17h 41m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/100",
+        "gh_number": 100,
+        "status_age_human": "18h 23m"
       },
       {
         "key": "GSL-87",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:09Z",
-        "status_age_s": 63703,
+        "status_age_s": 66224,
         "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
         "commits": [
           {
@@ -2432,14 +2506,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-87",
-        "gh_url": null,
-        "status_age_human": "17h 41m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/99",
+        "gh_number": 99,
+        "status_age_human": "18h 23m"
       },
       {
         "key": "GSL-86",
         "status": "Done",
         "status_ts": "2026-07-12T21:26:24Z",
-        "status_age_s": 59368,
+        "status_age_s": 61889,
         "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
         "commits": [
           {
@@ -2463,14 +2538,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-86",
-        "gh_url": null,
-        "status_age_human": "16h 29m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/98",
+        "gh_number": 98,
+        "status_age_human": "17h 11m"
       },
       {
         "key": "GSL-85",
         "status": "Done",
         "status_ts": "2026-07-12T20:56:50Z",
-        "status_age_s": 61142,
+        "status_age_s": 63663,
         "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
         "commits": [
           {
@@ -2488,14 +2564,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-85",
-        "gh_url": null,
-        "status_age_human": "16h 59m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/97",
+        "gh_number": 97,
+        "status_age_human": "17h 41m"
       },
       {
         "key": "GSL-84",
         "status": "Done",
         "status_ts": "2026-07-12T20:50:59Z",
-        "status_age_s": 61493,
+        "status_age_s": 64014,
         "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
         "commits": [
           {
@@ -2513,14 +2590,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-84",
-        "gh_url": null,
-        "status_age_human": "17h 4m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/96",
+        "gh_number": 96,
+        "status_age_human": "17h 46m"
       },
       {
         "key": "GSL-83",
         "status": "Done",
         "status_ts": "2026-07-12T20:46:53Z",
-        "status_age_s": 61739,
+        "status_age_s": 64260,
         "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
         "commits": [
           {
@@ -2544,14 +2622,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-83",
-        "gh_url": null,
-        "status_age_human": "17h 8m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/95",
+        "gh_number": 95,
+        "status_age_human": "17h 51m"
       },
       {
         "key": "GSL-82",
         "status": "Done",
         "status_ts": "2026-07-12T20:16:09Z",
-        "status_age_s": 63583,
+        "status_age_s": 66104,
         "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
         "commits": [
           {
@@ -2569,14 +2648,15 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-82",
-        "gh_url": null,
-        "status_age_human": "17h 39m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/94",
+        "gh_number": 94,
+        "status_age_human": "18h 21m"
       },
       {
         "key": "GSL-81",
         "status": "In Progress",
         "status_ts": "2026-07-12T20:14:02Z",
-        "status_age_s": 63710,
+        "status_age_s": 66231,
         "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "commits": [
           {
@@ -2602,8 +2682,9 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-81",
-        "gh_url": null,
-        "status_age_human": "17h 41m"
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/93",
+        "gh_number": 93,
+        "status_age_human": "18h 23m"
       },
       {
         "key": "GSL-80",
@@ -2627,7 +2708,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-80",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/91",
+        "gh_number": 91,
         "status_age_human": "never"
       },
       {
@@ -2652,7 +2734,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-79",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/90",
+        "gh_number": 90,
         "status_age_human": "never"
       },
       {
@@ -2677,7 +2760,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-78",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/89",
+        "gh_number": 89,
         "status_age_human": "never"
       },
       {
@@ -2702,7 +2786,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-77",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/88",
+        "gh_number": 88,
         "status_age_human": "never"
       },
       {
@@ -2727,7 +2812,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-76",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/87",
+        "gh_number": 87,
         "status_age_human": "never"
       },
       {
@@ -2752,7 +2838,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-75",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/86",
+        "gh_number": 86,
         "status_age_human": "never"
       },
       {
@@ -2777,7 +2864,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-74",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/85",
+        "gh_number": 85,
         "status_age_human": "never"
       },
       {
@@ -2802,7 +2890,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-73",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/84",
+        "gh_number": 84,
         "status_age_human": "never"
       },
       {
@@ -2847,7 +2936,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-72",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/83",
+        "gh_number": 83,
         "status_age_human": "never"
       },
       {
@@ -2872,7 +2962,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-71",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/81",
+        "gh_number": 81,
         "status_age_human": "never"
       },
       {
@@ -2897,7 +2988,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-70",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/80",
+        "gh_number": 80,
         "status_age_human": "never"
       },
       {
@@ -2928,7 +3020,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-69",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/79",
+        "gh_number": 79,
         "status_age_human": "never"
       },
       {
@@ -2953,7 +3046,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-68",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/78",
+        "gh_number": 78,
         "status_age_human": "never"
       },
       {
@@ -2984,7 +3078,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-67",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/77",
+        "gh_number": 77,
         "status_age_human": "never"
       },
       {
@@ -3009,7 +3104,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-66",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/76",
+        "gh_number": 76,
         "status_age_human": "never"
       },
       {
@@ -3042,7 +3138,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-65",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/75",
+        "gh_number": 75,
         "status_age_human": "never"
       },
       {
@@ -3067,7 +3164,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-64",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/73",
+        "gh_number": 73,
         "status_age_human": "never"
       },
       {
@@ -3092,7 +3190,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-63",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/72",
+        "gh_number": 72,
         "status_age_human": "never"
       },
       {
@@ -3117,7 +3216,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-62",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/71",
+        "gh_number": 71,
         "status_age_human": "never"
       },
       {
@@ -3142,7 +3242,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-61",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/70",
+        "gh_number": 70,
         "status_age_human": "never"
       },
       {
@@ -3167,7 +3268,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-60",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/69",
+        "gh_number": 69,
         "status_age_human": "never"
       },
       {
@@ -3192,7 +3294,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-59",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/68",
+        "gh_number": 68,
         "status_age_human": "never"
       },
       {
@@ -3225,7 +3328,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-58",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/67",
+        "gh_number": 67,
         "status_age_human": "never"
       },
       {
@@ -3250,7 +3354,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-57",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/65",
+        "gh_number": 65,
         "status_age_human": "never"
       },
       {
@@ -3275,7 +3380,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-56",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/64",
+        "gh_number": 64,
         "status_age_human": "never"
       },
       {
@@ -3300,7 +3406,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-55",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/63",
+        "gh_number": 63,
         "status_age_human": "never"
       },
       {
@@ -3325,7 +3432,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-54",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/62",
+        "gh_number": 62,
         "status_age_human": "never"
       },
       {
@@ -3350,7 +3458,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-53",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/61",
+        "gh_number": 61,
         "status_age_human": "never"
       },
       {
@@ -3381,7 +3490,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-52",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/60",
+        "gh_number": 60,
         "status_age_human": "never"
       },
       {
@@ -3412,7 +3522,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-51",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/59",
+        "gh_number": 59,
         "status_age_human": "never"
       },
       {
@@ -3437,7 +3548,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-50",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/58",
+        "gh_number": 58,
         "status_age_human": "never"
       },
       {
@@ -3470,7 +3582,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-49",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/57",
+        "gh_number": 57,
         "status_age_human": "never"
       },
       {
@@ -3495,7 +3608,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-48",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/55",
+        "gh_number": 55,
         "status_age_human": "never"
       },
       {
@@ -3526,7 +3640,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-47",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/54",
+        "gh_number": 54,
         "status_age_human": "never"
       },
       {
@@ -3551,7 +3666,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-46",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/53",
+        "gh_number": 53,
         "status_age_human": "never"
       },
       {
@@ -3576,7 +3692,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-45",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/52",
+        "gh_number": 52,
         "status_age_human": "never"
       },
       {
@@ -3601,7 +3718,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-44",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/51",
+        "gh_number": 51,
         "status_age_human": "never"
       },
       {
@@ -3626,7 +3744,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-43",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/50",
+        "gh_number": 50,
         "status_age_human": "never"
       },
       {
@@ -3651,7 +3770,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-42",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/49",
+        "gh_number": 49,
         "status_age_human": "never"
       },
       {
@@ -3684,7 +3804,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-41",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/48",
+        "gh_number": 48,
         "status_age_human": "never"
       },
       {
@@ -3710,6 +3831,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-40",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3735,6 +3857,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-39",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3766,6 +3889,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-38",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3805,6 +3929,7 @@
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-37",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3830,6 +3955,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-36",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3855,6 +3981,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-35",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3880,6 +4007,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-34",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3905,6 +4033,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-33",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3930,6 +4059,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-32",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3963,6 +4093,7 @@
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-31",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -3982,7 +4113,8 @@
         "dev_history": [],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-30",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/34",
+        "gh_number": 34,
         "status_age_human": "never"
       },
       {
@@ -4008,6 +4140,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-29",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4033,6 +4166,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-28",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4058,6 +4192,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-27",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4083,6 +4218,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-26",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4108,6 +4244,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-25",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4141,6 +4278,7 @@
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-24",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4166,6 +4304,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-23",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4191,6 +4330,7 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-22",
         "gh_url": null,
+        "gh_number": null,
         "status_age_human": "never"
       },
       {
@@ -4215,7 +4355,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-21",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/24",
+        "gh_number": 24,
         "status_age_human": "never"
       },
       {
@@ -4240,7 +4381,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-20",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/23",
+        "gh_number": 23,
         "status_age_human": "never"
       },
       {
@@ -4273,7 +4415,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-19",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/22",
+        "gh_number": 22,
         "status_age_human": "never"
       },
       {
@@ -4298,7 +4441,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-18",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/20",
+        "gh_number": 20,
         "status_age_human": "never"
       },
       {
@@ -4323,7 +4467,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-17",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/19",
+        "gh_number": 19,
         "status_age_human": "never"
       },
       {
@@ -4348,7 +4493,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-16",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/18",
+        "gh_number": 18,
         "status_age_human": "never"
       },
       {
@@ -4381,7 +4527,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-15",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/17",
+        "gh_number": 17,
         "status_age_human": "never"
       },
       {
@@ -4406,7 +4553,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-14",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/15",
+        "gh_number": 15,
         "status_age_human": "never"
       },
       {
@@ -4431,7 +4579,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-13",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/14",
+        "gh_number": 14,
         "status_age_human": "never"
       },
       {
@@ -4456,7 +4605,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-12",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/13",
+        "gh_number": 13,
         "status_age_human": "never"
       },
       {
@@ -4481,7 +4631,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-11",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/12",
+        "gh_number": 12,
         "status_age_human": "never"
       },
       {
@@ -4506,7 +4657,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-10",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/11",
+        "gh_number": 11,
         "status_age_human": "never"
       },
       {
@@ -4531,7 +4683,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-9",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/10",
+        "gh_number": 10,
         "status_age_human": "never"
       },
       {
@@ -4556,7 +4709,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-8",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/9",
+        "gh_number": 9,
         "status_age_human": "never"
       },
       {
@@ -4589,7 +4743,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-7",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/8",
+        "gh_number": 8,
         "status_age_human": "never"
       },
       {
@@ -4614,7 +4769,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-6",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/7",
+        "gh_number": 7,
         "status_age_human": "never"
       },
       {
@@ -4639,7 +4795,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-5",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/6",
+        "gh_number": 6,
         "status_age_human": "never"
       },
       {
@@ -4664,7 +4821,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-4",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/4",
+        "gh_number": 4,
         "status_age_human": "never"
       },
       {
@@ -4689,7 +4847,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-3",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/3",
+        "gh_number": 3,
         "status_age_human": "never"
       },
       {
@@ -4714,7 +4873,8 @@
         ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-2",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/2",
+        "gh_number": 2,
         "status_age_human": "never"
       },
       {
@@ -4753,7 +4913,8 @@
           }
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-1",
-        "gh_url": null,
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/1",
+        "gh_number": 1,
         "status_age_human": "never"
       }
     ],
@@ -4765,49 +4926,476 @@
     },
     "todo": 3,
     "tracker_last_polled": "2026-07-12T21:26:24Z",
-    "tracker_age_s": 59368,
-    "tracker_age_human": "16h 29m",
+    "tracker_age_s": 61889,
+    "tracker_age_human": "17h 11m",
     "tracker_stale": true,
     "gh_base": "https://github.com/ainstance-labs/gosleep",
-    "gh_issue_links": false,
-    "gh_why": "the Jira→GitHub issue mirror is recorded only in handoff prose; no machine-readable source on disk maps a key to an issue number, so this column is left empty rather than filled with a plausible wrong link"
+    "epics": [
+      {
+        "key": "GSL-81",
+        "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-81",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/93",
+        "gh_number": 93,
+        "pr": {
+          "number": 102,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/102",
+          "title": "GSL-81 [Repo][Tooling] Фаза 4 — Laboratory (auto-doc)"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-89",
+          "GSL-86",
+          "GSL-83",
+          "GSL-88",
+          "GSL-87",
+          "GSL-85",
+          "GSL-84",
+          "GSL-82"
+        ],
+        "task_count": 8,
+        "commits": 11,
+        "by_status": {
+          "Done": 5,
+          "To Do": 3
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-72",
+        "summary": "GSL-72: [Skill][Process] Question buffer + decision manifest — PRD Phase 3",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-72",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/83",
+        "gh_number": 83,
+        "pr": {
+          "number": 92,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/92",
+          "title": "GSL-72 Question buffer + decision manifest — PRD Phase 3"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-67",
+          "GSL-80",
+          "GSL-79",
+          "GSL-78",
+          "GSL-77",
+          "GSL-76",
+          "GSL-75",
+          "GSL-74",
+          "GSL-73"
+        ],
+        "task_count": 9,
+        "commits": 9,
+        "by_status": {
+          "unknown": 9
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-65",
+        "summary": "GSL-65: [Skill][Tooling] Self-pulse + night mode — PRD Phase 2",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-65",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/75",
+        "gh_number": 75,
+        "pr": {
+          "number": 82,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/82",
+          "title": "GSL-65 Self-pulse + night mode — PRD Phase 2"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-69",
+          "GSL-71",
+          "GSL-70",
+          "GSL-68",
+          "GSL-67",
+          "GSL-66"
+        ],
+        "task_count": 6,
+        "commits": 7,
+        "by_status": {
+          "unknown": 6
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-58",
+        "summary": "GSL-58: [Research][Docs] AutoSK Anatomy v2 — помодульный код-анализ (CODE-ONLY)",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-58",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/67",
+        "gh_number": 67,
+        "pr": {
+          "number": 74,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/74",
+          "title": "GSL-58 AutoSK Anatomy v2 — помодульный код-анализ"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-64",
+          "GSL-63",
+          "GSL-62",
+          "GSL-61",
+          "GSL-60",
+          "GSL-59"
+        ],
+        "task_count": 6,
+        "commits": 6,
+        "by_status": {
+          "unknown": 6
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-49",
+        "summary": "GSL-49: [Skill][Tooling] Watchdog над оркестратором — PRD Phase 1",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-49",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/57",
+        "gh_number": 57,
+        "pr": {
+          "number": 66,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/66",
+          "title": "GSL-49 Watchdog над оркестратором — PRD Phase 1"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-52",
+          "GSL-51",
+          "GSL-57",
+          "GSL-55",
+          "GSL-54",
+          "GSL-53",
+          "GSL-56",
+          "GSL-50"
+        ],
+        "task_count": 8,
+        "commits": 10,
+        "by_status": {
+          "unknown": 8
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-41",
+        "summary": "GSL-41: [Research][Docs] Orchestration deep-research → reports + PRD",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-41",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/48",
+        "gh_number": 48,
+        "pr": {
+          "number": 56,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/56",
+          "title": "GSL-41 Orchestration deep-research — reports + PRD"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-47",
+          "GSL-48",
+          "GSL-46",
+          "GSL-45",
+          "GSL-44",
+          "GSL-43",
+          "GSL-42"
+        ],
+        "task_count": 7,
+        "commits": 8,
+        "by_status": {
+          "unknown": 7
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-37",
+        "summary": null,
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-37",
+        "gh_url": null,
+        "gh_number": null,
+        "pr": {
+          "number": 47,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/47",
+          "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-38",
+          "GSL-39",
+          "GSL-40"
+        ],
+        "task_count": 3,
+        "commits": 4,
+        "by_status": {
+          "unknown": 3
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-31",
+        "summary": null,
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-31",
+        "gh_url": null,
+        "gh_number": null,
+        "pr": {
+          "number": 42,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/42",
+          "title": "GSL-31 Close eval-validated gaps — SC-09 fixed, SC-19 improved (calibration + mechanism-targeted fixes)"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-36",
+          "GSL-32",
+          "GSL-34",
+          "GSL-33",
+          "GSL-35"
+        ],
+        "task_count": 5,
+        "commits": 5,
+        "by_status": {
+          "unknown": 5
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-24",
+        "summary": null,
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-24",
+        "gh_url": null,
+        "gh_number": null,
+        "pr": {
+          "number": 35,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/35",
+          "title": "GSL-24 Harness hardening v2 — concrete skill fixes for the 4 eval-failed behaviors"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-29",
+          "GSL-28",
+          "GSL-27",
+          "GSL-26",
+          "GSL-25",
+          "GSL-30"
+        ],
+        "task_count": 6,
+        "commits": 6,
+        "by_status": {
+          "unknown": 6
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-19",
+        "summary": "GSL-19: [Evals] Behavioral validation of the hardened skill — efficient run",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-19",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/22",
+        "gh_number": 22,
+        "pr": {
+          "number": 27,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/27",
+          "title": "GSL-19 Behavioral validation of the hardened skill — efficient run"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-21",
+          "GSL-23",
+          "GSL-22",
+          "GSL-20"
+        ],
+        "task_count": 4,
+        "commits": 4,
+        "by_status": {
+          "unknown": 4
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-15",
+        "summary": "GSL-15: [Skill][Tooling] Vendor all delivery skills — gosleep as source of truth for the full methodology",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-15",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/17",
+        "gh_number": 17,
+        "pr": {
+          "number": 21,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/21",
+          "title": "GSL-15 Vendor all delivery skills — gosleep as source of truth for the full methodology"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-18",
+          "GSL-17",
+          "GSL-16"
+        ],
+        "task_count": 3,
+        "commits": 3,
+        "by_status": {
+          "unknown": 3
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-7",
+        "summary": "GSL-7: [Skill][Process] Harness hardening — close skill-gaps & extend eval coverage",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-7",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/8",
+        "gh_number": 8,
+        "pr": {
+          "number": 16,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/16",
+          "title": "GSL-7 Harness hardening — close skill-gaps & extend eval coverage"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-13",
+          "GSL-12",
+          "GSL-11",
+          "GSL-10",
+          "GSL-9",
+          "GSL-8",
+          "GSL-6",
+          "GSL-14"
+        ],
+        "task_count": 8,
+        "commits": 8,
+        "by_status": {
+          "unknown": 8
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-1",
+        "summary": "GSL-1: [Repo][Process] Project initialization — import harness v0, wire tracker + GitHub",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-1",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/1",
+        "gh_number": 1,
+        "pr": {
+          "number": 5,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/5",
+          "title": "GSL-1 Project initialization — import harness v0, wire tracker + GitHub"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-4",
+          "GSL-5",
+          "GSL-3",
+          "GSL-2"
+        ],
+        "task_count": 4,
+        "commits": 4,
+        "by_status": {
+          "unknown": 4
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
+      {
+        "key": "GSL-90",
+        "summary": "GSL-90: [Repo][Tooling] Фаза 5 — UI оркестрации (static v1)",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-90",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/103",
+        "gh_number": 103,
+        "pr": null,
+        "pr_why": "no pull request names this epic",
+        "tasks": [
+          "GSL-95",
+          "GSL-94",
+          "GSL-93",
+          "GSL-92",
+          "GSL-101",
+          "GSL-91"
+        ],
+        "task_count": 6,
+        "commits": 7,
+        "by_status": {
+          "unknown": 6
+        },
+        "membership": "branch",
+        "membership_why": "read off the epic's branch, which the trunk does not carry yet",
+        "merged": false
+      }
+    ],
+    "gh_issue_links": true,
+    "gh_why": ""
   },
   "fleet": {
     "open_workers": 1,
     "cap": 3,
     "free_slots": 2,
-    "cycle": 54,
+    "cycle": 55,
     "orchestrator_status": "ok",
-    "orchestrator_context_pct": 20,
+    "orchestrator_context_pct": 28,
     "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
     "known": true,
     "roster": [
       {
         "actor": "dd3edd33",
-        "events": 5,
-        "last_ts": "2026-07-13T13:51:35Z",
+        "events": 13,
+        "last_ts": "2026-07-13T14:28:21Z",
         "types": {
-          "agent.turn_ended": 2,
-          "handoff.written": 2,
+          "agent.turn_ended": 9,
+          "handoff.written": 3,
           "pane.started": 1
         },
-        "last_age_s": 257,
-        "last_age_human": "4m"
+        "last_age_s": 572,
+        "last_age_human": "9m"
+      },
+      {
+        "actor": "impl-ui-3",
+        "events": 1,
+        "last_ts": "2026-07-13T14:14:43Z",
+        "types": {
+          "question.posed": 1
+        },
+        "last_age_s": 1390,
+        "last_age_human": "23m"
       },
       {
         "actor": "claude",
-        "events": 196,
-        "last_ts": "2026-07-13T13:44:36Z",
+        "events": 205,
+        "last_ts": "2026-07-13T14:14:35Z",
         "types": {
-          "agent.idle": 37,
-          "dev_history.written": 34,
+          "agent.idle": 38,
+          "dev_history.written": 35,
           "task.completed": 26,
-          "vcs.commit": 17,
-          "tracker.issue.transitioned": 16,
-          "agent.turn_ended": 15
+          "tracker.issue.transitioned": 18,
+          "vcs.commit": 18,
+          "agent.turn_ended": 16
         },
-        "last_age_s": 676,
-        "last_age_human": "11m"
+        "last_age_s": 1398,
+        "last_age_human": "23m"
       },
       {
         "actor": "orchestrator",
@@ -4818,8 +5406,8 @@
           "handoff.written": 1,
           "question.auto_resolved": 1
         },
-        "last_age_s": 996,
-        "last_age_human": "16m"
+        "last_age_s": 3517,
+        "last_age_human": "58m"
       },
       {
         "actor": "ef6c3777",
@@ -4833,8 +5421,8 @@
           "task.completed": 2,
           "pane.ended": 1
         },
-        "last_age_s": 1428,
-        "last_age_human": "23m"
+        "last_age_s": 3949,
+        "last_age_human": "1h 5m"
       },
       {
         "actor": "impl-ui-1",
@@ -4843,8 +5431,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 4049,
-        "last_age_human": "1h 7m"
+        "last_age_s": 6570,
+        "last_age_human": "1h 49m"
       },
       {
         "actor": "ab3b55ad5cc3bfb36",
@@ -4854,8 +5442,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 6537,
-        "last_age_human": "1h 48m"
+        "last_age_s": 9058,
+        "last_age_human": "2h 30m"
       },
       {
         "actor": "a1a48411925ec4eae",
@@ -4864,8 +5452,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 6603,
-        "last_age_human": "1h 50m"
+        "last_age_s": 9124,
+        "last_age_human": "2h 32m"
       },
       {
         "actor": "a503045747e54a2aa",
@@ -4874,8 +5462,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 6665,
-        "last_age_human": "1h 51m"
+        "last_age_s": 9186,
+        "last_age_human": "2h 33m"
       },
       {
         "actor": "ac46c415bfdb4e55a",
@@ -4884,8 +5472,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 6697,
-        "last_age_human": "1h 51m"
+        "last_age_s": 9218,
+        "last_age_human": "2h 33m"
       },
       {
         "actor": "aaea689860c6cccdb",
@@ -4894,8 +5482,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 6729,
-        "last_age_human": "1h 52m"
+        "last_age_s": 9250,
+        "last_age_human": "2h 34m"
       },
       {
         "actor": "a1f95c5ec2e2d74ae",
@@ -4904,8 +5492,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 6764,
-        "last_age_human": "1h 52m"
+        "last_age_s": 9285,
+        "last_age_human": "2h 34m"
       },
       {
         "actor": "a2ff6cd2567d65e2b",
@@ -4914,8 +5502,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 6796,
-        "last_age_human": "1h 53m"
+        "last_age_s": 9317,
+        "last_age_human": "2h 35m"
       },
       {
         "actor": "gsl90-setup",
@@ -4925,8 +5513,8 @@
           "handoff.written": 1,
           "question.posed": 1
         },
-        "last_age_s": 7314,
-        "last_age_human": "2h 1m"
+        "last_age_s": 9835,
+        "last_age_human": "2h 43m"
       },
       {
         "actor": "a690ba064bba794be",
@@ -4937,8 +5525,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 7512,
-        "last_age_human": "2h 5m"
+        "last_age_s": 10033,
+        "last_age_human": "2h 47m"
       },
       {
         "actor": "a61075657b8f0649b",
@@ -4947,8 +5535,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 7529,
-        "last_age_human": "2h 5m"
+        "last_age_s": 10050,
+        "last_age_human": "2h 47m"
       },
       {
         "actor": "poll-fill",
@@ -4960,8 +5548,8 @@
           "vcs.pr.merged": 1,
           "vcs.pr.opened": 1
         },
-        "last_age_s": 8317,
-        "last_age_human": "2h 18m"
+        "last_age_s": 10838,
+        "last_age_human": "3h 0m"
       },
       {
         "actor": "fixer-lab",
@@ -4970,8 +5558,8 @@
         "types": {
           "handoff.written": 1
         },
-        "last_age_s": 14210,
-        "last_age_human": "3h 56m"
+        "last_age_s": 16731,
+        "last_age_human": "4h 38m"
       },
       {
         "actor": "aa7a28cca3c73abc5",
@@ -4981,8 +5569,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 16277,
-        "last_age_human": "4h 31m"
+        "last_age_s": 18798,
+        "last_age_human": "5h 13m"
       },
       {
         "actor": "a198207c1aae6407d",
@@ -4991,18 +5579,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 16319,
-        "last_age_human": "4h 31m"
-      },
-      {
-        "actor": "a712e803767d9690f",
-        "events": 1,
-        "last_ts": "2026-07-13T09:23:20Z",
-        "types": {
-          "agent.terminated": 1
-        },
-        "last_age_s": 16352,
-        "last_age_human": "4h 32m"
+        "last_age_s": 18840,
+        "last_age_human": "5h 14m"
       }
     ],
     "blind_spots": [
@@ -5600,11 +6178,23 @@
         "cache_write": 729352,
         "running_total": 6707000,
         "running_cycles": 78
+      },
+      {
+        "raw": "cycle=54 worker=impl-ui-2 model=claude-opus-4-8 (handoff 30 self-report; транскрипт 2198edb8-*.jsonl verify, 117 записей, других моделей нет) tokens_out=163066 tokens_in=229 cache_read=11759377 cache_write=413748 | running: cycles=79 total≈6870000 (+гэпы 2a/32/35/48-52) [GSL-95 Questions deadline co",
+        "cycle": 54,
+        "worker": "impl-ui-2",
+        "model": "claude-opus-4-8",
+        "tokens_out": 163066,
+        "tokens_in": 229,
+        "cache_read": 11759377,
+        "cache_write": 413748,
+        "running_total": 6870000,
+        "running_cycles": 79
       }
     ],
     "unparsed": 2,
-    "cumulative_total": 6707000,
-    "cumulative_cycles": 78,
+    "cumulative_total": 6870000,
+    "cumulative_cycles": 79,
     "ceiling": null,
     "ceiling_source": null,
     "ceiling_why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
@@ -5630,9 +6220,21 @@
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "9197f88",
-    "dirty_paths": 22,
+    "head": "4ea51f5",
+    "dirty_paths": 25,
     "commits_on_date": [
+      {
+        "sha": "4ea51f5",
+        "author": "R",
+        "ts": "2026-07-13T16:00:02+02:00",
+        "subject": "GSL-95 [Docs] Handoff 30 — цикл 54 (impl-ui-2): F5-S2 закрыт; дефолты по таймеру не применяет никто"
+      },
+      {
+        "sha": "164bfa5",
+        "author": "R",
+        "ts": "2026-07-13T15:58:03+02:00",
+        "subject": "GSL-95 [UI] Questions deadline countdown (F5-S2)"
+      },
       {
         "sha": "9197f88",
         "author": "R",
@@ -5796,23 +6398,23 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T13:51:13Z",
-      "cycle": 54,
-      "context_pct": 20,
+      "ts": "2026-07-13T14:28:07Z",
+      "cycle": 55,
+      "context_pct": 28,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse 1 — impl-ui-2 mid-cycle"
+      "note": "pulse 5"
     },
     "live_status": "▶ AUTONOMOUS MODE 2026-07-13 13:38Z (fresh orchestrator, Opus 4.7, resumed из handoff 29 после roll ~14:16Z прошлой сессии на hb 80%). Phase 4 CLOSED (main @ 5fd1de2 = PR #102 merged). **Phase 5 UI in flight** on ветке `GSL-90-ui-orchestration @ 9197f88` (5 коммитов от main). **F5-S1 CLOSED** (cycle 53 impl-ui-1 DONE ~14:15Z: GSL-92 `6b4cbed` TS scaffold + Python view -290 lines + degrade-without-node · GSL-93 `d2b2a20` data contract gosleep.lab.render/3 + 7 screens · GSL-94 `9197f88` autonomy runway=min(6 axes) с limiting-axis trace (stops/degrades/completes; clear≠unknown). Smoke 174/174; hooks-verify 14/14; tsc clean; handoff 29 written). **CYCLE 54 impl-ui-2 SPAWNING ~13:38Z** — GSL-95 Questions+deadline countdown (F5-S2), MUST re-grade on page open (как staleness banner в GSL-86/89, не freeze at build time). После: GSL-96 Tasks (F5-S3) → GSL-97 Timeline+Library → GSL-98 Fleet+Cost (C5 collision передан честно: worker name в data.raw.teammate_name; impl-ui-1 не ослабил safety, скелет на actor) → GSL-99 self-health (R5.3) → GSL-100 приёмка+dev_history+contract (F5-S4) → mechanic PR → reviewer → (fixer) → finalizer → Phase 6 Mobile без остановки. Открытые DECISION: q-2026-07-12-001 (due 08:00Z passed → auto-resolving к дефолту: детерминированный скелет + claude -p опционально; reversibility high); q-2026-07-13-001 (framework UI, дефолт Preact+esbuild применён работает, deadline 2026-07-14T06Z); q-2026-07-13-002 (token ceiling manifest §5 не существует машиночитаемо, дефолт статус-кво high). 0 BLOCKER. next Jira=GSL-102+, next GH=#115. orchestrator pane=%193 | latest handoff=docs/handoff/29-2026-07-13-handoff-impl-ui-1.md | questions: open=3 (0B/3D/0C/0F) lines=3 → resolving q-2026-07-12-001 → open=2 (0B/2D/0C/0F). Fleet cap 3; open_workers=1 (impl-ui-2).",
-    "telemetry_last": "cycle=53 worker=impl-ui-1 model=claude-opus-4-8 (handoff 29 self-report + verify) tokens_out=~460940 tokens_in=~582 cache_read=~55349599 cache_write=~729352 | running: cycles=78 total≈6707000 (+гэпы 2a/32/35/48-52) [GSL-92 TS scaffold + GSL-93 contract + GSL-94 runway min(6 axes) с limiting-axis trace, F5-S1 CLOSED, smoke 174/174, hit MY hb 80% ceiling → orchestrator roll]"
+    "telemetry_last": "cycle=54 worker=impl-ui-2 model=claude-opus-4-8 (handoff 30 self-report; транскрипт 2198edb8-*.jsonl verify, 117 записей, других моделей нет) tokens_out=163066 tokens_in=229 cache_read=11759377 cache_write=413748 | running: cycles=79 total≈6870000 (+гэпы 2a/32/35/48-52) [GSL-95 Questions deadline countdown 164bfa5 + handoff 30 4ea51f5, F5-S2 CLOSED via mutation-tested synthetic fixture (stub-DOM + stubbed Date исполняет реальный клиентский bundle), smoke 174→182/182 (+8), tsc clean; NEW FACT: li"
   },
   "library": {
     "digests": [
       {
         "href": "../digest/2026-07-13-morning.md",
         "name": "2026-07-13-morning.md",
-        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 13:44)"
+        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 14:18)"
       },
       {
         "href": "../digest/2026-07-12-morning.md",
@@ -5825,6 +6427,11 @@
         "href": "../../handoff/ORCHESTRATION-STATE.md",
         "name": "ORCHESTRATION-STATE.md",
         "title": "ORCHESTRATION-STATE — gosleep (Orchestration Harness)"
+      },
+      {
+        "href": "../../handoff/30-2026-07-13-handoff-impl-ui-2.md",
+        "name": "30-2026-07-13-handoff-impl-ui-2.md",
+        "title": "Handoff — gosleep — 2026-07-13 (цикл 54, impl-ui-2: GSL-95 — обратный отсчёт дедлайнов, F5-S2)"
       },
       {
         "href": "../../handoff/29-2026-07-13-handoff-impl-ui-1.md",
@@ -5973,6 +6580,11 @@
       }
     ],
     "dev_history": [
+      {
+        "href": "../../dev_history/GSL-95-phase5-cycle54-questions-countdown.md",
+        "name": "GSL-95-phase5-cycle54-questions-countdown.md",
+        "title": "GSL-95 — Questions: обратный отсчёт дедлайнов (Фаза 5, F5-S2)"
+      },
       {
         "href": "../../dev_history/GSL-94-phase5-cycle53-runway-indicator.md",
         "name": "GSL-94-phase5-cycle53-runway-indicator.md",
@@ -6167,11 +6779,6 @@
         "href": "../../dev_history/GSL-55-phase-gsl49-route-through-reap.md",
         "name": "GSL-55-phase-gsl49-route-through-reap.md",
         "title": "GSL-55 — Route-through-reap на kill + формат watchdog-ledger"
-      },
-      {
-        "href": "../../dev_history/GSL-54-phase-gsl49-gastown-debounce.md",
-        "name": "GSL-54-phase-gsl49-gastown-debounce.md",
-        "title": "GSL-54 — Gastown-debounce: startup grace + zombie(3) + kill cooldown + mass-death + single-flight"
       }
     ],
     "reports": [

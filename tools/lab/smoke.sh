@@ -351,7 +351,7 @@ grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
 # cannot have been built from it, whatever they say. The renderer THROWS on a schema it does not
 # know (tools/lab/ui/src/render.tsx) rather than rendering blank cards — so this string is load-
 # bearing on both sides, and bumping it is a two-file change, on purpose.
-jq -e '.schema == "gosleep.lab.render/3"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+jq -e '.schema == "gosleep.lab.render/4"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
   && ok "GSL-92: render_bundle.json is valid and carries its schema" \
   || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
 [[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
@@ -1101,6 +1101,175 @@ grep -q 'LATER_TXT=PAST DUE' <<<"$RG" && grep -q 'LATER_PAST=true' <<<"$RG" \
 grep -qE 'SLOW_TXT=auto-applies in 2h [0-9]+m' <<<"$RG" \
   && ok "F5-S2: a browser clock 5h SLOW buys the deadline no extra time (never lengthens; max(now, built))" \
   || bad "F5-S2: a slow browser clock lengthened the countdown — the page argued itself out of a deadline ($RG)"
+
+# ───────────────── GSL-96 (F5-S3): the Tasks board, keyed by Jira ─────────────────
+# A repo of its very own, with a REAL git history, because that is the thing under test: the epic
+# rollup reads membership off the TOPOLOGY (one branch per epic, one commit per task, regular merge).
+#
+#   main ──●───────────────────●(merge #999: GSL-700-alpha)──●  <- trunk
+#           \                 /                               \
+#            ●GSL-701 ●GSL-702                                 ●GSL-801  (GSL-800-beta, NOT merged)
+#
+# GSL-701 was polled and is Done. GSL-702 has a COMMIT AND NO POLL — that is the row the whole board
+# turns on, and it must read `unknown`. GSL-702 also has no GitHub issue, while the mirror IS readable
+# (injected below): so its GH cell must be an honest dash, not a plausible /issues/702.
+FD="$WORK/f5s3"; rm -rf "$FD"; mkdir -p "$FD/docs/lab/events"
+git init -q -b main "$FD" 2>/dev/null || { git init -q "$FD"; git -C "$FD" checkout -q -b main 2>/dev/null; }
+git -C "$FD" config user.email smoke@gosleep.local; git -C "$FD" config user.name smoke
+gc() { git -C "$FD" commit -q --allow-empty -m "$1"; }
+gc "chore: seed"
+git -C "$FD" checkout -q -b GSL-700-alpha
+gc "GSL-701 [Tooling] alpha one"
+gc "GSL-702 [Tooling] alpha two"
+git -C "$FD" checkout -q main
+git -C "$FD" merge -q --no-ff -m "Merge pull request #999 from org/GSL-700-alpha" GSL-700-alpha
+git -C "$FD" checkout -q -b GSL-800-beta
+gc "GSL-801 [UI] beta one"
+git -C "$FD" checkout -q main
+
+# The Jira status of GSL-701, polled TWO HOURS before this build. Nothing has ever polled GSL-702.
+F_POLLED="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-701","status":"Done","summary":"alpha one","occurred_at":"%s"}}\n' \
+  "$F_POLLED" "$F_POLLED" > "$FD/docs/lab/events/$TODAY.jsonl"
+
+# The GitHub mirror, handed to the build in a file (GOSLEEP_GH_JSON) exactly as `gh` would return it.
+# The laboratory holds no credentials (C1) and smoke must be hermetic — but a test that only ever sees
+# the DEGRADED path never sees the column it is guarding, and that column is half of F5-S3.
+cat > "$FD/gh.json" <<'JSON'
+{"prs": [{"number": 999, "title": "GSL-700 the alpha epic", "state": "MERGED",
+          "url": "https://github.com/org/repo/pull/999", "headRefName": "GSL-700-alpha"}],
+ "issues": [{"number": 700, "title": "GSL-700: [Repo] the alpha epic", "state": "CLOSED",
+             "url": "https://github.com/org/repo/issues/700", "labels": [{"name": "epic"}]},
+            {"number": 701, "title": "GSL-701: [Tooling] alpha one", "state": "CLOSED",
+             "url": "https://github.com/org/repo/issues/701", "labels": [{"name": "task"}]},
+            {"number": 800, "title": "GSL-800: [Repo] the beta epic", "state": "OPEN",
+             "url": "https://github.com/org/repo/issues/800", "labels": [{"name": "epic"}]},
+            {"number": 801, "title": "GSL-801: [UI] beta one", "state": "OPEN",
+             "url": "https://github.com/org/repo/issues/801", "labels": [{"name": "task"}]}]}
+JSON
+GOSLEEP_GH_JSON="$FD/gh.json" bash "$CH" --repo "$FD" --no-poll --quiet --json >/dev/null 2>&1
+FB="$FD/docs/lab/render_bundle.json"; FP="$FD/docs/lab/site/tasks.html"
+
+# 1. The merged epic folds up the commits its MERGE COMMIT actually carried — not a PR-body checklist,
+#    which is prose we write by hand and which reports the epic we MEANT to ship.
+[[ "$(jq -r '.tasks.epics[] | select(.key=="GSL-700") | .membership' "$FB" 2>/dev/null)" == "merge-commit" \
+   && "$(jq -r '[.tasks.epics[] | select(.key=="GSL-700") | .tasks[]] | sort | join(",")' "$FB" 2>/dev/null)" == "GSL-701,GSL-702" ]] \
+  && ok "F5-S3: a merged epic rolls up the tasks its merge commit carried (mc^1..mc^2)" \
+  || bad "F5-S3: merged-epic membership wrong ($(jq -c '.tasks.epics[]|select(.key=="GSL-700")|{membership,tasks}' "$FB" 2>/dev/null))"
+
+# 2. ...and the epic still in flight rolls up its branch. This is the one the owner is standing in.
+[[ "$(jq -r '.tasks.epics[] | select(.key=="GSL-800") | .membership' "$FB" 2>/dev/null)" == "branch" \
+   && "$(jq -r '[.tasks.epics[] | select(.key=="GSL-800") | .tasks[]] | join(",")' "$FB" 2>/dev/null)" == "GSL-801" ]] \
+  && ok "F5-S3: an epic in flight rolls up the branch the trunk does not carry yet" \
+  || bad "F5-S3: in-flight epic membership wrong ($(jq -c '.tasks.epics[]|select(.key=="GSL-800")|{membership,tasks}' "$FB" 2>/dev/null))"
+
+# 3. The epic shows its PR AND its state (the invariant is one PR per epic).
+[[ "$(jq -r '.tasks.epics[] | select(.key=="GSL-700") | .pr.number' "$FB" 2>/dev/null)" == "999" \
+   && "$(jq -r '.tasks.epics[] | select(.key=="GSL-700") | .pr.state' "$FB" 2>/dev/null)" == "MERGED" ]] \
+  && ok "F5-S3: the epic shows its PR and the PR's state" \
+  || bad "F5-S3: the epic's PR is missing or stateless"
+
+# 4. AN EPIC WITH NO PR SAYS SO. It does not borrow its own GitHub ISSUE number: issues and PRs share
+#    one numbering space, so the wrong link would not 404 — it would RESOLVE, on a real page that is
+#    not the thing the owner clicked. (GSL-90 is in exactly this state today: branch pushed, no PR.)
+PRLESS="$(python3 - "$FP" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'<details class="epic" data-epic="GSL-800".*?</details>', h, re.S)
+blk = m.group(0) if m else ""
+print("BLOCK=%s|SAYS_NONE=%s|PR_LINK=%s" % ("yes" if blk else "no",
+                                            "yes" if 'data-pr="none"' in blk else "no",
+                                            "yes" if "/pull/" in blk else "no"))
+PY
+)"
+grep -q 'SAYS_NONE=yes' <<<"$PRLESS" && grep -q 'PR_LINK=no' <<<"$PRLESS" \
+  && ok "F5-S3: an epic with no PR says 'no PR' — it does not dress its issue number as one" \
+  || bad "F5-S3: the PR-less epic either stays silent or invented a pull-request link ($PRLESS)"
+
+# 5. ⭐ THE ONE THAT MATTERS. GSL-702 has a commit and no poll. A board that reads a commit as "Done"
+#    passes every other check on this page and lies in the single column the owner uses to decide
+#    whether he can go to sleep. 92 of 101 real rows are `unknown` for exactly this reason.
+ST702="$(python3 - "$FP" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'<tr id="task-GSL-702">(.*?)</tr>', h, re.S)
+if not m: print("NO_ROW"); raise SystemExit
+cells = re.findall(r"<td[^>]*>(.*?)</td>", m.group(1), re.S)
+status = re.sub(r"<[^>]+>", "", cells[2]) if len(cells) > 2 else "?"
+print("STATUS=%s|HAS_COMMIT=%s" % (status.strip(), "yes" if "/commit/" in m.group(1) or len(cells) > 4 and cells[4].strip() else "no"))
+PY
+)"
+grep -q 'STATUS=unknown' <<<"$ST702" && ! grep -qi 'STATUS=.*done' <<<"$ST702" \
+  && ok "F5-S3 ⭐ a task with a commit and no poll stays 'unknown' — a commit is not a Jira status" \
+  || bad "F5-S3 ⭐ the board INFERRED a status from a commit — the tasty-lunch default ($ST702)"
+
+# 6. The mirror was read, so the GH column is filled — for the keys that ARE in it. GSL-702 has no
+#    issue, and its cell is a dash: the column does not extrapolate /issues/702 from its neighbours.
+[[ "$(jq -r '.tasks.gh_issue_links' "$FB" 2>/dev/null)" == "true" ]] \
+  && grep -q 'href="https://github.com/org/repo/issues/701"' "$FP" \
+  && ! grep -q 'issues/702' "$FP" \
+  && ok "F5-S3: GH issue links come from the mirror; a key absent from it gets a dash, not a guess" \
+  || bad "F5-S3: the GH column is missing, or it invented an issue number for GSL-702"
+
+# 7. NO LINK LEADS NOWHERE (F5-S3, verbatim). Every in-page anchor the rollup emits must land on a row
+#    that exists. This is a MECHANISM check: it fails if the anchor scheme and the row ids ever drift.
+ANCH="$(python3 - "$FP" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+anchors = set(re.findall(r'href="#task-(GSL-\d+)"', h))
+ids = set(re.findall(r'id="task-(GSL-\d+)"', h))
+print("ANCHORS=%d|DANGLING=%s" % (len(anchors), ",".join(sorted(anchors - ids)) or "none"))
+PY
+)"
+grep -q 'DANGLING=none' <<<"$ANCH" && ! grep -q 'ANCHORS=0' <<<"$ANCH" \
+  && ok "F5-S3: every epic->task anchor lands on a row that exists (no link leads nowhere)" \
+  || bad "F5-S3: the rollup links to a task row that is not on the page ($ANCH)"
+
+# 8. ⭐⭐ THE AGE KEEPS AGING. The status column is fed by hand (C1), so the age printed beside it is
+#    the ONLY thing standing between the owner and a status he thinks is current. Baked at build time,
+#    it understates its own staleness by exactly the hours the owner spent asleep — the reassuring
+#    direction, again. So the page's OWN client bundle is executed here with a stub DOM and a moved
+#    clock: nothing is mocked but the environment.
+F_GEN="$(jq -r .generated_at "$FD/docs/lab/status.json")"
+cat > "$WORK/ages.mjs" <<'JS'
+import { readFileSync } from "node:fs";
+const [path, gen] = process.argv.slice(2);
+const html = readFileSync(path, "utf8");
+const m = html.match(/<script>([\s\S]*?)<\/script>/);          // the inlined client bundle
+if (!m) { console.log("NO_CLIENT=1"); process.exit(0); }
+
+const ages = [...html.matchAll(/<span class="age" data-age-ts="([^"]+)"[^>]*>(.*?)<\/span>/g)]
+  .map(([, iso, txt]) => ({ iso, text: txt.trim() }));
+
+function open(nowMs) {
+  const els = ages.map((a) => ({ dataset: { ageTs: a.iso }, textContent: a.text }));
+  const document = {
+    getElementById: (id) => (id === "staleness" ? { dataset: { generatedAt: gen } } : null),
+    querySelectorAll: (sel) => (sel.includes("age-ts") ? els : []),
+  };
+  new Function("document", "setInterval", "Date", m[1])(
+    document, () => 0, { now: () => nowMs, parse: (s) => Date.parse(s) },
+  );
+  return els;
+}
+const built = Date.parse(gen);
+console.log("BUILT_TXT=" + (ages[0]?.text ?? "-"));
+console.log("LATER_TXT=" + (open(built + 5 * 3600 * 1000)[0]?.textContent ?? "-"));
+console.log("SLOW_TXT="  + (open(built - 5 * 3600 * 1000)[0]?.textContent ?? "-"));
+JS
+AG="$(node "$WORK/ages.mjs" "$FP" "$F_GEN" 2>&1)"
+
+grep -qE 'BUILT_TXT=2h [0-9]+m old' <<<"$AG" \
+  && ok "F5-S3: at build time the status age is honest for generated_at (the no-JS reader is not lied to)" \
+  || bad "F5-S3: the build-time status age is wrong ($(grep '^BUILT_TXT=' <<<"$AG"))"
+
+grep -qE 'LATER_TXT=7h [0-9]+m old' <<<"$AG" \
+  && ok "F5-S3 ⭐ opened 5h after the build, a 2h-old status re-grades to 7h old — the age keeps aging" \
+  || bad "F5-S3 ⭐ the status age is FROZEN at build time — a page read at 04:00 still calls a stale poll fresh ($AG)"
+
+grep -qE 'SLOW_TXT=2h [0-9]+m old' <<<"$AG" \
+  && ok "F5-S3: a browser clock 5h SLOW cannot make the tracker look fresher than the build knew" \
+  || bad "F5-S3: a slow browser clock SHRANK the age — the page argued itself back to freshness ($AG)"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

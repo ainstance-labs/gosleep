@@ -173,7 +173,8 @@ export interface Queue {
 
 export interface TaskRow {
   key: string;
-  /** From `tracker.issue.updated` (src=poll-fill). Only as fresh as the last poll — see `status_age_s`. */
+  /** From `tracker.issue.updated` (src=poll-fill). Only as fresh as the last poll — see `status_age_s`.
+   *  NEVER inferred from a commit: a commit witnesses that code landed, not that Jira said Done. */
   status: string | null;
   status_ts: string | null;
   status_age_s: number | null;
@@ -183,8 +184,32 @@ export interface TaskRow {
   dev_history: { name: string; href: string }[];
   prs: { number?: number; state?: string; url?: string; title?: string }[];
   jira_url: string;
-  /** Always null today: no machine-readable source maps a Jira key to a GitHub issue number. */
+  /** The GitHub issue mirroring this key — read off the issue title through `gh`. Null when this build
+   *  could not reach GitHub (see `TasksBoard.gh_why`), never a guess. */
   gh_url: string | null;
+  gh_number: number | null;
+}
+
+/** How an epic's task list was established. Never prose, always topology — see `membership_why`. */
+export type Membership = "merge-commit" | "branch" | "merged-unwitnessed" | "no-trunk";
+
+export interface EpicRollup {
+  key: string;
+  summary: string | null;
+  jira_url: string;
+  gh_url: string | null;
+  gh_number: number | null;
+  /** The one PR the epic ships under (the invariant is one per epic). Null when none names it — and an
+   *  absent PR is a fact about the delivery, so `pr_why` says it in words rather than leaving a hole. */
+  pr: { number: number | null; state: string | null; url: string | null; title: string | null } | null;
+  pr_why: string | null;
+  tasks: string[];
+  task_count: number;
+  commits: number;
+  by_status: Record<string, number>;
+  membership: Membership;
+  membership_why: string;
+  merged: boolean;
 }
 
 export interface TasksBoard {
@@ -197,7 +222,10 @@ export interface TasksBoard {
   /** True when the board's statuses are older than 12h — a number from the past in the present tense. */
   tracker_stale: boolean;
   gh_base: string | null;
-  gh_issue_links: false;
+  epics: EpicRollup[];
+  /** True when this build read the GitHub issue mirror. False = the GH column is empty ON PURPOSE. */
+  gh_issue_links: boolean;
+  /** Empty when the mirror was read. Otherwise: why the column is blank, in the owner's words. */
   gh_why: string;
 }
 
@@ -324,7 +352,7 @@ export interface Runway {
  * emitting must fail loudly at build time, not render a blank card at 03:00.
  */
 export interface RenderBundle {
-  schema: "gosleep.lab.render/3";
+  schema: "gosleep.lab.render/4";
   runway: Runway;
   generated_at: string;
   generated_by: string;

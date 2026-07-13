@@ -8,7 +8,7 @@
 // a worse one.
 
 import type { Grade } from "./types.js";
-import { countdownText, remainingMs } from "./countdown.js";
+import { ageText, countdownText, elapsedMs, remainingMs } from "./countdown.js";
 
 function readJson<T>(id: string): T | null {
   const el = document.getElementById(id);
@@ -112,5 +112,40 @@ function tickCountdowns(): void {
   setInterval(paint, 1000);
 }
 
+/**
+ * The ages on the Tasks board (PRD R5.2 screen 3, F5-S3): how old each Jira status is, and how long
+ * ago the tracker was last polled at all.
+ *
+ * Same defect as the countdown, opposite sign. The board's statuses are fed by hand (the laboratory
+ * holds no Jira credentials — C1), so the ONLY thing standing between the owner and a status he thinks
+ * is current is the age printed beside it. Bake that age at build time and the page understates its own
+ * staleness by exactly the time the owner spent asleep — the reassuring direction, again.
+ *
+ * `max(now, built)` for the same reason as the countdown: an age may only ever GROW. A reader whose
+ * laptop clock is slow must not be told the tracker is fresher than the build already knew it was.
+ */
+function tickAges(): void {
+  const els = Array.from(document.querySelectorAll<HTMLElement>("[data-age-ts]"));
+  if (els.length === 0) return;
+
+  const built = Date.parse(document.getElementById("staleness")?.dataset["generatedAt"] ?? "");
+
+  const paint = (): void => {
+    const now = Date.now();
+    const clock = isNaN(built) ? now : Math.max(now, built);
+
+    for (const el of els) {
+      const ms = elapsedMs(el.dataset["ageTs"] ?? "", clock);
+      // An unreadable timestamp keeps whatever the server said — it is not aged from an invented one.
+      if (isNaN(ms)) continue;
+      el.textContent = ageText(ms / 1000);
+    }
+  };
+
+  paint(); // ← re-graded ON OPEN, before the first tick.
+  setInterval(paint, 1000);
+}
+
 regradeStaleness();
 tickCountdowns();
+tickAges();

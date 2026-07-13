@@ -89,6 +89,25 @@ footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid 
 .countdown.past-due{color:var(--dead);background:var(--dead-soft);
                     padding:.05rem .35rem;border-radius:.3rem}
 .dim{color:var(--dim)}
+
+/* GSL-96 (F5-S3): the epic rollup and the ages on the board.
+
+   <details> collapses the epic's tasks with no JavaScript at all, which matters twice: the page must
+   open from file:// with nothing loaded, and a fold that depends on a script is a fold that is stuck
+   shut for the reader whose JS is off. Merged epics ship closed (history); the live one ships open —
+   the epic the owner is IN is not a thing he should have to click to see.
+
+   .age is tabular-nums for the same reason .countdown is: it re-computes on open and then ticks. */
+.epic{border:1px solid var(--line);border-radius:.6rem;background:var(--card);
+      padding:.5rem .7rem;margin:.4rem 0}
+.epic > summary{cursor:pointer;line-height:1.9}
+.epic[open] > summary{border-bottom:1px solid var(--line);margin-bottom:.4rem;padding-bottom:.3rem}
+.epic-sum{font-weight:600}
+.age{font-variant-numeric:tabular-nums;color:var(--dim);font-size:.85rem}
+.tag.pr-open{color:var(--ok);border-color:currentColor}
+.tag.pr-merged{color:var(--accent);border-color:currentColor}
+.tag.pr-closed{color:var(--dead);border-color:currentColor}
+
 nav{margin:.4rem 0 .2rem;line-height:2}
 nav a{margin-right:.9rem}
 nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}

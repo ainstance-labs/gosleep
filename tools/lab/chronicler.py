@@ -297,8 +297,32 @@ def load_git(date):
         degrade("git", exc)
     return g
 
+def gh_cache():
+    """An operator may hand the build the GitHub mirror in a file instead of a network call.
+
+    The laboratory holds no credentials (C1) and must build on a machine with no `gh` and no network;
+    it must also be TESTABLE, and a test that can only ever exercise the degraded path is a test that
+    never sees the column it is guarding. So `GOSLEEP_GH_JSON` names a file shaped exactly like what
+    `gh` returns -- {"prs": [...], "issues": [...]} -- and it is used INSTEAD of calling gh. It is an
+    injection point, not a fallback: an unreadable file degrades loudly rather than quietly pretending
+    GitHub said nothing."""
+    path = os.environ.get("GOSLEEP_GH_JSON")
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        return {"prs": d.get("prs") or [], "issues": d.get("issues") or []}
+    except Exception as exc:
+        degrade("gh-cache", exc)
+        return None
+
+
 def load_gh():
     """gh is nice-to-have: offline / unauthenticated / rate-limited must degrade, not fail."""
+    cached = gh_cache()
+    if cached is not None:
+        return cached["prs"]
     prs = []
     try:
         rc, out, err = run(["gh", "pr", "list", "--state", "all", "--limit", "20",
@@ -312,6 +336,36 @@ def load_gh():
     except Exception as exc:
         degrade("gh", exc)
     return prs
+
+
+def load_gh_issues():
+    """The Jira->GitHub issue mirror, which the board was told did not exist.
+
+    It does. It was never on DISK -- the mirror is recorded in handoff prose -- and the previous board
+    concluded from that that no machine-readable source maps a Jira key to an issue number, so it left
+    the column out. But the build already reaches GitHub for pull requests, and the delivery conventions
+    put the key in the issue TITLE ("GSL-101: [Docs] ..."), where a regex can read it. The mirror is
+    machine-readable; it just is not a file.
+
+    The old caution stands and is why this degrades instead of guessing: a plausible link to the WRONG
+    issue is worse than no link, because the owner clicks it once, lands somewhere wrong, and stops
+    trusting the column that was right. So an issue whose title carries no key maps to nothing, and a
+    build with no gh maps NOTHING at all and says so on the page."""
+    cached = gh_cache()
+    if cached is not None:
+        return cached["issues"]
+    issues = []
+    try:
+        rc, out, err = run(["gh", "issue", "list", "--state", "all", "--limit", "300",
+                            "--json", "number,title,state,url,labels"], timeout=25)
+        if rc != 0:
+            raise RuntimeError(err or "gh rc=%d" % rc)
+        issues = json.loads(out or "[]")
+    except FileNotFoundError:
+        degrade("gh-issues", "gh CLI not installed")
+    except Exception as exc:
+        degrade("gh-issues", exc)
+    return issues
 
 def load_heartbeat():
     path = os.path.join(REPO, "docs", "handoff", ".orchestrator-heartbeat")
@@ -516,19 +570,159 @@ def gh_base(remote):
     return "https://github.com/%s/%s" % (m.group(1), m.group(2)) if m else None
 
 
-def tasks_board(events, git, prs):
+LEAD_KEY_RE = re.compile(r"^(GSL-\d+)\b")           # a commit subject STARTS with the task's key
+BRANCH_KEY_RE = re.compile(r"(GSL-\d+)-[\w.-]+$")   # ...and an epic branch is <EPIC-KEY>-<slug>
+
+
+def default_branch():
+    """The trunk an epic branch is measured against. None if this is not a repository with one."""
+    rc, out, _ = run(["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+    if rc == 0 and out:
+        return out
+    for cand in ("origin/main", "main", "origin/master", "master"):
+        if run(["git", "rev-parse", "--verify", "--quiet", cand])[0] == 0:
+            return cand
+    return None
+
+
+def epic_ranges():
+    """Every epic git can see, and the commit range that IS that epic. (key, range, source).
+
+    Membership is read off git TOPOLOGY, and this works only because the delivery conventions make it
+    exact: ONE branch per epic (`<EPIC-KEY>-<slug>`), ONE commit per task (subject starts with the task
+    key), and a REGULAR merge, never a squash. So:
+
+        merged epic     -> the merge commit's second parent IS the epic's own history:  mc^1..mc^2
+        epic in flight  -> its branch is simply not in the trunk yet:              trunk..<branch>
+
+    The PR body carries a task checklist and would have been the easier source. It is the wrong one:
+    it is prose, written by hand, at the moment we OPENED the PR. A rollup built on it reports the epic
+    we meant to ship. The topology reports the one we did -- and when the two disagree, the second is
+    the one the owner needs at 03:00."""
+    out, seen = [], set()
+
+    rc, log, _ = run(["git", "log", "--merges", "-n", "200", "--pretty=%H%x1f%s"])
+    if rc == 0:
+        for line in log.splitlines():
+            sha, _, subj = line.partition("\x1f")
+            m = BRANCH_KEY_RE.search(subj.strip())
+            if m and m.group(1) not in seen:
+                seen.add(m.group(1))
+                out.append((m.group(1), "%s^1..%s^2" % (sha, sha), "merge-commit"))
+
+    trunk = default_branch()
+    rc, refs, _ = run(["git", "for-each-ref", "--format=%(refname:short)",
+                       "refs/heads", "refs/remotes/origin"])
+    if rc == 0:
+        for ref in refs.splitlines():
+            name = ref.split("/", 1)[1] if ref.startswith("origin/") else ref
+            m = re.match(r"(GSL-\d+)-", name)
+            if not m or m.group(1) in seen:
+                continue
+            seen.add(m.group(1))
+            if not trunk:
+                out.append((m.group(1), None, "no-trunk"))
+            elif run(["git", "merge-base", "--is-ancestor", ref, trunk])[0] == 0:
+                # Already in the trunk, yet no merge commit named it: squashed, fast-forwarded, or
+                # merged before the window this build reads. Its tasks are NOT knowable from topology,
+                # and a guess here would put tasks under an epic that never carried them.
+                out.append((m.group(1), None, "merged-unwitnessed"))
+            else:
+                out.append((m.group(1), "%s..%s" % (trunk, ref), "branch"))
+    return out
+
+
+MEMBERSHIP_WHY = {
+    "merge-commit": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+    "branch": "read off the epic's branch, which the trunk does not carry yet",
+    "merged-unwitnessed": "the epic's branch is already in the trunk but no merge commit names it "
+                          "(squashed, fast-forwarded, or older than this build's window), so which "
+                          "tasks it carried is NOT knowable from the topology and is left unclaimed",
+    "no-trunk": "this checkout has no trunk (no main/master) to measure the branch against",
+}
+
+
+def epics_rollup(rows, prs, issues, issue_by_key):
+    """F5-S3, second half: the epic folds up its tasks and shows its PR, and its PR's state.
+
+    The invariant is ONE PR per epic. When there is none -- and today GSL-90 has none, the branch is
+    pushed and the PR is not open -- the card says so. It does not borrow the epic's GitHub ISSUE
+    number and dress it as a pull request: they share a numbering space, so the wrong one is not just
+    wrong, it RESOLVES, and the owner lands on a real page that is not the thing he clicked."""
+    pr_by_key = {}
+    for p in prs:
+        for key in KEY_RE.findall("%s %s" % (p.get("title") or "", p.get("headRefName") or "")):
+            pr_by_key.setdefault(key, p)
+
+    epics = []
+    for key, rng, source in epic_ranges():
+        tasks, commits = [], 0
+        if rng:
+            rc, log, _ = run(["git", "log", "--pretty=%s", rng])
+            if rc == 0:
+                for subj in log.splitlines():
+                    m = LEAD_KEY_RE.match(subj.strip())
+                    if m and m.group(1) != key:
+                        commits += 1
+                        if m.group(1) not in tasks:
+                            tasks.append(m.group(1))
+
+        p = pr_by_key.get(key)
+        issue = issue_by_key.get(key)
+        by_status = tally([{"s": (rows.get(t) or {}).get("status") or "unknown"} for t in tasks], "s")
+        epics.append({
+            "key": key,
+            "summary": (rows.get(key) or {}).get("summary") or (issue or {}).get("title"),
+            "jira_url": "%s/%s" % (JIRA_BASE, key),
+            "gh_url": (issue or {}).get("url"),
+            "gh_number": (issue or {}).get("number"),
+            "pr": {"number": p.get("number"), "state": p.get("state"), "url": p.get("url"),
+                   "title": p.get("title")} if p else None,
+            # An absent PR is a fact about the DELIVERY, not a hole in the page: the invariant says one
+            # PR per epic, so an epic with commits and no PR is work that exists nowhere GitHub can see.
+            "pr_why": None if p else ("no pull request names this epic" +
+                                      ("" if issues or prs else " — and this build could not reach "
+                                       "GitHub at all, so it may exist and be unseen here")),
+            "tasks": tasks,
+            "task_count": len(tasks),
+            "commits": commits,
+            "by_status": by_status,
+            "membership": source,
+            "membership_why": MEMBERSHIP_WHY[source],
+            "merged": source == "merge-commit",
+        })
+    return epics
+
+
+def tasks_board(events, git, prs, issues):
     """The Tasks screen's data (PRD R5.2, screen 3; F5-S3 lands in GSL-96).
 
-    Rows are keyed on the Jira key, and every cell is EARNED. There is no GitHub issue number in any
-    machine-readable source on disk — the Jira->GH mirror is recorded only in handoff prose — so the
-    GH column is simply absent. A plausible-looking link to the wrong issue is worse than no link:
-    the owner clicks it once, lands somewhere wrong, and stops trusting the column that was right.
+    Rows are keyed on the Jira key, and every cell is EARNED — but "earned" turned out to be a higher
+    bar than "on disk". The GH column used to be absent on the grounds that no machine-readable source
+    maps a key to an issue number; the mirror is in fact readable through `gh` (the key is in the issue
+    TITLE), which this build already reaches for pull requests. So the column is filled from GitHub
+    when GitHub answers, and left EMPTY WITH A REASON when it does not. What is still refused is the
+    guess in between.
 
     The tracker STATUS comes from `tracker.issue.updated` (src=poll-fill), and it is only as fresh as
     the last poll — which needs Jira credentials the laboratory does not hold (C1), so in practice it
-    is fed by hand. The row therefore carries the AGE of its status, and the screen shows it."""
+    is fed by hand. The row therefore carries the AGE of its status, and the screen shows it.
+
+    And the status is never INFERRED. Most rows here have a commit and no status, and a commit is the
+    single most tempting thing to read as "Done" — it is not. It witnesses that code landed; it says
+    nothing about what Jira thinks, which is the only thing the status column claims to report. A row
+    that says `unknown` while carrying a commit is not a gap in this board: it is the board declining
+    to answer a question it was never told the answer to."""
     ghb = gh_base(git.get("remote"))
     rows = {}
+
+    # The mirror, read off the issue TITLE ("GSL-101: [Docs] ..."). An issue whose title carries no key
+    # maps to nothing — it is not guessed at by position, adjacency, or creation order.
+    issue_by_key = {}
+    for i in issues or []:
+        m = KEY_RE.search(i.get("title") or "")
+        if m:
+            issue_by_key.setdefault(m.group(1), i)
 
     def row(key):
         return rows.setdefault(key, {
@@ -580,7 +774,12 @@ def tasks_board(events, git, prs):
             row(key)["prs"].append({"number": p.get("number"), "state": p.get("state"),
                                     "url": p.get("url"), "title": p.get("title")})
 
+    for key, i in issue_by_key.items():
+        row(key)["gh_url"] = i.get("url")
+        row(key)["gh_number"] = i.get("number")
+
     for r in rows.values():
+        r.setdefault("gh_number", None)
         age = NOW - parse_ts(r["status_ts"]) if parse_ts(r["status_ts"] or "") else None
         r["status_age_s"] = int(age) if age is not None else None
         r["status_age_human"] = human_age(age)
@@ -605,10 +804,12 @@ def tasks_board(events, git, prs):
         # THE PAST wearing the present tense — and GSL-94's work-remaining clock must refuse it.
         "tracker_stale": (tracker_age is None) or (tracker_age > 12 * 3600),
         "gh_base": ghb,
-        "gh_issue_links": False,
-        "gh_why": "the Jira→GitHub issue mirror is recorded only in handoff prose; no machine-readable "
-                  "source on disk maps a key to an issue number, so this column is left empty rather "
-                  "than filled with a plausible wrong link",
+        "epics": epics_rollup(rows, prs, issues or [], issue_by_key),
+        "gh_issue_links": bool(issue_by_key),
+        "gh_why": "" if issue_by_key else
+                  "this build could not read the GitHub issue mirror (no gh, no network, or no "
+                  "GOSLEEP_GH_JSON), so the GH column is empty rather than filled with a plausible "
+                  "wrong link — the mirror exists, this build simply did not see it",
     }
 
 # ───────────────────────────── staleness (F4-S3) ─────────────────────────────
@@ -1219,7 +1420,7 @@ def build_render_bundle(ctx, status):
     from `events` below, computed once, here. A number the renderer works out for itself is a second
     opinion waiting to disagree with status.json."""
     return {
-        "schema": "gosleep.lab.render/3",
+        "schema": "gosleep.lab.render/4",
         "generated_at": status["generated_at"],
         "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
         "date": ctx["date"],
@@ -1679,6 +1880,7 @@ def main():
         "decisions": load_decisions(),
         "git": load_git(ARGS["date"]),
         "prs": load_gh(),
+        "gh_issues": load_gh_issues(),
         "heartbeat": load_heartbeat(),
         "state": load_state(),
         "narrative": None,
@@ -1686,7 +1888,7 @@ def main():
     ctx["pulses"] = load_heartbeat_history()
     ctx["cost"]   = load_cost(ctx["state"])
     ctx["fleet"]  = fleet_census(events_all, ctx["heartbeat"] or {})
-    ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"])
+    ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"], ctx["gh_issues"])
     ctx["queue"]  = build_queue(questions)
     ctx["runway"] = compute_runway(ctx)
 

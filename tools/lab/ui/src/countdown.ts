@@ -41,6 +41,29 @@ export function countdownText(remainingS: number): string {
   return "PAST DUE by " + dur(-s) + " — still open, so nobody applied the default";
 }
 
+/**
+ * How OLD a fact is, in the same voice (GSL-96, the Tasks board).
+ *
+ * A countdown shrinks and an age grows, but they are one bug: a number baked at build time that the
+ * reader mistakes for a number about NOW. "Last polled 16h ago", built at 23:00 and read at 04:00, is
+ * five hours of staleness the page quietly keeps to itself — and on the Tasks board the whole point of
+ * the age is to tell the owner how far he may trust the status column beside it.
+ *
+ * So it is the same deal as the countdown: server-rendered against `generated_at` (honest with JS off),
+ * re-computed against the reader's clock the moment the page opens. Same formatter, two clocks.
+ */
+export function ageText(elapsedS: number): string {
+  const s = Math.max(0, Math.round(elapsedS));
+  return dur(s) + " old";
+}
+
+/** Milliseconds since `iso`, measured on `nowMs`. NaN if it does not parse. Never negative in prose:
+ *  a fact timestamped in the future is a clock problem, not an age, and `ageText` floors it at zero. */
+export function elapsedMs(iso: string, nowMs: number): number {
+  const t = Date.parse(iso);
+  return isNaN(t) ? NaN : nowMs - t;
+}
+
 /** Milliseconds until `iso`, measured on `nowMs`. NaN if the deadline does not parse — the caller
  *  renders nothing rather than a countdown to an invented instant.
  *
