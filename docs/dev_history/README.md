@@ -109,3 +109,15 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-78 — Morning digest — шаблон 7 секций, provenance-цитаты, morning boundary пишет файл](GSL-78-phase-gsl72-morning-digest.md)
 - [GSL-79 — PULSE-дельты — queue-скан в HEARTBEAT_OK, apply-at-deadline, LIVE-STATUS questions, BLOCKED_ON_HUMAN → queue+reroute](GSL-79-phase-gsl72-pulse-deltas.md)
 - [GSL-80 — Сводка фазы GSL-72 — что дала Phase 3, статус критериев, указатели, что дальше](GSL-80-phase-gsl72-summary.md)
+
+## Epic GSL-81 — Laboratory (auto-doc) (PRD Phase 4)
+
+- [GSL-82 — Леджер-коммит: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL](GSL-82-phase4-cycle44-ledger.md)
+- [GSL-83 — T1 event layer: хуки Claude Code + lab-log.sh (envelope → дневной jsonl, 0 токенов; 5 багов нашёл живой прогон)](GSL-83-phase4-cycle45-hooks-lab-log.md)
+- [GSL-84 — lab-emit: семантические события поверх одного писателя; очередь Фазы 3 сама себя зеркалит в таймлайн (smoke 50/50)](GSL-84-phase4-cycle45-lab-emit-semantic.md)
+- [GSL-85 — docs/lab layout: схема, retention, дисциплина записи (append-only + atomic lab-write), проверенные конкуренцией (smoke 58/58)](GSL-85-phase4-cycle45-docs-lab-layout.md)
+- [GSL-86 — Летописец: детерминированный регенератор status.json + site/ + утреннего дайджеста; мёртвая страница выглядит мёртвой (smoke 88/88)](GSL-86-phase4-cycle46-chronicler.md)
+- [GSL-87 — poll-fill: сверка с git/gh/Jira; поймал 2 коммита, потерянных хуком, и PR, смёрженный из веба (smoke 105/105)](GSL-87-phase4-cycle46-poll-fill.md)
+- [GSL-88 — Хендофф объявляет себя таймлайну: одна строка `handoff.written`, которую хук написать не может (nn/topic/resume)](GSL-88-phase4-cycle47-handoff-written.md)
+- [GSL-89 — Закрытие Фазы 4: контракт свежести, бэкфилл `--ts`/`--supersedes` — и страница, переставшая врать «Live» над трупом (smoke 119/119)](GSL-89-phase4-cycle47-close.md)
+- [GSL-89 — Цикл 50, фиксы по REVIEW-gsl81: фантомный коммит с чужим sha, проза, спорившая с баннером, и приёмка R4.2 на несуществующем доказательстве (smoke 130/130)](GSL-89-phase4-cycle50-review-fixes.md)
