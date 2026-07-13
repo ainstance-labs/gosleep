@@ -55,7 +55,7 @@ earlier line it retires:
 | `agent.spawned` / `agent.terminated` | `SubagentStart` / `SubagentStop` | |
 | `agent.idle` | `TeammateIdle` | ⚠️ never observed yet — see below |
 | `agent.turn_ended` | `Stop` | ✅ verified by a real run |
-| `vcs.commit` / `vcs.push` / `vcs.pr.opened` / `vcs.pr.merged` | `PostToolUse` (Bash) | ✅ verified — a logged sha matched the commit git actually made. ⚠️ but an **empty** `sha` may have no commit behind it at all: the hook fires on the command, not on its success (see below) |
+| `vcs.commit` / `vcs.push` / `vcs.pr.opened` / `vcs.pr.merged` | `PostToolUse` (Bash) | ✅ verified — a logged sha matched the commit git actually made. ⚠️ but an **empty** `sha` may have no commit behind it at all: the hook fires on the command, not on its success. Since GSL-83 (fix) the writer *withholds* the sha rather than guess it — an empty `sha` is now the **deliberate** shape of a commit it could not prove (see below) |
 | `tracker.issue.created` / `.transitioned` / `.updated` | `PostToolUse` (`mcp__atlassian__*`, `gh issue create`) | |
 | `handoff.written` / `dev_history.written` | `PostToolUse` (Write/Edit under `docs/handoff/`, `docs/dev_history/`) | ✅ verified |
 | `api.failure` | `StopFailure` | `data.error_type` = `rate_limit\|overloaded\|server_error\|…` — **this is the quota-window detector Phase 2 wanted, for free.** |
@@ -108,6 +108,25 @@ so a `git commit` that fails still leaves a line claiming a commit happened.
 > `seq` 41), and the empty-sha line is a **phantom**, not a sha-less commit. Verified against `git log`
 > and the log itself, not from memory.
 
+**The phantom had a second, worse form — and it is now closed at the writer** (REVIEW-gsl81 C1, cycle 50).
+The empty-sha line above is the *visible* phantom. The dangerous one was invisible: `git_head()` — added
+in GSL-83 so that a `git commit -q`, which echoes nothing, would not log a sha-less line — simply asked
+git for HEAD. When the commit **failed**, HEAD had not moved, so the fallback returned the sha of the
+*previous, already-logged* commit. The line then carried a **valid, reachable sha** under a message
+belonging to no commit — and every guard below it believes such a line: poll-fill's sha-less refusal
+never sees it, its dedup key (`commit:<sha>`) collides with the real commit's, and the timeline
+double-counts one sha, the second time at a moment when nothing happened. Since the fix, HEAD must earn
+the sha **twice** before the writer will name it:
+
+- **FRESH** — HEAD's committer time is seconds old (`GOSLEEP_HEAD_MAX_AGE_S`, default 15), not this
+  morning's. A stale HEAD is not evidence; it is the previous commit still sitting where it was.
+- **ITS OWN** — HEAD's subject is the `-m` message *this* command asked for. Freshness alone is not
+  enough in a fleet that commits back-to-back: a failure seconds after a real commit would inherit its sha.
+
+Fail either test and the line is written **sha-less** — inert, and precisely the shape poll-fill already
+knows how to handle. The quiet-commit case it was built for still works (pinned in smoke, not argued).
+On doubt the writer says nothing: **a gap is repairable, a lie is not.**
+
 Three consequences, all live:
 
 - **`vcs.commit` from a hook is necessary but not sufficient.** `poll-fill` (below) reconciles
@@ -127,6 +146,13 @@ A related, harmless twin worth knowing before it confuses you: `1da14bf` is in t
 and a real git object — but it is reachable from no branch (it was amended away; the surviving GSL-85
 commit is `e9a1ccc`). Nothing is wrong here. **The timeline records attempts; `git` records outcomes.**
 They are different questions, and the log is not required to agree with `git log --all`.
+
+**Do not promote that into a rule of thumb, though — not for lines written before cycle 50.** "A valid
+sha whose commit reads oddly must be an amend" is the very explanation the C1 phantom hides behind: its
+sha is valid *and* reachable, so it passes that check in silence. For any hook-written `vcs.commit`
+older than the fix, the sha alone proves nothing — check the message against the commit
+(`git log -1 --format=%s <sha>`). Lines written since carry a sha only when the writer could prove that
+HEAD was both fresh and its own.
 
 To re-settle any of this yourself — read the log, do not trust this table:
 

@@ -495,6 +495,60 @@ GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type x --ts garbage --quiet 2>/dev/null \
 GOSLEEP_LAB_DIR="$TSL" bash "$LL" --type x --supersedes nope --quiet 2>/dev/null \
   && bad "--supersedes accepted garbage" || ok "--supersedes garbage -> loud failure"
 
+echo "== lab-log: the hook fires on the COMMAND, not on its SUCCESS (REVIEW-gsl81 C1) =="
+# A `git commit` that FAILS (nothing staged, rejected hook, empty message) is routine in a fleet. The
+# hook fires anyway, HEAD has not moved, and a naive fallback hands the event the PREVIOUS commit's
+# sha: a real, REACHABLE sha bound to a commit that never happened. Nothing downstream can catch that
+# — poll-fill's sha-less refusal never sees it, its dedup key collides with the real commit's, and an
+# append-only log can only supersede the line, never take it back. So HEAD must earn the sha twice:
+# be FRESH, and be ITS OWN. Withholding a sha costs a gap poll-fill fills; guessing one costs the truth.
+GR="$WORK/c1-repo"
+mkdir -p "$GR" && git init -q "$GR" 2>/dev/null
+git -C "$GR" config user.email smoke@example.com
+git -C "$GR" config user.name  smoke
+git -C "$GR" config commit.gpgsign false
+: > "$GR/a.txt"; git -C "$GR" add a.txt
+OLDDATE="@$(python3 -c 'import time;print(int(time.time())-3600)') +0000"
+GIT_AUTHOR_DATE="$OLDDATE" GIT_COMMITTER_DATE="$OLDDATE" \
+  git -C "$GR" commit -q -m "GSL-01 the REAL commit"
+OLDSHA="$(git -C "$GR" rev-parse --short HEAD)"
+
+c1_sha() {   # $1=lab dir  $2=command the hook saw  $3=tool_response -> the sha the event carries
+  rm -rf "$1"
+  python3 -c 'import json,sys; print(json.dumps({"hook_event_name":"PostToolUse","session_id":"c1","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.argv[2]},"tool_response":sys.argv[3]}))' \
+    "$GR" "$2" "$3" | GOSLEEP_LAB_DIR="$1" bash "$LL" >/dev/null 2>&1
+  jq -r 'select(.type=="vcs.commit") | .data.sha' "$1"/events/*.jsonl 2>/dev/null | head -1
+}
+
+# HEAD is an hour old — whatever this command did, it did not make that commit. A matching message is
+# not evidence either: that is simply the previous commit still sitting there.
+S="$(c1_sha "$WORK/c1-stale" 'git commit -q -m "GSL-01 the REAL commit"' '')"
+[[ -z "$S" ]] && ok "C1: failed commit, hour-old HEAD -> sha-less line (no stale sha laundered)" \
+  || bad "C1: bound a commit that never happened to the previous commit's sha ($S)"
+# And seconds after a REAL commit, freshness alone would wave the phantom through: HEAD must be ITS OWN.
+S="$(c1_sha "$WORK/c1-other" 'git commit -q -m "GSL-99 a commit that never happened"' '')"
+[[ -z "$S" ]] && ok "C1: failed commit right after a real one -> sha-less (HEAD must be its OWN, not just fresh)" \
+  || bad "C1: a fresh but UNRELATED HEAD ($S) was bound to a commit that never happened"
+
+: > "$GR/b.txt"; git -C "$GR" add b.txt; git -C "$GR" commit -q -m "GSL-83 quiet commit"
+NEWSHA="$(git -C "$GR" rev-parse --short HEAD)"
+# The GSL-83 dogfooding fix must survive the guard: a real quiet commit still gets its sha from git.
+S="$(c1_sha "$WORK/c1-quiet" 'git commit -q -m "GSL-83 quiet commit"' '')"
+[[ "$S" == "$NEWSHA" ]] && ok "GSL-83 preserved: a REAL quiet commit still recovers its sha ($S)" \
+  || bad "quiet-commit fallback regressed: got '$S', want '$NEWSHA'"
+S="$(c1_sha "$WORK/c1-am" 'git commit -q -am "GSL-83 quiet commit"' '')"
+[[ "$S" == "$NEWSHA" ]] && ok "the message is read from -am too (a cluster is still the subject git got)" \
+  || bad "-am form lost the subject: got '$S', want '$NEWSHA'"
+
+# m1 — git's echo is `[<branch> <sha>]`, and a branch name can be all-hex too. Anchor on the bracket,
+# not on "the first token that looks like hex", or the BRANCH wins over the commit it printed.
+S="$(c1_sha "$WORK/c1-hexbranch" 'git commit -m x' '[deadbee 1a2b3c4] GSL-99 subject')"
+[[ "$S" == "1a2b3c4" ]] && ok "m1: [deadbee 1a2b3c4] -> the sha (1a2b3c4), not the hex-looking branch" \
+  || bad "m1: a hex-looking branch name won over the real sha (got '$S')"
+S="$(c1_sha "$WORK/c1-root" 'git commit -m x' '[main (root-commit) 9fceb02] first')"
+[[ "$S" == "9fceb02" ]] && ok "m1: the root-commit echo still parses ([main (root-commit) 9fceb02])" \
+  || bad "m1: the root-commit echo broke the parser (got '$S')"
+
 echo "== fold: a cross-day correction retires the right line — and ONLY it (GSL-89) =="
 FD="$WORK/fold-repo"; mkdir -p "$FD/docs/lab/events"
 # Day A: seq 2 is a commit that will later be proven wrong.

@@ -140,13 +140,30 @@ else
     # A QUIET commit prints nothing, so there is no `[branch sha]` echo to parse. Without a fallback
     # the event carries sha="" — a commit line in the timeline pointing nowhere. (Dogfooding caught
     # this: the commit that introduced lab-log.sh was made with -q and logged itself sha-less.)
+    #
+    # RUN the commit for real before mirroring it to the hook. This test used to feed the payload
+    # WITHOUT running anything — and demand a sha back. That is the C1 phantom stated as a test: a
+    # command that committed nothing, answered with the sha of whatever was sitting at HEAD. Since
+    # the writer now checks HEAD is fresh AND its own, the honest test is the only one that passes.
     QLAB="$WORK/quietlab"
+    git -C "$PROBE_REPO" commit -q --allow-empty -m quiet
+    qreal="$(git -C "$PROBE_REPO" rev-parse --short HEAD 2>/dev/null)"
     printf '{"hook_event_name":"PostToolUse","session_id":"q","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git commit -q --allow-empty -m quiet"},"tool_response":""}' \
       "$PROBE_REPO" | GOSLEEP_LAB_DIR="$QLAB" bash tools/lab/lab-log.sh
     qsha="$(jq -r 'select(.type=="vcs.commit") | .data.sha' "$QLAB"/events/*.jsonl 2>/dev/null | head -1)"
-    [ -n "$qsha" ] && [ "$qsha" = "$real" ] \
+    [ -n "$qsha" ] && [ "$qsha" = "$qreal" ] \
       && ok "quiet commit (git -q echoes nothing) -> sha recovered from git itself ($qsha)" \
-      || bad "quiet-commit sha fallback: got '$qsha', want '$real'"
+      || bad "quiet-commit sha fallback: got '$qsha', want '$qreal'"
+
+    # The other half of the same coin (REVIEW-gsl81 C1): a commit that FAILED must not be handed the
+    # sha still sitting at HEAD. Same payload shape, a message no commit here ever carried.
+    FLAB="$WORK/failedlab"
+    printf '{"hook_event_name":"PostToolUse","session_id":"f","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git commit -q -m \\"GSL-99 a commit that never happened\\""},"tool_response":"nothing to commit, working tree clean"}' \
+      "$PROBE_REPO" | GOSLEEP_LAB_DIR="$FLAB" bash tools/lab/lab-log.sh
+    fsha="$(jq -r 'select(.type=="vcs.commit") | .data.sha' "$FLAB"/events/*.jsonl 2>/dev/null | head -1)"
+    [ -z "$fsha" ] \
+      && ok "a FAILED commit logs no sha — HEAD ($qreal) is not laundered into a phantom" \
+      || bad "phantom: a commit that never happened was logged with sha '$fsha'"
     note ""
     note "  events captured:"
     jq -r '"    seq=\(.seq) \(.type)  actor=\(.actor)  src=\(.src)"' "$EVENTS"/*.jsonl 2>/dev/null | tee -a "$LOG" >/dev/null

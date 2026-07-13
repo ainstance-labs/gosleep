@@ -48,6 +48,9 @@
 #
 # Env: GOSLEEP_LAB_DIR (default <repo>/docs/lab) · GOSLEEP_RUN_ID · GOSLEEP_ACTOR
 #      GOSLEEP_LAB_MAX_LINES · GOSLEEP_LAB_ERRLOG
+#      GOSLEEP_HEAD_MAX_AGE_S (default 15) — how fresh HEAD must be for a quiet commit to claim it
+#      (see git_head: the hook fires on the command, not on its success). Widen it only if a slow
+#      post-commit step delays the hook; a sha withheld is a gap poll-fill fills, a sha guessed is a lie.
 # 0 LLM calls (C1). python3 stdlib only (JSON safety). macOS/BSD userland.
 # =============================================================================
 set -uo pipefail
@@ -398,12 +401,36 @@ def bash_event(cmd, resp, cwd):
     return None, None                              # every other Bash call: NOT an event (volume)
 
 
+COMMIT_ECHO = re.compile(r"\[[^\]\n]*[ \t]([0-9a-f]{7,40})\]")   # `[<branch> <sha>] subject`
+SHORT_M     = re.compile(r"^-[a-zA-Z]*?m(.*)$")                  # -m / -am / -mMSG / -amMSG
+HEAD_MAX_AGE_S = int(os.environ.get("GOSLEEP_HEAD_MAX_AGE_S", "15") or 15)
+
+
 def commit_sha(resp):
-    """`[branch 1a2b3c4] subject` — git's own echo of the commit it just made."""
-    for tok in str(resp).replace("[", " ").replace("]", " ").split():
-        t = tok.strip(",.")
-        if len(t) in (7, 8, 9, 40) and all(ch in "0123456789abcdef" for ch in t.lower()):
-            return t
+    """`[branch 1a2b3c4] subject` — git's own echo of the commit it just made.
+
+    Anchored on the BRACKET, not on "the first token that looks hex": a branch name can be all-hex
+    too, and it is printed FIRST. `[deadbee 1a2b3c4] subject` used to return `deadbee` — the branch.
+    The sha is the LAST token inside the brackets, after the branch and after any `(root-commit)`.
+    """
+    m = COMMIT_ECHO.search(str(resp))
+    return m.group(1) if m else ""
+
+
+def commit_subject(toks):
+    """The subject this command ASKED git for: `-m x`, `-mx`, `-am x`, `--message x`, `--message=x`.
+    Empty when the message comes from anywhere else (editor, `-F`, `--amend --no-edit`)."""
+    for i, t in enumerate(toks):
+        if t.startswith("--message="):
+            val = t.split("=", 1)[1]
+        elif t == "--message":
+            val = toks[i + 1] if i + 1 < len(toks) else ""
+        else:
+            m = SHORT_M.match(t)
+            if not m:
+                continue
+            val = m.group(1) or (toks[i + 1] if i + 1 < len(toks) else "")
+        return val.strip().split("\n")[0].strip()   # git's SUBJECT is the first line of the message
     return ""
 
 
@@ -413,17 +440,36 @@ def git_head(toks, cwd):
 
     (Found by dogfooding: the very commit that introduced this file was made with -q and logged
     itself with sha="". The layer's first real event about its own birth was already half a lie.)
+
+    But the hook fires on the COMMAND, not on its SUCCESS — and a `git commit` that FAILS (nothing
+    staged, rejected by a hook, empty message) is routine in a fleet. HEAD has not moved, so a naive
+    fallback hands the event the PREVIOUS commit's sha: a real, reachable sha bound to a commit that
+    never happened. That is the worst line this layer can write, because every downstream guard then
+    believes it — poll-fill's sha-less refusal never sees it, its dedup key collides with the real
+    commit's, and an append-only log can only supersede such a line, never take it back.
+
+    So HEAD must earn the sha twice (REVIEW-gsl81 C1):
+      * FRESH  — its committer time is seconds old, not this morning's;
+      * ITS OWN — its subject is the `-m` message this very command asked for.
+    Fail either and we return "" — an inert sha-less line, which poll-fill already refuses to bind
+    and backfills correctly under its own key. On doubt say nothing: a gap is repairable, a lie is not.
     """
     d = cwd or "."
     for i, t in enumerate(toks):                    # honour `git -C <path>` (NOT -c, that is config)
         if t == "-C" and i + 1 < len(toks):
             d = toks[i + 1]
             break
-    try:
-        out = subprocess.run(["git", "-C", d, "rev-parse", "--short", "HEAD"],
+    try:                                            # NUL-separated: a subject may contain anything
+        out = subprocess.run(["git", "-C", d, "log", "-1", "--format=%h%x00%ct%x00%s"],
                              capture_output=True, timeout=3)
-        return out.stdout.decode().strip()
-    except Exception:
+        sha, ct, subject = out.stdout.decode("utf-8", "replace").strip().split("\0", 2)
+        if not sha or time.time() - int(ct) > HEAD_MAX_AGE_S:
+            return ""                               # HEAD predates the command -> it committed nothing
+        asked = commit_subject(toks)
+        if asked and subject.strip() != asked:
+            return ""                               # HEAD is some other commit, not the one asked for
+        return sha
+    except Exception:                               # no commits yet / not a repo / git absent
         return ""
 
 
