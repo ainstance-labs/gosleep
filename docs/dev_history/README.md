@@ -121,3 +121,7 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 - [GSL-88 — Хендофф объявляет себя таймлайну: одна строка `handoff.written`, которую хук написать не может (nn/topic/resume)](GSL-88-phase4-cycle47-handoff-written.md)
 - [GSL-89 — Закрытие Фазы 4: контракт свежести, бэкфилл `--ts`/`--supersedes` — и страница, переставшая врать «Live» над трупом (smoke 119/119)](GSL-89-phase4-cycle47-close.md)
 - [GSL-89 — Цикл 50, фиксы по REVIEW-gsl81: фантомный коммит с чужим sha, проза, спорившая с баннером, и приёмка R4.2 на несуществующем доказательстве (smoke 130/130)](GSL-89-phase4-cycle50-review-fixes.md)
+
+## Epic GSL-90 — UI оркестрации, static v1 (PRD Phase 5)
+
+- [GSL-91 — Леджер закрытия Фазы 4 + разбивка Фазы 5: эпик, 10 задач, зеркало в GitHub, ветка; граница Python/TypeScript зафиксирована явно (DECISION q-2026-07-13-001)](GSL-91-phase5-cycle52-ledger.md)
