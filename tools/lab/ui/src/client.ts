@@ -8,6 +8,7 @@
 // a worse one.
 
 import type { Grade } from "./types.js";
+import { countdownText, remainingMs } from "./countdown.js";
 
 function readJson<T>(id: string): T | null {
   const el = document.getElementById(id);
@@ -65,4 +66,51 @@ function regradeStaleness(): void {
   if (v && verdicts[grade]) v.textContent = verdicts[grade];
 }
 
+/**
+ * The deadline countdowns on the Questions screen (PRD R5.2 screen 4, F5-S2).
+ *
+ * The failure this exists to prevent is the same one the staleness banner exists to prevent, in a
+ * different unit. A page built at 23:00 saying "auto-applies in 2h", opened at 04:00, is a page
+ * offering the owner two hours that were spent five hours ago. It is not a stale number — it is a
+ * FALSE one, and it is false in the reassuring direction, which is the only direction that matters.
+ * So the countdown is re-computed against the READER'S clock the moment the page opens, from the
+ * absolute instant in `data-auto-apply-at` — not from a duration baked at build time.
+ *
+ * Then it ticks. A second-by-second number that visibly moves is also the cheapest proof a reader
+ * has that this page is live and not a screenshot of one.
+ *
+ * With JS off, none of this runs and the server-rendered verdict stands — honest for `generated_at`,
+ * which is the same deal the banner offers.
+ */
+function tickCountdowns(): void {
+  const els = Array.from(document.querySelectorAll<HTMLElement>("[data-auto-apply-at]"));
+  if (els.length === 0) return; // every screen ships this bundle; only one screen has deadlines
+
+  // The build's own clock, carried by the staleness banner on every page.
+  const built = Date.parse(document.getElementById("staleness")?.dataset["generatedAt"] ?? "");
+
+  const paint = (): void => {
+    // A countdown may never read a clock EARLIER than the one the page was built with. A reader
+    // whose laptop is set an hour slow would otherwise hand every deadline an extra hour it does
+    // not have — the page arguing itself out of a deadline, which is exactly the class of lie the
+    // banner's "never soften a verdict" rule forbids. Hence max(now, generated_at): time may only
+    // move forward here, and a broken clock can only ever leave the build-time verdict standing.
+    const now = Date.now();
+    const clock = isNaN(built) ? now : Math.max(now, built);
+
+    for (const el of els) {
+      const ms = remainingMs(el.dataset["autoApplyAt"] ?? "", clock);
+      // An unparseable deadline keeps whatever the server said about it (a plain "unreadable"
+      // note). Counting down to an instant we could not read would be inventing one.
+      if (isNaN(ms)) continue;
+      el.textContent = countdownText(ms / 1000);
+      el.classList.toggle("past-due", ms <= 0);
+    }
+  };
+
+  paint(); // ← F5-S2: re-graded ON OPEN. Everything after this is just keeping it honest.
+  setInterval(paint, 1000);
+}
+
 regradeStaleness();
+tickCountdowns();

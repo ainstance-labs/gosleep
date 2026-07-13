@@ -80,6 +80,15 @@ footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid 
 .tag.CLARIFY{color:var(--warn);border-color:currentColor}
 .tag.FYI{color:var(--dim)}
 .stale-note{color:var(--warn);font-weight:600}
+/* GSL-95 (F5-S2): the deadline countdown. tabular-nums because it ticks once a second — with
+   proportional digits the whole line twitches sideways on every tick, and a number that jitters is a
+   number nobody trusts. PAST DUE gets a filled background, not just red text: an expired deadline
+   still sitting in the OPEN list means the pulse that was supposed to apply the default never came,
+   and that is not a detail to be whispered in a colour someone might be blind to. */
+.countdown{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.countdown.past-due{color:var(--dead);background:var(--dead-soft);
+                    padding:.05rem .35rem;border-radius:.3rem}
+.dim{color:var(--dim)}
 nav{margin:.4rem 0 .2rem;line-height:2}
 nav a{margin-right:.9rem}
 nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}

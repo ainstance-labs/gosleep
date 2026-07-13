@@ -1,6 +1,7 @@
 import type { VNode } from "preact";
 import type { QueueItem, RenderBundle } from "../types.js";
 import { Empty } from "../components.js";
+import { countdownText, remainingMs } from "../countdown.js";
 
 /**
  * Screen 4 of PRD R5.2. GSL-95 adds the live `auto-applies in Xh Ym` countdown (F5-S2); this renders
@@ -12,7 +13,60 @@ import { Empty } from "../components.js";
  * Rendering them in one undifferentiated list would bury the only question the owner has to answer
  * under four he does not.
  */
-function Item({ q }: { q: QueueItem }): VNode {
+
+/**
+ * The deadline line. Three states, and the third one is why this is a function and not a ternary:
+ *
+ *   a deadline in the future  -> a countdown, which the client re-grades on open and ticks (F5-S2).
+ *   a deadline in the past    -> PAST DUE. Nothing applies defaults on a timer (see countdown.ts), so
+ *                                this says the pulse never came — it does not say "resolved".
+ *   NO deadline at all        -> "waits for you, no deadline". Never `0h 0m`, never overdue. An
+ *                                ABSENT deadline is not an EXPIRED one, and a screen that renders
+ *                                missing-as-zero is the screen that files a question nobody set a
+ *                                clock on under "you already missed it".
+ *
+ * The clock here is `generated_at` — the build-time verdict, honest for the instant it was made and
+ * the only thing a reader with JS off will ever see. client.ts re-reads the SAME formatter against
+ * the reader's own clock.
+ */
+function Deadline({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
+  if (!q.auto_apply_at) {
+    return (
+      <p>
+        <small class="stale-note">
+          No deadline: this one waits for you. It will not apply itself — and it is not overdue, it
+          simply never had a clock.
+        </small>
+      </p>
+    );
+  }
+  const rem = remainingMs(q.auto_apply_at, builtMs);
+  if (isNaN(rem)) {
+    // A deadline we cannot parse is not a deadline of zero. Say so, and show the bytes.
+    return (
+      <p>
+        <small class="stale-note">
+          Unreadable deadline: <code>{q.auto_apply_at}</code> — no countdown can be trusted from it.
+        </small>
+      </p>
+    );
+  }
+  return (
+    <p>
+      <small>
+        <span
+          class={rem <= 0 ? "countdown past-due" : "countdown"}
+          data-auto-apply-at={q.auto_apply_at}
+        >
+          {countdownText(rem / 1000)}
+        </span>{" "}
+        · deadline <code>{q.auto_apply_at}</code>
+      </small>
+    </p>
+  );
+}
+
+function Item({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
   const isBlocker = q.type === "BLOCKER";
   return (
     <div class="card">
@@ -39,13 +93,10 @@ function Item({ q }: { q: QueueItem }): VNode {
           </small>
         </p>
       ) : null}
+      {/* A BLOCKER has no timer by construction, so it is not given one — not even an empty one. */}
+      {isBlocker ? null : <Deadline q={q} builtMs={builtMs} />}
       <p>
         <small>
-          {q.auto_apply_at ? (
-            <>
-              auto-applies at <code data-auto-apply-at={q.auto_apply_at}>{q.auto_apply_at}</code> ·{" "}
-            </>
-          ) : null}
           {q.reversibility ? <>reversibility {q.reversibility} · </> : null}
           {q.from ? <>asked by {q.from} · </> : null}
           {q.seen_by?.length ? <>seen by {q.seen_by.join(", ")}</> : null}
@@ -66,6 +117,10 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
   const q = b.queue;
   const blockers = q.open_blockers;
   const others = q.open_items.filter((x) => x.type !== "BLOCKER");
+  // The build-time clock. `Date.parse` of a bad generated_at yields NaN, and every countdown then
+  // renders "unreadable" rather than counting down from an invented now.
+  const builtMs = Date.parse(b.generated_at);
+  const byType = Object.entries(q.by_type ?? {}).filter(([, n]) => n > 0);
 
   return (
     <>
@@ -88,6 +143,19 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
         </div>
       </div>
 
+      {/* Open, by type — the census the manifest's rules are written against. The two sections below
+          group by what a question DEMANDS OF YOU, which is the grouping that matters at 03:00; this
+          strip is the grouping by what it IS. */}
+      {byType.length > 0 ? (
+        <p>
+          {byType.map(([t, n]) => (
+            <span key={t}>
+              <span class={`tag ${t}`}>{t}</span> {n}{" "}
+            </span>
+          ))}
+        </p>
+      ) : null}
+
       <h2>Blocking you ({blockers.length})</h2>
       {blockers.length === 0 ? (
         <Empty>
@@ -96,14 +164,14 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
           morning.
         </Empty>
       ) : (
-        blockers.map((x) => <Item key={x.id} q={x} />)
+        blockers.map((x) => <Item key={x.id} q={x} builtMs={builtMs} />)
       )}
 
       <h2>Waiting for you, but not waiting on you ({others.length})</h2>
       {others.length === 0 ? (
         <Empty>Nothing open.</Empty>
       ) : (
-        others.map((x) => <Item key={x.id} q={x} />)
+        others.map((x) => <Item key={x.id} q={x} builtMs={builtMs} />)
       )}
 
       <h2>Decided without you ({q.closed_items.length})</h2>
@@ -117,6 +185,7 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
               <th>type</th>
               <th>question</th>
               <th>outcome</th>
+              <th>by</th>
             </tr>
             {q.closed_items.map((x) => (
               <tr key={x.id}>
@@ -129,6 +198,9 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
                   <span class="tag">{x.status}</span>
                   {x.answer ? <> {x.answer}</> : x.default ? <> {x.default}</> : null}
                 </td>
+                {/* Who closed it. "answered-by-default" with no name is not a gap — it is the night
+                    answering for itself, and saying so is the point of the column. */}
+                <td>{x.answered_by ? x.answered_by : <span class="dim">the default</span>}</td>
               </tr>
             ))}
           </table>

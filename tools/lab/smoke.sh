@@ -966,6 +966,142 @@ cat "$PT/docs/lab/events/"*.jsonl | jq -se --arg t "${DB}T12:34:56Z" \
   && ok "poll-fill backfills at occurred_at, and still records when it learned it" \
   || bad "poll-fill stamps 'now' — every recovered fact lands on today's timeline"
 
+# ════════════ GSL-95 / F5-S2: the deadline countdown on the Questions screen ════════════
+#
+# The defect this whole section exists to catch: a page BUILT at 23:00 saying "auto-applies in 2h",
+# OPENED at 04:00, still saying "auto-applies in 2h". Every naive check passes on that page — the
+# span is there, the attribute is there, the number is even correct for the instant it was made — and
+# the page is lying to the owner in the one direction that matters, offering him two hours that were
+# spent three hours ago. It is the staleness defect (REVIEW-gsl81 M1) wearing a different unit, and
+# the lesson from that cycle is the one applied here: assert the RENDERED PROSE, not the mechanism.
+#
+# So the fixture puts a deadline 2h30m in the FUTURE, lets the page be built honestly, and then RUNS
+# THE PAGE'S OWN CLIENT BUNDLE against a clock five hours later. A countdown frozen at build time
+# passes everything above and fails this.
+echo "== GSL-95 / F5-S2: the deadline countdown re-grades when the page is opened =="
+
+# Its OWN repo. The chronicler fixture above has a test that counts open questions and reads the
+# digest; three more DECISIONs dropped into its queue would silently rewrite that arithmetic, and a
+# test that has to be kept in sync with an unrelated fixture is a test that will be "fixed" by
+# deleting it. Three DECISIONs, one per state the countdown must tell apart — and no BLOCKER, which
+# would bind the runway to 0h and change what the F5-S1 checks are measuring.
+#
+#   EXPIRED    — 3h gone. Must read PAST DUE at BUILD time: a reader with JS off is owed the truth too.
+#   FUTURE     — 2h30m out. Honest at build, a LIE five hours later. This is the one the clock moves
+#                past below; a countdown baked at build time passes every other check and fails that.
+#   NODEADLINE — no clock at all. "waits for you", never "0h 0m", never overdue: an ABSENT deadline is
+#                not an EXPIRED one (GSL-95 acceptance, verbatim).
+QD="$WORK/f5s2"; rm -rf "$QD"; mkdir -p "$QD/docs/lab/events" "$QD/docs/lab/questions"
+Q_ASKED="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=6)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+Q_EXPIRED="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+Q_FUTURE="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=2,minutes=30)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"cycle.started","src":"emit","data":{}}\n' \
+  "$Q_ASKED" > "$QD/docs/lab/events/$TODAY.jsonl"
+{ printf '{"id":"q-f5s2-expired","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-95","question":"expired: does the page still promise time that is already spent?","default":"status quo","default_rationale":"reversible","reversibility":"high","auto_apply_at":"%s","status":"open","seen_by":["smoke"]}\n' "$Q_ASKED" "$Q_EXPIRED"
+  printf '{"id":"q-f5s2-future","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-95","question":"future: honest at build, a lie five hours later?","default":"status quo","default_rationale":"reversible","reversibility":"high","auto_apply_at":"%s","status":"open","seen_by":["smoke"]}\n' "$Q_ASKED" "$Q_FUTURE"
+  printf '{"id":"q-f5s2-nodeadline","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-95","question":"no clock at all: absent is not expired.","default":"status quo","reversibility":"high","auto_apply_at":null,"status":"open","seen_by":["smoke"]}\n' "$Q_ASKED"
+} > "$QD/docs/lab/questions/queue.jsonl"
+bash "$CH" --repo "$QD" --no-poll --quiet --json >/dev/null 2>&1
+
+QP="$QD/docs/lab/site/questions.html"
+GEN="$(jq -r .generated_at "$QD/docs/lab/status.json")"
+
+BT="$(python3 - "$QP" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+spans = re.findall(r'<span class="(countdown[^"]*)" data-auto-apply-at="([^"]+)">(.*?)</span>', h)
+exp = [(c, t.strip()) for c, _, t in spans if "PAST DUE" in t]
+fut = [(c, t.strip()) for c, _, t in spans if t.strip().startswith("auto-applies in")]
+print("SPANS=%d" % len(spans))
+print("EXP_CLS=%s" % (exp[0][0] if exp else "-"))
+print("EXP_TXT=%s" % (exp[0][1] if exp else "-"))
+print("FUT_CLS=%s" % (fut[0][0] if fut else "-"))
+print("FUT_TXT=%s" % (fut[0][1] if fut else "-"))
+print("NODEADLINE=%s" % ("yes" if "No deadline" in h else "no"))
+PY
+)"
+
+# 1. The expired deadline is expired AT BUILD TIME. A reader with JS off is owed the truth too, and
+#    "past due" is the truth: nothing in this repo applies a default on a timer (tools/lab/lab-emit.sh
+#    `list --due` is read by a live orchestrator, on its pulse), so an expired DECISION still sitting
+#    in the OPEN list means the pulse never came.
+grep -q 'EXP_TXT=PAST DUE by 3h' <<<"$BT" \
+  && ok "F5-S2: a deadline 3h gone renders PAST DUE at BUILD time (the no-JS reader is not lied to)" \
+  || bad "F5-S2: an expired deadline does not say so at build time ($(grep '^EXP_TXT=' <<<"$BT"))"
+grep -q 'EXP_CLS=countdown past-due' <<<"$BT" \
+  && ok "F5-S2: the expired countdown is visually marked (.past-due), not merely worded" \
+  || bad "F5-S2: expired deadline carries no .past-due class ($(grep '^EXP_CLS=' <<<"$BT"))"
+
+# 2. The future deadline counts DOWN, and is not dressed as overdue.
+grep -qE 'FUT_TXT=auto-applies in 2h [0-9]+m' <<<"$BT" \
+  && ok "F5-S2: a live deadline renders the PRD's own phrasing (auto-applies in Xh Ym)" \
+  || bad "F5-S2: the countdown prose is not 'auto-applies in Xh Ym' ($(grep '^FUT_TXT=' <<<"$BT"))"
+grep -q 'FUT_CLS=countdown$' <<<"$BT" \
+  && ok "F5-S2: a deadline still in the future is NOT marked past-due" \
+  || bad "F5-S2: a live deadline is dressed as overdue ($(grep '^FUT_CLS=' <<<"$BT"))"
+
+# 3. Absent is not expired. A DECISION nobody set a clock on must say so — never "0h 0m", never red.
+grep -q 'NODEADLINE=yes' <<<"$BT" \
+  && ok "F5-S2: a DECISION with no deadline says 'No deadline' — absent is not expired" \
+  || bad "F5-S2: a DECISION without a deadline renders no explanation (0h 0m by omission)"
+grep -q 'SPANS=2' <<<"$BT" \
+  && ok "F5-S2: exactly 2 countdowns for 3 DECISIONs — the clockless one was given no clock" \
+  || bad "F5-S2: countdown count wrong ($(grep '^SPANS=' <<<"$BT")) — a deadline was invented or dropped"
+
+# 4. THE test. Run the page's OWN inlined client bundle with a stub DOM and a moved clock. Nothing is
+#    mocked but the environment: the code under test is the exact JS the owner's browser will run.
+cat > "$WORK/regrade.mjs" <<'JS'
+import { readFileSync } from "node:fs";
+const [path, gen] = process.argv.slice(2);
+const html = readFileSync(path, "utf8");
+const m = html.match(/<script>([\s\S]*?)<\/script>/);   // the client bundle: the one <script> with no attrs
+if (!m) { console.log("NO_CLIENT=1"); process.exit(0); }
+const code = m[1];
+
+const spans = [...html.matchAll(/<span class="(countdown[^"]*)" data-auto-apply-at="([^"]+)">(.*?)<\/span>/g)]
+  .map(([, cls, iso, txt]) => ({ iso, cls, text: txt.trim() }));
+
+function open(nowMs) {
+  const els = spans.map((s) => {
+    const el = { dataset: { autoApplyAt: s.iso }, textContent: s.text, past: s.cls.includes("past-due") };
+    el.classList = { toggle: (c, on) => { if (c === "past-due") el.past = on; } };
+    return el;
+  });
+  const document = {
+    getElementById: (id) => (id === "staleness" ? { dataset: { generatedAt: gen } } : null),
+    querySelectorAll: () => els,
+  };
+  // `Date` is passed in, so the page's clock is ours. Everything else is the real bundle.
+  new Function("document", "setInterval", "Date", code)(
+    document, () => 0, { now: () => nowMs, parse: (s) => Date.parse(s) },
+  );
+  return els;
+}
+
+const built = Date.parse(gen);
+const i = spans.findIndex((s) => s.text.startsWith("auto-applies in"));
+if (i < 0) { console.log("NO_FUTURE=1"); process.exit(0); }
+
+const later = open(built + 5 * 3600 * 1000)[i];   // the owner opens it five hours after it was built
+const slow  = open(built - 5 * 3600 * 1000)[i];   // ...on a laptop whose clock runs five hours slow
+console.log("LATER_TXT=" + later.textContent);
+console.log("LATER_PAST=" + later.past);
+console.log("SLOW_TXT=" + slow.textContent);
+JS
+RG="$(node "$WORK/regrade.mjs" "$QP" "$GEN" 2>&1)"
+
+grep -q 'LATER_TXT=PAST DUE' <<<"$RG" && grep -q 'LATER_PAST=true' <<<"$RG" \
+  && ok "F5-S2 ⭐ opened 5h after the build, a deadline that has since passed re-grades itself to PAST DUE" \
+  || bad "F5-S2 ⭐ the countdown is FROZEN at build time — a page opened at 04:00 still promises the 2h it had at 23:00 ($RG)"
+
+# And the guard in the other direction. The staleness banner may never SOFTEN its verdict; a countdown
+# may never LENGTHEN itself. A reader whose laptop clock is slow must not be handed hours the deadline
+# does not have — so the clock the countdown reads is max(now, generated_at), and a broken clock can
+# only ever leave the build-time verdict standing.
+grep -qE 'SLOW_TXT=auto-applies in 2h [0-9]+m' <<<"$RG" \
+  && ok "F5-S2: a browser clock 5h SLOW buys the deadline no extra time (never lengthens; max(now, built))" \
+  || bad "F5-S2: a slow browser clock lengthened the countdown — the page argued itself out of a deadline ($RG)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

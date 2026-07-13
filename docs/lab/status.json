@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-13T12:49:58Z",
+  "generated_at": "2026-07-13T13:55:53Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-13",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 4,
-    "max_event_age_human": "4s",
-    "latest_event_ts": "2026-07-13T12:49:53Z",
-    "heartbeat_age_s": 47,
+    "max_event_age_s": 257,
+    "max_event_age_human": "4m",
+    "latest_event_ts": "2026-07-13T13:51:35Z",
+    "heartbeat_age_s": 279,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,54 +16,58 @@
     }
   },
   "events": {
-    "total": 329,
-    "today": 263,
+    "total": 353,
+    "today": 287,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 62,
-      "agent.idle": 36,
+      "agent.turn_ended": 68,
+      "agent.idle": 37,
       "dev_history.written": 34,
-      "handoff.written": 29,
-      "task.completed": 27,
+      "handoff.written": 33,
+      "task.completed": 28,
       "agent.terminated": 24,
-      "tracker.issue.updated": 23,
-      "vcs.commit": 20,
-      "tracker.issue.transitioned": 15,
+      "tracker.issue.updated": 24,
+      "vcs.commit": 21,
+      "tracker.issue.transitioned": 17,
+      "pane.ended": 12,
+      "pane.started": 12,
       "tracker.issue.created": 12,
-      "pane.ended": 10,
-      "pane.started": 10,
       "task.created": 8,
-      "notification.raised": 6,
-      "vcs.push": 5,
+      "notification.raised": 7,
+      "vcs.push": 6,
       "agent.spawned": 3,
       "question.posed": 3,
+      "decision.made": 1,
+      "question.auto_resolved": 1,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 122,
-      "hook:Stop": 62,
-      "hook:TeammateIdle": 36,
-      "hook:TaskCompleted": 27,
+      "hook:PostToolUse": 131,
+      "hook:Stop": 68,
+      "hook:TeammateIdle": 37,
+      "hook:TaskCompleted": 28,
       "hook:SubagentStop": 24,
       "poll-fill": 15,
-      "hook:SessionEnd": 10,
-      "hook:SessionStart": 10,
+      "hook:SessionEnd": 12,
+      "hook:SessionStart": 12,
+      "emit": 8,
       "hook:TaskCreated": 8,
-      "emit": 6,
-      "hook:Notification": 6,
+      "hook:Notification": 7,
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 185,
-      "ef6c3777": 79,
+      "claude": 196,
+      "ef6c3777": 85,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
+      "dd3edd33": 5,
       "70cbe176": 3,
       "ca8a1e39": 3,
+      "orchestrator": 3,
       "aa7a28cca3c73abc5": 2,
       "ab3b55ad5cc3bfb36": 2,
       "gsl90-setup": 2,
@@ -90,26 +94,16 @@
       "afc648057d400fa02": 1,
       "fixer-lab": 1,
       "impl-lab-2": 1,
-      "impl-ui-1": 1,
-      "orchestrator": 1
+      "impl-ui-1": 1
     },
-    "mechanical_share": 0.936
+    "mechanical_share": 0.935
   },
   "questions": {
-    "open": 3,
+    "open": 2,
     "by_type": {
-      "DECISION": 3
+      "DECISION": 2
     },
     "items": [
-      {
-        "id": "q-2026-07-12-001",
-        "type": "DECISION",
-        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
-        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
-        "auto_apply_at": "2026-07-13T08:00:00Z",
-        "task": "GSL-86",
-        "high_impact": null
-      },
       {
         "id": "q-2026-07-13-001",
         "type": "DECISION",
@@ -131,15 +125,33 @@
     ]
   },
   "decisions": {
-    "total": 0,
-    "last": null,
+    "total": 1,
+    "last": {
+      "id": "d-2026-07-13-001",
+      "ts": "2026-07-13T13:39:16Z",
+      "re": "q-2026-07-12-001",
+      "task": "GSL-86",
+      "type": "DECISION",
+      "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
+      "qshape": "8d71975fa0",
+      "decision": "детерминированный скелет + claude -p опционально",
+      "made_by": "orchestrator",
+      "rule": "manifest §2.default-hit-at-deadline",
+      "channel": ""
+    },
     "manifest_candidates": []
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "d2b2a20",
-    "dirty_paths": 24,
+    "head": "9197f88",
+    "dirty_paths": 22,
     "commits_on_date": [
+      {
+        "sha": "9197f88",
+        "author": "R",
+        "ts": "2026-07-13T14:50:24+02:00",
+        "subject": "GSL-94 [UI][Tooling] Autonomy runway = min(6 axes) with limiting-axis trace (F5-S1)"
+      },
       {
         "sha": "d2b2a20",
         "author": "R",
@@ -297,16 +309,16 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T12:49:10Z",
-      "cycle": 53,
-      "context_pct": 82,
+      "ts": "2026-07-13T13:51:13Z",
+      "cycle": 54,
+      "context_pct": 20,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse #2; impl-ui-1 still grinding (larger cycle: TS+build+contract+runway)"
+      "note": "pulse 1 — impl-ui-2 mid-cycle"
     },
-    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). **PHASE 4 CLOSED** @ `5fd1de2` (R4.2 MET через poll-fill reconciler seq 156). cycle 52 gsl90-setup DONE ~11:52 — Epic GSL-90=#103, 10 tasks GSL-91..100=#104..113 pushed @ 7b229c7 (ledger 16 путей / 1509 insertions). **Addendum ~12:00:** R4.2-MET doc fix НЕ folded в GSL-91 (уже был запушен → force-push запрещён); сделан ОТДЕЛЬНЫМ коммитом **GSL-101 = `6d934de`** (GH #114, Jira Done); ветка теперь `GSL-90-ui-orchestration @ 6d934de` (2 коммита от main). Setup catch: моя формулировка «R4.2-MET fix folded» была неверна — fix landed as separate commit. Также setup поймал что «правка на один значок» (merged 0→1) чуть не сломала 5 других счётчиков (vcs.commit 11+3→12+4, Jira 9→11, panes 7/7→9/9, hook-events 162→246 — все выросли от ledger commit'а) — jq-рецепт теперь с двумя колонками по sha, F4-S1 остаётся 3/4 не подкручено. Setup также записал R4.2-wording finding: «вне CLI» — дырявый прокси для «не увиденное ни одним хуком»; путь через CLI (в т.ч. `gh api`) тоже может остаться неувиденным — что и произошло. Formulation НЕ переписан задним числом (тот же жанр, за который M2 понизил PENDING). Jira GSL-91 Done + GSL-101 Done, остальные To Do. DECISION q-2026-07-13-001 framework: **Preact + preact-render-to-string + esbuild** (default до 2026-07-14T06Z, reversibility high, работа НЕ блокируется). **Отклонения setup'а от моего брифа (осознанные):** PRD-семёрка экранов = Overview/Timeline/Tasks/Questions/Fleet/Cost/Library (не fleet/queue/timeline/library/digest/manifest/config); PRD взят как source of truth. Задача 4 разбита на GSL-96/97/98. Добавлена GSL-92 TS-скаффолд (не в PRD, следствие TS-директивы). Явные фиксации setup'а: chronicler.py = data layer, view = TS SSG (file:// diктует SSG), degrade-без-node в GSL-92 = ",
-    "telemetry_last": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --ts/--supersedes with (file,seq) coord]"
+    "live_status": "▶ AUTONOMOUS MODE 2026-07-13 13:38Z (fresh orchestrator, Opus 4.7, resumed из handoff 29 после roll ~14:16Z прошлой сессии на hb 80%). Phase 4 CLOSED (main @ 5fd1de2 = PR #102 merged). **Phase 5 UI in flight** on ветке `GSL-90-ui-orchestration @ 9197f88` (5 коммитов от main). **F5-S1 CLOSED** (cycle 53 impl-ui-1 DONE ~14:15Z: GSL-92 `6b4cbed` TS scaffold + Python view -290 lines + degrade-without-node · GSL-93 `d2b2a20` data contract gosleep.lab.render/3 + 7 screens · GSL-94 `9197f88` autonomy runway=min(6 axes) с limiting-axis trace (stops/degrades/completes; clear≠unknown). Smoke 174/174; hooks-verify 14/14; tsc clean; handoff 29 written). **CYCLE 54 impl-ui-2 SPAWNING ~13:38Z** — GSL-95 Questions+deadline countdown (F5-S2), MUST re-grade on page open (как staleness banner в GSL-86/89, не freeze at build time). После: GSL-96 Tasks (F5-S3) → GSL-97 Timeline+Library → GSL-98 Fleet+Cost (C5 collision передан честно: worker name в data.raw.teammate_name; impl-ui-1 не ослабил safety, скелет на actor) → GSL-99 self-health (R5.3) → GSL-100 приёмка+dev_history+contract (F5-S4) → mechanic PR → reviewer → (fixer) → finalizer → Phase 6 Mobile без остановки. Открытые DECISION: q-2026-07-12-001 (due 08:00Z passed → auto-resolving к дефолту: детерминированный скелет + claude -p опционально; reversibility high); q-2026-07-13-001 (framework UI, дефолт Preact+esbuild применён работает, deadline 2026-07-14T06Z); q-2026-07-13-002 (token ceiling manifest §5 не существует машиночитаемо, дефолт статус-кво high). 0 BLOCKER. next Jira=GSL-102+, next GH=#115. orchestrator pane=%193 | latest handoff=docs/handoff/29-2026-07-13-handoff-impl-ui-1.md | questions: open=3 (0B/3D/0C/0F) lines=3 → resolving q-2026-07-12-001 → open=2 (0B/2D/0C/0F). Fleet cap 3; open_workers=1 (impl-ui-2).",
+    "telemetry_last": "cycle=53 worker=impl-ui-1 model=claude-opus-4-8 (handoff 29 self-report + verify) tokens_out=~460940 tokens_in=~582 cache_read=~55349599 cache_write=~729352 | running: cycles=78 total≈6707000 (+гэпы 2a/32/35/48-52) [GSL-92 TS scaffold + GSL-93 contract + GSL-94 runway min(6 axes) с limiting-axis trace, F5-S1 CLOSED, smoke 174/174, hit MY hb 80% ceiling → orchestrator roll]"
   },
   "degraded": [],
   "narrative": null,
@@ -323,6 +335,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-13T12:49:58Z"
+    "last_success_at": "2026-07-13T13:55:53Z"
   }
 }

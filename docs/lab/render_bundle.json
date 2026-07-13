@@ -1,13 +1,13 @@
 {
   "schema": "gosleep.lab.render/3",
-  "generated_at": "2026-07-13T12:49:58Z",
+  "generated_at": "2026-07-13T13:55:53Z",
   "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
   "date": "2026-07-13",
   "staleness": {
-    "max_event_age_s": 4,
-    "max_event_age_human": "4s",
-    "latest_event_ts": "2026-07-13T12:49:53Z",
-    "heartbeat_age_s": 47,
+    "max_event_age_s": 257,
+    "max_event_age_human": "4m",
+    "latest_event_ts": "2026-07-13T13:51:35Z",
+    "heartbeat_age_s": 279,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -15,54 +15,58 @@
     }
   },
   "events": {
-    "total": 329,
-    "today": 263,
+    "total": 353,
+    "today": 287,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 62,
-      "agent.idle": 36,
+      "agent.turn_ended": 68,
+      "agent.idle": 37,
       "dev_history.written": 34,
-      "handoff.written": 29,
-      "task.completed": 27,
+      "handoff.written": 33,
+      "task.completed": 28,
       "agent.terminated": 24,
-      "tracker.issue.updated": 23,
-      "vcs.commit": 20,
-      "tracker.issue.transitioned": 15,
+      "tracker.issue.updated": 24,
+      "vcs.commit": 21,
+      "tracker.issue.transitioned": 17,
+      "pane.ended": 12,
+      "pane.started": 12,
       "tracker.issue.created": 12,
-      "pane.ended": 10,
-      "pane.started": 10,
       "task.created": 8,
-      "notification.raised": 6,
-      "vcs.push": 5,
+      "notification.raised": 7,
+      "vcs.push": 6,
       "agent.spawned": 3,
       "question.posed": 3,
+      "decision.made": 1,
+      "question.auto_resolved": 1,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 122,
-      "hook:Stop": 62,
-      "hook:TeammateIdle": 36,
-      "hook:TaskCompleted": 27,
+      "hook:PostToolUse": 131,
+      "hook:Stop": 68,
+      "hook:TeammateIdle": 37,
+      "hook:TaskCompleted": 28,
       "hook:SubagentStop": 24,
       "poll-fill": 15,
-      "hook:SessionEnd": 10,
-      "hook:SessionStart": 10,
+      "hook:SessionEnd": 12,
+      "hook:SessionStart": 12,
+      "emit": 8,
       "hook:TaskCreated": 8,
-      "emit": 6,
-      "hook:Notification": 6,
+      "hook:Notification": 7,
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 185,
-      "ef6c3777": 79,
+      "claude": 196,
+      "ef6c3777": 85,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
+      "dd3edd33": 5,
       "70cbe176": 3,
       "ca8a1e39": 3,
+      "orchestrator": 3,
       "aa7a28cca3c73abc5": 2,
       "ab3b55ad5cc3bfb36": 2,
       "gsl90-setup": 2,
@@ -89,204 +93,11 @@
       "afc648057d400fa02": 1,
       "fixer-lab": 1,
       "impl-lab-2": 1,
-      "impl-ui-1": 1,
-      "orchestrator": 1
+      "impl-ui-1": 1
     },
-    "mechanical_share": 0.936
+    "mechanical_share": 0.935
   },
   "recent_events": [
-    {
-      "ts": "2026-07-13T09:19:09Z",
-      "seq": 63,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:19:09Z",
-      "seq": 64,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:19:22Z",
-      "seq": 65,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:19:37Z",
-      "seq": 66,
-      "actor": "a82b373ecbaf0c23c",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:19:37Z",
-      "seq": 67,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:19:37Z",
-      "seq": 68,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:20:09Z",
-      "seq": 69,
-      "actor": "a3055ba3926e2b839",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:20:09Z",
-      "seq": 70,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:20:09Z",
-      "seq": 71,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:20:41Z",
-      "seq": 72,
-      "actor": "a2333b9dfbccdce68",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:20:41Z",
-      "seq": 73,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:20:41Z",
-      "seq": 74,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:13Z",
-      "seq": 75,
-      "actor": "a32e1a070b23f39b4",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:13Z",
-      "seq": 76,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:14Z",
-      "seq": 77,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:36Z",
-      "seq": 78,
-      "actor": "claude",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:37Z",
-      "seq": 79,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:37Z",
-      "seq": 80,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:46Z",
-      "seq": 81,
-      "actor": "a427309da6b948dfd",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:46Z",
-      "seq": 82,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:46Z",
-      "seq": 83,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:21:50Z",
-      "seq": 84,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:22:18Z",
-      "seq": 85,
-      "actor": "a0f0f3af9ae562c37",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:22:18Z",
-      "seq": 86,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
     {
       "ts": "2026-07-13T09:22:18Z",
       "seq": 87,
@@ -1837,24 +1648,231 @@
       "data": {
         "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/README.md"
       }
+    },
+    {
+      "ts": "2026-07-13T12:50:24Z",
+      "seq": 264,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "9197f88",
+        "cmd": "M=/private/tmp/claude-501/-Users-romanlidovskyi-Documents-dev-harness-gosleep/c2e36f08-7e73-4d72-8357-56fe876719a8/scratchpad/msg94.txt cat > \"$M\" <<'EOF' GSL-94 [UI][Tooling] Autonomy runway = min(6 axes) with limiting-axis trace (F5-S1) One headline at the top of the morning screen answers the only question the owner actually has at midnight — \"can I go to sleep?\" — as the nearest of six independent exhaustion clocks, with the binding axis named and a per-axis reasoning trace under it (PRD R5."
+      }
+    },
+    {
+      "ts": "2026-07-13T12:50:29Z",
+      "seq": 265,
+      "actor": "claude",
+      "type": "vcs.push",
+      "src": "hook:PostToolUse",
+      "data": {
+        "cmd": "git push 2>&1 | tail -3 && echo \"=== after push ===\" && git status -sb | head -1 && git log --oneline -1"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:50:34Z",
+      "seq": 266,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-94"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:50:56Z",
+      "seq": 267,
+      "actor": "claude",
+      "type": "tracker.issue.updated",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-94"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:52:32Z",
+      "seq": 268,
+      "actor": "claude",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/29-2026-07-13-handoff-impl-ui-1.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:54:38Z",
+      "seq": 269,
+      "actor": "claude",
+      "type": "task.completed",
+      "src": "hook:TaskCompleted",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T12:55:01Z",
+      "seq": 270,
+      "actor": "claude",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T12:55:01Z",
+      "seq": 271,
+      "actor": "claude",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T12:55:28Z",
+      "seq": 272,
+      "actor": "claude",
+      "type": "pane.ended",
+      "src": "hook:SessionEnd",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T12:55:44Z",
+      "seq": 273,
+      "actor": "ef6c3777",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:56:30Z",
+      "seq": 274,
+      "actor": "ef6c3777",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T12:57:30Z",
+      "seq": 275,
+      "actor": "ef6c3777",
+      "type": "notification.raised",
+      "src": "hook:Notification",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:16:13Z",
+      "seq": 276,
+      "actor": "ef6c3777",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:17:48Z",
+      "seq": 277,
+      "actor": "ef6c3777",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:32:04Z",
+      "seq": 278,
+      "actor": "ef6c3777",
+      "type": "pane.ended",
+      "src": "hook:SessionEnd",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:32:27Z",
+      "seq": 279,
+      "actor": "dd3edd33",
+      "type": "pane.started",
+      "src": "hook:SessionStart",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:38:53Z",
+      "seq": 280,
+      "actor": "dd3edd33",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:39:12Z",
+      "seq": 281,
+      "actor": "dd3edd33",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:39:16Z",
+      "seq": 282,
+      "actor": "orchestrator",
+      "type": "question.auto_resolved",
+      "src": "emit",
+      "data": {
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:39:16Z",
+      "seq": 283,
+      "actor": "orchestrator",
+      "type": "decision.made",
+      "src": "emit",
+      "data": {
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
+        "decision": "детерминированный скелет + claude -p опционально"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:40:33Z",
+      "seq": 284,
+      "actor": "claude",
+      "type": "pane.started",
+      "src": "hook:SessionStart",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:41:16Z",
+      "seq": 285,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T13:44:36Z",
+      "seq": 286,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-95"
+      }
+    },
+    {
+      "ts": "2026-07-13T13:51:35Z",
+      "seq": 287,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
     }
   ],
   "recent_cap": 200,
   "questions": {
-    "open": 3,
+    "open": 2,
     "by_type": {
-      "DECISION": 3
+      "DECISION": 2
     },
     "items": [
-      {
-        "id": "q-2026-07-12-001",
-        "type": "DECISION",
-        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
-        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
-        "auto_apply_at": "2026-07-13T08:00:00Z",
-        "task": "GSL-86",
-        "high_impact": null
-      },
       {
         "id": "q-2026-07-13-001",
         "type": "DECISION",
@@ -1894,20 +1912,20 @@
     "next_event": {
       "axis": "context",
       "label": "orchestrator context",
-      "hours": 0.0,
+      "hours": 8.11,
       "on_exhaustion": "degrades",
-      "why": "at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — the night continues on the other side of a roll."
+      "why": "self-reported 20%, rising 7.4 %/h -> ceiling 80% in 8.1h"
     },
     "clocks": [
       {
         "axis": "context",
         "label": "orchestrator context",
         "on_exhaustion": "degrades",
-        "state": "exhausted",
-        "hours": 0.0,
+        "state": "counting",
+        "hours": 8.11,
         "eta": null,
-        "gauge": "82% of 80%",
-        "why": "at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — the night continues on the other side of a roll.",
+        "gauge": "20% of 80%",
+        "why": "self-reported 20%, rising 7.4 %/h -> ceiling 80% in 8.1h",
         "sources": [
           "docs/handoff/.orchestrator-heartbeat (gitignored)",
           "watchdog.sh WD_CONTEXT_CEILING_PCT=80"
@@ -1920,7 +1938,7 @@
         "state": "unknown",
         "hours": null,
         "eta": null,
-        "gauge": "6,246,000 used, no ceiling",
+        "gauge": "6,707,000 used, no ceiling",
         "why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
         "sources": [
           "docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY",
@@ -1977,60 +1995,28 @@
         "hours": null,
         "eta": null,
         "gauge": "3 To Do (stale)",
-        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (15h 23m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
+        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (16h 29m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
         "sources": [
           "docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)"
         ]
       }
     ],
     "trace": [
-      "0.0h — orchestrator context: at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — the night continues on the other side of a roll.",
+      "8.1h — orchestrator context: self-reported 20%, rising 7.4 %/h -> ceiling 80% in 8.1h",
       "unknown — token budget: no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
       "clear — quota window: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)",
       "clear — pane slots: 2 free slot(s)",
       "clear — open blockers: nothing the fleet is doing is waiting on a human",
-      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (15h 23m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
+      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (16h 29m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
     ]
   },
   "queue": {
-    "open": 3,
+    "open": 2,
     "total": 3,
     "by_type": {
-      "DECISION": 3
+      "DECISION": 2
     },
     "open_items": [
-      {
-        "id": "q-2026-07-12-001",
-        "ts": "2026-07-12T21:24:00Z",
-        "type": "DECISION",
-        "from": "impl-lab-2",
-        "task": "GSL-86",
-        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
-        "options": [
-          {
-            "label": "детерминированный скелет + LLM-врезка",
-            "pros": "страница живёт без LLM; F4-S3 выполняется",
-            "cons": "проза беднее, чем мог бы дать полный LLM-проход"
-          },
-          {
-            "label": "LLM генерит HTML+дайджест",
-            "pros": "богаче текст; буквально по тексту задачи",
-            "cons": "крах/бюджет/таймаут = НЕТ страницы; F4-S3 падает"
-          }
-        ],
-        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
-        "default_rationale": "F4-S3 требует: крах/исчерпанный бюджет летописца НЕ роняет страницу. Если страницу рисует LLM, то её крах = нет страницы — критерий падает в первую же плохую ночь. LLM как клей сохраняет и C3 (bounded glue), и F4-S3 (деградация).",
-        "reversibility": "high",
-        "impact_if_wrong": "",
-        "auto_apply_at": "2026-07-13T08:00:00Z",
-        "status": "open",
-        "seen_by": [
-          "impl-lab-2"
-        ],
-        "links": {
-          "jira": "GSL-86"
-        }
-      },
       {
         "id": "q-2026-07-13-001",
         "ts": "2026-07-13T11:49:40Z",
@@ -2110,7 +2096,40 @@
         "links": {}
       }
     ],
-    "closed_items": [],
+    "closed_items": [
+      {
+        "id": "q-2026-07-12-001",
+        "ts": "2026-07-12T21:24:00Z",
+        "type": "DECISION",
+        "from": "impl-lab-2",
+        "task": "GSL-86",
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
+        "options": [
+          {
+            "label": "детерминированный скелет + LLM-врезка",
+            "pros": "страница живёт без LLM; F4-S3 выполняется",
+            "cons": "проза беднее, чем мог бы дать полный LLM-проход"
+          },
+          {
+            "label": "LLM генерит HTML+дайджест",
+            "pros": "богаче текст; буквально по тексту задачи",
+            "cons": "крах/бюджет/таймаут = НЕТ страницы; F4-S3 падает"
+          }
+        ],
+        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
+        "default_rationale": "F4-S3 требует: крах/исчерпанный бюджет летописца НЕ роняет страницу. Если страницу рисует LLM, то её крах = нет страницы — критерий падает в первую же плохую ночь. LLM как клей сохраняет и C3 (bounded glue), и F4-S3 (деградация).",
+        "reversibility": "high",
+        "impact_if_wrong": "",
+        "auto_apply_at": "2026-07-13T08:00:00Z",
+        "status": "auto-resolved",
+        "seen_by": [
+          "impl-lab-2"
+        ],
+        "links": {
+          "jira": "GSL-86"
+        }
+      }
+    ],
     "open_blockers": []
   },
   "tasks": {
@@ -2224,7 +2243,14 @@
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
-        "commits": [],
+        "commits": [
+          {
+            "sha": "9197f88",
+            "subject": "GSL-94 [UI][Tooling] Autonomy runway = min(6 axes) with limiting-axis trace (F5-S1)",
+            "ts": "2026-07-13T14:50:24+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/9197f88"
+          }
+        ],
         "dev_history": [
           {
             "name": "GSL-94-phase5-cycle53-runway-indicator.md",
@@ -2328,7 +2354,7 @@
         "key": "GSL-89",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:12Z",
-        "status_age_s": 59745,
+        "status_age_s": 63700,
         "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
         "commits": [
           {
@@ -2357,13 +2383,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-89",
         "gh_url": null,
-        "status_age_human": "16h 35m"
+        "status_age_human": "17h 41m"
       },
       {
         "key": "GSL-88",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:11Z",
-        "status_age_s": 59746,
+        "status_age_s": 63701,
         "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
         "commits": [
           {
@@ -2382,13 +2408,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-88",
         "gh_url": null,
-        "status_age_human": "16h 35m"
+        "status_age_human": "17h 41m"
       },
       {
         "key": "GSL-87",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:09Z",
-        "status_age_s": 59748,
+        "status_age_s": 63703,
         "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
         "commits": [
           {
@@ -2407,13 +2433,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-87",
         "gh_url": null,
-        "status_age_human": "16h 35m"
+        "status_age_human": "17h 41m"
       },
       {
         "key": "GSL-86",
         "status": "Done",
         "status_ts": "2026-07-12T21:26:24Z",
-        "status_age_s": 55413,
+        "status_age_s": 59368,
         "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
         "commits": [
           {
@@ -2438,13 +2464,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-86",
         "gh_url": null,
-        "status_age_human": "15h 23m"
+        "status_age_human": "16h 29m"
       },
       {
         "key": "GSL-85",
         "status": "Done",
         "status_ts": "2026-07-12T20:56:50Z",
-        "status_age_s": 57187,
+        "status_age_s": 61142,
         "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
         "commits": [
           {
@@ -2463,13 +2489,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-85",
         "gh_url": null,
-        "status_age_human": "15h 53m"
+        "status_age_human": "16h 59m"
       },
       {
         "key": "GSL-84",
         "status": "Done",
         "status_ts": "2026-07-12T20:50:59Z",
-        "status_age_s": 57538,
+        "status_age_s": 61493,
         "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
         "commits": [
           {
@@ -2488,13 +2514,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-84",
         "gh_url": null,
-        "status_age_human": "15h 58m"
+        "status_age_human": "17h 4m"
       },
       {
         "key": "GSL-83",
         "status": "Done",
         "status_ts": "2026-07-12T20:46:53Z",
-        "status_age_s": 57784,
+        "status_age_s": 61739,
         "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
         "commits": [
           {
@@ -2519,13 +2545,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-83",
         "gh_url": null,
-        "status_age_human": "16h 3m"
+        "status_age_human": "17h 8m"
       },
       {
         "key": "GSL-82",
         "status": "Done",
         "status_ts": "2026-07-12T20:16:09Z",
-        "status_age_s": 59628,
+        "status_age_s": 63583,
         "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
         "commits": [
           {
@@ -2544,13 +2570,13 @@
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-82",
         "gh_url": null,
-        "status_age_human": "16h 33m"
+        "status_age_human": "17h 39m"
       },
       {
         "key": "GSL-81",
         "status": "In Progress",
         "status_ts": "2026-07-12T20:14:02Z",
-        "status_age_s": 59755,
+        "status_age_s": 63710,
         "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "commits": [
           {
@@ -2577,7 +2603,7 @@
         ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-81",
         "gh_url": null,
-        "status_age_human": "16h 35m"
+        "status_age_human": "17h 41m"
       },
       {
         "key": "GSL-80",
@@ -4739,8 +4765,8 @@
     },
     "todo": 3,
     "tracker_last_polled": "2026-07-12T21:26:24Z",
-    "tracker_age_s": 55413,
-    "tracker_age_human": "15h 23m",
+    "tracker_age_s": 59368,
+    "tracker_age_human": "16h 29m",
     "tracker_stale": true,
     "gh_base": "https://github.com/ainstance-labs/gosleep",
     "gh_issue_links": false,
@@ -4750,41 +4776,65 @@
     "open_workers": 1,
     "cap": 3,
     "free_slots": 2,
-    "cycle": 53,
+    "cycle": 54,
     "orchestrator_status": "ok",
-    "orchestrator_context_pct": 82,
+    "orchestrator_context_pct": 20,
     "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
     "known": true,
     "roster": [
       {
-        "actor": "claude",
-        "events": 185,
-        "last_ts": "2026-07-13T12:49:53Z",
+        "actor": "dd3edd33",
+        "events": 5,
+        "last_ts": "2026-07-13T13:51:35Z",
         "types": {
-          "agent.idle": 36,
-          "dev_history.written": 34,
-          "task.completed": 25,
-          "vcs.commit": 16,
-          "agent.turn_ended": 14,
-          "tracker.issue.transitioned": 14
+          "agent.turn_ended": 2,
+          "handoff.written": 2,
+          "pane.started": 1
         },
-        "last_age_s": 4,
-        "last_age_human": "4s"
+        "last_age_s": 257,
+        "last_age_human": "4m"
+      },
+      {
+        "actor": "claude",
+        "events": 196,
+        "last_ts": "2026-07-13T13:44:36Z",
+        "types": {
+          "agent.idle": 37,
+          "dev_history.written": 34,
+          "task.completed": 26,
+          "vcs.commit": 17,
+          "tracker.issue.transitioned": 16,
+          "agent.turn_ended": 15
+        },
+        "last_age_s": 676,
+        "last_age_human": "11m"
+      },
+      {
+        "actor": "orchestrator",
+        "events": 3,
+        "last_ts": "2026-07-13T13:39:16Z",
+        "types": {
+          "decision.made": 1,
+          "handoff.written": 1,
+          "question.auto_resolved": 1
+        },
+        "last_age_s": 996,
+        "last_age_human": "16m"
       },
       {
         "actor": "ef6c3777",
-        "events": 79,
-        "last_ts": "2026-07-13T12:49:14Z",
+        "events": 85,
+        "last_ts": "2026-07-13T13:32:04Z",
         "types": {
-          "agent.turn_ended": 46,
-          "handoff.written": 15,
+          "agent.turn_ended": 49,
+          "handoff.written": 16,
           "task.created": 8,
-          "notification.raised": 6,
+          "notification.raised": 7,
           "task.completed": 2,
-          "tracker.issue.transitioned": 1
+          "pane.ended": 1
         },
-        "last_age_s": 43,
-        "last_age_human": "43s"
+        "last_age_s": 1428,
+        "last_age_human": "23m"
       },
       {
         "actor": "impl-ui-1",
@@ -4793,8 +4843,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 94,
-        "last_age_human": "1m"
+        "last_age_s": 4049,
+        "last_age_human": "1h 7m"
       },
       {
         "actor": "ab3b55ad5cc3bfb36",
@@ -4804,8 +4854,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 2582,
-        "last_age_human": "43m"
+        "last_age_s": 6537,
+        "last_age_human": "1h 48m"
       },
       {
         "actor": "a1a48411925ec4eae",
@@ -4814,8 +4864,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 2648,
-        "last_age_human": "44m"
+        "last_age_s": 6603,
+        "last_age_human": "1h 50m"
       },
       {
         "actor": "a503045747e54a2aa",
@@ -4824,8 +4874,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 2710,
-        "last_age_human": "45m"
+        "last_age_s": 6665,
+        "last_age_human": "1h 51m"
       },
       {
         "actor": "ac46c415bfdb4e55a",
@@ -4834,8 +4884,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 2742,
-        "last_age_human": "45m"
+        "last_age_s": 6697,
+        "last_age_human": "1h 51m"
       },
       {
         "actor": "aaea689860c6cccdb",
@@ -4844,8 +4894,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 2774,
-        "last_age_human": "46m"
+        "last_age_s": 6729,
+        "last_age_human": "1h 52m"
       },
       {
         "actor": "a1f95c5ec2e2d74ae",
@@ -4854,8 +4904,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 2809,
-        "last_age_human": "46m"
+        "last_age_s": 6764,
+        "last_age_human": "1h 52m"
       },
       {
         "actor": "a2ff6cd2567d65e2b",
@@ -4864,8 +4914,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 2841,
-        "last_age_human": "47m"
+        "last_age_s": 6796,
+        "last_age_human": "1h 53m"
       },
       {
         "actor": "gsl90-setup",
@@ -4875,8 +4925,8 @@
           "handoff.written": 1,
           "question.posed": 1
         },
-        "last_age_s": 3359,
-        "last_age_human": "55m"
+        "last_age_s": 7314,
+        "last_age_human": "2h 1m"
       },
       {
         "actor": "a690ba064bba794be",
@@ -4887,8 +4937,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 3557,
-        "last_age_human": "59m"
+        "last_age_s": 7512,
+        "last_age_human": "2h 5m"
       },
       {
         "actor": "a61075657b8f0649b",
@@ -4897,8 +4947,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 3574,
-        "last_age_human": "59m"
+        "last_age_s": 7529,
+        "last_age_human": "2h 5m"
       },
       {
         "actor": "poll-fill",
@@ -4910,8 +4960,8 @@
           "vcs.pr.merged": 1,
           "vcs.pr.opened": 1
         },
-        "last_age_s": 4362,
-        "last_age_human": "1h 12m"
+        "last_age_s": 8317,
+        "last_age_human": "2h 18m"
       },
       {
         "actor": "fixer-lab",
@@ -4920,8 +4970,8 @@
         "types": {
           "handoff.written": 1
         },
-        "last_age_s": 10255,
-        "last_age_human": "2h 50m"
+        "last_age_s": 14210,
+        "last_age_human": "3h 56m"
       },
       {
         "actor": "aa7a28cca3c73abc5",
@@ -4931,8 +4981,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 12322,
-        "last_age_human": "3h 25m"
+        "last_age_s": 16277,
+        "last_age_human": "4h 31m"
       },
       {
         "actor": "a198207c1aae6407d",
@@ -4941,8 +4991,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 12364,
-        "last_age_human": "3h 26m"
+        "last_age_s": 16319,
+        "last_age_human": "4h 31m"
       },
       {
         "actor": "a712e803767d9690f",
@@ -4951,28 +5001,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 12397,
-        "last_age_human": "3h 26m"
-      },
-      {
-        "actor": "a0f0f3af9ae562c37",
-        "events": 1,
-        "last_ts": "2026-07-13T09:22:18Z",
-        "types": {
-          "agent.terminated": 1
-        },
-        "last_age_s": 12459,
-        "last_age_human": "3h 27m"
-      },
-      {
-        "actor": "a427309da6b948dfd",
-        "events": 1,
-        "last_ts": "2026-07-13T09:21:46Z",
-        "types": {
-          "agent.terminated": 1
-        },
-        "last_age_s": 12491,
-        "last_age_human": "3h 28m"
+        "last_age_s": 16352,
+        "last_age_human": "4h 32m"
       }
     ],
     "blind_spots": [
@@ -5558,25 +5588,57 @@
         "cache_write": 500000,
         "running_total": 6246000,
         "running_cycles": 77
+      },
+      {
+        "raw": "cycle=53 worker=impl-ui-1 model=claude-opus-4-8 (handoff 29 self-report + verify) tokens_out=~460940 tokens_in=~582 cache_read=~55349599 cache_write=~729352 | running: cycles=78 total≈6707000 (+гэпы 2a/32/35/48-52) [GSL-92 TS scaffold + GSL-93 contract + GSL-94 runway min(6 axes) с limiting-axis tra",
+        "cycle": 53,
+        "worker": "impl-ui-1",
+        "model": "claude-opus-4-8",
+        "tokens_out": 460940,
+        "tokens_in": 582,
+        "cache_read": 55349599,
+        "cache_write": 729352,
+        "running_total": 6707000,
+        "running_cycles": 78
       }
     ],
-    "unparsed": 1,
-    "cumulative_total": 6246000,
-    "cumulative_cycles": 77,
+    "unparsed": 2,
+    "cumulative_total": 6707000,
+    "cumulative_cycles": 78,
     "ceiling": null,
     "ceiling_source": null,
     "ceiling_why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
     "used_pct": null
   },
   "decisions": {
-    "total": 0,
-    "recent": []
+    "total": 1,
+    "recent": [
+      {
+        "id": "d-2026-07-13-001",
+        "ts": "2026-07-13T13:39:16Z",
+        "re": "q-2026-07-12-001",
+        "task": "GSL-86",
+        "type": "DECISION",
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
+        "qshape": "8d71975fa0",
+        "decision": "детерминированный скелет + claude -p опционально",
+        "made_by": "orchestrator",
+        "rule": "manifest §2.default-hit-at-deadline",
+        "channel": ""
+      }
+    ]
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "d2b2a20",
-    "dirty_paths": 24,
+    "head": "9197f88",
+    "dirty_paths": 22,
     "commits_on_date": [
+      {
+        "sha": "9197f88",
+        "author": "R",
+        "ts": "2026-07-13T14:50:24+02:00",
+        "subject": "GSL-94 [UI][Tooling] Autonomy runway = min(6 axes) with limiting-axis trace (F5-S1)"
+      },
       {
         "sha": "d2b2a20",
         "author": "R",
@@ -5734,23 +5796,23 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T12:49:10Z",
-      "cycle": 53,
-      "context_pct": 82,
+      "ts": "2026-07-13T13:51:13Z",
+      "cycle": 54,
+      "context_pct": 20,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse #2; impl-ui-1 still grinding (larger cycle: TS+build+contract+runway)"
+      "note": "pulse 1 — impl-ui-2 mid-cycle"
     },
-    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). **PHASE 4 CLOSED** @ `5fd1de2` (R4.2 MET через poll-fill reconciler seq 156). cycle 52 gsl90-setup DONE ~11:52 — Epic GSL-90=#103, 10 tasks GSL-91..100=#104..113 pushed @ 7b229c7 (ledger 16 путей / 1509 insertions). **Addendum ~12:00:** R4.2-MET doc fix НЕ folded в GSL-91 (уже был запушен → force-push запрещён); сделан ОТДЕЛЬНЫМ коммитом **GSL-101 = `6d934de`** (GH #114, Jira Done); ветка теперь `GSL-90-ui-orchestration @ 6d934de` (2 коммита от main). Setup catch: моя формулировка «R4.2-MET fix folded» была неверна — fix landed as separate commit. Также setup поймал что «правка на один значок» (merged 0→1) чуть не сломала 5 других счётчиков (vcs.commit 11+3→12+4, Jira 9→11, panes 7/7→9/9, hook-events 162→246 — все выросли от ledger commit'а) — jq-рецепт теперь с двумя колонками по sha, F4-S1 остаётся 3/4 не подкручено. Setup также записал R4.2-wording finding: «вне CLI» — дырявый прокси для «не увиденное ни одним хуком»; путь через CLI (в т.ч. `gh api`) тоже может остаться неувиденным — что и произошло. Formulation НЕ переписан задним числом (тот же жанр, за который M2 понизил PENDING). Jira GSL-91 Done + GSL-101 Done, остальные To Do. DECISION q-2026-07-13-001 framework: **Preact + preact-render-to-string + esbuild** (default до 2026-07-14T06Z, reversibility high, работа НЕ блокируется). **Отклонения setup'а от моего брифа (осознанные):** PRD-семёрка экранов = Overview/Timeline/Tasks/Questions/Fleet/Cost/Library (не fleet/queue/timeline/library/digest/manifest/config); PRD взят как source of truth. Задача 4 разбита на GSL-96/97/98. Добавлена GSL-92 TS-скаффолд (не в PRD, следствие TS-директивы). Явные фиксации setup'а: chronicler.py = data layer, view = TS SSG (file:// diктует SSG), degrade-без-node в GSL-92 = ",
-    "telemetry_last": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --ts/--supersedes with (file,seq) coord]"
+    "live_status": "▶ AUTONOMOUS MODE 2026-07-13 13:38Z (fresh orchestrator, Opus 4.7, resumed из handoff 29 после roll ~14:16Z прошлой сессии на hb 80%). Phase 4 CLOSED (main @ 5fd1de2 = PR #102 merged). **Phase 5 UI in flight** on ветке `GSL-90-ui-orchestration @ 9197f88` (5 коммитов от main). **F5-S1 CLOSED** (cycle 53 impl-ui-1 DONE ~14:15Z: GSL-92 `6b4cbed` TS scaffold + Python view -290 lines + degrade-without-node · GSL-93 `d2b2a20` data contract gosleep.lab.render/3 + 7 screens · GSL-94 `9197f88` autonomy runway=min(6 axes) с limiting-axis trace (stops/degrades/completes; clear≠unknown). Smoke 174/174; hooks-verify 14/14; tsc clean; handoff 29 written). **CYCLE 54 impl-ui-2 SPAWNING ~13:38Z** — GSL-95 Questions+deadline countdown (F5-S2), MUST re-grade on page open (как staleness banner в GSL-86/89, не freeze at build time). После: GSL-96 Tasks (F5-S3) → GSL-97 Timeline+Library → GSL-98 Fleet+Cost (C5 collision передан честно: worker name в data.raw.teammate_name; impl-ui-1 не ослабил safety, скелет на actor) → GSL-99 self-health (R5.3) → GSL-100 приёмка+dev_history+contract (F5-S4) → mechanic PR → reviewer → (fixer) → finalizer → Phase 6 Mobile без остановки. Открытые DECISION: q-2026-07-12-001 (due 08:00Z passed → auto-resolving к дефолту: детерминированный скелет + claude -p опционально; reversibility high); q-2026-07-13-001 (framework UI, дефолт Preact+esbuild применён работает, deadline 2026-07-14T06Z); q-2026-07-13-002 (token ceiling manifest §5 не существует машиночитаемо, дефолт статус-кво high). 0 BLOCKER. next Jira=GSL-102+, next GH=#115. orchestrator pane=%193 | latest handoff=docs/handoff/29-2026-07-13-handoff-impl-ui-1.md | questions: open=3 (0B/3D/0C/0F) lines=3 → resolving q-2026-07-12-001 → open=2 (0B/2D/0C/0F). Fleet cap 3; open_workers=1 (impl-ui-2).",
+    "telemetry_last": "cycle=53 worker=impl-ui-1 model=claude-opus-4-8 (handoff 29 self-report + verify) tokens_out=~460940 tokens_in=~582 cache_read=~55349599 cache_write=~729352 | running: cycles=78 total≈6707000 (+гэпы 2a/32/35/48-52) [GSL-92 TS scaffold + GSL-93 contract + GSL-94 runway min(6 axes) с limiting-axis trace, F5-S1 CLOSED, smoke 174/174, hit MY hb 80% ceiling → orchestrator roll]"
   },
   "library": {
     "digests": [
       {
         "href": "../digest/2026-07-13-morning.md",
         "name": "2026-07-13-morning.md",
-        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 12:37)"
+        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 13:44)"
       },
       {
         "href": "../digest/2026-07-12-morning.md",
@@ -5763,6 +5825,11 @@
         "href": "../../handoff/ORCHESTRATION-STATE.md",
         "name": "ORCHESTRATION-STATE.md",
         "title": "ORCHESTRATION-STATE — gosleep (Orchestration Harness)"
+      },
+      {
+        "href": "../../handoff/29-2026-07-13-handoff-impl-ui-1.md",
+        "name": "29-2026-07-13-handoff-impl-ui-1.md",
+        "title": "Handoff — gosleep — 2026-07-13 (цикл 53, impl-ui-1: фундамент Фазы 5 — GSL-92/93/94)"
       },
       {
         "href": "../../handoff/28-2026-07-13-handoff-gsl90-setup.md",
