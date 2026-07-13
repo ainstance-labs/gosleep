@@ -254,12 +254,78 @@ export interface Cost {
   used_pct: number | null;
 }
 
+// ───────────────────── the autonomy runway (PRD R5.1 / F5-S1) ─────────────────────
+
+/** What this clock's ZERO means. min() over the raw six is a lie by arithmetic without it. */
+export type OnExhaustion =
+  /** The night ends here without you: budget exceeded, quota window, an open BLOCKER. */
+  | "stops"
+  /** The night continues, worse: a forced context roll, a full pane queue. Nobody needs waking. */
+  | "degrades"
+  /** The night ends here, happily: there is no work left. The good ending. */
+  | "completes";
+
+export type ClockState =
+  /** A finite number of hours, from real data. */
+  | "counting"
+  /** It is out, now. */
+  | "exhausted"
+  /** KNOWN not to be a constraint — 0 blockers, free panes, no quota wait armed. Evidence, not a hole. */
+  | "clear"
+  /** The source could not be read. Bounds the answer; never drops out silently. NOT the same as `clear`. */
+  | "unknown";
+
+export interface RunwayClock {
+  axis: "context" | "budget" | "quota" | "slots" | "blockers" | "work" | string;
+  label: string;
+  on_exhaustion: OnExhaustion;
+  state: ClockState;
+  hours: number | null;
+  eta: string | null;
+  gauge: string | null;
+  why: string;
+  sources: string[];
+}
+
+export interface Runway {
+  /** Hours until the nearest STOPPING clock. Null when none is counting — read `bound` to know why. */
+  hours: number | null;
+  /**
+   * `exact`   — a stopping clock is counting and every stopping clock is readable.  render "≈ 4h"
+   * `upper`   — one is counting, but an unreadable one could be shorter.            render "≤ 4h"
+   * `clear`   — none is counting, and all are readable. Nothing will stop you.
+   * `unknown` — none is counting, but one is unreadable. We cannot say. NOT `clear`.
+   */
+  bound: "exact" | "upper" | "clear" | "unknown";
+  binding: string | null;
+  binding_label: string | null;
+  binding_why: string | null;
+  binding_eta: string | null;
+  /** Stopping clocks we could not read. Each one turns the answer into an upper bound. */
+  unknown_axes: string[];
+  unknown_axes_all: string[];
+  known: number;
+  total: number;
+  /** The nearest of ALL six, whatever its zero means — so a 2h context roll is never hidden by a 6h runway. */
+  next_event: {
+    axis: string;
+    label: string;
+    hours: number | null;
+    on_exhaustion: OnExhaustion;
+    why: string;
+  } | null;
+  clocks: RunwayClock[];
+  /** One line per axis. The "evidence, not vibes" half of R5.1. */
+  trace: string[];
+}
+
 /**
  * What Python hands the renderer. Version it: a screen that reads a field the producer stopped
  * emitting must fail loudly at build time, not render a blank card at 03:00.
  */
 export interface RenderBundle {
-  schema: "gosleep.lab.render/2";
+  schema: "gosleep.lab.render/3";
+  runway: Runway;
   generated_at: string;
   generated_by: string;
   date: string;

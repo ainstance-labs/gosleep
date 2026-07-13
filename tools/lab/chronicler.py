@@ -327,6 +327,32 @@ def load_heartbeat():
         degrade("heartbeat", exc)
     return None
 
+
+def load_heartbeat_history():
+    """Every pulse, not just the last one.
+
+    A single heartbeat says "context is at 78%". That is a level, and a level cannot answer "how long
+    have I got" -- only a RATE can, and a rate needs two readings. The runway's context clock (GSL-94)
+    is the reason this loader exists; the last line alone was enough for a status page and is not
+    enough for a prediction."""
+    path = os.path.join(REPO, "docs", "handoff", ".orchestrator-heartbeat")
+    out = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except ValueError:
+                    pass          # a torn pulse is one lost reading, never a lost dashboard
+    except FileNotFoundError:
+        pass                      # already degraded by load_heartbeat()
+    except OSError as exc:
+        degrade("heartbeat-history", exc)
+    return [h for h in out if h.get("ts")]
+
 def load_state():
     """ORCHESTRATION-STATE is the AUTHORITY (C8); status.json is derived and may lag. We quote it,
     we never contradict it."""
@@ -676,6 +702,379 @@ def build_status(ctx):
     }
     return status
 
+# ═════════════════════ the autonomy runway (GSL-94, PRD R5.1 / F5-S1) ═════════════════════
+#
+# ONE headline answers the only question the owner actually asks at midnight -- "can I go to sleep?"
+# -- and it answers it with evidence, not vibes. It is the nearest of SIX independent exhaustion
+# clocks, with the binding one named.
+#
+# THREE RULES THIS THING LIVES BY. Each was paid for.
+#
+# 1. A CLOCK WITH NO SOURCE IS `unknown`, NEVER A COMFORTABLE DEFAULT. Guess an axis long and min()
+#    gets LONGER -- the runway grows because we know LESS, and the dashboard tells the owner to go to
+#    sleep on evidence it does not have. So an unreadable axis does not silently drop out of the
+#    minimum: it turns the answer from "≈ 4h" into "≤ 4h, and 2 of 6 clocks are unreadable". Less
+#    knowledge must never read as more runway.
+#
+# 2. `unknown` AND `clear` ARE DIFFERENT AND MUST NEVER RENDER THE SAME. "No quota wait is armed" is
+#    knowledge -- that clock is provably not the constraint, and it does not weaken the answer.
+#    "The heartbeat is missing so I cannot see the fleet" is ignorance. One is a green tick, the
+#    other is a hole in the evidence, and a dashboard that draws them alike has learned nothing from
+#    Phase 4.
+#
+# 3. EXHAUSTION DOES NOT MEAN THE SAME THING ON EVERY AXIS, so min() over the raw six is a lie by
+#    arithmetic. Hitting the context ceiling forces a ROLL, which the watchdog performs by itself and
+#    the night survives. Filling all three panes makes the fourth worker QUEUE. Running out of To Do
+#    is the job being FINISHED. None of those are a reason to wake anybody, and a naive
+#    min(0h, 4h, 8h) would scream "RUNWAY 0h" because a pane is busy. So every clock declares what its
+#    own zero MEANS:
+#         stops     -> the night ends here without you   (budget exceeded, quota window, open BLOCKER)
+#         degrades  -> the night continues, worse        (context roll, full pane queue)
+#         completes -> the night ends here, happily      (no work left)
+#    RUNWAY is the nearest `stops`. `next_event` is the nearest of ALL six, so nothing is hidden --
+#    the page shows both, and says which is which.
+
+CONTEXT_CEILING_PCT = int(os.environ.get("GOSLEEP_CONTEXT_CEILING_PCT", 80))   # watchdog.sh:133
+ROLL_CYCLES_LOW  = int(os.environ.get("GOSLEEP_ROLL_CYCLES_LOW", 8))           # PRD R5.1: the 8-15
+ROLL_CYCLES_HIGH = int(os.environ.get("GOSLEEP_ROLL_CYCLES_HIGH", 15))         # cycle roll heuristic
+QUOTA_NOTE_RE = re.compile(r"quota-wait until\s+(\d{4}-\d{2}-\d{2}T[\d:]+Z?)")  # watchdog.sh:287
+
+
+def clock(axis, label, on_exhaustion, state, hours=None, eta=None, gauge=None, why="", sources=()):
+    """One exhaustion clock. `state` is the whole point, so it is never inferred from `hours`:
+
+         counting  -- a finite number of hours, from real data
+         exhausted -- it is out, now (hours = 0)
+         clear     -- KNOWN not to be a constraint (0 blockers, free panes, no quota wait armed)
+         unknown   -- the source could not be read. Bounds the answer; never drops out silently.
+    """
+    return {"axis": axis, "label": label, "on_exhaustion": on_exhaustion, "state": state,
+            "hours": (round(hours, 2) if isinstance(hours, (int, float)) else None),
+            "eta": eta, "gauge": gauge, "why": why, "sources": list(sources)}
+
+
+def _pulse_rate(pulses):
+    """Context %/hour and cycles/hour, measured since the last ROLL.
+
+    A roll resets the context, so a window that straddles one measures a fall and concludes the
+    orchestrator will never fill up again -- the most dangerous possible reading of this number. So:
+    cut at the last drop, and measure only the segment since."""
+    pts = [(parse_ts(h.get("ts")), h.get("context_pct"), h.get("cycle")) for h in pulses]
+    pts = [p for p in pts if p[0] is not None and isinstance(p[1], int)]
+    if len(pts) < 2:
+        return None, None, len(pts)
+    cut = 0
+    for i in range(1, len(pts)):
+        if pts[i][1] < pts[i - 1][1]:
+            cut = i                              # context fell => a roll happened here
+    seg = pts[cut:]
+    if len(seg) < 2:
+        return None, None, len(seg)
+    span_h = (seg[-1][0] - seg[0][0]) / 3600.0
+    if span_h <= 0:
+        return None, None, len(seg)
+    ctx_rate = (seg[-1][1] - seg[0][1]) / span_h
+    cyc_rate = None
+    if isinstance(seg[0][2], int) and isinstance(seg[-1][2], int):
+        cyc_rate = (seg[-1][2] - seg[0][2]) / span_h
+    return ctx_rate, cyc_rate, len(seg)
+
+
+def clock_context(hb, pulses):
+    """Orchestrator context vs the ceiling -- CROSS-CHECKED, because PRD R5.1 says in so many words:
+    do not trust the number alone. A model reporting its own context is the "fabricated 80% vs real
+    63%" failure; the independent check is the roll heuristic (an orchestrator rolls every 8-15
+    cycles), and where the two disagree we take the SHORTER. An optimistic clock is the only kind
+    that can hurt you here."""
+    src = ["docs/handoff/.orchestrator-heartbeat (gitignored)", "watchdog.sh WD_CONTEXT_CEILING_PCT=%d" % CONTEXT_CEILING_PCT]
+    pct = hb.get("context_pct") if isinstance(hb, dict) else None
+    if not isinstance(pct, int):
+        return clock("context", "orchestrator context", "degrades", "unknown",
+                     why="no heartbeat on disk — it is gitignored, so a fresh clone has none. "
+                         "A missing pulse is not a healthy orchestrator; it is an invisible one.",
+                     sources=src)
+
+    gauge = "%d%% of %d%%" % (pct, CONTEXT_CEILING_PCT)
+    if pct >= CONTEXT_CEILING_PCT:
+        return clock("context", "orchestrator context", "degrades", "exhausted", hours=0.0, gauge=gauge,
+                     why="at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — "
+                         "the night continues on the other side of a roll.", sources=src)
+
+    ctx_rate, cyc_rate, n = _pulse_rate(pulses)
+    if ctx_rate is None:
+        return clock("context", "orchestrator context", "degrades", "unknown", gauge=gauge,
+                     why="%d usable pulse(s) since the last roll — a level is not a rate, and two "
+                         "readings are the minimum for a prediction." % n, sources=src)
+    if ctx_rate <= 0:
+        return clock("context", "orchestrator context", "degrades", "clear", gauge=gauge,
+                     why="context is not growing (%.1f %%/h since the last roll)" % ctx_rate, sources=src)
+
+    self_h = (CONTEXT_CEILING_PCT - pct) / ctx_rate
+    why = "self-reported %d%%, rising %.1f %%/h -> ceiling %d%% in %.1fh" % (
+        pct, ctx_rate, CONTEXT_CEILING_PCT, self_h)
+
+    # The independent estimate. It needs a cycle rate and a cycle count since the roll.
+    hours = self_h
+    if cyc_rate and cyc_rate > 0:
+        cycles_now = hb.get("cycle")
+        seg_cycles = None
+        if isinstance(cycles_now, int):
+            pts = [(parse_ts(h.get("ts")), h.get("context_pct"), h.get("cycle")) for h in pulses]
+            pts = [p for p in pts if p[0] is not None and isinstance(p[1], int)]
+            cut = 0
+            for i in range(1, len(pts)):
+                if pts[i][1] < pts[i - 1][1]:
+                    cut = i
+            if pts and isinstance(pts[cut][2], int):
+                seg_cycles = cycles_now - pts[cut][2]
+        if isinstance(seg_cycles, int):
+            roll_h = max(0.0, (ROLL_CYCLES_LOW - seg_cycles) / cyc_rate)
+            hours = min(self_h, roll_h)
+            why += "; roll heuristic (%d-%d cycles, %d done since the roll at %.1f cyc/h) says %.1fh" % (
+                ROLL_CYCLES_LOW, ROLL_CYCLES_HIGH, seg_cycles, cyc_rate, roll_h)
+            if self_h > 0 and (max(self_h, roll_h) / max(0.01, min(self_h, roll_h))) >= 2.0:
+                why += " — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust " \
+                       "the self-report alone"
+            else:
+                why += " — taking the shorter"
+
+    return clock("context", "orchestrator context", "degrades", "counting", hours=hours, gauge=gauge,
+                 why=why, sources=src)
+
+
+def clock_budget(cost, cyc_rate):
+    """Token ceiling. TODAY THIS IS `unknown`, AND THAT IS THE FINDING, not a bug.
+
+    manifest §5.phase-ceiling delegates the ceiling to "the epic brief"; no brief on disk names a
+    number. So §5.warn-80 and §3.budget (BUDGET_EXCEEDED = BLOCKER) are rules that cannot fire, and
+    this clock has a numerator with no denominator. Inventing one would make the whole runway finite
+    on a fabricated basis -- exactly the failure this indicator exists to prevent."""
+    src = ["docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY", "manifest.md §5.phase-ceiling"]
+    used, ceiling = cost.get("cumulative_total"), cost.get("ceiling")
+    if ceiling is None:
+        return clock("budget", "token budget", "stops", "unknown",
+                     gauge=("%s used, no ceiling" % f"{used:,}") if used else None,
+                     why=cost.get("ceiling_why") or "no ceiling on disk", sources=src)
+    if used is None:
+        return clock("budget", "token budget", "stops", "unknown",
+                     why="a ceiling exists but the telemetry ledger has no cumulative total to "
+                         "measure against", sources=src)
+
+    gauge = "%s of %s (%s%%)" % (f"{used:,}", f"{ceiling:,}", cost.get("used_pct"))
+    if used >= ceiling:
+        return clock("budget", "token budget", "stops", "exhausted", hours=0.0, gauge=gauge,
+                     why="cumulative spend is at or over the ceiling — manifest §3.budget makes this "
+                         "a BLOCKER, not a warning", sources=src)
+
+    # Per-cycle burn from the ledger's own running total; cycles/hour from the heartbeat. Both are
+    # needed: the ledger has cycle NUMBERS but no timestamps, so it cannot tell time by itself.
+    totals = [c["running_total"] for c in cost.get("cycles", []) if c.get("running_total")]
+    per_cycle, measurable = None, len(totals) >= 2
+    if measurable:
+        deltas = [b - a for a, b in zip(totals, totals[1:]) if b > a]
+        if deltas:
+            per_cycle = sum(deltas[-8:]) / len(deltas[-8:])       # the recent 8, not all history
+
+    # A ledger that is not growing is not an unreadable ledger -- it is a fleet that is not spending.
+    # That is KNOWLEDGE, and it belongs on the green side of the line: `clear`, not `unknown`. The
+    # distinction is the whole discipline of this indicator, and it applies to the budget too.
+    if measurable and not per_cycle:
+        return clock("budget", "token budget", "stops", "clear", gauge=gauge,
+                     why="the telemetry ledger shows no spend growth — nothing is burning against the "
+                         "ceiling", sources=src)
+    if not per_cycle or not cyc_rate or cyc_rate <= 0:
+        return clock("budget", "token budget", "stops", "unknown", gauge=gauge,
+                     why="a ceiling and a total, but no burn RATE: the telemetry ledger records "
+                         "cycle numbers and no timestamps, so it needs the heartbeat to tell time — "
+                         "and that is missing or too short to measure.", sources=src)
+
+    hours = (ceiling - used) / (per_cycle * cyc_rate)
+    return clock("budget", "token budget", "stops", "counting", hours=hours, gauge=gauge,
+                 why="%s left; burning ~%s tokens/cycle at %.1f cycles/h" % (
+                     f"{ceiling - used:,}", f"{int(per_cycle):,}", cyc_rate), sources=src)
+
+
+def clock_quota(events, hb):
+    """The quota window. Armed either by an unmatched `quota.wait_started`, or by the literal string
+    `quota-wait until <ISO>` in the heartbeat note (the form watchdog.sh already parses).
+
+    Honest caveat, carried onto the page: `api.failure` (src=hook:StopFailure) has NEVER fired in
+    this repository. The hook is wired and the type is in the vocabulary, but nothing has ever forced
+    one -- so "no quota wait is armed" rests on a mechanism that has never been observed working. That
+    is `clear`, but it is a `clear` with an asterisk, and the asterisk is printed."""
+    src = ["docs/lab/events/*.jsonl (quota.wait_started / quota.wait_ended, api.failure)",
+           "docs/handoff/.orchestrator-heartbeat note"]
+    started, ended, fails = None, None, 0
+    for e in events:
+        t = e.get("type")
+        if t == "quota.wait_started":
+            started = e
+        elif t == "quota.wait_ended":
+            ended = e
+        elif t == "api.failure" and (e.get("data") or {}).get("error_type") in ("rate_limit", "overloaded"):
+            fails += 1
+
+    eta = None
+    if started and (not ended or (ended.get("ts") or "") < (started.get("ts") or "")):
+        d = started.get("data") or {}
+        eta = iso_utc(d.get("until") or d.get("reset_at") or d.get("eta"))
+    if not eta and isinstance(hb, dict):
+        m = QUOTA_NOTE_RE.search(str(hb.get("note") or ""))
+        if m:
+            eta = iso_utc(m.group(1) if m.group(1).endswith("Z") else m.group(1) + "Z")
+
+    caveat = ("(api.failure has never fired in this repo — the StopFailure hook is wired but has "
+              "never been observed, so this clear rests on an untested mechanism)")
+    if not eta:
+        if started and not ended:
+            return clock("quota", "quota window", "stops", "unknown",
+                         why="a quota wait is armed but carries no reset ETA — the fleet is paused "
+                             "for an unknown length of time", sources=src)
+        return clock("quota", "quota window", "stops", "clear",
+                     gauge="%d rate-limit/overload failure(s) logged" % fails,
+                     why="no quota wait is armed " + caveat, sources=src)
+
+    secs = parse_ts(eta) - NOW if parse_ts(eta) else None
+    if secs is None:
+        return clock("quota", "quota window", "stops", "unknown",
+                     why="a quota wait is armed but its ETA (%r) could not be read" % eta, sources=src)
+    if secs <= 0:
+        return clock("quota", "quota window", "stops", "clear", eta=eta,
+                     why="the quota window has already reset (%s)" % eta, sources=src)
+    return clock("quota", "quota window", "stops", "counting", hours=secs / 3600.0, eta=eta,
+                 gauge="resets %s" % eta,
+                 why="the fleet quiesces until the window resets at %s" % eta, sources=src)
+
+
+def clock_slots(fleet):
+    """Panes in use vs the cap of 3 (manifest §5.slots). Filling them QUEUES the next worker; it does
+    not stop the night -- so this clock degrades, and never drives the headline."""
+    src = ["docs/handoff/.orchestrator-heartbeat open_workers", "manifest.md §5.slots (max 3)"]
+    live, cap = fleet.get("open_workers"), fleet.get("cap")
+    if not isinstance(live, int):
+        return clock("slots", "pane slots", "degrades", "unknown",
+                     why="no heartbeat: the live worker count is unreadable. Not zero — unreadable.",
+                     sources=src)
+    gauge = "%d/%d" % (live, cap)
+    if live >= cap:
+        return clock("slots", "pane slots", "degrades", "exhausted", hours=0.0, gauge=gauge,
+                     why="every pane is busy — the next worker queues until one frees. Queueing, "
+                         "not stopping.", sources=src)
+    return clock("slots", "pane slots", "degrades", "clear", gauge=gauge,
+                 why="%d free slot(s)" % (cap - live), sources=src)
+
+
+def clock_blockers(queue):
+    """Open BLOCKERs. The ONLY question type that can stop a night: manifest §3 gives a BLOCKER no
+    default, ever, so it has no timer and cannot resolve itself. A DECISION auto-applies at its
+    deadline and the night keeps moving; a BLOCKER waits for a human.
+
+    A BLOCKER open at midnight means the runway is already zero for the work it names. This clock is
+    deliberately CONSERVATIVE -- it reports zero even though other tasks may still advance -- because
+    the bias of a "can I sleep?" indicator must be toward waking you, never toward comfort."""
+    src = ["docs/lab/questions/queue.jsonl (type=BLOCKER, status=open)", "manifest.md §3"]
+    b = queue.get("open_blockers") or []
+    if not b:
+        return clock("blockers", "open blockers", "stops", "clear", gauge="0",
+                     why="nothing the fleet is doing is waiting on a human", sources=src)
+    ids = ", ".join(str(x.get("id")) for x in b[:3])
+    return clock("blockers", "open blockers", "stops", "exhausted", hours=0.0, gauge=str(len(b)),
+                 why="%d open BLOCKER(s) (%s) — a BLOCKER takes no default and has no timer; the work "
+                     "it names is parked until you answer it" % (len(b), ids), sources=src)
+
+
+def clock_work(tasks, cyc_rate):
+    """Work remaining. Its exhaustion is the GOOD ending -- Done = idle -- so it never drives the
+    runway headline; it only tells you when the fleet will run out of things to do.
+
+    Refuses a stale board on purpose. The To Do count comes from `tracker.issue.updated`, and the
+    laboratory holds no Jira credentials (C1), so the poll is fed by hand. Reading a count from last
+    Tuesday and printing it in the present tense is exactly the class of lie this dashboard exists to
+    not tell."""
+    src = ["docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)"]
+    if tasks.get("tracker_stale"):
+        last = tasks.get("tracker_last_polled")
+        return clock("work", "work remaining", "completes", "unknown",
+                     gauge=("%d To Do (stale)" % tasks.get("todo", 0)) if last else None,
+                     why="the task board has not been polled since %s (%s ago). Its To Do count is a "
+                         "number from the past in the present tense, and this clock will not use it."
+                         % (last, tasks.get("tracker_age_human")) if last else
+                         "the task board has never been polled on this machine", sources=src)
+    todo = tasks.get("todo", 0)
+    if todo == 0:
+        return clock("work", "work remaining", "completes", "exhausted", hours=0.0, gauge="0 To Do",
+                     why="no work left on the board — the fleet goes idle. The good ending.", sources=src)
+    if not cyc_rate or cyc_rate <= 0:
+        return clock("work", "work remaining", "completes", "unknown", gauge="%d To Do" % todo,
+                     why="%d task(s) left, but no cycle rate to turn that into hours (the heartbeat "
+                         "is missing or too short)" % todo, sources=src)
+    hours = todo / cyc_rate                     # one task per cycle is this project's own invariant
+    return clock("work", "work remaining", "completes", "counting", hours=hours,
+                 gauge="%d To Do" % todo,
+                 why="%d task(s) left at %.1f cycles/h, one task per cycle" % (todo, cyc_rate),
+                 sources=src)
+
+
+def compute_runway(ctx):
+    """RUNWAY = the nearest clock whose exhaustion STOPS the night. `next_event` = the nearest of all
+    six, whatever it means. Both are reported, and every clock says which it is."""
+    pulses = ctx["pulses"]
+    hb = ctx["heartbeat"] or {}
+    _, cyc_rate, _ = _pulse_rate(pulses)
+
+    clocks = [
+        clock_context(hb, pulses),
+        clock_budget(ctx["cost"], cyc_rate),
+        clock_quota(ctx["events"], hb),
+        clock_slots(ctx["fleet"]),
+        clock_blockers(ctx["queue"]),
+        clock_work(ctx["tasks"], cyc_rate),
+    ]
+
+    def nearest(pool):
+        live = [c for c in pool if c["hours"] is not None]
+        return min(live, key=lambda c: c["hours"]) if live else None
+
+    stoppers = [c for c in clocks if c["on_exhaustion"] == "stops"]
+    binding  = nearest(stoppers)
+    nxt      = nearest(clocks)
+
+    # An unreadable clock cannot be ruled out, so it cannot be dropped: it turns the answer from an
+    # ESTIMATE into an UPPER BOUND. Knowing less must never read as more runway (rule 1, above).
+    unknown_stoppers = [c["axis"] for c in stoppers if c["state"] == "unknown"]
+    unknown_all      = [c["axis"] for c in clocks if c["state"] == "unknown"]
+
+    # Four answers, and the difference between the last two is the whole discipline:
+    #   exact   -- a stopping clock is counting, and we can read every stopping clock.  "≈ 4h"
+    #   upper   -- a stopping clock is counting, but one we cannot read might be shorter. "≤ 4h"
+    #   clear   -- NO stopping clock is counting, and we can read them all. Nothing will stop you.
+    #   unknown -- no stopping clock is counting, but one is unreadable. We cannot say. NOT "clear".
+    if binding is not None:
+        bound = "upper" if unknown_stoppers else "exact"
+    else:
+        bound = "unknown" if unknown_stoppers else "clear"
+
+    return {
+        "hours": binding["hours"] if binding else None,
+        "bound": bound,                      # exact | upper | unknown
+        "binding": binding["axis"] if binding else None,
+        "binding_label": binding["label"] if binding else None,
+        "binding_why": binding["why"] if binding else None,
+        "binding_eta": binding["eta"] if binding else None,
+        "unknown_axes": unknown_stoppers,
+        "unknown_axes_all": unknown_all,
+        "known": len(clocks) - len(unknown_all),
+        "total": len(clocks),
+        "next_event": ({"axis": nxt["axis"], "label": nxt["label"], "hours": nxt["hours"],
+                        "on_exhaustion": nxt["on_exhaustion"], "why": nxt["why"]} if nxt else None),
+        "clocks": clocks,
+        # The reasoning trace, one line per axis. This is the "evidence, not vibes" half of R5.1:
+        # the owner must be able to see WHY the number is what it is without opening a single file.
+        "trace": ["%s — %s: %s" % (
+            ("%.1fh" % c["hours"]) if c["hours"] is not None else c["state"],
+            c["label"], c["why"]) for c in clocks],
+    }
+
 # ───────────────────── build: render bundle + the TypeScript view layer ─────────────────────
 #
 # THE PYTHON/TYPESCRIPT BOUNDARY (GSL-92). Everything above this line is the DATA layer: it reads
@@ -820,16 +1219,17 @@ def build_render_bundle(ctx, status):
     from `events` below, computed once, here. A number the renderer works out for itself is a second
     opinion waiting to disagree with status.json."""
     return {
-        "schema": "gosleep.lab.render/2",
+        "schema": "gosleep.lab.render/3",
         "generated_at": status["generated_at"],
-        "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-93)",
+        "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
         "date": ctx["date"],
         "staleness": status["staleness"],
         "events": status["events"],
         "recent_events": [project_event(e) for e in ctx["events"][-RECENT_CAP:]],
         "recent_cap": RECENT_CAP,
         "questions": status["questions"],
-        "queue": build_queue(ctx["questions"]),
+        "runway": ctx["runway"],
+        "queue": ctx["queue"],
         "tasks": ctx["tasks"],
         "fleet": ctx["fleet"],
         "cost": ctx["cost"],
@@ -1283,9 +1683,12 @@ def main():
         "state": load_state(),
         "narrative": None,
     }
-    ctx["cost"]  = load_cost(ctx["state"])
-    ctx["fleet"] = fleet_census(events_all, ctx["heartbeat"] or {})
-    ctx["tasks"] = tasks_board(events_all, ctx["git"], ctx["prs"])
+    ctx["pulses"] = load_heartbeat_history()
+    ctx["cost"]   = load_cost(ctx["state"])
+    ctx["fleet"]  = fleet_census(events_all, ctx["heartbeat"] or {})
+    ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"])
+    ctx["queue"]  = build_queue(questions)
+    ctx["runway"] = compute_runway(ctx)
 
     status = build_status(ctx)
     if ARGS["narrate"]:

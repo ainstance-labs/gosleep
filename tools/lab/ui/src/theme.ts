@@ -38,6 +38,36 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid var(--line);
        padding-top:.8rem}
 
+/* The autonomy runway (R5.1). It is the first thing on the morning screen and the largest thing on
+   it, because it is the only question the owner actually has at midnight. */
+.runway{border:2px solid currentColor;border-radius:.7rem;padding:.9rem 1rem;margin:.9rem 0}
+.runway.ok{color:var(--ok)} .runway.warn{color:var(--warn)} .runway.dead{color:var(--dead)}
+.runway-top{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
+.runway-label{font-size:.75rem;letter-spacing:.12em;font-weight:700}
+.runway-big{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.7rem;font-weight:800}
+.runway-bind{font-size:.8rem;font-weight:600;border:1px solid currentColor;border-radius:.4rem;
+  padding:.1rem .45rem}
+.runway-say{color:var(--fg);font-size:.86rem;margin-top:.5rem;line-height:1.5}
+.runway-next{color:var(--dim);font-size:.82rem;margin-top:.4rem}
+.runway-trace{color:var(--dim);font-size:.8rem;margin-top:.6rem}
+.runway-trace summary{cursor:pointer;font-weight:600}
+.runway-trace li{margin:.45rem 0;color:var(--fg)}
+.clocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.4rem;
+  margin-top:.7rem}
+.clock{background:var(--card);border:1px solid var(--line);border-radius:.45rem;padding:.4rem .5rem;
+  color:var(--fg);display:flex;flex-direction:column;gap:.1rem}
+.clock-axis{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+.clock-val{font-family:ui-monospace,Menlo,monospace;font-size:1rem}
+.clock-gauge{color:var(--dim);font-size:.72rem}
+.clock-kind{font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dim)}
+.clock-kind.stops{color:var(--dead)} .clock-kind.degrades{color:var(--warn)}
+.clock-kind.completes{color:var(--ok)}
+/* An unreadable clock must LOOK unreadable — never like a clock reading zero. */
+.clock.unknown{border-style:dashed}
+.clock.unknown .clock-val{color:var(--dim);font-style:italic;font-size:.85rem}
+.clock.exhausted .clock-val{color:var(--dead);font-weight:700}
+.clock.clear .clock-val{color:var(--ok)}
+
 /* "unknown" is a first-class value here, not a styling afterthought. It must never look like a
    number and must never look like zero: it is muted, italic, and it carries its reason in a title.
    A dashboard that renders a missing source as 0 tells the owner to go to sleep on evidence it does

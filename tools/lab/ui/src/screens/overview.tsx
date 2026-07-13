@@ -1,6 +1,7 @@
 import type { VNode } from "preact";
 import type { RenderBundle } from "../types.js";
 import { Empty, EventsTable, eventsOn } from "../components.js";
+import { RunwayStrip } from "../runway.js";
 
 /** Screen 1 of PRD R5.2 — the morning landing. GSL-94 puts the autonomy runway at the top of it. */
 export function Overview({ b }: { b: RenderBundle }): VNode {
@@ -11,6 +12,10 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
 
   return (
     <>
+      {/* R5.1: the first thing on the morning screen, because "can I go to sleep?" is the only
+          question this dashboard exists to answer. Everything below is the supporting evidence. */}
+      <RunwayStrip r={b.runway} />
+
       <div class="grid">
         <div class="kpi">
           <b>{b.events.today}</b>

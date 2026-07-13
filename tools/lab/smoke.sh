@@ -351,7 +351,7 @@ grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
 # cannot have been built from it, whatever they say. The renderer THROWS on a schema it does not
 # know (tools/lab/ui/src/render.tsx) rather than rendering blank cards — so this string is load-
 # bearing on both sides, and bumping it is a two-file change, on purpose.
-jq -e '.schema == "gosleep.lab.render/2"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+jq -e '.schema == "gosleep.lab.render/3"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
   && ok "GSL-92: render_bundle.json is valid and carries its schema" \
   || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
 [[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
@@ -503,6 +503,165 @@ TZROW="$(jq -c '.tasks.rows[] | select(.key=="GSL-777")' "$TZR/docs/lab/render_b
 [[ "$(echo "$TZROW" | jq -r .status_age_human)" != "never" ]] \
   && ok "GSL-93: the Tasks board knows the AGE of its statuses (a board is only as true as its last poll)" \
   || bad "GSL-93: the board has a status but no idea when it learned it — it reports the age as 'never'"
+
+# ════════════ GSL-94 / F5-S1: the autonomy runway = min() over six exhaustion clocks ════════════
+#
+# The acceptance criterion of PRD Phase 5: given a state, the runway is computed correctly AND the
+# limiting axis is NAMED. Everything below drives a SYNTHETIC state through the real chronicler and
+# checks both halves — because a runway that is right for the wrong reason is a runway that will be
+# wrong tomorrow for a reason nobody can find.
+#
+# rw_fixture <dir> <ctx_pct> <workers> [extra-event-jsonl]
+#   Builds a repo with two heartbeat pulses (a level is not a rate — a prediction needs two readings),
+#   a TELEMETRY ledger, and an event log. Everything else the runway reads is absent on purpose, so
+#   each test turns exactly ONE clock on.
+rw_fixture() {
+  local D="$1" PCT="$2" WK="$3" EXTRA="${4:-}"
+  rm -rf "$D"; mkdir -p "$D/docs/lab/events" "$D/docs/lab/questions" "$D/docs/handoff"
+  : > "$D/docs/lab/questions/queue.jsonl"
+  local T0 T1
+  T0="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+  T1="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+  # 2 hours apart, context +10pts, +2 cycles -> 5 %/h and 1 cycle/h. Round numbers on purpose: a
+  # test whose arithmetic you cannot do in your head is a test you cannot debug at 03:00.
+  { printf '{"ts":"%s","cycle":10,"context_pct":%d,"open_workers":%d,"status":"ok","pane":"%%1","note":""}\n' "$T0" "$((PCT-10))" "$WK"
+    printf '{"ts":"%s","cycle":12,"context_pct":%d,"open_workers":%d,"status":"ok","pane":"%%1","note":""}\n' "$T1" "$PCT" "$WK"
+  } > "$D/docs/handoff/.orchestrator-heartbeat"
+  { printf '## TELEMETRY (cumulative)\n\n'
+    printf -- '- `cycle=11 worker=w model=claude-opus-4-8 tokens_out=~1000 tokens_in=~100 | running: cycles=11 total≈900000`\n'
+    printf -- '- `cycle=12 worker=w model=claude-opus-4-8 tokens_out=~1000 tokens_in=~100 | running: cycles=12 total≈1000000`\n'
+    printf '\n## Log\n\nend\n'
+  } > "$D/docs/handoff/ORCHESTRATION-STATE.md"
+  { printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"cycle.started","src":"emit","data":{}}\n' "$T1"
+    [[ -n "$EXTRA" ]] && printf '%s\n' "$EXTRA"
+  } > "$D/docs/lab/events/$TODAY.jsonl"
+}
+rw() { jq -r "$1" "$2/docs/lab/render_bundle.json" 2>/dev/null; }
+
+# ── F5-S1 a. A BLOCKER is limiting. It is the only question type that can stop a night: manifest §3
+#    gives it no default, ever, so it has no timer and cannot resolve itself while you sleep.
+RWB="$WORK/rw-blocker"; rw_fixture "$RWB" 50 1
+GOSLEEP_LAB_DIR="$RWB/docs/lab" "$LE" question --type BLOCKER --from smoke-rw --task GSL-1 \
+  --question "runway smoke: the vercel token expired and there is no safe default" >/dev/null 2>&1
+bash "$CH" --repo "$RWB" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RWB")" == "blockers" ]] \
+  && jq -e '.runway.hours == 0' "$RWB/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "F5-S1: an open BLOCKER drives the runway to 0h and NAMES itself as the binding axis" \
+  || bad "F5-S1: an open BLOCKER did not bind the runway (binding=$(rw '.runway.binding' "$RWB") hours=$(rw '.runway.hours' "$RWB"))"
+rw '.runway.binding_why' "$RWB" | grep -q 'no default' \
+  && ok "F5-S1: the trace explains WHY a BLOCKER stops the night (no default, no timer)" \
+  || bad "F5-S1: the binding axis is named but not explained"
+
+# ── F5-S1 b. A quota window is limiting. Armed by quota.wait_started carrying a reset ETA; the fleet
+#    quiesces until it resets, so this one really does stop the night (temporarily).
+RWQ="$WORK/rw-quota"
+QETA="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=4)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+QEV="$(printf '{"ts":"%s","run_id":"x","seq":2,"actor":"orch","type":"quota.wait_started","src":"emit","data":{"until":"%s"}}' \
+        "$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")" "$QETA")"
+rw_fixture "$RWQ" 50 1 "$QEV"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWQ" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RWQ")" == "quota" ]] \
+  && ok "F5-S1: an armed quota window binds the runway and is named" \
+  || bad "F5-S1: quota did not bind (binding=$(rw '.runway.binding' "$RWQ"))"
+QH="$(rw '.runway.hours' "$RWQ")"
+python3 -c "import sys;sys.exit(0 if 3.8 <= float('$QH') <= 4.05 else 1)" 2>/dev/null \
+  && ok "F5-S1: the quota clock reads ~4h — the ETA, not a guess (got ${QH}h)" \
+  || bad "F5-S1: the quota clock is wrong (got ${QH}h, expected ~4h)"
+[[ "$(rw '.runway.binding_eta' "$RWQ")" == "$QETA" ]] \
+  && ok "F5-S1: the runway carries the reset ETA itself, not just the hours" \
+  || bad "F5-S1: the ETA was lost"
+
+# ── F5-S1 c. The token budget is limiting. 1,000,000 spent of 1,100,000; 100k/cycle at 1 cycle/h ->
+#    1h. The ledger has cycle NUMBERS and no timestamps, so the burn rate needs the heartbeat to tell
+#    time: this test proves the two sources are actually joined.
+RWC="$WORK/rw-cost"; rw_fixture "$RWC" 50 1
+GOSLEEP_TOKEN_CEILING=1100000 bash "$CH" --repo "$RWC" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RWC")" == "budget" ]] \
+  && ok "F5-S1: the token budget binds when a ceiling exists and the burn rate is measurable" \
+  || bad "F5-S1: budget did not bind (binding=$(rw '.runway.binding' "$RWC"))"
+BH="$(rw '.runway.hours' "$RWC")"
+python3 -c "import sys;sys.exit(0 if 0.9 <= float('$BH') <= 1.1 else 1)" 2>/dev/null \
+  && ok "F5-S1: the budget clock reads ~1h (100k left, ~100k/cycle, 1 cycle/h) — got ${BH}h" \
+  || bad "F5-S1: the budget clock is wrong (got ${BH}h, expected ~1h)"
+
+# ── F5-S1 d. THE DESIGN ASSERTION. min() over the raw six is a LIE BY ARITHMETIC, because exhaustion
+#    does not mean the same thing on every axis. Here the context clock is EXHAUSTED (0h) — but its
+#    zero is a forced roll the watchdog performs by itself, and the night survives it. A naive
+#    min(0h, 4h) would scream "RUNWAY 0h" and wake the owner for a non-event.
+#    The runway must therefore read 4h (the quota — the nearest clock that actually STOPS the night),
+#    and must still SHOW the roll as the next thing that happens, so nothing is hidden.
+RWD="$WORK/rw-degrade"; rw_fixture "$RWD" 85 1 "$QEV"       # 85% >= the 80% ceiling -> exhausted
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWD" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWD")" == "exhausted" ]] \
+  && ok "F5-S1: context at/over the ceiling reads as EXHAUSTED" \
+  || bad "F5-S1: an over-ceiling context did not register"
+[[ "$(rw '.runway.binding' "$RWD")" == "quota" ]] \
+  && ok "F5-S1: a DEGRADING clock at 0h does not drive the headline — a forced roll is not a reason to wake you" \
+  || bad "F5-S1: min() over the raw six — a context roll was reported as RUNWAY 0h (binding=$(rw '.runway.binding' "$RWD"))"
+[[ "$(rw '.runway.next_event.axis' "$RWD")" == "context" ]] \
+  && ok "F5-S1: ...and the roll is still SHOWN as the next event — excluded from the headline, never hidden" \
+  || bad "F5-S1: the degrading clock vanished from the page entirely"
+
+# ── F5-S1 e. UNKNOWN IS NOT CLEAR, and it is not zero either. No heartbeat at all: the fleet, the
+#    context and the burn rate are all unreadable. The runway must refuse to answer — NOT quietly drop
+#    the clocks it cannot read and report the minimum of what is left, which would make the answer
+#    LONGER the LESS it knows. Knowing less must never read as more runway.
+RWU="$WORK/rw-unknown"; rw_fixture "$RWU" 50 1
+rm -f "$RWU/docs/handoff/.orchestrator-heartbeat"
+bash "$CH" --repo "$RWU" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.bound' "$RWU")" == "unknown" ]] \
+  && ok "F5-S1: no heartbeat + no ceiling -> the runway says 'unknown', not a comfortable number" \
+  || bad "F5-S1: the runway answered with a number it could not know (bound=$(rw '.runway.bound' "$RWU"))"
+[[ "$(rw '.runway.unknown_axes | index("budget")' "$RWU")" != "null" ]] \
+  && ok "F5-S1: the unreadable stopping clocks are NAMED, not silently dropped" \
+  || bad "F5-S1: an unreadable clock vanished instead of bounding the answer"
+grep -q 'Cannot say' "$RWU/docs/lab/site/index.html" \
+  && grep -q 'different sentences' "$RWU/docs/lab/site/index.html" \
+  && ok "F5-S1: the page SAYS it cannot see, and says why that is not a green light" \
+  || bad "F5-S1: the page rendered an absence of evidence as evidence of absence"
+
+# ── F5-S1 f. An unreadable clock turns an estimate into an UPPER BOUND. The quota says 4h; the budget
+#    cannot be read. The true runway is AT MOST 4h — it can only be shorter, never longer, so "≈ 4h"
+#    would be a lie in the one direction that costs the owner a night.
+RWUP="$WORK/rw-upper"; rw_fixture "$RWUP" 50 1 "$QEV"
+bash "$CH" --repo "$RWUP" --no-poll --quiet --json >/dev/null 2>&1      # no ceiling -> budget unknown
+[[ "$(rw '.runway.bound' "$RWUP")" == "upper" && "$(rw '.runway.binding' "$RWUP")" == "quota" ]] \
+  && ok "F5-S1: a counting clock + an unreadable one = an UPPER bound (≤), never an estimate (≈)" \
+  || bad "F5-S1: an unreadable clock did not weaken the claim (bound=$(rw '.runway.bound' "$RWUP"))"
+grep -q 'Upper bound only' "$RWUP/docs/lab/site/index.html" \
+  && ok "F5-S1: the page renders ≤, and names the clocks that made it a bound" \
+  || bad "F5-S1: the page presented an upper bound as an estimate"
+
+# ── F5-S1 g. CLEAR is an answer, and it is NOT the same answer as UNKNOWN. Every stopping clock is
+#    readable and none is counting: nothing is going to stop the night. That is evidence OF absence,
+#    and it earns a green light — which "I could not read the clock" never does.
+#    A ledger that is not GROWING is exactly that kind of evidence: not an unreadable ledger, but a
+#    fleet that is not spending. So it lands on the green side of the line.
+RWCL="$WORK/rw-clear"; rw_fixture "$RWCL" 50 1
+sed -i.bak 's/total≈900000/total≈1000000/' "$RWCL/docs/handoff/ORCHESTRATION-STATE.md"   # flat: no burn
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWCL" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.bound' "$RWCL")" == "clear" ]] \
+  && ok "F5-S1: every stopping clock readable, none counting -> 'clear' (evidence of absence, not absence of evidence)" \
+  || bad "F5-S1: a fully-readable, unconstrained state was not reported as clear (bound=$(rw '.runway.bound' "$RWCL"))"
+[[ "$(rw '.runway.clocks[] | select(.axis=="budget") | .state' "$RWCL")" == "clear" ]] \
+  && ok "F5-S1: a ledger that is not growing is 'clear' (not spending), never 'unknown' (cannot read)" \
+  || bad "F5-S1: a flat telemetry ledger was mistaken for an unreadable one"
+
+# ── F5-S1 g2. ...and a real ceiling that is simply FAR AWAY gives a number, not a shrug. 98M left at
+#    ~100k/cycle at 1 cycle/h is ~980h: silly-looking, correct, and rendered as days.
+RWFAR="$WORK/rw-far"; rw_fixture "$RWFAR" 50 1
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWFAR" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.bound' "$RWFAR")" == "exact" && "$(rw '.runway.binding' "$RWFAR")" == "budget" ]] \
+  && ok "F5-S1: a distant-but-real ceiling gives an EXACT runway, not a shrug" \
+  || bad "F5-S1: a readable, distant budget did not produce an exact answer (bound=$(rw '.runway.bound' "$RWFAR"))"
+
+# ── F5-S1 h. Six clocks, always. Not five when a source is missing.
+[[ "$(rw '.runway.clocks | length' "$RWCL")" == "6" && "$(rw '.runway.clocks | length' "$RWU")" == "6" ]] \
+  && ok "F5-S1: all six clocks are always reported — a missing source produces 'unknown', not a gap" \
+  || bad "F5-S1: a clock disappeared when its source was missing"
+[[ "$(rw '.runway.trace | length' "$RWU")" == "6" ]] \
+  && ok "F5-S1: the reasoning trace carries one line per axis (evidence, not vibes — R5.1)" \
+  || bad "F5-S1: the runway shows a number with no reasoning"
 
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
 # The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.

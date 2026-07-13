@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-13T12:36:11Z",
+  "generated_at": "2026-07-13T12:49:58Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-13",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
     "max_event_age_s": 4,
     "max_event_age_human": "4s",
-    "latest_event_ts": "2026-07-13T12:36:07Z",
-    "heartbeat_age_s": 782,
+    "latest_event_ts": "2026-07-13T12:49:53Z",
+    "heartbeat_age_s": 47,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,22 +16,22 @@
     }
   },
   "events": {
-    "total": 322,
-    "today": 256,
+    "total": 329,
+    "today": 263,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 61,
+      "agent.turn_ended": 62,
       "agent.idle": 36,
-      "dev_history.written": 32,
+      "dev_history.written": 34,
       "handoff.written": 29,
       "task.completed": 27,
       "agent.terminated": 24,
-      "tracker.issue.updated": 22,
-      "vcs.commit": 19,
-      "tracker.issue.transitioned": 14,
+      "tracker.issue.updated": 23,
+      "vcs.commit": 20,
+      "tracker.issue.transitioned": 15,
       "tracker.issue.created": 12,
       "pane.ended": 10,
       "pane.started": 10,
@@ -39,13 +39,13 @@
       "notification.raised": 6,
       "vcs.push": 5,
       "agent.spawned": 3,
-      "question.posed": 2,
+      "question.posed": 3,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 117,
-      "hook:Stop": 61,
+      "hook:PostToolUse": 122,
+      "hook:Stop": 62,
       "hook:TeammateIdle": 36,
       "hook:TaskCompleted": 27,
       "hook:SubagentStop": 24,
@@ -53,13 +53,13 @@
       "hook:SessionEnd": 10,
       "hook:SessionStart": 10,
       "hook:TaskCreated": 8,
+      "emit": 6,
       "hook:Notification": 6,
-      "emit": 5,
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 180,
-      "ef6c3777": 78,
+      "claude": 185,
+      "ef6c3777": 79,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
       "70cbe176": 3,
@@ -90,14 +90,15 @@
       "afc648057d400fa02": 1,
       "fixer-lab": 1,
       "impl-lab-2": 1,
+      "impl-ui-1": 1,
       "orchestrator": 1
     },
-    "mechanical_share": 0.938
+    "mechanical_share": 0.936
   },
   "questions": {
-    "open": 2,
+    "open": 3,
     "by_type": {
-      "DECISION": 2
+      "DECISION": 3
     },
     "items": [
       {
@@ -117,6 +118,15 @@
         "auto_apply_at": "2026-07-14T06:00:00Z",
         "task": "GSL-92",
         "high_impact": null
+      },
+      {
+        "id": "q-2026-07-13-002",
+        "type": "DECISION",
+        "question": "Потолок токенов не существует ни в одном машиночитаемом источнике. manifest §5.phase-ceiling делегирует его «брифу эпика», но ни один бриф на диске числа не называет. Следствие: §5.warn-80 (80% → FYI) и §3.budget (100% → BUDGET_EXCEEDED = BLOCKER) — правила, которые НИКОГДА не могут сработать, а бюджетные часы autonomy runway читаются как unknown, из-за чего весь runway деградирует из оценки (≈ 4h) в верхнюю границу (≤ 4h). Назвать ли число — и какое?",
+        "default": "Оставить без потолка: бюджетные часы = unknown, runway = верхняя граница, и страница честно об этом пишет",
+        "auto_apply_at": "2026-07-13T14:48:23Z",
+        "task": "GSL-94",
+        "high_impact": null
       }
     ]
   },
@@ -127,9 +137,15 @@
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "6b4cbed",
-    "dirty_paths": 27,
+    "head": "d2b2a20",
+    "dirty_paths": 24,
     "commits_on_date": [
+      {
+        "sha": "d2b2a20",
+        "author": "R",
+        "ts": "2026-07-13T14:36:34+02:00",
+        "subject": "GSL-93 [UI][Tooling] Data contract + 7-screen skeleton — single render bundle, TS interfaces"
+      },
       {
         "sha": "6b4cbed",
         "author": "R",
@@ -281,13 +297,13 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T12:23:09Z",
+      "ts": "2026-07-13T12:49:10Z",
       "cycle": 53,
-      "context_pct": 80,
+      "context_pct": 82,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse; impl-ui-1 grinding GSL-92 TS scaffold+GSL-93 contract+GSL-94 runway"
+      "note": "pulse #2; impl-ui-1 still grinding (larger cycle: TS+build+contract+runway)"
     },
     "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). **PHASE 4 CLOSED** @ `5fd1de2` (R4.2 MET через poll-fill reconciler seq 156). cycle 52 gsl90-setup DONE ~11:52 — Epic GSL-90=#103, 10 tasks GSL-91..100=#104..113 pushed @ 7b229c7 (ledger 16 путей / 1509 insertions). **Addendum ~12:00:** R4.2-MET doc fix НЕ folded в GSL-91 (уже был запушен → force-push запрещён); сделан ОТДЕЛЬНЫМ коммитом **GSL-101 = `6d934de`** (GH #114, Jira Done); ветка теперь `GSL-90-ui-orchestration @ 6d934de` (2 коммита от main). Setup catch: моя формулировка «R4.2-MET fix folded» была неверна — fix landed as separate commit. Также setup поймал что «правка на один значок» (merged 0→1) чуть не сломала 5 других счётчиков (vcs.commit 11+3→12+4, Jira 9→11, panes 7/7→9/9, hook-events 162→246 — все выросли от ledger commit'а) — jq-рецепт теперь с двумя колонками по sha, F4-S1 остаётся 3/4 не подкручено. Setup также записал R4.2-wording finding: «вне CLI» — дырявый прокси для «не увиденное ни одним хуком»; путь через CLI (в т.ч. `gh api`) тоже может остаться неувиденным — что и произошло. Formulation НЕ переписан задним числом (тот же жанр, за который M2 понизил PENDING). Jira GSL-91 Done + GSL-101 Done, остальные To Do. DECISION q-2026-07-13-001 framework: **Preact + preact-render-to-string + esbuild** (default до 2026-07-14T06Z, reversibility high, работа НЕ блокируется). **Отклонения setup'а от моего брифа (осознанные):** PRD-семёрка экранов = Overview/Timeline/Tasks/Questions/Fleet/Cost/Library (не fleet/queue/timeline/library/digest/manifest/config); PRD взят как source of truth. Задача 4 разбита на GSL-96/97/98. Добавлена GSL-92 TS-скаффолд (не в PRD, следствие TS-директивы). Явные фиксации setup'а: chronicler.py = data layer, view = TS SSG (file:// diктует SSG), degrade-без-node в GSL-92 = ",
     "telemetry_last": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --ts/--supersedes with (file,seq) coord]"
@@ -307,6 +323,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-13T12:36:11Z"
+    "last_success_at": "2026-07-13T12:49:58Z"
   }
 }
