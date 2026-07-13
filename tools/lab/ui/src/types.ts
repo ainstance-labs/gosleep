@@ -108,6 +108,8 @@ export interface Library {
   digests: LibraryEntry[];
   handoffs: LibraryEntry[];
   dev_history: LibraryEntry[];
+  reports: LibraryEntry[];
+  prd: LibraryEntry[];
 }
 
 export interface Degradation {
@@ -121,12 +123,143 @@ export interface Orchestrator {
   telemetry_last: string | null;
 }
 
+// ───────────────────────────── the queue (PRD R5.2, screen 4) ─────────────────────────────
+
+/** manifest.md §3. A BLOCKER takes no default, EVER — which is why it alone can stop a night. */
+export type QuestionType = "BLOCKER" | "DECISION" | "CLARIFY" | "FYI";
+export type QuestionStatus =
+  | "open"
+  | "answered"
+  | "auto-resolved"
+  | "answered-by-default"
+  | "noted";
+
+export interface QueueItem {
+  id: string;
+  ts?: string;
+  type: QuestionType | string;
+  from?: string;
+  task?: string | null;
+  question: string;
+  options?: { label: string; pros?: string; cons?: string }[];
+  default?: string | null;
+  default_rationale?: string | null;
+  reversibility?: "high" | "med" | "low" | string | null;
+  impact_if_wrong?: string | null;
+  /**
+   * ISO-8601 UTC. The key is `auto_apply_at` — there is no `deadline` anywhere in this system, and
+   * it is populated for DECISIONs only. A BLOCKER has no timer: it waits for a human, indefinitely.
+   */
+  auto_apply_at?: string | null;
+  status: QuestionStatus | string;
+  seen_by?: string[];
+  high_impact?: boolean | null;
+  answered_by?: string | null;
+  answer?: string | null;
+  links?: Record<string, string>;
+}
+
+export interface Queue {
+  open: number;
+  total: number;
+  by_type: Record<string, number>;
+  open_items: QueueItem[];
+  /** Recently closed, newest first — the morning audits what the night decided on its own. */
+  closed_items: QueueItem[];
+  open_blockers: QueueItem[];
+}
+
+// ───────────────────────────── the tasks board (PRD R5.2, screen 3) ───────────────────────
+
+export interface TaskRow {
+  key: string;
+  /** From `tracker.issue.updated` (src=poll-fill). Only as fresh as the last poll — see `status_age_s`. */
+  status: string | null;
+  status_ts: string | null;
+  status_age_s: number | null;
+  status_age_human: string;
+  summary: string | null;
+  commits: { sha: string; subject: string; ts?: string; url: string | null }[];
+  dev_history: { name: string; href: string }[];
+  prs: { number?: number; state?: string; url?: string; title?: string }[];
+  jira_url: string;
+  /** Always null today: no machine-readable source maps a Jira key to a GitHub issue number. */
+  gh_url: string | null;
+}
+
+export interface TasksBoard {
+  rows: TaskRow[];
+  by_status: Record<string, number>;
+  todo: number;
+  tracker_last_polled: string | null;
+  tracker_age_s: number | null;
+  tracker_age_human: string;
+  /** True when the board's statuses are older than 12h — a number from the past in the present tense. */
+  tracker_stale: boolean;
+  gh_base: string | null;
+  gh_issue_links: false;
+  gh_why: string;
+}
+
+// ───────────────────────────── the fleet (PRD R5.2, screen 5) ─────────────────────────────
+
+export interface FleetActor {
+  actor: string;
+  events: number;
+  last_ts: string | null;
+  last_age_s: number | null;
+  last_age_human: string;
+  types: Record<string, number>;
+}
+
+export interface Fleet {
+  /** From the orchestrator heartbeat. `null` means UNKNOWN — never render it as zero. */
+  open_workers: number | null;
+  cap: number;
+  free_slots: number | null;
+  cycle: number | null;
+  orchestrator_status: string | null;
+  orchestrator_context_pct: number | null;
+  source: string;
+  known: boolean;
+  roster: FleetActor[];
+  blind_spots: string[];
+}
+
+// ───────────────────────────── cost (PRD R5.2, screen 6) ──────────────────────────────────
+
+export interface CostCycle {
+  cycle: number;
+  worker: string | null;
+  model: string | null;
+  tokens_out: number | null;
+  tokens_in: number | null;
+  cache_read: number | null;
+  cache_write: number | null;
+  running_total: number | null;
+  running_cycles: number | null;
+  raw: string;
+}
+
+export interface Cost {
+  cycles: CostCycle[];
+  /** Telemetry bullets we could not key on a cycle. Shown, never swallowed. */
+  unparsed: number;
+  cumulative_total: number | null;
+  cumulative_cycles: number | null;
+  /** NULL TODAY, and not an oversight: no token ceiling exists anywhere on disk. See `ceiling_why`. */
+  ceiling: number | null;
+  ceiling_source: string | null;
+  ceiling_why: string | null;
+  used_pct: number | null;
+}
+
 /**
  * What Python hands the renderer. Version it: a screen that reads a field the producer stopped
  * emitting must fail loudly at build time, not render a blank card at 03:00.
  */
 export interface RenderBundle {
-  schema: "gosleep.lab.render/1";
+  schema: "gosleep.lab.render/2";
   generated_at: string;
   generated_by: string;
   date: string;
@@ -144,6 +277,10 @@ export interface RenderBundle {
   /** How many events `recent_events` was capped at. A cap the page does not mention is a lie by omission. */
   recent_cap: number;
   questions: { open: number; by_type: Record<string, number>; items: Question[] };
+  queue: Queue;
+  tasks: TasksBoard;
+  fleet: Fleet;
+  cost: Cost;
   decisions: { total: number; recent: Decision[] };
   delivery: Delivery;
   orchestrator: Orchestrator;

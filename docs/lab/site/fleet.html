@@ -1,0 +1,113 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet — gosleep lab</title>
+<style>
+:root{--bg:#fbfbfa;--fg:#1a1a19;--dim:#6b6b68;--line:#e3e3e0;--card:#fff;
+      --ok:#1a7f4b;--warn:#a4600a;--dead:#a51d24;--accent:#3b5bdb;--dead-soft:#fdeaea}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#131315;--fg:#e8e8e6;--dim:#8f8f8b;--line:#2a2a2e;--card:#1b1b1e;
+        --ok:#4ade80;--warn:#fbbf24;--dead:#f87171;--accent:#8ba4ff;--dead-soft:#2a1618}}
+*{box-sizing:border-box}
+body{margin:0;padding:1rem;background:var(--bg);color:var(--fg);
+     font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+     max-width:60rem;margin-inline:auto}
+h1{font-size:1.35rem;margin:.2rem 0}
+h2{font-size:1rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);
+   margin:1.8rem 0 .6rem;font-weight:600}
+a{color:var(--accent)}
+.stale{border-radius:.5rem;padding:.7rem .9rem;margin:.8rem 0;font-weight:600;
+       border:1px solid currentColor}
+.stale.fresh{color:var(--ok)} .stale.stale{color:var(--warn)} .stale.dead{color:var(--dead)}
+.stale small{display:block;font-weight:400;color:var(--dim);margin-top:.2rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:.6rem;
+      padding:.8rem .9rem;margin:.5rem 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.5rem}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.7rem .8rem}
+.kpi b{display:block;font-size:1.5rem;line-height:1.2}
+.kpi span{color:var(--dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+td,th{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
+.wrap{overflow-x:auto}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
+.tag{display:inline-block;padding:.05rem .4rem;border-radius:.3rem;border:1px solid var(--line);
+     color:var(--dim);font-size:.72rem}
+.tag.hook{color:var(--ok);border-color:currentColor}
+.tag.emit{color:var(--accent);border-color:currentColor}
+.tag.poll{color:var(--warn);border-color:currentColor}
+footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid var(--line);
+       padding-top:.8rem}
+
+/* "unknown" is a first-class value here, not a styling afterthought. It must never look like a
+   number and must never look like zero: it is muted, italic, and it carries its reason in a title.
+   A dashboard that renders a missing source as 0 tells the owner to go to sleep on evidence it does
+   not have. */
+.unknown{color:var(--dim);font-style:italic;font-weight:400;font-size:.82em;
+  border-bottom:1px dotted var(--dim);cursor:help}
+.card.blind{border-style:dashed;color:var(--dim);font-size:.85rem}
+.tag.BLOCKER{color:var(--dead);border-color:currentColor;font-weight:700}
+.tag.DECISION{color:var(--accent);border-color:currentColor}
+.tag.CLARIFY{color:var(--warn);border-color:currentColor}
+.tag.FYI{color:var(--dim)}
+.stale-note{color:var(--warn);font-weight:600}
+nav{margin:.4rem 0 .2rem;line-height:2}
+nav a{margin-right:.9rem}
+nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}
+
+/* The build-failed banner. Python writes this one — it is the only markup the view layer does not
+   render, because the whole point is that it appears when the view layer could not run at all. It
+   must therefore be styled by CSS that is ALREADY in the (stale) page on disk. Loud on purpose:
+   a page that cannot say "I am stale" louder than it says its contents is the tasty-lunch wiki. */
+.ui-degraded{background:var(--dead-soft);border:2px solid var(--dead);color:var(--dead);
+  border-radius:.5rem;padding:.9rem 1rem;margin:0 0 1rem;font-weight:700;font-size:1.02rem}
+.ui-degraded small{display:block;font-weight:400;color:var(--fg);margin-top:.35rem;font-size:.82rem;
+  line-height:1.5}
+.ui-degraded code{background:var(--card);border:1px solid var(--line);border-radius:.25rem;
+  padding:.05rem .3rem}
+</style>
+<!--UI-DEGRADE-START--><!--UI-DEGRADE-END-->
+<h1>Fleet</h1><nav><a href="index.html">Overview</a><a href="timeline.html">Timeline</a><a href="tasks.html">Tasks</a><a href="questions.html">Questions</a><a href="fleet.html" aria-current="page">Fleet</a><a href="cost.html">Cost</a><a href="library.html">Library</a></nav><div class="stale fresh" id="staleness" data-grade="fresh" data-generated-at="2026-07-13T12:36:11Z" data-event-age-s="4" data-fresh-s="1800" data-dead-s="10800"><span id="stale-head">FRESH · last event 4s ago</span><small>generated_at 2026-07-13T12:36:11Z · latest event 2026-07-13T12:36:07Z · thresholds fresh≤30m, dead>3h · <span id="stale-verdict">Live — the laboratory is writing itself right now.</span></small></div><div class="grid"><div class="kpi"><b>1</b><span>live workers</span></div><div class="kpi"><b>3</b><span>pane cap (manifest §5.slots)</span></div><div class="kpi"><b>2</b><span>free slots</span></div><div class="kpi"><b>53</b><span>cycle</span></div></div><h2>Orchestrator</h2><div class="card">status <b>ok</b> · context <b>80%</b><br/><small>Source: <code>docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)</code></small></div><h2>Who the log can name (20)</h2><div class="wrap"><table><tr><th>actor</th><th>events</th><th>last seen</th><th>mostly doing</th></tr><tr><td class="mono">claude</td><td class="mono">180</td><td class="mono">4s ago</td><td><span>agent.idle <span class="mono">36</span></span><span> · dev_history.written <span class="mono">32</span></span><span> · task.completed <span class="mono">25</span></span><span> · vcs.commit <span class="mono">15</span></span><span> · agent.turn_ended <span class="mono">14</span></span><span> · tracker.issue.transitioned <span class="mono">13</span></span></td></tr><tr><td class="mono">ef6c3777</td><td class="mono">78</td><td class="mono">12m ago</td><td><span>agent.turn_ended <span class="mono">45</span></span><span> · handoff.written <span class="mono">15</span></span><span> · task.created <span class="mono">8</span></span><span> · notification.raised <span class="mono">6</span></span><span> · task.completed <span class="mono">2</span></span><span> · tracker.issue.transitioned <span class="mono">1</span></span></td></tr><tr><td class="mono">ab3b55ad5cc3bfb36</td><td class="mono">2</td><td class="mono">29m ago</td><td><span>agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a1a48411925ec4eae</td><td class="mono">1</td><td class="mono">30m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a503045747e54a2aa</td><td class="mono">1</td><td class="mono">31m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">ac46c415bfdb4e55a</td><td class="mono">1</td><td class="mono">31m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">aaea689860c6cccdb</td><td class="mono">1</td><td class="mono">32m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a1f95c5ec2e2d74ae</td><td class="mono">1</td><td class="mono">33m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a2ff6cd2567d65e2b</td><td class="mono">1</td><td class="mono">33m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">gsl90-setup</td><td class="mono">2</td><td class="mono">42m ago</td><td><span>handoff.written <span class="mono">1</span></span><span> · question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">a690ba064bba794be</td><td class="mono">13</td><td class="mono">45m ago</td><td><span>tracker.issue.updated <span class="mono">11</span></span><span> · agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a61075657b8f0649b</td><td class="mono">1</td><td class="mono">45m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">poll-fill</td><td class="mono">15</td><td class="mono">58m ago</td><td><span>tracker.issue.updated <span class="mono">9</span></span><span> · vcs.commit <span class="mono">4</span></span><span> · vcs.pr.merged <span class="mono">1</span></span><span> · vcs.pr.opened <span class="mono">1</span></span></td></tr><tr><td class="mono">fixer-lab</td><td class="mono">1</td><td class="mono">2h 37m ago</td><td><span>handoff.written <span class="mono">1</span></span></td></tr><tr><td class="mono">aa7a28cca3c73abc5</td><td class="mono">2</td><td class="mono">3h 11m ago</td><td><span>agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a198207c1aae6407d</td><td class="mono">1</td><td class="mono">3h 12m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a712e803767d9690f</td><td class="mono">1</td><td class="mono">3h 12m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a0f0f3af9ae562c37</td><td class="mono">1</td><td class="mono">3h 13m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a427309da6b948dfd</td><td class="mono">1</td><td class="mono">3h 14m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a32e1a070b23f39b4</td><td class="mono">1</td><td class="mono">3h 14m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr></table></div><h2>What this screen cannot see</h2><div class="card blind"><span>no pane id in the event log — pane.started/ended carry a session_id only</span><span><br/>no model in the event log — it is recorded by hand in ORCHESTRATION-STATE §TELEMETRY</span><span><br/>hook-written lines all carry actor=&quot;claude&quot;; only semantic (src=emit) lines name the worker</span></div><footer>Regenerated by <code>tools/lab/chronicler.sh</code> — <b>never hand-edit</b>: the next pass overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8). Source of truth for this page: <code>docs/lab/render_bundle.json</code>.</footer>
+<script id="verdicts" type="application/json">{"fresh":"Live — the laboratory is writing itself right now.","stale":"Stale — nothing has been logged for a while. Delivery may still be running; this page is not.","dead":"DEAD — this page is not being regenerated. Do not trust anything below without checking git."}</script>
+
+<script>// tools/lab/ui/src/client.ts
+function readJson(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.textContent) return null;
+  try {
+    return JSON.parse(el.textContent);
+  } catch {
+    return null;
+  }
+}
+function human(s) {
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h " + Math.floor(s % 3600 / 60) + "m";
+  return Math.floor(s / 86400) + "d " + Math.floor(s % 86400 / 3600) + "h";
+}
+function regradeStaleness() {
+  const verdicts = readJson("verdicts");
+  const el = document.getElementById("staleness");
+  if (!verdicts || !el) return;
+  const gen = Date.parse(el.dataset["generatedAt"] ?? "");
+  if (isNaN(gen)) return;
+  const built = parseInt(el.dataset["eventAgeS"] ?? "", 10);
+  const pageAge = Math.max(0, (Date.now() - gen) / 1e3);
+  const age = isNaN(built) ? pageAge : built + pageAge;
+  const fresh = parseInt(el.dataset["freshS"] ?? "", 10) || 1800;
+  const dead = parseInt(el.dataset["deadS"] ?? "", 10) || 10800;
+  const grade = age <= fresh ? "fresh" : age <= dead ? "stale" : "dead";
+  const rank = { fresh: 0, stale: 1, dead: 2 };
+  const was = el.dataset["grade"] ?? "fresh";
+  if ((rank[grade] ?? 0) <= (rank[was] ?? 0)) return;
+  el.className = "stale " + grade;
+  el.dataset["grade"] = grade;
+  const head = document.getElementById("stale-head");
+  if (head) {
+    head.textContent = grade.toUpperCase() + " \xB7 last event " + human(Math.round(age)) + " ago \xB7 re-graded when you opened this page";
+  }
+  const v = document.getElementById("stale-verdict");
+  if (v && verdicts[grade]) v.textContent = verdicts[grade];
+}
+regradeStaleness();
+</script>

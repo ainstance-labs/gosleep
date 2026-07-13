@@ -11,39 +11,58 @@
 // not write what it was handed.
 // =============================================================================
 
+import type { VNode } from "preact";
 import type { RenderBundle } from "./types.js";
 import { renderPage } from "./page.js";
+import { SCREENS, type ScreenId } from "./components.js";
 import { Overview } from "./screens/overview.js";
 import { Timeline } from "./screens/timeline.js";
+import { Tasks } from "./screens/tasks.js";
+import { Questions } from "./screens/questions.js";
+import { Fleet } from "./screens/fleet.js";
+import { Cost } from "./screens/cost.js";
 import { Library } from "./screens/library.js";
 
+const SCHEMA = "gosleep.lab.render/2";
+
+/** One body per screen id. The nav is generated from SCREENS, so a screen listed there and missing
+ *  here is a 404 — which is why the loop below builds from SCREENS and would throw on a gap. */
+const BODIES: Record<ScreenId, (b: RenderBundle) => VNode> = {
+  index: (b) => <Overview b={b} />,
+  timeline: (b) => <Timeline b={b} />,
+  tasks: (b) => <Tasks b={b} />,
+  questions: (b) => <Questions b={b} />,
+  fleet: (b) => <Fleet b={b} />,
+  cost: (b) => <Cost b={b} />,
+  library: (b) => <Library b={b} />,
+};
+
+const TITLES: Record<ScreenId, string> = {
+  index: "Laboratory",
+  timeline: "Timeline",
+  tasks: "Tasks",
+  questions: "Questions",
+  fleet: "Fleet",
+  cost: "Cost",
+  library: "Library",
+};
+
 export function renderAll(b: RenderBundle, clientJs: string): Record<string, string> {
-  if (b.schema !== "gosleep.lab.render/1") {
+  if (b.schema !== SCHEMA) {
     // Fail loudly at build time. A screen reading a field the producer stopped emitting would
     // otherwise render a blank card, and a blank card at 03:00 looks exactly like "nothing happened".
-    throw new Error(`render_bundle schema mismatch: got ${String(b.schema)}, want gosleep.lab.render/1`);
+    throw new Error(`render_bundle schema mismatch: got ${String(b.schema)}, want ${SCHEMA}`);
   }
-  return {
-    "index.html": renderPage({
-      title: "Laboratory",
-      screen: "index",
+
+  const pages: Record<string, string> = {};
+  for (const s of SCREENS) {
+    pages[s.file] = renderPage({
+      title: TITLES[s.id],
+      screen: s.id,
       bundle: b,
-      body: <Overview b={b} />,
+      body: BODIES[s.id](b),
       clientJs,
-    }),
-    "timeline.html": renderPage({
-      title: "Timeline",
-      screen: "timeline",
-      bundle: b,
-      body: <Timeline b={b} />,
-      clientJs,
-    }),
-    "library.html": renderPage({
-      title: "Library",
-      screen: "library",
-      bundle: b,
-      body: <Library b={b} />,
-      clientJs,
-    }),
-  };
+    });
+  }
+  return pages;
 }

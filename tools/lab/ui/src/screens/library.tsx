@@ -41,6 +41,12 @@ export function Library({ b }: { b: RenderBundle }): VNode {
       <h2>Dev history</h2>
       <Listing rows={b.library.dev_history} />
 
+      <h2>Research &amp; reports</h2>
+      <Listing rows={b.library.reports} />
+
+      <h2>PRD</h2>
+      <Listing rows={b.library.prd} />
+
       <h2>Decisions ({dec.total})</h2>
       {dec.recent.length === 0 ? (
         <Empty>No autonomous decisions logged yet.</Empty>

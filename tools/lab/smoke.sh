@@ -348,8 +348,10 @@ grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
   || bad "the timeline renders no event details at all — every 'superseded event is gone' test above is vacuous"
 
 # The ONE contract between the data layer and the view layer. If this is not valid JSON the pages
-# cannot have been built from it, whatever they say.
-jq -e '.schema == "gosleep.lab.render/1"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+# cannot have been built from it, whatever they say. The renderer THROWS on a schema it does not
+# know (tools/lab/ui/src/render.tsx) rather than rendering blank cards — so this string is load-
+# bearing on both sides, and bumping it is a two-file change, on purpose.
+jq -e '.schema == "gosleep.lab.render/2"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
   && ok "GSL-92: render_bundle.json is valid and carries its schema" \
   || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
 [[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
@@ -417,6 +419,90 @@ grep -q 'class="ui-degraded"' "$FRESH/docs/lab/site/index.html" 2>/dev/null \
   && grep -q 'npm install' "$FRESH/docs/lab/site/index.html" \
   && ok "GSL-92: a never-built clone gets an honest placeholder naming the fix, not a 404" \
   || bad "GSL-92: a clone without node leaves the owner with no index.html at all"
+
+# ───────────── GSL-93: the data contract + the seven screens (PRD R5.2) ─────────────
+
+# Seven screens, one nav, no dead links. A nav entry pointing at a page nobody built is a 404 on a
+# phone at 03:00 — the dashboard's first lie about itself.
+S7=0
+for P in index timeline tasks questions fleet cost library; do
+  [[ -f "$CR/docs/lab/site/$P.html" ]] || { S7=1; break; }
+done
+[[ $S7 -eq 0 ]] && ok "GSL-93/R5.2: all seven screens are generated" \
+  || bad "GSL-93/R5.2: a screen listed in the nav was never built"
+NAVBAD=0
+for P in index timeline tasks questions fleet cost library; do
+  for L in index timeline tasks questions fleet cost library; do
+    grep -q "href=\"$L.html\"" "$CR/docs/lab/site/$P.html" || NAVBAD=1
+  done
+done
+[[ $NAVBAD -eq 0 ]] && ok "GSL-93: every screen links to every other (no dead nav entry)" \
+  || bad "GSL-93: the nav points at a page that does not exist"
+
+# The contract carries all seven domains. A screen whose domain is missing renders a blank card, and
+# a blank card at 03:00 is indistinguishable from "nothing happened".
+for D in events queue tasks fleet cost library decisions; do
+  jq -e "has(\"$D\")" "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+    || { bad "GSL-93: the render bundle has no '$D' domain"; NOD=1; }
+done
+[[ -z "${NOD:-}" ]] && ok "GSL-93: the bundle carries all seven domains (events/queue/tasks/fleet/cost/library/decisions)"
+
+# UNKNOWN IS NOT ZERO. This throwaway lab has no heartbeat, so the live worker count is unreadable.
+# It must render as `unknown`, never as 0 — "nobody is working" and "I cannot see who is working" are
+# different sentences, and a dashboard that says the first when it means the second is the reason
+# Phase 4 spent a whole cycle on this.
+[[ "$(jq -r '.fleet.open_workers' "$CR/docs/lab/render_bundle.json")" == "null" \
+   && "$(jq -r '.fleet.known' "$CR/docs/lab/render_bundle.json")" == "false" ]] \
+  && ok "GSL-93: no heartbeat -> the worker count is null (unknown), not 0" \
+  || bad "GSL-93: a missing heartbeat was rendered as a fleet of zero"
+grep -q 'class="unknown"' "$CR/docs/lab/site/fleet.html" \
+  && ok "GSL-93: the Fleet screen renders the missing count as 'unknown', not as a number" \
+  || bad "GSL-93: the Fleet screen invented a number it does not have"
+grep -q 'cannot see' "$CR/docs/lab/site/fleet.html" \
+  && ok "GSL-93: the Fleet screen names its own blind spots (no pane id, no model in the log)" \
+  || bad "GSL-93: the Fleet screen hides what it cannot see"
+
+# The token ceiling does not exist on disk (manifest §5.phase-ceiling delegates it to an epic brief,
+# and no brief names a number). The Cost screen must SAY that, not pick a plausible cap — a made-up
+# ceiling makes the budget clock finite, and a finite lie is worse than an honest unknown.
+[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "null" ]] \
+  && ok "GSL-93: no ceiling on disk -> cost.ceiling is null, not a guess" \
+  || bad "GSL-93: a token ceiling was invented"
+grep -q 'no token ceiling on disk' "$CR/docs/lab/site/cost.html" \
+  && ok "GSL-93: the Cost screen says the ceiling is missing, in words" \
+  || bad "GSL-93: the Cost screen hides that it has a numerator and no denominator"
+GOSLEEP_TOKEN_CEILING=1000000 bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "1000000" ]] \
+  && ok "GSL-93: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING)" \
+  || bad "GSL-93: the ceiling override is ignored"
+bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1     # back to the honest default
+
+# ISO-8601 WITH AN OFFSET, driven end to end through the real chronicler.
+#
+# Jira hands poll-fill `occurred_at` as 2026-07-12T23:26:24.969+0200 — fractional seconds, numeric
+# offset — and the strict `...Z`-only parser returned None for every one of them. The damage was
+# silent and exact: the Tasks board knew a task's STATUS but not when it learned it, so it reported
+# the age as "never" on a board whose statuses were sitting right there. And an offset timestamp
+# sorts ABOVE a Z timestamp lexically while being the EARLIER instant, so a naive >= picks the stale
+# record and calls it the newest.
+#
+# The two lines below are the same task, five minutes apart, in the two formats — and the LATER one
+# is written in the offset form so a parser that ignores the offset gets the answer backwards.
+TZR="$WORK/tz-repo"; mkdir -p "$TZR/docs/lab/events"
+{ printf '{"ts":"%sT21:33:25Z","run_id":"x","seq":1,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-777","status":"To Do","summary":"tz probe","occurred_at":"%sT21:30:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT21:34:25Z","run_id":"x","seq":2,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-777","status":"Done","summary":"tz probe","occurred_at":"%sT23:35:00.969+0200"}}\n' "$TODAY" "$TODAY"
+} > "$TZR/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$TZR" --no-poll --quiet --json >/dev/null 2>&1
+TZROW="$(jq -c '.tasks.rows[] | select(.key=="GSL-777")' "$TZR/docs/lab/render_bundle.json" 2>/dev/null)"
+[[ "$(echo "$TZROW" | jq -r .status_ts)" == "${TODAY}T21:35:00Z" ]] \
+  && ok "GSL-93: an offset timestamp is normalised to UTC Z before anything compares it" \
+  || bad "GSL-93: occurred_at with a +0200 offset was not normalised (status_ts=$(echo "$TZROW" | jq -r .status_ts))"
+[[ "$(echo "$TZROW" | jq -r .status)" == "Done" ]] \
+  && ok "GSL-93: the NEWEST status wins across mixed timestamp formats (the offset one really is later)" \
+  || bad "GSL-93: a lexical compare across two timestamp formats picked the wrong status"
+[[ "$(echo "$TZROW" | jq -r .status_age_human)" != "never" ]] \
+  && ok "GSL-93: the Tasks board knows the AGE of its statuses (a board is only as true as its last poll)" \
+  || bad "GSL-93: the board has a status but no idea when it learned it — it reports the age as 'never'"
 
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
 # The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.

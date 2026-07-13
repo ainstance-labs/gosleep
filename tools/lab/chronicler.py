@@ -80,12 +80,52 @@ def run(cmd, cwd=None, timeout=20, check=False):
     except subprocess.TimeoutExpired:
         raise RuntimeError("timeout after %ss: %s" % (timeout, " ".join(cmd[:3])))
 
+# The event log writes one format and one only: 2026-07-13T12:04:15Z. But the log is not the only
+# thing with a timestamp in it. Jira hands poll-fill `occurred_at` as full ISO-8601 with fractional
+# seconds and a numeric offset -- 2026-07-12T23:26:24.969+0200 -- and the old strict parser returned
+# None for every one of them. The damage was silent and specific: the Tasks board knew a task's
+# status but not WHEN it learned it, so `tracker_age` came out "never" on a board whose statuses were
+# right there. And a `None` age reads as "no data", which is precisely the word this dashboard is not
+# allowed to misuse.
+#
+# datetime.fromisoformat() would do this in one line -- from Python 3.11. macOS ships 3.9, which
+# chokes on both the trailing Z and the colon-less offset, and this file is stdlib-only by contract.
+ISO_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?\s*(Z|z|[+-]\d{2}:?\d{2})?$")
+
+
 def parse_ts(ts):
-    try:
-        return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(
-            tzinfo=datetime.timezone.utc).timestamp()
-    except Exception:
+    if not ts:
         return None
+    m = ISO_RE.match(str(ts).strip())
+    if not m:
+        return None
+    try:
+        dt = datetime.datetime.strptime(m.group(1) + "T" + m.group(2), "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+    off = m.group(3)
+    if off in (None, "Z", "z"):
+        tz = datetime.timezone.utc
+    else:
+        body = off[1:].replace(":", "")
+        try:
+            delta = datetime.timedelta(hours=int(body[:2]), minutes=int(body[2:4]))
+        except ValueError:
+            return None
+        tz = datetime.timezone(delta if off[0] == "+" else -delta)
+    return dt.replace(tzinfo=tz).timestamp()
+
+
+def iso_utc(ts):
+    """Any ISO-8601 -> the ONE canonical form this repo compares and stores: ...Z, in UTC.
+
+    Timestamps in two formats must never meet in a string comparison. `2026-07-12T23:26:24+0200` sorts
+    ABOVE `2026-07-12T21:33:25Z` lexically while being the EARLIER instant -- so a naive `>=` picks the
+    stale record and calls it the newest. Normalise at the door, compare afterwards."""
+    e = parse_ts(ts)
+    if e is None:
+        return None
+    return datetime.datetime.fromtimestamp(e, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def human_age(seconds):
     if seconds is None:
@@ -228,7 +268,11 @@ def load_decisions():
 # ───────────────────────────── collect: git / gh / heartbeat / STATE ──────────
 
 def load_git(date):
-    g = {"branch": None, "head": None, "dirty": None, "commits": [], "remote": None}
+    # `commits` is the target DAY (the digest and the Overview are day-shaped). `recent` is the last
+    # 200 commits regardless of day, because the Tasks board is TASK-shaped: a row for GSL-84 needs
+    # the commit that closed it whether that happened tonight or last week, and a board that only
+    # links today's commits shows an empty cell for every task it did not happen to touch today.
+    g = {"branch": None, "head": None, "dirty": None, "commits": [], "recent": [], "remote": None}
     try:
         g["branch"] = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], check=True)[1]
         g["head"]   = run(["git", "rev-parse", "--short", "HEAD"], check=True)[1]
@@ -240,6 +284,12 @@ def load_git(date):
                 sha, author, cts, subj = (line.split("\x1f") + ["", "", "", ""])[:4]
                 if sha:
                     g["commits"].append({"sha": sha, "author": author, "ts": cts, "subject": subj})
+        rc, out, _ = run(["git", "log", "-n", "200", "--pretty=%h%x1f%an%x1f%cI%x1f%s"])
+        if rc == 0:
+            for line in out.splitlines():
+                sha, author, cts, subj = (line.split("\x1f") + ["", "", "", ""])[:4]
+                if sha:
+                    g["recent"].append({"sha": sha, "author": author, "ts": cts, "subject": subj})
         rc, out, _ = run(["git", "remote", "get-url", "origin"])
         if rc == 0:
             g["remote"] = out
@@ -295,7 +345,245 @@ def load_state():
         tel = [l.strip() for l in m.group(1).splitlines() if l.strip().startswith("- `")]
         if tel:
             st["telemetry_last"] = tel[-1].strip("- ").strip("`")[:500]
+            st["telemetry_lines"] = [l.strip("- ").strip("`") for l in tel]
     return st
+
+# ───────────────────────────── collect: cost (GSL-93) ─────────────────────────
+
+# The TELEMETRY section of ORCHESTRATION-STATE is a HAND-WRITTEN ledger: one markdown bullet per
+# cycle, appended by whoever closed it. It is prose with numbers in it, not a data file -- and it
+# shows: values are approximations (`~`, `≈`), `cache_read=est-unavailable` and
+# `tokens_this_cycle=UNRECOVERED` both appear, `cache_write` is missing from most lines, and there is
+# free Russian commentary in brackets. So parse it LENIENTLY and COUNT WHAT YOU COULDN'T READ. A
+# parser that silently drops the lines it does not understand turns a ledger with holes into a
+# smaller ledger that looks whole -- and the Cost screen would then under-report spend with total
+# confidence.
+COST_FIELDS = {
+    "cycle":       re.compile(r"\bcycle=(\d+)"),
+    "worker":      re.compile(r"\bworker=(\S+)"),
+    "model":       re.compile(r"\bmodel=(\S+)"),
+    "tokens_out":  re.compile(r"\btokens_out=~?≈?(\d+)"),
+    "tokens_in":   re.compile(r"\btokens_in=~?≈?(\d+)"),
+    "cache_read":  re.compile(r"\bcache_read=~?≈?(\d+)"),
+    "cache_write": re.compile(r"\bcache_write=~?≈?(\d+)"),
+    "running_total": re.compile(r"total\s*[≈~]?\s*(\d+)"),
+    "running_cycles": re.compile(r"cycles=(\d+)"),
+}
+
+
+def load_cost(state):
+    """The Cost screen's data (PRD R5.2, screen 6) and the token axis of the runway (GSL-94).
+
+    THE CEILING DOES NOT EXIST. manifest.md §5.phase-ceiling delegates it to "the epic brief", and no
+    epic brief on disk names a number. So this returns a numerator with no denominator, and says so:
+    `ceiling: null`. It must NOT be papered over with a plausible default -- a made-up ceiling makes
+    the budget clock finite, which lengthens nothing but shortens the owner's trust the first time it
+    is wrong in either direction."""
+    cost = {"cycles": [], "unparsed": 0, "cumulative_total": None, "cumulative_cycles": None,
+            "ceiling": None, "ceiling_source": None,
+            "ceiling_why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates "
+                           "it to the epic brief, and no brief names a number "
+                           "(override with GOSLEEP_TOKEN_CEILING)"}
+
+    env_ceiling = os.environ.get("GOSLEEP_TOKEN_CEILING")
+    if env_ceiling:
+        try:
+            cost["ceiling"] = int(env_ceiling)
+            cost["ceiling_source"] = "env GOSLEEP_TOKEN_CEILING"
+            cost["ceiling_why"] = None
+        except ValueError:
+            degrade("cost", "GOSLEEP_TOKEN_CEILING=%r is not an integer" % env_ceiling)
+
+    for line in state.get("telemetry_lines") or []:
+        row, got = {"raw": line[:300]}, 0
+        for name, rx in COST_FIELDS.items():
+            m = rx.search(line)
+            if m:
+                got += 1
+                row[name] = m.group(1) if name in ("worker", "model") else int(m.group(1))
+            else:
+                row[name] = None
+        if row["cycle"] is None:
+            cost["unparsed"] += 1        # not a telemetry bullet at all, or one we cannot key
+            continue
+        cost["cycles"].append(row)
+        if row["running_total"] is not None:
+            cost["cumulative_total"] = row["running_total"]
+        if row["running_cycles"] is not None:
+            cost["cumulative_cycles"] = row["running_cycles"]
+
+    if cost["ceiling"] and cost["cumulative_total"]:
+        cost["used_pct"] = round(100.0 * cost["cumulative_total"] / cost["ceiling"], 1)
+    else:
+        cost["used_pct"] = None
+    return cost
+
+# ───────────────────────────── collect: fleet (GSL-93) ────────────────────────
+
+# The pane cap. manifest.md §5.slots: "слоты воркеров: max 3 (C5)".
+SLOT_CAP = int(os.environ.get("GOSLEEP_SLOT_CAP", 3))
+
+
+def fleet_census(events, hb):
+    """The Fleet screen's data (PRD R5.2, screen 5) and the slots axis of the runway (GSL-94).
+
+    WHAT THIS CANNOT SEE, and says so rather than guessing:
+      * No pane id and no model reach the event log. `pane.started`/`pane.ended` carry a session_id
+        and nothing else; the model a worker ran on is recorded in the STATE telemetry ledger by
+        hand, never in an event.
+      * The worker's NAME reaches the log only on semantic (`src=emit`) lines, whose `actor` is the
+        worker. Every hook-written line carries `actor="claude"` -- the process, not the person. So
+        the roster below is "who the log can name", not "who is alive", and the two are different.
+      * The one live count that is authoritative is the orchestrator's own heartbeat (`open_workers`).
+        It is gitignored: on a fresh clone there is no heartbeat, and then the census is UNKNOWN --
+        not zero. "Nobody is working" and "I cannot see who is working" must never render the same.
+    """
+    actors = {}
+    for e in events:
+        a = e.get("actor") or "?"
+        r = actors.setdefault(a, {"actor": a, "events": 0, "last_ts": None, "types": {}})
+        r["events"] += 1
+        ts = e.get("ts") or ""
+        if ts > (r["last_ts"] or ""):
+            r["last_ts"] = ts
+        t = e.get("type") or "?"
+        r["types"][t] = r["types"].get(t, 0) + 1
+    for r in actors.values():
+        age = NOW - parse_ts(r["last_ts"]) if parse_ts(r["last_ts"] or "") else None
+        r["last_age_s"] = int(age) if age is not None else None
+        r["last_age_human"] = human_age(age)
+        r["types"] = dict(sorted(r["types"].items(), key=lambda kv: (-kv[1], kv[0]))[:6])
+
+    roster = sorted(actors.values(), key=lambda r: (r["last_ts"] or ""), reverse=True)
+    live = hb.get("open_workers") if isinstance(hb, dict) else None
+
+    return {
+        "open_workers": live,
+        "cap": SLOT_CAP,
+        "free_slots": (SLOT_CAP - live) if isinstance(live, int) else None,
+        "cycle": hb.get("cycle") if isinstance(hb, dict) else None,
+        "orchestrator_status": hb.get("status") if isinstance(hb, dict) else None,
+        "orchestrator_context_pct": hb.get("context_pct") if isinstance(hb, dict) else None,
+        "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
+        "known": isinstance(live, int),
+        "roster": roster[:20],
+        "blind_spots": [
+            "no pane id in the event log — pane.started/ended carry a session_id only",
+            "no model in the event log — it is recorded by hand in ORCHESTRATION-STATE §TELEMETRY",
+            "hook-written lines all carry actor=\"claude\"; only semantic (src=emit) lines name the worker",
+        ],
+    }
+
+# ───────────────────────────── collect: tasks board (GSL-93) ──────────────────
+
+JIRA_BASE = os.environ.get("GOSLEEP_JIRA_BASE", "https://ainstance-labs.atlassian.net/browse")
+KEY_RE = re.compile(r"\b(GSL-\d+)\b")
+
+
+def gh_base(remote):
+    """github.com/<org>/<repo> out of whatever form `git remote get-url` handed us. Returns None if
+    the remote is missing or not GitHub — and then the board simply carries no commit links, rather
+    than plausible ones pointing nowhere."""
+    if not remote:
+        return None
+    m = re.search(r"github\.com[:/]+([^/]+)/([^/\s]+?)(?:\.git)?/?$", remote)
+    return "https://github.com/%s/%s" % (m.group(1), m.group(2)) if m else None
+
+
+def tasks_board(events, git, prs):
+    """The Tasks screen's data (PRD R5.2, screen 3; F5-S3 lands in GSL-96).
+
+    Rows are keyed on the Jira key, and every cell is EARNED. There is no GitHub issue number in any
+    machine-readable source on disk — the Jira->GH mirror is recorded only in handoff prose — so the
+    GH column is simply absent. A plausible-looking link to the wrong issue is worse than no link:
+    the owner clicks it once, lands somewhere wrong, and stops trusting the column that was right.
+
+    The tracker STATUS comes from `tracker.issue.updated` (src=poll-fill), and it is only as fresh as
+    the last poll — which needs Jira credentials the laboratory does not hold (C1), so in practice it
+    is fed by hand. The row therefore carries the AGE of its status, and the screen shows it."""
+    ghb = gh_base(git.get("remote"))
+    rows = {}
+
+    def row(key):
+        return rows.setdefault(key, {
+            "key": key, "status": None, "status_ts": None, "status_age_s": None,
+            "summary": None, "commits": [], "dev_history": [], "prs": [],
+            "jira_url": "%s/%s" % (JIRA_BASE, key), "gh_url": None,
+        })
+
+    for e in events:
+        if not str(e.get("type", "")).startswith("tracker.issue."):
+            continue
+        d = e.get("data") or {}
+        key = d.get("key")
+        if not key:
+            continue
+        r = row(key)
+        # `occurred_at` is the fact's OWN time (when Jira says it moved); the envelope `ts` is when we
+        # LEARNED it. Prefer the former, normalised — Jira writes it with an offset, the log writes Z,
+        # and the two must be in one format before `>=` is allowed anywhere near them.
+        st = d.get("status")
+        ts = iso_utc(d.get("occurred_at")) or e.get("ts")
+        # `tracker.issue.transitioned` witnesses THAT an issue moved, never WHERE TO: the MCP payload
+        # carries a transition id, not a status name, so `data.transition` is the empty string. It is
+        # a timestamp, not a status, and must not be allowed to overwrite one.
+        if st and ts and ts >= (r["status_ts"] or ""):
+            r["status"], r["status_ts"] = st, ts
+        if d.get("summary"):
+            r["summary"] = d["summary"]
+
+    for c in git.get("recent") or []:
+        for key in KEY_RE.findall(c.get("subject") or ""):
+            r = row(key)
+            if len(r["commits"]) < 8:
+                r["commits"].append({
+                    "sha": c["sha"], "subject": c["subject"], "ts": c.get("ts"),
+                    "url": ("%s/commit/%s" % (ghb, c["sha"])) if ghb else None,
+                })
+
+    for p in sorted(glob.glob(os.path.join(REPO, "docs", "dev_history", "GSL-*.md"))):
+        base = os.path.basename(p)
+        m = KEY_RE.match(base)
+        if m:
+            row(m.group(1))["dev_history"].append({
+                "name": base, "href": os.path.relpath(p, os.path.join(LAB, "site")),
+            })
+
+    for p in prs:
+        for key in KEY_RE.findall("%s %s" % (p.get("title") or "", p.get("headRefName") or "")):
+            row(key)["prs"].append({"number": p.get("number"), "state": p.get("state"),
+                                    "url": p.get("url"), "title": p.get("title")})
+
+    for r in rows.values():
+        age = NOW - parse_ts(r["status_ts"]) if parse_ts(r["status_ts"] or "") else None
+        r["status_age_s"] = int(age) if age is not None else None
+        r["status_age_human"] = human_age(age)
+
+    def sort_key(r):
+        m = re.match(r"GSL-(\d+)", r["key"])
+        return -int(m.group(1)) if m else 0
+
+    ordered = sorted(rows.values(), key=sort_key)
+    by_status = tally([{"s": r["status"] or "unknown"} for r in ordered], "s")
+    freshest = max([r["status_ts"] for r in ordered if r["status_ts"]], default=None)
+    tracker_age = NOW - parse_ts(freshest) if parse_ts(freshest or "") else None
+
+    return {
+        "rows": ordered,
+        "by_status": by_status,
+        "todo": by_status.get("To Do", 0),
+        "tracker_last_polled": freshest,
+        "tracker_age_s": int(tracker_age) if tracker_age is not None else None,
+        "tracker_age_human": human_age(tracker_age),
+        # The board is only as true as its last poll. Above this, the To Do count is a NUMBER FROM
+        # THE PAST wearing the present tense — and GSL-94's work-remaining clock must refuse it.
+        "tracker_stale": (tracker_age is None) or (tracker_age > 12 * 3600),
+        "gh_base": ghb,
+        "gh_issue_links": False,
+        "gh_why": "the Jira→GitHub issue mirror is recorded only in handoff prose; no machine-readable "
+                  "source on disk maps a key to an issue number, so this column is left empty rather "
+                  "than filled with a plausible wrong link",
+    }
 
 # ───────────────────────────── staleness (F4-S3) ─────────────────────────────
 
@@ -465,6 +753,35 @@ def library_index():
         "digests":     listing("docs/lab/digest",  "*-morning.md"),
         "handoffs":    listing("docs/handoff",     "*.md"),
         "dev_history": listing("docs/dev_history", "GSL-*.md"),
+        "reports":     listing("docs/reports",     "*/index.html"),
+        "prd":         listing("docs/prd",         "*.md"),
+    }
+
+
+# Every question the queue holds, not just the open ones. The Questions screen (PRD R5.2, screen 4)
+# has to show what the night DECIDED as well as what it is still waiting on -- "answered-by-default,
+# and here is the default it took" is the record that makes an autonomous night auditable in the
+# morning. status.json keeps only the open ones; that is a summary, and this is the ledger.
+QUESTION_KEYS = ("id", "ts", "type", "from", "task", "question", "options", "default",
+                 "default_rationale", "reversibility", "impact_if_wrong", "auto_apply_at",
+                 "status", "seen_by", "high_impact", "answered_by", "answer", "links")
+
+
+def build_queue(questions):
+    items = [{k: q.get(k) for k in QUESTION_KEYS if k in q} for q in questions]
+    open_items = [q for q in items if q.get("status") == "open"]
+    return {
+        "open": len(open_items),
+        "total": len(items),
+        "by_type": tally(open_items, "type"),
+        "open_items": open_items,
+        # Recently closed, newest first. The morning wants to audit last night's defaults.
+        "closed_items": sorted([q for q in items if q.get("status") != "open"],
+                               key=lambda q: q.get("ts") or "", reverse=True)[:20],
+        # BLOCKERs take no default, ever (manifest §3) -- so they have no auto_apply_at and no timer.
+        # They are the only question type that STOPS the night, which is why GSL-94's runway keys on
+        # them and not on the DECISIONs, which resolve themselves.
+        "open_blockers": [q for q in open_items if q.get("type") == "BLOCKER"],
     }
 
 
@@ -503,15 +820,19 @@ def build_render_bundle(ctx, status):
     from `events` below, computed once, here. A number the renderer works out for itself is a second
     opinion waiting to disagree with status.json."""
     return {
-        "schema": "gosleep.lab.render/1",
+        "schema": "gosleep.lab.render/2",
         "generated_at": status["generated_at"],
-        "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-92)",
+        "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-93)",
         "date": ctx["date"],
         "staleness": status["staleness"],
         "events": status["events"],
         "recent_events": [project_event(e) for e in ctx["events"][-RECENT_CAP:]],
         "recent_cap": RECENT_CAP,
         "questions": status["questions"],
+        "queue": build_queue(ctx["questions"]),
+        "tasks": ctx["tasks"],
+        "fleet": ctx["fleet"],
+        "cost": ctx["cost"],
         "decisions": {"total": len(ctx["decisions"]), "recent": ctx["decisions"][-30:]},
         "delivery": status["delivery"],
         "orchestrator": status["orchestrator"],
@@ -962,6 +1283,9 @@ def main():
         "state": load_state(),
         "narrative": None,
     }
+    ctx["cost"]  = load_cost(ctx["state"])
+    ctx["fleet"] = fleet_census(events_all, ctx["heartbeat"] or {})
+    ctx["tasks"] = tasks_board(events_all, ctx["git"], ctx["prs"])
 
     status = build_status(ctx)
     if ARGS["narrate"]:

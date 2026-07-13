@@ -37,6 +37,19 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .tag.poll{color:var(--warn);border-color:currentColor}
 footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid var(--line);
        padding-top:.8rem}
+
+/* "unknown" is a first-class value here, not a styling afterthought. It must never look like a
+   number and must never look like zero: it is muted, italic, and it carries its reason in a title.
+   A dashboard that renders a missing source as 0 tells the owner to go to sleep on evidence it does
+   not have. */
+.unknown{color:var(--dim);font-style:italic;font-weight:400;font-size:.82em;
+  border-bottom:1px dotted var(--dim);cursor:help}
+.card.blind{border-style:dashed;color:var(--dim);font-size:.85rem}
+.tag.BLOCKER{color:var(--dead);border-color:currentColor;font-weight:700}
+.tag.DECISION{color:var(--accent);border-color:currentColor}
+.tag.CLARIFY{color:var(--warn);border-color:currentColor}
+.tag.FYI{color:var(--dim)}
+.stale-note{color:var(--warn);font-weight:600}
 nav{margin:.4rem 0 .2rem;line-height:2}
 nav a{margin-right:.9rem}
 nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}

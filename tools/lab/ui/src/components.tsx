@@ -2,12 +2,14 @@ import type { ComponentChildren, VNode } from "preact";
 import type { LabEvent, RenderBundle } from "./types.js";
 import { VERDICTS } from "./verdicts.js";
 
-// The nav lists screens that EXIST. PRD R5.2 asks for seven (Overview / Timeline / Tasks / Questions
-// / Fleet / Cost / Library); GSL-93 adds the missing four. A nav that links to a page nobody built is
-// a 404 on a phone at 03:00 — the dashboard's first lie about itself.
+/** The seven screens of PRD R5.2. One nav, one order, on every page. */
 export const SCREENS = [
   { id: "index", file: "index.html", label: "Overview" },
   { id: "timeline", file: "timeline.html", label: "Timeline" },
+  { id: "tasks", file: "tasks.html", label: "Tasks" },
+  { id: "questions", file: "questions.html", label: "Questions" },
+  { id: "fleet", file: "fleet.html", label: "Fleet" },
+  { id: "cost", file: "cost.html", label: "Cost" },
   { id: "library", file: "library.html", label: "Library" },
 ] as const;
 
@@ -60,6 +62,62 @@ export function StaleBanner({ b }: { b: RenderBundle }): VNode {
 
 export function Empty({ children }: { children: ComponentChildren }): VNode {
   return <div class="card">{children}</div>;
+}
+
+/**
+ * The single most important component on this dashboard.
+ *
+ * "Nobody is working" and "I cannot see who is working" must never render the same, and neither must
+ * "the budget is fine" and "there is no budget on disk to compare against". Phase 4 spent a whole
+ * cycle removing three ways this laboratory lied about itself; Phase 5 builds the screen the owner
+ * uses to decide whether he can go to sleep, and it has no right to invent a fourth.
+ *
+ * So: a value with no source renders as `unknown`, in muted type, WITH THE REASON attached — never
+ * as 0, never as a plausible default, never as a green tick.
+ */
+export function Unknown({ why }: { why?: string }): VNode {
+  return (
+    <span class="unknown" title={why ?? "no source on disk for this value"}>
+      unknown
+    </span>
+  );
+}
+
+/** A KPI tile that knows the difference between zero and no-idea. */
+export function Kpi({
+  value,
+  label,
+  why,
+}: {
+  value: number | string | null | undefined;
+  label: string;
+  why?: string;
+}): VNode {
+  const missing = value === null || value === undefined || value === "";
+  return (
+    <div class="kpi">
+      <b>{missing ? <Unknown why={why} /> : value}</b>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+/** Sources this screen could not read. A page that hides its blind spots is the tasty-lunch wiki. */
+export function BlindSpots({ items }: { items: string[] }): VNode | null {
+  if (items.length === 0) return null;
+  return (
+    <>
+      <h2>What this screen cannot see</h2>
+      <div class="card blind">
+        {items.map((s, i) => (
+          <span key={s}>
+            {i > 0 ? <br /> : null}
+            {s}
+          </span>
+        ))}
+      </div>
+    </>
+  );
 }
 
 /**

@@ -1,13 +1,13 @@
 {
-  "schema": "gosleep.lab.render/1",
-  "generated_at": "2026-07-13T12:22:47Z",
-  "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-92)",
+  "schema": "gosleep.lab.render/2",
+  "generated_at": "2026-07-13T12:36:11Z",
+  "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-93)",
   "date": "2026-07-13",
   "staleness": {
-    "max_event_age_s": 5,
-    "max_event_age_human": "5s",
-    "latest_event_ts": "2026-07-13T12:22:41Z",
-    "heartbeat_age_s": 1593,
+    "max_event_age_s": 4,
+    "max_event_age_human": "4s",
+    "latest_event_ts": "2026-07-13T12:36:07Z",
+    "heartbeat_age_s": 782,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -15,22 +15,22 @@
     }
   },
   "events": {
-    "total": 316,
-    "today": 250,
+    "total": 322,
+    "today": 256,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 60,
+      "agent.turn_ended": 61,
       "agent.idle": 36,
-      "dev_history.written": 30,
+      "dev_history.written": 32,
       "handoff.written": 29,
       "task.completed": 27,
       "agent.terminated": 24,
-      "tracker.issue.updated": 21,
-      "vcs.commit": 18,
-      "tracker.issue.transitioned": 13,
+      "tracker.issue.updated": 22,
+      "vcs.commit": 19,
+      "tracker.issue.transitioned": 14,
       "tracker.issue.created": 12,
       "pane.ended": 10,
       "pane.started": 10,
@@ -43,8 +43,8 @@
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 112,
-      "hook:Stop": 60,
+      "hook:PostToolUse": 117,
+      "hook:Stop": 61,
       "hook:TeammateIdle": 36,
       "hook:TaskCompleted": 27,
       "hook:SubagentStop": 24,
@@ -57,8 +57,8 @@
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 175,
-      "ef6c3777": 77,
+      "claude": 180,
+      "ef6c3777": 78,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
       "70cbe176": 3,
@@ -91,57 +91,9 @@
       "impl-lab-2": 1,
       "orchestrator": 1
     },
-    "mechanical_share": 0.937
+    "mechanical_share": 0.938
   },
   "recent_events": [
-    {
-      "ts": "2026-07-13T09:17:30Z",
-      "seq": 50,
-      "actor": "a00bff097e605f499",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:17:30Z",
-      "seq": 51,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:17:30Z",
-      "seq": 52,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:18:02Z",
-      "seq": 53,
-      "actor": "a6deecd2645c93e07",
-      "type": "agent.terminated",
-      "src": "hook:SubagentStop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:18:02Z",
-      "seq": 54,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:18:02Z",
-      "seq": 55,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
     {
       "ts": "2026-07-13T09:18:34Z",
       "seq": 56,
@@ -1812,6 +1764,65 @@
       "data": {
         "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/README.md"
       }
+    },
+    {
+      "ts": "2026-07-13T12:23:05Z",
+      "seq": 251,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "6b4cbed",
+        "cmd": "M=/private/tmp/claude-501/-Users-romanlidovskyi-Documents-dev-harness-gosleep/c2e36f08-7e73-4d72-8357-56fe876719a8/scratchpad/msg92.txt cat > \"$M\" <<'EOF' GSL-92 [Tooling][UI] TypeScript scaffold — Preact+esbuild SSG + degrade-without-node The view layer leaves Python. tools/lab/ui/ (TypeScript + Preact, server-rendered by esbuild) now renders every page; CSS/esc/VERDICT/STALENESS_JS/page/html_events_table/build_index/ build_timeline/build_library are DELETED from chronicler.py, not left beside"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:23:14Z",
+      "seq": 252,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-92"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:23:22Z",
+      "seq": 253,
+      "actor": "ef6c3777",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T12:23:33Z",
+      "seq": 254,
+      "actor": "claude",
+      "type": "tracker.issue.updated",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-92"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:35:57Z",
+      "seq": 255,
+      "actor": "claude",
+      "type": "dev_history.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-93-phase5-cycle53-data-contract-skeleton.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T12:36:07Z",
+      "seq": 256,
+      "actor": "claude",
+      "type": "dev_history.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/README.md"
+      }
     }
   ],
   "recent_cap": 200,
@@ -1841,15 +1852,3550 @@
       }
     ]
   },
+  "queue": {
+    "open": 2,
+    "total": 2,
+    "by_type": {
+      "DECISION": 2
+    },
+    "open_items": [
+      {
+        "id": "q-2026-07-12-001",
+        "ts": "2026-07-12T21:24:00Z",
+        "type": "DECISION",
+        "from": "impl-lab-2",
+        "task": "GSL-86",
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
+        "options": [
+          {
+            "label": "детерминированный скелет + LLM-врезка",
+            "pros": "страница живёт без LLM; F4-S3 выполняется",
+            "cons": "проза беднее, чем мог бы дать полный LLM-проход"
+          },
+          {
+            "label": "LLM генерит HTML+дайджест",
+            "pros": "богаче текст; буквально по тексту задачи",
+            "cons": "крах/бюджет/таймаут = НЕТ страницы; F4-S3 падает"
+          }
+        ],
+        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
+        "default_rationale": "F4-S3 требует: крах/исчерпанный бюджет летописца НЕ роняет страницу. Если страницу рисует LLM, то её крах = нет страницы — критерий падает в первую же плохую ночь. LLM как клей сохраняет и C3 (bounded glue), и F4-S3 (деградация).",
+        "reversibility": "high",
+        "impact_if_wrong": "",
+        "auto_apply_at": "2026-07-13T08:00:00Z",
+        "status": "open",
+        "seen_by": [
+          "impl-lab-2"
+        ],
+        "links": {
+          "jira": "GSL-86"
+        }
+      },
+      {
+        "id": "q-2026-07-13-001",
+        "ts": "2026-07-13T11:49:40Z",
+        "type": "DECISION",
+        "from": "gsl90-setup",
+        "task": "GSL-92",
+        "question": "Фаза 5 (UI) на TypeScript — какой фреймворк рендера? Жёсткое ограничение: страницы обязаны открываться из file://, где fetch() локального JSON запрещён CORS, значит данные вшиваются в HTML на build-time. Это статический генератор, не SPA — и это сужает выбор сильнее, чем обычно.",
+        "options": [
+          {
+            "label": "Preact + preact-render-to-string + esbuild",
+            "pros": "TS-native; JSX и компоненты на 7 экранов; ~3 КБ рантайма; self-contained выход; один шаг сборки",
+            "cons": "node/npm становятся зависимостью build'а лаборатории (сегодня её нет)"
+          },
+          {
+            "label": "React + react-dom/server",
+            "pros": "та же модель, шире экосистема и знакомее",
+            "cons": "заметно тяжелее рантайм ради трёх островков интерактива; на телефоне за это платит владелец"
+          },
+          {
+            "label": "htmx + Python (остаться без node)",
+            "pros": "нулевая новая зависимость; chronicler.py остаётся единственным рендерером",
+            "cons": "противоречит прямой директиве владельца (TypeScript для UI) и оставляет view-слой в Python"
+          },
+          {
+            "label": "Голый TS без фреймворка (template literals + точечный DOM)",
+            "pros": "минимум зависимостей; тот же self-contained выход",
+            "cons": "7 экранов с общим layout руками на строках — это дрейф разметки, ровно то, от чего уводит контракт 'регенерируется, не редактируется'"
+          }
+        ],
+        "default": "Preact + preact-render-to-string + esbuild: build-time SSR в self-contained HTML, ~3 КБ рантайма на островки интерактива (фильтр, обратный отсчёт, переоценка свежести)",
+        "default_rationale": "Единственный интерактив в PRD — клиентский фильтр по встроенному JSON, живой обратный отсчёт дедлайнов и переоценка свежести при открытии. Это островки, а не приложение: тяжёлый рантайм платить не за что. Preact даёт JSX+TS и компоненты (7 экранов делят layout, шапку свежести, навигацию), но остаётся достаточно маленьким, чтобы страница осталась self-contained и читалась с телефона. esbuild инлайнит всё одним шагом и не тянет dev-server, который нам не нужен: сборку вызывает chronicler.sh, а не человек.",
+        "reversibility": "high",
+        "impact_if_wrong": "Влияет на GSL-92..GSL-99 (весь UI-код фазы). Обратимость высокая: и Preact, и React потребляют один и тот же JSX+TS-исходник (preact/compat — drop-in), бандлер меняется строкой конфига, а выход в обоих случаях — статический HTML. Настоящая цена решения не во фреймворке, а в том, что node/npm становятся зависимостью build'а лаборатории, у которой сегодня её нет ('python3 stdlib only'). Это оплачивается graceful degrade: нет node → chronicler пишет degraded-запись и оставляет честно-несвежую страницу, а не краш и не свежий на вид вчерашний день.",
+        "auto_apply_at": "2026-07-14T06:00:00Z",
+        "status": "open",
+        "seen_by": [
+          "gsl90-setup"
+        ],
+        "links": {
+          "prd": "docs/prd/PRD-gosleep-evolution.md#фаза-5",
+          "epic": "GSL-90"
+        }
+      }
+    ],
+    "closed_items": [],
+    "open_blockers": []
+  },
+  "tasks": {
+    "rows": [
+      {
+        "key": "GSL-101",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "6d934de",
+            "subject": "GSL-101 [Docs] R4.2 -> MET: доказательство seq 156 привязано к sha; счётчики приёмки пересчитаны",
+            "ts": "2026-07-13T14:03:01+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6d934de"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-101-phase5-cycle52-r42-met.md",
+            "href": "../../dev_history/GSL-101-phase5-cycle52-r42-met.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-101",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-100",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-100",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-99",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-99",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-98",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-98",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-97",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-97",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-96",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-96",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-95",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-95",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-94",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-94",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-93",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [
+          {
+            "name": "GSL-93-phase5-cycle53-data-contract-skeleton.md",
+            "href": "../../dev_history/GSL-93-phase5-cycle53-data-contract-skeleton.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-93",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-92",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "6b4cbed",
+            "subject": "GSL-92 [Tooling][UI] TypeScript scaffold — Preact+esbuild SSG + degrade-without-node",
+            "ts": "2026-07-13T14:23:05+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6b4cbed"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-92-phase5-cycle53-ts-scaffold.md",
+            "href": "../../dev_history/GSL-92-phase5-cycle53-ts-scaffold.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-92",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-91",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "7b229c7",
+            "subject": "GSL-91 [Docs] Леджер закрытия Фазы 4 + разбивка Фазы 5",
+            "ts": "2026-07-13T13:51:54+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/7b229c7"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-91-phase5-cycle52-ledger.md",
+            "href": "../../dev_history/GSL-91-phase5-cycle52-ledger.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-91",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-90",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-90",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-89",
+        "status": "To Do",
+        "status_ts": "2026-07-12T20:14:12Z",
+        "status_age_s": 58919,
+        "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
+        "commits": [
+          {
+            "sha": "63b1c63",
+            "subject": "GSL-89 [Docs] R4.2 down to PENDING; acceptance counts made checkable at this sha (REVIEW-gsl81 M2, m4, m5)",
+            "ts": "2026-07-13T11:53:39+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/63b1c63"
+          },
+          {
+            "sha": "5be2adc",
+            "subject": "GSL-89 [Docs][Tooling] Phase 4 summary + staleness contract + lab-log --ts/--supersedes",
+            "ts": "2026-07-13T07:52:54+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/5be2adc"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-89-phase4-cycle47-close.md",
+            "href": "../../dev_history/GSL-89-phase4-cycle47-close.md"
+          },
+          {
+            "name": "GSL-89-phase4-cycle50-review-fixes.md",
+            "href": "../../dev_history/GSL-89-phase4-cycle50-review-fixes.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-89",
+        "gh_url": null,
+        "status_age_human": "16h 21m"
+      },
+      {
+        "key": "GSL-88",
+        "status": "To Do",
+        "status_ts": "2026-07-12T20:14:11Z",
+        "status_age_s": 58920,
+        "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
+        "commits": [
+          {
+            "sha": "548fbf8",
+            "subject": "GSL-88 [Skill] handoff skill emits handoff.written semantic event on write",
+            "ts": "2026-07-13T07:31:13+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/548fbf8"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-88-phase4-cycle47-handoff-written.md",
+            "href": "../../dev_history/GSL-88-phase4-cycle47-handoff-written.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-88",
+        "gh_url": null,
+        "status_age_human": "16h 22m"
+      },
+      {
+        "key": "GSL-87",
+        "status": "To Do",
+        "status_ts": "2026-07-12T20:14:09Z",
+        "status_age_s": 58922,
+        "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
+        "commits": [
+          {
+            "sha": "101836c",
+            "subject": "GSL-87 [Tooling] poll-fill — reconcile git/gh/Jira into the events the hooks never saw",
+            "ts": "2026-07-12T23:39:57+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/101836c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-87-phase4-cycle46-poll-fill.md",
+            "href": "../../dev_history/GSL-87-phase4-cycle46-poll-fill.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-87",
+        "gh_url": null,
+        "status_age_human": "16h 22m"
+      },
+      {
+        "key": "GSL-86",
+        "status": "Done",
+        "status_ts": "2026-07-12T21:26:24Z",
+        "status_age_s": 54587,
+        "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
+        "commits": [
+          {
+            "sha": "b743002",
+            "subject": "GSL-86 [Fix] the staleness PROSE re-grades on open, not just the banner (REVIEW-gsl81 M1, m2)",
+            "ts": "2026-07-13T11:46:31+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b743002"
+          },
+          {
+            "sha": "3f52736",
+            "subject": "GSL-86 [Docs][Tooling] chronicler — static HTML regen + morning digest + status.json",
+            "ts": "2026-07-12T23:26:18+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/3f52736"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-86-phase4-cycle46-chronicler.md",
+            "href": "../../dev_history/GSL-86-phase4-cycle46-chronicler.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-86",
+        "gh_url": null,
+        "status_age_human": "15h 9m"
+      },
+      {
+        "key": "GSL-85",
+        "status": "Done",
+        "status_ts": "2026-07-12T20:56:50Z",
+        "status_age_s": 56361,
+        "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
+        "commits": [
+          {
+            "sha": "e9a1ccc",
+            "subject": "GSL-85 [Repo] docs/lab layout — схема, retention + дисциплина записи (append-only + atomic)",
+            "ts": "2026-07-12T22:59:08+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/e9a1ccc"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-85-phase4-cycle45-docs-lab-layout.md",
+            "href": "../../dev_history/GSL-85-phase4-cycle45-docs-lab-layout.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-85",
+        "gh_url": null,
+        "status_age_human": "15h 39m"
+      },
+      {
+        "key": "GSL-84",
+        "status": "Done",
+        "status_ts": "2026-07-12T20:50:59Z",
+        "status_age_s": 56712,
+        "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
+        "commits": [
+          {
+            "sha": "b0599db",
+            "subject": "GSL-84 [Tooling] lab-emit semantic events — cycle/question/decision/verify поверх одного писателя",
+            "ts": "2026-07-12T22:50:56+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b0599db"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-84-phase4-cycle45-lab-emit-semantic.md",
+            "href": "../../dev_history/GSL-84-phase4-cycle45-lab-emit-semantic.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-84",
+        "gh_url": null,
+        "status_age_human": "15h 45m"
+      },
+      {
+        "key": "GSL-83",
+        "status": "Done",
+        "status_ts": "2026-07-12T20:46:53Z",
+        "status_age_s": 56958,
+        "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
+        "commits": [
+          {
+            "sha": "977a09e",
+            "subject": "GSL-83 [Fix] phantom commit parser — HEAD must be FRESH and ITS OWN before it lends a sha (REVIEW-gsl81 C1, m1, m3)",
+            "ts": "2026-07-13T11:42:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/977a09e"
+          },
+          {
+            "sha": "2e33632",
+            "subject": "GSL-83 [Tooling] hooks + lab-log.sh — 0-token event capture to events.jsonl",
+            "ts": "2026-07-12T22:46:18+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/2e33632"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-83-phase4-cycle45-hooks-lab-log.md",
+            "href": "../../dev_history/GSL-83-phase4-cycle45-hooks-lab-log.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-83",
+        "gh_url": null,
+        "status_age_human": "15h 49m"
+      },
+      {
+        "key": "GSL-82",
+        "status": "Done",
+        "status_ts": "2026-07-12T20:16:09Z",
+        "status_age_s": 58802,
+        "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
+        "commits": [
+          {
+            "sha": "9a056bb",
+            "subject": "GSL-82 [Docs] Леджер: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + gitignore/SKILL",
+            "ts": "2026-07-12T22:15:58+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/9a056bb"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-82-phase4-cycle44-ledger.md",
+            "href": "../../dev_history/GSL-82-phase4-cycle44-ledger.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-82",
+        "gh_url": null,
+        "status_age_human": "16h 20m"
+      },
+      {
+        "key": "GSL-81",
+        "status": "In Progress",
+        "status_ts": "2026-07-12T20:14:02Z",
+        "status_age_s": 58929,
+        "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
+        "commits": [
+          {
+            "sha": "5fd1de2",
+            "subject": "Merge pull request #102 from ainstance-labs/GSL-81-laboratory-auto-doc",
+            "ts": "2026-07-13T13:37:15+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/5fd1de2"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 102,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/102",
+            "title": "GSL-81 [Repo][Tooling] Фаза 4 — Laboratory (auto-doc)"
+          },
+          {
+            "number": 102,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/102",
+            "title": "GSL-81 [Repo][Tooling] Фаза 4 — Laboratory (auto-doc)"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-81",
+        "gh_url": null,
+        "status_age_human": "16h 22m"
+      },
+      {
+        "key": "GSL-80",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "15b8fa3",
+            "subject": "GSL-80 Phase GSL-72 summary dev_history: outcomes, criteria status, pointers",
+            "ts": "2026-07-10T12:43:23+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/15b8fa3"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-80-phase-gsl72-summary.md",
+            "href": "../../dev_history/GSL-80-phase-gsl72-summary.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-80",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-79",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "d3eb02c",
+            "subject": "GSL-79 PULSE deltas: queue scan in HEARTBEAT_OK, apply-at-deadline, LIVE-STATUS questions field, BLOCKED_ON_HUMAN = queue+reroute",
+            "ts": "2026-07-10T12:42:24+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/d3eb02c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-79-phase-gsl72-pulse-deltas.md",
+            "href": "../../dev_history/GSL-79-phase-gsl72-pulse-deltas.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-79",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-78",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "3e9269c",
+            "subject": "GSL-78 Morning digest: 7-section template + provenance citations + morning-boundary procedure",
+            "ts": "2026-07-10T12:40:03+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/3e9269c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-78-phase-gsl72-morning-digest.md",
+            "href": "../../dev_history/GSL-78-phase-gsl72-morning-digest.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-78",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-77",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "703ec66",
+            "subject": "GSL-77 decisions/log.jsonl + learning loop: provenance-enforced decision log, qshape mining, manifest candidates (smoke 28/28)",
+            "ts": "2026-07-10T12:38:24+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/703ec66"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-77-phase-gsl72-decision-log-learning-loop.md",
+            "href": "../../dev_history/GSL-77-phase-gsl72-decision-log-learning-loop.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-77",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-76",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "e351b7b",
+            "subject": "GSL-76 Decision manifest: owner-sovereign template, 6 sections (seed from Standing rules + denylist verbatim)",
+            "ts": "2026-07-10T12:34:59+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/e351b7b"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-76-phase-gsl72-decision-manifest.md",
+            "href": "../../dev_history/GSL-76-phase-gsl72-decision-manifest.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-76",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-75",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4b30bc9",
+            "subject": "GSL-75 lab-emit: queue.jsonl schema + dedup helper (append-only, patch records) + smoke 21/21",
+            "ts": "2026-07-10T12:32:52+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4b30bc9"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-75-phase-gsl72-lab-emit-queue.md",
+            "href": "../../dev_history/GSL-75-phase-gsl72-lab-emit-queue.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-75",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-74",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "501a86f",
+            "subject": "GSL-74 Question typology: 4 types, 4 behaviors (BLOCKER/DECISION/CLARIFY/FYI) — skill + worker-template",
+            "ts": "2026-07-10T12:27:52+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/501a86f"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-74-phase-gsl72-question-typology.md",
+            "href": "../../dev_history/GSL-74-phase-gsl72-question-typology.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-74",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-73",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "9440319",
+            "subject": "GSL-73 Commit orchestration ledger (handoffs 17, 18 + STATE)",
+            "ts": "2026-07-10T10:38:45+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/9440319"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-73-phase-gsl72-cycle1-ledger.md",
+            "href": "../../dev_history/GSL-73-phase-gsl72-cycle1-ledger.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-73",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-72",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4af66d2",
+            "subject": "Merge pull request #92 from ainstance-labs/GSL-72-question-buffer",
+            "ts": "2026-07-12T20:20:17+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4af66d2"
+          },
+          {
+            "sha": "d86ba0f",
+            "subject": "GSL-72 review fixes: C1 irreversible=>BLOCKER guard, M1..M4 (+trivial minors)",
+            "ts": "2026-07-10T13:24:38+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/d86ba0f"
+          },
+          {
+            "sha": "15b8fa3",
+            "subject": "GSL-80 Phase GSL-72 summary dev_history: outcomes, criteria status, pointers",
+            "ts": "2026-07-10T12:43:23+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/15b8fa3"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 92,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/92",
+            "title": "GSL-72 Question buffer + decision manifest — PRD Phase 3"
+          },
+          {
+            "number": 92,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/92",
+            "title": "GSL-72 Question buffer + decision manifest — PRD Phase 3"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-72",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-71",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "7e9b37c",
+            "subject": "GSL-71 HEARTBEAT_OK fast-path (minimal tick) + Phase 2 dev_history summary",
+            "ts": "2026-07-10T10:04:55+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/7e9b37c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-71-phase-gsl65-heartbeat-ok-docs.md",
+            "href": "../../dev_history/GSL-71-phase-gsl65-heartbeat-ok-docs.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-71",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-70",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "79f76bb",
+            "subject": "GSL-70 Circuit breaker: staged anti-runaway extending the loop guard",
+            "ts": "2026-07-10T10:03:04+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/79f76bb"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-70-phase-gsl65-circuit-breaker.md",
+            "href": "../../dev_history/GSL-70-phase-gsl65-circuit-breaker.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-70",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-69",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "69a12b9",
+            "subject": "GSL-69 fix: quota-wait chain honesty + rolling exit carve-out + cadence boundary (review M1/M2/m1-m3)",
+            "ts": "2026-07-10T10:26:59+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/69a12b9"
+          },
+          {
+            "sha": "d1fbb42",
+            "subject": "GSL-69 Quota auto-wait: session-limit detection + quiesce/resume with ETA",
+            "ts": "2026-07-10T10:00:43+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/d1fbb42"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-69-phase-gsl65-quota-auto-wait.md",
+            "href": "../../dev_history/GSL-69-phase-gsl65-quota-auto-wait.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-69",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-68",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "b510de8",
+            "subject": "GSL-68 Night mode / activeHours: mode definition + question buffering + boundaries",
+            "ts": "2026-07-10T09:57:05+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b510de8"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-68-phase-gsl65-night-mode.md",
+            "href": "../../dev_history/GSL-68-phase-gsl65-night-mode.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-68",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-67",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "24d3cec",
+            "subject": "GSL-67 fix: turn ends with owner-visible TEXT; wake-up armed mid-turn (session lesson 2026-07-10)",
+            "ts": "2026-07-10T12:47:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/24d3cec"
+          },
+          {
+            "sha": "f35a2b2",
+            "subject": "GSL-67 Pulse cadence table (cache windows) + armed-wake-up rule",
+            "ts": "2026-07-10T09:54:18+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/f35a2b2"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-67-phase-gsl65-pulse-cadence.md",
+            "href": "../../dev_history/GSL-67-phase-gsl65-pulse-cadence.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-67",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-66",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "270e519",
+            "subject": "GSL-66 Commit orchestration ledger (handoff 16 + STATE)",
+            "ts": "2026-07-10T09:46:16+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/270e519"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-66-phase-gsl65-cycle1-ledger.md",
+            "href": "../../dev_history/GSL-66-phase-gsl65-cycle1-ledger.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-66",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-65",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "135ce1f",
+            "subject": "Merge pull request #82 from ainstance-labs/GSL-65-self-pulse-night",
+            "ts": "2026-07-10T10:28:45+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/135ce1f"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 82,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/82",
+            "title": "GSL-65 Self-pulse + night mode — PRD Phase 2"
+          },
+          {
+            "number": 82,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/82",
+            "title": "GSL-65 Self-pulse + night mode — PRD Phase 2"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-65",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-64",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "19274b5",
+            "subject": "GSL-64 Отчёт AutoSK Anatomy — EN+RU dashboard",
+            "ts": "2026-07-10T09:30:04+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/19274b5"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-64-phase-gsl58-report.md",
+            "href": "../../dev_history/GSL-64-phase-gsl58-report.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-64",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-63",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4b4d3ab",
+            "subject": "GSL-63 Re-fetch autosk.app — zero delta, проект FROZEN",
+            "ts": "2026-07-10T09:29:54+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4b4d3ab"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-63-phase-gsl58-site-delta.md",
+            "href": "../../dev_history/GSL-63-phase-gsl58-site-delta.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-63",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-62",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "a293a94",
+            "subject": "GSL-62 Разбор unmerged PRs autosk — 6 осиротевших PR одного контрибьютора",
+            "ts": "2026-07-10T09:29:45+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/a293a94"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-62-phase-gsl58-unmerged-prs.md",
+            "href": "../../dev_history/GSL-62-phase-gsl58-unmerged-prs.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-62",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-61",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "1763dde",
+            "subject": "GSL-61 Go TUI internals autosk — gocui/lazygit стек, 11 паттернов",
+            "ts": "2026-07-10T09:29:37+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/1763dde"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-61-phase-gsl58-tui.md",
+            "href": "../../dev_history/GSL-61-phase-gsl58-tui.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-61",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-60",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "ba2177d",
+            "subject": "GSL-60 pi-agent internals — помодульный разбор (earendil-works/pi, code-only)",
+            "ts": "2026-07-10T09:29:28+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ba2177d"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-60-phase-gsl58-pi-agent.md",
+            "href": "../../dev_history/GSL-60-phase-gsl58-pi-agent.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-60",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-59",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "b38b768",
+            "subject": "GSL-59 Commit orchestration ledger (handoff 15 + STATE)",
+            "ts": "2026-07-10T08:38:54+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b38b768"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-59-phase-gsl58-cycle1-ledger.md",
+            "href": "../../dev_history/GSL-59-phase-gsl58-cycle1-ledger.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-59",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-58",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "a217393",
+            "subject": "Merge pull request #74 from ainstance-labs/GSL-58-autosk-anatomy",
+            "ts": "2026-07-10T09:38:38+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/a217393"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 74,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/74",
+            "title": "GSL-58 AutoSK Anatomy v2 — помодульный код-анализ"
+          },
+          {
+            "number": 74,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/74",
+            "title": "GSL-58 AutoSK Anatomy v2 — помодульный код-анализ"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-58",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-57",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4f520e7",
+            "subject": "GSL-57 Runbook — watchdog operations for the owner",
+            "ts": "2026-07-10T07:59:53+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4f520e7"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-57-phase-gsl49-runbook.md",
+            "href": "../../dev_history/GSL-57-phase-gsl49-runbook.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-57",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-56",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "f35d27e",
+            "subject": "GSL-56 Cold-start re-wake — watchdog-driven orchestrator restart",
+            "ts": "2026-07-10T07:32:57+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/f35d27e"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-56-phase-gsl49-rewake.md",
+            "href": "../../dev_history/GSL-56-phase-gsl49-rewake.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-56",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-55",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "48936de",
+            "subject": "GSL-55 Route-through-reap на kill (snapshot+branch/HEAD before any kill) + worker_died events + LEDGER.md format spec",
+            "ts": "2026-07-10T07:53:13+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/48936de"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-55-phase-gsl49-route-through-reap.md",
+            "href": "../../dev_history/GSL-55-phase-gsl49-route-through-reap.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-55",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-54",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "322cf30",
+            "subject": "GSL-54 Gastown-debounce: startup grace + zombie(3 cycles) + kill cooldown + mass-death escalation + single-flight/rate-limit",
+            "ts": "2026-07-10T07:47:29+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/322cf30"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-54-phase-gsl49-gastown-debounce.md",
+            "href": "../../dev_history/GSL-54-phase-gsl49-gastown-debounce.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-54",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-53",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "0013503",
+            "subject": "GSL-53 Restart budget (N-in-window, persistent) + exponential backoff (1s..16s) + owner escalation (ledger+notify+hook)",
+            "ts": "2026-07-10T07:41:24+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/0013503"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-53-phase-gsl49-restart-budget.md",
+            "href": "../../dev_history/GSL-53-phase-gsl49-restart-budget.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-53",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-52",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "7be1b5b",
+            "subject": "GSL-52 fix: identity-verified kill + kill rc check + re-wake brief consumption (review C1/M1/M2)",
+            "ts": "2026-07-10T08:30:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/7be1b5b"
+          },
+          {
+            "sha": "d719a68",
+            "subject": "GSL-52 launchd plist + watchdog.sh skeleton — mechanical 0-LLM heartbeat consumer (nudge/kill+re-wake, ledger, render-only installer)",
+            "ts": "2026-07-10T07:37:34+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/d719a68"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-52-phase-gsl49-watchdog-skeleton.md",
+            "href": "../../dev_history/GSL-52-phase-gsl49-watchdog-skeleton.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-52",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-51",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "0377298",
+            "subject": "GSL-51 fix: heartbeat carries orchestrator pane id (review C1)",
+            "ts": "2026-07-10T08:30:00+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/0377298"
+          },
+          {
+            "sha": "ef054ad",
+            "subject": "GSL-51 Heartbeat protocol — orchestrator liveness on disk",
+            "ts": "2026-07-10T07:22:47+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ef054ad"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-51-phase-gsl49-heartbeat.md",
+            "href": "../../dev_history/GSL-51-phase-gsl49-heartbeat.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-51",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-50",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "036549a",
+            "subject": "GSL-50 Commit orchestration ledger (handoffs 13, 14 + STATE)",
+            "ts": "2026-07-10T07:13:32+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/036549a"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-50-phase-gsl49-cycle1-ledger.md",
+            "href": "../../dev_history/GSL-50-phase-gsl49-cycle1-ledger.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-50",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-49",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "878f438",
+            "subject": "Merge pull request #66 from ainstance-labs/GSL-49-orchestrator-watchdog",
+            "ts": "2026-07-10T08:32:18+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/878f438"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 66,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/66",
+            "title": "GSL-49 Watchdog над оркестратором — PRD Phase 1"
+          },
+          {
+            "number": 66,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/66",
+            "title": "GSL-49 Watchdog над оркестратором — PRD Phase 1"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-49",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-48",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "83f8988",
+            "subject": "GSL-48 PRD — GoSleep evolution plan (orchestration v-next)",
+            "ts": "2026-07-08T01:15:17+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/83f8988"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-48-phase-gsl41-cycle1-prd-gosleep-evolution.md",
+            "href": "../../dev_history/GSL-48-phase-gsl41-cycle1-prd-gosleep-evolution.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-48",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-47",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4258890",
+            "subject": "GSL-47 fix: HTML document shell (doctype + charset) for loop-engineering reports — review finding",
+            "ts": "2026-07-09T23:33:43+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4258890"
+          },
+          {
+            "sha": "6b7e26b",
+            "subject": "GSL-47 Report: Loop engineering (EN+RU)",
+            "ts": "2026-07-08T01:15:09+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6b7e26b"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-47-phase-gsl41-cycle1-report-loop-engineering.md",
+            "href": "../../dev_history/GSL-47-phase-gsl41-cycle1-report-loop-engineering.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-47",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-46",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "46435a1",
+            "subject": "GSL-46 Report: Autonomy, question buffer, Laboratory, UI & mobile (EN+RU)",
+            "ts": "2026-07-08T01:14:59+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/46435a1"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-46-phase-gsl41-cycle1-report-autonomy-lab-ui.md",
+            "href": "../../dev_history/GSL-46-phase-gsl41-cycle1-report-autonomy-lab-ui.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-46",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-45",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "9c2d28f",
+            "subject": "GSL-45 Report: Headless claude -p, subscription & orchestrator supervision (EN+RU)",
+            "ts": "2026-07-08T01:14:51+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/9c2d28f"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-45-phase-gsl41-cycle1-report-headless-supervision.md",
+            "href": "../../dev_history/GSL-45-phase-gsl41-cycle1-report-headless-supervision.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-45",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-44",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "55ff1ef",
+            "subject": "GSL-44 Report: Orchestrator landscape — autosk/warren/overstory + ecosystem (EN+RU dashboard)",
+            "ts": "2026-07-08T01:14:41+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/55ff1ef"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-44-phase-gsl41-cycle1-report-orchestrator-landscape.md",
+            "href": "../../dev_history/GSL-44-phase-gsl41-cycle1-report-orchestrator-landscape.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-44",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-43",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "3ae86c3",
+            "subject": "GSL-43 Deep-dive findings pack — autosk, warren/overstory, headless, loops, lab/UI",
+            "ts": "2026-07-08T01:14:31+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/3ae86c3"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-43-phase-gsl41-cycle1-research-findings-pack.md",
+            "href": "../../dev_history/GSL-43-phase-gsl41-cycle1-research-findings-pack.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-43",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-42",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "898297c",
+            "subject": "GSL-42 Commit orchestration ledger (handoff 12 + STATE) + branch housekeeping",
+            "ts": "2026-07-07T22:28:15+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/898297c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-42-phase-gsl41-cycle1-ledger-housekeeping.md",
+            "href": "../../dev_history/GSL-42-phase-gsl41-cycle1-ledger-housekeeping.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-42",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-41",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "55907e1",
+            "subject": "Merge pull request #56 from ainstance-labs/GSL-41-orchestration-research",
+            "ts": "2026-07-09T23:34:58+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/55907e1"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 56,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/56",
+            "title": "GSL-41 Orchestration deep-research — reports + PRD"
+          },
+          {
+            "number": 56,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/56",
+            "title": "GSL-41 Orchestration deep-research — reports + PRD"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-41",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-40",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "5440358",
+            "subject": "GSL-40 Track orchestration ledger — handoffs 09-11 + STATE snapshot",
+            "ts": "2026-07-01T15:35:38+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/5440358"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-40-phase-v3fu-ledger-snapshot.md",
+            "href": "../../dev_history/GSL-40-phase-v3fu-ledger-snapshot.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-40",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-39",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "63ea99f",
+            "subject": "GSL-39 SC-09 restore discrimination — prompt states facts, agent must infer elapsed ceiling",
+            "ts": "2026-07-01T15:38:10+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/63ea99f"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-39-phase-v3fu-sc09-discrimination.md",
+            "href": "../../dev_history/GSL-39-phase-v3fu-sc09-discrimination.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-39",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-38",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "a750b42",
+            "subject": "GSL-38 tighten SC-12 to require the range-read (discriminates) + record GSL-37 pane-eval validation",
+            "ts": "2026-07-01T15:54:31+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/a750b42"
+          },
+          {
+            "sha": "f12092e",
+            "subject": "GSL-38 SC-12 calibration — recalibrated scenario",
+            "ts": "2026-07-01T15:39:38+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/f12092e"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-38-phase-v3fu-sc12-calibration.md",
+            "href": "../../dev_history/GSL-38-phase-v3fu-sc12-calibration.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-38",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-37",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "41566be",
+            "subject": "Merge pull request #47 from ainstance-labs/GSL-37-eval-quality",
+            "ts": "2026-07-01T16:00:01+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/41566be"
+          },
+          {
+            "sha": "a750b42",
+            "subject": "GSL-38 tighten SC-12 to require the range-read (discriminates) + record GSL-37 pane-eval validation",
+            "ts": "2026-07-01T15:54:31+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/a750b42"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 47,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/47",
+            "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)"
+          },
+          {
+            "number": 47,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/47",
+            "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-37",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-36",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "f3fa81a",
+            "subject": "GSL-36 v3 re-validation results + analysis — SC-09 fixed (0→1.0), SC-19 0→0.75, SC-12 still 0.0, SC-11 N=2 noise",
+            "ts": "2026-06-29T17:30:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/f3fa81a"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-36-phase-v3-revalidation.md",
+            "href": "../../dev_history/GSL-36-phase-v3-revalidation.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-36",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-35",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "b907efa",
+            "subject": "GSL-35 SC-09 calibration — recalibrated prompt (patience-window-elapsed made explicit)",
+            "ts": "2026-06-29T17:03:17+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b907efa"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-35-phase-v3-sc09-calibration.md",
+            "href": "../../dev_history/GSL-35-phase-v3-sc09-calibration.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-35",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-34",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "b854cf0",
+            "subject": "GSL-34 v3 SC-12: cost recovery via range-read + mandatory telemetry in briefs/STATE",
+            "ts": "2026-06-29T17:10:10+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b854cf0"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-34-phase-v3-sc12-cost-recovery.md",
+            "href": "../../dev_history/GSL-34-phase-v3-sc12-cost-recovery.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-34",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-33",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "dafd171",
+            "subject": "GSL-33 v3 SC-19: forbid killing a live/productive worker to force a roll boundary",
+            "ts": "2026-06-29T17:08:58+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/dafd171"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-33-phase-v3-sc19-kill-to-roll.md",
+            "href": "../../dev_history/GSL-33-phase-v3-sc19-kill-to-roll.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-33",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-32",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "5909215",
+            "subject": "GSL-32 v3 SC-09: finalize-boundary exception — time-ceiling check before pane-alive→WAIT",
+            "ts": "2026-06-29T17:12:08+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/5909215"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-32-phase-v3-sc09-finalize-exception.md",
+            "href": "../../dev_history/GSL-32-phase-v3-sc09-finalize-exception.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-32",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-31",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "571f1d5",
+            "subject": "Merge pull request #42 from ainstance-labs/GSL-31-close-eval-gaps",
+            "ts": "2026-06-29T17:38:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/571f1d5"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 42,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/42",
+            "title": "GSL-31 Close eval-validated gaps — SC-09 fixed, SC-19 improved (calibration + mechanism-targeted fixes)"
+          },
+          {
+            "number": 42,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/42",
+            "title": "GSL-31 Close eval-validated gaps — SC-09 fixed, SC-19 improved (calibration + mechanism-targeted fixes)"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-31",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-30",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "80b1e3f",
+            "subject": "GSL-30 Track v2 orchestration ledger — handoffs 04–07, STATE, incident report, 0009 scorecard",
+            "ts": "2026-06-29T15:20:16+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/80b1e3f"
+          }
+        ],
+        "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-30",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-29",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "e06f5e6",
+            "subject": "GSL-29 v2 re-validation scorecard + analysis — SC-11 fixed (0.75→1.0), SC-12 improved (0.25→0.5), SC-09/SC-19 unchanged (0.0)",
+            "ts": "2026-06-29T15:53:00+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/e06f5e6"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-29-phase-v2-revalidation.md",
+            "href": "../../dev_history/GSL-29-phase-v2-revalidation.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-29",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-28",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "7f620df",
+            "subject": "GSL-28 v2 SC-11: concrete state-update on suspect handoff / late ID + example",
+            "ts": "2026-06-29T15:27:11+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/7f620df"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-28-v2-state-update-suspect-handoff-late-id.md",
+            "href": "../../dev_history/GSL-28-v2-state-update-suspect-handoff-late-id.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-28",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-27",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4174d7a",
+            "subject": "GSL-27 v2 SC-12: concrete TELEMETRY-in-STATE append step + example line",
+            "ts": "2026-06-29T15:25:37+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4174d7a"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-27-v2-concrete-telemetry-append-example.md",
+            "href": "../../dev_history/GSL-27-v2-concrete-telemetry-append-example.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-27",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-26",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "d50426f",
+            "subject": "GSL-26 v2 SC-19: hard gate — never roll/handoff while a worker is alive",
+            "ts": "2026-06-29T15:24:24+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/d50426f"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-26-v2-hard-gate-never-roll-with-live-worker.md",
+            "href": "../../dev_history/GSL-26-v2-hard-gate-never-roll-with-live-worker.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-26",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-25",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "a27f85a",
+            "subject": "GSL-25 v2 SC-09: forbid vague \"keep monitoring\" — mandate ONE concrete nudge + example",
+            "ts": "2026-06-29T15:22:45+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/a27f85a"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-25-v2-forbid-keep-monitoring-mandate-nudge.md",
+            "href": "../../dev_history/GSL-25-v2-forbid-keep-monitoring-mandate-nudge.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-25",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-24",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "c150a3d",
+            "subject": "Merge pull request #35 from ainstance-labs/GSL-24-hardening-v2",
+            "ts": "2026-06-29T16:55:53+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/c150a3d"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 35,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/35",
+            "title": "GSL-24 Harness hardening v2 — concrete skill fixes for the 4 eval-failed behaviors"
+          },
+          {
+            "number": 35,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/35",
+            "title": "GSL-24 Harness hardening v2 — concrete skill fixes for the 4 eval-failed behaviors"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-24",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-23",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "4729ed2",
+            "subject": "GSL-23 Reliable file-based run-config + hard safety (no silent full-run default)",
+            "ts": "2026-06-29T00:02:48+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/4729ed2"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-23-eval-runner-safe-config.md",
+            "href": "../../dev_history/GSL-23-eval-runner-safe-config.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-23",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-22",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "072c367",
+            "subject": "GSL-22 Run eval agents on cost-appropriate models (Sonnet under-test, Haiku judge)",
+            "ts": "2026-06-28T20:36:00+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/072c367"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-22-eval-runner-model-economy.md",
+            "href": "../../dev_history/GSL-22-eval-runner-model-economy.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-22",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-21",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "ae47505",
+            "subject": "GSL-21 Validation run scorecard + analysis (4 fixes landed/held, 4 need rework)",
+            "ts": "2026-06-29T00:32:10+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ae47505"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-21-eval-validation-run.md",
+            "href": "../../dev_history/GSL-21-eval-validation-run.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-21",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-20",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "ac21bba",
+            "subject": "GSL-20 Make eval-runner efficient — batched judge + per-scenario N + RED baseline cache",
+            "ts": "2026-06-28T20:27:48+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ac21bba"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-20-eval-runner-efficiency.md",
+            "href": "../../dev_history/GSL-20-eval-runner-efficiency.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-20",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-19",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "c46eb74",
+            "subject": "Merge pull request #27 from ainstance-labs/GSL-19-eval-validation",
+            "ts": "2026-06-29T14:27:20+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/c46eb74"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 27,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/27",
+            "title": "GSL-19 Behavioral validation of the hardened skill — efficient run"
+          },
+          {
+            "number": 27,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/27",
+            "title": "GSL-19 Behavioral validation of the hardened skill — efficient run"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-19",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-18",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "3c1dd3c",
+            "subject": "GSL-18 Document the multi-skill layout (CLAUDE.md + skill/README.md)",
+            "ts": "2026-06-28T19:55:08+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/3c1dd3c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-18-vendor-docs.md",
+            "href": "../../dev_history/GSL-18-vendor-docs.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-18",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-17",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "73e5a5c",
+            "subject": "GSL-17 Vendor writing-prds, delivery-workflow, handoff, using-jira into the repo",
+            "ts": "2026-06-28T19:54:16+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/73e5a5c"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-17-vendor-four-skills.md",
+            "href": "../../dev_history/GSL-17-vendor-four-skills.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-17",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-16",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "eba3581",
+            "subject": "GSL-16 Restructure skill/ into per-skill subfolders + multi-skill install.sh",
+            "ts": "2026-06-28T19:53:27+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/eba3581"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-16-vendor-restructure-installsh.md",
+            "href": "../../dev_history/GSL-16-vendor-restructure-installsh.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-16",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-15",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "b1753a1",
+            "subject": "Merge pull request #21 from ainstance-labs/GSL-15-vendoring",
+            "ts": "2026-06-28T19:59:19+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/b1753a1"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 21,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/21",
+            "title": "GSL-15 Vendor all delivery skills — gosleep as source of truth for the full methodology"
+          },
+          {
+            "number": 21,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/21",
+            "title": "GSL-15 Vendor all delivery skills — gosleep as source of truth for the full methodology"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-15",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-14",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "e8a0dc3",
+            "subject": "GSL-14 Track orchestration ledger, handoffs & kickoff prompts in git; gitignore .vscode",
+            "ts": "2026-06-27T21:42:03+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/e8a0dc3"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-14-harden-track-orchestration-artifacts.md",
+            "href": "../../dev_history/GSL-14-harden-track-orchestration-artifacts.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-14",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-13",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "5d25fe9",
+            "subject": "GSL-13 Author E17 / VERIFY-REQUEST / watchdog eval scenarios",
+            "ts": "2026-06-27T22:02:47+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/5d25fe9"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-13-harden-eval-scenarios-e17-verify-watchdog.md",
+            "href": "../../dev_history/GSL-13-harden-eval-scenarios-e17-verify-watchdog.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-13",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-12",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "9022bec",
+            "subject": "GSL-12 Curb transcript-read exception abuse; tighten context discipline (skill)",
+            "ts": "2026-06-27T21:53:25+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/9022bec"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-12-harden-context-discipline-transcript-ban.md",
+            "href": "../../dev_history/GSL-12-harden-context-discipline-transcript-ban.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-12",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-11",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "2353039",
+            "subject": "GSL-11 Disambiguate patience vs single active nudge at the PR/finalize boundary (skill)",
+            "ts": "2026-06-27T21:52:52+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/2353039"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-11-harden-patience-vs-nudge-pr-boundary.md",
+            "href": "../../dev_history/GSL-11-harden-patience-vs-nudge-pr-boundary.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-11",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-10",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "6f9565e",
+            "subject": "GSL-10 On-disk state durability + telemetry recovery across orchestrator rollover (skill)",
+            "ts": "2026-06-27T21:52:06+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6f9565e"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-10-harden-state-durability-telemetry-recovery.md",
+            "href": "../../dev_history/GSL-10-harden-state-durability-telemetry-recovery.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-10",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-9",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "ae2f0cd",
+            "subject": "GSL-9 Strengthen idempotent find-or-create + reconcile late-arriving IDs (skill)",
+            "ts": "2026-06-27T21:45:39+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ae2f0cd"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-9-harden-idempotent-creates-reconcile-ids.md",
+            "href": "../../dev_history/GSL-9-harden-idempotent-creates-reconcile-ids.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-9",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-8",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "ba03660",
+            "subject": "GSL-8 Recovery: fall back to on-disk handoff FIRST before live probes (skill)",
+            "ts": "2026-06-27T21:44:29+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ba03660"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-8-harden-on-disk-handoff-first.md",
+            "href": "../../dev_history/GSL-8-harden-on-disk-handoff-first.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-8",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-7",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "a6ecc9a",
+            "subject": "Merge pull request #16 from ainstance-labs/GSL-7-harness-hardening",
+            "ts": "2026-06-28T19:43:38+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/a6ecc9a"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 16,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/16",
+            "title": "GSL-7 Harness hardening — close skill-gaps & extend eval coverage"
+          },
+          {
+            "number": 16,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/16",
+            "title": "GSL-7 Harness hardening — close skill-gaps & extend eval coverage"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-7",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-6",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "0cfc321",
+            "subject": "GSL-6 Require a dated handoff at every orchestrator session boundary (skill)",
+            "ts": "2026-06-27T21:43:36+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/0cfc321"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-6-harden-mandatory-dated-handoff.md",
+            "href": "../../dev_history/GSL-6-harden-mandatory-dated-handoff.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-6",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-5",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "875bc26",
+            "subject": "GSL-5 Sync orchestrating-delivery-agents skill from global (E17 / VERIFY-REQUEST / verification watchdog)",
+            "ts": "2026-06-26T21:08:49+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/875bc26"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-5-init-skill-sync.md",
+            "href": "../../dev_history/GSL-5-init-skill-sync.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-5",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-4",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "06ed904",
+            "subject": "GSL-4 Fix stale pre-move ROOT paths in report generators and eval runner",
+            "ts": "2026-06-26T21:28:13+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/06ed904"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-4-init-root-path-fixes.md",
+            "href": "../../dev_history/GSL-4-init-root-path-fixes.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-4",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-3",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "c189a66",
+            "subject": "GSL-3 Project anchors: CLAUDE.md conventions, dev_history index, README refresh",
+            "ts": "2026-06-11T13:47:50+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/c189a66"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-3-init-project-anchors.md",
+            "href": "../../dev_history/GSL-3-init-project-anchors.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-3",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-2",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "17eef1a",
+            "subject": "GSL-2 Import orchestration harness v0: skill source, evals, docs, reports",
+            "ts": "2026-06-11T13:45:46+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/17eef1a"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-2-init-harness-import.md",
+            "href": "../../dev_history/GSL-2-init-harness-import.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-2",
+        "gh_url": null,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-1",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "6316954",
+            "subject": "Merge pull request #5 from ainstance-labs/GSL-1-project-init",
+            "ts": "2026-06-27T21:27:00+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6316954"
+          },
+          {
+            "sha": "22b1657",
+            "subject": "GSL-1 Bootstrap repository: gitignore baseline",
+            "ts": "2026-06-11T13:45:19+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/22b1657"
+          }
+        ],
+        "dev_history": [],
+        "prs": [
+          {
+            "number": 5,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/5",
+            "title": "GSL-1 Project initialization — import harness v0, wire tracker + GitHub"
+          },
+          {
+            "number": 5,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/5",
+            "title": "GSL-1 Project initialization — import harness v0, wire tracker + GitHub"
+          }
+        ],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-1",
+        "gh_url": null,
+        "status_age_human": "never"
+      }
+    ],
+    "by_status": {
+      "unknown": 92,
+      "Done": 5,
+      "To Do": 3,
+      "In Progress": 1
+    },
+    "todo": 3,
+    "tracker_last_polled": "2026-07-12T21:26:24Z",
+    "tracker_age_s": 54587,
+    "tracker_age_human": "15h 9m",
+    "tracker_stale": true,
+    "gh_base": "https://github.com/ainstance-labs/gosleep",
+    "gh_issue_links": false,
+    "gh_why": "the Jira→GitHub issue mirror is recorded only in handoff prose; no machine-readable source on disk maps a key to an issue number, so this column is left empty rather than filled with a plausible wrong link"
+  },
+  "fleet": {
+    "open_workers": 1,
+    "cap": 3,
+    "free_slots": 2,
+    "cycle": 53,
+    "orchestrator_status": "ok",
+    "orchestrator_context_pct": 80,
+    "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
+    "known": true,
+    "roster": [
+      {
+        "actor": "claude",
+        "events": 180,
+        "last_ts": "2026-07-13T12:36:07Z",
+        "types": {
+          "agent.idle": 36,
+          "dev_history.written": 32,
+          "task.completed": 25,
+          "vcs.commit": 15,
+          "agent.turn_ended": 14,
+          "tracker.issue.transitioned": 13
+        },
+        "last_age_s": 4,
+        "last_age_human": "4s"
+      },
+      {
+        "actor": "ef6c3777",
+        "events": 78,
+        "last_ts": "2026-07-13T12:23:22Z",
+        "types": {
+          "agent.turn_ended": 45,
+          "handoff.written": 15,
+          "task.created": 8,
+          "notification.raised": 6,
+          "task.completed": 2,
+          "tracker.issue.transitioned": 1
+        },
+        "last_age_s": 769,
+        "last_age_human": "12m"
+      },
+      {
+        "actor": "ab3b55ad5cc3bfb36",
+        "events": 2,
+        "last_ts": "2026-07-13T12:06:55Z",
+        "types": {
+          "agent.spawned": 1,
+          "agent.terminated": 1
+        },
+        "last_age_s": 1756,
+        "last_age_human": "29m"
+      },
+      {
+        "actor": "a1a48411925ec4eae",
+        "events": 1,
+        "last_ts": "2026-07-13T12:05:49Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 1822,
+        "last_age_human": "30m"
+      },
+      {
+        "actor": "a503045747e54a2aa",
+        "events": 1,
+        "last_ts": "2026-07-13T12:04:47Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 1884,
+        "last_age_human": "31m"
+      },
+      {
+        "actor": "ac46c415bfdb4e55a",
+        "events": 1,
+        "last_ts": "2026-07-13T12:04:15Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 1916,
+        "last_age_human": "31m"
+      },
+      {
+        "actor": "aaea689860c6cccdb",
+        "events": 1,
+        "last_ts": "2026-07-13T12:03:43Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 1948,
+        "last_age_human": "32m"
+      },
+      {
+        "actor": "a1f95c5ec2e2d74ae",
+        "events": 1,
+        "last_ts": "2026-07-13T12:03:08Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 1983,
+        "last_age_human": "33m"
+      },
+      {
+        "actor": "a2ff6cd2567d65e2b",
+        "events": 1,
+        "last_ts": "2026-07-13T12:02:36Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 2015,
+        "last_age_human": "33m"
+      },
+      {
+        "actor": "gsl90-setup",
+        "events": 2,
+        "last_ts": "2026-07-13T11:53:58Z",
+        "types": {
+          "handoff.written": 1,
+          "question.posed": 1
+        },
+        "last_age_s": 2533,
+        "last_age_human": "42m"
+      },
+      {
+        "actor": "a690ba064bba794be",
+        "events": 13,
+        "last_ts": "2026-07-13T11:50:40Z",
+        "types": {
+          "tracker.issue.updated": 11,
+          "agent.spawned": 1,
+          "agent.terminated": 1
+        },
+        "last_age_s": 2731,
+        "last_age_human": "45m"
+      },
+      {
+        "actor": "a61075657b8f0649b",
+        "events": 1,
+        "last_ts": "2026-07-13T11:50:23Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 2748,
+        "last_age_human": "45m"
+      },
+      {
+        "actor": "poll-fill",
+        "events": 15,
+        "last_ts": "2026-07-13T11:37:15Z",
+        "types": {
+          "tracker.issue.updated": 9,
+          "vcs.commit": 4,
+          "vcs.pr.merged": 1,
+          "vcs.pr.opened": 1
+        },
+        "last_age_s": 3536,
+        "last_age_human": "58m"
+      },
+      {
+        "actor": "fixer-lab",
+        "events": 1,
+        "last_ts": "2026-07-13T09:59:02Z",
+        "types": {
+          "handoff.written": 1
+        },
+        "last_age_s": 9429,
+        "last_age_human": "2h 37m"
+      },
+      {
+        "actor": "aa7a28cca3c73abc5",
+        "events": 2,
+        "last_ts": "2026-07-13T09:24:35Z",
+        "types": {
+          "agent.spawned": 1,
+          "agent.terminated": 1
+        },
+        "last_age_s": 11496,
+        "last_age_human": "3h 11m"
+      },
+      {
+        "actor": "a198207c1aae6407d",
+        "events": 1,
+        "last_ts": "2026-07-13T09:23:53Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 11538,
+        "last_age_human": "3h 12m"
+      },
+      {
+        "actor": "a712e803767d9690f",
+        "events": 1,
+        "last_ts": "2026-07-13T09:23:20Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 11571,
+        "last_age_human": "3h 12m"
+      },
+      {
+        "actor": "a0f0f3af9ae562c37",
+        "events": 1,
+        "last_ts": "2026-07-13T09:22:18Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 11633,
+        "last_age_human": "3h 13m"
+      },
+      {
+        "actor": "a427309da6b948dfd",
+        "events": 1,
+        "last_ts": "2026-07-13T09:21:46Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 11665,
+        "last_age_human": "3h 14m"
+      },
+      {
+        "actor": "a32e1a070b23f39b4",
+        "events": 1,
+        "last_ts": "2026-07-13T09:21:13Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 11698,
+        "last_age_human": "3h 14m"
+      }
+    ],
+    "blind_spots": [
+      "no pane id in the event log — pane.started/ended carry a session_id only",
+      "no model in the event log — it is recorded by hand in ORCHESTRATION-STATE §TELEMETRY",
+      "hook-written lines all carry actor=\"claude\"; only semantic (src=emit) lines name the worker"
+    ]
+  },
+  "cost": {
+    "cycles": [
+      {
+        "raw": "cycle=1 worker=gsl41-setup model=claude-opus-4-8 tokens_out=~14000 tokens_in=~120000 cache_read=~90000 | running: cycles=31 total≈224000",
+        "cycle": 1,
+        "worker": "gsl41-setup",
+        "model": "claude-opus-4-8",
+        "tokens_out": 14000,
+        "tokens_in": 120000,
+        "cache_read": 90000,
+        "cache_write": null,
+        "running_total": 224000,
+        "running_cycles": 31
+      },
+      {
+        "raw": "cycle=2a workers=res-* (first spawn) model=claude-fable-5 KILLED by orchestrator kill-pane error — tokens_this_cycle=UNRECOVERED — gap flagged",
+        "cycle": 2,
+        "worker": null,
+        "model": "claude-fable-5",
+        "tokens_out": null,
+        "tokens_in": null,
+        "cache_read": null,
+        "cache_write": null,
+        "running_total": null,
+        "running_cycles": null
+      },
+      {
+        "raw": "cycle=2 worker=res-autosk-2 model=claude-fable-5 tokens_out=~14000 tokens_in=~90000 cache_read=~1200000 | running: cycles=32 total≈328000 (+2a gap)",
+        "cycle": 2,
+        "worker": "res-autosk-2",
+        "model": "claude-fable-5",
+        "tokens_out": 14000,
+        "tokens_in": 90000,
+        "cache_read": 1200000,
+        "cache_write": null,
+        "running_total": 328000,
+        "running_cycles": 32
+      },
+      {
+        "raw": "cycle=3 worker=res-headless-2 model=claude-fable-5 tokens_out=~33000 tokens_in=~310000 cache_read=~240000 | running: cycles=33 total≈671000 (+2a gap)",
+        "cycle": 3,
+        "worker": "res-headless-2",
+        "model": "claude-fable-5",
+        "tokens_out": 33000,
+        "tokens_in": 310000,
+        "cache_read": 240000,
+        "cache_write": null,
+        "running_total": 671000,
+        "running_cycles": 33
+      },
+      {
+        "raw": "cycle=4 worker=res-warren-2 model=claude-fable-5 tokens_out=~18000 tokens_in=~420000 cache_read=~360000 | running: cycles=34 total≈1109000 (+2a gap)",
+        "cycle": 4,
+        "worker": "res-warren-2",
+        "model": "claude-fable-5",
+        "tokens_out": 18000,
+        "tokens_in": 420000,
+        "cache_read": 360000,
+        "cache_write": null,
+        "running_total": 1109000,
+        "running_cycles": 34
+      },
+      {
+        "raw": "cycle=5 worker=res-loops model=claude-fable-5 tokens_out=~23000 tokens_in=~115000 cache_read=~1100000 (final cumulative) | running: cycles=35 total≈1247000 (+2a gap)",
+        "cycle": 5,
+        "worker": "res-loops",
+        "model": "claude-fable-5",
+        "tokens_out": 23000,
+        "tokens_in": 115000,
+        "cache_read": 1100000,
+        "cache_write": null,
+        "running_total": 1247000,
+        "running_cycles": 35
+      },
+      {
+        "raw": "cycle=6 worker=res-labui model=claude-fable-5 tokens_out=~26000 tokens_in=~260000 cache_read=~650000 (final cumulative, incl. pre-pause) | running: cycles=36 total≈1533000 (+2a gap)",
+        "cycle": 6,
+        "worker": "res-labui",
+        "model": "claude-fable-5",
+        "tokens_out": 26000,
+        "tokens_in": 260000,
+        "cache_read": 650000,
+        "cache_write": null,
+        "running_total": 1533000,
+        "running_cycles": 36
+      },
+      {
+        "raw": "cycle=7 worker=writer-loops model=claude-opus-4-8 tokens_out=~54000 tokens_in=~46000 cache_read=~120000 | running: cycles=37 total≈1633000 (+2a gap)",
+        "cycle": 7,
+        "worker": "writer-loops",
+        "model": "claude-opus-4-8",
+        "tokens_out": 54000,
+        "tokens_in": 46000,
+        "cache_read": 120000,
+        "cache_write": null,
+        "running_total": 1633000,
+        "running_cycles": 37
+      },
+      {
+        "raw": "cycle=8 worker=writer-landscape model=claude-fable-5 tokens_out=~133000 tokens_in=~78000 cache_read=~1600000 (final) | running: cycles=38 total≈1844000 (+2a gap)",
+        "cycle": 8,
+        "worker": "writer-landscape",
+        "model": "claude-fable-5",
+        "tokens_out": 133000,
+        "tokens_in": 78000,
+        "cache_read": 1600000,
+        "cache_write": null,
+        "running_total": 1844000,
+        "running_cycles": 38
+      },
+      {
+        "raw": "cycle=9 worker=writer-headless model=claude-fable-5 tokens_out=~96000 tokens_in=~58000 cache_read=~520000 (final) | running: cycles=39 total≈1998000 (+2a gap)",
+        "cycle": 9,
+        "worker": "writer-headless",
+        "model": "claude-fable-5",
+        "tokens_out": 96000,
+        "tokens_in": 58000,
+        "cache_read": 520000,
+        "cache_write": null,
+        "running_total": 1998000,
+        "running_cycles": 39
+      },
+      {
+        "raw": "cycle=10 worker=writer-autonomy model=claude-opus-4-8 tokens_out=~47000 tokens_in=~95000 cache_read=~180000 | running: cycles=40 total≈2140000 (+2a gap)",
+        "cycle": 10,
+        "worker": "writer-autonomy",
+        "model": "claude-opus-4-8",
+        "tokens_out": 47000,
+        "tokens_in": 95000,
+        "cache_read": 180000,
+        "cache_write": null,
+        "running_total": 2140000,
+        "running_cycles": 40
+      },
+      {
+        "raw": "cycle=11 worker=writer-prd model=claude-opus-4-8 tokens_out=~14000 tokens_in=~95000 cache_read=est-unavailable (worker flagged gap) | running: cycles=41 total≈2249000 (+2a gap)",
+        "cycle": 11,
+        "worker": "writer-prd",
+        "model": "claude-opus-4-8",
+        "tokens_out": 14000,
+        "tokens_in": 95000,
+        "cache_read": null,
+        "cache_write": null,
+        "running_total": 2249000,
+        "running_cycles": 41
+      },
+      {
+        "raw": "cycle=12 worker=gsl41-committer model=claude-opus-4-8 tokens_out=~16000 tokens_in=~120000 cache_read=~70000 | running: cycles=42 total≈2385000 (+2a gap)",
+        "cycle": 12,
+        "worker": "gsl41-committer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 16000,
+        "tokens_in": 120000,
+        "cache_read": 70000,
+        "cache_write": null,
+        "running_total": 2385000,
+        "running_cycles": 42
+      },
+      {
+        "raw": "cycle=13 worker=gsl41-reviewer model=claude-opus-4-8 tokens_out=~7000 tokens_in=~62000 cache_read=~40000 | running: cycles=43 total≈2454000 (+2a gap)",
+        "cycle": 13,
+        "worker": "gsl41-reviewer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 7000,
+        "tokens_in": 62000,
+        "cache_read": 40000,
+        "cache_write": null,
+        "running_total": 2454000,
+        "running_cycles": 43
+      },
+      {
+        "raw": "cycle=14 worker=gsl41-finalizer model=claude-opus-4-8 tokens_out=~8500 tokens_in=~140000 cache_read=~110000 (final, approx) | running: cycles=44 total≈2603000 (+2a gap)",
+        "cycle": 14,
+        "worker": "gsl41-finalizer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 8500,
+        "tokens_in": 140000,
+        "cache_read": 110000,
+        "cache_write": null,
+        "running_total": 2603000,
+        "running_cycles": 44
+      },
+      {
+        "raw": "cycle=15 worker=gsl49-setup model=claude-opus-4-8 tokens_out=~9200 tokens_in=~4500 cache_read=~235000 (final) | running: cycles=45 total≈2617000 (+2a gap)",
+        "cycle": 15,
+        "worker": "gsl49-setup",
+        "model": "claude-opus-4-8",
+        "tokens_out": 9200,
+        "tokens_in": 4500,
+        "cache_read": 235000,
+        "cache_write": null,
+        "running_total": 2617000,
+        "running_cycles": 45
+      },
+      {
+        "raw": "cycle=16 worker=impl-51 model=claude-fable-5 tokens_out=~9500 tokens_in=~32000 cache_read=~480000 | running: cycles=46 total≈2659000 (+2a gap)",
+        "cycle": 16,
+        "worker": "impl-51",
+        "model": "claude-fable-5",
+        "tokens_out": 9500,
+        "tokens_in": 32000,
+        "cache_read": 480000,
+        "cache_write": null,
+        "running_total": 2659000,
+        "running_cycles": 46
+      },
+      {
+        "raw": "cycle=18 worker=impl-56 model=claude-fable-5 tokens_out=~9500 tokens_in=~48000 cache_read=~260000 | running: cycles=47 total≈2717000 (+2a gap)",
+        "cycle": 18,
+        "worker": "impl-56",
+        "model": "claude-fable-5",
+        "tokens_out": 9500,
+        "tokens_in": 48000,
+        "cache_read": 260000,
+        "cache_write": null,
+        "running_total": 2717000,
+        "running_cycles": 47
+      },
+      {
+        "raw": "cycle=17 worker=impl-tooling model=claude-fable-5 tokens_out=~48000 tokens_in=~95000 cache_read=~1400000 (4 задачи) | running: cycles=48 total≈2860000 (+2a gap)",
+        "cycle": 17,
+        "worker": "impl-tooling",
+        "model": "claude-fable-5",
+        "tokens_out": 48000,
+        "tokens_in": 95000,
+        "cache_read": 1400000,
+        "cache_write": null,
+        "running_total": 2860000,
+        "running_cycles": 48
+      },
+      {
+        "raw": "cycle=19 worker=impl-57 model=claude-fable-5 tokens_out=~14000 tokens_in=~75000 cache_read=~520000 | running: cycles=49 total≈2949000 (+2a gap)",
+        "cycle": 19,
+        "worker": "impl-57",
+        "model": "claude-fable-5",
+        "tokens_out": 14000,
+        "tokens_in": 75000,
+        "cache_read": 520000,
+        "cache_write": null,
+        "running_total": 2949000,
+        "running_cycles": 49
+      },
+      {
+        "raw": "cycle=20 worker=gsl49-mechanic model=claude-opus-4-8 tokens_out=~2000 tokens_in=~70000 cache_read=~60000 | running: cycles=50 total≈3021000 (+2a gap)",
+        "cycle": 20,
+        "worker": "gsl49-mechanic",
+        "model": "claude-opus-4-8",
+        "tokens_out": 2000,
+        "tokens_in": 70000,
+        "cache_read": 60000,
+        "cache_write": null,
+        "running_total": 3021000,
+        "running_cycles": 50
+      },
+      {
+        "raw": "cycle=21 worker=gsl49-reviewer model=claude-fable-5 tokens_out=~14000 tokens_in=~95000 cache_read=~380000 | running: cycles=51 total≈3130000 (+2a gap)",
+        "cycle": 21,
+        "worker": "gsl49-reviewer",
+        "model": "claude-fable-5",
+        "tokens_out": 14000,
+        "tokens_in": 95000,
+        "cache_read": 380000,
+        "cache_write": null,
+        "running_total": 3130000,
+        "running_cycles": 51
+      },
+      {
+        "raw": "cycle=22 worker=gsl49-fixer model=claude-fable-5 tokens_out=~15000 tokens_in=~95000 cache_read=~1100000 | running: cycles=52 total≈3240000 (+2a gap)",
+        "cycle": 22,
+        "worker": "gsl49-fixer",
+        "model": "claude-fable-5",
+        "tokens_out": 15000,
+        "tokens_in": 95000,
+        "cache_read": 1100000,
+        "cache_write": null,
+        "running_total": 3240000,
+        "running_cycles": 52
+      },
+      {
+        "raw": "cycle=23 worker=gsl49-finalizer model=claude-opus-4-8 tokens_out=~3500 tokens_in=~62000 cache_read=~55000 | running: cycles=53 total≈3306000 (+2a gap)",
+        "cycle": 23,
+        "worker": "gsl49-finalizer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 3500,
+        "tokens_in": 62000,
+        "cache_read": 55000,
+        "cache_write": null,
+        "running_total": 3306000,
+        "running_cycles": 53
+      },
+      {
+        "raw": "cycle=24 worker=gsl58-setup model=claude-opus-4-8 tokens_out=~7000 tokens_in=~95000 cache_read=~120000 | running: cycles=54 total≈3408000 (+2a gap)",
+        "cycle": 24,
+        "worker": "gsl58-setup",
+        "model": "claude-opus-4-8",
+        "tokens_out": 7000,
+        "tokens_in": 95000,
+        "cache_read": 120000,
+        "cache_write": null,
+        "running_total": 3408000,
+        "running_cycles": 54
+      },
+      {
+        "raw": "cycle=25 worker=res-anatomy model=claude-fable-5 tokens_out=~620000 (вкл. 2 Explore-субагента 299k+281k) tokens_in≈3M cache_read≈2.5M (est) | running: cycles=55 total≈4030000 (+2a gap)",
+        "cycle": 25,
+        "worker": "res-anatomy",
+        "model": "claude-fable-5",
+        "tokens_out": 620000,
+        "tokens_in": null,
+        "cache_read": null,
+        "cache_write": null,
+        "running_total": 4030000,
+        "running_cycles": 55
+      },
+      {
+        "raw": "cycle=26 worker=writer-anatomy model=claude-fable-5 tokens_out=~92000 tokens_in=~36000 cache_read=~1300000 | running: cycles=56 total≈4158000 (+2a gap)",
+        "cycle": 26,
+        "worker": "writer-anatomy",
+        "model": "claude-fable-5",
+        "tokens_out": 92000,
+        "tokens_in": 36000,
+        "cache_read": 1300000,
+        "cache_write": null,
+        "running_total": 4158000,
+        "running_cycles": 56
+      },
+      {
+        "raw": "cycle=27 worker=gsl58-mechanic model=claude-opus-4-8 tokens_out=~6100 tokens_in=~98000 cache_read=~61000 | running: cycles=57 total≈4262000 (+2a gap)",
+        "cycle": 27,
+        "worker": "gsl58-mechanic",
+        "model": "claude-opus-4-8",
+        "tokens_out": 6100,
+        "tokens_in": 98000,
+        "cache_read": 61000,
+        "cache_write": null,
+        "running_total": 4262000,
+        "running_cycles": 57
+      },
+      {
+        "raw": "cycle=28 worker=gsl58-reviewer model=claude-fable-5 tokens_out=~11000 tokens_in=~28000 cache_read=~310000 | running: cycles=58 total≈4301000 (+2a gap)",
+        "cycle": 28,
+        "worker": "gsl58-reviewer",
+        "model": "claude-fable-5",
+        "tokens_out": 11000,
+        "tokens_in": 28000,
+        "cache_read": 310000,
+        "cache_write": null,
+        "running_total": 4301000,
+        "running_cycles": 58
+      },
+      {
+        "raw": "cycle=29 worker=gsl58-finalizer model=claude-opus-4-8 tokens_out=~1500 tokens_in=~34000 cache_read=~0 | running: cycles=59 total≈4337000 (+2a gap)",
+        "cycle": 29,
+        "worker": "gsl58-finalizer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 1500,
+        "tokens_in": 34000,
+        "cache_read": 0,
+        "cache_write": null,
+        "running_total": 4337000,
+        "running_cycles": 59
+      },
+      {
+        "raw": "cycle=30 worker=gsl65-setup model=claude-opus-4-8 tokens_out=~6500 tokens_in=~118000 cache_read=~95000 | running: cycles=60 total≈4462000 (+2a gap)",
+        "cycle": 30,
+        "worker": "gsl65-setup",
+        "model": "claude-opus-4-8",
+        "tokens_out": 6500,
+        "tokens_in": 118000,
+        "cache_read": 95000,
+        "cache_write": null,
+        "running_total": 4462000,
+        "running_cycles": 60
+      },
+      {
+        "raw": "cycle=31 worker=impl-pulse model=claude-fable-5 tokens_out=~31000 tokens_in=~112000 cache_read=~1450000 (5 задач) | running: cycles=61 total≈4605000 (+2a gap)",
+        "cycle": 31,
+        "worker": "impl-pulse",
+        "model": "claude-fable-5",
+        "tokens_out": 31000,
+        "tokens_in": 112000,
+        "cache_read": 1450000,
+        "cache_write": null,
+        "running_total": 4605000,
+        "running_cycles": 61
+      },
+      {
+        "raw": "cycle=32 worker=gsl65-mechanic model=claude-opus-4-8 tokens_out=unknown tokens_in=unknown cache_read=unknown (счётчики не отданы воркеру — gap flagged, оценка по аналогии ~5k/100k/60k) | running: cycles=62",
+        "cycle": 32,
+        "worker": "gsl65-mechanic",
+        "model": "claude-opus-4-8",
+        "tokens_out": null,
+        "tokens_in": null,
+        "cache_read": null,
+        "cache_write": null,
+        "running_total": null,
+        "running_cycles": 62
+      },
+      {
+        "raw": "cycle=33 worker=gsl65-reviewer model=claude-fable-5 tokens_out=~7900 tokens_in=~21000 cache_read=~410000 | running: cycles=63",
+        "cycle": 33,
+        "worker": "gsl65-reviewer",
+        "model": "claude-fable-5",
+        "tokens_out": 7900,
+        "tokens_in": 21000,
+        "cache_read": 410000,
+        "cache_write": null,
+        "running_total": null,
+        "running_cycles": 63
+      },
+      {
+        "raw": "cycle=34 worker=gsl65-fixer model=claude-fable-5 tokens_out=~14000 tokens_in=~28000 cache_read=~1100000 | running: cycles=64",
+        "cycle": 34,
+        "worker": "gsl65-fixer",
+        "model": "claude-fable-5",
+        "tokens_out": 14000,
+        "tokens_in": 28000,
+        "cache_read": 1100000,
+        "cache_write": null,
+        "running_total": null,
+        "running_cycles": 64
+      },
+      {
+        "raw": "cycle=35 worker=gsl65-finalizer model=claude-opus-4-8 tokens_out=unknown tokens_in=unknown cache_read=unknown (gap flagged, est ~3k/50k/30k) | running: cycles=65",
+        "cycle": 35,
+        "worker": "gsl65-finalizer",
+        "model": "claude-opus-4-8",
+        "tokens_out": null,
+        "tokens_in": null,
+        "cache_read": null,
+        "cache_write": null,
+        "running_total": null,
+        "running_cycles": 65
+      },
+      {
+        "raw": "cycle=36 worker=gsl72-setup model=claude-opus-4-8 tokens_out=~9000 tokens_in=~95000 cache_read=~780000 | running: cycles=66",
+        "cycle": 36,
+        "worker": "gsl72-setup",
+        "model": "claude-opus-4-8",
+        "tokens_out": 9000,
+        "tokens_in": 95000,
+        "cache_read": 780000,
+        "cache_write": null,
+        "running_total": null,
+        "running_cycles": 66
+      },
+      {
+        "raw": "cycle=37 worker=impl-buffer model=claude-fable-5 tokens_out=~38000 tokens_in=~205000 cache_read=~2900000 (7 задач, approx) | running: cycles=67 total≈5250000 (+гэпы 2a/32/35)",
+        "cycle": 37,
+        "worker": "impl-buffer",
+        "model": "claude-fable-5",
+        "tokens_out": 38000,
+        "tokens_in": 205000,
+        "cache_read": 2900000,
+        "cache_write": null,
+        "running_total": 5250000,
+        "running_cycles": 67
+      },
+      {
+        "raw": "cycle=38 worker=gsl72-mechanic model=claude-opus-4-8 (self-report верифицирован по транскрипту) tokens_out=~1700 tokens_in=~36000 cache_read=~0 (est, /cost недоступен) | running: cycles=68 total≈5288000 (+гэпы 2a/32/35)",
+        "cycle": 38,
+        "worker": "gsl72-mechanic",
+        "model": "claude-opus-4-8",
+        "tokens_out": 1700,
+        "tokens_in": 36000,
+        "cache_read": 0,
+        "cache_write": null,
+        "running_total": 5288000,
+        "running_cycles": 68
+      },
+      {
+        "raw": "cycle=39 worker=gsl72-reviewer model=claude-opus-4-8 (self-report) tokens_out=~9500 tokens_in=~41000 cache_read=~150000 (approx) | running: cycles=69 total≈5338000 (+гэпы 2a/32/35)",
+        "cycle": 39,
+        "worker": "gsl72-reviewer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 9500,
+        "tokens_in": 41000,
+        "cache_read": 150000,
+        "cache_write": null,
+        "running_total": 5338000,
+        "running_cycles": 69
+      },
+      {
+        "raw": "cycle=40 worker=gsl72-fixer model=claude-opus-4-8 (транскрипт 77/77 записей; self-report «fable-5» ОШИБОЧЕН) tokens_out=~14000 tokens_in=~9000 cache_read=~310000 (est) | running: cycles=70 total≈5361000 (+гэпы 2a/32/35)",
+        "cycle": 40,
+        "worker": "gsl72-fixer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 14000,
+        "tokens_in": 9000,
+        "cache_read": 310000,
+        "cache_write": null,
+        "running_total": 5361000,
+        "running_cycles": 70
+      },
+      {
+        "raw": "cycle=41 worker=verify-skill model=claude-opus-4-8 (по транскрипту) tokens_out=~13500 tokens_in=~45000 cache_read=~820000 | running: cycles=71 total≈5420000 (+гэпы 2a/32/35)",
+        "cycle": 41,
+        "worker": "verify-skill",
+        "model": "claude-opus-4-8",
+        "tokens_out": 13500,
+        "tokens_in": 45000,
+        "cache_read": 820000,
+        "cache_write": null,
+        "running_total": 5420000,
+        "running_cycles": 71
+      },
+      {
+        "raw": "cycle=42 worker=verify-delivery model=claude-opus-4-8 (по транскрипту) tokens_out=~4100 tokens_in=~2300 cache_read=~118000 | running: cycles=72 total≈5426000 (+гэпы 2a/32/35)",
+        "cycle": 42,
+        "worker": "verify-delivery",
+        "model": "claude-opus-4-8",
+        "tokens_out": 4100,
+        "tokens_in": 2300,
+        "cache_read": 118000,
+        "cache_write": null,
+        "running_total": 5426000,
+        "running_cycles": 72
+      },
+      {
+        "raw": "cycle=43 worker=gsl72-finalizer model=claude-opus-4-8 (транскрипт a7b98a1b x51 verify — model:opus резолвнулось в 4-8 вопреки owner-приказу «все на 4.7»; работа чистая механика — на исход не повлияло) tokens_out=~37700 tokens_in=~100 cache_read=~2430000 cache_write=~242000 | running: cycles=73 total",
+        "cycle": 43,
+        "worker": "gsl72-finalizer",
+        "model": "claude-opus-4-8",
+        "tokens_out": 37700,
+        "tokens_in": 100,
+        "cache_read": 2430000,
+        "cache_write": 242000,
+        "running_total": 5464000,
+        "running_cycles": 73
+      },
+      {
+        "raw": "cycle=44 worker=gsl81-setup model=claude-opus-4-8 (транскрипт 180a80ef verify) tokens_out=189781 tokens_in=212 cache_read=11034504 cache_write=578599 | running: cycles=74 total≈5654000 (+гэпы 2a/32/35) [note: гигантский cache_read — setup читал PRD + STATE + handoff 21 + 8 задач Jira/GH create цепоч",
+        "cycle": 44,
+        "worker": "gsl81-setup",
+        "model": "claude-opus-4-8",
+        "tokens_out": 189781,
+        "tokens_in": 212,
+        "cache_read": 11034504,
+        "cache_write": 578599,
+        "running_total": 5654000,
+        "running_cycles": 74
+      },
+      {
+        "raw": "cycle=45 worker=impl-lab-1 model=claude-opus-4-8 (транскрипт verify) tokens_out=~416000 tokens_in=~400 cache_read=~36300000 cache_write=~706000 | running: cycles=75 total≈6070000 (+гэпы 2a/32/35) [3 задачи + hooks-verify live-run + smoke 60/60 + routing 10/10 + 3 dev_history — cache_read ожидаемо бо",
+        "cycle": 45,
+        "worker": "impl-lab-1",
+        "model": "claude-opus-4-8",
+        "tokens_out": 416000,
+        "tokens_in": 400,
+        "cache_read": 36300000,
+        "cache_write": 706000,
+        "running_total": 6070000,
+        "running_cycles": 75
+      },
+      {
+        "raw": "cycle=46 worker=impl-lab-2 model=claude-opus-4-8 (транскрипт 993e2c34 verify) tokens_out=~95000 tokens_in=~1000 cache_read=~14000000 cache_write=~600000 | running: cycles=76 total≈6166000 (+гэпы 2a/32/35) [GSL-86 chronicler kill-9 x5 smoke pass; GSL-87 poll-fill idempotence verified + PR#92 live-fac",
+        "cycle": 46,
+        "worker": "impl-lab-2",
+        "model": "claude-opus-4-8",
+        "tokens_out": 95000,
+        "tokens_in": 1000,
+        "cache_read": 14000000,
+        "cache_write": 600000,
+        "running_total": 6166000,
+        "running_cycles": 76
+      },
+      {
+        "raw": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --t",
+        "cycle": 47,
+        "worker": "impl-lab-3",
+        "model": "claude-opus-4-8",
+        "tokens_out": 78000,
+        "tokens_in": 2000,
+        "cache_read": 11000000,
+        "cache_write": 500000,
+        "running_total": 6246000,
+        "running_cycles": 77
+      }
+    ],
+    "unparsed": 1,
+    "cumulative_total": 6246000,
+    "cumulative_cycles": 77,
+    "ceiling": null,
+    "ceiling_source": null,
+    "ceiling_why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
+    "used_pct": null
+  },
   "decisions": {
     "total": 0,
     "recent": []
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "6d934de",
-    "dirty_paths": 17,
+    "head": "6b4cbed",
+    "dirty_paths": 27,
     "commits_on_date": [
+      {
+        "sha": "6b4cbed",
+        "author": "R",
+        "ts": "2026-07-13T14:23:05+02:00",
+        "subject": "GSL-92 [Tooling][UI] TypeScript scaffold — Preact+esbuild SSG + degrade-without-node"
+      },
       {
         "sha": "6d934de",
         "author": "R",
@@ -1995,13 +5541,13 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T11:56:13Z",
+      "ts": "2026-07-13T12:23:09Z",
       "cycle": 53,
-      "context_pct": 78,
+      "context_pct": 80,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "cycle 52 COMPLETE Phase 5 setup GSL-90+10 tasks pushed 7b229c7; DECISION q-001 framework Preact+esbuild default until 2026-07-14 06:00; spawning impl-ui-1 for GSL-92..94"
+      "note": "pulse; impl-ui-1 grinding GSL-92 TS scaffold+GSL-93 contract+GSL-94 runway"
     },
     "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). **PHASE 4 CLOSED** @ `5fd1de2` (R4.2 MET через poll-fill reconciler seq 156). cycle 52 gsl90-setup DONE ~11:52 — Epic GSL-90=#103, 10 tasks GSL-91..100=#104..113 pushed @ 7b229c7 (ledger 16 путей / 1509 insertions). **Addendum ~12:00:** R4.2-MET doc fix НЕ folded в GSL-91 (уже был запушен → force-push запрещён); сделан ОТДЕЛЬНЫМ коммитом **GSL-101 = `6d934de`** (GH #114, Jira Done); ветка теперь `GSL-90-ui-orchestration @ 6d934de` (2 коммита от main). Setup catch: моя формулировка «R4.2-MET fix folded» была неверна — fix landed as separate commit. Также setup поймал что «правка на один значок» (merged 0→1) чуть не сломала 5 других счётчиков (vcs.commit 11+3→12+4, Jira 9→11, panes 7/7→9/9, hook-events 162→246 — все выросли от ledger commit'а) — jq-рецепт теперь с двумя колонками по sha, F4-S1 остаётся 3/4 не подкручено. Setup также записал R4.2-wording finding: «вне CLI» — дырявый прокси для «не увиденное ни одним хуком»; путь через CLI (в т.ч. `gh api`) тоже может остаться неувиденным — что и произошло. Formulation НЕ переписан задним числом (тот же жанр, за который M2 понизил PENDING). Jira GSL-91 Done + GSL-101 Done, остальные To Do. DECISION q-2026-07-13-001 framework: **Preact + preact-render-to-string + esbuild** (default до 2026-07-14T06Z, reversibility high, работа НЕ блокируется). **Отклонения setup'а от моего брифа (осознанные):** PRD-семёрка экранов = Overview/Timeline/Tasks/Questions/Fleet/Cost/Library (не fleet/queue/timeline/library/digest/manifest/config); PRD взят как source of truth. Задача 4 разбита на GSL-96/97/98. Добавлена GSL-92 TS-скаффолд (не в PRD, следствие TS-директивы). Явные фиксации setup'а: chronicler.py = data layer, view = TS SSG (file:// diктует SSG), degrade-без-node в GSL-92 = ",
     "telemetry_last": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --ts/--supersedes with (file,seq) coord]"
@@ -2011,7 +5557,7 @@
       {
         "href": "../digest/2026-07-13-morning.md",
         "name": "2026-07-13-morning.md",
-        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 12:06)"
+        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 12:23)"
       },
       {
         "href": "../digest/2026-07-12-morning.md",
@@ -2167,6 +5713,11 @@
       }
     ],
     "dev_history": [
+      {
+        "href": "../../dev_history/GSL-93-phase5-cycle53-data-contract-skeleton.md",
+        "name": "GSL-93-phase5-cycle53-data-contract-skeleton.md",
+        "title": "GSL-93 — Контракт данных и семь экранов: дашборд, который называет то, чего не видит"
+      },
       {
         "href": "../../dev_history/GSL-92-phase5-cycle53-ts-scaffold.md",
         "name": "GSL-92-phase5-cycle53-ts-scaffold.md",
@@ -2361,11 +5912,50 @@
         "href": "../../dev_history/GSL-53-phase-gsl49-restart-budget.md",
         "name": "GSL-53-phase-gsl49-restart-budget.md",
         "title": "GSL-53 — Restart budget + exponential backoff + escalation"
+      }
+    ],
+    "reports": [
+      {
+        "href": "../../reports/token-overage-incident-2026-06-28/index.html",
+        "name": "index.html",
+        "title": ""
       },
       {
-        "href": "../../dev_history/GSL-52-phase-gsl49-watchdog-skeleton.md",
-        "name": "GSL-52-phase-gsl49-watchdog-skeleton.md",
-        "title": "GSL-52 — launchd plist + watchdog.sh (skeleton)"
+        "href": "../../reports/orchestrator-landscape/index.html",
+        "name": "index.html",
+        "title": ""
+      },
+      {
+        "href": "../../reports/loop-engineering/index.html",
+        "name": "index.html",
+        "title": ""
+      },
+      {
+        "href": "../../reports/headless-and-supervision/index.html",
+        "name": "index.html",
+        "title": "machine-readable result: answer + session id + cost of this run"
+      },
+      {
+        "href": "../../reports/autosk-anatomy/index.html",
+        "name": "index.html",
+        "title": ""
+      },
+      {
+        "href": "../../reports/autonomy-lab-ui/index.html",
+        "name": "index.html",
+        "title": ""
+      }
+    ],
+    "prd": [
+      {
+        "href": "../../prd/README.md",
+        "name": "README.md",
+        "title": "PRD index — GoSleep"
+      },
+      {
+        "href": "../../prd/PRD-gosleep-evolution.md",
+        "name": "PRD-gosleep-evolution.md",
+        "title": "PRD — Эволюция GoSleep: «оркестратор, при котором владелец спит»"
       }
     ]
   },
