@@ -1,6 +1,7 @@
 import type { ComponentChildren, VNode } from "preact";
 import type { LabEvent, RenderBundle } from "./types.js";
 import { VERDICTS } from "./verdicts.js";
+import { countClass, countSentence, type FilterIndex } from "./filter.js";
 
 /** The seven screens of PRD R5.2. One nav, one order, on every page. */
 export const SCREENS = [
@@ -187,6 +188,78 @@ export function EventsTable({ events, limit }: { events: LabEvent[]; limit?: num
         ))}
       </table>
     </div>
+  );
+}
+
+/**
+ * The filter controls (GSL-97, PRD R5.3). Rendered at build time from the SAME FilterIndex that is
+ * serialized into the page's JSON island, so the options a reader can pick and the values the client
+ * matches against cannot drift apart: they are one object, written once.
+ *
+ * It ships `hidden`. The client removes that the moment it has an island and a table to point them
+ * at — so a reader with JS off never sees a <select> he can move and which changes nothing, and a
+ * reader whose island failed to parse gets the full list rather than a control that silently narrows
+ * to nothing. The three `data-filter-*` attributes are the wiring, and smoke.sh asserts each of them:
+ * they are how the client finds the island, the rows, and the sentence it has to keep true.
+ */
+export function FilterBar({
+  id,
+  island,
+  scope,
+  count,
+  index,
+}: {
+  id: string;
+  island: string;
+  scope: string;
+  count: string;
+  index: FilterIndex;
+}): VNode {
+  return (
+    <div
+      class="filters"
+      id={id}
+      hidden
+      data-filter-island={island}
+      data-filter-scope={scope}
+      data-filter-count={count}
+    >
+      {index.facets.map((f) => (
+        <label key={f.key}>
+          <span>{f.label}</span>
+          <select data-facet={f.key}>
+            <option value="">all</option>
+            {f.values.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+      {index.search.length > 0 ? (
+        <label>
+          <span>text</span>
+          <input type="search" data-search="" placeholder="name or title" />
+        </label>
+      ) : null}
+      <button type="button" data-filter-reset="">
+        clear
+      </button>
+    </div>
+  );
+}
+
+/**
+ * What the page is NOT showing. Server-rendered as the honest no-JS truth (nothing is hidden until a
+ * script hides it), then rewritten by the client on every change. See filter.ts for why this sentence
+ * is the load-bearing part of the whole feature and not a caption.
+ */
+export function FilterCount({ id, total }: { id: string; total: number }): VNode {
+  return (
+    <p class={countClass(total, total)} id={id} data-total={String(total)}>
+      {countSentence(total, total)}
+    </p>
   );
 }
 

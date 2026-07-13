@@ -9,6 +9,7 @@
 
 import type { Grade } from "./types.js";
 import { ageText, countdownText, elapsedMs, remainingMs } from "./countdown.js";
+import { countClass, countSentence, matchesFilter, type FilterIndex } from "./filter.js";
 
 function readJson<T>(id: string): T | null {
   const el = document.getElementById(id);
@@ -146,6 +147,72 @@ function tickAges(): void {
   setInterval(paint, 1000);
 }
 
+/**
+ * The Timeline and Library filters (PRD R5.3, GSL-97).
+ *
+ * Everything this touches is already on the page: the rows were written at build time and the controls
+ * were rendered from the same index that is sitting in the JSON island beside them. So this function
+ * does exactly three things — un-hide the controls, wire them, and set `hidden` on the rows that fall
+ * out. It never builds a row, never re-renders a table, and never reads a rendered cell: it matches on
+ * the island's records, because a filter that greps its own HTML is matching a picture of the data and
+ * breaks the day someone adds a link to a column.
+ *
+ * The bar ships `hidden` and is revealed HERE, at the end, only once an island, a table and a count
+ * element have all been found. A <select> the reader can move that changes nothing is worse than no
+ * <select> at all — and if any piece is missing, the page keeps the whole list, which is the only
+ * degradation worth having.
+ *
+ * Every screen ships this bundle; only two carry islands. The rest fall out of the loop immediately.
+ */
+function initFilters(): void {
+  for (const bar of Array.from(document.querySelectorAll<HTMLElement>("[data-filter-island]"))) {
+    const idx = readJson<FilterIndex>(bar.dataset["filterIsland"] ?? "");
+    const scope = document.getElementById(bar.dataset["filterScope"] ?? "");
+    const countEl = document.getElementById(bar.dataset["filterCount"] ?? "");
+    if (!idx || !scope || !countEl) continue; // leave the page exactly as it was built
+
+    const selects = Array.from(bar.querySelectorAll<HTMLSelectElement>("[data-facet]"));
+    const search = bar.querySelector<HTMLInputElement>("[data-search]");
+    const rows = Array.from(scope.querySelectorAll<HTMLElement>("[data-row]"));
+
+    const apply = (): void => {
+      const active: Record<string, string> = {};
+      for (const s of selects) active[s.dataset["facet"] ?? ""] = s.value;
+
+      let shown = 0;
+      for (const r of rows) {
+        // The island's record for THIS row, joined on the index the renderer stamped into both.
+        // A row with no record survives — see matchesFilter: hiding a row we failed to classify is
+        // an invisible subtraction from the feed the owner reads to find out what broke tonight.
+        const ok = matchesFilter(idx.rows[Number(r.dataset["row"])], active, idx.search, search?.value ?? "");
+        r.hidden = !ok;
+        if (ok) shown++;
+      }
+
+      // The rail. Counted over the rows actually IN the table, not over idx.total: if those two ever
+      // disagree, the DOM is what the reader is looking at, and the sentence must be true about that.
+      countEl.textContent = countSentence(shown, rows.length);
+      countEl.className = countClass(shown, rows.length);
+    };
+
+    for (const s of selects) s.addEventListener("change", apply);
+    if (search) search.addEventListener("input", apply);
+
+    const reset = bar.querySelector<HTMLElement>("[data-filter-reset]");
+    if (reset) {
+      reset.addEventListener("click", () => {
+        for (const s of selects) s.value = "";
+        if (search) search.value = "";
+        apply();
+      });
+    }
+
+    bar.hidden = false; // ← the control exists only now that it can actually do something
+    apply();
+  }
+}
+
 regradeStaleness();
 tickCountdowns();
 tickAges();
+initFilters();

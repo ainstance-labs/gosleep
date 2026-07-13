@@ -104,12 +104,28 @@ export interface LibraryEntry {
   title: string;
 }
 
+/**
+ * One kind of artifact, and the glob that found it (chronicler.py: LIBRARY_SECTIONS).
+ *
+ * `source` is on the page, not just in the code, and that is the point: an empty section that NAMES
+ * where it looked has proven something ("I searched docs/reports for incidents and there are none").
+ * An empty section that names nothing has merely failed to look — and the two render identically
+ * unless the glob comes along for the ride.
+ */
+export interface LibrarySection {
+  key: string;
+  label: string;
+  /** The glob, verbatim. The owner can paste it into a shell and get this list back. */
+  source: string;
+  /** False = the directory does not exist at all. "Nothing here" and "nowhere to look" are not the same. */
+  dir_exists: boolean;
+  items: LibraryEntry[];
+  count: number;
+}
+
 export interface Library {
-  digests: LibraryEntry[];
-  handoffs: LibraryEntry[];
-  dev_history: LibraryEntry[];
-  reports: LibraryEntry[];
-  prd: LibraryEntry[];
+  sections: LibrarySection[];
+  total: number;
 }
 
 export interface Degradation {
@@ -352,7 +368,7 @@ export interface Runway {
  * emitting must fail loudly at build time, not render a blank card at 03:00.
  */
 export interface RenderBundle {
-  schema: "gosleep.lab.render/4";
+  schema: "gosleep.lab.render/5";
   runway: Runway;
   generated_at: string;
   generated_by: string;

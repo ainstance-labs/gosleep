@@ -109,6 +109,46 @@ footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid 
 .tag.pr-merged{color:var(--accent);border-color:currentColor}
 .tag.pr-closed{color:var(--dead);border-color:currentColor}
 
+/* GSL-97 (R5.3): the client-side filter, and the severity of a timeline row.
+
+   [hidden] is declared LOUDLY because the filter hides table rows, and a UA stylesheet's
+   [hidden]{display:none} loses to any rule that sets display on a tr. A filter whose hidden rows stay
+   visible is merely broken; the rule below is what keeps it from being that.
+
+   .filter-count is the sentence that says what is NOT on screen, and it is styled to be seen, not to
+   be tasteful. When rows are hidden it turns amber; when the filter hides EVERY row it goes red and
+   filled — because an empty table under a forgotten filter is the exact silhouette of a quiet night,
+   and that mistaken read is the one this whole feature exists to prevent.
+
+   .filters ships hidden and the client reveals it (client.ts): no dead controls for a reader with JS
+   off, and none either for a reader whose island failed to parse. */
+[hidden]{display:none!important}
+.filters{display:flex;flex-wrap:wrap;gap:.5rem .8rem;align-items:end;background:var(--card);
+  border:1px solid var(--line);border-radius:.6rem;padding:.6rem .8rem;margin:.6rem 0}
+.filters label{display:flex;flex-direction:column;gap:.15rem}
+.filters label span{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+.filters select,.filters input{background:var(--bg);color:var(--fg);border:1px solid var(--line);
+  border-radius:.35rem;padding:.25rem .4rem;font:inherit;font-size:.82rem;max-width:12rem}
+.filters button{background:var(--bg);color:var(--dim);border:1px solid var(--line);
+  border-radius:.35rem;padding:.3rem .7rem;font:inherit;font-size:.8rem;cursor:pointer}
+.filters button:hover{color:var(--fg);border-color:var(--fg)}
+.filter-count{color:var(--dim);font-size:.82rem;margin:.3rem 0 .6rem}
+.filter-count.filtered{color:var(--warn);font-weight:600}
+.filter-count.none{color:var(--dead);background:var(--dead-soft);border-radius:.35rem;
+  padding:.35rem .6rem;font-weight:700}
+
+/* An incident is marked in the MARKUP, not by a script: the owner reads this page from GitHub's blob
+   view on a phone at 02:00, where nothing runs. A grade this build could not make is "unknown" --
+   dashed, muted, never green (see src/severity.ts for why that direction is the only safe one).
+   NOTE: no backticks in here, ever. This file is a TS template literal, and one would close it. */
+.tag.sev{text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.tag.sev.incident{color:var(--dead);border-color:currentColor;background:var(--dead-soft)}
+.tag.sev.warn{color:var(--warn);border-color:currentColor}
+.tag.sev.info{color:var(--dim)}
+.tag.sev.unknown{color:var(--dim);border-style:dashed;font-style:italic}
+tr.sev-incident td{background:var(--dead-soft)}
+tr.sev-incident td:first-child{box-shadow:inset .18rem 0 0 var(--dead)}
+
 nav{margin:.4rem 0 .2rem;line-height:2}
 nav a{margin-right:.9rem}
 nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}
@@ -125,7 +165,7 @@ nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2p
   padding:.05rem .3rem}
 </style>
 <!--UI-DEGRADE-START--><!--UI-DEGRADE-END-->
-<h1>Fleet</h1><nav><a href="index.html">Overview</a><a href="timeline.html">Timeline</a><a href="tasks.html">Tasks</a><a href="questions.html">Questions</a><a href="fleet.html" aria-current="page">Fleet</a><a href="cost.html">Cost</a><a href="library.html">Library</a></nav><div class="stale fresh" id="staleness" data-grade="fresh" data-generated-at="2026-07-13T14:37:55Z" data-event-age-s="572" data-fresh-s="1800" data-dead-s="10800"><span id="stale-head">FRESH · last event 9m ago</span><small>generated_at 2026-07-13T14:37:55Z · latest event 2026-07-13T14:28:21Z · thresholds fresh≤30m, dead>3h · <span id="stale-verdict">Live — the laboratory is writing itself right now.</span></small></div><div class="grid"><div class="kpi"><b>1</b><span>live workers</span></div><div class="kpi"><b>3</b><span>pane cap (manifest §5.slots)</span></div><div class="kpi"><b>2</b><span>free slots</span></div><div class="kpi"><b>55</b><span>cycle</span></div></div><h2>Orchestrator</h2><div class="card">status <b>ok</b> · context <b>28%</b><br/><small>Source: <code>docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)</code></small></div><h2>Who the log can name (20)</h2><div class="wrap"><table><tr><th>actor</th><th>events</th><th>last seen</th><th>mostly doing</th></tr><tr><td class="mono">dd3edd33</td><td class="mono">13</td><td class="mono">9m ago</td><td><span>agent.turn_ended <span class="mono">9</span></span><span> · handoff.written <span class="mono">3</span></span><span> · pane.started <span class="mono">1</span></span></td></tr><tr><td class="mono">impl-ui-3</td><td class="mono">1</td><td class="mono">23m ago</td><td><span>question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">claude</td><td class="mono">205</td><td class="mono">23m ago</td><td><span>agent.idle <span class="mono">38</span></span><span> · dev_history.written <span class="mono">35</span></span><span> · task.completed <span class="mono">26</span></span><span> · tracker.issue.transitioned <span class="mono">18</span></span><span> · vcs.commit <span class="mono">18</span></span><span> · agent.turn_ended <span class="mono">16</span></span></td></tr><tr><td class="mono">orchestrator</td><td class="mono">3</td><td class="mono">58m ago</td><td><span>decision.made <span class="mono">1</span></span><span> · handoff.written <span class="mono">1</span></span><span> · question.auto_resolved <span class="mono">1</span></span></td></tr><tr><td class="mono">ef6c3777</td><td class="mono">85</td><td class="mono">1h 5m ago</td><td><span>agent.turn_ended <span class="mono">49</span></span><span> · handoff.written <span class="mono">16</span></span><span> · task.created <span class="mono">8</span></span><span> · notification.raised <span class="mono">7</span></span><span> · task.completed <span class="mono">2</span></span><span> · pane.ended <span class="mono">1</span></span></td></tr><tr><td class="mono">impl-ui-1</td><td class="mono">1</td><td class="mono">1h 49m ago</td><td><span>question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">ab3b55ad5cc3bfb36</td><td class="mono">2</td><td class="mono">2h 30m ago</td><td><span>agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a1a48411925ec4eae</td><td class="mono">1</td><td class="mono">2h 32m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a503045747e54a2aa</td><td class="mono">1</td><td class="mono">2h 33m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">ac46c415bfdb4e55a</td><td class="mono">1</td><td class="mono">2h 33m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">aaea689860c6cccdb</td><td class="mono">1</td><td class="mono">2h 34m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a1f95c5ec2e2d74ae</td><td class="mono">1</td><td class="mono">2h 34m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a2ff6cd2567d65e2b</td><td class="mono">1</td><td class="mono">2h 35m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">gsl90-setup</td><td class="mono">2</td><td class="mono">2h 43m ago</td><td><span>handoff.written <span class="mono">1</span></span><span> · question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">a690ba064bba794be</td><td class="mono">13</td><td class="mono">2h 47m ago</td><td><span>tracker.issue.updated <span class="mono">11</span></span><span> · agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a61075657b8f0649b</td><td class="mono">1</td><td class="mono">2h 47m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">poll-fill</td><td class="mono">15</td><td class="mono">3h 0m ago</td><td><span>tracker.issue.updated <span class="mono">9</span></span><span> · vcs.commit <span class="mono">4</span></span><span> · vcs.pr.merged <span class="mono">1</span></span><span> · vcs.pr.opened <span class="mono">1</span></span></td></tr><tr><td class="mono">fixer-lab</td><td class="mono">1</td><td class="mono">4h 38m ago</td><td><span>handoff.written <span class="mono">1</span></span></td></tr><tr><td class="mono">aa7a28cca3c73abc5</td><td class="mono">2</td><td class="mono">5h 13m ago</td><td><span>agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a198207c1aae6407d</td><td class="mono">1</td><td class="mono">5h 14m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr></table></div><h2>What this screen cannot see</h2><div class="card blind"><span>no pane id in the event log — pane.started/ended carry a session_id only</span><span><br/>no model in the event log — it is recorded by hand in ORCHESTRATION-STATE §TELEMETRY</span><span><br/>hook-written lines all carry actor=&quot;claude&quot;; only semantic (src=emit) lines name the worker</span></div><footer>Regenerated by <code>tools/lab/chronicler.sh</code> — <b>never hand-edit</b>: the next pass overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8). Source of truth for this page: <code>docs/lab/render_bundle.json</code>.</footer>
+<h1>Fleet</h1><nav><a href="index.html">Overview</a><a href="timeline.html">Timeline</a><a href="tasks.html">Tasks</a><a href="questions.html">Questions</a><a href="fleet.html" aria-current="page">Fleet</a><a href="cost.html">Cost</a><a href="library.html">Library</a></nav><div class="stale fresh" id="staleness" data-grade="fresh" data-generated-at="2026-07-13T16:19:00Z" data-event-age-s="49" data-fresh-s="1800" data-dead-s="10800"><span id="stale-head">FRESH · last event 49s ago</span><small>generated_at 2026-07-13T16:19:00Z · latest event 2026-07-13T16:18:08Z · thresholds fresh≤30m, dead>3h · <span id="stale-verdict">Live — the laboratory is writing itself right now.</span></small></div><div class="grid"><div class="kpi"><b>1</b><span>live workers</span></div><div class="kpi"><b>3</b><span>pane cap (manifest §5.slots)</span></div><div class="kpi"><b>2</b><span>free slots</span></div><div class="kpi"><b>56</b><span>cycle</span></div></div><h2>Orchestrator</h2><div class="card">status <b>ok</b> · context <b>45%</b><br/><small>Source: <code>docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)</code></small></div><h2>Who the log can name (20)</h2><div class="wrap"><table><tr><th>actor</th><th>events</th><th>last seen</th><th>mostly doing</th></tr><tr><td class="mono">claude</td><td class="mono">218</td><td class="mono">49s ago</td><td><span>agent.idle <span class="mono">40</span></span><span> · dev_history.written <span class="mono">37</span></span><span> · task.completed <span class="mono">26</span></span><span> · tracker.issue.transitioned <span class="mono">20</span></span><span> · vcs.commit <span class="mono">20</span></span><span> · agent.turn_ended <span class="mono">18</span></span></td></tr><tr><td class="mono">impl-ui-4</td><td class="mono">1</td><td class="mono">1m ago</td><td><span>question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">dd3edd33</td><td class="mono">27</td><td class="mono">11m ago</td><td><span>agent.turn_ended <span class="mono">21</span></span><span> · handoff.written <span class="mono">4</span></span><span> · notification.raised <span class="mono">1</span></span><span> · pane.started <span class="mono">1</span></span></td></tr><tr><td class="mono">orchestrator</td><td class="mono">8</td><td class="mono">54m ago</td><td><span>question.auto_resolved <span class="mono">4</span></span><span> · decision.made <span class="mono">2</span></span><span> · handoff.written <span class="mono">2</span></span></td></tr><tr><td class="mono">impl-ui-3</td><td class="mono">1</td><td class="mono">2h 4m ago</td><td><span>question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">ef6c3777</td><td class="mono">85</td><td class="mono">2h 46m ago</td><td><span>agent.turn_ended <span class="mono">49</span></span><span> · handoff.written <span class="mono">16</span></span><span> · task.created <span class="mono">8</span></span><span> · notification.raised <span class="mono">7</span></span><span> · task.completed <span class="mono">2</span></span><span> · pane.ended <span class="mono">1</span></span></td></tr><tr><td class="mono">impl-ui-1</td><td class="mono">1</td><td class="mono">3h 30m ago</td><td><span>question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">ab3b55ad5cc3bfb36</td><td class="mono">2</td><td class="mono">4h 12m ago</td><td><span>agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a1a48411925ec4eae</td><td class="mono">1</td><td class="mono">4h 13m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a503045747e54a2aa</td><td class="mono">1</td><td class="mono">4h 14m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">ac46c415bfdb4e55a</td><td class="mono">1</td><td class="mono">4h 14m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">aaea689860c6cccdb</td><td class="mono">1</td><td class="mono">4h 15m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a1f95c5ec2e2d74ae</td><td class="mono">1</td><td class="mono">4h 15m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a2ff6cd2567d65e2b</td><td class="mono">1</td><td class="mono">4h 16m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">gsl90-setup</td><td class="mono">2</td><td class="mono">4h 24m ago</td><td><span>handoff.written <span class="mono">1</span></span><span> · question.posed <span class="mono">1</span></span></td></tr><tr><td class="mono">a690ba064bba794be</td><td class="mono">13</td><td class="mono">4h 28m ago</td><td><span>tracker.issue.updated <span class="mono">11</span></span><span> · agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">a61075657b8f0649b</td><td class="mono">1</td><td class="mono">4h 28m ago</td><td><span>agent.terminated <span class="mono">1</span></span></td></tr><tr><td class="mono">poll-fill</td><td class="mono">15</td><td class="mono">4h 41m ago</td><td><span>tracker.issue.updated <span class="mono">9</span></span><span> · vcs.commit <span class="mono">4</span></span><span> · vcs.pr.merged <span class="mono">1</span></span><span> · vcs.pr.opened <span class="mono">1</span></span></td></tr><tr><td class="mono">fixer-lab</td><td class="mono">1</td><td class="mono">6h 19m ago</td><td><span>handoff.written <span class="mono">1</span></span></td></tr><tr><td class="mono">aa7a28cca3c73abc5</td><td class="mono">2</td><td class="mono">6h 54m ago</td><td><span>agent.spawned <span class="mono">1</span></span><span> · agent.terminated <span class="mono">1</span></span></td></tr></table></div><h2>What this screen cannot see</h2><div class="card blind"><span>no pane id in the event log — pane.started/ended carry a session_id only</span><span><br/>no model in the event log — it is recorded by hand in ORCHESTRATION-STATE §TELEMETRY</span><span><br/>hook-written lines all carry actor=&quot;claude&quot;; only semantic (src=emit) lines name the worker</span></div><footer>Regenerated by <code>tools/lab/chronicler.sh</code> — <b>never hand-edit</b>: the next pass overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8). Source of truth for this page: <code>docs/lab/render_bundle.json</code>.</footer>
 <script id="verdicts" type="application/json">{"fresh":"Live — the laboratory is writing itself right now.","stale":"Stale — nothing has been logged for a while. Delivery may still be running; this page is not.","dead":"DEAD — this page is not being regenerated. Do not trust anything below without checking git."}</script>
 
 <script>// tools/lab/ui/src/countdown.ts
@@ -152,6 +192,30 @@ function elapsedMs(iso, nowMs) {
 function remainingMs(iso, nowMs) {
   const t = Date.parse(iso);
   return isNaN(t) ? NaN : t - nowMs;
+}
+
+// tools/lab/ui/src/filter.ts
+function matchesFilter(row, active, search, query) {
+  if (row === void 0) return true;
+  for (const [key, want] of Object.entries(active)) {
+    if (want !== "" && row[key] !== want) return false;
+  }
+  const q = query.trim().toLowerCase();
+  if (q !== "" && search.length > 0) {
+    const hay = search.map((k) => row[k] ?? "").join(" ").toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+function countSentence(shown, total) {
+  if (total === 0) return "no rows to filter";
+  if (shown >= total) return `all ${total} shown`;
+  if (shown === 0) return `0 of ${total} shown \u2014 the filter is hiding every row`;
+  return `${shown} of ${total} shown \u2014 ${total - shown} hidden by the filter`;
+}
+function countClass(shown, total) {
+  if (total === 0 || shown >= total) return "filter-count";
+  return shown === 0 ? "filter-count filtered none" : "filter-count filtered";
 }
 
 // tools/lab/ui/src/client.ts
@@ -226,7 +290,43 @@ function tickAges() {
   paint();
   setInterval(paint, 1e3);
 }
+function initFilters() {
+  for (const bar of Array.from(document.querySelectorAll("[data-filter-island]"))) {
+    const idx = readJson(bar.dataset["filterIsland"] ?? "");
+    const scope = document.getElementById(bar.dataset["filterScope"] ?? "");
+    const countEl = document.getElementById(bar.dataset["filterCount"] ?? "");
+    if (!idx || !scope || !countEl) continue;
+    const selects = Array.from(bar.querySelectorAll("[data-facet]"));
+    const search = bar.querySelector("[data-search]");
+    const rows = Array.from(scope.querySelectorAll("[data-row]"));
+    const apply = () => {
+      const active = {};
+      for (const s of selects) active[s.dataset["facet"] ?? ""] = s.value;
+      let shown = 0;
+      for (const r of rows) {
+        const ok = matchesFilter(idx.rows[Number(r.dataset["row"])], active, idx.search, search?.value ?? "");
+        r.hidden = !ok;
+        if (ok) shown++;
+      }
+      countEl.textContent = countSentence(shown, rows.length);
+      countEl.className = countClass(shown, rows.length);
+    };
+    for (const s of selects) s.addEventListener("change", apply);
+    if (search) search.addEventListener("input", apply);
+    const reset = bar.querySelector("[data-filter-reset]");
+    if (reset) {
+      reset.addEventListener("click", () => {
+        for (const s of selects) s.value = "";
+        if (search) search.value = "";
+        apply();
+      });
+    }
+    bar.hidden = false;
+    apply();
+  }
+}
 regradeStaleness();
 tickCountdowns();
 tickAges();
+initFilters();
 </script>

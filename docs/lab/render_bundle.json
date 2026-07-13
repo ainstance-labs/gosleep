@@ -1,13 +1,13 @@
 {
-  "schema": "gosleep.lab.render/4",
-  "generated_at": "2026-07-13T14:37:55Z",
+  "schema": "gosleep.lab.render/5",
+  "generated_at": "2026-07-13T16:19:00Z",
   "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
   "date": "2026-07-13",
   "staleness": {
-    "max_event_age_s": 572,
-    "max_event_age_human": "9m",
-    "latest_event_ts": "2026-07-13T14:28:21Z",
-    "heartbeat_age_s": 586,
+    "max_event_age_s": 49,
+    "max_event_age_human": "49s",
+    "latest_event_ts": "2026-07-13T16:18:08Z",
+    "heartbeat_age_s": 828,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -15,58 +15,58 @@
     }
   },
   "events": {
-    "total": 371,
-    "today": 305,
+    "total": 404,
+    "today": 338,
     "days": [
       "2026-07-12",
       "2026-07-13"
     ],
     "by_type": {
-      "agent.turn_ended": 76,
-      "agent.idle": 38,
-      "dev_history.written": 35,
-      "handoff.written": 34,
+      "agent.turn_ended": 90,
+      "agent.idle": 40,
+      "dev_history.written": 37,
+      "handoff.written": 36,
       "task.completed": 28,
       "agent.terminated": 24,
       "tracker.issue.updated": 24,
-      "vcs.commit": 22,
-      "tracker.issue.transitioned": 19,
-      "pane.ended": 13,
-      "pane.started": 13,
+      "vcs.commit": 24,
+      "tracker.issue.transitioned": 21,
+      "pane.ended": 14,
+      "pane.started": 14,
       "tracker.issue.created": 12,
+      "notification.raised": 8,
       "task.created": 8,
-      "notification.raised": 7,
-      "vcs.push": 7,
-      "question.posed": 4,
+      "vcs.push": 8,
+      "question.posed": 5,
+      "question.auto_resolved": 4,
       "agent.spawned": 3,
-      "decision.made": 1,
-      "question.auto_resolved": 1,
+      "decision.made": 2,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 137,
-      "hook:Stop": 76,
-      "hook:TeammateIdle": 38,
+      "hook:PostToolUse": 145,
+      "hook:Stop": 90,
+      "hook:TeammateIdle": 40,
       "hook:TaskCompleted": 28,
       "hook:SubagentStop": 24,
+      "emit": 15,
       "poll-fill": 15,
-      "hook:SessionEnd": 13,
-      "hook:SessionStart": 13,
-      "emit": 9,
+      "hook:SessionEnd": 14,
+      "hook:SessionStart": 14,
+      "hook:Notification": 8,
       "hook:TaskCreated": 8,
-      "hook:Notification": 7,
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 205,
+      "claude": 218,
       "ef6c3777": 85,
+      "dd3edd33": 27,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
-      "dd3edd33": 13,
+      "orchestrator": 8,
       "70cbe176": 3,
       "ca8a1e39": 3,
-      "orchestrator": 3,
       "aa7a28cca3c73abc5": 2,
       "ab3b55ad5cc3bfb36": 2,
       "gsl90-setup": 2,
@@ -94,308 +94,12 @@
       "fixer-lab": 1,
       "impl-lab-2": 1,
       "impl-ui-1": 1,
-      "impl-ui-3": 1
+      "impl-ui-3": 1,
+      "impl-ui-4": 1
     },
-    "mechanical_share": 0.935
+    "mechanical_share": 0.926
   },
   "recent_events": [
-    {
-      "ts": "2026-07-13T09:31:25Z",
-      "seq": 105,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:31:29Z",
-      "seq": 106,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:38:23Z",
-      "seq": 107,
-      "actor": "claude",
-      "type": "vcs.commit",
-      "src": "hook:PostToolUse",
-      "data": {
-        "sha": "",
-        "cmd": "cd /Users/romanlidovskyi/Documents/dev/harness/gosleep bash -n tools/lab/lab-log.sh && echo \"bash -n: OK\" W=/private/tmp/claude-501/-Users-romanlidovskyi-Documents-dev-harness-gosleep/005323db-f616-4bb6-b8fb-bd313eb917a9/scratchpad/c1 rm -rf \"$W\"; mkdir -p \"$W/repo\" git init -q \"$W/repo\" 2>/dev/null git -C \"$W/repo\" config user.email s@e.com; git -C \"$W/repo\" config user.name s; git -C \"$W/repo\" config commit.gpgsign false : > \"$W/repo/a.txt\"; git -C \"$W/repo\" add a.txt OLD=\"@$(python3 -c 'impor"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:42:14Z",
-      "seq": 108,
-      "actor": "poll-fill",
-      "type": "vcs.commit",
-      "src": "poll-fill",
-      "data": {
-        "sha": "977a09e"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:46:12Z",
-      "seq": 110,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T09:46:32Z",
-      "seq": 111,
-      "actor": "claude",
-      "type": "vcs.commit",
-      "src": "hook:PostToolUse",
-      "data": {
-        "sha": "b743002",
-        "cmd": "cd /Users/romanlidovskyi/Documents/dev/harness/gosleep SP=/private/tmp/claude-501/-Users-romanlidovskyi-Documents-dev-harness-gosleep/005323db-f616-4bb6-b8fb-bd313eb917a9/scratchpad cat > \"$SP/msg-m1.txt\" <<'EOF' GSL-86 [Fix] the staleness PROSE re-grades on open, not just the banner (REVIEW-gsl81 M1, m2) The re-grade rewrote el.className, dataset.grade and #stale-head — but the human-readable sentence was baked into an un-id'd <small> and never touched. A page built while fresh and opened hours"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:48:46Z",
-      "seq": 112,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-89-phase4-cycle47-close.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:48:59Z",
-      "seq": 113,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-89-phase4-cycle47-close.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:49:10Z",
-      "seq": 114,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-89-phase4-cycle47-close.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:49:36Z",
-      "seq": 115,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-89-phase4-cycle47-close.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:49:42Z",
-      "seq": 116,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-89-phase4-cycle47-close.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:50:03Z",
-      "seq": 117,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-87-phase4-cycle46-poll-fill.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:50:13Z",
-      "seq": 118,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-87-phase4-cycle46-poll-fill.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:52:58Z",
-      "seq": 119,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-89-phase4-cycle50-review-fixes.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:53:05Z",
-      "seq": 120,
-      "actor": "claude",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/README.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:53:40Z",
-      "seq": 121,
-      "actor": "claude",
-      "type": "vcs.commit",
-      "src": "hook:PostToolUse",
-      "data": {
-        "sha": "63b1c63",
-        "cmd": "cd /Users/romanlidovskyi/Documents/dev/harness/gosleep SP=/private/tmp/claude-501/-Users-romanlidovskyi-Documents-dev-harness-gosleep/005323db-f616-4bb6-b8fb-bd313eb917a9/scratchpad cat > \"$SP/msg-m2.txt\" <<'EOF' GSL-89 [Docs] R4.2 down to PENDING; acceptance counts made checkable at this sha (REVIEW-gsl81 M2, m4, m5) M2: R4.2 was marked MET on an observation that is not in the repository. There is no vcs.pr.merged line in any committed log, and the default pipeline cannot produce the cited one:"
-      }
-    },
-    {
-      "ts": "2026-07-13T09:59:02Z",
-      "seq": 122,
-      "actor": "fixer-lab",
-      "type": "handoff.written",
-      "src": "emit",
-      "data": {
-        "path": "docs/handoff/27-2026-07-13-handoff-fixer-lab.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T10:00:48Z",
-      "seq": 123,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:01:16Z",
-      "seq": 124,
-      "actor": "claude",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:01:17Z",
-      "seq": 125,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:01:59Z",
-      "seq": 126,
-      "actor": "ef6c3777",
-      "type": "handoff.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
-      }
-    },
-    {
-      "ts": "2026-07-13T10:02:08Z",
-      "seq": 127,
-      "actor": "ef6c3777",
-      "type": "notification.raised",
-      "src": "hook:Notification",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:02:11Z",
-      "seq": 128,
-      "actor": "claude",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:02:12Z",
-      "seq": 129,
-      "actor": "claude",
-      "type": "agent.idle",
-      "src": "hook:TeammateIdle",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:02:29Z",
-      "seq": 130,
-      "actor": "claude",
-      "type": "pane.ended",
-      "src": "hook:SessionEnd",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:02:39Z",
-      "seq": 131,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:06:16Z",
-      "seq": 132,
-      "actor": "ef6c3777",
-      "type": "task.created",
-      "src": "hook:TaskCreated",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:06:17Z",
-      "seq": 133,
-      "actor": "claude",
-      "type": "pane.started",
-      "src": "hook:SessionStart",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:06:29Z",
-      "seq": 134,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:06:33Z",
-      "seq": 135,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:09:54Z",
-      "seq": 136,
-      "actor": "ef6c3777",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:13:42Z",
-      "seq": 137,
-      "actor": "claude",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T10:13:43Z",
-      "seq": 138,
-      "actor": "claude",
-      "type": "task.completed",
-      "src": "hook:TaskCompleted",
-      "data": {}
-    },
     {
       "ts": "2026-07-13T10:13:43Z",
       "seq": 139,
@@ -1878,6 +1582,301 @@
       "type": "agent.turn_ended",
       "src": "hook:Stop",
       "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:38:27Z",
+      "seq": 306,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:40:17Z",
+      "seq": 307,
+      "actor": "claude",
+      "type": "dev_history.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-96-phase5-cycle55-tasks-board.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:40:48Z",
+      "seq": 308,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "c965089",
+        "cmd": "cd /Users/romanlidovskyi/Documents/dev/harness/gosleep cat > /tmp/gsl96.msg <<'EOF' GSL-96 [UI] Tasks board — keyed by Jira, epic→PR rollup (F5-S3) Every identifier on the board is either a link that resolves or a stated absence; there is no third state (0 broken links of 475 on the real page). - The status column is NEVER inferred from a commit. 92 of 101 rows say `unknown` because the tracker is fed by hand (C1) — a commit witnesses that code landed, not that Jira saw it. - An epic with no PR"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:40:56Z",
+      "seq": 309,
+      "actor": "claude",
+      "type": "vcs.push",
+      "src": "hook:PostToolUse",
+      "data": {
+        "cmd": "git push 2>&1 | tail -2 && git log --oneline -1 && git status --porcelain | head -5"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:40:59Z",
+      "seq": 310,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-96"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:43:15Z",
+      "seq": 311,
+      "actor": "orchestrator",
+      "type": "handoff.written",
+      "src": "emit",
+      "data": {
+        "path": "docs/handoff/31-2026-07-13-handoff-impl-ui-3.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:43:28Z",
+      "seq": 312,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "45d7066",
+        "cmd": "cd /Users/romanlidovskyi/Documents/dev/harness/gosleep cat > /tmp/h31.msg <<'EOF' GSL-96 [Docs] Handoff 31 — цикл 55 (impl-ui-3): F5-S3 закрыт; «источника нет» оказалось непроверенным наследством Доска задач keyed по Jira; 0 битых ссылок из 475; статус не выводится из коммита; у эпика GSL-90 нет PR — и страница так и говорит. Два факта для следующего цикла: - маппинг Jira→GH issue СУЩЕСТВУЕТ (ключ в заголовке issue). Утверждение «машиночитаемого источника нет» было верно только про диск, было за"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:45:54Z",
+      "seq": 313,
+      "actor": "claude",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:45:54Z",
+      "seq": 314,
+      "actor": "claude",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:46:24Z",
+      "seq": 315,
+      "actor": "dd3edd33",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:46:52Z",
+      "seq": 316,
+      "actor": "claude",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:46:53Z",
+      "seq": 317,
+      "actor": "claude",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:46:58Z",
+      "seq": 318,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:47:25Z",
+      "seq": 319,
+      "actor": "claude",
+      "type": "pane.ended",
+      "src": "hook:SessionEnd",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:47:27Z",
+      "seq": 320,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:50:40Z",
+      "seq": 321,
+      "actor": "orchestrator",
+      "type": "question.auto_resolved",
+      "src": "emit",
+      "data": {
+        "question": "Потолок токенов не существует ни в одном машиночитаемом источнике. manifest §5.phase-ceiling делегирует его «брифу эпика», но ни один бриф на диске числа не называет. Следствие: §5.warn-80 (80% → FYI) и §3.budget (100% → BUDGET_EXCEEDED = BLOCKER) — правила, которые НИКОГДА не могут сработать, а бюджетные часы autonomy runway читаются как unknown, из-за чего весь runway деградирует из оценки (≈ 4h) в верхнюю границу (≤ 4h). Назвать ли число — и какое?"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:50:40Z",
+      "seq": 322,
+      "actor": "orchestrator",
+      "type": "decision.made",
+      "src": "emit",
+      "data": {
+        "question": "Потолок токенов не существует ни в одном машиночитаемом источнике. manifest §5.phase-ceiling делегирует его «брифу эпика», но ни один бриф на диске числа не называет. Следствие: §5.warn-80 (80% → FYI) и §3.budget (100% → BUDGET_EXCEEDED = BLOCKER) — правила, которые НИКОГДА не могут сработать, а бюджетные часы autonomy runway читаются как unknown, из-за чего весь runway деградирует из оценки (≈ 4h) в верхнюю границу (≤ 4h). Назвать ли число — и какое?",
+        "decision": "status quo — потолок токенов остаётся не машиночитаемым; BUDGET_EXCEEDED физически не файрится; runway читает unknown для оси бюджета; дыра автономии передана владельцу"
+      }
+    },
+    {
+      "ts": "2026-07-13T14:52:10Z",
+      "seq": 323,
+      "actor": "claude",
+      "type": "pane.started",
+      "src": "hook:SessionStart",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:52:16Z",
+      "seq": 324,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:52:39Z",
+      "seq": 325,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T14:57:39Z",
+      "seq": 326,
+      "actor": "claude",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-97"
+      }
+    },
+    {
+      "ts": "2026-07-13T15:02:25Z",
+      "seq": 327,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T15:12:21Z",
+      "seq": 328,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T15:24:53Z",
+      "seq": 329,
+      "actor": "orchestrator",
+      "type": "question.auto_resolved",
+      "src": "emit",
+      "data": {
+        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?"
+      }
+    },
+    {
+      "ts": "2026-07-13T15:24:54Z",
+      "seq": 330,
+      "actor": "orchestrator",
+      "type": "question.auto_resolved",
+      "src": "emit",
+      "data": {
+        "question": "Потолок токенов не существует ни в одном машиночитаемом источнике. manifest §5.phase-ceiling делегирует его «брифу эпика», но ни один бриф на диске числа не называет. Следствие: §5.warn-80 (80% → FYI) и §3.budget (100% → BUDGET_EXCEEDED = BLOCKER) — правила, которые НИКОГДА не могут сработать, а бюджетные часы autonomy runway читаются как unknown, из-за чего весь runway деградирует из оценки (≈ 4h) в верхнюю границу (≤ 4h). Назвать ли число — и какое?"
+      }
+    },
+    {
+      "ts": "2026-07-13T15:25:14Z",
+      "seq": 331,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T15:35:26Z",
+      "seq": 332,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T15:45:37Z",
+      "seq": 333,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T15:55:36Z",
+      "seq": 334,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T16:06:12Z",
+      "seq": 335,
+      "actor": "dd3edd33",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T16:07:13Z",
+      "seq": 336,
+      "actor": "dd3edd33",
+      "type": "notification.raised",
+      "src": "hook:Notification",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-13T16:16:59Z",
+      "seq": 337,
+      "actor": "impl-ui-4",
+      "type": "question.posed",
+      "src": "emit",
+      "data": {
+        "question": "GSL-97 needs the Library to cross-index reviews / research / RCA (PRD R5.2). None of the three were indexed at all — library_index() globbed only digests/handoffs/dev_history/reports/prd, so docs/reviews (9 files), docs/research (11) and every incident post-mortem were invisible to the dashboard. Serving them adds REQUIRED fields to the render bundle. Bump the schema, or leave the shelves unindexed?"
+      }
+    },
+    {
+      "ts": "2026-07-13T16:18:08Z",
+      "seq": 338,
+      "actor": "claude",
+      "type": "dev_history.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/dev_history/GSL-97-phase5-cycle56-timeline-library-filter.md"
+      }
     }
   ],
   "recent_cap": 200,
@@ -1897,21 +1896,21 @@
         "high_impact": null
       },
       {
-        "id": "q-2026-07-13-002",
-        "type": "DECISION",
-        "question": "Потолок токенов не существует ни в одном машиночитаемом источнике. manifest §5.phase-ceiling делегирует его «брифу эпика», но ни один бриф на диске числа не называет. Следствие: §5.warn-80 (80% → FYI) и §3.budget (100% → BUDGET_EXCEEDED = BLOCKER) — правила, которые НИКОГДА не могут сработать, а бюджетные часы autonomy runway читаются как unknown, из-за чего весь runway деградирует из оценки (≈ 4h) в верхнюю границу (≤ 4h). Назвать ли число — и какое?",
-        "default": "Оставить без потолка: бюджетные часы = unknown, runway = верхняя граница, и страница честно об этом пишет",
-        "auto_apply_at": "2026-07-13T14:48:23Z",
-        "task": "GSL-94",
-        "high_impact": null
-      },
-      {
         "id": "q-2026-07-13-003",
         "type": "DECISION",
         "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?",
         "default": "extend chronicler.py and bump the bundle schema to gosleep.lab.render/4",
         "auto_apply_at": "2026-07-13T16:14:43Z",
         "task": "GSL-96",
+        "high_impact": null
+      },
+      {
+        "id": "q-2026-07-13-004",
+        "type": "DECISION",
+        "question": "GSL-97 needs the Library to cross-index reviews / research / RCA (PRD R5.2). None of the three were indexed at all — library_index() globbed only digests/handoffs/dev_history/reports/prd, so docs/reviews (9 files), docs/research (11) and every incident post-mortem were invisible to the dashboard. Serving them adds REQUIRED fields to the render bundle. Bump the schema, or leave the shelves unindexed?",
+        "default": "bump gosleep.lab.render/4 -> /5 and reshape library into declared sections (four places at once: chronicler.py, render.tsx, types.ts, smoke.sh)",
+        "auto_apply_at": "2026-07-13T18:16:59Z",
+        "task": "GSL-97",
         "high_impact": null
       }
     ]
@@ -1935,9 +1934,9 @@
     "next_event": {
       "axis": "context",
       "label": "orchestrator context",
-      "hours": 4.6,
+      "hours": 3.24,
       "on_exhaustion": "degrades",
-      "why": "self-reported 28%, rising 11.3 %/h -> ceiling 80% in 4.6h; roll heuristic (8-15 cycles, 1 done since the roll at 1.1 cyc/h) says 6.2h — taking the shorter"
+      "why": "self-reported 45%, rising 10.8 %/h -> ceiling 80% in 3.2h; roll heuristic (8-15 cycles, 2 done since the roll at 0.8 cyc/h) says 7.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone"
     },
     "clocks": [
       {
@@ -1945,10 +1944,10 @@
         "label": "orchestrator context",
         "on_exhaustion": "degrades",
         "state": "counting",
-        "hours": 4.6,
+        "hours": 3.24,
         "eta": null,
-        "gauge": "28% of 80%",
-        "why": "self-reported 28%, rising 11.3 %/h -> ceiling 80% in 4.6h; roll heuristic (8-15 cycles, 1 done since the roll at 1.1 cyc/h) says 6.2h — taking the shorter",
+        "gauge": "45% of 80%",
+        "why": "self-reported 45%, rising 10.8 %/h -> ceiling 80% in 3.2h; roll heuristic (8-15 cycles, 2 done since the roll at 0.8 cyc/h) says 7.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone",
         "sources": [
           "docs/handoff/.orchestrator-heartbeat (gitignored)",
           "watchdog.sh WD_CONTEXT_CEILING_PCT=80"
@@ -1961,7 +1960,7 @@
         "state": "unknown",
         "hours": null,
         "eta": null,
-        "gauge": "6,870,000 used, no ceiling",
+        "gauge": "7,115,000 used, no ceiling",
         "why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
         "sources": [
           "docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY",
@@ -2018,24 +2017,24 @@
         "hours": null,
         "eta": null,
         "gauge": "3 To Do (stale)",
-        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (17h 11m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
+        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (18h 52m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
         "sources": [
           "docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)"
         ]
       }
     ],
     "trace": [
-      "4.6h — orchestrator context: self-reported 28%, rising 11.3 %/h -> ceiling 80% in 4.6h; roll heuristic (8-15 cycles, 1 done since the roll at 1.1 cyc/h) says 6.2h — taking the shorter",
+      "3.2h — orchestrator context: self-reported 45%, rising 10.8 %/h -> ceiling 80% in 3.2h; roll heuristic (8-15 cycles, 2 done since the roll at 0.8 cyc/h) says 7.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone",
       "unknown — token budget: no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
       "clear — quota window: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)",
       "clear — pane slots: 2 free slot(s)",
       "clear — open blockers: nothing the fleet is doing is waiting on a human",
-      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (17h 11m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
+      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (18h 52m ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
     ]
   },
   "queue": {
     "open": 3,
-    "total": 4,
+    "total": 5,
     "by_type": {
       "DECISION": 3
     },
@@ -2084,6 +2083,46 @@
         }
       },
       {
+        "id": "q-2026-07-13-003",
+        "ts": "2026-07-13T14:14:43Z",
+        "type": "DECISION",
+        "from": "impl-ui-3",
+        "task": "GSL-96",
+        "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?",
+        "options": [],
+        "default": "extend chronicler.py and bump the bundle schema to gosleep.lab.render/4",
+        "default_rationale": "The brief's rule 6 already prescribes how to bump the schema when data is genuinely missing (chronicler.py + render.tsx + smoke.sh together), and the C5 invariant is a WORD denylist, not a no-touch rule. The alternative -- inventing the links in the view -- is precisely the defect the task forbids. Reversible: it is a code change on an unmerged branch.",
+        "reversibility": "high",
+        "impact_if_wrong": "",
+        "auto_apply_at": "2026-07-13T16:14:43Z",
+        "status": "open",
+        "seen_by": [
+          "impl-ui-3"
+        ],
+        "links": {}
+      },
+      {
+        "id": "q-2026-07-13-004",
+        "ts": "2026-07-13T16:16:59Z",
+        "type": "DECISION",
+        "from": "impl-ui-4",
+        "task": "GSL-97",
+        "question": "GSL-97 needs the Library to cross-index reviews / research / RCA (PRD R5.2). None of the three were indexed at all — library_index() globbed only digests/handoffs/dev_history/reports/prd, so docs/reviews (9 files), docs/research (11) and every incident post-mortem were invisible to the dashboard. Serving them adds REQUIRED fields to the render bundle. Bump the schema, or leave the shelves unindexed?",
+        "options": [],
+        "default": "bump gosleep.lab.render/4 -> /5 and reshape library into declared sections (four places at once: chronicler.py, render.tsx, types.ts, smoke.sh)",
+        "default_rationale": "The schema is a two-way contract whose whole job is to fail loudly when producer and consumer disagree about a field. Adding required fields and NOT bumping is the case it exists to catch. Reverting is four files and the /4 shape is back.",
+        "reversibility": "high",
+        "impact_if_wrong": "",
+        "auto_apply_at": "2026-07-13T18:16:59Z",
+        "status": "open",
+        "seen_by": [
+          "impl-ui-4"
+        ],
+        "links": {}
+      }
+    ],
+    "closed_items": [
+      {
         "id": "q-2026-07-13-002",
         "ts": "2026-07-13T12:48:23Z",
         "type": "DECISION",
@@ -2112,33 +2151,12 @@
         "reversibility": "high",
         "impact_if_wrong": "Нет потолка → BUDGET_EXCEEDED не сработает, флот может уйти в перерасход без единого сигнала. Потолок занижен → ложный BLOCKER среди ночи остановит работу на ровном месте. Обе ошибки обратимы одной правкой (GOSLEEP_TOKEN_CEILING или манифест).",
         "auto_apply_at": "2026-07-13T14:48:23Z",
-        "status": "open",
+        "status": "auto-resolved",
         "seen_by": [
           "impl-ui-1"
         ],
         "links": {}
       },
-      {
-        "id": "q-2026-07-13-003",
-        "ts": "2026-07-13T14:14:43Z",
-        "type": "DECISION",
-        "from": "impl-ui-3",
-        "task": "GSL-96",
-        "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?",
-        "options": [],
-        "default": "extend chronicler.py and bump the bundle schema to gosleep.lab.render/4",
-        "default_rationale": "The brief's rule 6 already prescribes how to bump the schema when data is genuinely missing (chronicler.py + render.tsx + smoke.sh together), and the C5 invariant is a WORD denylist, not a no-touch rule. The alternative -- inventing the links in the view -- is precisely the defect the task forbids. Reversible: it is a code change on an unmerged branch.",
-        "reversibility": "high",
-        "impact_if_wrong": "",
-        "auto_apply_at": "2026-07-13T16:14:43Z",
-        "status": "open",
-        "seen_by": [
-          "impl-ui-3"
-        ],
-        "links": {}
-      }
-    ],
-    "closed_items": [
       {
         "id": "q-2026-07-12-001",
         "ts": "2026-07-12T21:24:00Z",
@@ -2251,7 +2269,12 @@
         "status_age_s": null,
         "summary": null,
         "commits": [],
-        "dev_history": [],
+        "dev_history": [
+          {
+            "name": "GSL-97-phase5-cycle56-timeline-library-filter.md",
+            "href": "../../dev_history/GSL-97-phase5-cycle56-timeline-library-filter.md"
+          }
+        ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-97",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/110",
@@ -2264,8 +2287,26 @@
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
-        "commits": [],
-        "dev_history": [],
+        "commits": [
+          {
+            "sha": "45d7066",
+            "subject": "GSL-96 [Docs] Handoff 31 — цикл 55 (impl-ui-3): F5-S3 закрыт; «источника нет» оказалось непроверенным наследством",
+            "ts": "2026-07-13T16:43:27+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/45d7066"
+          },
+          {
+            "sha": "c965089",
+            "subject": "GSL-96 [UI] Tasks board — keyed by Jira, epic→PR rollup (F5-S3)",
+            "ts": "2026-07-13T16:40:48+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/c965089"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-96-phase5-cycle55-tasks-board.md",
+            "href": "../../dev_history/GSL-96-phase5-cycle55-tasks-board.md"
+          }
+        ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-96",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/109",
@@ -2426,7 +2467,7 @@
         "key": "GSL-89",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:12Z",
-        "status_age_s": 66221,
+        "status_age_s": 72285,
         "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
         "commits": [
           {
@@ -2456,13 +2497,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-89",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/101",
         "gh_number": 101,
-        "status_age_human": "18h 23m"
+        "status_age_human": "20h 4m"
       },
       {
         "key": "GSL-88",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:11Z",
-        "status_age_s": 66222,
+        "status_age_s": 72286,
         "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
         "commits": [
           {
@@ -2482,13 +2523,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-88",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/100",
         "gh_number": 100,
-        "status_age_human": "18h 23m"
+        "status_age_human": "20h 4m"
       },
       {
         "key": "GSL-87",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:09Z",
-        "status_age_s": 66224,
+        "status_age_s": 72288,
         "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
         "commits": [
           {
@@ -2508,13 +2549,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-87",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/99",
         "gh_number": 99,
-        "status_age_human": "18h 23m"
+        "status_age_human": "20h 4m"
       },
       {
         "key": "GSL-86",
         "status": "Done",
         "status_ts": "2026-07-12T21:26:24Z",
-        "status_age_s": 61889,
+        "status_age_s": 67953,
         "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
         "commits": [
           {
@@ -2540,13 +2581,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-86",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/98",
         "gh_number": 98,
-        "status_age_human": "17h 11m"
+        "status_age_human": "18h 52m"
       },
       {
         "key": "GSL-85",
         "status": "Done",
         "status_ts": "2026-07-12T20:56:50Z",
-        "status_age_s": 63663,
+        "status_age_s": 69727,
         "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
         "commits": [
           {
@@ -2566,13 +2607,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-85",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/97",
         "gh_number": 97,
-        "status_age_human": "17h 41m"
+        "status_age_human": "19h 22m"
       },
       {
         "key": "GSL-84",
         "status": "Done",
         "status_ts": "2026-07-12T20:50:59Z",
-        "status_age_s": 64014,
+        "status_age_s": 70078,
         "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
         "commits": [
           {
@@ -2592,13 +2633,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-84",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/96",
         "gh_number": 96,
-        "status_age_human": "17h 46m"
+        "status_age_human": "19h 27m"
       },
       {
         "key": "GSL-83",
         "status": "Done",
         "status_ts": "2026-07-12T20:46:53Z",
-        "status_age_s": 64260,
+        "status_age_s": 70324,
         "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
         "commits": [
           {
@@ -2624,13 +2665,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-83",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/95",
         "gh_number": 95,
-        "status_age_human": "17h 51m"
+        "status_age_human": "19h 32m"
       },
       {
         "key": "GSL-82",
         "status": "Done",
         "status_ts": "2026-07-12T20:16:09Z",
-        "status_age_s": 66104,
+        "status_age_s": 72168,
         "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
         "commits": [
           {
@@ -2650,13 +2691,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-82",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/94",
         "gh_number": 94,
-        "status_age_human": "18h 21m"
+        "status_age_human": "20h 2m"
       },
       {
         "key": "GSL-81",
         "status": "In Progress",
         "status_ts": "2026-07-12T20:14:02Z",
-        "status_age_s": 66231,
+        "status_age_s": 72295,
         "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "commits": [
           {
@@ -2684,7 +2725,7 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-81",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/93",
         "gh_number": 93,
-        "status_age_human": "18h 23m"
+        "status_age_human": "20h 4m"
       },
       {
         "key": "GSL-80",
@@ -4926,8 +4967,8 @@
     },
     "todo": 3,
     "tracker_last_polled": "2026-07-12T21:26:24Z",
-    "tracker_age_s": 61889,
-    "tracker_age_human": "17h 11m",
+    "tracker_age_s": 67953,
+    "tracker_age_human": "18h 52m",
     "tracker_stale": true,
     "gh_base": "https://github.com/ainstance-labs/gosleep",
     "epics": [
@@ -5330,6 +5371,7 @@
         "pr": null,
         "pr_why": "no pull request names this epic",
         "tasks": [
+          "GSL-96",
           "GSL-95",
           "GSL-94",
           "GSL-93",
@@ -5337,10 +5379,10 @@
           "GSL-101",
           "GSL-91"
         ],
-        "task_count": 6,
-        "commits": 7,
+        "task_count": 7,
+        "commits": 9,
         "by_status": {
-          "unknown": 6
+          "unknown": 7
         },
         "membership": "branch",
         "membership_why": "read off the epic's branch, which the trunk does not carry yet",
@@ -5354,23 +5396,61 @@
     "open_workers": 1,
     "cap": 3,
     "free_slots": 2,
-    "cycle": 55,
+    "cycle": 56,
     "orchestrator_status": "ok",
-    "orchestrator_context_pct": 28,
+    "orchestrator_context_pct": 45,
     "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
     "known": true,
     "roster": [
       {
-        "actor": "dd3edd33",
-        "events": 13,
-        "last_ts": "2026-07-13T14:28:21Z",
+        "actor": "claude",
+        "events": 218,
+        "last_ts": "2026-07-13T16:18:08Z",
         "types": {
-          "agent.turn_ended": 9,
-          "handoff.written": 3,
+          "agent.idle": 40,
+          "dev_history.written": 37,
+          "task.completed": 26,
+          "tracker.issue.transitioned": 20,
+          "vcs.commit": 20,
+          "agent.turn_ended": 18
+        },
+        "last_age_s": 49,
+        "last_age_human": "49s"
+      },
+      {
+        "actor": "impl-ui-4",
+        "events": 1,
+        "last_ts": "2026-07-13T16:16:59Z",
+        "types": {
+          "question.posed": 1
+        },
+        "last_age_s": 118,
+        "last_age_human": "1m"
+      },
+      {
+        "actor": "dd3edd33",
+        "events": 27,
+        "last_ts": "2026-07-13T16:07:13Z",
+        "types": {
+          "agent.turn_ended": 21,
+          "handoff.written": 4,
+          "notification.raised": 1,
           "pane.started": 1
         },
-        "last_age_s": 572,
-        "last_age_human": "9m"
+        "last_age_s": 704,
+        "last_age_human": "11m"
+      },
+      {
+        "actor": "orchestrator",
+        "events": 8,
+        "last_ts": "2026-07-13T15:24:54Z",
+        "types": {
+          "question.auto_resolved": 4,
+          "decision.made": 2,
+          "handoff.written": 2
+        },
+        "last_age_s": 3243,
+        "last_age_human": "54m"
       },
       {
         "actor": "impl-ui-3",
@@ -5379,35 +5459,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 1390,
-        "last_age_human": "23m"
-      },
-      {
-        "actor": "claude",
-        "events": 205,
-        "last_ts": "2026-07-13T14:14:35Z",
-        "types": {
-          "agent.idle": 38,
-          "dev_history.written": 35,
-          "task.completed": 26,
-          "tracker.issue.transitioned": 18,
-          "vcs.commit": 18,
-          "agent.turn_ended": 16
-        },
-        "last_age_s": 1398,
-        "last_age_human": "23m"
-      },
-      {
-        "actor": "orchestrator",
-        "events": 3,
-        "last_ts": "2026-07-13T13:39:16Z",
-        "types": {
-          "decision.made": 1,
-          "handoff.written": 1,
-          "question.auto_resolved": 1
-        },
-        "last_age_s": 3517,
-        "last_age_human": "58m"
+        "last_age_s": 7454,
+        "last_age_human": "2h 4m"
       },
       {
         "actor": "ef6c3777",
@@ -5421,8 +5474,8 @@
           "task.completed": 2,
           "pane.ended": 1
         },
-        "last_age_s": 3949,
-        "last_age_human": "1h 5m"
+        "last_age_s": 10013,
+        "last_age_human": "2h 46m"
       },
       {
         "actor": "impl-ui-1",
@@ -5431,8 +5484,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 6570,
-        "last_age_human": "1h 49m"
+        "last_age_s": 12634,
+        "last_age_human": "3h 30m"
       },
       {
         "actor": "ab3b55ad5cc3bfb36",
@@ -5442,8 +5495,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 9058,
-        "last_age_human": "2h 30m"
+        "last_age_s": 15122,
+        "last_age_human": "4h 12m"
       },
       {
         "actor": "a1a48411925ec4eae",
@@ -5452,8 +5505,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 9124,
-        "last_age_human": "2h 32m"
+        "last_age_s": 15188,
+        "last_age_human": "4h 13m"
       },
       {
         "actor": "a503045747e54a2aa",
@@ -5462,8 +5515,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 9186,
-        "last_age_human": "2h 33m"
+        "last_age_s": 15250,
+        "last_age_human": "4h 14m"
       },
       {
         "actor": "ac46c415bfdb4e55a",
@@ -5472,8 +5525,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 9218,
-        "last_age_human": "2h 33m"
+        "last_age_s": 15282,
+        "last_age_human": "4h 14m"
       },
       {
         "actor": "aaea689860c6cccdb",
@@ -5482,8 +5535,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 9250,
-        "last_age_human": "2h 34m"
+        "last_age_s": 15314,
+        "last_age_human": "4h 15m"
       },
       {
         "actor": "a1f95c5ec2e2d74ae",
@@ -5492,8 +5545,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 9285,
-        "last_age_human": "2h 34m"
+        "last_age_s": 15349,
+        "last_age_human": "4h 15m"
       },
       {
         "actor": "a2ff6cd2567d65e2b",
@@ -5502,8 +5555,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 9317,
-        "last_age_human": "2h 35m"
+        "last_age_s": 15381,
+        "last_age_human": "4h 16m"
       },
       {
         "actor": "gsl90-setup",
@@ -5513,8 +5566,8 @@
           "handoff.written": 1,
           "question.posed": 1
         },
-        "last_age_s": 9835,
-        "last_age_human": "2h 43m"
+        "last_age_s": 15899,
+        "last_age_human": "4h 24m"
       },
       {
         "actor": "a690ba064bba794be",
@@ -5525,8 +5578,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 10033,
-        "last_age_human": "2h 47m"
+        "last_age_s": 16097,
+        "last_age_human": "4h 28m"
       },
       {
         "actor": "a61075657b8f0649b",
@@ -5535,8 +5588,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 10050,
-        "last_age_human": "2h 47m"
+        "last_age_s": 16114,
+        "last_age_human": "4h 28m"
       },
       {
         "actor": "poll-fill",
@@ -5548,8 +5601,8 @@
           "vcs.pr.merged": 1,
           "vcs.pr.opened": 1
         },
-        "last_age_s": 10838,
-        "last_age_human": "3h 0m"
+        "last_age_s": 16902,
+        "last_age_human": "4h 41m"
       },
       {
         "actor": "fixer-lab",
@@ -5558,8 +5611,8 @@
         "types": {
           "handoff.written": 1
         },
-        "last_age_s": 16731,
-        "last_age_human": "4h 38m"
+        "last_age_s": 22795,
+        "last_age_human": "6h 19m"
       },
       {
         "actor": "aa7a28cca3c73abc5",
@@ -5569,18 +5622,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 18798,
-        "last_age_human": "5h 13m"
-      },
-      {
-        "actor": "a198207c1aae6407d",
-        "events": 1,
-        "last_ts": "2026-07-13T09:23:53Z",
-        "types": {
-          "agent.terminated": 1
-        },
-        "last_age_s": 18840,
-        "last_age_human": "5h 14m"
+        "last_age_s": 24862,
+        "last_age_human": "6h 54m"
       }
     ],
     "blind_spots": [
@@ -6190,18 +6233,30 @@
         "cache_write": 413748,
         "running_total": 6870000,
         "running_cycles": 79
+      },
+      {
+        "raw": "cycle=55 worker=impl-ui-3 model=claude-opus-4-8 (handoff 31 self-report; транскрипт 7eabda7d-*.jsonl verify, 143 записи, других моделей нет) tokens_out=245082 tokens_in=321 cache_read=21744613 cache_write=512834 | running: cycles=80 total≈7115000 (+гэпы 2a/32/35/48-52) [GSL-96 Tasks board keyed by J",
+        "cycle": 55,
+        "worker": "impl-ui-3",
+        "model": "claude-opus-4-8",
+        "tokens_out": 245082,
+        "tokens_in": 321,
+        "cache_read": 21744613,
+        "cache_write": 512834,
+        "running_total": 7115000,
+        "running_cycles": 80
       }
     ],
     "unparsed": 2,
-    "cumulative_total": 6870000,
-    "cumulative_cycles": 79,
+    "cumulative_total": 7115000,
+    "cumulative_cycles": 80,
     "ceiling": null,
     "ceiling_source": null,
     "ceiling_why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
     "used_pct": null
   },
   "decisions": {
-    "total": 1,
+    "total": 2,
     "recent": [
       {
         "id": "d-2026-07-13-001",
@@ -6215,14 +6270,39 @@
         "made_by": "orchestrator",
         "rule": "manifest §2.default-hit-at-deadline",
         "channel": ""
+      },
+      {
+        "id": "d-2026-07-13-002",
+        "ts": "2026-07-13T14:50:40Z",
+        "re": "q-2026-07-13-002",
+        "task": "GSL-94",
+        "type": "DECISION",
+        "question": "Потолок токенов не существует ни в одном машиночитаемом источнике. manifest §5.phase-ceiling делегирует его «брифу эпика», но ни один бриф на диске числа не называет. Следствие: §5.warn-80 (80% → FYI) и §3.budget (100% → BUDGET_EXCEEDED = BLOCKER) — правила, которые НИКОГДА не могут сработать, а бюджетные часы autonomy runway читаются как unknown, из-за чего весь runway деградирует из оценки (≈ 4h) в верхнюю границу (≤ 4h). Назвать ли число — и какое?",
+        "qshape": "86a3b73afa",
+        "decision": "status quo — потолок токенов остаётся не машиночитаемым; BUDGET_EXCEEDED физически не файрится; runway читает unknown для оси бюджета; дыра автономии передана владельцу",
+        "made_by": "orchestrator",
+        "rule": "manifest §2.default-hit-at-deadline",
+        "channel": ""
       }
     ]
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "4ea51f5",
-    "dirty_paths": 25,
+    "head": "45d7066",
+    "dirty_paths": 30,
     "commits_on_date": [
+      {
+        "sha": "45d7066",
+        "author": "R",
+        "ts": "2026-07-13T16:43:27+02:00",
+        "subject": "GSL-96 [Docs] Handoff 31 — цикл 55 (impl-ui-3): F5-S3 закрыт; «источника нет» оказалось непроверенным наследством"
+      },
+      {
+        "sha": "c965089",
+        "author": "R",
+        "ts": "2026-07-13T16:40:48+02:00",
+        "subject": "GSL-96 [UI] Tasks board — keyed by Jira, epic→PR rollup (F5-S3)"
+      },
       {
         "sha": "4ea51f5",
         "author": "R",
@@ -6398,433 +6478,608 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T14:28:07Z",
-      "cycle": 55,
-      "context_pct": 28,
+      "ts": "2026-07-13T16:05:09Z",
+      "cycle": 56,
+      "context_pct": 45,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse 5"
+      "note": "pulse 14 — awaiting PROGRESS reply"
     },
     "live_status": "▶ AUTONOMOUS MODE 2026-07-13 13:38Z (fresh orchestrator, Opus 4.7, resumed из handoff 29 после roll ~14:16Z прошлой сессии на hb 80%). Phase 4 CLOSED (main @ 5fd1de2 = PR #102 merged). **Phase 5 UI in flight** on ветке `GSL-90-ui-orchestration @ 9197f88` (5 коммитов от main). **F5-S1 CLOSED** (cycle 53 impl-ui-1 DONE ~14:15Z: GSL-92 `6b4cbed` TS scaffold + Python view -290 lines + degrade-without-node · GSL-93 `d2b2a20` data contract gosleep.lab.render/3 + 7 screens · GSL-94 `9197f88` autonomy runway=min(6 axes) с limiting-axis trace (stops/degrades/completes; clear≠unknown). Smoke 174/174; hooks-verify 14/14; tsc clean; handoff 29 written). **CYCLE 54 impl-ui-2 SPAWNING ~13:38Z** — GSL-95 Questions+deadline countdown (F5-S2), MUST re-grade on page open (как staleness banner в GSL-86/89, не freeze at build time). После: GSL-96 Tasks (F5-S3) → GSL-97 Timeline+Library → GSL-98 Fleet+Cost (C5 collision передан честно: worker name в data.raw.teammate_name; impl-ui-1 не ослабил safety, скелет на actor) → GSL-99 self-health (R5.3) → GSL-100 приёмка+dev_history+contract (F5-S4) → mechanic PR → reviewer → (fixer) → finalizer → Phase 6 Mobile без остановки. Открытые DECISION: q-2026-07-12-001 (due 08:00Z passed → auto-resolving к дефолту: детерминированный скелет + claude -p опционально; reversibility high); q-2026-07-13-001 (framework UI, дефолт Preact+esbuild применён работает, deadline 2026-07-14T06Z); q-2026-07-13-002 (token ceiling manifest §5 не существует машиночитаемо, дефолт статус-кво high). 0 BLOCKER. next Jira=GSL-102+, next GH=#115. orchestrator pane=%193 | latest handoff=docs/handoff/29-2026-07-13-handoff-impl-ui-1.md | questions: open=3 (0B/3D/0C/0F) lines=3 → resolving q-2026-07-12-001 → open=2 (0B/2D/0C/0F). Fleet cap 3; open_workers=1 (impl-ui-2).",
-    "telemetry_last": "cycle=54 worker=impl-ui-2 model=claude-opus-4-8 (handoff 30 self-report; транскрипт 2198edb8-*.jsonl verify, 117 записей, других моделей нет) tokens_out=163066 tokens_in=229 cache_read=11759377 cache_write=413748 | running: cycles=79 total≈6870000 (+гэпы 2a/32/35/48-52) [GSL-95 Questions deadline countdown 164bfa5 + handoff 30 4ea51f5, F5-S2 CLOSED via mutation-tested synthetic fixture (stub-DOM + stubbed Date исполняет реальный клиентский bundle), smoke 174→182/182 (+8), tsc clean; NEW FACT: li"
+    "telemetry_last": "cycle=55 worker=impl-ui-3 model=claude-opus-4-8 (handoff 31 self-report; транскрипт 7eabda7d-*.jsonl verify, 143 записи, других моделей нет) tokens_out=245082 tokens_in=321 cache_read=21744613 cache_write=512834 | running: cycles=80 total≈7115000 (+гэпы 2a/32/35/48-52) [GSL-96 Tasks board keyed by Jira c965089 + handoff 31 45d7066, F5-S3 CLOSED, smoke 182→192/192 (+10), mutation-tested 4/4 (frozen age, commit⇒Done, issue-dressed-as-PR, extrapolated issue number — каждая краснит РОВНО свой тест),"
   },
   "library": {
-    "digests": [
+    "sections": [
       {
-        "href": "../digest/2026-07-13-morning.md",
-        "name": "2026-07-13-morning.md",
-        "title": "Morning digest — 2026-07-13 (night run: 05:10 → 14:18)"
+        "key": "handoffs",
+        "label": "Handoffs",
+        "source": "docs/handoff/*.md",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../handoff/ORCHESTRATION-STATE.md",
+            "name": "ORCHESTRATION-STATE.md",
+            "title": "ORCHESTRATION-STATE — gosleep (Orchestration Harness)"
+          },
+          {
+            "href": "../../handoff/31-2026-07-13-handoff-impl-ui-3.md",
+            "name": "31-2026-07-13-handoff-impl-ui-3.md",
+            "title": "Handoff — gosleep — 2026-07-13 (цикл 55, impl-ui-3: GSL-96 — доска задач, F5-S3)"
+          },
+          {
+            "href": "../../handoff/30-2026-07-13-handoff-impl-ui-2.md",
+            "name": "30-2026-07-13-handoff-impl-ui-2.md",
+            "title": "Handoff — gosleep — 2026-07-13 (цикл 54, impl-ui-2: GSL-95 — обратный отсчёт дедлайнов, F5-S2)"
+          },
+          {
+            "href": "../../handoff/29-2026-07-13-handoff-impl-ui-1.md",
+            "name": "29-2026-07-13-handoff-impl-ui-1.md",
+            "title": "Handoff — gosleep — 2026-07-13 (цикл 53, impl-ui-1: фундамент Фазы 5 — GSL-92/93/94)"
+          },
+          {
+            "href": "../../handoff/28-2026-07-13-handoff-gsl90-setup.md",
+            "name": "28-2026-07-13-handoff-gsl90-setup.md",
+            "title": "Handoff — gosleep — 2026-07-13 (цикл 52, gsl90-setup: Фаза 5 «UI» развёрнута, ветка запушена)"
+          },
+          {
+            "href": "../../handoff/27-2026-07-13-handoff-fixer-lab.md",
+            "name": "27-2026-07-13-handoff-fixer-lab.md",
+            "title": "Handoff — gosleep — 2026-07-13 (цикл 50, fixer-lab: все находки ревью закрыты, PR #102 готов к мёржу)"
+          },
+          {
+            "href": "../../handoff/26-2026-07-13-handoff-impl-lab-3.md",
+            "name": "26-2026-07-13-handoff-impl-lab-3.md",
+            "title": "Handoff — gosleep — 2026-07-13 (Фаза 4 IMPL закрыта 8/8: контракт свежести, бэкфилл во времени — и страница, п"
+          },
+          {
+            "href": "../../handoff/25-2026-07-12-handoff-phase4-mid-flight-roll.md",
+            "name": "25-2026-07-12-handoff-phase4-mid-flight-roll.md",
+            "title": "Handoff — gosleep — 2026-07-12 (Phase 4 impl 5/8 done; fresh orchestrator for impl-lab-3 → mechanic → reviewer"
+          },
+          {
+            "href": "../../handoff/24-2026-07-12-handoff-impl-lab-2.md",
+            "name": "24-2026-07-12-handoff-impl-lab-2.md",
+            "title": "Handoff — gosleep — 2026-07-12 (Фаза 4: у лаборатории появился летописец — и он сразу поймал таймлайн на врань"
+          },
+          {
+            "href": "../../handoff/23-2026-07-12-handoff-impl-lab-1.md",
+            "name": "23-2026-07-12-handoff-impl-lab-1.md",
+            "title": "Handoff — gosleep — 2026-07-12 (Фаза 4: фундамент лаборатории готов — GSL-83/84/85 легли, ночь пишет себя сама"
+          },
+          {
+            "href": "../../handoff/22-2026-07-12-handoff-gsl81-setup.md",
+            "name": "22-2026-07-12-handoff-gsl81-setup.md",
+            "title": "Handoff — gosleep — 2026-07-12 (эпик GSL-81 «Laboratory» открыт, леджер закоммичен, ветка запушена)"
+          },
+          {
+            "href": "../../handoff/21-2026-07-12-handoff-gsl72-merge-tail-fresh-orchestrator.md",
+            "name": "21-2026-07-12-handoff-gsl72-merge-tail-fresh-orchestrator.md",
+            "title": "Handoff — gosleep — 2026-07-12 (для fresh-оркестратора; GSL-72 полностью готов и верифицирован, остался ТОЛЬКО"
+          },
+          {
+            "href": "../../handoff/20-2026-07-10-handoff-gsl72-fix-tail-orchestrator-roll.md",
+            "name": "20-2026-07-10-handoff-gsl72-fix-tail-orchestrator-roll.md",
+            "title": "Handoff — gosleep — 2026-07-10 (остановка по приказу владельца; GSL-72 готов на 100%, остался ТОЛЬКО merge-хво"
+          },
+          {
+            "href": "../../handoff/19-2026-07-10-handoff-gsl72-pause-orchestrator-roll.md",
+            "name": "19-2026-07-10-handoff-gsl72-pause-orchestrator-roll.md",
+            "title": "Handoff — gosleep — 2026-07-10 (плановая остановка оркестратора; эпик GSL-72 сдан контентно, остался PR-хвост)"
+          },
+          {
+            "href": "../../handoff/18-2026-07-10-handoff-gsl65-pulse-complete.md",
+            "name": "18-2026-07-10-handoff-gsl65-pulse-complete.md",
+            "title": "Handoff — gosleep — 2026-07-10 (GSL-65 complete: ядро «владелец спит» готово)"
+          },
+          {
+            "href": "../../handoff/17-2026-07-10-handoff-gsl65-midflight-roll.md",
+            "name": "17-2026-07-10-handoff-gsl65-midflight-roll.md",
+            "title": "Handoff — gosleep — 2026-07-10 (GSL-65 mid-flight: roll-point оркестратора на 66% контекста)"
+          },
+          {
+            "href": "../../handoff/16-2026-07-10-handoff-gsl58-anatomy-complete.md",
+            "name": "16-2026-07-10-handoff-gsl58-anatomy-complete.md",
+            "title": "Handoff — gosleep — 2026-07-10 (GSL-58 complete: анатомия AutoSK «по молекулам» смержена)"
+          },
+          {
+            "href": "../../handoff/15-2026-07-10-handoff-gsl49-watchdog-complete.md",
+            "name": "15-2026-07-10-handoff-gsl49-watchdog-complete.md",
+            "title": "Handoff — gosleep — 2026-07-10 (GSL-49 watchdog complete: самонаблюдение построено и смержено)"
+          },
+          {
+            "href": "../../handoff/14-2026-07-09-handoff-gsl41-complete.md",
+            "name": "14-2026-07-09-handoff-gsl41-complete.md",
+            "title": "Handoff — gosleep — 2026-07-09 (GSL-41 complete: research → 4 отчёта EN+RU → PRD; всё смержено)"
+          },
+          {
+            "href": "../../handoff/13-2026-07-07-handoff-gsl41-research-pause.md",
+            "name": "13-2026-07-07-handoff-gsl41-research-pause.md",
+            "title": "Handoff — gosleep — 2026-07-07 (GSL-41 research: PAUSE по лимитам, середина фазы)"
+          },
+          {
+            "href": "../../handoff/12-2026-07-01-handoff-hardening-arc-complete.md",
+            "name": "12-2026-07-01-handoff-hardening-arc-complete.md",
+            "title": "Handoff — gosleep — 2026-07-01 (hardening arc complete: v2 + v3 + eval-quality all merged)"
+          },
+          {
+            "href": "../../handoff/11-2026-06-29-handoff-v3-campaign-complete.md",
+            "name": "11-2026-06-29-handoff-v3-campaign-complete.md",
+            "title": "Handoff — gosleep — 2026-06-29 (v2+v3 hardening campaign complete; follow-ups pending owner)"
+          },
+          {
+            "href": "../../handoff/10-2026-06-29-handoff-v2-mixed-owner-decision.md",
+            "name": "10-2026-06-29-handoff-v2-mixed-owner-decision.md",
+            "title": "Handoff — gosleep — 2026-06-29 (v2 done, eval MIXED, owner decision pending)"
+          },
+          {
+            "href": "../../handoff/09-2026-06-29-handoff-finalize-v2-pr.md",
+            "name": "09-2026-06-29-handoff-finalize-v2-pr.md",
+            "title": "Handoff 09 — 2026-06-29 — GSL-24 v2 PR open, owner decision pending"
+          },
+          {
+            "href": "../../handoff/08-2026-06-29-handoff-hardening-v2-complete.md",
+            "name": "08-2026-06-29-handoff-hardening-v2-complete.md",
+            "title": "Handoff 08 — 2026-06-29 — GSL-24 Harness Hardening v2 Complete"
+          },
+          {
+            "href": "../../handoff/07-2026-06-29-handoff-v2-execution.md",
+            "name": "07-2026-06-29-handoff-v2-execution.md",
+            "title": "Handoff — gosleep — 2026-06-29 (v2 execution baton)"
+          },
+          {
+            "href": "../../handoff/06-2026-06-29-handoff-eval-validation.md",
+            "name": "06-2026-06-29-handoff-eval-validation.md",
+            "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-29 (eval validation done; incident + controls; owner decis"
+          },
+          {
+            "href": "../../handoff/05-2026-06-28-handoff-vendoring-complete.md",
+            "name": "05-2026-06-28-handoff-vendoring-complete.md",
+            "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-28 (vendoring complete; harness now self-contained; 2 owne"
+          },
+          {
+            "href": "../../handoff/04-2026-06-27-handoff-gsl7-hardening-pr-open.md",
+            "name": "04-2026-06-27-handoff-gsl7-hardening-pr-open.md",
+            "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-27 (autonomous hardening run complete; GSL-7 PR #16 open, "
+          },
+          {
+            "href": "../../handoff/03-2026-06-26-handoff-gsl1-complete-pane-mode.md",
+            "name": "03-2026-06-26-handoff-gsl1-complete-pane-mode.md",
+            "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-26 (GSL-1 tasks complete; teammate pane-mode fix; vendorin"
+          },
+          {
+            "href": "../../handoff/02-2026-06-25-handoff-skill-sync.md",
+            "name": "02-2026-06-25-handoff-skill-sync.md",
+            "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-25 (skill-sync)"
+          },
+          {
+            "href": "../../handoff/01-2026-06-09-handoff-harness.md",
+            "name": "01-2026-06-09-handoff-harness.md",
+            "title": "Handoff — Orchestration Harness — 2026-06-09"
+          }
+        ],
+        "count": 32
       },
       {
-        "href": "../digest/2026-07-12-morning.md",
-        "name": "2026-07-12-morning.md",
-        "title": "Morning digest — 2026-07-12 (night run: 20:43 → 21:38)"
+        "key": "dev_history",
+        "label": "Dev history",
+        "source": "docs/dev_history/GSL-*.md",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../dev_history/GSL-97-phase5-cycle56-timeline-library-filter.md",
+            "name": "GSL-97-phase5-cycle56-timeline-library-filter.md",
+            "title": "GSL-97 — Timeline + Library + клиентский JS-фильтр (Фаза 5, цикл 56, impl-ui-4)"
+          },
+          {
+            "href": "../../dev_history/GSL-96-phase5-cycle55-tasks-board.md",
+            "name": "GSL-96-phase5-cycle55-tasks-board.md",
+            "title": "GSL-96 — Tasks: доска, keyed по Jira, + epic→PR rollup (Фаза 5, F5-S3)"
+          },
+          {
+            "href": "../../dev_history/GSL-95-phase5-cycle54-questions-countdown.md",
+            "name": "GSL-95-phase5-cycle54-questions-countdown.md",
+            "title": "GSL-95 — Questions: обратный отсчёт дедлайнов (Фаза 5, F5-S2)"
+          },
+          {
+            "href": "../../dev_history/GSL-94-phase5-cycle53-runway-indicator.md",
+            "name": "GSL-94-phase5-cycle53-runway-indicator.md",
+            "title": "GSL-94 — Autonomy runway: шесть часов, и отказ округлять в удобную сторону"
+          },
+          {
+            "href": "../../dev_history/GSL-93-phase5-cycle53-data-contract-skeleton.md",
+            "name": "GSL-93-phase5-cycle53-data-contract-skeleton.md",
+            "title": "GSL-93 — Контракт данных и семь экранов: дашборд, который называет то, чего не видит"
+          },
+          {
+            "href": "../../dev_history/GSL-92-phase5-cycle53-ts-scaffold.md",
+            "name": "GSL-92-phase5-cycle53-ts-scaffold.md",
+            "title": "GSL-92 — TypeScript-скаффолд: view-слой уехал из Python, а вместе с ним уехало и право лаборатории соврать, чт"
+          },
+          {
+            "href": "../../dev_history/GSL-91-phase5-cycle52-ledger.md",
+            "name": "GSL-91-phase5-cycle52-ledger.md",
+            "title": "GSL-91 — Цикл 52: леджер закрытия Фазы 4 и разбивка Фазы 5"
+          },
+          {
+            "href": "../../dev_history/GSL-9-harden-idempotent-creates-reconcile-ids.md",
+            "name": "GSL-9-harden-idempotent-creates-reconcile-ids.md",
+            "title": "GSL-9 — Strengthen idempotent find-or-create + reconcile late-arriving IDs"
+          },
+          {
+            "href": "../../dev_history/GSL-89-phase4-cycle50-review-fixes.md",
+            "name": "GSL-89-phase4-cycle50-review-fixes.md",
+            "title": "GSL-89 — Цикл 50: фиксы по REVIEW-gsl81 — лаборатория перестаёт врать о себе"
+          },
+          {
+            "href": "../../dev_history/GSL-89-phase4-cycle47-close.md",
+            "name": "GSL-89-phase4-cycle47-close.md",
+            "title": "GSL-89 — Закрытие Фазы 4: контракт свежести, бэкфилл во времени — и страница, которая больше не врёт «Live» на"
+          },
+          {
+            "href": "../../dev_history/GSL-88-phase4-cycle47-handoff-written.md",
+            "name": "GSL-88-phase4-cycle47-handoff-written.md",
+            "title": "GSL-88 — Хендофф сам объявляет себя таймлайну: одна строка, которую хук написать не может"
+          },
+          {
+            "href": "../../dev_history/GSL-87-phase4-cycle46-poll-fill.md",
+            "name": "GSL-87-phase4-cycle46-poll-fill.md",
+            "title": "GSL-87 — poll-fill: сверка с внешней правдой. Хуки видят только то, что прошло через агента — и уже соврали"
+          },
+          {
+            "href": "../../dev_history/GSL-86-phase4-cycle46-chronicler.md",
+            "name": "GSL-86-phase4-cycle46-chronicler.md",
+            "title": "GSL-86 — Летописец: детерминированный регенератор `status.json` + `site/` + утреннего дайджеста, у которого мё"
+          },
+          {
+            "href": "../../dev_history/GSL-85-phase4-cycle45-docs-lab-layout.md",
+            "name": "GSL-85-phase4-cycle45-docs-lab-layout.md",
+            "title": "GSL-85 — `docs/lab/` layout: схема, retention и дисциплина записи (append-only + atomic), проверенные конкурен"
+          },
+          {
+            "href": "../../dev_history/GSL-84-phase4-cycle45-lab-emit-semantic.md",
+            "name": "GSL-84-phase4-cycle45-lab-emit-semantic.md",
+            "title": "GSL-84 — `lab-emit`: семантические события (cycle/question/decision/verify) поверх одного писателя"
+          },
+          {
+            "href": "../../dev_history/GSL-83-phase4-cycle45-hooks-lab-log.md",
+            "name": "GSL-83-phase4-cycle45-hooks-lab-log.md",
+            "title": "GSL-83 — T1 event layer: хуки Claude Code + `lab-log.sh` (envelope → дневной jsonl, 0 токенов)"
+          },
+          {
+            "href": "../../dev_history/GSL-82-phase4-cycle44-ledger.md",
+            "name": "GSL-82-phase4-cycle44-ledger.md",
+            "title": "GSL-82 — Леджер-коммит: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL"
+          },
+          {
+            "href": "../../dev_history/GSL-80-phase-gsl72-summary.md",
+            "name": "GSL-80-phase-gsl72-summary.md",
+            "title": "GSL-80 — Сводка фазы GSL-72: Question buffer + decision manifest + morning digest (PRD Phase 3)"
+          },
+          {
+            "href": "../../dev_history/GSL-8-harden-on-disk-handoff-first.md",
+            "name": "GSL-8-harden-on-disk-handoff-first.md",
+            "title": "GSL-8 — Recovery: fall back to on-disk handoff FIRST before live probes"
+          },
+          {
+            "href": "../../dev_history/GSL-79-phase-gsl72-pulse-deltas.md",
+            "name": "GSL-79-phase-gsl72-pulse-deltas.md",
+            "title": "GSL-79 — PULSE-дельты: scan queue, apply-at-deadline, reroute; LIVE-STATUS questions-поле"
+          },
+          {
+            "href": "../../dev_history/GSL-78-phase-gsl72-morning-digest.md",
+            "name": "GSL-78-phase-gsl72-morning-digest.md",
+            "title": "GSL-78 — Morning digest: шаблон + секции + provenance-цитаты"
+          },
+          {
+            "href": "../../dev_history/GSL-77-phase-gsl72-decision-log-learning-loop.md",
+            "name": "GSL-77-phase-gsl72-decision-log-learning-loop.md",
+            "title": "GSL-77 — decisions/log.jsonl + learning loop (manifest candidates)"
+          },
+          {
+            "href": "../../dev_history/GSL-76-phase-gsl72-decision-manifest.md",
+            "name": "GSL-76-phase-gsl72-decision-manifest.md",
+            "title": "GSL-76 — decisions/manifest.md: owner-sovereign манифест, 6 секций (seed из Standing rules + denylist)"
+          },
+          {
+            "href": "../../dev_history/GSL-75-phase-gsl72-lab-emit-queue.md",
+            "name": "GSL-75-phase-gsl72-lab-emit-queue.md",
+            "title": "GSL-75 — lab-emit: queue.jsonl схема + dedup helper (append-only, patch-записи)"
+          },
+          {
+            "href": "../../dev_history/GSL-74-phase-gsl72-question-typology.md",
+            "name": "GSL-74-phase-gsl72-question-typology.md",
+            "title": "GSL-74 — Типология вопросов: 4 типа, 4 поведения (skill + worker-template)"
+          },
+          {
+            "href": "../../dev_history/GSL-73-phase-gsl72-cycle1-ledger.md",
+            "name": "GSL-73-phase-gsl72-cycle1-ledger.md",
+            "title": "GSL-73 — Commit orchestration ledger (handoffs 17, 18 + STATE)"
+          },
+          {
+            "href": "../../dev_history/GSL-71-phase-gsl65-heartbeat-ok-docs.md",
+            "name": "GSL-71-phase-gsl65-heartbeat-ok-docs.md",
+            "title": "GSL-71 — HEARTBEAT_OK fast-path + сводка фазы GSL-65 (PRD Phase 2)"
+          },
+          {
+            "href": "../../dev_history/GSL-70-phase-gsl65-circuit-breaker.md",
+            "name": "GSL-70-phase-gsl65-circuit-breaker.md",
+            "title": "GSL-70 — Circuit-breaker: same-error/output-decline + cooldown/HALF_OPEN + ручной сброс"
+          },
+          {
+            "href": "../../dev_history/GSL-69-phase-gsl65-quota-auto-wait.md",
+            "name": "GSL-69-phase-gsl65-quota-auto-wait.md",
+            "title": "GSL-69 — Quota auto-wait: детекция session-limit + quiesce/resume + ETA"
+          },
+          {
+            "href": "../../dev_history/GSL-68-phase-gsl65-night-mode.md",
+            "name": "GSL-68-phase-gsl65-night-mode.md",
+            "title": "GSL-68 — Night mode / activeHours — режим и переключение поведения вопросов"
+          },
+          {
+            "href": "../../dev_history/GSL-67-phase-gsl65-pulse-cadence.md",
+            "name": "GSL-67-phase-gsl65-pulse-cadence.md",
+            "title": "GSL-67 — Таблица каденции пульса (cache-окна) + правило armed-wake-up"
+          },
+          {
+            "href": "../../dev_history/GSL-66-phase-gsl65-cycle1-ledger.md",
+            "name": "GSL-66-phase-gsl65-cycle1-ledger.md",
+            "title": "GSL-66 — Commit orchestration ledger (handoff 16 + STATE)"
+          },
+          {
+            "href": "../../dev_history/GSL-64-phase-gsl58-report.md",
+            "name": "GSL-64-phase-gsl58-report.md",
+            "title": "GSL-64 — Отчёт AutoSK Anatomy — EN+RU dashboard"
+          },
+          {
+            "href": "../../dev_history/GSL-63-phase-gsl58-site-delta.md",
+            "name": "GSL-63-phase-gsl58-site-delta.md",
+            "title": "GSL-63 — Re-fetch autosk.app — zero delta, проект FROZEN"
+          },
+          {
+            "href": "../../dev_history/GSL-62-phase-gsl58-unmerged-prs.md",
+            "name": "GSL-62-phase-gsl58-unmerged-prs.md",
+            "title": "GSL-62 — Разбор unmerged PRs autosk — 6 осиротевших PR одного контрибьютора"
+          },
+          {
+            "href": "../../dev_history/GSL-61-phase-gsl58-tui.md",
+            "name": "GSL-61-phase-gsl58-tui.md",
+            "title": "GSL-61 — Go TUI internals autosk — gocui/lazygit стек, 11 паттернов"
+          },
+          {
+            "href": "../../dev_history/GSL-60-phase-gsl58-pi-agent.md",
+            "name": "GSL-60-phase-gsl58-pi-agent.md",
+            "title": "GSL-60 — pi-agent internals — помодульный разбор (earendil-works/pi, code-only)"
+          },
+          {
+            "href": "../../dev_history/GSL-6-harden-mandatory-dated-handoff.md",
+            "name": "GSL-6-harden-mandatory-dated-handoff.md",
+            "title": "GSL-6 — Require a dated handoff at every orchestrator session boundary"
+          },
+          {
+            "href": "../../dev_history/GSL-59-phase-gsl58-cycle1-ledger.md",
+            "name": "GSL-59-phase-gsl58-cycle1-ledger.md",
+            "title": "GSL-59 — Commit orchestration ledger (handoff 15 + STATE)"
+          },
+          {
+            "href": "../../dev_history/GSL-57-phase-gsl49-runbook.md",
+            "name": "GSL-57-phase-gsl49-runbook.md",
+            "title": "GSL-57 — Runbook: watchdog operations for the owner"
+          }
+        ],
+        "count": 40
+      },
+      {
+        "key": "reviews",
+        "label": "Reviews",
+        "source": "docs/reviews/REVIEW-*.md",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../reviews/REVIEW-hardening-skill.md",
+            "name": "REVIEW-hardening-skill.md",
+            "title": "Skill Hardening Review (commit 9022bec)"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl81.md",
+            "name": "REVIEW-gsl81.md",
+            "title": "REVIEW — GSL-81 (Phase 4 Laboratory) — PR #102 @ 5be2adc"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl72.md",
+            "name": "REVIEW-gsl72.md",
+            "title": "Boundary review — Epic GSL-72 «Question buffer + decision manifest» (PRD Phase 3)"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl65.md",
+            "name": "REVIEW-gsl65.md",
+            "title": "REVIEW — PR #82 (GSL-65 Self-pulse + night mode, PRD Phase 2)"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl58.md",
+            "name": "REVIEW-gsl58.md",
+            "title": "REVIEW — PR #74 (GSL-58 AutoSK Anatomy v2)"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl49.md",
+            "name": "REVIEW-gsl49.md",
+            "title": "Review — PR #66 «GSL-49 Watchdog над оркестратором» (ветка GSL-49-orchestrator-watchdog)"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl41.md",
+            "name": "REVIEW-gsl41.md",
+            "title": "Review — PR #56 · GSL-41 Orchestration deep-research (reports + PRD)"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl37.md",
+            "name": "REVIEW-gsl37.md",
+            "title": "REVIEW — PR #47 / Epic GSL-37 — 2026-07-01"
+          },
+          {
+            "href": "../../reviews/REVIEW-gsl31.md",
+            "name": "REVIEW-gsl31.md",
+            "title": "Review: PR #42 — GSL-31 Close eval-validated gaps"
+          }
+        ],
+        "count": 9
+      },
+      {
+        "key": "rca",
+        "label": "Incidents / RCA",
+        "source": "docs/reports/**/*incident*",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../reports/token-overage-incident-2026-06-28/index.html",
+            "name": "index.html",
+            "title": "Anthropic Token Overage — Support Request Pack (2026-06-28 incident)"
+          },
+          {
+            "href": "../../reports/bugs/2026-07-10-fable5-silent-turns-incident.md",
+            "name": "2026-07-10-fable5-silent-turns-incident.md",
+            "title": "Инцидент-репорт для службы поддержки Anthropic: «немые ходы» оркестратора на Claude Fable 5"
+          }
+        ],
+        "count": 2
+      },
+      {
+        "key": "reports",
+        "label": "Reports",
+        "source": "docs/reports/*/index.html",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../reports/orchestrator-landscape/index.html",
+            "name": "index.html",
+            "title": "Orchestrator Landscape — GSL-41 Research Dashboard"
+          },
+          {
+            "href": "../../reports/loop-engineering/index.html",
+            "name": "index.html",
+            "title": "Loop Engineering — Field Guide & Adoption Plan"
+          },
+          {
+            "href": "../../reports/headless-and-supervision/index.html",
+            "name": "index.html",
+            "title": "Headless Claude (claude -p), Subscription &amp; Orchestrator Supervision — gosleep report"
+          },
+          {
+            "href": "../../reports/autosk-anatomy/index.html",
+            "name": "index.html",
+            "title": "AutoSK Anatomy — bone by bone (GSL-58)"
+          },
+          {
+            "href": "../../reports/autonomy-lab-ui/index.html",
+            "name": "index.html",
+            "title": "GoSleep — Autonomy, Question Buffer, Laboratory, UI &amp; Mobile"
+          }
+        ],
+        "count": 5
+      },
+      {
+        "key": "research",
+        "label": "Research",
+        "source": "docs/research/*/*.md",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../research/2026-07-10-autosk-anatomy/README.md",
+            "name": "README.md",
+            "title": "AutoSK Anatomy v2 — research findings (Epic GSL-58)"
+          },
+          {
+            "href": "../../research/2026-07-10-autosk-anatomy/05-site-delta.md",
+            "name": "05-site-delta.md",
+            "title": "AutoSK site re-fetch & delta (GSL-63, GH #72)"
+          },
+          {
+            "href": "../../research/2026-07-10-autosk-anatomy/04-unmerged-prs.md",
+            "name": "04-unmerged-prs.md",
+            "title": "AutoSK unmerged PRs — full read (GSL-62, GH #71)"
+          },
+          {
+            "href": "../../research/2026-07-10-autosk-anatomy/03-tui.md",
+            "name": "03-tui.md",
+            "title": "AutoSK Go CLI/TUI (`autosk lazy`) — internals (GSL-61, GH #70)"
+          },
+          {
+            "href": "../../research/2026-07-10-autosk-anatomy/02-pi-agent.md",
+            "name": "02-pi-agent.md",
+            "title": "pi-agent — the second agent runtime of autosk, dissected (GSL-60, GH #69)"
+          },
+          {
+            "href": "../../research/2026-07-07-orchestration/README.md",
+            "name": "README.md",
+            "title": ""
+          },
+          {
+            "href": "../../research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md",
+            "name": "05-lab-ui-mobile-autonomy.md",
+            "title": "05 — The \"Laboratory\": auto-documentation + admin UI, autonomy & question buffer, orchestration UI, mobile"
+          },
+          {
+            "href": "../../research/2026-07-07-orchestration/04-loop-engineering.md",
+            "name": "04-loop-engineering.md",
+            "title": "Loop engineering — community state of the art for autonomous agent loops (2025–2026)"
+          },
+          {
+            "href": "../../research/2026-07-07-orchestration/03-headless-subscription-landscape.md",
+            "name": "03-headless-subscription-landscape.md",
+            "title": "03 — Headless mode (`claude -p`), subscription compatibility, and the orchestrator landscape"
+          },
+          {
+            "href": "../../research/2026-07-07-orchestration/02-warren-overstory.md",
+            "name": "02-warren-overstory.md",
+            "title": "Warren & Overstory — deep dive (jayminwest / os-eco)"
+          },
+          {
+            "href": "../../research/2026-07-07-orchestration/01-autosk.md",
+            "name": "01-autosk.md",
+            "title": "AutoSK — deep dive (GSL-41 orchestration research)"
+          }
+        ],
+        "count": 11
+      },
+      {
+        "key": "digests",
+        "label": "Morning digests",
+        "source": "docs/lab/digest/*-morning.md",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../digest/2026-07-13-morning.md",
+            "name": "2026-07-13-morning.md",
+            "title": "Morning digest — 2026-07-13 (night run: 05:10 → 16:07)"
+          },
+          {
+            "href": "../digest/2026-07-12-morning.md",
+            "name": "2026-07-12-morning.md",
+            "title": "Morning digest — 2026-07-12 (night run: 20:43 → 21:38)"
+          }
+        ],
+        "count": 2
+      },
+      {
+        "key": "prd",
+        "label": "PRD",
+        "source": "docs/prd/*.md",
+        "dir_exists": true,
+        "items": [
+          {
+            "href": "../../prd/README.md",
+            "name": "README.md",
+            "title": "PRD index — GoSleep"
+          },
+          {
+            "href": "../../prd/PRD-gosleep-evolution.md",
+            "name": "PRD-gosleep-evolution.md",
+            "title": "PRD — Эволюция GoSleep: «оркестратор, при котором владелец спит»"
+          }
+        ],
+        "count": 2
       }
     ],
-    "handoffs": [
-      {
-        "href": "../../handoff/ORCHESTRATION-STATE.md",
-        "name": "ORCHESTRATION-STATE.md",
-        "title": "ORCHESTRATION-STATE — gosleep (Orchestration Harness)"
-      },
-      {
-        "href": "../../handoff/30-2026-07-13-handoff-impl-ui-2.md",
-        "name": "30-2026-07-13-handoff-impl-ui-2.md",
-        "title": "Handoff — gosleep — 2026-07-13 (цикл 54, impl-ui-2: GSL-95 — обратный отсчёт дедлайнов, F5-S2)"
-      },
-      {
-        "href": "../../handoff/29-2026-07-13-handoff-impl-ui-1.md",
-        "name": "29-2026-07-13-handoff-impl-ui-1.md",
-        "title": "Handoff — gosleep — 2026-07-13 (цикл 53, impl-ui-1: фундамент Фазы 5 — GSL-92/93/94)"
-      },
-      {
-        "href": "../../handoff/28-2026-07-13-handoff-gsl90-setup.md",
-        "name": "28-2026-07-13-handoff-gsl90-setup.md",
-        "title": "Handoff — gosleep — 2026-07-13 (цикл 52, gsl90-setup: Фаза 5 «UI» развёрнута, ветка запушена)"
-      },
-      {
-        "href": "../../handoff/27-2026-07-13-handoff-fixer-lab.md",
-        "name": "27-2026-07-13-handoff-fixer-lab.md",
-        "title": "Handoff — gosleep — 2026-07-13 (цикл 50, fixer-lab: все находки ревью закрыты, PR #102 готов к мёржу)"
-      },
-      {
-        "href": "../../handoff/26-2026-07-13-handoff-impl-lab-3.md",
-        "name": "26-2026-07-13-handoff-impl-lab-3.md",
-        "title": "Handoff — gosleep — 2026-07-13 (Фаза 4 IMPL закрыта 8/8: контракт свежести, бэкфилл во времени — и страница, п"
-      },
-      {
-        "href": "../../handoff/25-2026-07-12-handoff-phase4-mid-flight-roll.md",
-        "name": "25-2026-07-12-handoff-phase4-mid-flight-roll.md",
-        "title": "Handoff — gosleep — 2026-07-12 (Phase 4 impl 5/8 done; fresh orchestrator for impl-lab-3 → mechanic → reviewer"
-      },
-      {
-        "href": "../../handoff/24-2026-07-12-handoff-impl-lab-2.md",
-        "name": "24-2026-07-12-handoff-impl-lab-2.md",
-        "title": "Handoff — gosleep — 2026-07-12 (Фаза 4: у лаборатории появился летописец — и он сразу поймал таймлайн на врань"
-      },
-      {
-        "href": "../../handoff/23-2026-07-12-handoff-impl-lab-1.md",
-        "name": "23-2026-07-12-handoff-impl-lab-1.md",
-        "title": "Handoff — gosleep — 2026-07-12 (Фаза 4: фундамент лаборатории готов — GSL-83/84/85 легли, ночь пишет себя сама"
-      },
-      {
-        "href": "../../handoff/22-2026-07-12-handoff-gsl81-setup.md",
-        "name": "22-2026-07-12-handoff-gsl81-setup.md",
-        "title": "Handoff — gosleep — 2026-07-12 (эпик GSL-81 «Laboratory» открыт, леджер закоммичен, ветка запушена)"
-      },
-      {
-        "href": "../../handoff/21-2026-07-12-handoff-gsl72-merge-tail-fresh-orchestrator.md",
-        "name": "21-2026-07-12-handoff-gsl72-merge-tail-fresh-orchestrator.md",
-        "title": "Handoff — gosleep — 2026-07-12 (для fresh-оркестратора; GSL-72 полностью готов и верифицирован, остался ТОЛЬКО"
-      },
-      {
-        "href": "../../handoff/20-2026-07-10-handoff-gsl72-fix-tail-orchestrator-roll.md",
-        "name": "20-2026-07-10-handoff-gsl72-fix-tail-orchestrator-roll.md",
-        "title": "Handoff — gosleep — 2026-07-10 (остановка по приказу владельца; GSL-72 готов на 100%, остался ТОЛЬКО merge-хво"
-      },
-      {
-        "href": "../../handoff/19-2026-07-10-handoff-gsl72-pause-orchestrator-roll.md",
-        "name": "19-2026-07-10-handoff-gsl72-pause-orchestrator-roll.md",
-        "title": "Handoff — gosleep — 2026-07-10 (плановая остановка оркестратора; эпик GSL-72 сдан контентно, остался PR-хвост)"
-      },
-      {
-        "href": "../../handoff/18-2026-07-10-handoff-gsl65-pulse-complete.md",
-        "name": "18-2026-07-10-handoff-gsl65-pulse-complete.md",
-        "title": "Handoff — gosleep — 2026-07-10 (GSL-65 complete: ядро «владелец спит» готово)"
-      },
-      {
-        "href": "../../handoff/17-2026-07-10-handoff-gsl65-midflight-roll.md",
-        "name": "17-2026-07-10-handoff-gsl65-midflight-roll.md",
-        "title": "Handoff — gosleep — 2026-07-10 (GSL-65 mid-flight: roll-point оркестратора на 66% контекста)"
-      },
-      {
-        "href": "../../handoff/16-2026-07-10-handoff-gsl58-anatomy-complete.md",
-        "name": "16-2026-07-10-handoff-gsl58-anatomy-complete.md",
-        "title": "Handoff — gosleep — 2026-07-10 (GSL-58 complete: анатомия AutoSK «по молекулам» смержена)"
-      },
-      {
-        "href": "../../handoff/15-2026-07-10-handoff-gsl49-watchdog-complete.md",
-        "name": "15-2026-07-10-handoff-gsl49-watchdog-complete.md",
-        "title": "Handoff — gosleep — 2026-07-10 (GSL-49 watchdog complete: самонаблюдение построено и смержено)"
-      },
-      {
-        "href": "../../handoff/14-2026-07-09-handoff-gsl41-complete.md",
-        "name": "14-2026-07-09-handoff-gsl41-complete.md",
-        "title": "Handoff — gosleep — 2026-07-09 (GSL-41 complete: research → 4 отчёта EN+RU → PRD; всё смержено)"
-      },
-      {
-        "href": "../../handoff/13-2026-07-07-handoff-gsl41-research-pause.md",
-        "name": "13-2026-07-07-handoff-gsl41-research-pause.md",
-        "title": "Handoff — gosleep — 2026-07-07 (GSL-41 research: PAUSE по лимитам, середина фазы)"
-      },
-      {
-        "href": "../../handoff/12-2026-07-01-handoff-hardening-arc-complete.md",
-        "name": "12-2026-07-01-handoff-hardening-arc-complete.md",
-        "title": "Handoff — gosleep — 2026-07-01 (hardening arc complete: v2 + v3 + eval-quality all merged)"
-      },
-      {
-        "href": "../../handoff/11-2026-06-29-handoff-v3-campaign-complete.md",
-        "name": "11-2026-06-29-handoff-v3-campaign-complete.md",
-        "title": "Handoff — gosleep — 2026-06-29 (v2+v3 hardening campaign complete; follow-ups pending owner)"
-      },
-      {
-        "href": "../../handoff/10-2026-06-29-handoff-v2-mixed-owner-decision.md",
-        "name": "10-2026-06-29-handoff-v2-mixed-owner-decision.md",
-        "title": "Handoff — gosleep — 2026-06-29 (v2 done, eval MIXED, owner decision pending)"
-      },
-      {
-        "href": "../../handoff/09-2026-06-29-handoff-finalize-v2-pr.md",
-        "name": "09-2026-06-29-handoff-finalize-v2-pr.md",
-        "title": "Handoff 09 — 2026-06-29 — GSL-24 v2 PR open, owner decision pending"
-      },
-      {
-        "href": "../../handoff/08-2026-06-29-handoff-hardening-v2-complete.md",
-        "name": "08-2026-06-29-handoff-hardening-v2-complete.md",
-        "title": "Handoff 08 — 2026-06-29 — GSL-24 Harness Hardening v2 Complete"
-      },
-      {
-        "href": "../../handoff/07-2026-06-29-handoff-v2-execution.md",
-        "name": "07-2026-06-29-handoff-v2-execution.md",
-        "title": "Handoff — gosleep — 2026-06-29 (v2 execution baton)"
-      },
-      {
-        "href": "../../handoff/06-2026-06-29-handoff-eval-validation.md",
-        "name": "06-2026-06-29-handoff-eval-validation.md",
-        "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-29 (eval validation done; incident + controls; owner decis"
-      },
-      {
-        "href": "../../handoff/05-2026-06-28-handoff-vendoring-complete.md",
-        "name": "05-2026-06-28-handoff-vendoring-complete.md",
-        "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-28 (vendoring complete; harness now self-contained; 2 owne"
-      },
-      {
-        "href": "../../handoff/04-2026-06-27-handoff-gsl7-hardening-pr-open.md",
-        "name": "04-2026-06-27-handoff-gsl7-hardening-pr-open.md",
-        "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-27 (autonomous hardening run complete; GSL-7 PR #16 open, "
-      },
-      {
-        "href": "../../handoff/03-2026-06-26-handoff-gsl1-complete-pane-mode.md",
-        "name": "03-2026-06-26-handoff-gsl1-complete-pane-mode.md",
-        "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-26 (GSL-1 tasks complete; teammate pane-mode fix; vendorin"
-      },
-      {
-        "href": "../../handoff/02-2026-06-25-handoff-skill-sync.md",
-        "name": "02-2026-06-25-handoff-skill-sync.md",
-        "title": "Handoff — gosleep (Orchestration Harness) — 2026-06-25 (skill-sync)"
-      },
-      {
-        "href": "../../handoff/01-2026-06-09-handoff-harness.md",
-        "name": "01-2026-06-09-handoff-harness.md",
-        "title": "Handoff — Orchestration Harness — 2026-06-09"
-      }
-    ],
-    "dev_history": [
-      {
-        "href": "../../dev_history/GSL-95-phase5-cycle54-questions-countdown.md",
-        "name": "GSL-95-phase5-cycle54-questions-countdown.md",
-        "title": "GSL-95 — Questions: обратный отсчёт дедлайнов (Фаза 5, F5-S2)"
-      },
-      {
-        "href": "../../dev_history/GSL-94-phase5-cycle53-runway-indicator.md",
-        "name": "GSL-94-phase5-cycle53-runway-indicator.md",
-        "title": "GSL-94 — Autonomy runway: шесть часов, и отказ округлять в удобную сторону"
-      },
-      {
-        "href": "../../dev_history/GSL-93-phase5-cycle53-data-contract-skeleton.md",
-        "name": "GSL-93-phase5-cycle53-data-contract-skeleton.md",
-        "title": "GSL-93 — Контракт данных и семь экранов: дашборд, который называет то, чего не видит"
-      },
-      {
-        "href": "../../dev_history/GSL-92-phase5-cycle53-ts-scaffold.md",
-        "name": "GSL-92-phase5-cycle53-ts-scaffold.md",
-        "title": "GSL-92 — TypeScript-скаффолд: view-слой уехал из Python, а вместе с ним уехало и право лаборатории соврать, чт"
-      },
-      {
-        "href": "../../dev_history/GSL-91-phase5-cycle52-ledger.md",
-        "name": "GSL-91-phase5-cycle52-ledger.md",
-        "title": "GSL-91 — Цикл 52: леджер закрытия Фазы 4 и разбивка Фазы 5"
-      },
-      {
-        "href": "../../dev_history/GSL-9-harden-idempotent-creates-reconcile-ids.md",
-        "name": "GSL-9-harden-idempotent-creates-reconcile-ids.md",
-        "title": "GSL-9 — Strengthen idempotent find-or-create + reconcile late-arriving IDs"
-      },
-      {
-        "href": "../../dev_history/GSL-89-phase4-cycle50-review-fixes.md",
-        "name": "GSL-89-phase4-cycle50-review-fixes.md",
-        "title": "GSL-89 — Цикл 50: фиксы по REVIEW-gsl81 — лаборатория перестаёт врать о себе"
-      },
-      {
-        "href": "../../dev_history/GSL-89-phase4-cycle47-close.md",
-        "name": "GSL-89-phase4-cycle47-close.md",
-        "title": "GSL-89 — Закрытие Фазы 4: контракт свежести, бэкфилл во времени — и страница, которая больше не врёт «Live» на"
-      },
-      {
-        "href": "../../dev_history/GSL-88-phase4-cycle47-handoff-written.md",
-        "name": "GSL-88-phase4-cycle47-handoff-written.md",
-        "title": "GSL-88 — Хендофф сам объявляет себя таймлайну: одна строка, которую хук написать не может"
-      },
-      {
-        "href": "../../dev_history/GSL-87-phase4-cycle46-poll-fill.md",
-        "name": "GSL-87-phase4-cycle46-poll-fill.md",
-        "title": "GSL-87 — poll-fill: сверка с внешней правдой. Хуки видят только то, что прошло через агента — и уже соврали"
-      },
-      {
-        "href": "../../dev_history/GSL-86-phase4-cycle46-chronicler.md",
-        "name": "GSL-86-phase4-cycle46-chronicler.md",
-        "title": "GSL-86 — Летописец: детерминированный регенератор `status.json` + `site/` + утреннего дайджеста, у которого мё"
-      },
-      {
-        "href": "../../dev_history/GSL-85-phase4-cycle45-docs-lab-layout.md",
-        "name": "GSL-85-phase4-cycle45-docs-lab-layout.md",
-        "title": "GSL-85 — `docs/lab/` layout: схема, retention и дисциплина записи (append-only + atomic), проверенные конкурен"
-      },
-      {
-        "href": "../../dev_history/GSL-84-phase4-cycle45-lab-emit-semantic.md",
-        "name": "GSL-84-phase4-cycle45-lab-emit-semantic.md",
-        "title": "GSL-84 — `lab-emit`: семантические события (cycle/question/decision/verify) поверх одного писателя"
-      },
-      {
-        "href": "../../dev_history/GSL-83-phase4-cycle45-hooks-lab-log.md",
-        "name": "GSL-83-phase4-cycle45-hooks-lab-log.md",
-        "title": "GSL-83 — T1 event layer: хуки Claude Code + `lab-log.sh` (envelope → дневной jsonl, 0 токенов)"
-      },
-      {
-        "href": "../../dev_history/GSL-82-phase4-cycle44-ledger.md",
-        "name": "GSL-82-phase4-cycle44-ledger.md",
-        "title": "GSL-82 — Леджер-коммит: STATE + handoff'ы 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL"
-      },
-      {
-        "href": "../../dev_history/GSL-80-phase-gsl72-summary.md",
-        "name": "GSL-80-phase-gsl72-summary.md",
-        "title": "GSL-80 — Сводка фазы GSL-72: Question buffer + decision manifest + morning digest (PRD Phase 3)"
-      },
-      {
-        "href": "../../dev_history/GSL-8-harden-on-disk-handoff-first.md",
-        "name": "GSL-8-harden-on-disk-handoff-first.md",
-        "title": "GSL-8 — Recovery: fall back to on-disk handoff FIRST before live probes"
-      },
-      {
-        "href": "../../dev_history/GSL-79-phase-gsl72-pulse-deltas.md",
-        "name": "GSL-79-phase-gsl72-pulse-deltas.md",
-        "title": "GSL-79 — PULSE-дельты: scan queue, apply-at-deadline, reroute; LIVE-STATUS questions-поле"
-      },
-      {
-        "href": "../../dev_history/GSL-78-phase-gsl72-morning-digest.md",
-        "name": "GSL-78-phase-gsl72-morning-digest.md",
-        "title": "GSL-78 — Morning digest: шаблон + секции + provenance-цитаты"
-      },
-      {
-        "href": "../../dev_history/GSL-77-phase-gsl72-decision-log-learning-loop.md",
-        "name": "GSL-77-phase-gsl72-decision-log-learning-loop.md",
-        "title": "GSL-77 — decisions/log.jsonl + learning loop (manifest candidates)"
-      },
-      {
-        "href": "../../dev_history/GSL-76-phase-gsl72-decision-manifest.md",
-        "name": "GSL-76-phase-gsl72-decision-manifest.md",
-        "title": "GSL-76 — decisions/manifest.md: owner-sovereign манифест, 6 секций (seed из Standing rules + denylist)"
-      },
-      {
-        "href": "../../dev_history/GSL-75-phase-gsl72-lab-emit-queue.md",
-        "name": "GSL-75-phase-gsl72-lab-emit-queue.md",
-        "title": "GSL-75 — lab-emit: queue.jsonl схема + dedup helper (append-only, patch-записи)"
-      },
-      {
-        "href": "../../dev_history/GSL-74-phase-gsl72-question-typology.md",
-        "name": "GSL-74-phase-gsl72-question-typology.md",
-        "title": "GSL-74 — Типология вопросов: 4 типа, 4 поведения (skill + worker-template)"
-      },
-      {
-        "href": "../../dev_history/GSL-73-phase-gsl72-cycle1-ledger.md",
-        "name": "GSL-73-phase-gsl72-cycle1-ledger.md",
-        "title": "GSL-73 — Commit orchestration ledger (handoffs 17, 18 + STATE)"
-      },
-      {
-        "href": "../../dev_history/GSL-71-phase-gsl65-heartbeat-ok-docs.md",
-        "name": "GSL-71-phase-gsl65-heartbeat-ok-docs.md",
-        "title": "GSL-71 — HEARTBEAT_OK fast-path + сводка фазы GSL-65 (PRD Phase 2)"
-      },
-      {
-        "href": "../../dev_history/GSL-70-phase-gsl65-circuit-breaker.md",
-        "name": "GSL-70-phase-gsl65-circuit-breaker.md",
-        "title": "GSL-70 — Circuit-breaker: same-error/output-decline + cooldown/HALF_OPEN + ручной сброс"
-      },
-      {
-        "href": "../../dev_history/GSL-69-phase-gsl65-quota-auto-wait.md",
-        "name": "GSL-69-phase-gsl65-quota-auto-wait.md",
-        "title": "GSL-69 — Quota auto-wait: детекция session-limit + quiesce/resume + ETA"
-      },
-      {
-        "href": "../../dev_history/GSL-68-phase-gsl65-night-mode.md",
-        "name": "GSL-68-phase-gsl65-night-mode.md",
-        "title": "GSL-68 — Night mode / activeHours — режим и переключение поведения вопросов"
-      },
-      {
-        "href": "../../dev_history/GSL-67-phase-gsl65-pulse-cadence.md",
-        "name": "GSL-67-phase-gsl65-pulse-cadence.md",
-        "title": "GSL-67 — Таблица каденции пульса (cache-окна) + правило armed-wake-up"
-      },
-      {
-        "href": "../../dev_history/GSL-66-phase-gsl65-cycle1-ledger.md",
-        "name": "GSL-66-phase-gsl65-cycle1-ledger.md",
-        "title": "GSL-66 — Commit orchestration ledger (handoff 16 + STATE)"
-      },
-      {
-        "href": "../../dev_history/GSL-64-phase-gsl58-report.md",
-        "name": "GSL-64-phase-gsl58-report.md",
-        "title": "GSL-64 — Отчёт AutoSK Anatomy — EN+RU dashboard"
-      },
-      {
-        "href": "../../dev_history/GSL-63-phase-gsl58-site-delta.md",
-        "name": "GSL-63-phase-gsl58-site-delta.md",
-        "title": "GSL-63 — Re-fetch autosk.app — zero delta, проект FROZEN"
-      },
-      {
-        "href": "../../dev_history/GSL-62-phase-gsl58-unmerged-prs.md",
-        "name": "GSL-62-phase-gsl58-unmerged-prs.md",
-        "title": "GSL-62 — Разбор unmerged PRs autosk — 6 осиротевших PR одного контрибьютора"
-      },
-      {
-        "href": "../../dev_history/GSL-61-phase-gsl58-tui.md",
-        "name": "GSL-61-phase-gsl58-tui.md",
-        "title": "GSL-61 — Go TUI internals autosk — gocui/lazygit стек, 11 паттернов"
-      },
-      {
-        "href": "../../dev_history/GSL-60-phase-gsl58-pi-agent.md",
-        "name": "GSL-60-phase-gsl58-pi-agent.md",
-        "title": "GSL-60 — pi-agent internals — помодульный разбор (earendil-works/pi, code-only)"
-      },
-      {
-        "href": "../../dev_history/GSL-6-harden-mandatory-dated-handoff.md",
-        "name": "GSL-6-harden-mandatory-dated-handoff.md",
-        "title": "GSL-6 — Require a dated handoff at every orchestrator session boundary"
-      },
-      {
-        "href": "../../dev_history/GSL-59-phase-gsl58-cycle1-ledger.md",
-        "name": "GSL-59-phase-gsl58-cycle1-ledger.md",
-        "title": "GSL-59 — Commit orchestration ledger (handoff 15 + STATE)"
-      },
-      {
-        "href": "../../dev_history/GSL-57-phase-gsl49-runbook.md",
-        "name": "GSL-57-phase-gsl49-runbook.md",
-        "title": "GSL-57 — Runbook: watchdog operations for the owner"
-      },
-      {
-        "href": "../../dev_history/GSL-56-phase-gsl49-rewake.md",
-        "name": "GSL-56-phase-gsl49-rewake.md",
-        "title": "GSL-56 — Cold-start re-wake: watchdog-driven orchestrator restart"
-      },
-      {
-        "href": "../../dev_history/GSL-55-phase-gsl49-route-through-reap.md",
-        "name": "GSL-55-phase-gsl49-route-through-reap.md",
-        "title": "GSL-55 — Route-through-reap на kill + формат watchdog-ledger"
-      }
-    ],
-    "reports": [
-      {
-        "href": "../../reports/token-overage-incident-2026-06-28/index.html",
-        "name": "index.html",
-        "title": ""
-      },
-      {
-        "href": "../../reports/orchestrator-landscape/index.html",
-        "name": "index.html",
-        "title": ""
-      },
-      {
-        "href": "../../reports/loop-engineering/index.html",
-        "name": "index.html",
-        "title": ""
-      },
-      {
-        "href": "../../reports/headless-and-supervision/index.html",
-        "name": "index.html",
-        "title": "machine-readable result: answer + session id + cost of this run"
-      },
-      {
-        "href": "../../reports/autosk-anatomy/index.html",
-        "name": "index.html",
-        "title": ""
-      },
-      {
-        "href": "../../reports/autonomy-lab-ui/index.html",
-        "name": "index.html",
-        "title": ""
-      }
-    ],
-    "prd": [
-      {
-        "href": "../../prd/README.md",
-        "name": "README.md",
-        "title": "PRD index — GoSleep"
-      },
-      {
-        "href": "../../prd/PRD-gosleep-evolution.md",
-        "name": "PRD-gosleep-evolution.md",
-        "title": "PRD — Эволюция GoSleep: «оркестратор, при котором владелец спит»"
-      }
-    ]
+    "total": 103
   },
   "degraded": [],
   "narrative": null

@@ -1325,37 +1325,98 @@ def prev_ui_last_success():
         return None
 
 
-def library_index():
-    """The Library screen's data (PRD R5.2, screen 7). The raw event log is exhaust -- it is pruned
-    at 30 days. THIS is the memory that survives retention, so it is computed from the filesystem
-    itself and never from anyone's recollection of what was written."""
-    def listing(subdir, pattern, limit=40):
-        rows = []
-        for p in sorted(glob.glob(os.path.join(REPO, subdir, pattern)), reverse=True)[:limit]:
-            title = ""
-            try:
-                with open(p, encoding="utf-8") as f:
-                    for line in f:
-                        if line.startswith("# "):
-                            title = line[2:].strip()[:110]
-                            break
-            except OSError:
-                pass
-            rows.append({
-                # Relative to site/, so one href works from file:// AND from the GitHub blob view.
-                "href": os.path.relpath(p, os.path.join(LAB, "site")),
-                "name": os.path.basename(p),
-                "title": title,
-            })
-        return rows
+# The Library's sources (PRD R5.2, screen 7: a cross-index of handoffs / dev_history / reviews /
+# reports / research / RCA, with links).
+#
+# ORDER MATTERS: a file is claimed by the FIRST section whose glob matches it. `rca` therefore comes
+# before `reports` -- an incident post-mortem is an incident first and a report second, and the same
+# artifact listed twice in a cross-index makes a reader ask which of the two entries is the real one.
+#
+# THERE IS NO docs/rca/ IN THIS REPO. Declaring an empty RCA section for it would have been the easy
+# lie, and a bad one: "no RCAs" reads as "nothing ever broke". The post-mortems DO exist -- they live
+# under docs/reports/ and they are named for what they are -- so the section finds them by that name,
+# and the page prints the glob it used. An empty section that names where it looked has proven
+# something. An empty section that names nothing has merely failed to look, and looks identical.
+LIBRARY_SECTIONS = (
+    # key           label              dir                 glob             recursive
+    ("handoffs",    "Handoffs",        "docs/handoff",     "*.md",          False),
+    ("dev_history", "Dev history",     "docs/dev_history", "GSL-*.md",      False),
+    ("reviews",     "Reviews",         "docs/reviews",     "REVIEW-*.md",   False),
+    ("rca",         "Incidents / RCA", "docs/reports",     "**/*incident*", True),
+    ("reports",     "Reports",         "docs/reports",     "*/index.html",  False),
+    ("research",    "Research",        "docs/research",    "*/*.md",        False),
+    ("digests",     "Morning digests", "docs/lab/digest",  "*-morning.md",  False),
+    ("prd",         "PRD",             "docs/prd",         "*.md",          False),
+)
 
-    return {
-        "digests":     listing("docs/lab/digest",  "*-morning.md"),
-        "handoffs":    listing("docs/handoff",     "*.md"),
-        "dev_history": listing("docs/dev_history", "GSL-*.md"),
-        "reports":     listing("docs/reports",     "*/index.html"),
-        "prd":         listing("docs/prd",         "*.md"),
-    }
+LIBRARY_LIMIT = 40
+
+
+def doc_title(path):
+    """The artifact's own first heading. Markdown answers with `# `, HTML with <title> or <h1>. A row
+    indexed with a blank title is a link the owner has to OPEN to find out whether he wanted it -- and
+    a cross-index whose rows must each be opened is not an index."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            head = f.read(8192)
+    except OSError:
+        return ""
+    if path.endswith((".html", ".htm")):
+        m = (re.search(r"<title[^>]*>(.*?)</title>", head, re.S | re.I)
+             or re.search(r"<h1[^>]*>(.*?)</h1>", head, re.S | re.I))
+        if not m:
+            return ""
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(1))).strip()[:110]
+    for line in head.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()[:110]
+    return ""
+
+
+def library_index():
+    """The Library screen's data (PRD R5.2, screen 7). The raw event log is exhaust -- it is pruned at
+    30 days. THIS is the memory that survives retention, so it is computed from the filesystem itself
+    and never from anyone's recollection of what was written."""
+    site = os.path.join(LAB, "site")
+    claimed = set()
+    sections, total = [], 0
+
+    for key, label, subdir, pattern, recursive in LIBRARY_SECTIONS:
+        root = os.path.join(REPO, subdir)
+        items = []
+        for p in sorted(glob.glob(os.path.join(root, pattern), recursive=recursive), reverse=True):
+            # A glob may land on a DIRECTORY (docs/reports/<slug>-incident-<date>/), and a directory
+            # is not a link. The artifact is the index.html inside it; if there is none, there is
+            # nothing here to point at, and we point at nothing rather than at a folder.
+            if os.path.isdir(p):
+                p = os.path.join(p, "index.html")
+                if not os.path.isfile(p):
+                    continue
+            real = os.path.realpath(p)
+            if real in claimed:
+                continue
+            claimed.add(real)
+            items.append({
+                # Relative to site/, so ONE href works from file:// AND from the GitHub blob view.
+                "href": os.path.relpath(p, site),
+                "name": os.path.basename(p),
+                "title": doc_title(p),
+            })
+            if len(items) >= LIBRARY_LIMIT:
+                break
+        total += len(items)
+        sections.append({
+            "key": key,
+            "label": label,
+            # The glob, verbatim, on the page. This is the difference between "there are no incidents"
+            # and "I looked for incidents HERE and found none" -- and the owner can run it himself.
+            "source": os.path.join(subdir, pattern),
+            "dir_exists": os.path.isdir(root),
+            "items": items,
+            "count": len(items),
+        })
+
+    return {"sections": sections, "total": total}
 
 
 # Every question the queue holds, not just the open ones. The Questions screen (PRD R5.2, screen 4)
@@ -1420,7 +1481,11 @@ def build_render_bundle(ctx, status):
     from `events` below, computed once, here. A number the renderer works out for itself is a second
     opinion waiting to disagree with status.json."""
     return {
-        "schema": "gosleep.lab.render/4",
+        # /5 (GSL-97): `library` stopped being five fixed lists and became declared SECTIONS, each
+        # carrying the glob it was built from -- reviews, research and the incident post-mortems were
+        # simply not indexed before, and a section that cannot say where it looked cannot be trusted
+        # when it comes back empty.
+        "schema": "gosleep.lab.render/5",
         "generated_at": status["generated_at"],
         "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
         "date": ctx["date"],

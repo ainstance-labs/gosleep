@@ -351,7 +351,7 @@ grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
 # cannot have been built from it, whatever they say. The renderer THROWS on a schema it does not
 # know (tools/lab/ui/src/render.tsx) rather than rendering blank cards — so this string is load-
 # bearing on both sides, and bumping it is a two-file change, on purpose.
-jq -e '.schema == "gosleep.lab.render/4"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+jq -e '.schema == "gosleep.lab.render/5"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
   && ok "GSL-92: render_bundle.json is valid and carries its schema" \
   || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
 [[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
@@ -1270,6 +1270,316 @@ grep -qE 'LATER_TXT=7h [0-9]+m old' <<<"$AG" \
 grep -qE 'SLOW_TXT=2h [0-9]+m old' <<<"$AG" \
   && ok "F5-S3: a browser clock 5h SLOW cannot make the tracker look fresher than the build knew" \
   || bad "F5-S3: a slow browser clock SHRANK the age — the page argued itself back to freshness ($AG)"
+
+# ────────── GSL-97 (R5.2/R5.3): Timeline + Library + the client filter over an inlined island ──────────
+# Its own repo, with a hand-built event log: the whole point is to hold a row of EVERY severity at once,
+# including the two the real log does not happen to contain tonight — an incident, and a type neither
+# emitter has ever taught this build about.
+#
+#   alpha vcs.commit  hook:PostToolUse  -> info
+#   beta  context.pre_compact hook:PreCompact -> warn
+#   alpha api.failure hook:StopFailure  -> INCIDENT   (the row the owner is scanning for at 03:00)
+#   beta  vcs.commit  poll-fill         -> info       (same type as row 1, different provenance)
+#   alpha wat.mystery emit              -> UNKNOWN    (a type the severity table does not know)
+FT="$WORK/f5-timeline"; rm -rf "$FT"; mkdir -p "$FT/docs/lab/events"
+git init -q -b main "$FT" 2>/dev/null || { git init -q "$FT"; git -C "$FT" checkout -q -b main 2>/dev/null; }
+git -C "$FT" config user.email smoke@gosleep.local; git -C "$FT" config user.name smoke
+git -C "$FT" commit -q --allow-empty -m "chore: seed"
+
+TL="$FT/docs/lab/events/$TODAY.jsonl"
+: > "$TL"
+tev() { printf '{"ts":"%sT0%d:00:00Z","run_id":"x","seq":%d,"actor":"%s","type":"%s","src":"%s","data":%s}\n' \
+        "$TODAY" "$2" "$2" "$3" "$4" "$5" "${6:-\{\}}" >> "$TL"; }
+tev _ 1 alpha vcs.commit         "hook:PostToolUse" '{"sha":"aaa1111"}'
+tev _ 2 beta  context.pre_compact "hook:PreCompact"  '{"trigger":"auto"}'
+tev _ 3 alpha api.failure         "hook:StopFailure" '{"error_type":"rate_limit"}'
+tev _ 4 beta  vcs.commit          "poll-fill"        '{"sha":"bbb2222"}'
+tev _ 5 alpha wat.mystery         "emit"             '{"key":"GSL-999"}'
+
+# The Library's shelves. Note the two shapes an incident comes in: a markdown post-mortem, and a
+# whole report DIRECTORY whose artifact is the index.html inside it (a directory is not a link).
+mkdir -p "$FT/docs/handoff" "$FT/docs/dev_history" "$FT/docs/reviews" "$FT/docs/prd" \
+         "$FT/docs/research/2026-01-01-topic" "$FT/docs/reports/plain" \
+         "$FT/docs/reports/bugs" "$FT/docs/reports/token-incident-2026-01-03" "$FT/docs/lab/digest"
+printf '# Handoff one\n'        > "$FT/docs/handoff/01-fixture.md"
+printf '# GSL-1 dev history\n'  > "$FT/docs/dev_history/GSL-1-phase1-x.md"
+printf '# Review of gsl1\n'     > "$FT/docs/reviews/REVIEW-gsl1.md"
+printf '# Research thing\n'     > "$FT/docs/research/2026-01-01-topic/01-thing.md"
+printf '# The fixture incident\n' > "$FT/docs/reports/bugs/2026-01-02-fixture-incident.md"
+printf '<title>Plain report</title>\n' > "$FT/docs/reports/plain/index.html"
+printf '<title>Token overage</title>\n' > "$FT/docs/reports/token-incident-2026-01-03/index.html"
+printf '# PRD\n'                > "$FT/docs/prd/PRD-x.md"
+printf '# Morning\n'            > "$FT/docs/lab/digest/2026-01-01-morning.md"
+
+bash "$CH" --repo "$FT" --no-poll --quiet --json >/dev/null 2>&1
+TB="$FT/docs/lab/render_bundle.json"; TP="$FT/docs/lab/site/timeline.html"; LP="$FT/docs/lab/site/library.html"
+
+# 1. THE ISLAND IS THE WIRING. The filter matches on records, not on rendered cells, so the island must
+#    exist, parse, and describe EXACTLY the rows the page rendered. If those two counts ever drift, the
+#    client silently filters a table it is not looking at — hence a mechanism check, not a string check.
+ISL="$(python3 - "$TP" <<'PY'
+import json, re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'<script id="timeline-index" type="application/json">(.*?)</script>', h, re.S)
+if not m: print("NO_ISLAND"); raise SystemExit
+idx = json.loads(m.group(1))
+dom = len(re.findall(r'<tr[^>]*data-row="\d+"', h))
+print("ROWS=%d|DOM=%d|FACETS=%s|TOTAL=%d" % (
+    len(idx["rows"]), dom, ",".join(f["key"] for f in idx["facets"]), idx["total"]))
+PY
+)"
+grep -q 'ROWS=5|DOM=5' <<<"$ISL" && grep -q 'FACETS=actor,type,severity,src' <<<"$ISL" \
+  && ok "GSL-97: the inlined island describes exactly the rows the page rendered (actor/type/severity/src)" \
+  || bad "GSL-97: the island and the rendered table disagree, or a facet is missing ($ISL)"
+
+# 2. ⭐ AN INCIDENT IS MARKED IN THE MARKUP, NOT BY A SCRIPT. The owner reads this page from GitHub's
+#    blob view on a phone, where no script of ours ever runs. An incident marker that needs JS is a
+#    marker that is absent in the one place the page is read at 02:00.
+#    Both this check and the next one read the MARKUP, never the island: what is being claimed is what
+#    the reader SEES with nothing running. The island's own grades are guarded separately, by the filter
+#    tests below — so a break in one cannot hide behind the other.
+SEV="$(python3 - "$TP" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+# The class must be on the ROW, in the HTML on disk -- before anything executes.
+rows = dict(re.findall(r'<tr[^>]*data-row="(\d+)"[^>]*class="sev-([a-z]+)"', h))
+print("ROW_API=%s|ROW_MYST=%s|INCIDENT_ROWS=%d" % (
+    rows.get("2"), rows.get("0"), sum(1 for v in rows.values() if v == "incident")))
+PY
+)"
+grep -q 'ROW_API=incident' <<<"$SEV" && grep -q 'INCIDENT_ROWS=1' <<<"$SEV" \
+  && ok "GSL-97 ⭐ the api.failure row is marked an incident in the HTML itself — no script required" \
+  || bad "GSL-97 ⭐ the incident marker is missing from the build-time markup ($SEV)"
+
+# 3. ⭐ AN UNKNOWN TYPE IS `unknown`, NEVER `info`. This is the tasty-lunch default wearing a colour:
+#    grade an event you do not recognise as info and the day someone emits `breaker.tripped` the feed
+#    files the fleet going down as a green row, in the column the owner scans for red.
+grep -q 'ROW_MYST=unknown' <<<"$SEV" && ! grep -q 'ROW_MYST=info' <<<"$SEV" \
+  && ok "GSL-97 ⭐ a type the severity table does not know grades as 'unknown' — not as 'info'" \
+  || bad "GSL-97 ⭐ an unclassified event type was coloured as routine ($SEV)"
+
+# 4. ⭐ THE TABLE MAY LAG THE EMITTERS; IT MAY NOT LIE ABOUT THE GAP. Every type lab-log.sh and
+#    lab-emit.sh can write must be classified in severity.ts. This is the check that keeps rule 3 from
+#    becoming a slow leak: without it, `unknown` degrades from a safety property into a growing pile.
+DRIFT="$(python3 - "$REPO_ROOT" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+EXT = {"jsonl","json","md","sh","py","lock","err","txt","html","log","tmp","mjs","tsx","ts"}
+def types(path, block=None):
+    s = open(os.path.join(root, path), encoding="utf-8").read()
+    if block:
+        m = re.search(block, s, re.S); s = m.group(1) if m else ""
+    return {c for c in re.findall(r'"([a-z][a-z_]*(?:\.[a-z_]+)+)"', s)
+            if c.rsplit(".", 1)[-1] not in EXT}
+emitted = types("tools/lab/lab-log.sh") | types("tools/lab/lab-emit.sh", r"SEMANTIC_TYPES\s*=\s*\((.*?)\n\)")
+graded  = types("tools/lab/ui/src/severity.ts")
+print("EMITTED=%d|UNGRADED=%s" % (len(emitted), ",".join(sorted(emitted - graded)) or "none"))
+PY
+)"
+grep -q 'UNGRADED=none' <<<"$DRIFT" && ! grep -q 'EMITTED=0' <<<"$DRIFT" \
+  && ok "GSL-97 ⭐ every event type the emitters can write is graded in severity.ts (no silent lag)" \
+  || bad "GSL-97 ⭐ severity.ts has fallen behind the emitters — those types would grade 'unknown' ($DRIFT)"
+
+# 5. PROVENANCE SURVIVED THE PORT. hook / emit / poll-fill are three different KINDS of true, and the
+#    colour is the only thing on the row that says which. A line reconciled after the fact and a line a
+#    hook watched happen must never look the same.
+#     Scoped to the FEED ROWS, not the page: the aggregate card at the bottom carries the same tags, and
+#     a check that counts those would stay green with the feed's own colour column ripped out.
+PROV="$(python3 - "$TP" <<'PY'
+import re, sys
+from collections import Counter
+h = open(sys.argv[1], encoding="utf-8").read()
+feed = re.search(r'<table id="timeline-rows">(.*?)</table>', h, re.S)
+c = Counter(re.findall(r'<span class="tag (hook|emit|poll)">', feed.group(1) if feed else ""))
+print("HOOK=%d|EMIT=%d|POLL=%d" % (c["hook"], c["emit"], c["poll"]))
+PY
+)"
+grep -q 'HOOK=3|EMIT=1|POLL=1' <<<"$PROV" \
+  && ok "GSL-97: the src provenance colour survives the port to TS (hook / emit / poll-fill all render)" \
+  || bad "GSL-97: a provenance class is missing from the feed — the three kinds of true look alike ($PROV)"
+
+# 6. THE PAGE WORKS WITH JS OFF. Every row is in the HTML on disk, and the filter bar ships `hidden`:
+#    a reader with no JS gets the whole list and NOT a <select> he can move that changes nothing.
+NOJS="$(python3 - "$TP" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+bar = re.search(r'<div class="filters"[^>]*>', h)
+print("ROWS=%d|BAR_HIDDEN=%s|COUNT=%s" % (
+    len(re.findall(r'<tr[^>]*data-row="\d+"', h)),
+    "yes" if bar and " hidden" in bar.group(0) else "no",
+    "yes" if 'id="timeline-count"' in h else "no"))
+PY
+)"
+grep -q 'ROWS=5|BAR_HIDDEN=yes|COUNT=yes' <<<"$NOJS" \
+  && ok "GSL-97: with JS off the full feed is already on the page, and the dead filter bar is hidden" \
+  || bad "GSL-97: the no-JS page is not the whole list, or it offers a control that cannot work ($NOJS)"
+
+# 7-10. ⭐ THE FILTER ITSELF. The page's OWN client bundle is executed against a stub DOM: nothing is
+#       mocked but the environment. It is asked to narrow, to hide everything, to reset — and, in the
+#       last run, to survive an island that disagrees with the table it is filtering.
+cat > "$WORK/filters.mjs" <<'JS'
+import { readFileSync } from "node:fs";
+// foFacet/foWant drive the fail-open run on a DIFFERENT axis from the narrowing run on purpose: share
+// one axis and a single break reddens both checks, which makes them look independent while testing the
+// same line. The fail-open row must be one the filter would otherwise have HIDDEN — otherwise it stays
+// on screen for the boring reason and the check proves nothing.
+const [path, barId, facet, want, other, otherWant, foFacet, foWant] = process.argv.slice(2);
+const html = readFileSync(path, "utf8");
+
+const CLIENT = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];        // the inlined bundle
+const barHtml = html.match(new RegExp(`<div class="filters" id="${barId}"[\\s\\S]*?</div>`))?.[0];
+if (!CLIENT || !barHtml) { console.log("NO_CLIENT_OR_BAR=1"); process.exit(0); }
+
+const attr = (k) => barHtml.match(new RegExp(`data-filter-${k}="([^"]+)"`))?.[1] ?? "";
+const ISLAND = attr("island"), SCOPE = attr("scope"), COUNT = attr("count");
+// The wiring is only real if the ids the bar points at are ids that EXIST on the page.
+const wired = [ISLAND, SCOPE, COUNT].every((id) => html.includes(`id="${id}"`));
+const islandText = html.match(new RegExp(`<script id="${ISLAND}"[^>]*>([\\s\\S]*?)</script>`))?.[1] ?? "null";
+const facets = [...barHtml.matchAll(/data-facet="([^"]+)"/g)].map((m) => m[1]);
+const hasSearch = /data-search=/.test(barHtml);
+const rowIds = [...html.matchAll(/<tr[^>]*data-row="(\d+)"/g)].map((m) => m[1]);
+
+const el = (o) => ({ _l: {}, addEventListener(e, f) { (this._l[e] ||= []).push(f); },
+                     fire(e) { (this._l[e] || []).forEach((f) => f()); }, ...o });
+
+function run(dropLast) {
+  const idx = JSON.parse(islandText);
+  if (dropLast) idx.rows.pop();                       // the island now disagrees with the DOM
+  const rows = rowIds.map((i) => el({ dataset: { row: i }, hidden: false }));
+  const sels = facets.map((k) => el({ dataset: { facet: k }, value: "" }));
+  const search = hasSearch ? el({ dataset: {}, value: "" }) : null;
+  const reset = el({ dataset: {} });
+  const count = el({ textContent: "", className: "" });
+  const bar = el({
+    dataset: { filterIsland: ISLAND, filterScope: SCOPE, filterCount: COUNT }, hidden: true,
+    querySelectorAll: (s) => (s.includes("data-facet") ? sels : []),
+    querySelector: (s) => (s.includes("data-search") ? search : s.includes("data-filter-reset") ? reset : null),
+  });
+  const scope = { querySelectorAll: (s) => (s.includes("data-row") ? rows : []) };
+  const byId = { [ISLAND]: { textContent: JSON.stringify(idx) }, [SCOPE]: scope, [COUNT]: count };
+  const document = {
+    getElementById: (id) => byId[id] ?? null,
+    querySelectorAll: (s) => (s.includes("data-filter-island") ? [bar] : []),
+  };
+  new Function("document", "setInterval", "Date", CLIENT)(document, () => 0, Date);
+  const pick = (k, v) => { const s = sels.find((x) => x.dataset.facet === k); s.value = v; s.fire("change"); };
+  const shown = () => rows.filter((r) => !r.hidden).map((r) => r.dataset.row).join(",");
+  return { bar, count, reset, pick, shown };
+}
+
+const a = run(false);
+console.log("WIRED=" + (wired ? "yes" : "no"));
+console.log("BAR_SHOWN_AFTER_JS=" + (a.bar.hidden ? "no" : "yes"));
+console.log("COUNT_INIT=" + a.count.textContent);
+a.pick(facet, want);
+console.log("COUNT_ONE=" + a.count.textContent);
+console.log("SHOWN_ONE=" + a.shown());
+a.pick(other, otherWant);                              // a second facet that no surviving row satisfies
+console.log("COUNT_NONE=" + a.count.textContent);
+console.log("CLASS_NONE=" + a.count.className);
+a.reset.fire("click");
+console.log("COUNT_RESET=" + a.count.textContent);
+
+const b = run(true);                                   // island short one record -> that row is UNKNOWN to it
+b.pick(foFacet || facet, foWant || want);
+console.log("SHOWN_FAILOPEN=" + b.shown());
+JS
+# Narrowing run: severity=incident (1 row). Then + actor=beta, which no incident row satisfies -> 0 rows.
+# Fail-open run: actor=beta. The record the island is missing describes row 4, which is alpha — so the
+# filter WOULD hide it, and it staying is the fail-open rule and nothing else.
+TF="$(node "$WORK/filters.mjs" "$TP" timeline-filter severity incident actor beta actor beta 2>&1)"
+
+grep -q 'WIRED=yes' <<<"$TF" && grep -q 'BAR_SHOWN_AFTER_JS=yes' <<<"$TF" \
+  && grep -q 'COUNT_INIT=all 5 shown' <<<"$TF" \
+  && ok "GSL-97: the filter bar wires to ids that exist and is revealed only once it can actually filter" \
+  || bad "GSL-97: the filter never came alive — its island, table or count element is not where it points ($TF)"
+
+# ⭐ Narrowing works, from file://, with no network — and the page SAYS how many it is hiding.
+grep -q 'SHOWN_ONE=2' <<<"$TF" && grep -q 'COUNT_ONE=1 of 5 shown — 4 hidden by the filter' <<<"$TF" \
+  && ok "GSL-97 ⭐ severity=incident narrows to the one incident row, and the page says '4 hidden'" \
+  || bad "GSL-97 ⭐ the filter did not narrow to the incident, or it hid rows without saying so ($TF)"
+
+# ⭐⭐ THE ONE THAT MATTERS. A filter that hides everything leaves an empty table, and an empty table is
+#     the exact silhouette of a quiet night. If the page does not say, in words, that the emptiness is
+#     the READER'S filter, this feature has re-introduced the class of lie Phase 4 spent itself removing.
+grep -q 'COUNT_NONE=0 of 5 shown — the filter is hiding every row' <<<"$TF" \
+  && grep -q 'CLASS_NONE=.*none' <<<"$TF" \
+  && ok "GSL-97 ⭐⭐ a filter that hides EVERY row says so loudly — an empty table is never left to speak for itself" \
+  || bad "GSL-97 ⭐⭐ the filter emptied the table SILENTLY — a forgotten filter now reads as a quiet night ($TF)"
+
+grep -q 'COUNT_RESET=all 5 shown' <<<"$TF" \
+  && ok "GSL-97: clear puts every row back and the count says so" \
+  || bad "GSL-97: clear did not restore the full list ($TF)"
+
+# ⭐ FAIL-OPEN. If the island and the table ever disagree, an unclassified row STAYS. Hiding a row we
+#   could not classify is an invisible subtraction from the feed the owner reads to learn what broke.
+#   Rows 1 and 3 are beta's. Row 4 is alpha's — the filter would hide it, and the island has no record
+#   for it, so the ONLY reason it can still be on screen is the fail-open rule.
+grep -q 'SHOWN_FAILOPEN=1,3,4' <<<"$TF" \
+  && ok "GSL-97 ⭐ a row the island does not describe survives the filter — hiding it would subtract in silence" \
+  || bad "GSL-97 ⭐ a row missing from the island was hidden — the filter subtracts rows it cannot classify ($TF)"
+
+# 11. THE LIBRARY INDEXES WHAT THE PRD NAMED. reviews / research / RCA were simply not indexed before
+#     this task: the shelves existed on disk and no page pointed at them.
+LIB="$(jq -r '[.library.sections[] | "\(.key)=\(.count)"] | join("|")' "$TB" 2>/dev/null)"
+grep -q 'reviews=1' <<<"$LIB" && grep -q 'research=1' <<<"$LIB" && grep -q 'rca=2' <<<"$LIB" \
+  && ok "GSL-97: the cross-index covers reviews, research and the incident post-mortems (PRD R5.2)" \
+  || bad "GSL-97: a shelf the PRD names is not indexed ($LIB)"
+
+# 12. A DIRECTORY IS NOT A LINK, AND NOTHING IS SHELVED TWICE. The token-overage post-mortem is a report
+#     DIRECTORY: its artifact is the index.html inside. It belongs on the RCA shelf, and it must not also
+#     appear under Reports — one artifact, two entries, and the reader asks which of them is the real one.
+DUP="$(python3 - "$TB" <<'PY'
+import json, sys
+lib = json.load(open(sys.argv[1], encoding="utf-8"))["library"]
+hrefs = [i["href"] for s in lib["sections"] for i in s["items"]]
+rca = [i["href"] for s in lib["sections"] if s["key"] == "rca" for i in s["items"]]
+rep = [i["href"] for s in lib["sections"] if s["key"] == "reports" for i in s["items"]]
+dupes = {h for h in hrefs if hrefs.count(h) > 1}
+print("DUPES=%s|RCA_HAS_INDEX=%s|REPORTS_CLAIMED_IT=%s|TOTAL=%d" % (
+    ",".join(sorted(dupes)) or "none",
+    "yes" if any(h.endswith("token-incident-2026-01-03/index.html") for h in rca) else "no",
+    "yes" if any("token-incident" in h for h in rep) else "no",
+    lib["total"]))
+PY
+)"
+grep -q 'DUPES=none' <<<"$DUP" && grep -q 'RCA_HAS_INDEX=yes' <<<"$DUP" && grep -q 'REPORTS_CLAIMED_IT=no' <<<"$DUP" \
+  && ok "GSL-97: an incident REPORT resolves to its index.html and is shelved once, under RCA" \
+  || bad "GSL-97: the incident directory was linked as a folder, or shelved twice ($DUP)"
+
+# 13. EVERY LINK IN THE LIBRARY OPENS. The Library is the memory that survives the 30-day retention; a
+#     dead link in it is an artifact that has been forgotten while still being listed.
+LINKS="$(python3 - "$LP" "$FT/docs/lab/site" <<'PY'
+import os, re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+site = sys.argv[2]
+rows = re.search(r'<table id="library-rows">(.*?)</table>', h, re.S)
+hrefs = re.findall(r'<a href="([^"]+)"', rows.group(1)) if rows else []
+dead = [x for x in hrefs if not os.path.isfile(os.path.join(site, x))]
+print("LINKS=%d|DEAD=%s" % (len(hrefs), ",".join(dead) or "none"))
+PY
+)"
+grep -q 'DEAD=none' <<<"$LINKS" && ! grep -q 'LINKS=0' <<<"$LINKS" \
+  && ok "GSL-97: every artifact the cross-index links to is a file that exists (no forgotten shelves)" \
+  || bad "GSL-97: the Library links to something that is not there ($LINKS)"
+
+# 14. AN EMPTY SHELF MUST PROVE IT LOOKED. Each section prints the glob it ran, on the page. "There are
+#     no incidents" and "I was pointed at the wrong directory" are opposite facts that render identically
+#     unless the glob comes along — and the owner can paste it into a shell and check the page's homework.
+grep -q 'docs/reviews/REVIEW-\*.md' "$LP" && grep -q 'docs/reports/\*\*/\*incident\*' "$LP" \
+  && ok "GSL-97: every shelf prints the glob it was built from — an empty shelf proves it looked" \
+  || bad "GSL-97: a Library section does not say where it looked, so an empty one proves nothing"
+
+# 15. ⭐ THE LIBRARY FILTER. Same engine, same rail: narrowing to one shelf must still say what it hides.
+#     SHOWN is asserted alongside the sentence, and that is not belt-and-braces: an earlier draft of this
+#     check tested only the sentence, and it stayed GREEN under a mutation that stopped the filter hiding
+#     anything at all — the count was right about rows that were all still on screen. A rail that can be
+#     satisfied by arithmetic alone is not guarding the thing it was written to guard.
+LF="$(node "$WORK/filters.mjs" "$LP" library-filter kind Reviews kind PRD 2>&1)"
+grep -q 'WIRED=yes' <<<"$LF" && grep -q 'SHOWN_ONE=2' <<<"$LF" \
+  && grep -q 'COUNT_ONE=1 of 9 shown — 8 hidden by the filter' <<<"$LF" \
+  && ok "GSL-97 ⭐ the Library filter narrows to one shelf and names the 8 artifacts it is hiding" \
+  || bad "GSL-97 ⭐ the Library filter does not narrow, or hides artifacts without saying so ($LF)"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

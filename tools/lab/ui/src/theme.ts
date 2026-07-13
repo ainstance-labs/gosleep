@@ -108,6 +108,46 @@ footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid 
 .tag.pr-merged{color:var(--accent);border-color:currentColor}
 .tag.pr-closed{color:var(--dead);border-color:currentColor}
 
+/* GSL-97 (R5.3): the client-side filter, and the severity of a timeline row.
+
+   [hidden] is declared LOUDLY because the filter hides table rows, and a UA stylesheet's
+   [hidden]{display:none} loses to any rule that sets display on a tr. A filter whose hidden rows stay
+   visible is merely broken; the rule below is what keeps it from being that.
+
+   .filter-count is the sentence that says what is NOT on screen, and it is styled to be seen, not to
+   be tasteful. When rows are hidden it turns amber; when the filter hides EVERY row it goes red and
+   filled — because an empty table under a forgotten filter is the exact silhouette of a quiet night,
+   and that mistaken read is the one this whole feature exists to prevent.
+
+   .filters ships hidden and the client reveals it (client.ts): no dead controls for a reader with JS
+   off, and none either for a reader whose island failed to parse. */
+[hidden]{display:none!important}
+.filters{display:flex;flex-wrap:wrap;gap:.5rem .8rem;align-items:end;background:var(--card);
+  border:1px solid var(--line);border-radius:.6rem;padding:.6rem .8rem;margin:.6rem 0}
+.filters label{display:flex;flex-direction:column;gap:.15rem}
+.filters label span{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+.filters select,.filters input{background:var(--bg);color:var(--fg);border:1px solid var(--line);
+  border-radius:.35rem;padding:.25rem .4rem;font:inherit;font-size:.82rem;max-width:12rem}
+.filters button{background:var(--bg);color:var(--dim);border:1px solid var(--line);
+  border-radius:.35rem;padding:.3rem .7rem;font:inherit;font-size:.8rem;cursor:pointer}
+.filters button:hover{color:var(--fg);border-color:var(--fg)}
+.filter-count{color:var(--dim);font-size:.82rem;margin:.3rem 0 .6rem}
+.filter-count.filtered{color:var(--warn);font-weight:600}
+.filter-count.none{color:var(--dead);background:var(--dead-soft);border-radius:.35rem;
+  padding:.35rem .6rem;font-weight:700}
+
+/* An incident is marked in the MARKUP, not by a script: the owner reads this page from GitHub's blob
+   view on a phone at 02:00, where nothing runs. A grade this build could not make is "unknown" --
+   dashed, muted, never green (see src/severity.ts for why that direction is the only safe one).
+   NOTE: no backticks in here, ever. This file is a TS template literal, and one would close it. */
+.tag.sev{text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.tag.sev.incident{color:var(--dead);border-color:currentColor;background:var(--dead-soft)}
+.tag.sev.warn{color:var(--warn);border-color:currentColor}
+.tag.sev.info{color:var(--dim)}
+.tag.sev.unknown{color:var(--dim);border-style:dashed;font-style:italic}
+tr.sev-incident td{background:var(--dead-soft)}
+tr.sev-incident td:first-child{box-shadow:inset .18rem 0 0 var(--dead)}
+
 nav{margin:.4rem 0 .2rem;line-height:2}
 nav a{margin-right:.9rem}
 nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}
