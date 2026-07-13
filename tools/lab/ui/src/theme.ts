@@ -192,4 +192,26 @@ nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2p
   display:block}
 .wk-task{margin-top:.5rem;font-size:.85rem}
 .wk-models{color:var(--warn);font-weight:600}
+
+/* GSL-99 (R5.3): the self-health meters — the page reporting its own rot.
+
+   The colour rule is the point, and it is the same one the runway lives by: UNKNOWN IS NOT GREEN. An
+   unreadable meter gets a DASHED border and muted italic type — visibly unlike the solid green of a
+   meter that has evidence. An EMPTY meter (nothing was ever owed) is grey for the same reason: it has
+   not earned green either, and a reader scanning for colour must not collect it as one.
+
+   The alarm (three cycles with no handoff) is the only thing here that goes red, and it takes the
+   dead-soft background — because at that point it is not a warning, it is the debt the PRD named. */
+.sh-m{border-left:.28rem solid var(--line)}
+.sh-m.ok{border-left-color:var(--ok)}
+.sh-m.warn{border-left-color:var(--warn)}
+.sh-m.dead{border-left-color:var(--dead);background:var(--dead-soft)}
+.sh-m.dim{border-left-color:var(--line)}
+.sh-m.unknown{border-style:dashed;border-left-style:solid;border-left-color:var(--dim)}
+.sh-h{font-weight:600;margin-bottom:.45rem}
+.sh-row{font-size:.9rem;margin:.2rem 0}
+.sh-k{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
+  display:inline-block;min-width:11rem}
+.sh-why{color:var(--dim);font-size:.79rem;line-height:1.5;margin-top:.5rem}
+.sh-epic{font-size:.88rem;margin:.25rem 0;padding-top:.25rem;border-top:1px solid var(--line)}
 `;

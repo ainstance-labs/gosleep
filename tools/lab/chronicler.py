@@ -1730,6 +1730,253 @@ def library_index():
     return {"sections": sections, "total": total}
 
 
+# ═══════════════ the laboratory's own rot (GSL-99, PRD R5.3) ═══════════════
+#
+# The tasty-lunch risk turned on the laboratory itself. A hub that is hand-kept and half-rotten is
+# WORSE than no hub at all: it still looks authoritative, and it lies with a timestamp on it. Phase 4
+# closed that for the DATA (a page whose chronicler died must look dead). This closes it for the
+# DOCUMENTATION — the dashboard now reports its own rot, and names it.
+#
+# ONE RULE ABOVE ALL THREE METERS: A METER WITH NO SOURCE IS `unknown`, NEVER GREEN. Green is a claim
+# and a claim needs evidence; ignorance is not evidence, and it must never render like proof.
+#
+#   freshness    — TWO ages, never one. `grade` judges the DATA at the instant of the build; the
+#                  reader's clock has moved since. `now − generated_at` must be ADDED before the
+#                  verdict means anything, so the page prints both and re-grades on open (client.ts).
+#   dev_history  — which of an epic's tasks carry a history file, BY NAME. Read off the git INDEX
+#                  (`git ls-files` — what `git show :<path>` resolves), NEVER off the working tree:
+#                  an uncommitted dev_history file does not exist for whoever arrives after the next
+#                  compaction, and that reader is the only one this meter serves. Fact, not intent.
+#   handoff age  — the last handoff against the last CYCLE BOUNDARY. A fleet that ran three cycles
+#                  and wrote no handoff is debt accruing in silence; the meter's job is to end the
+#                  silence.
+
+DEV_HISTORY_GLOB = "docs/dev_history/GSL-*.md"
+HANDOFF_GLOB     = "docs/handoff/*.md"
+HANDOFF_ALARM_CYCLES = int(os.environ.get("GOSLEEP_HANDOFF_ALARM_CYCLES", 3))
+
+# The live state file sits in docs/handoff/ and is NOT a handoff. It is rewritten continuously by
+# whoever is orchestrating, so counting it would make this meter read FRESH exactly when the fleet has
+# stopped writing handoffs — fresh in the reassuring direction, the only direction that matters.
+#
+# The `handoff.written` hook has precisely that blind spot: it fires on every write to this file, so
+# the event stream cannot be the source here. The COMMITTED file is, timestamped by the commit that
+# added it — which is also the only version a reader who arrives tomorrow will ever see.
+NOT_A_HANDOFF = ("ORCHESTRATION-STATE.md",)
+
+# What ends a cycle. `task.completed` would be the obvious source and it is the WRONG one: it is
+# emitted by the task system, which a worker can simply not use — and in this repo's own log it stops
+# firing hours before the last worker finished. `pane.ended` is the closing signal that survived, and
+# it is the same one the Fleet screen already keys a worker's end-of-life on.
+CYCLE_BOUNDARY_TYPE = "pane.ended"
+
+
+def git_index_files(pathspec):
+    """The files the INDEX carries — what a fresh clone gets. `None` means git could not be read at
+    all, which is `unknown`; an empty list means git answered and there are none, which is a FACT."""
+    rc, out, err = run(["git", "ls-files", "--", pathspec])
+    if rc != 0:
+        degrade("self_health", "git ls-files %s: %s" % (pathspec, err or "rc=%d" % rc))
+        return None
+    return [l.strip() for l in out.splitlines() if l.strip()]
+
+
+def git_untracked_files(pathspec):
+    """Written into the working tree and never committed. To this meter these files DO NOT EXIST —
+    they are listed only so the owner can see the difference between "not written" and "written,
+    and lost to the next clone"."""
+    rc, out, _ = run(["git", "ls-files", "--others", "--exclude-standard", "--", pathspec])
+    if rc != 0:
+        return []
+    return [l.strip() for l in out.splitlines() if l.strip()]
+
+
+def dev_history_coverage(epics):
+    """Which of each epic's tasks have a committed dev_history file — and which do not, BY NAME.
+
+    A percentage is not the deliverable here. "84% covered" tells the owner nothing he can act on;
+    "GSL-93 has no history" tells him exactly what to write tonight. So the missing keys travel by
+    name, per epic, and the totals are a footnote to them rather than the other way round.
+
+    An epic whose task list is not knowable from git topology (squashed, fast-forwarded) reports
+    `unknown`, NOT 100%. Zero-of-zero is the easiest green on this page to earn dishonestly."""
+    searched = ("`git ls-files -- %s` — the git INDEX, which is what `git show :<path>` resolves and "
+                "what a fresh clone gets. The working tree is deliberately NOT consulted." % DEV_HISTORY_GLOB)
+    files = git_index_files(DEV_HISTORY_GLOB)
+    if files is None:
+        return {"state": "unknown", "searched": searched, "epics": [],
+                "why": "git could not be read in this checkout, so coverage is unknown — not zero, "
+                       "and certainly not green",
+                "tasks": 0, "covered": 0, "missing": 0, "uncommitted": []}
+
+    by_key = {}
+    for p in files:
+        m = KEY_RE.match(os.path.basename(p))
+        if m:
+            by_key.setdefault(m.group(1), []).append(os.path.basename(p))
+
+    rows, n_tasks, n_covered, n_missing = [], 0, 0, 0
+    for e in epics:
+        # `merged-unwitnessed` / `no-trunk`: the topology cannot say which tasks this epic carried, so
+        # neither can this meter. It says so, in the epic's own words.
+        if e["membership"] not in ("merge-commit", "branch"):
+            rows.append({"key": e["key"], "state": "unknown", "why": e["membership_why"],
+                         "tasks": [], "covered": [], "missing": [], "task_count": 0})
+            continue
+        tasks = list(e.get("tasks") or [])
+        covered = [t for t in tasks if t in by_key]
+        missing = [t for t in tasks if t not in by_key]
+        n_tasks += len(tasks); n_covered += len(covered); n_missing += len(missing)
+        rows.append({
+            "key": e["key"],
+            # An epic whose range carries no task commits has nothing to cover. That is not `ok` —
+            # `ok` is a statement about documentation that exists, and here none was ever owed.
+            "state": ("empty" if not tasks else ("gaps" if missing else "ok")),
+            "why": ("this epic's range carries no task commits, so there is nothing to document"
+                    if not tasks else ""),
+            "tasks": tasks, "covered": covered, "missing": missing, "task_count": len(tasks),
+        })
+
+    measured = [r for r in rows if r["state"] in ("ok", "gaps")]
+    return {
+        # `unknown` when not one epic could be measured: an empty coverage table is ignorance, and
+        # ignorance must not inherit the colour of a clean bill of health.
+        "state": ("unknown" if not measured else ("gaps" if n_missing else "ok")),
+        "why": ("" if measured else
+                "no epic in this checkout has a task list git can read, so there is nothing to "
+                "measure coverage against"),
+        "searched": searched,
+        "epics": rows,
+        "tasks": n_tasks, "covered": n_covered, "missing": n_missing,
+        # Present in the working tree, absent from the index. They do not count, and the page says
+        # why: the reader this history is written FOR arrives after a compaction, with a clone.
+        "uncommitted": [os.path.basename(p) for p in git_untracked_files(DEV_HISTORY_GLOB)],
+    }
+
+
+def handoff_add_times():
+    """Each committed handoff, timestamped by the commit that ADDED it. One git call, not one per file.
+
+    The file's mtime would have been easier and it is worthless: a checkout rewrites it, so on a fresh
+    clone every handoff is seconds old. The commit that added it is the instant the handoff became
+    real for anybody but its author."""
+    rc, out, _ = run(["git", "log", "--diff-filter=A", "--format=%x01%cI", "--name-only",
+                      "--", "docs/handoff"])
+    if rc != 0:
+        return None
+    added, ts = {}, None
+    for line in out.splitlines():
+        if line.startswith("\x01"):
+            ts = iso_utc(line[1:].strip())
+        elif line.strip() and ts:
+            added.setdefault(line.strip(), ts)   # git walks newest-first: the newest addition wins
+    return added
+
+
+def handoff_debt(events):
+    """The last handoff against the last cycle boundary — and how many cycles closed after it.
+
+    The debt is a RUN, not a ratio: what matters at 03:00 is how many cycles in a row have now ended
+    with nothing written down. So the boundaries are walked backwards from the newest, and each is
+    asked whether a handoff landed inside its cycle (between the previous boundary and itself). The
+    walk stops at the first cycle that was documented — everything before that is already paid for."""
+    searched = ("committed `%s` (excluding %s), dated by the commit that ADDED each file; cycle "
+                "boundaries are `%s` events in docs/lab/events/*.jsonl"
+                % (HANDOFF_GLOB, ", ".join(NOT_A_HANDOFF), CYCLE_BOUNDARY_TYPE))
+    base = {"state": "unknown", "searched": searched, "last": None, "boundary": None,
+            "undocumented_cycles": None, "alarm_at": HANDOFF_ALARM_CYCLES, "alarm": False,
+            "boundaries": 0, "committed": 0, "uncommitted": [], "undated": [], "why": ""}
+
+    tracked = git_index_files(HANDOFF_GLOB)
+    added = handoff_add_times()
+    if tracked is None or added is None:
+        base["why"] = "git could not be read in this checkout, so the last handoff is unknown"
+        return base
+
+    docs, undated = [], []
+    for p in tracked:
+        name = os.path.basename(p)
+        if name in NOT_A_HANDOFF:
+            continue
+        ts = added.get(p)
+        if ts:
+            docs.append({"name": name, "ts": ts})
+        else:
+            # In the index, in no commit: staged and never committed. It cannot date a cycle.
+            undated.append(name)
+    docs.sort(key=lambda d: d["ts"])
+
+    bounds = sorted(e["ts"] for e in events
+                    if e.get("type") == CYCLE_BOUNDARY_TYPE and e.get("ts"))
+
+    base.update({
+        "committed": len(docs), "undated": undated, "boundaries": len(bounds),
+        "uncommitted": [os.path.basename(p) for p in git_untracked_files(HANDOFF_GLOB)],
+    })
+
+    if docs:
+        d = docs[-1]
+        age = NOW - parse_ts(d["ts"]) if parse_ts(d["ts"]) else None
+        base["last"] = {"name": d["name"], "ts": d["ts"],
+                        "age_s": int(age) if age is not None else None,
+                        "age_human": human_age(age)}
+
+    if not bounds:
+        # No boundary source, so "no cycle has gone undocumented" is a sentence this build has not
+        # earned. It stays `unknown` even when handoffs exist — a handoff proves a cycle was written
+        # up, never that no OTHER cycle closed unwritten.
+        base["why"] = ("the event log carries no `%s`, so this build cannot see where one cycle ends "
+                       "and the next begins" % CYCLE_BOUNDARY_TYPE)
+        return base
+
+    b_ts = bounds[-1]
+    b_age = NOW - parse_ts(b_ts) if parse_ts(b_ts) else None
+    base["boundary"] = {"ts": b_ts, "age_s": int(b_age) if b_age is not None else None,
+                        "age_human": human_age(b_age), "source": CYCLE_BOUNDARY_TYPE,
+                        "total": len(bounds)}
+
+    # Walk back from the newest boundary. A cycle is DOCUMENTED when a handoff was committed inside
+    # it: after the previous boundary, and no later than this one. (A handoff is written before its
+    # own pane closes, which is why the interval is closed at the top — otherwise every worker that
+    # wrote its handoff four minutes before it finished would be counted as debt.)
+    undoc = 0
+    for i in range(len(bounds) - 1, -1, -1):
+        lo = bounds[i - 1] if i > 0 else ""
+        hi = bounds[i]
+        if any(lo < d["ts"] <= hi for d in docs):
+            break
+        undoc += 1
+
+    base["undocumented_cycles"] = undoc
+    base["state"] = "ok" if undoc == 0 else "debt"
+    base["alarm"] = undoc >= HANDOFF_ALARM_CYCLES
+    if undoc:
+        base["why"] = ("%d cycle(s) have closed since the last handoff was committed — that is debt, "
+                       "and it is accruing" % undoc)
+    return base
+
+
+def build_self_health(ctx, status):
+    """The three meters, as ONE block, computed once. R5.3's anti-rot alarm."""
+    st = status["staleness"]
+    return {
+        # TWO AGES, and the page must print both. `grade` is a verdict on the DATA, delivered at the
+        # instant of the build; a reader opening this page five hours later holds a verdict five hours
+        # out of date, and the arithmetic he owes is: data_age + (now − generated_at). The client
+        # script does exactly that on open (client.ts: regradeStaleness) — this block is what a reader
+        # with JS off, or a machine reading the bundle, needs in order to do it himself.
+        "generated_at": status["generated_at"],
+        "data_age_s": st["max_event_age_s"],
+        "data_age_human": st["max_event_age_human"],
+        "latest_event_ts": st["latest_event_ts"],
+        "grade": st["grade"],
+        "grade_is_about": ("the DATA, at build time. Add (now − generated_at) to `data_age_s` before "
+                           "trusting it: there are two ages here, not one"),
+        "dev_history": dev_history_coverage(ctx["tasks"]["epics"]),
+        "handoffs": handoff_debt(ctx["events"]),
+    }
+
+
 # Every question the queue holds, not just the open ones. The Questions screen (PRD R5.2, screen 4)
 # has to show what the night DECIDED as well as what it is still waiting on -- "answered-by-default,
 # and here is the default it took" is the record that makes an autonomous night auditable in the
@@ -1792,6 +2039,11 @@ def build_render_bundle(ctx, status):
     from `events` below, computed once, here. A number the renderer works out for itself is a second
     opinion waiting to disagree with status.json."""
     return {
+        # /7 (GSL-99): `self_health` — the laboratory's three meters about ITSELF: two ages (not one),
+        # dev_history coverage by NAME off the git index, and the handoff debt measured in cycles. It
+        # is mandatory in the bundle on purpose: a self-health block a producer can silently stop
+        # emitting is an anti-rot alarm that rots.
+        #
         # /6 (GSL-98): `fleet.workers` (a card per worker, keyed on the session a task.completed named,
         # with the model read from that session's TRANSCRIPT rather than from the worker's word for it)
         # and `cost.by_model` + `cost.quota`. /5's fleet could name actors but could not attribute an
@@ -1802,11 +2054,12 @@ def build_render_bundle(ctx, status):
         # carrying the glob it was built from -- reviews, research and the incident post-mortems were
         # simply not indexed before, and a section that cannot say where it looked cannot be trusted
         # when it comes back empty.
-        "schema": "gosleep.lab.render/6",
+        "schema": "gosleep.lab.render/7",
         "generated_at": status["generated_at"],
         "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
         "date": ctx["date"],
         "staleness": status["staleness"],
+        "self_health": ctx["self_health"],
         "events": status["events"],
         "recent_events": [project_event(e) for e in ctx["events"][-RECENT_CAP:]],
         "recent_cap": RECENT_CAP,
@@ -2277,6 +2530,9 @@ def main():
     ctx["runway"] = compute_runway(ctx)
 
     status = build_status(ctx)
+    # Self-health AFTER status: two of its three meters are about the build itself (its clock, and the
+    # age of the freshest event IN it), and neither exists before status.json has been assembled.
+    ctx["self_health"] = build_self_health(ctx, status)
     if ARGS["narrate"]:
         ctx["narrative"] = narrate(status)
         status["narrative"] = ctx["narrative"]

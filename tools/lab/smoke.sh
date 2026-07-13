@@ -383,9 +383,15 @@ grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
 # cannot have been built from it, whatever they say. The renderer THROWS on a schema it does not
 # know (tools/lab/ui/src/render.tsx) rather than rendering blank cards — so this string is load-
 # bearing on both sides, and bumping it is a two-file change, on purpose.
-jq -e '.schema == "gosleep.lab.render/6"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+jq -e '.schema == "gosleep.lab.render/7"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
   && ok "GSL-92: render_bundle.json is valid and carries its schema" \
   || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
+# GSL-99: self_health is MANDATORY in the bundle. An anti-rot alarm a producer can silently stop
+# emitting is an alarm that rots — so its absence is a build failure, not an empty card.
+jq -e '.self_health.dev_history and .self_health.handoffs and .self_health.generated_at' \
+  "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-99: the bundle carries self_health (mandatory in render/7 — a rotting alarm is no alarm)" \
+  || bad "GSL-99: render/7 bundle has no self_health block"
 [[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
   && ok "GSL-92: status.json records that the view layer built" \
   || bad "GSL-92: status.json does not record the render outcome (ui.ok=$(jq -r '.ui.ok' "$CR/docs/lab/status.json"))"
@@ -1770,6 +1776,190 @@ grep -q 'WIRED=yes' <<<"$LF" && grep -q 'SHOWN_ONE=2' <<<"$LF" \
   && grep -q 'COUNT_ONE=1 of 9 shown — 8 hidden by the filter' <<<"$LF" \
   && ok "GSL-97 ⭐ the Library filter narrows to one shelf and names the 8 artifacts it is hiding" \
   || bad "GSL-97 ⭐ the Library filter does not narrow, or hides artifacts without saying so ($LF)"
+
+# ════════════ GSL-99 / R5.3: the anti-rot alarm — the laboratory measuring its OWN rot ════════════
+#
+# The risk is the tasty-lunch lesson from the PRD: a hand-kept hub that has gone stale is WORSE than
+# no hub, because it still looks authoritative. Three meters, and ONE rule over all three:
+#
+#     A METER WITH NO SOURCE IS `unknown`, NEVER GREEN. Green is a claim; a claim needs evidence.
+#
+# The fixture is a REAL git repository, because two of the three meters read git and a fixture that
+# faked it would be testing a mock. It carries, on purpose, every trap the meters exist to survive:
+#
+#   · GSL-502 has a dev_history file IN THE WORKING TREE AND IN NO COMMIT. It must still count as
+#     MISSING — the reader this history is written for arrives after a compaction, with a clone.
+#   · ORCHESTRATION-STATE.md is committed to docs/handoff/ LATER than every real handoff and every
+#     cycle boundary. Count it and the meter reads green exactly when the fleet has stopped writing
+#     handoffs — green in the reassuring direction, which is the only one that matters. (The
+#     `handoff.written` hook has precisely this blind spot, and the fixture's log carries such an
+#     event to prove the meter does not read it.)
+#   · five cycle boundaries, one handoff, committed inside the SECOND cycle → the three that closed
+#     after it are undocumented, which is the PRD's own alarm threshold.
+SH="$WORK/f5-selfhealth"
+mkdir -p "$SH/docs/lab/events" "$SH/docs/lab/questions" "$SH/docs/lab/decisions" \
+         "$SH/docs/dev_history" "$SH/docs/handoff"
+: > "$SH/docs/lab/questions/queue.jsonl"; : > "$SH/docs/lab/decisions/log.jsonl"
+
+sh_ts()  { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
+sh_gts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%S+0000'))" "$1"; }
+sh_git() { git -C "$SH" "$@"; }
+sh_commit() {  # <minutes-ago> <subject>
+  GIT_AUTHOR_DATE="$(sh_gts "$1")" GIT_COMMITTER_DATE="$(sh_gts "$1")" \
+    git -C "$SH" commit -q --no-gpg-sign -m "$2"
+}
+sh_git init -q; sh_git symbolic-ref HEAD refs/heads/main
+sh_git config user.email smoke@example.com; sh_git config user.name smoke
+printf 'fixture\n' > "$SH/README.md"; sh_git add README.md; sh_commit 400 "init"
+sh_git checkout -q -b GSL-500-selfhealth
+
+# GSL-501: a task with its history committed. The positive control — without a covered task, "missing"
+# proves nothing (a meter that called EVERY task missing would pass a test that only checks 502/503).
+printf '# GSL-501\n' > "$SH/docs/dev_history/GSL-501-phase-covered.md"
+sh_git add docs/dev_history/GSL-501-phase-covered.md; sh_commit 350 "GSL-501 the documented task"
+# The one real handoff, committed inside the cycle that ends at the 240m boundary.
+printf '# Handoff 01\n' > "$SH/docs/handoff/01-handoff-alpha.md"
+sh_git add docs/handoff/01-handoff-alpha.md; sh_commit 300 "docs: handoff 01"
+# Two tasks with no history at all. These are the names the meter must print.
+printf 'x\n' > "$SH/f502"; sh_git add f502; sh_commit 250 "GSL-502 the undocumented task"
+printf 'x\n' > "$SH/f503"; sh_git add f503; sh_commit 200 "GSL-503 the other undocumented task"
+# ⚠ THE TRAP. The live state file, committed AFTER everything — newer than the last handoff and newer
+# than the last boundary. It is not a handoff, and a meter that thinks it is will read green.
+printf '## TELEMETRY\n' > "$SH/docs/handoff/ORCHESTRATION-STATE.md"
+sh_git add docs/handoff/ORCHESTRATION-STATE.md; sh_commit 10 "docs: state"
+# ⚠ THE OTHER TRAP: written into the working tree, committed nowhere. To this meter they DO NOT EXIST.
+printf '# GSL-502 (uncommitted)\n' > "$SH/docs/dev_history/GSL-502-phase-uncommitted.md"
+printf '# Handoff 09 (uncommitted)\n' > "$SH/docs/handoff/09-handoff-uncommitted.md"
+
+{ printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"s1","data":{}}\n' "$(sh_ts 360)" "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":2,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"s2","data":{}}\n' "$(sh_ts 240)" "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":3,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"s3","data":{}}\n' "$(sh_ts 180)" "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":4,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"s4","data":{}}\n' "$(sh_ts 120)" "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":5,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"s5","data":{}}\n' "$(sh_ts 60)"  "$TODAY"
+  printf '{"ts":"%s","run_id":"%s","seq":6,"actor":"claude","type":"handoff.written","src":"hook:PostToolUse","session_id":"s5","data":{"path":"docs/handoff/ORCHESTRATION-STATE.md"}}\n' "$(sh_ts 10)" "$TODAY"
+} > "$SH/docs/lab/events/$TODAY.jsonl"
+
+SHB="$SH/docs/lab/render_bundle.json"; SHI="$SH/docs/lab/site/index.html"
+bash "$CH" --repo "$SH" --no-poll --quiet --json >/dev/null 2>&1
+
+# ⭐ 1. COVERAGE IS BY NAME. "84% covered" is not actionable at 03:00; "GSL-502 has no history" is. The
+#      assertion is on the NAMES, not on a count — a meter that knew two were missing but could not say
+#      which would satisfy any arithmetic test and would still be useless at the hour it is read.
+# (sorted: the epic's tasks arrive newest-commit-first from git, and this test is about WHICH keys are
+#  named, not about the order git happened to walk them in)
+SH_MISS="$(jq -r '.self_health.dev_history.epics[] | select(.key=="GSL-500") | .missing | sort | join(",")' "$SHB")"
+[[ "$SH_MISS" == "GSL-502,GSL-503" ]] \
+  && ok "GSL-99 ⭐ the missing dev_history is named (GSL-502, GSL-503), not summed" \
+  || bad "GSL-99 ⭐ coverage does not name the tasks it is missing (got '$SH_MISS')"
+[[ "$(jq -r '.self_health.dev_history.epics[] | select(.key=="GSL-500") | .covered | join(",")' "$SHB")" == "GSL-501" ]] \
+  && ok "GSL-99: the documented task IS counted as covered (the positive control — otherwise 'missing' is vacuous)" \
+  || bad "GSL-99: a task WITH a committed dev_history was not counted as covered"
+grep -q 'data-missing-task="GSL-502"' "$SHI" && grep -q 'data-missing-task="GSL-503"' "$SHI" \
+  && ok "GSL-99: every missing key reaches the PAGE by name, not just the bundle" \
+  || bad "GSL-99: the page does not print the names of the undocumented tasks"
+
+# ⭐ 2. FACT, NOT INTENT. GSL-502's history is sitting on disk. It is in no commit, so for the reader who
+#      arrives tomorrow with a clone it does not exist — and this meter serves nobody else. The absence
+#      assertion is armed by a positive control first: the file really IS there, so "still missing" is a
+#      refusal, not an accident.
+[[ -f "$SH/docs/dev_history/GSL-502-phase-uncommitted.md" ]] \
+  && ok "GSL-99: the fixture really does carry an uncommitted GSL-502 history (so the test below means something)" \
+  || bad "GSL-99: the uncommitted-history fixture is missing — the assertion below would pass vacuously"
+jq -e '.self_health.dev_history.epics[] | select(.key=="GSL-500") | .missing | index("GSL-502")' "$SHB" >/dev/null 2>&1 \
+  && jq -e '.self_health.dev_history.uncommitted | index("GSL-502-phase-uncommitted.md")' "$SHB" >/dev/null 2>&1 \
+  && ok "GSL-99 ⭐ an UNCOMMITTED dev_history does not count as coverage — and is listed as lost, not as done" \
+  || bad "GSL-99 ⭐ the working tree was counted as coverage: a file in no commit was read as documentation"
+
+# ⭐ 3. ZERO-OF-ZERO IS NOT GREEN. An epic whose task list git cannot read (fast-forwarded, no merge
+#      commit) reports `unknown`. 100% of nothing is the cheapest false green on this page.
+#      (Fixture 2, below, carries such an epic AND no events at all.)
+SHU="$WORK/f5-sh-unknown"
+mkdir -p "$SHU/docs/lab/events" "$SHU/docs/lab/questions" "$SHU/docs/lab/decisions" "$SHU/docs/handoff"
+: > "$SHU/docs/lab/questions/queue.jsonl"; : > "$SHU/docs/lab/decisions/log.jsonl"
+git -C "$SHU" init -q; git -C "$SHU" symbolic-ref HEAD refs/heads/main
+git -C "$SHU" config user.email smoke@example.com; git -C "$SHU" config user.name smoke
+printf 'fixture\n' > "$SHU/README.md"
+git -C "$SHU" add README.md; git -C "$SHU" commit -q --no-gpg-sign -m "init"
+git -C "$SHU" checkout -q -b GSL-600-fastforward
+printf 'x\n' > "$SHU/f601"; git -C "$SHU" add f601; git -C "$SHU" commit -q --no-gpg-sign -m "GSL-601 a task nobody can attribute"
+git -C "$SHU" checkout -q main; git -C "$SHU" merge -q --ff-only GSL-600-fastforward
+# A handoff EXISTS here. That is the positive control for the boundary meter: a handoff proves that ONE
+# cycle was written up; it never proves that no OTHER cycle closed unwritten. With no boundary in the
+# log, the honest verdict is `unknown` — and it must stay `unknown` even with a handoff sitting there.
+printf '# Handoff 01\n' > "$SHU/docs/handoff/01-handoff-only.md"
+git -C "$SHU" add docs/handoff/01-handoff-only.md; git -C "$SHU" commit -q --no-gpg-sign -m "docs: handoff 01"
+SHUB="$SHU/docs/lab/render_bundle.json"; SHUI="$SHU/docs/lab/site/index.html"
+bash "$CH" --repo "$SHU" --no-poll --quiet --json >/dev/null 2>&1
+
+[[ "$(jq -r '.self_health.dev_history.epics[] | select(.key=="GSL-600") | .state' "$SHUB")" == "unknown" ]] \
+  && [[ "$(jq -r '.self_health.dev_history.state' "$SHUB")" == "unknown" ]] \
+  && grep -q 'data-dh="unknown"' "$SHUI" \
+  && ok "GSL-99 ⭐ an epic git cannot attribute reads unknown, not 100% — zero-of-zero is not a clean bill of health" \
+  || bad "GSL-99 ⭐ an unattributable epic was scored as covered (state=$(jq -r '.self_health.dev_history.state' "$SHUB"))"
+
+# ⭐ 4. NO BOUNDARY → `unknown`, NEVER `ok`. Even with a handoff committed right there.
+[[ "$(jq -r '.self_health.handoffs.state' "$SHUB")" == "unknown" ]] \
+  && [[ "$(jq -r '.self_health.handoffs.undocumented_cycles' "$SHUB")" == "null" ]] \
+  && [[ "$(jq -r '.self_health.handoffs.last.name' "$SHUB")" == "01-handoff-only.md" ]] \
+  && ok "GSL-99 ⭐ no cycle boundary in the log -> handoff debt is unknown, even though a handoff exists" \
+  || bad "GSL-99 ⭐ the handoff meter claimed to know the debt with no boundary to measure against"
+grep -q 'id="sh-handoff" data-state="unknown"' "$SHUI" \
+  && ok "GSL-99: the unknown handoff meter says so ON THE PAGE (dashed + muted, never a green tick)" \
+  || bad "GSL-99: an unknown handoff meter does not render as unknown"
+
+# ⭐ 5. NO EVENT → THE DATA AGE IS `unknown`, NOT `0s`. A page with no events must not read as freshly
+#      built data: "nothing has happened" and "nothing was logged" are the two sentences Phase 4 exists
+#      to keep apart.
+SH_AGE_CELL="$(python3 - "$SHUI" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'id="sh-data-age"[^>]*>(.*?)</b>', h, re.S)
+print("CELL=%s" % ("unknown" if m and "unknown" in m.group(1) else (m.group(1)[:40] if m else "absent")))
+PY
+)"
+[[ "$(jq -r '.self_health.data_age_s' "$SHUB")" == "null" ]] && grep -q 'CELL=unknown' <<<"$SH_AGE_CELL" \
+  && ok "GSL-99 ⭐ with no events at all, the data age is unknown — never a fresh-looking 0s" \
+  || bad "GSL-99 ⭐ an empty log rendered as a fresh data age ($SH_AGE_CELL)"
+
+# ⭐ 6. TWO AGES, NOT ONE — and they come from two different sources. The build's own age is carried as
+#      an INSTANT (data-age-ts = generated_at) so the client re-computes it against the reader's clock;
+#      the data's age is a NUMBER frozen at build time. A page that printed one age twice would satisfy
+#      any test that only looked for "an age", so both surfaces are pinned to their own source.
+SH_GEN="$(jq -r '.self_health.generated_at' "$SHB")"
+SH_DATA="$(jq -r '.self_health.data_age_s' "$SHB")"
+grep -q "id=\"sh-build-age\" data-age-ts=\"$SH_GEN\"" "$SHI" \
+  && grep -q "id=\"sh-data-age\" data-data-age-s=\"$SH_DATA\"" "$SHI" \
+  && [[ "$SH_DATA" != "null" && "$SH_DATA" -gt 0 ]] \
+  && ok "GSL-99 ⭐ the page carries BOTH ages — the build's (live, re-aged on open) and the data's (frozen at build)" \
+  || bad "GSL-99 ⭐ the page does not carry two independently-sourced ages (gen=$SH_GEN data=$SH_DATA)"
+
+# ⭐ 7. THE HANDOFF DEBT IS A RUN OF CYCLES, AND THE STATE FILE IS NOT A HANDOFF.
+#      Positive control first: ORCHESTRATION-STATE.md really is committed LATER than the real handoff,
+#      so a meter that counted it WOULD have picked it as the newest — the trap is armed.
+SH_STATE_TS="$(sh_git log --diff-filter=A -1 --format=%cI -- docs/handoff/ORCHESTRATION-STATE.md)"
+SH_HO_TS="$(sh_git log --diff-filter=A -1 --format=%cI -- docs/handoff/01-handoff-alpha.md)"
+[[ -n "$SH_STATE_TS" && "$SH_STATE_TS" > "$SH_HO_TS" ]] \
+  && grep -q 'ORCHESTRATION-STATE.md' "$SH/docs/lab/events/$TODAY.jsonl" \
+  && ok "GSL-99: the trap is armed — the state file is committed after the handoff AND a handoff.written event names it" \
+  || bad "GSL-99: the state-file trap is not armed, so the exclusion below proves nothing"
+[[ "$(jq -r '.self_health.handoffs.last.name' "$SHB")" == "01-handoff-alpha.md" ]] \
+  && ok "GSL-99 ⭐ ORCHESTRATION-STATE.md is not a handoff — the live state file cannot fake freshness" \
+  || bad "GSL-99 ⭐ the state file was counted as a handoff (last=$(jq -r '.self_health.handoffs.last.name' "$SHB"))"
+[[ "$(jq -r '.self_health.handoffs.undocumented_cycles' "$SHB")" == "3" ]] \
+  && [[ "$(jq -r '.self_health.handoffs.alarm' "$SHB")" == "true" ]] \
+  && grep -q 'data-undocumented-cycles="3"' "$SHI" && grep -q 'data-alarm="1"' "$SHI" \
+  && ok "GSL-99 ⭐ three cycles closed with no handoff -> the PRD's alarm fires, and the page shows the count" \
+  || bad "GSL-99 ⭐ the cycle-debt run is miscounted (got $(jq -r '.self_health.handoffs.undocumented_cycles' "$SHB"), want 3)"
+jq -e '.self_health.handoffs.uncommitted | index("09-handoff-uncommitted.md")' "$SHB" >/dev/null 2>&1 \
+  && ok "GSL-99: a handoff written and never committed is listed as LOST — not silently counted as written" \
+  || bad "GSL-99: an uncommitted handoff was dropped without a word"
+
+# ⭐ 8. PRINT YOUR GLOB. "Nothing is missing" and "I looked in the wrong place" render identically
+#      unless the meter says where it looked — and the owner can paste both of these into a shell.
+grep -q 'git ls-files' "$SHI" && grep -q 'docs/dev_history/GSL-\*.md' "$SHI" \
+  && grep -q 'pane.ended' "$SHI" && grep -q 'excluding ORCHESTRATION-STATE.md' "$SHI" \
+  && ok "GSL-99 ⭐ both meters print the exact source they read (index glob, boundary event, exclusion)" \
+  || bad "GSL-99 ⭐ a self-health meter cannot say where it looked"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

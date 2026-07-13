@@ -2,6 +2,7 @@ import type { VNode } from "preact";
 import type { RenderBundle } from "../types.js";
 import { Empty, EventsTable, eventsOn } from "../components.js";
 import { RunwayStrip } from "../runway.js";
+import { SelfHealthPanel } from "../selfhealth.js";
 
 /** Screen 1 of PRD R5.2 — the morning landing. GSL-94 puts the autonomy runway at the top of it. */
 export function Overview({ b }: { b: RenderBundle }): VNode {
@@ -15,6 +16,11 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
       {/* R5.1: the first thing on the morning screen, because "can I go to sleep?" is the only
           question this dashboard exists to answer. Everything below is the supporting evidence. */}
       <RunwayStrip r={b.runway} />
+
+      {/* R5.3 (GSL-99): and immediately under the answer, what the answer is WORTH. A dashboard that
+          has quietly gone stale is worse than no dashboard — it still looks authoritative. So the
+          page's own rot is reported here, above the evidence it qualifies, not buried at the bottom. */}
+      <SelfHealthPanel b={b} />
 
       <div class="grid">
         <div class="kpi">

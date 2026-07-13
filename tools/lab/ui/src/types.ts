@@ -128,6 +128,69 @@ export interface Library {
   total: number;
 }
 
+// ───────────────────────── the laboratory's own rot (GSL-99, R5.3) ─────────────────────────
+//
+// Every state below has an `unknown`, and none of them has a default. That is the whole contract:
+// a meter with no source is `unknown`, never green. Green is a claim; it needs evidence.
+
+/** `empty` = nothing was ever owed here (no task commits). It is not `ok`, and must not render like it. */
+export type CoverageState = "ok" | "gaps" | "empty" | "unknown";
+
+export interface EpicCoverage {
+  key: string;
+  state: CoverageState;
+  /** Why `unknown` / `empty` — the epic's own words, from git topology. */
+  why: string;
+  tasks: string[];
+  covered: string[];
+  /** The keys with no committed dev_history file. BY NAME — a percentage is not actionable at 03:00. */
+  missing: string[];
+  task_count: number;
+}
+
+export interface DevHistoryCoverage {
+  state: CoverageState;
+  why: string;
+  /** The exact git invocation this was read from. An empty table that cannot say where it looked has proven nothing. */
+  searched: string;
+  epics: EpicCoverage[];
+  tasks: number;
+  covered: number;
+  missing: number;
+  /** In the working tree, not in the index. These do NOT count — the reader they serve arrives with a clone. */
+  uncommitted: string[];
+}
+
+export interface HandoffDebt {
+  /** `debt` = at least one cycle closed with nothing written down. `unknown` = no boundary to measure against. */
+  state: "ok" | "debt" | "unknown";
+  why: string;
+  searched: string;
+  last: { name: string; ts: string; age_s: number | null; age_human: string } | null;
+  /** The last cycle boundary (a `pane.ended` event) — the thing the handoff's age is measured AGAINST. */
+  boundary: { ts: string; age_s: number | null; age_human: string; source: string; total: number } | null;
+  undocumented_cycles: number | null;
+  alarm_at: number;
+  alarm: boolean;
+  boundaries: number;
+  committed: number;
+  /** Written, never committed → invisible to a fresh clone. Listed so "not written" and "lost" differ. */
+  uncommitted: string[];
+  undated: string[];
+}
+
+export interface SelfHealth {
+  generated_at: string;
+  /** Age of the freshest event AT BUILD TIME. The reader owes it `now − generated_at` on top — two ages, not one. */
+  data_age_s: number | null;
+  data_age_human: string;
+  latest_event_ts: string | null;
+  grade: Grade;
+  grade_is_about: string;
+  dev_history: DevHistoryCoverage;
+  handoffs: HandoffDebt;
+}
+
 export interface Degradation {
   source: string;
   why: string;
@@ -446,12 +509,14 @@ export interface Runway {
  * emitting must fail loudly at build time, not render a blank card at 03:00.
  */
 export interface RenderBundle {
-  schema: "gosleep.lab.render/6";
+  schema: "gosleep.lab.render/7";
   runway: Runway;
   generated_at: string;
   generated_by: string;
   date: string;
   staleness: Staleness;
+  /** What the laboratory knows about its OWN rot (GSL-99). Mandatory: an alarm a producer can silently stop emitting is an alarm that rots. */
+  self_health: SelfHealth;
   events: EventStats;
   /**
    * The most recent events ACROSS DAYS, oldest-first, already folded (superseded lines removed).
