@@ -85,13 +85,92 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
         </div>
       )}
 
+      {/* GSL-98. `partial` is printed NEXT TO every sum, not in a footnote: a cost total that quietly
+          skips the lines it could not parse under-reports with total confidence, and "cheaper than
+          reality" is the one direction this screen must never err in. */}
+      <h2>Per model</h2>
+      {c.by_model.length === 0 ? (
+        <Empty>
+          No telemetry bullet names a model, so there is nothing to roll up. Searched the same ledger
+          as above: <code>docs/handoff/ORCHESTRATION-STATE.md</code> § <code>TELEMETRY</code>, field{" "}
+          <code>model=</code>.
+        </Empty>
+      ) : (
+        <div class="wrap">
+          <table>
+            <tr>
+              <th>model</th>
+              <th>cycles</th>
+              <th>out</th>
+              <th>in</th>
+              <th>cache read</th>
+              <th>missing from these sums</th>
+            </tr>
+            {c.by_model.map((m) => (
+              <tr key={m.model ?? "unknown"}>
+                <td class="mono">
+                  {m.model ?? <Unknown why="the telemetry bullet named no model for these cycles" />}
+                </td>
+                <td class="mono">{m.cycles}</td>
+                <td class="mono">{m.tokens_out === null ? <Unknown why="not one cycle in this bucket had a readable token count — unknown, not zero" /> : n(m.tokens_out)}</td>
+                <td class="mono">{m.tokens_in === null ? <Unknown /> : n(m.tokens_in)}</td>
+                <td class="mono">{m.cache_read === null ? <Unknown /> : n(m.cache_read)}</td>
+                <td class={m.partial > 0 ? "wk-models" : "dim"}>
+                  {m.partial > 0
+                    ? `${m.partial} of ${m.cycles} cycle(s) had an unreadable token field — these sums are LOW by an unknown amount`
+                    : "nothing — every cycle parsed"}
+                </td>
+              </tr>
+            ))}
+          </table>
+        </div>
+      )}
+
+      {/* The quota section is EXPECTED to be empty, which is exactly why it must print its own glob.
+          "The quota never bit us" and "the hook that would have told us is dead" look identical from
+          here, and only one of them is safe to sleep on. */}
+      <h2>Quota events ({c.quota.total})</h2>
+      {c.quota.total === 0 ? (
+        <div class="card">
+          <span class="stale-note">No quota event has ever been logged.</span> {c.quota.why_empty}
+          <br />
+          <small>
+            Searched: <code>{c.quota.searched}</code>
+          </small>
+        </div>
+      ) : (
+        <div class="wrap">
+          <table>
+            <tr>
+              <th>when</th>
+              <th>type</th>
+              <th>error</th>
+              <th>resets</th>
+              <th>detail</th>
+            </tr>
+            {c.quota.events.map((q, i) => (
+              <tr key={`${q.ts}-${i}`}>
+                <td class="mono">{q.ts ?? <Unknown />}</td>
+                <td class="mono">{q.type}</td>
+                <td class="mono">{q.error_type ?? "—"}</td>
+                <td class="mono">
+                  {q.eta ?? <Unknown why="the quota event carries no reset ETA — the wait is of unknown length" />}
+                </td>
+                <td>{q.detail ?? "—"}</td>
+              </tr>
+            ))}
+          </table>
+        </div>
+      )}
+
       <BlindSpots
         items={[
           `the ledger is prose, not data: values are approximations (~, ≈), and some read "est-unavailable" or "UNRECOVERED"`,
           c.unparsed > 0
             ? `${c.unparsed} telemetry bullet(s) could not be keyed on a cycle and are NOT counted above`
             : "every telemetry bullet parsed — no line was silently dropped",
-          "no per-model or per-day rollup: the ledger records a worker and a model per cycle, nothing finer",
+          "the per-model rollup is only as good as the ledger: a cycle whose bullet named no model lands in the `unknown` bucket, not in the model it actually ran on",
+          "no per-DAY rollup is possible at all: the ledger records cycle NUMBERS and no timestamps, so spend cannot be placed in time",
         ]}
       />
     </>

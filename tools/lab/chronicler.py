@@ -451,7 +451,7 @@ COST_FIELDS = {
 }
 
 
-def load_cost(state):
+def load_cost(state, events=(), days=()):
     """The Cost screen's data (PRD R5.2, screen 6) and the token axis of the runway (GSL-94).
 
     THE CEILING DOES NOT EXIST. manifest.md §5.phase-ceiling delegates it to "the epic brief", and no
@@ -496,27 +496,317 @@ def load_cost(state):
         cost["used_pct"] = round(100.0 * cost["cumulative_total"] / cost["ceiling"], 1)
     else:
         cost["used_pct"] = None
+    cost["by_model"] = cost_by_model(cost["cycles"])
+    cost["quota"] = cost_quota(events, list(days))
     return cost
+
+
+TOKEN_FIELDS = ("tokens_out", "tokens_in", "cache_read")
+
+
+def cost_by_model(cycles):
+    """Spend rolled up per model (GSL-98).
+
+    The rollup carries `partial`: how many of the bucket's cycles had at least one token field the
+    ledger could not spell. A sum that quietly skips the lines it could not read is a sum that
+    UNDER-REPORTS with total confidence -- and the one direction a cost screen must never err in is
+    "cheaper than reality". So the total is printed WITH the count of what is missing from it, and a
+    bucket whose every line was unreadable prints its tokens as unknown rather than as 0."""
+    agg = {}
+    for c in cycles:
+        model = c.get("model")
+        r = agg.setdefault(model or "", {"model": model, "cycles": 0, "partial": 0, "readable": 0})
+        r["cycles"] += 1
+        holes = 0
+        for f in TOKEN_FIELDS:
+            v = c.get(f)
+            if isinstance(v, int):
+                r[f] = r.get(f, 0) + v
+            else:
+                holes += 1
+        if holes:
+            r["partial"] += 1
+        if holes < len(TOKEN_FIELDS):
+            r["readable"] += 1
+    rows = []
+    for r in agg.values():
+        for f in TOKEN_FIELDS:
+            # No readable line at all -> unknown, NOT zero. Zero is a claim; this is an absence.
+            r.setdefault(f, None if r["readable"] == 0 else 0)
+        rows.append(r)
+    return sorted(rows, key=lambda r: (-(r.get("tokens_out") or 0), r["model"] or ""))
+
+
+# `api.failure` is written by the StopFailure hook; the quota pair brackets a wait. NONE of them has
+# ever been seen in this repository -- see `why_empty` below, which is the whole point of the section.
+QUOTA_TYPES = ("api.failure", "quota.wait_started", "quota.wait_ended")
+
+
+def cost_quota(events, days):
+    """Quota events for the Cost screen (GSL-98): the StopFailure failures and the reset ETA.
+
+    THIS SECTION IS EXPECTED TO BE EMPTY, and an empty section that cannot say where it looked is
+    indistinguishable from a broken one. So it always prints its own glob: how many events it read,
+    over which day files, and which types it was looking for. "The quota never bit us" and "the hook
+    that would have told us is dead" are different sentences, and only one of them is safe to sleep
+    on -- the log cannot yet tell you which one you are in, so the screen says exactly that."""
+    rows = []
+    for e in events:
+        if e.get("type") not in QUOTA_TYPES:
+            continue
+        d = e.get("data") or {}
+        rows.append({
+            "ts": e.get("ts"),
+            "type": e.get("type"),
+            "src": e.get("src"),
+            "error_type": d.get("error_type"),
+            "eta": iso_utc(d.get("until") or d.get("reset_at") or d.get("eta")),
+            "detail": str(d.get("message") or d.get("reason") or "")[:160] or None,
+        })
+    span = "%s..%s" % (days[0], days[-1]) if days else "no day files at all"
+    searched = ("docs/lab/events/*.jsonl — %d event(s) over %d day file(s) (%s), matching type in {%s}"
+                % (len(events), len(days), span, ", ".join(QUOTA_TYPES)))
+    return {
+        "events": rows[-20:],
+        "total": len(rows),
+        "searched": searched,
+        "why_empty": None if rows else (
+            "not one quota event has EVER been logged here. The StopFailure hook that writes "
+            "api.failure is wired, but it has never been observed firing — so this emptiness means "
+            "'never seen', not 'never happened'. A quiet quota and a dead hook look identical from "
+            "here, and until one fires the difference is unknown."),
+    }
 
 # ───────────────────────────── collect: fleet (GSL-93) ────────────────────────
 
 # The pane cap. manifest.md §5.slots: "слоты воркеров: max 3 (C5)".
 SLOT_CAP = int(os.environ.get("GOSLEEP_SLOT_CAP", 3))
 
+# How long a worker may say nothing before the card stops calling it "active". This is NOT a liveness
+# probe and the threshold is not a claim about death -- see `worker_state()`.
+QUIET_AFTER_S = int(os.environ.get("GOSLEEP_QUIET_AFTER_S", 900))
 
-def fleet_census(events, hb):
+# The transcript is the ONLY place the model a worker actually ran on is written down by the runtime
+# rather than by the worker. Cycles 49/50 are why this exists: a worker's self-report said one model
+# and the transcript said another, and the transcript was right. So the Fleet card reads the SAME
+# source the audit reads -- never the worker's word for it.
+MODEL_RE = re.compile(r'"model"\s*:\s*"(claude-[^"]+)"')
+
+
+def transcript_dir():
+    d = os.environ.get("GOSLEEP_TRANSCRIPT_DIR")
+    if d:
+        return d, "env GOSLEEP_TRANSCRIPT_DIR"
+    slug = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(REPO))
+    return os.path.join(os.path.expanduser("~"), ".claude", "projects", slug), "~/.claude/projects/<repo-slug>/<session-id>.jsonl"
+
+
+def session_models(session_ids):
+    """session_id -> the model(s) the RUNTIME recorded for that session.
+
+    Scanned line-by-line with a regex rather than json.loads: a transcript is megabytes of turns and
+    we want one field out of it. Absence is reported as unknown, never as a default -- a Fleet card
+    that guesses "probably Opus" is exactly the lie cycles 49/50 were about.
+
+    Distinct models in ONE session are kept and shown. That is not noise: it is the fingerprint of a
+    mid-session model switch, and a card that collapsed it to a single value would hide the very
+    discrepancy this field exists to expose."""
+    root, how = transcript_dir()
+    out = {}
+    if not os.path.isdir(root):
+        degrade("fleet-model", "no transcript dir at %s (%s) — every model reads unknown, never a default"
+                % (root, how))
+        return out, root, how
+    for sid in session_ids:
+        path = os.path.join(root, sid + ".jsonl")
+        seen = {}
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if '"model"' not in line:
+                        continue
+                    for m in MODEL_RE.findall(line):
+                        seen[m] = seen.get(m, 0) + 1
+        except FileNotFoundError:
+            continue                      # a session with no transcript on disk: unknown, not a guess
+        except OSError as exc:
+            degrade("fleet-model:" + sid[:8], exc)
+            continue
+        if seen:
+            ranked = sorted(seen.items(), key=lambda kv: (-kv[1], kv[0]))
+            out[sid] = {"model": ranked[0][0], "models": [k for k, _ in ranked],
+                        "path": os.path.join(os.path.basename(root), sid + ".jsonl")}
+    return out, root, how
+
+
+def worker_state(ended_ts, age_s):
+    """THE HONESTY OF THIS SCREEN LIVES IN THIS FUNCTION, so it has exactly three answers.
+
+    `ended`  — a pane.ended was logged. This we KNOW; the runtime said so.
+    `active` — an event landed within QUIET_AFTER_S. This we KNOW; something moved.
+    `silent` — neither. This we DO NOT KNOW, and the word is chosen to say so.
+
+    There is deliberately no `dead`. A worker deep in a long tool call and a worker whose process was
+    killed emit exactly the same thing -- nothing -- and no amount of threshold-tuning separates them
+    from inside the log. The PRD's instruction is literal: a worker nobody has heard from in an hour
+    is not "working", it is silent, and the card must not launder silence into either death or work."""
+    if ended_ts:
+        return "ended", "the runtime logged pane.ended (SessionEnd) at %s — this one is over" % ended_ts
+    if age_s is None:
+        return "silent", "not one event carries a timestamp we could read — the age is unknown"
+    if age_s <= QUIET_AFTER_S:
+        return "active", "an event landed %s ago" % human_age(age_s)
+    return "silent", (
+        "nothing for %s, and no pane.ended. This is NOT 'dead' — a worker thinking inside a long tool "
+        "call and a worker whose process is gone are both silent, and the log cannot tell them apart. "
+        "Read it as unknown, never as working." % human_age(age_s))
+
+
+def fleet_workers(events, cost):
+    """One card per worker (PRD R5.2 screen 5, GSL-98): state / model / pane / started / last-event-age
+    / tokens / current task.
+
+    HOW A WORKER GETS A NAME AT ALL. `task.completed` is the ONE event that carries both a session_id
+    and the worker's name, so it is the join that makes every other event attributable: bind the two
+    once, and the session's whole trail — pane.started, agent.turn_ended, pane.ended — becomes that
+    worker's trail. Nothing else in the log binds them: hook lines all say actor="claude" (the
+    process, not the person), and the semantic src=emit lines that DO carry a worker's name carry no
+    session_id at all.
+
+    THE GAP THIS LEAVES, stated because it is load-bearing: a worker that never completed a task
+    through the task system is never named, and therefore never gets a card. It is not missing from
+    the fleet — it is missing from the LOG's vocabulary. `unnamed_sessions` counts them, and the
+    roster below still lists whatever the emit channel could name."""
+    named, tasks = {}, {}
+    for e in events:
+        raw = (e.get("data") or {}).get("raw")
+        if not isinstance(raw, dict):
+            continue
+        sid = e.get("session_id")
+        if not sid:
+            continue
+        # The C5 denylist exempts this ONE literal: it is a read-only key in an append-only log, and
+        # reading it is not the power to take a pane. smoke.sh proves the exemption stays that narrow.
+        nm = raw.get("teammate_name")
+        if nm:
+            named[sid] = nm
+        subj = raw.get("task_subject")
+        if subj:
+            tasks[sid] = subj
+
+    by_sid = {}
+    for e in events:
+        sid = e.get("session_id")
+        if sid not in named:
+            continue
+        w = by_sid.setdefault(sid, {"events": 0, "types": {}, "first_ts": None, "last_ts": None,
+                                    "started_ts": None, "ended_ts": None})
+        w["events"] += 1
+        ts, t = e.get("ts") or "", e.get("type") or "?"
+        w["types"][t] = w["types"].get(t, 0) + 1
+        if ts and (w["first_ts"] is None or ts < w["first_ts"]):
+            w["first_ts"] = ts
+        if ts > (w["last_ts"] or ""):
+            w["last_ts"] = ts
+        if t == "pane.started" and (w["started_ts"] is None or ts < w["started_ts"]):
+            w["started_ts"] = ts
+        if t == "pane.ended" and ts > (w["ended_ts"] or ""):
+            w["ended_ts"] = ts
+
+    models, root, how = session_models(list(by_sid))
+
+    # Tokens are joined from the HAND-WRITTEN ledger, keyed on the worker's name -- the event log
+    # carries no token counts at all. Two different sources, one card, and the card says which is which.
+    ledger = {}
+    for c in cost.get("cycles") or []:
+        if c.get("worker"):
+            ledger.setdefault(c["worker"], []).append(c)
+
+    cards = []
+    for sid, w in by_sid.items():
+        name = named[sid]
+        age = NOW - parse_ts(w["last_ts"]) if parse_ts(w["last_ts"] or "") else None
+        age_s = int(age) if age is not None else None
+        state, why = worker_state(w["ended_ts"], age_s)
+        mi = models.get(sid)
+        rows = ledger.get(name) or []
+        outs = [r["tokens_out"] for r in rows if isinstance(r.get("tokens_out"), int)]
+        cards.append({
+            "name": name,
+            "session_id": sid,
+            "session_short": sid[:8],
+            "state": state,
+            "state_why": why,
+            "last_ts": w["last_ts"],
+            "last_age_s": age_s,
+            "last_age_human": human_age(age),
+            "model": mi["model"] if mi else None,
+            "models": mi["models"] if mi else [],
+            "model_source": mi["path"] if mi else None,
+            "model_why": None if mi else (
+                "no transcript on disk for this session under %s (%s). The model is UNKNOWN — and it "
+                "stays unknown: the worker's own word for it is exactly what this field refuses to "
+                "trust." % (root, how)),
+            # Verified against the whole log, not inherited: zero events carry a pane id, and no hook
+            # payload has a pane/window/tty field of any kind. The orchestrator knows the pane; the
+            # log never learns it. So this is unknown by ABSENCE OF SOURCE, and the fix is a hook
+            # change, not a renderer change.
+            "pane": None,
+            "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: "
+                        "zero events, any day, have a pane/window/tty field)",
+            # `started_ts`, and deliberately not the obvious name for it: C5 bans the verb for creating
+            # a worker in EVERY form, and here a rename costs nothing — so the capability word stays
+            # banned rather than getting an exemption it does not need. The log's own vocabulary
+            # (`pane.started`) is the more accurate one anyway: the chronicler never creates a pane, it
+            # only observes that one opened. Do not rename this field.
+            "started_ts": w["started_ts"],
+            "started_why": None if w["started_ts"] else
+                           "no pane.started for this session — the first event we hold is %s" % (w["first_ts"] or "none"),
+            "first_ts": w["first_ts"],
+            "task": tasks.get(sid),
+            "events": w["events"],
+            "types": dict(sorted(w["types"].items(), key=lambda kv: (-kv[1], kv[0]))[:6]),
+            "tokens_out": sum(outs) if outs else None,
+            "tokens_cycles": len(rows),
+            # A NAME MISS, and it must never be allowed to read as "this worker spent nothing". The
+            # two sources are typed by hand in two different places -- the log's name is whatever was
+            # given at hire, the ledger's is whatever got written into the bullet at the end -- and
+            # nothing forces them to agree. Today most of them do not.
+            "tokens_why": None if outs else (
+                "no TELEMETRY bullet uses worker=%s. The ledger's names and the log's names are typed "
+                "by hand in two different places and nothing reconciles them, so this is a failed JOIN, "
+                "not evidence of zero spend. Unknown, not free." % name),
+            "tokens_source": "docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY (worker=%s) — hand-written, "
+                             "not an event" % name,
+        })
+    cards.sort(key=lambda c: (c["last_ts"] or ""), reverse=True)
+    unnamed = len({e.get("session_id") for e in events if e.get("session_id")} - set(named))
+    # The other half of the join failure, and the actionable half: ledger names that matched no card.
+    # Printed rather than dropped, because seen next to the cards they are a diff the owner can fix --
+    # `gsl81-reviewer` in the ledger vs `reviewer-lab` in the log is one worker with two names, and
+    # only a human looking at both columns can say so.
+    matched = {c["name"] for c in cards}
+    ledger_only = sorted(n for n in ledger if n not in matched)
+    return cards, unnamed, ledger_only
+
+
+def fleet_census(events, hb, cost=None):
     """The Fleet screen's data (PRD R5.2, screen 5) and the slots axis of the runway (GSL-94).
 
     WHAT THIS CANNOT SEE, and says so rather than guessing:
-      * No pane id and no model reach the event log. `pane.started`/`pane.ended` carry a session_id
-        and nothing else; the model a worker ran on is recorded in the STATE telemetry ledger by
-        hand, never in an event.
-      * The worker's NAME reaches the log only on semantic (`src=emit`) lines, whose `actor` is the
-        worker. Every hook-written line carries `actor="claude"` -- the process, not the person. So
-        the roster below is "who the log can name", not "who is alive", and the two are different.
+      * No pane id reaches the event log -- CHECKED, across every day file: not one event carries a
+        pane/window/tty field of any kind. The orchestrator knows the pane; the log never learns it.
+      * No model reaches the event log either -- but the model is NOT unknown, because the runtime
+        writes it to the session transcript. GSL-98 joins it in (see `fleet_workers`), from the same
+        source the audit uses, never from the worker's self-report.
       * The one live count that is authoritative is the orchestrator's own heartbeat (`open_workers`).
         It is gitignored: on a fresh clone there is no heartbeat, and then the census is UNKNOWN --
         not zero. "Nobody is working" and "I cannot see who is working" must never render the same.
+
+    `roster` (by actor) and `workers` (by session) are two DIFFERENT channels and neither subsumes the
+    other, so both are kept. The roster sees whoever the emit lines name but cannot bind them to a
+    session; the cards bind a session but only for a worker that completed a task. A worker can
+    therefore appear in one and not the other, and pretending otherwise would invent a fleet.
     """
     actors = {}
     for e in events:
@@ -536,6 +826,7 @@ def fleet_census(events, hb):
 
     roster = sorted(actors.values(), key=lambda r: (r["last_ts"] or ""), reverse=True)
     live = hb.get("open_workers") if isinstance(hb, dict) else None
+    workers, unnamed, ledger_only = fleet_workers(events, cost or {})
 
     return {
         "open_workers": live,
@@ -546,11 +837,31 @@ def fleet_census(events, hb):
         "orchestrator_context_pct": hb.get("context_pct") if isinstance(hb, dict) else None,
         "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
         "known": isinstance(live, int),
+        "workers": workers,
+        "unnamed_sessions": unnamed,
+        "ledger_only": ledger_only,
+        "quiet_after_s": QUIET_AFTER_S,
+        # Where the cards came from, printed even when there are none: an empty Fleet screen that
+        # cannot say where it looked is indistinguishable from a broken one.
+        "workers_searched": "docs/lab/events/*.jsonl — a card per session named by a task.completed "
+                            "event (the only event carrying BOTH a session_id and the worker's name); "
+                            "the model is then read from that session's transcript",
         "roster": roster[:20],
         "blind_spots": [
-            "no pane id in the event log — pane.started/ended carry a session_id only",
-            "no model in the event log — it is recorded by hand in ORCHESTRATION-STATE §TELEMETRY",
-            "hook-written lines all carry actor=\"claude\"; only semantic (src=emit) lines name the worker",
+            "no pane id in the event log — checked: not one event, any day, carries a pane/window/tty "
+            "field. The cards read `pane: unknown` and no amount of rendering can fix that; the hooks "
+            "would have to emit it.",
+            "a worker is named only by task.completed — one that never completed a task through the "
+            "task system gets NO card, however hard it worked. %d session(s) in the log are nameless "
+            "for exactly this reason." % unnamed,
+            "tokens come from the hand-written ORCHESTRATION-STATE ledger, joined by worker NAME — the "
+            "event log carries no token counts at all. The two name spaces are typed by hand and do "
+            "not reconcile: %d ledger name(s) match no card at all (%s%s). A card with no tokens is a "
+            "failed join, NOT a worker that spent nothing."
+            % (len(ledger_only), ", ".join(ledger_only[:6]) or "none",
+               ", …" if len(ledger_only) > 6 else ""),
+            "hook-written lines all carry actor=\"claude\"; only semantic (src=emit) lines name the "
+            "worker, and those carry no session_id — so the roster below cannot be joined to the cards",
         ],
     }
 
@@ -1481,11 +1792,17 @@ def build_render_bundle(ctx, status):
     from `events` below, computed once, here. A number the renderer works out for itself is a second
     opinion waiting to disagree with status.json."""
     return {
+        # /6 (GSL-98): `fleet.workers` (a card per worker, keyed on the session a task.completed named,
+        # with the model read from that session's TRANSCRIPT rather than from the worker's word for it)
+        # and `cost.by_model` + `cost.quota`. /5's fleet could name actors but could not attribute an
+        # event to one, so it could not answer the only question the screen exists for: how long has
+        # this worker been silent.
+        #
         # /5 (GSL-97): `library` stopped being five fixed lists and became declared SECTIONS, each
         # carrying the glob it was built from -- reviews, research and the incident post-mortems were
         # simply not indexed before, and a section that cannot say where it looked cannot be trusted
         # when it comes back empty.
-        "schema": "gosleep.lab.render/5",
+        "schema": "gosleep.lab.render/6",
         "generated_at": status["generated_at"],
         "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
         "date": ctx["date"],
@@ -1951,8 +2268,10 @@ def main():
         "narrative": None,
     }
     ctx["pulses"] = load_heartbeat_history()
-    ctx["cost"]   = load_cost(ctx["state"])
-    ctx["fleet"]  = fleet_census(events_all, ctx["heartbeat"] or {})
+    ctx["cost"]   = load_cost(ctx["state"], events_all, event_days)
+    # Fleet AFTER cost, and not by accident: a worker's token count exists only in the telemetry
+    # ledger, so the cards are joined onto it by worker name.
+    ctx["fleet"]  = fleet_census(events_all, ctx["heartbeat"] or {}, ctx["cost"])
     ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"], ctx["gh_issues"])
     ctx["queue"]  = build_queue(questions)
     ctx["runway"] = compute_runway(ctx)

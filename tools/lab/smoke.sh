@@ -248,8 +248,40 @@ grep -q -- '--max-budget-usd' "$SCRIPT_DIR/chronicler.py" \
   && ok "C3/F4-S4: claude -p is bounded (--max-budget-usd) and toolless (--allowedTools empty)" \
   || bad "C3/F4-S4: the narrator call is not bounded/toolless"
 # C5: a bounded job, not the fourth live agent. It must not know how to take a pane at all.
-grep -qEi 'tmux|spawn|Agent tool|teammate' "$SCRIPT_DIR/chronicler.py" \
+#
+# The denylist guards a CAPABILITY, not a vocabulary — and GSL-98 is where the difference started to
+# matter. The only place the event log writes a worker's NAME is the key `data.raw.teammate_name`, so
+# a Fleet screen with cards on it cannot be built without that literal appearing in the chronicler.
+# Reading a key out of an append-only JSON log is not the power to take a pane, so that ONE literal is
+# exempt — and nothing else is. Every other form of every denied word, `teammate` bare included, still
+# fails. What was NOT done is worth recording: the verb for creating a worker keeps no exemption at
+# all, because there a rename was free (the card's field is `started_ts`, after the log's own
+# `pane.started`), and a capability word must never be weakened when a rename would do.
+#
+# A safety check whose exemption can quietly widen is a safety check that is already dead, so the
+# boundary is itself under test below (C5-narrow) rather than resting on this comment.
+c5_takes_a_pane() {                     # 0 = violates, 1 = clean
+  sed -E 's/teammate_name//g' "$1" | grep -qEi 'tmux|spawn|Agent tool|teammate'
+}
+c5_takes_a_pane "$SCRIPT_DIR/chronicler.py" \
   && bad "C5: the chronicler can take a pane" || ok "C5: no tmux/spawn — it cannot hold a pane slot"
+
+# C5-narrow (GSL-98): the exemption above is one literal wide, and this proves it — in CI, on every
+# run, not once by hand in the cycle that introduced it. Three fixtures: the key must pass, and the
+# two things the key must never be a doorway for must still fail.
+C5FX="$WORK/c5"; mkdir -p "$C5FX"
+printf 'nm = raw.get("teammate_name")\n'   > "$C5FX/key.py"
+printf 'emit("teammate.spawned", pane)\n'  > "$C5FX/verb.py"
+printf '# hand the teammate a pane\n'      > "$C5FX/bare.py"
+c5_takes_a_pane "$C5FX/key.py" \
+  && bad "C5-narrow: the exempt key is rejected — the Fleet cards cannot read a worker's name" \
+  || ok "C5-narrow: data.raw.teammate_name (a read-only log key) passes"
+c5_takes_a_pane "$C5FX/verb.py" \
+  && ok "C5-narrow: the exemption is not a doorway — 'teammate.spawned' still fails" \
+  || bad "C5-narrow: BROKEN — the exemption now lets the create-a-worker verb through"
+c5_takes_a_pane "$C5FX/bare.py" \
+  && ok "C5-narrow: a bare 'teammate' still fails — only the compound key is exempt" \
+  || bad "C5-narrow: BROKEN — the exemption widened from a key to the whole word"
 
 # Everything below runs against a THROWAWAY lab (its own --repo), never the live one.
 CR="$WORK/chron-repo"; mkdir -p "$CR/docs/lab/events" "$CR/docs/lab/questions" "$CR/docs/lab/decisions"
@@ -351,7 +383,7 @@ grep -q 'c0ffee2' "$CR/docs/lab/site/timeline.html" \
 # cannot have been built from it, whatever they say. The renderer THROWS on a schema it does not
 # know (tools/lab/ui/src/render.tsx) rather than rendering blank cards — so this string is load-
 # bearing on both sides, and bumping it is a two-file change, on purpose.
-jq -e '.schema == "gosleep.lab.render/5"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+jq -e '.schema == "gosleep.lab.render/6"' "$CR/docs/lab/render_bundle.json" >/dev/null 2>&1 \
   && ok "GSL-92: render_bundle.json is valid and carries its schema" \
   || bad "GSL-92: render_bundle.json missing/invalid/unversioned"
 [[ "$(jq -r '.ui.ok' "$CR/docs/lab/status.json")" == "true" ]] \
@@ -476,6 +508,164 @@ GOSLEEP_TOKEN_CEILING=1000000 bash "$CH" --repo "$CR" --no-poll --quiet --json >
   && ok "GSL-93: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING)" \
   || bad "GSL-93: the ceiling override is ignored"
 bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1     # back to the honest default
+
+# ───────────────── GSL-98: the worker cards, and the model that cannot lie ─────────────────
+#
+# Its own throwaway repo, because these assertions need a fleet with a KNOWN shape and the lab above
+# is shared. Three workers, one of each state, plus a fourth session the log can never name:
+#
+#   alpha  pane.started + task.completed + a recent event, no pane.ended   -> active
+#   beta   same, but last heard from 3h ago and never ended                -> SILENT (not dead)
+#   gamma  pane.started + task.completed + pane.ended                      -> ended
+#   (s4)   events, but no task.completed -> no name -> no card, counted as unnamed
+#
+# THE EVENT LOG DELIBERATELY LIES, TWICE, and the two lies are different on purpose — a self-report
+# can leak onto the card by two distinct routes and one fixture must catch both:
+#
+#   alpha  claims claude-haiku-4-5; its transcript says claude-opus-4-8   -> catches a PREFERENCE leak
+#          (code that reads the declaration when the truth is sitting right there)
+#   gamma  claims claude-sonnet-5; it has NO transcript at all            -> catches a FALLBACK leak
+#          (code that shrugs and believes the worker when the truth is missing)
+#
+# The second is here because the first mutation run PROVED the test slept without it: with gamma
+# silent about its model, a fallback-to-self-report regression sailed through green. Cycles 49/50 are
+# what this guards — the worker's word is precisely the source this card may not trust — so the
+# assertions are two-sided: the transcript's model must be ON the card, gamma must read `unknown`, and
+# NEITHER claimed model may appear anywhere on the page.
+FL="$WORK/f5-fleet"; mkdir -p "$FL/docs/lab/events" "$FL/docs/lab/questions" "$FL/docs/lab/decisions" \
+                              "$FL/docs/handoff" "$FL/transcripts"
+: > "$FL/docs/lab/questions/queue.jsonl"; : > "$FL/docs/lab/decisions/log.jsonl"
+S1=aaaaaaaa-0000-0000-0000-000000000001; S2=bbbbbbbb-0000-0000-0000-000000000002
+S3=cccccccc-0000-0000-0000-000000000003; S4=dddddddd-0000-0000-0000-000000000004
+fl_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
+T_NOW=$(fl_ts 2); T_OLD=$(fl_ts 180); T_START=$(fl_ts 240)
+{ printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"claude","type":"pane.started","src":"hook:SessionStart","session_id":"%s","data":{}}\n' "$T_START" "$TODAY" "$S1"
+  printf '{"ts":"%s","run_id":"%s","seq":2,"actor":"claude","type":"task.completed","src":"hook:TaskCompleted","session_id":"%s","data":{"raw":{"teammate_name":"alpha","task_subject":"Card the fleet","model_self_report":"claude-haiku-4-5"}}}\n' "$T_START" "$TODAY" "$S1"
+  printf '{"ts":"%s","run_id":"%s","seq":3,"actor":"claude","type":"agent.turn_ended","src":"hook:Stop","session_id":"%s","data":{}}\n' "$T_NOW" "$TODAY" "$S1"
+  printf '{"ts":"%s","run_id":"%s","seq":4,"actor":"claude","type":"pane.started","src":"hook:SessionStart","session_id":"%s","data":{}}\n' "$T_START" "$TODAY" "$S2"
+  printf '{"ts":"%s","run_id":"%s","seq":5,"actor":"claude","type":"task.completed","src":"hook:TaskCompleted","session_id":"%s","data":{"raw":{"teammate_name":"beta","task_subject":"Go quiet"}}}\n' "$T_OLD" "$TODAY" "$S2"
+  printf '{"ts":"%s","run_id":"%s","seq":6,"actor":"claude","type":"pane.started","src":"hook:SessionStart","session_id":"%s","data":{}}\n' "$T_START" "$TODAY" "$S3"
+  printf '{"ts":"%s","run_id":"%s","seq":7,"actor":"claude","type":"task.completed","src":"hook:TaskCompleted","session_id":"%s","data":{"raw":{"teammate_name":"gamma","task_subject":"Finish and leave","model_self_report":"claude-sonnet-5"}}}\n' "$T_OLD" "$TODAY" "$S3"
+  printf '{"ts":"%s","run_id":"%s","seq":8,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"%s","data":{"reason":"other"}}\n' "$T_OLD" "$TODAY" "$S3"
+  printf '{"ts":"%s","run_id":"%s","seq":9,"actor":"claude","type":"agent.turn_ended","src":"hook:Stop","session_id":"%s","data":{}}\n' "$T_NOW" "$TODAY" "$S4"
+} > "$FL/docs/lab/events/$TODAY.jsonl"
+# alpha: the truth. beta: TWO models in one session — a mid-session switch, which the card must show
+# rather than average away. gamma: no transcript at all -> unknown, and never a default.
+printf '{"message":{"model":"claude-opus-4-8"}}\n{"message":{"model":"claude-opus-4-8"}}\n' > "$FL/transcripts/$S1.jsonl"
+printf '{"message":{"model":"claude-opus-4-8"}}\n{"message":{"model":"claude-fable-5"}}\n{"message":{"model":"claude-opus-4-8"}}\n' > "$FL/transcripts/$S2.jsonl"
+# The ledger. `zeta` names a worker no card can match — one worker under two hand-typed names, which
+# is the join failure the Fleet screen has to surface instead of printing a confident zero.
+cat > "$FL/docs/handoff/ORCHESTRATION-STATE.md" <<'STATE'
+## TELEMETRY
+
+- `cycle=1 worker=alpha model=claude-opus-4-8 tokens_out=1000 tokens_in=500 cache_read=10 | running: cycles=1 total≈1000`
+- `cycle=2 worker=beta model=claude-opus-4-8 tokens_out=2000 tokens_in=600 cache_read=20 | running: cycles=2 total≈3000`
+- `cycle=3 worker=zeta model=claude-fable-5 tokens_out=4000 tokens_in=700 cache_read=30 | running: cycles=3 total≈7000`
+- `cycle=4 worker=zeta model=claude-fable-5 tokens_out=est-unavailable | running: cycles=4 total≈7000`
+
+## NEXT
+STATE
+FLB="$FL/docs/lab/render_bundle.json"; FLH="$FL/docs/lab/site/fleet.html"
+GOSLEEP_TRANSCRIPT_DIR="$FL/transcripts" bash "$CH" --repo "$FL" --no-poll --quiet --json >/dev/null 2>&1
+
+# ⭐ The card exists at all, and the AGE is its headline. Asserted on the MECHANISM — the element that
+# carries the age is `.wk-age`, and it must be inside the card, not in a footnote somewhere.
+[[ "$(jq -r '.fleet.workers | length' "$FLB")" == "3" ]] \
+  && ok "GSL-98: three named sessions -> three worker cards (the fourth is nameless and gets none)" \
+  || bad "GSL-98: wrong card count ($(jq -r '.fleet.workers | length' "$FLB") — want 3)"
+grep -q 'class="wk-age"' "$FLH" \
+  && ok "GSL-98: the card leads with the last-event age (.wk-age is rendered)" \
+  || bad "GSL-98: the card does not render the age element — the headline field of the screen is missing"
+
+# ⭐ SILENT IS NOT DEAD. The PRD is literal about this: a worker nobody has heard from is not working,
+# but it is not provably gone either, and the screen must say the first without implying the second.
+[[ "$(jq -r '.fleet.workers[] | select(.name=="beta") | .state' "$FLB")" == "silent" ]] \
+  && ok "GSL-98: 3h of silence + no pane.ended -> state=silent" \
+  || bad "GSL-98: a silent worker was not called silent"
+[[ "$(jq -r '.fleet.workers[] | select(.name=="alpha") | .state' "$FLB")" == "active" ]] \
+  && ok "GSL-98: a worker heard from 2m ago -> state=active (the positive control)" \
+  || bad "GSL-98: an active worker was not called active — the silent test above proves nothing"
+[[ "$(jq -r '.fleet.workers[] | select(.name=="gamma") | .state' "$FLB")" == "ended" ]] \
+  && ok "GSL-98: pane.ended -> state=ended (the one end-of-life the log actually knows)" \
+  || bad "GSL-98: a logged pane.ended did not end the card"
+jq -e '[.fleet.workers[].state] | index("dead") | not' "$FLB" >/dev/null 2>&1 \
+  && jq -r '.fleet.workers[] | select(.name=="beta") | .state_why' "$FLB" | grep -qi "NOT 'dead'" \
+  && ok "GSL-98: no card ever says 'dead' — a thinking worker and a killed one are both just silent" \
+  || bad "GSL-98: the screen claims to tell a silent worker from a dead one. It cannot."
+
+# ⭐ THE MODEL COMES FROM THE TRANSCRIPT, NOT FROM THE WORKER. The event log carries alpha's own claim
+# (claude-haiku-4-5) and the transcript carries the truth (claude-opus-4-8). Both halves are asserted,
+# because either alone would pass on a broken build: the truth must be ON the card, and the worker's
+# claim must be NOWHERE on the page.
+[[ "$(jq -r '.fleet.workers[] | select(.name=="alpha") | .model' "$FLB")" == "claude-opus-4-8" ]] \
+  && ok "GSL-98: the model is read from the session transcript (the same source an audit reads)" \
+  || bad "GSL-98: the model is not the transcript's ($(jq -r '.fleet.workers[] | select(.name=="alpha") | .model' "$FLB"))"
+# The absence-greps are worth something only because both strings ARE in the fixture's log. Assert
+# that first: an absence-grep over a fixture that never carried the string is a green tick over nothing.
+grep -q 'claude-haiku-4-5' "$FL/docs/lab/events/$TODAY.jsonl" \
+  && grep -q 'claude-sonnet-5' "$FL/docs/lab/events/$TODAY.jsonl" \
+  && ok "GSL-98: both self-reported models ARE in the fixture log (so the absence-greps below mean something)" \
+  || bad "GSL-98: the fixture carries no self-report — the greps below would pass vacuously"
+grep -qE 'claude-haiku-4-5|claude-sonnet-5' "$FLH" \
+  && bad "GSL-98: a worker's SELF-REPORTED model reached the page — cycles 49/50 all over again" \
+  || ok "GSL-98 ⭐ neither self-report is on the page (both workers lied; the card ignored both)"
+# No transcript -> unknown. NOT the worker's claim: with a self-report sitting right there in the log,
+# `unknown` is the card actively REFUSING to take it, which is the whole discipline being guarded.
+[[ "$(jq -r '.fleet.workers[] | select(.name=="gamma") | .model' "$FLB")" == "null" ]] \
+  && ok "GSL-98 ⭐ no transcript -> model is unknown, even though the worker offered one" \
+  || bad "GSL-98: a model was invented for a session with no transcript"
+# Two models in one transcript is a mid-session switch, and collapsing it would hide the exact
+# discrepancy this field exists to catch.
+[[ "$(jq -r '.fleet.workers[] | select(.name=="beta") | .models | length' "$FLB")" == "2" ]] \
+  && ok "GSL-98: a mid-session model switch is kept, not averaged away" \
+  || bad "GSL-98: a session that ran on two models reports only one"
+
+# ⭐ PANE IS UNKNOWN BY ABSENCE OF SOURCE, and it says so. Checked against the whole log: not one hook
+# payload carries a pane id. A renderer cannot fix that; only a hook change could.
+[[ "$(jq -r '[.fleet.workers[] | select(.pane == null)] | length' "$FLB")" == "3" ]] \
+  && jq -r '.fleet.workers[0].pane_why' "$FLB" | grep -q 'no pane id' \
+  && ok "GSL-98: every card reads pane=unknown and carries the reason (no hook emits one)" \
+  || bad "GSL-98: a pane id was invented, or the missing one carries no reason"
+
+# ⭐ A FAILED JOIN IS NOT A ZERO. `zeta` is in the ledger and matches no card; gamma is a card that
+# matches no ledger line. Neither may render as "spent nothing".
+[[ "$(jq -r '.fleet.workers[] | select(.name=="alpha") | .tokens_out' "$FLB")" == "1000" ]] \
+  && ok "GSL-98: tokens join onto the card by worker name (alpha=1000 from the ledger)" \
+  || bad "GSL-98: the token join is broken"
+[[ "$(jq -r '.fleet.workers[] | select(.name=="gamma") | .tokens_out' "$FLB")" == "null" ]] \
+  && jq -r '.fleet.workers[] | select(.name=="gamma") | .tokens_why' "$FLB" | grep -qi 'not evidence of zero spend' \
+  && ok "GSL-98: a card with no ledger line reads unknown — a failed join, never a free worker" \
+  || bad "GSL-98: an unjoined worker was rendered as having spent zero"
+[[ "$(jq -r '.fleet.ledger_only | index("zeta")' "$FLB")" != "null" ]] \
+  && grep -q 'match no card above' "$FLH" \
+  && ok "GSL-98: ledger names that match no card are printed (one worker, two hand-typed names)" \
+  || bad "GSL-98: the ledger's unmatched names are silently dropped"
+
+# ⭐ The nameless session is COUNTED, not hidden: a worker that completed no task is missing from the
+# log's vocabulary, not from the fleet, and an empty-looking Fleet screen must be able to say so.
+[[ "$(jq -r '.fleet.unnamed_sessions' "$FLB")" == "1" ]] \
+  && ok "GSL-98: a session the log cannot name is counted (no card, but not swept under the rug)" \
+  || bad "GSL-98: nameless sessions are not counted"
+
+# ⭐ COST, per model. The sums must be printed WITH what is missing from them: cycle 4 has an
+# unreadable tokens_out, and a rollup that quietly skipped it would under-report with total
+# confidence — "cheaper than reality" being the one direction a cost screen must never err in.
+[[ "$(jq -r '.cost.by_model[] | select(.model=="claude-opus-4-8") | .tokens_out' "$FLB")" == "3000" ]] \
+  && ok "GSL-98: per-model rollup sums the ledger by model (opus: 1000+2000)" \
+  || bad "GSL-98: the per-model rollup does not sum"
+[[ "$(jq -r '.cost.by_model[] | select(.model=="claude-fable-5") | .partial' "$FLB")" == "1" ]] \
+  && grep -q 'LOW by an unknown amount' "$FL/docs/lab/site/cost.html" \
+  && ok "GSL-98: an unreadable token field is COUNTED against its model's sum, and the page says so" \
+  || bad "GSL-98: a cycle with an unreadable token field was silently dropped from the rollup"
+
+# ⭐ The quota section is expected to be EMPTY, so it must print its own glob. "The quota never bit us"
+# and "the hook that would have told us is dead" are different sentences and only one is safe to sleep
+# on — an empty section that cannot say where it looked cannot tell you which one you are in.
+[[ "$(jq -r '.cost.quota.total' "$FLB")" == "0" ]] \
+  && jq -r '.cost.quota.searched' "$FLB" | grep -q 'docs/lab/events/\*.jsonl' \
+  && grep -q 'Searched:' "$FL/docs/lab/site/cost.html" \
+  && ok "GSL-98: an empty quota section prints the glob it searched, not a shrug" \
+  || bad "GSL-98: the quota section is empty and cannot say where it looked"
 
 # ISO-8601 WITH AN OFFSET, driven end to end through the real chronicler.
 #

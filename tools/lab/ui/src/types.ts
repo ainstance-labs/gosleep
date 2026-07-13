@@ -256,6 +256,46 @@ export interface FleetActor {
   types: Record<string, number>;
 }
 
+/**
+ * A worker card (GSL-98). Keyed on the SESSION, because `task.completed` is the one event carrying
+ * both a session_id and a worker's name — bind those once and the session's whole trail becomes
+ * attributable. `last_age_*` is the headline field of the card, not a footnote: a worker nobody has
+ * heard from in an hour is not working, it is silent.
+ */
+export interface FleetWorker {
+  name: string;
+  session_id: string;
+  session_short: string;
+  /** Exactly three, and there is deliberately no `dead` — the log cannot tell a thinking worker from
+   *  a crashed one. Both are `silent`, and the card must not launder that into either. */
+  state: "active" | "silent" | "ended";
+  state_why: string;
+  last_ts: string | null;
+  last_age_s: number | null;
+  last_age_human: string;
+  /** Read from the session TRANSCRIPT — the same source an audit uses — never from the worker's
+   *  self-report, which has already lied twice (cycles 49/50). `null` = unknown, never a default. */
+  model: string | null;
+  /** More than one = a mid-session model switch. Kept, because collapsing it would hide the very
+   *  discrepancy this field exists to catch. */
+  models: string[];
+  model_source: string | null;
+  model_why: string | null;
+  /** ALWAYS null: no hook payload carries a pane id. Unknown by absence of source, not by oversight. */
+  pane: string | null;
+  pane_why: string;
+  started_ts: string | null;
+  started_why: string | null;
+  first_ts: string | null;
+  task: string | null;
+  events: number;
+  types: Record<string, number>;
+  /** From the hand-written telemetry ledger, joined by NAME. `null` is a FAILED JOIN, not zero spend. */
+  tokens_out: number | null;
+  tokens_cycles: number;
+  tokens_why: string | null;
+  tokens_source: string;
+}
 export interface Fleet {
   /** From the orchestrator heartbeat. `null` means UNKNOWN — never render it as zero. */
   open_workers: number | null;
@@ -266,6 +306,13 @@ export interface Fleet {
   orchestrator_context_pct: number | null;
   source: string;
   known: boolean;
+  workers: FleetWorker[];
+  /** Sessions with events but no name: they completed no task, so the log never learned who they were. */
+  unnamed_sessions: number;
+  /** Ledger worker names that matched no card — one worker under two hand-typed names. */
+  ledger_only: string[];
+  quiet_after_s: number;
+  workers_searched: string;
   roster: FleetActor[];
   blind_spots: string[];
 }
@@ -285,8 +332,39 @@ export interface CostCycle {
   raw: string;
 }
 
+/** Spend per model (GSL-98). `partial` counts the bucket's cycles with an unreadable token field, so
+ *  the sum is always printed next to what is missing from it — a cost total that silently skips the
+ *  lines it could not parse under-reports with total confidence, and "cheaper than reality" is the one
+ *  direction this screen must never err in. A bucket with no readable line at all reads `null`, not 0. */
+export interface CostByModel {
+  model: string | null;
+  cycles: number;
+  partial: number;
+  readable: number;
+  tokens_out: number | null;
+  tokens_in: number | null;
+  cache_read: number | null;
+}
+export interface QuotaEvent {
+  ts: string | null;
+  type: string;
+  src: string | null;
+  error_type: string | null;
+  eta: string | null;
+  detail: string | null;
+}
+/** Quota events, EXPECTED TO BE EMPTY. `searched` is therefore mandatory: an empty section that cannot
+ *  say where it looked is indistinguishable from a broken one. */
+export interface CostQuota {
+  events: QuotaEvent[];
+  total: number;
+  searched: string;
+  why_empty: string | null;
+}
 export interface Cost {
   cycles: CostCycle[];
+  by_model: CostByModel[];
+  quota: CostQuota;
   /** Telemetry bullets we could not key on a cycle. Shown, never swallowed. */
   unparsed: number;
   cumulative_total: number | null;
@@ -368,7 +446,7 @@ export interface Runway {
  * emitting must fail loudly at build time, not render a blank card at 03:00.
  */
 export interface RenderBundle {
-  schema: "gosleep.lab.render/5";
+  schema: "gosleep.lab.render/6";
   runway: Runway;
   generated_at: string;
   generated_by: string;

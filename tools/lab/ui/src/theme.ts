@@ -162,4 +162,34 @@ nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2p
   line-height:1.5}
 .ui-degraded code{background:var(--card);border:1px solid var(--line);border-radius:.25rem;
   padding:.05rem .3rem}
+
+/* GSL-98 (R5.2): the worker card.
+
+   THE AGE IS THE HEADLINE, and the CSS is where that stops being an opinion: .wk-age is set in the
+   largest type on the card, above the name, because the PRD's instruction is literal — a worker
+   nobody has heard from in an hour is not working, it is silent, and a card that prints the age in a
+   footnote has quietly re-ranked the one number the reader is there for.
+
+   Three states and three colours. SILENT is AMBER, never red: red would read as dead, and dead is
+   precisely the claim this screen is not entitled to make — a worker thinking inside a long tool call
+   and a worker whose process is gone are both silent from here. Amber says "look", which is the most
+   the log can honestly ask for. ENDED is neutral grey, because a finished worker is not a problem. */
+.wk{background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.7rem .85rem;
+  margin:.5rem 0}
+.wk-top{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.wk-age{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.wk-age small{font-size:.62rem;font-weight:600;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.05em;display:block}
+.wk-name{font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.wk.active .wk-age{color:var(--ok)}
+.wk.silent .wk-age{color:var(--warn)}
+.wk.ended  .wk-age{color:var(--dim)}
+.wk.silent{border-color:var(--warn)}
+.wk-why{color:var(--dim);font-size:.8rem;margin:.45rem 0 .55rem;line-height:1.5}
+.wk-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.35rem .9rem;
+  border-top:1px solid var(--line);padding-top:.5rem;font-size:.84rem}
+.wk-f span{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
+  display:block}
+.wk-task{margin-top:.5rem;font-size:.85rem}
+.wk-models{color:var(--warn);font-weight:600}
 `;
