@@ -37,7 +37,17 @@ Do NOT use for a quick status reply in chat (just answer). Use this when the out
    - The current planning/architecture docs that govern the next work ("read first" targets).
 3. **Find the prior handoff** (`ls docs/handoff/`) and reuse its Connections / Hard rules / Gates verbatim where unchanged — supersede, don't contradict.
 4. **Write the file** using the structure below. Verify every cross-doc link/section ref resolves (run the repo's docs checker if one exists, e.g. `pnpm check:docs`).
-5. **Never put secrets in it.** Reference env var *names* and where they live; never the values.
+5. **Announce the write to the event layer — one line, and only where one exists.** A repo without
+   `tools/lab/` is unaffected: the guard makes this a no-op, never an error.
+   ```bash
+   [ -x tools/lab/lab-emit.sh ] && tools/lab/lab-emit.sh event --type handoff.written \
+     --data path="$FILE" --data nn="$NN" --data topic="$TOPIC" --data date="$(date +%F)" \
+     --data resume="<the resume point, one line>" || true          # + --task <KEY> if it closes one
+   ```
+   Run it **after** the file is on disk, so the event never claims a handoff that does not exist. A
+   hook already records *that a file under `docs/handoff/` was written*; what it cannot know is **which**
+   handoff, on **what**, and **where the next agent resumes** — that is the whole content of this line.
+6. **Never put secrets in it.** Reference env var *names* and where they live; never the values.
 
 ## Document structure (sections, in order)
 
@@ -99,6 +109,7 @@ State the truth across all three trackers (Jira, GitHub, the doc) — they must 
 | Blocked items | a dedicated section naming exactly what the human must provide |
 | Secrets | names + location only, never values |
 | Consistency | Jira ↔ GitHub ↔ handoff must agree; supersede the prior handoff, don't contradict |
+| Event layer | one `lab-emit event --type handoff.written` after the write (step 5) — where the repo has one |
 
 ## Common mistakes
 
