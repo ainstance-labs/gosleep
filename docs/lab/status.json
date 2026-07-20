@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-13T09:45:15Z",
+  "generated_at": "2026-07-20T11:59:00Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
-  "date": "2026-07-13",
+  "date": "2026-07-20",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 180,
-    "max_event_age_human": "3m",
-    "latest_event_ts": "2026-07-13T09:42:14Z",
-    "heartbeat_age_s": 921,
+    "max_event_age_s": 357,
+    "max_event_age_human": "5m",
+    "latest_event_ts": "2026-07-20T11:53:01Z",
+    "heartbeat_age_s": 409,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,124 +16,173 @@
     }
   },
   "events": {
-    "total": 175,
-    "today": 109,
+    "total": 548,
+    "today": 77,
     "days": [
       "2026-07-12",
-      "2026-07-13"
+      "2026-07-13",
+      "2026-07-20"
     ],
     "by_type": {
-      "agent.turn_ended": 31,
-      "agent.idle": 21,
-      "task.completed": 20,
-      "agent.terminated": 15,
-      "handoff.written": 15,
-      "dev_history.written": 13,
-      "vcs.commit": 13,
-      "tracker.issue.transitioned": 9,
-      "tracker.issue.updated": 9,
-      "pane.ended": 7,
-      "pane.started": 7,
-      "task.created": 5,
-      "notification.raised": 4,
-      "vcs.push": 3,
-      "agent.spawned": 1,
-      "question.posed": 1,
-      "vcs.pr.opened": 1
+      "agent.turn_ended": 147,
+      "agent.idle": 48,
+      "handoff.written": 45,
+      "dev_history.written": 44,
+      "vcs.commit": 38,
+      "agent.terminated": 29,
+      "tracker.issue.transitioned": 29,
+      "task.completed": 28,
+      "tracker.issue.updated": 24,
+      "pane.ended": 22,
+      "pane.started": 21,
+      "vcs.push": 13,
+      "tracker.issue.created": 12,
+      "notification.raised": 11,
+      "question.auto_resolved": 9,
+      "task.created": 8,
+      "decision.made": 7,
+      "question.posed": 7,
+      "agent.spawned": 3,
+      "vcs.pr.opened": 2,
+      "vcs.pr.merged": 1
     },
     "by_src": {
-      "hook:PostToolUse": 49,
-      "hook:Stop": 31,
-      "hook:TeammateIdle": 21,
-      "hook:TaskCompleted": 20,
-      "hook:SubagentStop": 15,
-      "poll-fill": 13,
-      "hook:SessionEnd": 7,
-      "hook:SessionStart": 7,
-      "hook:TaskCreated": 5,
-      "hook:Notification": 4,
-      "emit": 2,
-      "hook:SubagentStart": 1
+      "hook:PostToolUse": 188,
+      "hook:Stop": 147,
+      "hook:TeammateIdle": 48,
+      "hook:SubagentStop": 29,
+      "emit": 28,
+      "hook:TaskCompleted": 28,
+      "hook:SessionEnd": 22,
+      "hook:SessionStart": 21,
+      "poll-fill": 15,
+      "hook:Notification": 11,
+      "hook:TaskCreated": 8,
+      "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 96,
-      "ef6c3777": 42,
-      "poll-fill": 13,
+      "claude": 282,
+      "ef6c3777": 85,
+      "dd3edd33": 63,
+      "ecab62c2": 20,
+      "orchestrator": 19,
+      "poll-fill": 15,
+      "a690ba064bba794be": 13,
+      "f03d552e": 5,
       "70cbe176": 3,
       "ca8a1e39": 3,
       "aa7a28cca3c73abc5": 2,
+      "ab3b55ad5cc3bfb36": 2,
+      "gsl90-setup": 2,
+      "4ec4b8c0": 1,
       "a00bff097e605f499": 1,
       "a0f0f3af9ae562c37": 1,
       "a198207c1aae6407d": 1,
+      "a1a48411925ec4eae": 1,
+      "a1f95c5ec2e2d74ae": 1,
       "a2333b9dfbccdce68": 1,
+      "a2ff6cd2567d65e2b": 1,
       "a3055ba3926e2b839": 1,
       "a32e1a070b23f39b4": 1,
+      "a343a285e2060e2e9": 1,
       "a427309da6b948dfd": 1,
+      "a503045747e54a2aa": 1,
+      "a5940cc430930b0e5": 1,
       "a5ed2eae40a87789c": 1,
+      "a61075657b8f0649b": 1,
+      "a66cff203f32b5147": 1,
       "a6deecd2645c93e07": 1,
       "a712e803767d9690f": 1,
       "a7c5ddb345a6c59a0": 1,
       "a82b373ecbaf0c23c": 1,
+      "aa5b520664085b7b4": 1,
+      "aaea689860c6cccdb": 1,
+      "ac46c415bfdb4e55a": 1,
+      "ad294a00b0f62d230": 1,
       "add073ddf009d11cb": 1,
       "afc648057d400fa02": 1,
+      "fixer-lab": 1,
       "impl-lab-2": 1,
-      "orchestrator": 1
+      "impl-ui-1": 1,
+      "impl-ui-3": 1,
+      "impl-ui-4": 1,
+      "impl-ui-5": 1,
+      "impl-ui-7": 1
     },
-    "mechanical_share": 0.914
+    "mechanical_share": 0.922
   },
   "questions": {
-    "open": 1,
-    "by_type": {
-      "DECISION": 1
-    },
-    "items": [
-      {
-        "id": "q-2026-07-12-001",
-        "type": "DECISION",
-        "question": "Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?",
-        "default": "детерминированный скелет; claude -p — только --narrate врезка под бюджетом и с пустым --allowedTools",
-        "auto_apply_at": "2026-07-13T08:00:00Z",
-        "task": "GSL-86",
-        "high_impact": null
-      }
-    ]
+    "open": 0,
+    "by_type": {},
+    "items": []
   },
   "decisions": {
-    "total": 0,
-    "last": null,
+    "total": 7,
+    "last": {
+      "id": "d-2026-07-20-004",
+      "ts": "2026-07-20T10:58:32Z",
+      "re": "q-2026-07-20-001",
+      "task": "GSL-100",
+      "type": "DECISION",
+      "question": "GSL-100 — приёмочная [Docs]-задача — нашла настоящий UI-дефект на самом критерии фазы: на ширине телефона (390px) две nav-ссылки (Cost, Library) уходят за экран, потому что между <a> нет пробелов и у строки нет точки переноса. Чинить в этой же задаче или оставить находкой под отдельный тикет?",
+      "qshape": "fe278106d0",
+      "decision": "починить nav в рамках GSL-100",
+      "made_by": "orchestrator",
+      "rule": "manifest §2 decide-by-default + AUTONOMOUS mode (owner 2026-07-12); reversibility high",
+      "channel": ""
+    },
     "manifest_candidates": []
   },
   "delivery": {
-    "branch": "GSL-81-laboratory-auto-doc",
-    "head": "977a09e",
-    "dirty_paths": 12,
+    "branch": "GSL-90-ui-orchestration",
+    "head": "7c73aa3",
+    "dirty_paths": 11,
     "commits_on_date": [
       {
-        "sha": "977a09e",
+        "sha": "7c73aa3",
         "author": "R",
-        "ts": "2026-07-13T11:42:14+02:00",
-        "subject": "GSL-83 [Fix] phantom commit parser — HEAD must be FRESH and ITS OWN before it lends a sha (REVIEW-gsl81 C1, m1, m3)"
+        "ts": "2026-07-20T13:53:01+02:00",
+        "subject": "GSL-99 [UI] Review fix: the self-health meter counted panes and called them cycles (M1, M2, m2)"
       },
       {
-        "sha": "5be2adc",
+        "sha": "5e6d5ed",
         "author": "R",
-        "ts": "2026-07-13T07:52:54+02:00",
-        "subject": "GSL-89 [Docs][Tooling] Phase 4 summary + staleness contract + lab-log --ts/--supersedes"
+        "ts": "2026-07-20T13:44:58+02:00",
+        "subject": "GSL-98 [UI] Review fix: the ages on Fleet were frozen at build time (M3)"
       },
       {
-        "sha": "548fbf8",
+        "sha": "9fb5766",
         "author": "R",
-        "ts": "2026-07-13T07:31:13+02:00",
-        "subject": "GSL-88 [Skill] handoff skill emits handoff.written semantic event on write"
+        "ts": "2026-07-20T12:56:58+02:00",
+        "subject": "GSL-100 [Docs] Handoff 36 — цикл 59 (impl-ui-7): Фаза 5 принята; приёмка опровергла свой же критерий и нашла два дефекта"
+      },
+      {
+        "sha": "dc2a925",
+        "author": "R",
+        "ts": "2026-07-20T12:55:08+02:00",
+        "subject": "GSL-100 [Docs] Phase 5 acceptance: F5-S1..S4 closed by evidence — and the evidence found two real defects"
+      },
+      {
+        "sha": "66bce16",
+        "author": "R",
+        "ts": "2026-07-20T12:21:12+02:00",
+        "subject": "GSL-90 [Docs] Late-commit orphaned handoff 35 (orchestrator roll ledger)"
       }
     ],
     "prs": [
       {
-        "number": 102,
+        "number": 115,
         "state": "OPEN",
+        "title": "GSL-90 [Repo][Tooling] Фаза 5 — UI оркестрации (static v1)",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/115",
+        "mergedAt": null
+      },
+      {
+        "number": 102,
+        "state": "MERGED",
         "title": "GSL-81 [Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "url": "https://github.com/ainstance-labs/gosleep/pull/102",
-        "mergedAt": null
+        "mergedAt": "2026-07-13T11:37:15Z"
       },
       {
         "number": 92,
@@ -223,17 +272,32 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T09:29:53Z",
-      "cycle": 50,
-      "context_pct": 56,
+      "ts": "2026-07-20T11:52:09Z",
+      "cycle": 62,
+      "context_pct": 71,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "cycle 49 COMPLETE verdict=FIX 1C/2M/5m; spawning fixer-lab for C1 parser + M1 prose + M2 downgrade + m1/m4/m5"
+      "note": "fixer on M1+M2; roll planned at fixer boundary"
     },
-    "live_status": "▶ AUTONOMOUS MODE 2026-07-12 — cycle 44 setup DONE (эпик GSL-81=#93, 8 задач GSL-82..89=#94..101, ветка GSL-81-laboratory-auto-doc pushed @ 9a056bb, mirror+cross-links+assignee OK, ledger 11 путей, porcelain=2 [docs/prompts + handoff 22 → следующий леджер]). cycle=48 mechanic-lab DONE (PR #102 OPEN/CLEAN); cycle=49 reviewer-lab DONE ~09:23 — **verdict FIX (1C/2M/5m)**: **C1** F1 phantom parser WORSE than impl-lab-3 believed (git_head fallback returns previous HEAD on fail = valid-but-wrong sha — authoritative lie; shim protects blocking so parser fix is safe now); **M1** F2 staleness JS re-grades className/dataset/#stale-head but MISSES prose in un-id'd small — DEAD banner + \"Live\" text вместе (fix ~4 lines); **M2** R4.2 claim MET на evidence которого нет (нет vcs.pr.* events, poll-fill floor drops PR#92 as prehistory — downgrade claim или merge #102 через web UI); **F3 accepted correct**. Gates: smoke 119/119 verified, hooks-verify 13/13, install identical. cycle=50 worker=**fixer-lab** (spawning, Opus 4.8) — apply C1 + M1 + M2 + m1/m4/m5 — три задачи GSL-83 (hooks + tools/lab/lab-log.sh) → GSL-84 (lab-emit semantic events) → GSL-85 (docs/lab layout schema+retention) на той же ветке. orchestrator pane=%193 | latest handoff=docs/handoff/22-2026-07-12-handoff-gsl81-setup.md | questions: open=0 (0B/0D/0C/0F) lines=0 | status=Phase 4 impl foundation in flight. ⚠️ CRITICAL GOTCHA передаётся impl'у: TeammateIdle hook не тестирован на этой машине; воркер обязан ЗАПУСКАТЬ на самом деле и честно логировать деградацию в dev_history. После impl-lab-1 → impl-lab-2 (GSL-86..87 chronicler+poll) → impl-lab-3 (GSL-88..89) → механик PR → ревьюер → (фиксер) → финализатор → Phase 5. gsl81-setup shutdown_request отправлен. next Jira=GSL-90 (после Phase 4), GH=#102. Fleet cap: 3; open_workers=1 (setup terminating) → 2 (setup + impl-lab-1) на пик, потом 1.",
-    "telemetry_last": "cycle=47 worker=impl-lab-3 model=claude-opus-4-8 (транскрипт 9ea28b8d verify) tokens_out=~78000 tokens_in=~2000 cache_read=~11000000 cache_write=~500000 | running: cycles=77 total≈6246000 (+гэпы 2a/32/35) [GSL-88 skill emit dogfooded + GSL-89 dev_history summary + staleness JS re-grade + lab-log --ts/--supersedes with (file,seq) coord]"
+    "live_status": "▶ 2026-07-20 ~11:02Z — CYCLE 59 (impl-ui-7) DONE: GSL-100 закрыт, ФАЗА 5 ПРИНЯТА по доказательствам. Ветка GSL-90-ui-orchestration @ 9fb5766 (dc2a925 основной + 9fb5766 handoff 36), запушена, 11 коммитов от main. smoke 252/252; hooks-verify 14/14; tsc чист; схема render/7. Jira GSL-100 Done (verified). Вердикты: F5-S1 ✅ · F5-S2 ✅ (countdown вживую: 116 мин reader-clock) · F5-S3 ✅ (115 Jira/255 GH/122 commit ссылок) · F5-S4a ✅ file:// · F5-S4b ✅ после nav-фикса · F5-S4c ❌ ОПРОВЕРГНУТ по факту. DECISION q-2026-07-20-001 resolved (default applied, d-2026-07-20-004). impl-ui-7 TERMINATED ~11:07Z (graceful, pane %409 gone). CYCLE 60 mechanic-gsl90 DONE ~11:15Z: PR #115 OPEN/CLEAN (21 коммит, чеклист 11 задач вкл. GSL-101=#114 — нашёл сам, в брифе не было), Jira GSL-90 → In Review verified, Closes #103..#114, Acceptance-таблица честная (S4c опровергнут → вход Фазы 6). mechanic TERMINATED ~11:22Z (pane %410 gone). CYCLE 61 reviewer-gsl90 DONE ~11:39Z: VERDICT FIX — 0C/3M/2m/3nit (полный отчёт docs/reviews/REVIEW-gsl90.md, gitignored). 3 MAJOR (все в self-health/fleet): (1) chronicler.py:1943 handoff после последней границы не учитывается → ложный алярм долга (≥5 при 36 handoff'ах); (2) chronicler.py:1771 pane.ended = граница ПАНЕЛИ, не цикла (до 3 панелей/цикл) → фантомный долг; (3) fleet.tsx:32,188 возрасты воркеров заморожены на сборке вопреки site/README «keep aging» — ошибка в успокаивающую сторону. m2: фикстура smoke:1820 моделирует нереальный порядок — чинить тем же коммитом. Gates на 9fb5766: smoke 252/252, tsc 0, hooks 14/14. reviewer TERMINATED ~11:50Z (pane %411 gone; перед выходом оставил записку fixer'у: m2-фикстуры тем же коммитом что M1+M2, порядок M3→M1→M2, M3 — компонентом из tasks.tsx:30 без нового JS/схемы). CYCLE 62 fixer-gsl90 (Opus 4.8, pane=%412) SPAWNED ~11:52Z — 3 MAJOR обязательны, m/nit по цене, позитивные контроли против 9fb5766, handoff 37. Затем finalizer → → (fixer) → finalizer → Phase 6 Mobile setup (GSL-102+, GH #116+) без остановки. orchest",
+    "telemetry_last": "cycle=61 worker=reviewer-gsl90 model=claude-opus-4-8 (транскрипт b73939ec, поле model) tokens_out=112377 tokens_in=172 cache_read=9102115 | running: cycles=86 total≈8423000 (+гэпы 2a/32/35/48-52/57-cache-write) [Review PR #115 @ 9fb5766: VERDICT FIX — 0C/3M/2m/3nit. MAJOR: handoff-долг ложно алярмит (post-boundary handoff не учтён); pane.ended ≠ граница цикла (до 3 панелей/цикл) → фантомный долг; Fleet возрасты заморожены на сборке вопреки README-контракту. Причина слепоты 252 тестов: фикстура m"
   },
   "degraded": [],
-  "narrative": null
+  "narrative": null,
+  "ui": {
+    "ok": true,
+    "reason": null,
+    "renderer": "preact-render-to-string (esbuild SSG)",
+    "screens": [
+      "index.html",
+      "timeline.html",
+      "tasks.html",
+      "questions.html",
+      "fleet.html",
+      "cost.html",
+      "library.html"
+    ],
+    "last_success_at": "2026-07-20T11:59:00Z"
+  }
 }

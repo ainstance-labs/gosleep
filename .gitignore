@@ -18,6 +18,10 @@ docs/handoff/.watchdog-*
 # Node
 node_modules/
 
+# Lab UI build scratch — esbuild's compiled renderer, rebuilt from src/ on every chronicler pass.
+# Derived from committed sources; committing it would be committing a second copy of them.
+tools/lab/ui/.build/
+
 # Python
 __pycache__/
 *.pyc

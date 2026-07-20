@@ -4,10 +4,10 @@
 <title>Laboratory — gosleep lab</title>
 <style>
 :root{--bg:#fbfbfa;--fg:#1a1a19;--dim:#6b6b68;--line:#e3e3e0;--card:#fff;
-      --ok:#1a7f4b;--warn:#a4600a;--dead:#a51d24;--accent:#3b5bdb}
+      --ok:#1a7f4b;--warn:#a4600a;--dead:#a51d24;--accent:#3b5bdb;--dead-soft:#fdeaea}
 @media (prefers-color-scheme:dark){
   :root{--bg:#131315;--fg:#e8e8e6;--dim:#8f8f8b;--line:#2a2a2e;--card:#1b1b1e;
-        --ok:#4ade80;--warn:#fbbf24;--dead:#f87171;--accent:#8ba4ff}}
+        --ok:#4ade80;--warn:#fbbf24;--dead:#f87171;--accent:#8ba4ff;--dead-soft:#2a1618}}
 *{box-sizing:border-box}
 body{margin:0;padding:1rem;background:var(--bg);color:var(--fg);
      font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -31,6 +31,13 @@ td,th{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line);v
 th{color:var(--dim);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
 .wrap{overflow-x:auto}
 code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
+/* Monospace carries the unbreakable strings: raw JSON notes, 40-char sha1s, branch names. With the
+   default overflow-wrap they do not wrap — at 390px the orchestrator note was CLIPPED by the card
+   edge mid-token ('"context_pct":26,"o'), losing the rest of the sentence with nothing to show a
+   reader anything was missing. Silent truncation is the failure mode this laboratory exists to
+   refuse, so long tokens break instead. Measured 2026-07-20: card content 833px in a 356px box
+   (GSL-100). Tables are exempt — they scroll inside .wrap, where the swipe is discoverable. */
+.mono:not(table):not(.wrap *){overflow-wrap:anywhere}
 .tag{display:inline-block;padding:.05rem .4rem;border-radius:.3rem;border:1px solid var(--line);
      color:var(--dim);font-size:.72rem}
 .tag.hook{color:var(--ok);border-color:currentColor}
@@ -38,61 +45,358 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .tag.poll{color:var(--warn);border-color:currentColor}
 footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid var(--line);
        padding-top:.8rem}
-nav a{margin-right:.9rem}
+
+/* The autonomy runway (R5.1). It is the first thing on the morning screen and the largest thing on
+   it, because it is the only question the owner actually has at midnight. */
+.runway{border:2px solid currentColor;border-radius:.7rem;padding:.9rem 1rem;margin:.9rem 0}
+.runway.ok{color:var(--ok)} .runway.warn{color:var(--warn)} .runway.dead{color:var(--dead)}
+.runway-top{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
+.runway-label{font-size:.75rem;letter-spacing:.12em;font-weight:700}
+.runway-big{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.7rem;font-weight:800}
+.runway-bind{font-size:.8rem;font-weight:600;border:1px solid currentColor;border-radius:.4rem;
+  padding:.1rem .45rem}
+.runway-say{color:var(--fg);font-size:.86rem;margin-top:.5rem;line-height:1.5}
+.runway-next{color:var(--dim);font-size:.82rem;margin-top:.4rem}
+.runway-trace{color:var(--dim);font-size:.8rem;margin-top:.6rem}
+.runway-trace summary{cursor:pointer;font-weight:600}
+.runway-trace li{margin:.45rem 0;color:var(--fg)}
+.clocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.4rem;
+  margin-top:.7rem}
+.clock{background:var(--card);border:1px solid var(--line);border-radius:.45rem;padding:.4rem .5rem;
+  color:var(--fg);display:flex;flex-direction:column;gap:.1rem}
+.clock-axis{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+.clock-val{font-family:ui-monospace,Menlo,monospace;font-size:1rem}
+.clock-gauge{color:var(--dim);font-size:.72rem}
+.clock-kind{font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:var(--dim)}
+.clock-kind.stops{color:var(--dead)} .clock-kind.degrades{color:var(--warn)}
+.clock-kind.completes{color:var(--ok)}
+/* An unreadable clock must LOOK unreadable — never like a clock reading zero. */
+.clock.unknown{border-style:dashed}
+.clock.unknown .clock-val{color:var(--dim);font-style:italic;font-size:.85rem}
+.clock.exhausted .clock-val{color:var(--dead);font-weight:700}
+.clock.clear .clock-val{color:var(--ok)}
+
+/* "unknown" is a first-class value here, not a styling afterthought. It must never look like a
+   number and must never look like zero: it is muted, italic, and it carries its reason in a title.
+   A dashboard that renders a missing source as 0 tells the owner to go to sleep on evidence it does
+   not have. */
+.unknown{color:var(--dim);font-style:italic;font-weight:400;font-size:.82em;
+  border-bottom:1px dotted var(--dim);cursor:help}
+.card.blind{border-style:dashed;color:var(--dim);font-size:.85rem}
+.tag.BLOCKER{color:var(--dead);border-color:currentColor;font-weight:700}
+.tag.DECISION{color:var(--accent);border-color:currentColor}
+.tag.CLARIFY{color:var(--warn);border-color:currentColor}
+.tag.FYI{color:var(--dim)}
+.stale-note{color:var(--warn);font-weight:600}
+/* GSL-95 (F5-S2): the deadline countdown. tabular-nums because it ticks once a second — with
+   proportional digits the whole line twitches sideways on every tick, and a number that jitters is a
+   number nobody trusts. PAST DUE gets a filled background, not just red text: an expired deadline
+   still sitting in the OPEN list means the pulse that was supposed to apply the default never came,
+   and that is not a detail to be whispered in a colour someone might be blind to. */
+.countdown{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.countdown.past-due{color:var(--dead);background:var(--dead-soft);
+                    padding:.05rem .35rem;border-radius:.3rem}
+.dim{color:var(--dim)}
+
+/* GSL-96 (F5-S3): the epic rollup and the ages on the board.
+
+   <details> collapses the epic's tasks with no JavaScript at all, which matters twice: the page must
+   open from file:// with nothing loaded, and a fold that depends on a script is a fold that is stuck
+   shut for the reader whose JS is off. Merged epics ship closed (history); the live one ships open —
+   the epic the owner is IN is not a thing he should have to click to see.
+
+   .age is tabular-nums for the same reason .countdown is: it re-computes on open and then ticks. */
+.epic{border:1px solid var(--line);border-radius:.6rem;background:var(--card);
+      padding:.5rem .7rem;margin:.4rem 0}
+.epic > summary{cursor:pointer;line-height:1.9}
+.epic[open] > summary{border-bottom:1px solid var(--line);margin-bottom:.4rem;padding-bottom:.3rem}
+.epic-sum{font-weight:600}
+.age{font-variant-numeric:tabular-nums;color:var(--dim);font-size:.85rem}
+.tag.pr-open{color:var(--ok);border-color:currentColor}
+.tag.pr-merged{color:var(--accent);border-color:currentColor}
+.tag.pr-closed{color:var(--dead);border-color:currentColor}
+
+/* GSL-97 (R5.3): the client-side filter, and the severity of a timeline row.
+
+   [hidden] is declared LOUDLY because the filter hides table rows, and a UA stylesheet's
+   [hidden]{display:none} loses to any rule that sets display on a tr. A filter whose hidden rows stay
+   visible is merely broken; the rule below is what keeps it from being that.
+
+   .filter-count is the sentence that says what is NOT on screen, and it is styled to be seen, not to
+   be tasteful. When rows are hidden it turns amber; when the filter hides EVERY row it goes red and
+   filled — because an empty table under a forgotten filter is the exact silhouette of a quiet night,
+   and that mistaken read is the one this whole feature exists to prevent.
+
+   .filters ships hidden and the client reveals it (client.ts): no dead controls for a reader with JS
+   off, and none either for a reader whose island failed to parse. */
+[hidden]{display:none!important}
+.filters{display:flex;flex-wrap:wrap;gap:.5rem .8rem;align-items:end;background:var(--card);
+  border:1px solid var(--line);border-radius:.6rem;padding:.6rem .8rem;margin:.6rem 0}
+.filters label{display:flex;flex-direction:column;gap:.15rem}
+.filters label span{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+.filters select,.filters input{background:var(--bg);color:var(--fg);border:1px solid var(--line);
+  border-radius:.35rem;padding:.25rem .4rem;font:inherit;font-size:.82rem;max-width:12rem}
+.filters button{background:var(--bg);color:var(--dim);border:1px solid var(--line);
+  border-radius:.35rem;padding:.3rem .7rem;font:inherit;font-size:.8rem;cursor:pointer}
+.filters button:hover{color:var(--fg);border-color:var(--fg)}
+.filter-count{color:var(--dim);font-size:.82rem;margin:.3rem 0 .6rem}
+.filter-count.filtered{color:var(--warn);font-weight:600}
+.filter-count.none{color:var(--dead);background:var(--dead-soft);border-radius:.35rem;
+  padding:.35rem .6rem;font-weight:700}
+
+/* An incident is marked in the MARKUP, not by a script: the owner reads this on a phone at 02:00,
+   and the page must be right wherever the script did NOT run — JS off, a reader that only renders
+   the document, any transport that merely hands over the file. (Measured GSL-100: GitHub is not
+   even that place — it does not render these pages at all.) A grade this build could not make is
+   "unknown" --
+   dashed, muted, never green (see src/severity.ts for why that direction is the only safe one).
+   NOTE: no backticks in here, ever. This file is a TS template literal, and one would close it. */
+.tag.sev{text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.tag.sev.incident{color:var(--dead);border-color:currentColor;background:var(--dead-soft)}
+.tag.sev.warn{color:var(--warn);border-color:currentColor}
+.tag.sev.info{color:var(--dim)}
+.tag.sev.unknown{color:var(--dim);border-style:dashed;font-style:italic}
+tr.sev-incident td{background:var(--dead-soft)}
+tr.sev-incident td:first-child{box-shadow:inset .18rem 0 0 var(--dead)}
+
+/* The nav MUST wrap. It is rendered as adjacent <a> elements with no whitespace between them
+   (<a>Overview</a><a>Timeline</a>...), and inline boxes with no intervening white space have NO
+   soft-wrap opportunity — so margin-right produced visible gaps but not a single break point, and
+   at phone width the last two links (Cost, Library) sat off-screen, unreachable. Measured on
+   2026-07-20 at 390px: nav content 469px inside a 358px column, all 7 links on one line (GSL-100).
+   flex+wrap does not depend on the renderer emitting whitespace JSX would swallow anyway, and gap
+   replaces the trailing margin — a break opportunity between every pair, by construction. */
+nav{margin:.4rem 0 .2rem;line-height:2;display:flex;flex-wrap:wrap;column-gap:.9rem}
+nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}
+
+/* The build-failed banner. Python writes this one — it is the only markup the view layer does not
+   render, because the whole point is that it appears when the view layer could not run at all. It
+   must therefore be styled by CSS that is ALREADY in the (stale) page on disk. Loud on purpose:
+   a page that cannot say "I am stale" louder than it says its contents is the tasty-lunch wiki. */
+.ui-degraded{background:var(--dead-soft);border:2px solid var(--dead);color:var(--dead);
+  border-radius:.5rem;padding:.9rem 1rem;margin:0 0 1rem;font-weight:700;font-size:1.02rem}
+.ui-degraded small{display:block;font-weight:400;color:var(--fg);margin-top:.35rem;font-size:.82rem;
+  line-height:1.5}
+.ui-degraded code{background:var(--card);border:1px solid var(--line);border-radius:.25rem;
+  padding:.05rem .3rem}
+
+/* GSL-98 (R5.2): the worker card.
+
+   THE AGE IS THE HEADLINE, and the CSS is where that stops being an opinion: .wk-age is set in the
+   largest type on the card, above the name, because the PRD's instruction is literal — a worker
+   nobody has heard from in an hour is not working, it is silent, and a card that prints the age in a
+   footnote has quietly re-ranked the one number the reader is there for.
+
+   Three states and three colours. SILENT is AMBER, never red: red would read as dead, and dead is
+   precisely the claim this screen is not entitled to make — a worker thinking inside a long tool call
+   and a worker whose process is gone are both silent from here. Amber says "look", which is the most
+   the log can honestly ask for. ENDED is neutral grey, because a finished worker is not a problem. */
+.wk{background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.7rem .85rem;
+  margin:.5rem 0}
+.wk-top{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.wk-age{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.wk-age small{font-size:.62rem;font-weight:600;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.05em;display:block}
+.wk-name{font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.wk.active .wk-age{color:var(--ok)}
+.wk.silent .wk-age{color:var(--warn)}
+.wk.ended  .wk-age{color:var(--dim)}
+.wk.silent{border-color:var(--warn)}
+.wk-why{color:var(--dim);font-size:.8rem;margin:.45rem 0 .55rem;line-height:1.5}
+.wk-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.35rem .9rem;
+  border-top:1px solid var(--line);padding-top:.5rem;font-size:.84rem}
+.wk-f span{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
+  display:block}
+.wk-task{margin-top:.5rem;font-size:.85rem}
+.wk-models{color:var(--warn);font-weight:600}
+
+/* GSL-99 (R5.3): the self-health meters — the page reporting its own rot.
+
+   The colour rule is the point, and it is the same one the runway lives by: UNKNOWN IS NOT GREEN. An
+   unreadable meter gets a DASHED border and muted italic type — visibly unlike the solid green of a
+   meter that has evidence. An EMPTY meter (nothing was ever owed) is grey for the same reason: it has
+   not earned green either, and a reader scanning for colour must not collect it as one.
+
+   The alarm (three cycles with no handoff) is the only thing here that goes red, and it takes the
+   dead-soft background — because at that point it is not a warning, it is the debt the PRD named. */
+.sh-m{border-left:.28rem solid var(--line)}
+.sh-m.ok{border-left-color:var(--ok)}
+.sh-m.warn{border-left-color:var(--warn)}
+.sh-m.dead{border-left-color:var(--dead);background:var(--dead-soft)}
+.sh-m.dim{border-left-color:var(--line)}
+.sh-m.unknown{border-style:dashed;border-left-style:solid;border-left-color:var(--dim)}
+.sh-h{font-weight:600;margin-bottom:.45rem}
+.sh-row{font-size:.9rem;margin:.2rem 0}
+.sh-k{color:var(--dim);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
+  display:inline-block;min-width:11rem}
+.sh-why{color:var(--dim);font-size:.79rem;line-height:1.5;margin-top:.5rem}
+.sh-epic{font-size:.88rem;margin:.25rem 0;padding-top:.25rem;border-top:1px solid var(--line)}
 </style>
-<h1>Laboratory</h1>
-<nav><a href="index.html">Dashboard</a><a href="timeline.html">Timeline</a><a href="library.html">Library</a></nav>
-<div class="stale fresh" id="staleness" data-grade="fresh" data-generated-at="2026-07-13T09:45:15Z"
-  data-event-age-s="180" data-fresh-s="1800" data-dead-s="10800"
-  ><span id="stale-head">FRESH · last event 3m ago</span>
-  <small>generated_at 2026-07-13T09:45:15Z · latest event 2026-07-13T09:42:14Z
-  · thresholds fresh&le;30m, dead&gt;3h
-  · <span id="stale-verdict">Live — the laboratory is writing itself right now.</span></small></div>
+<!--UI-DEGRADE-START--><!--UI-DEGRADE-END-->
+<h1>Laboratory</h1><nav><a href="index.html" aria-current="page">Overview</a><a href="timeline.html">Timeline</a><a href="tasks.html">Tasks</a><a href="questions.html">Questions</a><a href="fleet.html">Fleet</a><a href="cost.html">Cost</a><a href="library.html">Library</a></nav><div class="stale fresh" id="staleness" data-grade="fresh" data-generated-at="2026-07-20T11:59:00Z" data-event-age-s="357" data-fresh-s="1800" data-dead-s="10800"><span id="stale-head">FRESH · last event 5m ago</span><small>generated_at 2026-07-20T11:59:00Z · latest event 2026-07-20T11:53:01Z · thresholds fresh≤30m, dead>3h · <span id="stale-verdict">Live — the laboratory is writing itself right now.</span></small></div><div class="runway warn"><div class="runway-top"><span class="runway-label">RUNWAY</span><span class="runway-big">unknown</span><span class="runway-bind">no readable stopping clock</span></div><div class="runway-say"><b>Cannot say.</b> No stopping clock is counting — but 1 of them could not be read (<b>budget</b>). That is a hole in the evidence, not a green light: <i>“nothing is wrong”</i> and <i>“I cannot see whether anything is wrong”</i> are different sentences.</div><div class="runway-next">Next, either way: <b>orchestrator context</b> in <b>18m</b> — handled automatically, the night continues.</div><div class="clocks"><div class="clock counting" title="self-reported 71%, rising 29.6 %/h -> ceiling 80% in 0.3h; roll heuristic (8-15 cycles, 3 done since the roll at 2.0 cyc/h) says 2.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone"><span class="clock-axis">orchestrator context</span><b class="clock-val">18m</b><span class="clock-gauge">71% of 80%</span><span class="clock-kind degrades">degrades</span></div><div class="clock unknown" title="no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)"><span class="clock-axis">token budget</span><b class="clock-val">unknown</b><span class="clock-gauge">8,423,000 used, no ceiling</span><span class="clock-kind stops">stops</span></div><div class="clock clear" title="no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)"><span class="clock-axis">quota window</span><b class="clock-val">clear</b><span class="clock-gauge">0 rate-limit/overload failure(s) logged</span><span class="clock-kind stops">stops</span></div><div class="clock clear" title="2 free slot(s)"><span class="clock-axis">pane slots</span><b class="clock-val">clear</b><span class="clock-gauge">1/3</span><span class="clock-kind degrades">degrades</span></div><div class="clock clear" title="nothing the fleet is doing is waiting on a human"><span class="clock-axis">open blockers</span><b class="clock-val">clear</b><span class="clock-gauge">0</span><span class="clock-kind stops">stops</span></div><div class="clock unknown" title="the task board has not been polled since 2026-07-12T21:26:24Z (7d 14h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."><span class="clock-axis">work remaining</span><b class="clock-val">unknown</b><span class="clock-gauge">3 To Do (stale)</span><span class="clock-kind completes">completes</span></div></div><details class="runway-trace"><summary>Why — all six clocks, read from disk (4/6 readable)</summary><ul><li><b>18m — orchestrator context</b>: self-reported 71%, rising 29.6 %/h -> ceiling 80% in 0.3h; roll heuristic (8-15 cycles, 3 done since the roll at 2.0 cyc/h) says 2.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone<br/><small class="mono">docs/handoff/.orchestrator-heartbeat (gitignored) · watchdog.sh WD_CONTEXT_CEILING_PCT=80</small></li><li><b>unknown — token budget</b>: no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)<br/><small class="mono">docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY · manifest.md §5.phase-ceiling</small></li><li><b>clear — quota window</b>: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)<br/><small class="mono">docs/lab/events/*.jsonl (quota.wait_started / quota.wait_ended, api.failure) · docs/handoff/.orchestrator-heartbeat note</small></li><li><b>clear — pane slots</b>: 2 free slot(s)<br/><small class="mono">docs/handoff/.orchestrator-heartbeat open_workers · manifest.md §5.slots (max 3)</small></li><li><b>clear — open blockers</b>: nothing the fleet is doing is waiting on a human<br/><small class="mono">docs/lab/questions/queue.jsonl (type=BLOCKER, status=open) · manifest.md §3</small></li><li><b>unknown — work remaining</b>: the task board has not been polled since 2026-07-12T21:26:24Z (7d 14h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.<br/><small class="mono">docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)</small></li></ul></details></div><section id="self-health" data-grade="fresh" data-dh="gaps" data-ho="debt"><h2>What this laboratory knows about its own rot</h2><div class="card sh-m ok" id="sh-freshness"><div class="sh-h">Freshness — two ages, not one</div><div class="sh-row"><span class="sh-k">this build is</span><span class="age" id="sh-build-age" data-age-ts="2026-07-20T11:59:00Z" title="2026-07-20T11:59:00Z">0s old</span><span class="dim mono"> (built 2026-07-20T11:59:00Z)</span></div><div class="sh-row"><span class="sh-k">its freshest event was</span><b id="sh-data-age" data-data-age-s="357">5m</b> old <span class="dim mono">at that moment (2026-07-20T11:53:01Z)</span></div><div class="sh-why">The grade above (<code>fresh</code>) judges <b>the data, at build time</b>. Add the first age to the second before you trust it — that is why there are two. The banner does this sum on open and may only ever grade itself <i>worse</i>.</div></div><div class="card sh-m warn" id="sh-devhistory" data-state="gaps"><div class="sh-h">dev_history coverage — <b>87</b>/88 tasks documented<span class="warn"> · 1 with no history</span></div><div class="sh-epic" data-sh-epic="GSL-81" data-state="ok" data-missing><span class="tag ok">GSL-81</span> <b>8/8</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-72" data-state="ok" data-missing><span class="tag ok">GSL-72</span> <b>9/9</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-65" data-state="ok" data-missing><span class="tag ok">GSL-65</span> <b>6/6</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-58" data-state="ok" data-missing><span class="tag ok">GSL-58</span> <b>6/6</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-49" data-state="ok" data-missing><span class="tag ok">GSL-49</span> <b>8/8</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-41" data-state="ok" data-missing><span class="tag ok">GSL-41</span> <b>7/7</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-37" data-state="ok" data-missing><span class="tag ok">GSL-37</span> <b>3/3</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-31" data-state="ok" data-missing><span class="tag ok">GSL-31</span> <b>5/5</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-24" data-state="gaps" data-missing="GSL-30"><span class="tag warn">GSL-24</span> <b>5/6</b> tasks have a committed dev_history — missing: <span><span class="tag sev warn" data-missing-task="GSL-30">GSL-30</span></span></div><div class="sh-epic" data-sh-epic="GSL-19" data-state="ok" data-missing><span class="tag ok">GSL-19</span> <b>4/4</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-15" data-state="ok" data-missing><span class="tag ok">GSL-15</span> <b>3/3</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-7" data-state="ok" data-missing><span class="tag ok">GSL-7</span> <b>8/8</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-1" data-state="ok" data-missing><span class="tag ok">GSL-1</span> <b>4/4</b> tasks have a committed dev_history</div><div class="sh-epic" data-sh-epic="GSL-90" data-state="ok" data-missing><span class="tag ok">GSL-90</span> <b>11/11</b> tasks have a committed dev_history</div><div class="sh-why mono" id="sh-dh-searched">Searched: `git ls-files -- docs/dev_history/GSL-*.md` — the git INDEX, which is what `git show :&lt;path>` resolves and what a fresh clone gets. The working tree is deliberately NOT consulted.</div></div><div class="card sh-m warn" id="sh-handoff" data-state="debt" data-undocumented-cycles="1" data-alarm="0"><div class="sh-h">handoff age vs the last cycle boundary — <span class="warn"><b>1</b> cycle(s) closed with no handoff</span></div><div class="sh-row"><span class="sh-k">last committed handoff</span><span class="mono">36-2026-07-20-handoff-impl-ui-7.md</span>, <span class="age" id="sh-handoff-age" data-age-ts="2026-07-20T10:56:58Z" title="2026-07-20T10:56:58Z">1h 2m old</span></div><div class="sh-row"><span class="sh-k">last cycle boundary</span><span class="age" id="sh-boundary-age" data-age-ts="2026-07-20T11:23:43Z" title="2026-07-20T11:23:43Z">35m 17s old</span> <span class="dim mono">(pane.ended, 19 cycle boundary(ies))</span></div><div class="sh-why">1 cycle(s) have closed since the last handoff was committed — that is debt, and it is accruing</div><div class="sh-why mono" id="sh-ho-searched">Searched: committed `docs/handoff/*.md` (excluding ORCHESTRATION-STATE.md), dated by the commit that ADDED each file; cycle boundaries are `pane.ended` events in docs/lab/events/*.jsonl; 22 pane close(s) debounced into 19 cycle boundary(ies) at 600s — a cycle holds up to 3 panes and they close together, so counting panes would count one cycle several times (two cycles closer together than 600s would be counted as one, which UNDER-states this debt)</div></div></section><div class="grid"><div class="kpi"><b>77</b><span>events today</span></div><div class="kpi"><b>92%</b><span>mechanical (0-token)</span></div><div class="kpi"><b>0</b><span>open questions</span></div><div class="kpi"><b>5</b><span>commits on 2026-07-20</span></div></div><h2>Waiting for you (0)</h2><div class="card">Nothing is waiting for you. The night decided everything it was licensed to decide.</div><h2>Delivery</h2><div class="card mono">branch <b>GSL-90-ui-orchestration</b> @ 7c73aa3 · 11 dirty path(s)</div><div class="wrap"><table><tr><th>sha</th><th>subject</th><th>author</th></tr><tr><td class="mono">7c73aa3</td><td>GSL-99 [UI] Review fix: the self-health meter counted panes and called them cycles (M1, M2, m2)</td><td class="mono">R</td></tr><tr><td class="mono">5e6d5ed</td><td>GSL-98 [UI] Review fix: the ages on Fleet were frozen at build time (M3)</td><td class="mono">R</td></tr><tr><td class="mono">9fb5766</td><td>GSL-100 [Docs] Handoff 36 — цикл 59 (impl-ui-7): Фаза 5 принята; приёмка опровергла свой же критерий и нашла два дефекта</td><td class="mono">R</td></tr><tr><td class="mono">dc2a925</td><td>GSL-100 [Docs] Phase 5 acceptance: F5-S1..S4 closed by evidence — and the evidence found two real defects</td><td class="mono">R</td></tr><tr><td class="mono">66bce16</td><td>GSL-90 [Docs] Late-commit orphaned handoff 35 (orchestrator roll ledger)</td><td class="mono">R</td></tr></table></div><div class="card"><span><a href="https://github.com/ainstance-labs/gosleep/pull/115">#115</a> GSL-90 [Repo][Tooling] Фаза 5 — UI оркестрации (static v1)</span></div><h2>Orchestrator</h2><div class="card mono">{&quot;ts&quot;:&quot;2026-07-20T11:52:09Z&quot;,&quot;cycle&quot;:62,&quot;context_pct&quot;:71,&quot;open_workers&quot;:1,&quot;status&quot;:&quot;ok&quot;,&quot;pane&quot;:&quot;%193&quot;,&quot;note&quot;:&quot;fixer on M1+M2; roll planned at fixer boundary&quot;}</div><h2>Timeline — 2026-07-20 (last 25 of 77)</h2><div class="wrap"><table><tr><th>utc</th><th>type</th><th>actor</th><th>src</th><th>detail</th></tr><tr><td class="mono">11:53:01</td><td>vcs.commit</td><td class="mono">claude</td><td><span class="tag hook">hook:PostToolUse</span></td><td class="mono">7c73aa3</td></tr><tr><td class="mono">11:52:27</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:44:58</td><td>vcs.commit</td><td class="mono">claude</td><td><span class="tag hook">hook:PostToolUse</span></td><td class="mono">5e6d5ed</td></tr><tr><td class="mono">11:42:20</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:40:36</td><td>vcs.commit</td><td class="mono">claude</td><td><span class="tag hook">hook:PostToolUse</span></td><td class="mono">d7606b6</td></tr><tr><td class="mono">11:32:44</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:32:35</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:32:07</td><td>pane.started</td><td class="mono">claude</td><td><span class="tag hook">hook:SessionStart</span></td><td class="mono"></td></tr><tr><td class="mono">11:23:54</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:23:43</td><td>pane.ended</td><td class="mono">claude</td><td><span class="tag hook">hook:SessionEnd</span></td><td class="mono"></td></tr><tr><td class="mono">11:23:43</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:23:37</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:22:45</td><td>agent.idle</td><td class="mono">claude</td><td><span class="tag hook">hook:TeammateIdle</span></td><td class="mono"></td></tr><tr><td class="mono">11:22:44</td><td>agent.turn_ended</td><td class="mono">claude</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:21:15</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:11:29</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:11:22</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:11:00</td><td>pane.started</td><td class="mono">claude</td><td><span class="tag hook">hook:SessionStart</span></td><td class="mono"></td></tr><tr><td class="mono">11:09:19</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:09:09</td><td>pane.ended</td><td class="mono">claude</td><td><span class="tag hook">hook:SessionEnd</span></td><td class="mono"></td></tr><tr><td class="mono">11:08:14</td><td>agent.idle</td><td class="mono">claude</td><td><span class="tag hook">hook:TeammateIdle</span></td><td class="mono"></td></tr><tr><td class="mono">11:08:13</td><td>agent.turn_ended</td><td class="mono">claude</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr><tr><td class="mono">11:07:21</td><td>tracker.issue.transitioned</td><td class="mono">claude</td><td><span class="tag hook">hook:PostToolUse</span></td><td class="mono">GSL-90</td></tr><tr><td class="mono">11:07:06</td><td>vcs.pr.opened</td><td class="mono">claude</td><td><span class="tag hook">hook:PostToolUse</span></td><td class="mono">gh pr create --base main --head GSL-90-ui-orchestration --title 'GSL-90 [Repo][Tooling] Фа</td></tr><tr><td class="mono">11:05:54</td><td>agent.turn_ended</td><td class="mono">ecab62c2</td><td><span class="tag hook">hook:Stop</span></td><td class="mono"></td></tr></table></div><div class="card"><a href="timeline.html">Full timeline →</a></div><footer>Regenerated by <code>tools/lab/chronicler.sh</code> — <b>never hand-edit</b>: the next pass overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8). Source of truth for this page: <code>docs/lab/render_bundle.json</code>.</footer>
+<script id="verdicts" type="application/json">{"fresh":"Live — the laboratory is writing itself right now.","stale":"Stale — nothing has been logged for a while. Delivery may still be running; this page is not.","dead":"DEAD — this page is not being regenerated. Do not trust anything below without checking git."}</script>
 
-<div class="grid"><div class='kpi'><b>109</b><span>events today</span></div><div class='kpi'><b>91%</b><span>mechanical (0-token)</span></div><div class='kpi'><b>1</b><span>open questions</span></div><div class='kpi'><b>3</b><span>commits on 2026-07-13</span></div></div>
+<script>// tools/lab/ui/src/countdown.ts
+function dur(s) {
+  if (s >= 86400) return Math.floor(s / 86400) + "d " + Math.floor(s % 86400 / 3600) + "h";
+  if (s >= 3600) return Math.floor(s / 3600) + "h " + Math.floor(s % 3600 / 60) + "m";
+  if (s >= 60) return Math.floor(s / 60) + "m " + s % 60 + "s";
+  return s + "s";
+}
+function countdownText(remainingS) {
+  const s = Math.round(remainingS);
+  if (s > 0) return "auto-applies in " + dur(s);
+  if (s > -60) return "due now";
+  return "PAST DUE by " + dur(-s) + " \u2014 still open, so nobody applied the default";
+}
+function ageText(elapsedS) {
+  const s = Math.max(0, Math.round(elapsedS));
+  return dur(s) + " old";
+}
+function elapsedMs(iso, nowMs) {
+  const t = Date.parse(iso);
+  return isNaN(t) ? NaN : nowMs - t;
+}
+function remainingMs(iso, nowMs) {
+  const t = Date.parse(iso);
+  return isNaN(t) ? NaN : t - nowMs;
+}
 
-<h2>Waiting for you (1)</h2>
-<div class='wrap'><table><tr><th>id</th><th>type</th><th>question</th><th>auto-applies / default</th></tr><tr><td class='mono'>q-2026-07-12-001</td><td><span class='tag'>DECISION</span></td><td>Летописец: детерминированный скелет + claude -p только как опциональная прозаическая врезка — или LLM генерирует HTML и дайджест целиком, как буквально написано в описании GSL-86?</td><td class='mono'>2026-07-13T08:00:00Z</td></tr></table></div>
-<h2>Delivery</h2>
-<div class="card mono">branch <b>GSL-81-laboratory-auto-doc</b> @ 977a09e · 12 dirty path(s)</div>
-<div class='wrap'><table><tr><th>sha</th><th>subject</th><th>author</th></tr><tr><td class='mono'>977a09e</td><td>GSL-83 [Fix] phantom commit parser — HEAD must be FRESH and ITS OWN before it lends a sha (REVIEW-gsl81 C1, m1, m3)</td><td class='mono'>R</td></tr><tr><td class='mono'>5be2adc</td><td>GSL-89 [Docs][Tooling] Phase 4 summary + staleness contract + lab-log --ts/--supersedes</td><td class='mono'>R</td></tr><tr><td class='mono'>548fbf8</td><td>GSL-88 [Skill] handoff skill emits handoff.written semantic event on write</td><td class='mono'>R</td></tr></table></div>
-<div class='card'><a href='https://github.com/ainstance-labs/gosleep/pull/102'>#102</a> GSL-81 [Repo][Tooling] Фаза 4 — Laboratory (auto-doc)</div>
-<h2>Orchestrator</h2>
-<div class='card mono'>{&quot;ts&quot;: &quot;2026-07-13T09:29:53Z&quot;, &quot;cycle&quot;: 50, &quot;context_pct&quot;: 56, &quot;open_workers&quot;: 1, &quot;status&quot;: &quot;ok&quot;, &quot;pane&quot;: &quot;%193&quot;, &quot;note&quot;: &quot;cycle 49 COMPLETE verdict=FIX 1C/2M/5m; spawning fixer-lab for C1 parser + M1 prose + M2 downgrade + m1/m4/m5&quot;}</div>
-<h2>Timeline — 2026-07-13 (last 25 of 109)</h2>
-<div class='wrap'><table><tr><th>utc</th><th>type</th><th>actor</th><th>src</th><th>detail</th></tr><tr><td class='mono'>09:42:14</td><td>vcs.commit</td><td class='mono'>poll-fill</td><td><span class='tag poll'>poll-fill</span></td><td class='mono'>977a09e</td></tr><tr><td class='mono'>09:38:23</td><td>vcs.commit</td><td class='mono'>claude</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>cd /Users/romanlidovskyi/Documents/dev/harness/gosleep bash -n tools/lab/lab-log.sh &amp;&amp; ech</td></tr><tr><td class='mono'>09:31:29</td><td>agent.turn_ended</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:31:25</td><td>agent.turn_ended</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:31:06</td><td>pane.started</td><td class='mono'>claude</td><td><span class='tag hook'>hook:SessionStart</span></td><td class='mono'></td></tr><tr><td class='mono'>09:30:15</td><td>pane.ended</td><td class='mono'>claude</td><td><span class='tag hook'>hook:SessionEnd</span></td><td class='mono'></td></tr><tr><td class='mono'>09:30:12</td><td>handoff.written</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:PostToolUse</span></td><td class='mono'>/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md</td></tr><tr><td class='mono'>09:30:00</td><td>task.created</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:TaskCreated</span></td><td class='mono'></td></tr><tr><td class='mono'>09:29:42</td><td>agent.idle</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TeammateIdle</span></td><td class='mono'></td></tr><tr><td class='mono'>09:29:42</td><td>agent.turn_ended</td><td class='mono'>claude</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:29:04</td><td>task.completed</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TaskCompleted</span></td><td class='mono'></td></tr><tr><td class='mono'>09:25:13</td><td>agent.turn_ended</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:24:36</td><td>agent.idle</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TeammateIdle</span></td><td class='mono'></td></tr><tr><td class='mono'>09:24:35</td><td>task.completed</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TaskCompleted</span></td><td class='mono'></td></tr><tr><td class='mono'>09:24:35</td><td>agent.terminated</td><td class='mono'>aa7a28cca3c73abc5</td><td><span class='tag hook'>hook:SubagentStop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:23:53</td><td>agent.idle</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TeammateIdle</span></td><td class='mono'></td></tr><tr><td class='mono'>09:23:53</td><td>task.completed</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TaskCompleted</span></td><td class='mono'></td></tr><tr><td class='mono'>09:23:53</td><td>agent.terminated</td><td class='mono'>a198207c1aae6407d</td><td><span class='tag hook'>hook:SubagentStop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:23:20</td><td>agent.idle</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TeammateIdle</span></td><td class='mono'></td></tr><tr><td class='mono'>09:23:20</td><td>task.completed</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TaskCompleted</span></td><td class='mono'></td></tr><tr><td class='mono'>09:23:20</td><td>agent.terminated</td><td class='mono'>a712e803767d9690f</td><td><span class='tag hook'>hook:SubagentStop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:22:18</td><td>agent.idle</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TeammateIdle</span></td><td class='mono'></td></tr><tr><td class='mono'>09:22:18</td><td>task.completed</td><td class='mono'>claude</td><td><span class='tag hook'>hook:TaskCompleted</span></td><td class='mono'></td></tr><tr><td class='mono'>09:22:18</td><td>agent.terminated</td><td class='mono'>a0f0f3af9ae562c37</td><td><span class='tag hook'>hook:SubagentStop</span></td><td class='mono'></td></tr><tr><td class='mono'>09:21:50</td><td>agent.turn_ended</td><td class='mono'>ef6c3777</td><td><span class='tag hook'>hook:Stop</span></td><td class='mono'></td></tr></table></div>
-<div class="card"><a href="timeline.html">Full timeline &rarr;</a></div>
+// tools/lab/ui/src/filter.ts
+function matchesFilter(row, active, search, query) {
+  if (row === void 0) return true;
+  for (const [key, want] of Object.entries(active)) {
+    if (want !== "" && row[key] !== want) return false;
+  }
+  const q = query.trim().toLowerCase();
+  if (q !== "" && search.length > 0) {
+    const hay = search.map((k) => row[k] ?? "").join(" ").toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+function countSentence(shown, total) {
+  if (total === 0) return "no rows to filter";
+  if (shown >= total) return `all ${total} shown`;
+  if (shown === 0) return `0 of ${total} shown \u2014 the filter is hiding every row`;
+  return `${shown} of ${total} shown \u2014 ${total - shown} hidden by the filter`;
+}
+function countClass(shown, total) {
+  if (total === 0 || shown >= total) return "filter-count";
+  return shown === 0 ? "filter-count filtered none" : "filter-count filtered";
+}
 
-
-<footer>
-  Regenerated by <code>tools/lab/chronicler.sh</code> (GSL-86) — <b>never hand-edit</b>: the next pass
-  overwrites it. Authority on conflict: <code>ORCHESTRATION-STATE.md</code> + live git (C8).
-  Source of truth for this page: <code>docs/lab/status.json</code>.
-</footer>
-<script>
-(function () {
-  var V = {"fresh": "Live \u2014 the laboratory is writing itself right now.", "stale": "Stale \u2014 nothing has been logged for a while. Delivery may still be running; this page is not.", "dead": "DEAD \u2014 this page is not being regenerated. Do not trust anything below without checking git."};
-  var el = document.getElementById("staleness");
-  if (!el) return;
-  var gen = Date.parse(el.dataset.generatedAt);
+// tools/lab/ui/src/client.ts
+function readJson(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.textContent) return null;
+  try {
+    return JSON.parse(el.textContent);
+  } catch {
+    return null;
+  }
+}
+function human(s) {
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h " + Math.floor(s % 3600 / 60) + "m";
+  return Math.floor(s / 86400) + "d " + Math.floor(s % 86400 / 3600) + "h";
+}
+function regradeStaleness() {
+  const verdicts = readJson("verdicts");
+  const el = document.getElementById("staleness");
+  if (!verdicts || !el) return;
+  const gen = Date.parse(el.dataset["generatedAt"] ?? "");
   if (isNaN(gen)) return;
-  var built = parseInt(el.dataset.eventAgeS, 10);
-  var pageAge = Math.max(0, (Date.now() - gen) / 1000);
-  var age = isNaN(built) ? pageAge : built + pageAge;   // no event ever logged? then the page's own age
-  var fresh = parseInt(el.dataset.freshS, 10) || 1800;
-  var dead = parseInt(el.dataset.deadS, 10) || 10800;
-  var grade = age <= fresh ? "fresh" : (age <= dead ? "stale" : "dead");
-  var rank = { fresh: 0, stale: 1, dead: 2 };
-  if (rank[grade] <= rank[el.dataset.grade]) return;    // never soften a verdict: time moves one way
-  var s = Math.round(age), human;
-  if (s < 3600) human = Math.floor(s / 60) + "m";
-  else if (s < 86400) human = Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
-  else human = Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
+  const built = parseInt(el.dataset["eventAgeS"] ?? "", 10);
+  const pageAge = Math.max(0, (Date.now() - gen) / 1e3);
+  const age = isNaN(built) ? pageAge : built + pageAge;
+  const freshRaw = parseInt(el.dataset["freshS"] ?? "", 10);
+  const deadRaw = parseInt(el.dataset["deadS"] ?? "", 10);
+  const fresh = isNaN(freshRaw) ? 1800 : freshRaw;
+  const dead = isNaN(deadRaw) ? 10800 : deadRaw;
+  const grade = age <= fresh ? "fresh" : age <= dead ? "stale" : "dead";
+  const rank = { fresh: 0, stale: 1, dead: 2 };
+  const was = el.dataset["grade"] ?? "fresh";
+  if ((rank[grade] ?? 0) <= (rank[was] ?? 0)) return;
   el.className = "stale " + grade;
-  el.dataset.grade = grade;
-  document.getElementById("stale-head").textContent =
-    grade.toUpperCase() + " \u00b7 last event " + human + " ago \u00b7 re-graded when you opened this page";
-  var v = document.getElementById("stale-verdict");   // the prose must not outlive the banner's verdict
-  if (v && V[grade]) v.textContent = V[grade];
-})();
+  el.dataset["grade"] = grade;
+  const head = document.getElementById("stale-head");
+  if (head) {
+    head.textContent = grade.toUpperCase() + " \xB7 last event " + human(Math.round(age)) + " ago \xB7 re-graded when you opened this page";
+  }
+  const v = document.getElementById("stale-verdict");
+  if (v && verdicts[grade]) v.textContent = verdicts[grade];
+}
+function tickCountdowns() {
+  const els = Array.from(document.querySelectorAll("[data-auto-apply-at]"));
+  if (els.length === 0) return;
+  const built = Date.parse(document.getElementById("staleness")?.dataset["generatedAt"] ?? "");
+  const paint = () => {
+    const now = Date.now();
+    const clock = isNaN(built) ? now : Math.max(now, built);
+    for (const el of els) {
+      const ms = remainingMs(el.dataset["autoApplyAt"] ?? "", clock);
+      if (isNaN(ms)) continue;
+      el.textContent = countdownText(ms / 1e3);
+      el.classList.toggle("past-due", ms <= 0);
+    }
+  };
+  paint();
+  setInterval(paint, 1e3);
+}
+function tickAges() {
+  const els = Array.from(document.querySelectorAll("[data-age-ts]"));
+  if (els.length === 0) return;
+  const built = Date.parse(document.getElementById("staleness")?.dataset["generatedAt"] ?? "");
+  const paint = () => {
+    const now = Date.now();
+    const clock = isNaN(built) ? now : Math.max(now, built);
+    for (const el of els) {
+      const ms = elapsedMs(el.dataset["ageTs"] ?? "", clock);
+      if (isNaN(ms)) continue;
+      el.textContent = ageText(ms / 1e3);
+    }
+  };
+  paint();
+  setInterval(paint, 1e3);
+}
+function initFilters() {
+  for (const bar of Array.from(document.querySelectorAll("[data-filter-island]"))) {
+    const idx = readJson(bar.dataset["filterIsland"] ?? "");
+    const scope = document.getElementById(bar.dataset["filterScope"] ?? "");
+    const countEl = document.getElementById(bar.dataset["filterCount"] ?? "");
+    if (!idx || !scope || !countEl) continue;
+    const selects = Array.from(bar.querySelectorAll("[data-facet]"));
+    const search = bar.querySelector("[data-search]");
+    const rows = Array.from(scope.querySelectorAll("[data-row]"));
+    const apply = () => {
+      const active = {};
+      for (const s of selects) active[s.dataset["facet"] ?? ""] = s.value;
+      let shown = 0;
+      for (const r of rows) {
+        const ok = matchesFilter(idx.rows[Number(r.dataset["row"])], active, idx.search, search?.value ?? "");
+        r.hidden = !ok;
+        if (ok) shown++;
+      }
+      countEl.textContent = countSentence(shown, rows.length);
+      countEl.className = countClass(shown, rows.length);
+    };
+    for (const s of selects) s.addEventListener("change", apply);
+    if (search) search.addEventListener("input", apply);
+    const reset = bar.querySelector("[data-filter-reset]");
+    if (reset) {
+      reset.addEventListener("click", () => {
+        for (const s of selects) s.value = "";
+        if (search) search.value = "";
+        apply();
+      });
+    }
+    bar.hidden = false;
+    apply();
+  }
+}
+regradeStaleness();
+tickCountdowns();
+tickAges();
+initFilters();
 </script>

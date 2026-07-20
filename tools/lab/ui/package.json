@@ -1,0 +1,23 @@
+{
+  "name": "gosleep-lab-ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The view layer of the gosleep laboratory: 7 static screens, server-rendered once per chronicler pass, opened from file:// or GitHub. No server, no fetches, no CDN.",
+  "packageManager": "npm@11.8.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "^10.27.2",
+    "preact-render-to-string": "^6.6.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10",
+    "typescript": "^5.9.3"
+  }
+}
