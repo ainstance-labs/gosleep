@@ -2458,6 +2458,57 @@ grep -q 'did \*\*not\*\* regenerate' "$MBN/docs/lab/mobile/README.md" 2>/dev/nul
   && ok "GSL-108 ⭐ and it SAYS the seven screens are stale — the reader is told which of the two they hold" \
   || bad "GSL-108 ⭐ the phone page is silent about the stale HTML beside it — a fresh page implying a fresh dashboard"
 
+# ---- ⭐ GSL-113: the grade does not outlive the build that issued it ----------------
+# This page printed `🟢 FRESH · last event 1m ago` and went on printing it forever. Markdown runs no
+# JavaScript, so unlike the seven screens it cannot re-grade itself on open (client.ts:
+# regradeStaleness) — and `ago` counts backwards from a NOW that a file frozen in git cannot know. A
+# chronicler dead since 16:04 therefore left a green dot at 03:00 on the one surface reachable from
+# bed. The checks below guard the two properties that replace the re-grade it cannot perform.
+grep -qE '^[^ ]+ \*\*(FRESH|STALE|DEAD) at build\*\*' "$MBP" \
+  && ok "GSL-113 ⭐ the grade is stamped 'at build' — the page says when its verdict was true, not that it is true now" \
+  || bad "GSL-113 ⭐ the phone page prints a bare grade — a build-time verdict passed off as the reader's present"
+
+grep -qE 'last event \*\*[^*]+\*\* ago' "$MBP" \
+  && bad "GSL-113 ⭐ the page still says 'last event X ago' — 'ago' counts from a NOW this file cannot know" \
+  || ok "GSL-113 ⭐ no 'X ago' on the phone page — the event age carries an absolute anchor instead"
+
+grep -qi 'frozen at build time' "$MBP" \
+  && ok "GSL-113: the page carries the caveat its HTML sibling carries four of — it warns it cannot re-grade itself" \
+  || bad "GSL-113: 67 lines and not one caveat about build time — the reader is never told the verdict is frozen"
+
+# It cannot run the client's sum, but it CAN solve that same sum for the instant each threshold tips
+# and print it as an ABSOLUTE moment — the only currency on this page that does not decay in git. The
+# expected value is computed here independently, so a typo in the formula fails as loudly as a missing
+# line: this is the check that a reader's clock-comparison is actually correct, not merely present.
+MB_DEAD_EXP="$(jq -r '((.generated_at|fromdateiso8601) + .staleness.thresholds_s.dead - .staleness.max_event_age_s) | strftime("%Y-%m-%dT%H:%M:%SZ")' "$MB/docs/lab/status.json" 2>/dev/null)"
+[[ -n "$MB_DEAD_EXP" ]] && grep -qF "DEAD if you are reading this after \`$MB_DEAD_EXP\`" "$MBP" \
+  && ok "GSL-113 ⭐ it prints the absolute moment it turns DEAD ($MB_DEAD_EXP) — the reader compares it against the clock in his hand" \
+  || bad "GSL-113 ⭐ no correct DEAD-after moment on the phone page (expected $MB_DEAD_EXP) — the reader is asked for arithmetic he has no numbers for"
+
+# ---- ⭐ and those moments may only ever grade the page WORSE -------------------------
+# `never soften a verdict` is a guard the HTML enforces in code (client.ts) and this page must enforce
+# in what it prints: a page already STALE at build must not advertise the moment it would become
+# stale — that is a threshold it has crossed, and printing it invites the reader to re-earn `fresh`
+# backwards. A clock only moves one way; the printed list must respect that.
+MBS="$WORK/mobile-stale"
+mkdir -p "$MBS/docs/lab/events" "$MBS/docs/lab/questions" "$MBS/docs/lab/decisions"
+: > "$MBS/docs/lab/questions/queue.jsonl"
+MBS_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=60)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"beef002"}}\n' \
+  "$MBS_TS" "$MB_TODAY" > "$MBS/docs/lab/events/$MB_TODAY.jsonl"
+bash "$CH" --repo "$MBS" --no-poll --quiet --json >/dev/null 2>&1
+MBSP="$MBS/docs/lab/mobile/README.md"
+[[ "$(jq -r '.staleness.grade' "$MBS/docs/lab/status.json" 2>/dev/null)" == "stale" ]] \
+  && ok "GSL-113: the stale fixture really did grade stale (control — the guard check below has a subject)" \
+  || bad "GSL-113: the stale fixture did not grade stale — the softening check below proves nothing"
+if grep -q 'STALE if you are reading this after' "$MBSP" 2>/dev/null; then
+  bad "GSL-113 ⭐ an already-STALE page still advertises when it will become STALE — a verdict offered backwards"
+else
+  grep -q 'DEAD if you are reading this after' "$MBSP" 2>/dev/null \
+    && ok "GSL-113 ⭐ an already-STALE page prints only its DEAD moment — the grade may fall further, never recover" \
+    || bad "GSL-113 ⭐ an already-STALE page names no moment at all — it can no longer tell the reader when to stop trusting it"
+fi
+
 echo
 echo "== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best =="
 # Break-glass is five links: tailscale CLI -> tailnet -> an SSH transport -> mosh-server -> tmux.
