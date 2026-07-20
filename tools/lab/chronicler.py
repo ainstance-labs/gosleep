@@ -2702,6 +2702,75 @@ MOBILE_GRADE = {
     "dead":  ("🔴", "DEAD"),
 }
 
+def _iso(epoch):
+    """Epoch → the ISO-8601-Z shape every other timestamp on the page already wears."""
+    return datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def mobile_staleness_caveat(st, generated_at):
+    """The phone page's freshness verdict, re-expressed in a form that cannot lie as the night wears on.
+
+    The seven screens re-grade themselves when they are opened: `client.ts: regradeStaleness` adds
+    `max_event_age_s + (now − generated_at)` and re-tests it against the same two thresholds, never
+    softening the result. Markdown runs no JavaScript — GitHub renders this file server-side and the
+    phone receives whatever was frozen into it. So the one thing this page must NOT do is print the
+    build's grade as a claim about now: a chronicler that died at 16:04 would leave `🟢 FRESH · last
+    event 1m ago` standing at 03:00, on the only surface reachable from bed, and the page whose
+    author is dead would look the liveliest thing in the repo.
+
+    It cannot do the sum, but it can hand the reader the answer already solved. Each threshold is
+    turned into the ABSOLUTE instant at which that same arithmetic tips the grade — and an absolute
+    instant is the one currency here that does not decay while the file sits in git. `now > t_stale`
+    is a comparison against the clock already in the reader's hand, and a clock only ever moves one
+    way: the `never soften a verdict` guard, kept without executing a line of code.
+    """
+    grade   = st.get("grade") or "dead"
+    age_s   = st.get("max_event_age_s")
+    thr     = st.get("thresholds_s") or {}
+    fresh_s, dead_s = thr.get("fresh"), thr.get("dead")
+    gen     = parse_ts(generated_at)
+
+    L = ["> ⏱️ **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript,"
+         " so unlike the seven screens this page cannot re-grade itself when you open it: the verdict"
+         " above is what was true at `%s`, not a claim about now. There are two ages here, not one."
+         % (generated_at or "?")]
+
+    # `dead` is the floor: no worse grade exists to fall to, so there is no expiry moment to print and
+    # time can only make the verdict truer. Checked before the arithmetic because a build that found no
+    # events at all lands here too, and "already dead" tells the reader more than "cannot compute".
+    if grade not in ("fresh", "stale"):
+        L.append(">")
+        L.append("> This page already graded itself **DEAD** at build time. It cannot degrade further,"
+                 " and every minute since has only made that verdict more true.")
+        return L
+
+    # Solving the client's sum for each threshold needs all four terms. Missing one, the honest move is
+    # to say so: a made-up expiry moment would be exactly the confident-and-wrong signal being fixed.
+    if gen is None or age_s is None or fresh_s is None or dead_s is None:
+        L.append(">")
+        L.append("> This build could not compute when its own verdict expires (no %s), so this page"
+                 " cannot tell you how much staler it has grown since — treat the grade as expired"
+                 " on sight."
+                 % ("build time" if gen is None else
+                    "event age" if age_s is None else "thresholds"))
+        return L
+
+    # `stale` has already lost `fresh` and can only fall further. Printing a threshold the grade has
+    # already crossed would invite the reader to re-earn a verdict backwards, which is the one
+    # direction the guard forbids.
+    marks = []
+    if grade == "fresh":
+        marks.append(("🟡", "STALE", gen + fresh_s - age_s))
+    marks.append(("🔴", "DEAD", gen + dead_s - age_s))
+
+    L.append(">")
+    for dot, word, when in marks:
+        L.append("> - %s **%s if you are reading this after `%s`**" % (dot, word, _iso(when)))
+    L.append(">")
+    L.append("> %s the only thing on this page that cannot go out of date. The grade may only ever get"
+             " worse, never better." % ("Those two moments are" if len(marks) == 2
+                                        else "That moment is"))
+    return L
+
 def build_mobile(bundle, ui=None):
     """The phone projection of the seven screens. Every number is read out of the bundle — nothing is
     recomputed here, because a second implementation of the same number is a second chance to be
@@ -2722,9 +2791,21 @@ def build_mobile(bundle, ui=None):
     L = []
     L.append("# gosleep — the phone page")
     L.append("")
-    L.append("%s **%s** · generated `%s` · last event **%s** ago · day `%s`"
-             % (dot, word, bundle.get("generated_at") or "?",
-                st.get("max_event_age_human") or _age(st.get("max_event_age_s")), date))
+    # The grade is stamped `at build` because that is the only thing it can honestly be on a surface
+    # that never re-runs. The event age carries its absolute anchor for the same reason: `ago` counts
+    # backwards from NOW, and a Markdown file has no way of knowing when now is — so it said `1m ago`
+    # at 16:04 and went on saying it at 03:00. A timestamp cannot drift like that.
+    if st.get("max_event_age_s") is None:
+        L.append("%s **%s at build** · generated `%s` · no event has ever been logged in this checkout"
+                 " · day `%s`" % (dot, word, bundle.get("generated_at") or "?", date))
+    else:
+        L.append("%s **%s at build** · generated `%s` · freshest event **%s** old at that moment (`%s`)"
+                 " · day `%s`"
+                 % (dot, word, bundle.get("generated_at") or "?",
+                    st.get("max_event_age_human") or _age(st.get("max_event_age_s")),
+                    st.get("latest_event_ts") or "never", date))
+    L.append("")
+    L.extend(mobile_staleness_caveat(st, bundle.get("generated_at")))
     L.append("")
     L.append("> Regenerated by `tools/lab/chronicler.sh` from `docs/lab/render_bundle.json` — the same"
              " bundle the seven screens render from. **Never hand-edited:** an edit here survives until"
