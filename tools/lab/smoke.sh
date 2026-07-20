@@ -2615,6 +2615,74 @@ else
     || bad "GSL-107 ⭐ F6-S4 is no longer marked open: the runbook claims a capability nobody has exercised from a phone"
 fi
 
+echo "== GSL-110 / phase acceptance: a verdict table is only worth the runs behind it =="
+# The Phase 6 acceptance closed ZERO of four success criteria. That is an uncomfortable document,
+# and uncomfortable documents get smoothed — not by a rewrite, but by the cheapest edit there is:
+# one table cell flipped from ❌ to ✅ while someone assembles the PR. Nothing else in this repo
+# would notice. These checks are the thing that notices. Each guards a distinct way the acceptance
+# could start claiming more than was proven.
+ACC="$REPO_ROOT/docs/dev_history/GSL-110-phase6-cycle69-acceptance.md"
+if [[ ! -f "$ACC" ]]; then
+  bad "GSL-110: the Phase 6 acceptance file is missing — the phase has no recorded verdicts"
+else
+  # Positive control: the criterion rows must actually exist, or every check below passes vacuously
+  # over a document that simply never mentioned F6-S at all.
+  ACC_ROWS="$(grep -c '^| \*\*F6-S' "$ACC")"
+  [[ "$ACC_ROWS" -ge 8 ]] \
+    && ok "GSL-110: the acceptance really does carry per-criterion rows ($ACC_ROWS — positive control for the checks below)" \
+    || bad "GSL-110: only $ACC_ROWS F6-S rows in the acceptance — the verdict checks below would guard nothing"
+
+  # ⭐ F6-S2 / F6-S3 were never built: no answer-path, no ntfy hook. The verdict word must survive
+  # on EVERY row that states them, not merely appear somewhere in the file.
+  for crit in S2 S3; do
+    n_bad="$(grep "^| \*\*F6-$crit\*\*" "$ACC" | grep -vc 'НЕ ДОСТАВЛЕН')"
+    [[ "$n_bad" -eq 0 ]] \
+      && ok "GSL-110 ⭐ F6-$crit is still recorded as НЕ ДОСТАВЛЕН — an unwritten feature cannot be an accepted one" \
+      || bad "GSL-110 ⭐ $n_bad row(s) for F6-$crit no longer say НЕ ДОСТАВЛЕН: the acceptance claims a capability with no code behind it"
+  done
+
+  # ⭐ F6-S4 is UNPROVEN, not refuted and not met — Tailscale is an owner install. Marking it ✅
+  # would assert a phone attach nobody has ever performed.
+  n_bad="$(grep '^| \*\*F6-S4\*\*' "$ACC" | grep -vc 'НЕ ПРОВЕРЕН')"
+  [[ "$n_bad" -eq 0 ]] \
+    && ok "GSL-110 ⭐ F6-S4 is still marked НЕ ПРОВЕРЕН — a written runbook is not an exercised path" \
+    || bad "GSL-110 ⭐ F6-S4 is no longer marked unproven: the acceptance claims an attach nobody has run from a phone"
+
+  # ⭐ The headline count. Prose can be softened one clause at a time; a number cannot be softened
+  # without being wrong. If any criterion ever genuinely closes, this line changes deliberately.
+  grep -qE '0 из 4 (закрыто|закрыт)' "$ACC" \
+    && ok "GSL-110 ⭐ the acceptance still states the score plainly: 0 of 4 criteria closed" \
+    || bad "GSL-110 ⭐ the '0 из 4' score line is gone — the phase result can now be read as complete"
+
+  # ⭐ ⏳ vs ❌ is the whole honesty of this table: 'blocked on the owner' and 'never implemented'
+  # are different failures with different owners and different costs. Collapsing them into one
+  # symbol would flatter S2/S3 and slander S4 in the same stroke.
+  grep -qE 'разные вещи' "$ACC" && grep -q 'не реализован' "$ACC" \
+    && ok "GSL-110 ⭐ the acceptance still distinguishes 'not verified' from 'not implemented' in words" \
+    || bad "GSL-110 ⭐ the ⏳/❌ distinction is gone — unbuilt features and unrun tests now read identically"
+
+  # ⭐ Three of four verdicts rest on ABSENCE (no ntfy, no curl, no answered_by). Absence is the
+  # weakest evidence there is — a typo in a pattern produces the same empty output. The positive
+  # controls are what make those zeroes mean something; without them the table is unfalsifiable.
+  grep -q 'Позитивные контроли' "$ACC" && grep -q 'True' "$ACC" && grep -q 'False' "$ACC" \
+    && ok "GSL-110 ⭐ the positive controls are recorded — the empty greps are proven to be able to find things" \
+    || bad "GSL-110 ⭐ the positive-control table is gone: the acceptance's zeroes could now be a broken detector"
+
+  # ⭐ The non-obvious structural finding: GSL-105 carries F6-S3 outright AND the load-bearing half
+  # of F6-S1, because a fleet-level BLOCKER has no per-session push to ride on. Lose this and the
+  # remaining work reads as four equal tasks instead of one binding constraint.
+  grep -qE 'связывающ' "$ACC" && grep -qE 'два критерия' "$ACC" \
+    && ok "GSL-110 ⭐ GSL-105 is still named as the binding constraint holding two of four criteria" \
+    || bad "GSL-110 ⭐ the S1↔R6.2 dependency is gone — GSL-105 now looks like one task among several"
+
+  # ⭐ Every landed task of the phase must own a dev_history file. This is the check that found the
+  # GSL-103 hole in the first place: five cycles each wrote their own file and none counted the set.
+  ACC_HIST="$(ls -1 "$REPO_ROOT/docs/dev_history/" | grep -c '^GSL-1[0-9][0-9]-phase6-')"
+  [[ "$ACC_HIST" -ge 6 ]] \
+    && ok "GSL-110 ⭐ every landed Phase 6 task owns a dev_history file ($ACC_HIST) — the GSL-103 hole stays closed" \
+    || bad "GSL-110 ⭐ only $ACC_HIST Phase 6 dev_history files: a landed task has lost its history again (GSL-103 class)"
+fi
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
