@@ -567,7 +567,7 @@ cat > "$FL/docs/handoff/ORCHESTRATION-STATE.md" <<'STATE'
 - `cycle=1 worker=alpha model=claude-opus-4-8 tokens_out=1000 tokens_in=500 cache_read=10 | running: cycles=1 total≈1000`
 - `cycle=2 worker=beta model=claude-opus-4-8 tokens_out=2000 tokens_in=600 cache_read=20 | running: cycles=2 total≈3000`
 - `cycle=3 worker=zeta model=claude-fable-5 tokens_out=4000 tokens_in=700 cache_read=30 | running: cycles=3 total≈7000`
-- `cycle=4 worker=zeta model=claude-fable-5 tokens_out=est-unavailable | running: cycles=4 total≈7000`
+- `cycle=4 worker=zeta model=claude-fable-5 tokens_out=est-unavailable | running: cycles=9 total≈7000`
 
 ## NEXT
 STATE
@@ -734,6 +734,30 @@ grep -qE 'claude-haiku-4-5|claude-sonnet-5' "$FLH" \
 # ⭐ The quota section is expected to be EMPTY, so it must print its own glob. "The quota never bit us"
 # and "the hook that would have told us is dead" are different sentences and only one is safe to sleep
 # on — an empty section that cannot say where it looked cannot tell you which one you are in.
+# ⭐ TWO NUMBERS, TWO WORDS (review m1). The ledger's running counter says 9 cycles ran; only 4 carry
+# a per-cycle bullet to sum. Both figures are true and they were both labelled "ledgered", which made
+# them look like one fact and left the 5 cycles between them named nowhere — so a reader who summed
+# the table never reached the cumulative total and was never told why. This dashboard's own rule is
+# that a filter names what it hides (Timeline: "the other 308 are on disk, not here"), and the most
+# expensive screen was the one place it was broken.
+FL_COST="$WORK/f5-fleet/docs/lab/site/cost.html"
+[[ "$(jq -r '.cost.cumulative_cycles' "$FLB")" == "9" ]] && [[ "$(jq -r '.cost.cycles | length' "$FLB")" == "4" ]] \
+  && ok "GSL-98: the trap is armed — the ledger counts 9 cycles and carries per-cycle rows for 4" \
+  || bad "GSL-98: the cost fixture has no gap between running total and parsed rows, so the test below proves nothing"
+grep -q 'data-cycle-gap="5"' "$FL_COST" \
+  && grep -q 'cycles run (ledger running total)' "$FL_COST" \
+  && ! grep -q 'cycles ledgered' "$FL_COST" \
+  && ok "GSL-98 ⭐ the 5 cycles with no telemetry row are NAMED, and the two counts no longer share one word" \
+  || bad "GSL-98 ⭐ Cost still prints two different numbers under one label, with the gap named nowhere"
+fl_prose() { python3 -c '
+import re, sys, html
+h = open(sys.argv[1], encoding="utf-8").read()
+print(html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", h))))
+' "$1"; }
+fl_prose "$FL_COST" | grep -q 'every sum below is LOW by an unknown amount' \
+  && ok "GSL-98: the page says which DIRECTION the omission runs — the sums are low, not merely 'partial'" \
+  || bad "GSL-98: the gap is counted but its direction is not stated, so a reader cannot tell which way to distrust the table"
+
 [[ "$(jq -r '.cost.quota.total' "$FLB")" == "0" ]] \
   && jq -r '.cost.quota.searched' "$FLB" | grep -q 'docs/lab/events/\*.jsonl' \
   && grep -q 'Searched:' "$FL/docs/lab/site/cost.html" \

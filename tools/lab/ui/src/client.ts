@@ -42,8 +42,14 @@ function regradeStaleness(): void {
   // No event was ever logged? Then the only clock we have is the page's own age.
   const age = isNaN(built) ? pageAge : built + pageAge;
 
-  const fresh = parseInt(el.dataset["freshS"] ?? "", 10) || 1800;
-  const dead = parseInt(el.dataset["deadS"] ?? "", 10) || 10800;
+  // `|| 1800` would have swallowed a legitimate ZERO — "grade everything stale immediately" is a
+  // threshold someone may one day set, and `||` cannot tell it from an absent attribute. The line
+  // above already does this correctly for `built`; these two did not. No threshold is 0 today, which
+  // is exactly why this was invisible.
+  const freshRaw = parseInt(el.dataset["freshS"] ?? "", 10);
+  const deadRaw = parseInt(el.dataset["deadS"] ?? "", 10);
+  const fresh = isNaN(freshRaw) ? 1800 : freshRaw;
+  const dead = isNaN(deadRaw) ? 10800 : deadRaw;
   const grade: Grade = age <= fresh ? "fresh" : age <= dead ? "stale" : "dead";
 
   const rank: Record<string, number> = { fresh: 0, stale: 1, dead: 2 };

@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-20T11:52:22Z",
+  "generated_at": "2026-07-20T11:59:00Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-20",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 441,
-    "max_event_age_human": "7m",
-    "latest_event_ts": "2026-07-20T11:44:58Z",
-    "heartbeat_age_s": 10,
+    "max_event_age_s": 357,
+    "max_event_age_human": "5m",
+    "latest_event_ts": "2026-07-20T11:53:01Z",
+    "heartbeat_age_s": 409,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,19 +16,19 @@
     }
   },
   "events": {
-    "total": 546,
-    "today": 75,
+    "total": 548,
+    "today": 77,
     "days": [
       "2026-07-12",
       "2026-07-13",
       "2026-07-20"
     ],
     "by_type": {
-      "agent.turn_ended": 146,
+      "agent.turn_ended": 147,
       "agent.idle": 48,
       "handoff.written": 45,
       "dev_history.written": 44,
-      "vcs.commit": 37,
+      "vcs.commit": 38,
       "agent.terminated": 29,
       "tracker.issue.transitioned": 29,
       "task.completed": 28,
@@ -47,8 +47,8 @@
       "vcs.pr.merged": 1
     },
     "by_src": {
-      "hook:PostToolUse": 187,
-      "hook:Stop": 146,
+      "hook:PostToolUse": 188,
+      "hook:Stop": 147,
       "hook:TeammateIdle": 48,
       "hook:SubagentStop": 29,
       "emit": 28,
@@ -61,10 +61,10 @@
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 281,
+      "claude": 282,
       "ef6c3777": 85,
       "dd3edd33": 63,
-      "ecab62c2": 19,
+      "ecab62c2": 20,
       "orchestrator": 19,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
@@ -109,7 +109,7 @@
       "impl-ui-5": 1,
       "impl-ui-7": 1
     },
-    "mechanical_share": 0.921
+    "mechanical_share": 0.922
   },
   "questions": {
     "open": 0,
@@ -135,9 +135,15 @@
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "5e6d5ed",
-    "dirty_paths": 20,
+    "head": "7c73aa3",
+    "dirty_paths": 11,
     "commits_on_date": [
+      {
+        "sha": "7c73aa3",
+        "author": "R",
+        "ts": "2026-07-20T13:53:01+02:00",
+        "subject": "GSL-99 [UI] Review fix: the self-health meter counted panes and called them cycles (M1, M2, m2)"
+      },
       {
         "sha": "5e6d5ed",
         "author": "R",
@@ -292,6 +298,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-20T11:52:22Z"
+    "last_success_at": "2026-07-20T11:59:00Z"
   }
 }

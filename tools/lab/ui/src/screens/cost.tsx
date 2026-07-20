@@ -22,12 +22,17 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
   const c = b.cost;
   const noCeiling = c.ceiling_why ?? undefined;
   const recent = [...c.cycles].reverse().slice(0, 40);
+  /** Cycles the ledger's running total counts, minus the ones with a per-cycle row to sum. */
+  const gap = c.cumulative_cycles === null ? null : c.cumulative_cycles - c.cycles.length;
 
   return (
     <>
       <div class="grid">
         <Kpi value={c.cumulative_total === null ? null : n(c.cumulative_total)} label="tokens, cumulative" />
-        <Kpi value={c.cumulative_cycles} label="cycles ledgered" />
+        {/* NOT "cycles ledgered" — that word sat on this tile AND on the per-cycle heading below,
+            over two different numbers (83 and 54). Both were right; one word made them look like one
+            fact, and nothing on the page named the 29 cycles between them. */}
+        <Kpi value={c.cumulative_cycles} label="cycles run (ledger running total)" />
         <Kpi value={c.ceiling === null ? null : n(c.ceiling)} label="ceiling" why={noCeiling} />
         <Kpi value={c.used_pct === null ? null : `${c.used_pct}%`} label="of ceiling used" why={noCeiling} />
       </div>
@@ -50,7 +55,25 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
         </div>
       )}
 
-      <h2>Per cycle — {c.cycles.length} ledgered</h2>
+      <h2>Per cycle — {c.cycles.length} with a telemetry row</h2>
+      {/* A FILTER MUST NAME WHAT IT HIDES. That rule is kept everywhere else on this dashboard —
+          Timeline says "the other 308 are on disk, not here", every Library shelf prints its glob —
+          and it was broken here in the most expensive place: a reader who sums the table below does
+          not reach the cumulative total, and nothing told him why. */}
+      {gap !== null && gap > 0 ? (
+        <div class="filter-count" data-cycle-gap={String(gap)}>
+          <b>{gap}</b> of the <b>{c.cumulative_cycles}</b> cycles the ledger counts have no
+          per-cycle row here, so <b>every sum below is LOW by an unknown amount</b> — the cumulative
+          total above is the only figure that covers them.
+          {c.unparsed > 0 ? (
+            <>
+              {" "}
+              <b>{c.unparsed}</b> of the {gap} are telemetry bullets that could not be keyed on a
+              cycle; the rest were never written as bullets at all.
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {c.cycles.length === 0 ? (
         <Empty>
           No telemetry. The ledger lives in <code>docs/handoff/ORCHESTRATION-STATE.md</code> under{" "}
