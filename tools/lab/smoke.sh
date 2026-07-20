@@ -2459,5 +2459,162 @@ grep -q 'did \*\*not\*\* regenerate' "$MBN/docs/lab/mobile/README.md" 2>/dev/nul
   || bad "GSL-108 ⭐ the phone page is silent about the stale HTML beside it — a fresh page implying a fresh dashboard"
 
 echo
+echo "== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best =="
+# Break-glass is five links: tailscale CLI -> tailnet -> an SSH transport -> mosh-server -> tmux.
+# The failure mode this guards is specific and seductive: Tailscale goes green, mosh is installed,
+# and the path LOOKS ready — but mosh bootstraps mosh-server over SSH, so with no SSH terminator
+# the tailnet leads nowhere. A preflight that graded the links it could see and stayed quiet about
+# that one would hand the owner a false green on the one night the path is load-bearing.
+BGP="$REPO_ROOT/tools/breakglass/bg-preflight.sh"
+BGR="$REPO_ROOT/docs/runbooks/break-glass.md"
+
+if [[ ! -x "$BGP" ]]; then
+  bad "GSL-107: tools/breakglass/bg-preflight.sh missing or not executable — nothing can ask whether the last line is reachable"
+else
+  ok "GSL-107: bg-preflight.sh present and executable"
+  bash -n "$BGP" && ok "GSL-107: bash -n (syntax)" || bad "GSL-107: bash -n (syntax)"
+
+  # A hermetic tailnet: the verdicts below must not depend on whether the owner has installed
+  # Tailscale since this was written. FAKE_RUNSSH drives the one pref the transport check reads.
+  BGFAKE="$WORK/bg-fakebin"; mkdir -p "$BGFAKE"
+  cat > "$BGFAKE/tailscale" <<'BGEOF'
+#!/usr/bin/env bash
+if [[ "$1" == "status" ]]; then
+  echo '{"BackendState":"Running","Self":{"TailscaleIPs":["100.101.102.103"]}}'
+elif [[ "$1" == "debug" && "$2" == "prefs" ]]; then
+  [[ "${FAKE_RUNSSH:-}" == "none" ]] || echo "{\"RunSSH\":${FAKE_RUNSSH:-true}}"
+fi
+BGEOF
+  printf '#!/usr/bin/env bash\necho "mosh-server (fake)"\n' > "$BGFAKE/mosh-server"
+  # tmux is faked too: a machine with no live sessions has nothing to attach to, and that is a
+  # real degraded state — but it must not be the reason the ready control below fails.
+  printf '#!/usr/bin/env bash\n[[ "$1" == "list-sessions" ]] && echo fleet\nexit 0\n' > "$BGFAKE/tmux"
+  chmod +x "$BGFAKE"/*
+  bg_run() {  # $1 = RunSSH value (true|false|none), $2 = sshd state (on|off); echoes the JSON
+    env PATH="$BGFAKE:$PATH" FAKE_RUNSSH="$1" BG_SSHD_STATE="$2" bash "$BGP" --json 2>/dev/null
+  }
+  bg_status() { python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$1" 2>/dev/null; }
+
+  # ---- positive control FIRST --------------------------------------------------
+  # Every ⭐ below asserts "the verdict is NOT ready". All of them pass vacuously against a script
+  # pinned to degraded, so the discriminating case is proven before any of them is believed.
+  BG_READY="$(bg_run true off)"
+  [[ "$(bg_status "$BG_READY")" == "ready" ]] \
+    && ok "GSL-107: a complete chain does yield ready (positive control — the not-ready checks below discriminate)" \
+    || bad "GSL-107: a complete chain never reports ready — the verdict is pinned, and every check below proves nothing"
+
+  # ---- ⭐ a green tailnet is not a transport -----------------------------------
+  BG_NOSSH="$(bg_run false off)"
+  [[ "$(bg_status "$BG_NOSSH")" != "ready" ]] \
+    && ok "GSL-107 ⭐ tailnet up + mosh installed + NO ssh transport never reads ready — mosh would have nothing to bootstrap over" \
+    || bad "GSL-107 ⭐ a transportless chain reported ready: the owner is told break-glass works on the night the tailnet leads nowhere"
+
+  # ---- ⭐ unknown is not off, and it is certainly not on -----------------------
+  # Tailscale is absent from this machine, so the RunSSH probe is written from the documented
+  # surface and unproven. An unreadable probe must therefore report unknown — and unknown must
+  # never be rounded up into a green verdict (the GSL-109 lesson, applied to a chain instead of a colour).
+  BG_UNK="$(bg_run none off)"
+  python3 -c 'import json,sys
+r=json.load(sys.stdin)
+assert r["tailscale_ssh"]=="unknown", r["tailscale_ssh"]
+assert r["status"]!="ready", r["status"]' <<<"$BG_UNK" \
+    && ok "GSL-107 ⭐ an unreadable ssh-transport probe reads unknown and never yields ready — it is not rounded up" \
+    || bad "GSL-107 ⭐ an unknown transport was treated as present: a probe that cannot see is reporting good news"
+
+  # ---- ⭐ the exposure of the fallback path is stated, not swallowed -----------
+  # Remote Login DOES complete the chain, so a preflight optimising for green would happily call
+  # it ready. It also opens :22 on every interface the Mac has. F6-S4 says "without opening
+  # inbound ports"; a path that satisfies the router and not the machine must say so out loud.
+  BG_RL="$(env PATH="$BGFAKE:$PATH" FAKE_RUNSSH=false BG_SSHD_STATE=on bash "$BGP" 2>/dev/null)"
+  grep -qi "every interface" <<<"$BG_RL" \
+    && ok "GSL-107 ⭐ Remote Login as the only transport is reported WITH its exposure (:22 on every interface)" \
+    || bad "GSL-107 ⭐ the fallback path's exposure is silent — the owner opens :22 to cafe Wi-Fi believing 'no inbound ports' still holds"
+
+  # ---- ⭐ preflight reports; it does not act ------------------------------------
+  # Installing a VPN, enabling sshd or killing a pane are owner decisions made awake. A verifier
+  # that took any of them would be an incident, not a report.
+  bg_exec_lines() {  # strip comments and printer lines, same discipline as the GSL-104 block
+    python3 - "$1" <<'PY'
+import sys
+PRINTERS=("good","warn","dead","note","echo","printf")
+for raw in open(sys.argv[1]):
+    line, q, out = raw.rstrip("\n"), None, []
+    for ch in line:
+        if q:
+            if ch == q: q = None
+        elif ch in "\"'": q = ch
+        elif ch == "#": break
+        out.append(ch)
+    line = "".join(out)
+    if line.lstrip().split(" ")[0].rstrip("(") in PRINTERS: continue
+    if line.strip(): print(line)
+PY
+  }
+  BG_EXEC="$(bg_exec_lines "$BGP")"
+  grep -qE 'tailscale.*status|TS_STATUS_CMD' <<<"$BG_EXEC" \
+    && ok "GSL-107: the comment-stripper preserves the real tailscale invocations (positive control — the mutation greps below have input)" \
+    || bad "GSL-107: the comment-stripper ate the tailscale invocations — the no-mutation checks would pass over an empty file"
+  bg_mutation_hits() { grep -nE '(tailscale[[:space:]]+(up|login|logout)|brew[[:space:]]+install|systemsetup|kill-pane|launchctl[[:space:]]+(load|bootstrap))' <<<"$1" || true; }
+  # Positive control for the detector itself: shown a script that really does bring up the VPN,
+  # it must fire. Without this, a typo in the pattern would read as "preflight is clean forever".
+  [[ -n "$(bg_mutation_hits 'tailscale up --ssh')" ]] \
+    && ok "GSL-107: the mutation detector fires on a real \`tailscale up\` (positive control — the check below is not vacuous)" \
+    || bad "GSL-107: the mutation detector CANNOT see a VPN being brought up — the no-mutation check below guards nothing"
+  BG_MUTATIONS="$(bg_mutation_hits "$BG_EXEC")"
+  [[ -z "$BG_MUTATIONS" ]] \
+    && ok "GSL-107 ⭐ preflight only inspects: it never brings up a VPN, opens sshd, or touches a pane" \
+    || bad "GSL-107 ⭐ preflight mutates the machine ($BG_MUTATIONS) — a report step that changes what it reports on"
+  grep -qE 'claude( -p|\b--print)' <<<"$BG_EXEC" \
+    && bad "GSL-107 ⭐ preflight calls a headless model (C1 violation) — a verifier must not cost tokens" \
+    || ok "GSL-107 ⭐ 0-LLM (C1): preflight shells out to no model"
+fi
+
+# ---- the runbook's load-bearing warnings -------------------------------------------
+# These guard PROPERTIES a future edit could quietly drop, not phrasing. Each one exists because
+# losing it costs the owner something specific at 4am.
+if [[ ! -s "$BGR" ]]; then
+  bad "GSL-107: docs/runbooks/break-glass.md missing — the preflight points at a runbook that is not there"
+else
+  BG_SECTIONS="$(grep -c '^## ' "$BGR")"
+  [[ "$BG_SECTIONS" -ge 8 ]] \
+    && ok "GSL-107: the runbook is complete ($BG_SECTIONS sections — positive control for the content checks below)" \
+    || bad "GSL-107: the runbook has only $BG_SECTIONS sections — the checks below would pass over a stub"
+
+  # ⭐ The kill-pane invariant. A runbook that teaches pane-killing from a phone and omits this
+  # is the 2026-07-07 incident with better ergonomics.
+  grep -qE 'kill-pane -a' "$BGR" && grep -qiE 'НИКОГДА|⛔' "$BGR" \
+    && ok "GSL-107 ⭐ the runbook names \`kill-pane -a\` and forbids it outright" \
+    || bad "GSL-107 ⭐ the runbook teaches killing panes from a phone without forbidding \`kill-pane -a\` — the 2026-07-07 fleet kill, re-armed"
+
+  # ⭐ ...and the REASON, which is what makes the rule survive a rewrite: positional pane addresses
+  # renumber when a neighbour dies, so an id read minutes ago on a phone can name a different pane.
+  grep -qE '%[0-9]+' "$BGR" && grep -qiE 'перенумеров|сменил позиционный' "$BGR" \
+    && ok "GSL-107 ⭐ the runbook explains WHY only %id is safe — positional addresses renumber under a phone-lag delay" \
+    || bad "GSL-107 ⭐ the %id rule is stated without its mechanism — a future edit will 'simplify' it back to positional targets"
+
+  # ⭐ The phone-attach flags. Without ignore-size a bedtime attach resizes the desktop panes for
+  # everyone (window-size is 'latest' on this machine), and the owner meets a mangled fleet at dawn.
+  # The property is per-COMMAND, not per-document: prose may say "tmux attach" freely, but every
+  # concrete `tmux attach -t …` the owner could copy at 4am must carry the flag. A weaker grep for
+  # the bare word passed while a mutant stripped the flag from all three commands and left the
+  # explanatory table intact — which is exactly the edit a future rewrite would make.
+  BG_ATTACH_CMDS="$(grep -c 'tmux attach -t' "$BGR")"
+  BG_ATTACH_BARE="$(grep 'tmux attach -t' "$BGR" | grep -vc 'ignore-size')"
+  [[ "$BG_ATTACH_CMDS" -ge 2 ]] \
+    && ok "GSL-107: the runbook really does spell out attach commands ($BG_ATTACH_CMDS — positive control for the check below)" \
+    || bad "GSL-107: no concrete attach command in the runbook — the ignore-size check below has nothing to guard"
+  [[ "$BG_ATTACH_BARE" -eq 0 ]] \
+    && ok "GSL-107 ⭐ every copyable attach command carries -f ignore-size — a 4am attach cannot reshape the desktop fleet" \
+    || bad "GSL-107 ⭐ $BG_ATTACH_BARE attach command(s) omit ignore-size — a phone-sized client resizes every pane the fleet has"
+
+  # ⭐ The honesty gate. Tailscale is not installed here, so F6-S4 is NOT closed. This check exists
+  # because the cheapest possible edit — flipping one table cell to ✅ — would silently convert an
+  # unproven plan into a claimed capability, and nothing else in the repo would notice.
+  grep -qE 'НЕ ЗАКРЫТО' "$BGR" \
+    && ok "GSL-107 ⭐ the runbook still states F6-S4 is NOT closed — a written path is not a proven one" \
+    || bad "GSL-107 ⭐ F6-S4 is no longer marked open: the runbook claims a capability nobody has exercised from a phone"
+fi
+
+echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
