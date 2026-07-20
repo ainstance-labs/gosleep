@@ -127,6 +127,12 @@ body{margin:0;padding:var(--s5) var(--s5) var(--s7);background:var(--bg);color:v
      -webkit-text-size-adjust:100%}
 main{display:block}
 a{color:var(--accent)}
+/* MAXIMUM WEIGHT IN THE SYSTEM IS 500 (spec section 3.3). A bare <b> defaults to the UA's bold,
+   which is 700 — louder than anything this language allows, and it sits in the runway prose, the
+   self-health meters and every worker field. The element STAYS a <b> (smoke.sh:2058 requires
+   #sh-data-age to be one); only its weight is capped. Hierarchy is carried by size and colour, so
+   500 is enough to mark <b> as emphatic without shouting. */
+b{font-weight:500}
 :focus-visible{outline:2px solid var(--accent-solid);outline-offset:2px}
 
 /* ── Masthead: title and nav are page CHROME and are drawn as chrome — one quiet band ending in a
@@ -189,6 +195,14 @@ p,.card p,.blind{font:400 var(--t-base)/1.5 var(--sans);color:var(--dim);max-wid
 .stale[data-grade="stale"]{color:var(--warn);border-color:var(--warn-border)}
 .stale[data-grade="dead"]{color:var(--dead);border:2px solid var(--dead-border);
        background:var(--dead-soft)}
+/* GSL-115: the no-JS caveat. It is drawn ONLY when scripting is off (the browser renders <noscript>
+   content in that case and nothing otherwise), so it never competes with the live re-grade. Quiet by
+   construction — dim ink on the same card, a hairline above it — because it is a caveat, not an alarm:
+   the news it carries is "this line cannot update", not "something is wrong". Colour is inherited from
+   the grade on the parent, so it is left as --dim here and not tinted. */
+.stale noscript{display:block;margin-top:var(--s1);padding-top:var(--s1);
+       border-top:1px solid var(--line-subtle);color:var(--dim);
+       font-size:var(--t-xs);line-height:1.5}
 
 /* ── Cards, tiles, grid: one surface treatment, so seven screens read as one product. No shadows
    anywhere — neither reference product uses them on a dashboard surface; separation is done by a

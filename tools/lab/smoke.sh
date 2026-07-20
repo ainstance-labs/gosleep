@@ -2302,6 +2302,108 @@ grep -qF "$DTLV" "$DTL/docs/lab/site/timeline.html" \
   && ok "GSL-121 ⭐ a ${#DTLV}-character detail reaches the page whole — the silent 90-char cut is gone" \
   || bad "GSL-121 ⭐ the detail cell is still truncated: everything past character 90 is absent from the DOM"
 
+# ════════ GSL-134 / T2: the three MAJOR findings this pass closes ════════
+# Same family as everything above: the markup or the data was right and the page still misled the
+# reader. None is catchable by reading a class name — one needs the client bundle run against a moved
+# clock, one needs the page rendered from a bundle that carries a live count, one needs the banner
+# inspected for the escape hatch a no-JS reader depends on.
+
+# ── GSL-126 ⭐: the banner age must keep ticking INSIDE the fresh window, not only when the grade
+#    drops. The old regrade() returned early whenever the grade did not get worse, and the early
+#    return took the AGE with it: a page opened 29 minutes after the build still read "last event 7s
+#    ago" while the self-health card two blocks down showed the true 29m. The grade DID update on a
+#    threshold crossing, so the mechanism looked alive; it was wired to the threshold, not the clock.
+#    Run the page's OWN inlined bundle with a stub DOM and a moved clock — nothing is mocked but the
+#    environment, and the staleness dataset is ours so the fresh window is controlled rather than
+#    whatever tonight's data happens to be.
+cat > "$WORK/gsl126.mjs" <<'JS'
+import { readFileSync } from "node:fs";
+const html = readFileSync(process.argv[2], "utf8");
+const m = html.match(/<script>([\s\S]*?)<\/script>/);   // the one <script> with no attrs: the client bundle
+if (!m) { console.log("NO_CLIENT=1"); process.exit(0); }
+const code = m[1];
+const GEN = "2026-07-20T00:00:00Z";
+const built = Date.parse(GEN);
+function open(nowMs) {
+  const staleness = { className: "stale fresh",
+    dataset: { grade: "fresh", generatedAt: GEN, eventAgeS: "7", freshS: "1800", deadS: "10800" } };
+  const head = { textContent: "SEED" };
+  const verdict = { textContent: "SEEDV" };
+  const verdicts = { textContent: JSON.stringify({ fresh: "FRESHV", stale: "STALEV", dead: "DEADV" }) };
+  const byId = { staleness, "stale-head": head, "stale-verdict": verdict, verdicts };
+  const document = { getElementById: (id) => byId[id] ?? null, querySelectorAll: () => [] };
+  new Function("document", "setInterval", "Date", code)(
+    document, () => 0, { now: () => nowMs, parse: (s) => Date.parse(s) });
+  return { head, staleness };
+}
+const t0  = open(built);
+const t20 = open(built + 20 * 60 * 1000);            // still inside fresh (< 30m)
+const t4h = open(built + 4 * 3600 * 1000);           // past dead (> 3h)
+console.log("T0_HEAD="   + t0.head.textContent);
+console.log("T20_HEAD="  + t20.head.textContent);
+console.log("T20_GRADE=" + t20.staleness.dataset.grade);
+console.log("T4H_GRADE=" + t4h.staleness.dataset.grade);
+JS
+G126="$(node "$WORK/gsl126.mjs" "$SHI" 2>&1)"
+grep -qE 'T0_HEAD=.*last event 7s ago' <<<"$G126" \
+  && ok "GSL-126: at the build instant the banner age is honest (7s) — the no-JS reader is not lied to (positive control)" \
+  || bad "GSL-126: the build-instant banner age is wrong ($(grep '^T0_HEAD=' <<<"$G126"))"
+grep -qE 'T20_HEAD=.*last event 20m ago' <<<"$G126" && grep -q 'T20_GRADE=fresh' <<<"$G126" \
+  && ok "GSL-126 ⭐ opened 20m after the build and still fresh, the banner reads 20m — the age ticks inside the window, not only on a grade drop" \
+  || bad "GSL-126 ⭐ the banner age is FROZEN inside the fresh window (still 7s at +20m): $(grep '^T20_' <<<"$G126")"
+grep -q 'T4H_GRADE=dead' <<<"$G126" \
+  && ok "GSL-126: 4h on, the verdict still re-grades to DEAD — the never-soften guard is intact (positive control)" \
+  || bad "GSL-126: the re-grade to dead broke ($(grep '^T4H_GRADE=' <<<"$G126"))"
+
+# ── GSL-129 ⭐: the "live workers" KPI and the (mostly ended) worker cards are different populations
+#    from different sources — open panes now vs every worker the log could name over the window. Set
+#    side by side with no bridge they read as one contradictory set ("2 live" over eight ended cards).
+#    The bridge sentence tells them apart and appears IFF a live count exists to bridge, ABOVE the
+#    first card. Rendered from the REAL bundle with the count forced on, then off: the page is what the
+#    reader is handed, so it is asserted on the rendered page, never on the source.
+BR="$WORK/gsl129"; mkdir -p "$BR"
+G129P='the log could name over the window'   # a phrase from the bridge itself, absent from every comment
+jq '.fleet.open_workers = 2'    "$REPO_ROOT/docs/lab/render_bundle.json" | node "$REPO_ROOT/tools/lab/ui/build.mjs" > "$BR/live.json" 2>/dev/null
+jq '.fleet.open_workers = null' "$REPO_ROOT/docs/lab/render_bundle.json" | node "$REPO_ROOT/tools/lab/ui/build.mjs" > "$BR/null.json" 2>/dev/null
+G129="$(python3 - "$BR/live.json" "$BR/null.json" "$G129P" <<'PY'
+import json, sys
+live = json.load(open(sys.argv[1]))["pages"]["fleet.html"]
+none = json.load(open(sys.argv[2]))["pages"]["fleet.html"]
+p = sys.argv[3]
+i, c = live.find(p), live.find('class="wk ')
+print("LIVE_PRESENT=%d" % (1 if i >= 0 else 0))
+print("LIVE_BEFORE_CARD=%d" % (1 if (i >= 0 and c >= 0 and i < c) else 0))
+print("NULL_PRESENT=%d" % (1 if none.find(p) >= 0 else 0))
+PY
+)"
+grep -q 'NULL_PRESENT=0' <<<"$G129" \
+  && ok "GSL-129: with the live count unknown the bridge is absent — it appears only when two numbers exist to reconcile (positive control)" \
+  || bad "GSL-129: the bridge prints even with no live count — it is unconditional, so it proves nothing ($G129)"
+grep -q 'LIVE_PRESENT=1' <<<"$G129" && grep -q 'LIVE_BEFORE_CARD=1' <<<"$G129" \
+  && ok "GSL-129 ⭐ '2 live workers' over ended cards no longer reads as one set — a bridge above the first card names the two as different questions" \
+  || bad "GSL-129 ⭐ the KPI and the cards stand adjacent with no reconciliation ($G129)"
+
+# ── GSL-115 ⭐: with JS off nothing re-grades, so a fresh-graded page keeps asserting "Live — the
+#    laboratory is writing itself right now" forever, on a file that may be days old. The finding
+#    measured ZERO <noscript> anywhere. The honest degradation is a <noscript> INSIDE the banner that
+#    tells a scriptless reader the age is frozen at build time. Asserted structurally, so an empty
+#    <noscript></noscript> cannot satisfy it.
+sh_banner_noscript() {  # exit 0 iff the staleness banner carries a non-empty <noscript>
+  python3 -c '
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r"id=\"staleness\".*?</div>", h, re.S)
+sys.exit(0 if (m and re.search(r"<noscript>\s*\S", m.group(0))) else 1)
+' "$1"
+}
+printf '<div class="stale fresh" id="staleness"><span id="stale-head">FRESH</span><small>x</small></div>\n' > "$WORK/gsl115-prefix.html"
+sh_banner_noscript "$WORK/gsl115-prefix.html" \
+  && bad "GSL-115: the noscript detector ACCEPTS a banner with none — it cannot see the defect it guards" \
+  || ok "GSL-115: the noscript detector rejects the pre-fix banner (positive control)"
+sh_banner_noscript "$SHI" \
+  && ok "GSL-115 ⭐ the staleness banner carries a <noscript> — a no-JS reader is told the age is frozen, not left under a permanent 'right now'" \
+  || bad "GSL-115 ⭐ the banner has no <noscript>: with JS off the build-time 'Live … right now' stands unbounded"
+
 echo "== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is =="
 RCP="$REPO_ROOT/tools/rc/rc-preflight.sh"
 

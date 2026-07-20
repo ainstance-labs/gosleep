@@ -21,12 +21,45 @@ function readJson<T>(id: string): T | null {
   }
 }
 
+/**
+ * An event age, in the voice the BUILD already speaks (chronicler.py: human_age).
+ *
+ * The sub-minute step is not cosmetic. Until GSL-134 this function started at minutes, while the
+ * Python that renders the same number at build time starts at seconds — so the instant the client
+ * repainted a young banner, "last event 7s ago" became "last event 0m ago" and the page lost
+ * precision the moment it gained accuracy. Two formatters for one number are two opinions about it;
+ * these two now agree at every step, which is the property that lets the banner repaint at all.
+ */
 function human(s: number): string {
+  if (s < 60) return Math.floor(s) + "s";
   if (s < 3600) return Math.floor(s / 60) + "m";
   if (s < 86400) return Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
   return Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
 }
 
+/**
+ * The staleness banner, re-graded against the READER'S clock and then kept honest every second.
+ *
+ * GSL-126. This used to return early whenever the grade did not get worse, and the early return took
+ * the AGE with it: inside the fresh window the number was frozen at build time, so a page opened
+ * twenty-nine minutes later still read "last event 7s ago" — wrong by a factor of two hundred and
+ * fifty, on the line the page offers as its own proof of life. It was invisible because the grade
+ * DID update the moment it crossed a threshold, so the mechanism looked alive; it was simply wired
+ * to the threshold rather than to the clock. The self-health card two blocks down showed the true
+ * age the whole time, which is the tell: one page, two ages, one of them false.
+ *
+ * The fix separates the two things the early return had conflated:
+ *
+ *   the GRADE  is a verdict, and a verdict may only ever get WORSE. bornGrade is captured once, at
+ *              the build, and is the floor every repaint is clamped to. A page may admit it is dead;
+ *              it may never argue itself back to life.
+ *   the AGE    is a measurement, and a measurement is simply due. It is recomputed on open and on
+ *              every tick, from the same two numbers the banner has always carried.
+ *
+ * The "re-graded" suffix stays attached to the thing it describes — it appears only when the verdict
+ * actually moved off the build's. A number that merely got older is not a re-grade, and saying so on
+ * every page would be new prose for an event that did not happen.
+ */
 function regradeStaleness(): void {
   // ONE source of truth for the verdict prose, server-rendered beside us. If this island is missing
   // we leave the page exactly as it was built rather than invent a sentence.
@@ -38,9 +71,6 @@ function regradeStaleness(): void {
   if (isNaN(gen)) return;
 
   const built = parseInt(el.dataset["eventAgeS"] ?? "", 10);
-  const pageAge = Math.max(0, (Date.now() - gen) / 1000);
-  // No event was ever logged? Then the only clock we have is the page's own age.
-  const age = isNaN(built) ? pageAge : built + pageAge;
 
   // `|| 1800` would have swallowed a legitimate ZERO — "grade everything stale immediately" is a
   // threshold someone may one day set, and `||` cannot tell it from an absent attribute. The line
@@ -50,27 +80,42 @@ function regradeStaleness(): void {
   const deadRaw = parseInt(el.dataset["deadS"] ?? "", 10);
   const fresh = isNaN(freshRaw) ? 1800 : freshRaw;
   const dead = isNaN(deadRaw) ? 10800 : deadRaw;
-  const grade: Grade = age <= fresh ? "fresh" : age <= dead ? "stale" : "dead";
 
   const rank: Record<string, number> = { fresh: 0, stale: 1, dead: 2 };
-  const was = el.dataset["grade"] ?? "fresh";
-  if ((rank[grade] ?? 0) <= (rank[was] ?? 0)) return; // never soften a verdict
-
-  el.className = "stale " + grade;
-  el.dataset["grade"] = grade;
-
+  // Read ONCE, before any repaint writes to it: this is the build's verdict, and it is the floor.
+  const born = (el.dataset["grade"] ?? "fresh") as Grade;
   const head = document.getElementById("stale-head");
-  if (head) {
-    head.textContent =
-      grade.toUpperCase() +
-      " · last event " +
-      human(Math.round(age)) +
-      " ago · re-graded when you opened this page";
-  }
-  // The prose must not outlive the banner's verdict: a red DEAD banner over the sentence "Live — the
-  // laboratory is writing itself right now" is a page contradicting itself (REVIEW-gsl81 M1).
   const v = document.getElementById("stale-verdict");
-  if (v && verdicts[grade]) v.textContent = verdicts[grade];
+
+  const paint = (): void => {
+    // max(0, …) is the same guard the countdown uses: a reader whose laptop clock runs slow must not
+    // be handed a page fresher than the build already knew it was.
+    const pageAge = Math.max(0, (Date.now() - gen) / 1000);
+    // No event was ever logged? Then the only clock we have is the page's own age.
+    const age = isNaN(built) ? pageAge : built + pageAge;
+    const now: Grade = age <= fresh ? "fresh" : age <= dead ? "stale" : "dead";
+    const grade: Grade = (rank[now] ?? 0) >= (rank[born] ?? 0) ? now : born;
+
+    if (el.dataset["grade"] !== grade) {
+      el.className = "stale " + grade;
+      el.dataset["grade"] = grade;
+      // The prose must not outlive the banner's verdict: a red DEAD banner over the sentence "Live —
+      // the laboratory is writing itself right now" is a page contradicting itself (REVIEW-gsl81 M1).
+      if (v && verdicts[grade]) v.textContent = verdicts[grade];
+    }
+
+    if (head) {
+      head.textContent =
+        grade.toUpperCase() +
+        " · last event " +
+        human(Math.round(age)) +
+        " ago" +
+        (grade === born ? "" : " · re-graded when you opened this page");
+    }
+  };
+
+  paint(); // ← re-graded ON OPEN, before the first tick.
+  setInterval(paint, 1000);
 }
 
 /**

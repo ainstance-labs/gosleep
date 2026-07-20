@@ -58,6 +58,18 @@ export function StaleBanner({ b }: { b: RenderBundle }): VNode {
         {Math.floor(st.thresholds_s.dead / 3600)}h ·{" "}
         <span id="stale-verdict">{VERDICTS[g]}</span>
       </small>
+      {/* GSL-115: with JS off, nothing re-grades. The build-time verdict then stands unbounded — and
+          when that verdict is "fresh", the sentence beside it ("Live — the laboratory is writing
+          itself right now") keeps asserting the present tense forever, on a page that may be days old.
+          The banner is honest only if a reader who runs no script is TOLD the age is frozen. This
+          renders exactly when scripting is off; with JS on the browser hides it and the live re-grade
+          speaks instead. It carries no age string, so the "… old" ticker and its doubled-suffix guard
+          never touch it. */}
+      <noscript>
+        JavaScript is off, so this banner is frozen at the build ({b.generated_at}): the age above does
+        not tick and the verdict does not re-grade. Trust the timestamp, not the tense — a page open
+        long enough has outlived its own present tense.
+      </noscript>
     </div>
   );
 }
