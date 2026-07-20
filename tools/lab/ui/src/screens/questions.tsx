@@ -113,6 +113,42 @@ function Item({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
   );
 }
 
+/**
+ * The closed-question table, shared by the two "decided" sections. Its columns and the neutral
+ * status tag are the shipped design; GSL-128 only changed WHICH rows each instance is handed.
+ */
+function ClosedTable({ items }: { items: QueueItem[] }): VNode {
+  return (
+    <div class="wrap">
+      <table>
+        <tr>
+          <th>id</th>
+          <th>type</th>
+          <th>question</th>
+          <th>outcome</th>
+          <th>by</th>
+        </tr>
+        {items.map((x) => (
+          <tr key={x.id}>
+            <td class="mono">{x.id}</td>
+            <td>
+              <span class={`tag ${x.type}`}>{x.type}</span>
+            </td>
+            <td>{x.question}</td>
+            <td>
+              <span class="tag">{x.status}</span>
+              {x.answer ? <> {x.answer}</> : x.default ? <> {x.default}</> : null}
+            </td>
+            {/* Who closed it. "answered-by-default" with no name is not a gap — it is the night
+                answering for itself, and saying so is the point of the column. */}
+            <td>{x.answered_by ? x.answered_by : <span class="dim">the default</span>}</td>
+          </tr>
+        ))}
+      </table>
+    </div>
+  );
+}
+
 export function Questions({ b }: { b: RenderBundle }): VNode {
   const q = b.queue;
   const blockers = q.open_blockers;
@@ -121,6 +157,11 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
   // renders "unreadable" rather than counting down from an invented now.
   const builtMs = Date.parse(b.generated_at);
   const byType = Object.entries(q.by_type ?? {}).filter(([, n]) => n > 0);
+  // GSL-128: "decided" splits by AUTHORSHIP, not merely by closed-ness. answered_by === "owner" is
+  // the owner deciding it himself — the patch F6-S2 materialises as answered_by=owner, channel=… —
+  // and everything else closed WITHOUT him: the night's auto-resolutions, or a non-owner answer.
+  const decidedByYou = q.closed_items.filter((x) => x.answered_by === "owner");
+  const decidedWithoutYou = q.closed_items.filter((x) => x.answered_by !== "owner");
 
   return (
     <>
@@ -174,38 +215,29 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
         others.map((x) => <Item key={x.id} q={x} builtMs={builtMs} />)
       )}
 
-      <h2>Decided without you ({q.closed_items.length})</h2>
-      {q.closed_items.length === 0 ? (
+      <h2>Decided without you ({decidedWithoutYou.length})</h2>
+      {decidedWithoutYou.length > 0 ? (
+        <ClosedTable items={decidedWithoutYou} />
+      ) : q.closed_items.length === 0 ? (
         <Empty>The queue has never closed a question.</Empty>
-      ) : (
-        <div class="wrap">
-          <table>
-            <tr>
-              <th>id</th>
-              <th>type</th>
-              <th>question</th>
-              <th>outcome</th>
-              <th>by</th>
-            </tr>
-            {q.closed_items.map((x) => (
-              <tr key={x.id}>
-                <td class="mono">{x.id}</td>
-                <td>
-                  <span class={`tag ${x.type}`}>{x.type}</span>
-                </td>
-                <td>{x.question}</td>
-                <td>
-                  <span class="tag">{x.status}</span>
-                  {x.answer ? <> {x.answer}</> : x.default ? <> {x.default}</> : null}
-                </td>
-                {/* Who closed it. "answered-by-default" with no name is not a gap — it is the night
-                    answering for itself, and saying so is the point of the column. */}
-                <td>{x.answered_by ? x.answered_by : <span class="dim">the default</span>}</td>
-              </tr>
-            ))}
-          </table>
-        </div>
-      )}
+      ) : null}
+
+      {/* GSL-128: the fourth bucket the three-section taxonomy never had. Every closed question used
+          to land under "Decided without you" regardless of who closed it, so a question the owner
+          answered himself (patched answered_by=owner, channel=chat) sat under a heading that flatly
+          contradicted the `by` column printing "owner" one cell over. answered_by and channel are the
+          exact evidence F6-S2 builds as the mark of owner participation; filing that participation
+          under "without you" empties the only visible sign of it. It is a new heading, which the
+          reface otherwise does not add (spec section 1.1) — added here because closing this MAJOR
+          requires a section that matches the authorship fact, and the ticket's own root cause names
+          this missing bucket. Drawn only when he has actually decided something, so an empty queue
+          and the smoke fixtures render exactly as they did before. */}
+      {decidedByYou.length > 0 ? (
+        <>
+          <h2>Decided by you ({decidedByYou.length})</h2>
+          <ClosedTable items={decidedByYou} />
+        </>
+      ) : null}
     </>
   );
 }

@@ -2833,6 +2833,79 @@ else
     || bad "GSL-110 ⭐ only $ACC_HIST Phase 6 dev_history files: a landed task has lost its history again (GSL-103 class)"
 fi
 
+# ════════ GSL-135 / T3: the two MAJOR findings the Tasks/Timeline/Questions reface closes ════════
+# Both are invisible to every mechanism test above, and invisible in the same way T1's and T2's were:
+# the data is right and the view files it wrong. One is a wrapper two tables never got; the other is
+# a fourth bucket the questions taxonomy never had. Each ships with a control that must stay green.
+
+# ── GSL-114: the two summary tables at the foot of the feed must scroll like every other table.
+# They shipped bare in a card that let their content spill past its edge — the only two of the
+# thirteen tables without the scroll wrapper the rest have — so at 390px the count column ran off the
+# card with nothing to scroll it and the numbers were unreachable on a phone, while the names beside
+# them looked complete. The fix is structural: the same wrapper the feed table already has, and the
+# count moved to the right-aligned tabular column section 6.4 specifies. Asserting the WRAPPER (smoke
+# cannot measure a pixel) is the contract-level proof; the live 390px scrollWidth is measured with
+# the browser in the task's screenshot pass.
+T3T="$WORK/t3-timeline"; rm -rf "$T3T"; mkdir -p "$T3T/docs/lab/events" "$T3T/docs/lab/questions"
+T3TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"aa11bb2"}}\n' "$T3TS"
+  printf '{"ts":"%s","run_id":"x","seq":2,"actor":"w1","type":"agent.turn_ended","src":"emit","data":{}}\n' "$T3TS"
+} > "$T3T/docs/lab/events/$TODAY.jsonl"
+: > "$T3T/docs/lab/questions/queue.jsonl"
+bash "$CH" --repo "$T3T" --no-poll --quiet --json >/dev/null 2>&1
+G114="$(python3 - "$T3T/docs/lab/site/timeline.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+def wrapper_of(header):
+    m = re.search(r'<div class="([a-z]+)"><table><tr><th>' + header + r'</th>', h)
+    return m.group(1) if m else "MISSING"
+def numcol(header):
+    return "yes" if re.search(r'<th>' + header + r'</th><th class="num">n</th>', h) else "no"
+feed = "yes" if '<div class="wrap"><table id="timeline-rows">' in h else "no"
+print("TYPE_WRAP=%s|PROV_WRAP=%s|TYPE_NUM=%s|PROV_NUM=%s|FEED_WRAP=%s" % (
+    wrapper_of("type"), wrapper_of("provenance"), numcol("type"), numcol("provenance"), feed))
+PY
+)"
+grep -q 'TYPE_WRAP=wrap|PROV_WRAP=wrap' <<<"$G114" \
+  && ok "GSL-114 ⭐ both summary tables sit in a scroll wrapper, not a card that clips their count at 390px" \
+  || bad "GSL-114 ⭐ a summary table is still bare in a card — its count column is unreachable on a phone ($G114)"
+grep -q 'TYPE_NUM=yes|PROV_NUM=yes' <<<"$G114" \
+  && ok "GSL-114: the count column is right-aligned and tabular (section 6.4), not the left mono it had" \
+  || bad "GSL-114: the count column did not take the numeric column ($G114)"
+grep -q 'FEED_WRAP=yes' <<<"$G114" \
+  && ok "GSL-114 control: the feed table's wrapper is detected — a green control proving the probe can see one" \
+  || bad "GSL-114 control: the feed-table wrapper probe failed, so the check above proves nothing ($G114)"
+
+# ── GSL-128: a question the OWNER answered is not "decided without you". The three-bucket taxonomy
+# filed every closed question under "Decided without you" regardless of answered_by, so an owner's own
+# answer (answered_by=owner, the exact patch F6-S2 writes) sat under a heading that contradicted the
+# `by` column one cell over. The fix splits closed by authorship into a fourth section. Fixture: one
+# question the owner answered, one the night auto-resolved — the section each lands in is the test.
+T3Q="$WORK/t3-questions"; rm -rf "$T3Q"; mkdir -p "$T3Q/docs/lab/events" "$T3Q/docs/lab/questions"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"cycle.started","src":"emit","data":{}}\n' "$T3TS" > "$T3Q/docs/lab/events/$TODAY.jsonl"
+{ printf '{"id":"q-t3-owner","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-128","question":"the owner decided this one himself","default":"status quo","reversibility":"high","status":"answered","answered_by":"owner","channel":"chat","answer":"option B"}\n' "$T3TS"
+  printf '{"id":"q-t3-night","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-128","question":"the night decided this one","default":"status quo","reversibility":"high","status":"auto-resolved"}\n' "$T3TS"
+} > "$T3Q/docs/lab/questions/queue.jsonl"
+bash "$CH" --repo "$T3Q" --no-poll --quiet --json >/dev/null 2>&1
+G128="$(python3 - "$T3Q/docs/lab/site/questions.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+def section_of(qid):
+    i = h.find(qid)
+    if i < 0: return "ABSENT"
+    heads = [m.group(1).strip() for m in re.finditer(r'<h2>([^<(]+)', h) if m.start() < i]
+    return heads[-1] if heads else "NONE"
+print("OWNER=%s|NIGHT=%s|HAS_BYYOU=%s" % (
+    section_of("q-t3-owner"), section_of("q-t3-night"), "yes" if "Decided by you" in h else "no"))
+PY
+)"
+grep -q 'OWNER=Decided by you' <<<"$G128" \
+  && ok "GSL-128 ⭐ a question the owner answered lands in 'Decided by you' — the authorship the by column already prints" \
+  || bad "GSL-128 ⭐ an owner-answered question is filed away from its author, still under decided-without-you ($G128)"
+grep -q 'NIGHT=Decided without you' <<<"$G128" \
+  && ok "GSL-128 control: a night-auto-resolved question stays in 'Decided without you' — the bucket that is now honest" \
+  || bad "GSL-128 control: the without-you bucket lost the question that truly belongs to it ($G128)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

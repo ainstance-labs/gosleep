@@ -125,33 +125,42 @@ export function Timeline({ b }: { b: RenderBundle }): VNode {
       )}
 
       <h2>All days — {b.events.total} events</h2>
+      {/* GSL-114: these two summary tables shipped bare inside a card that let their content spill
+          past its edge — the only two of the project's thirteen tables not given the scroll wrapper
+          every other one has. At 390px the count column ran off the card with nothing to scroll it
+          (measured 28px over on the type table, 8px on provenance), so the numbers were unreachable
+          on a phone while the names beside them looked complete — the silent-clip failure this
+          laboratory exists to refuse. Given the same wrapper as every other table, that spill becomes
+          a contained scroll and the page holds scrollWidth == clientWidth. The count is a quantity
+          compared by size, so it takes the right-aligned tabular column of section 6.4, not the left
+          mono it carried. */}
       <div class="grid">
-        <div class="card">
+        <div class="wrap">
           <table>
             <tr>
               <th>type</th>
-              <th>n</th>
+              <th class="num">n</th>
             </tr>
             {Object.entries(b.events.by_type).map(([k, v]) => (
               <tr key={k}>
                 <td>{k}</td>
-                <td class="mono">{v}</td>
+                <td class="num">{v}</td>
               </tr>
             ))}
           </table>
         </div>
-        <div class="card">
+        <div class="wrap">
           <table>
             <tr>
               <th>provenance</th>
-              <th>n</th>
+              <th class="num">n</th>
             </tr>
             {Object.entries(b.events.by_src).map(([k, v]) => (
               <tr key={k}>
                 <td>
                   <span class={`tag ${srcClass(k)}`}>{k}</span>
                 </td>
-                <td class="mono">{v}</td>
+                <td class="num">{v}</td>
               </tr>
             ))}
           </table>
