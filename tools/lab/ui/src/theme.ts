@@ -300,6 +300,9 @@ code{font-family:var(--mono);font-size:.9em;background:var(--sunken);border-radi
    not fight. The shape of this selector is contract — do not simplify it. */
 .mono:not(table):not(.wrap *){overflow-wrap:anywhere}
 .dim{color:var(--dim)}
+/* GSL-136 (spec 6.5): the absence placeholder in a table (the em-dash in cost, an empty title in
+   library) is painted muted, one step quieter than dim, so a hole does not read as a datum. */
+.muted{color:var(--muted)}
 
 /* ── Badges. ONE SHAPE for all of them: translucent fill, coloured ink, coloured hairline. Neither
    reference product ships a solid-filled status badge, and at ~18px high this is a label, not a

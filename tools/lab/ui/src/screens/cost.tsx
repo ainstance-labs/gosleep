@@ -6,6 +6,14 @@ function n(x: number | null): string {
   return x === null ? "—" : x.toLocaleString("en-US");
 }
 
+/** The absence glyph, muted (spec 6.5) so an empty cell does not read as a datum. */
+const dash = <span class="muted">&mdash;</span>;
+
+/** A quantity cell: right-aligned tabular mono (spec 6.4), sized for the widest running total. */
+function numCell(x: number | null): VNode {
+  return <td class="num">{x === null ? dash : n(x)}</td>;
+}
+
 /**
  * Screen 6 of PRD R5.2. GSL-98 finishes the cards; this is the ledger they read.
  *
@@ -21,7 +29,11 @@ function n(x: number | null): string {
 export function Cost({ b }: { b: RenderBundle }): VNode {
   const c = b.cost;
   const noCeiling = c.ceiling_why ?? undefined;
-  const recent = [...c.cycles].reverse().slice(0, 40);
+  // GSL-120: no slice. The heading prints c.cycles.length (67); slicing to 40 hid 27 cycles that HAD
+  // a telemetry row, and nothing on the page named them — a second, silent truncation on top of the
+  // 29 with no row at all (which the note below already accounts for). Heading and table now count
+  // the same rows. Newest first.
+  const ordered = [...c.cycles].reverse();
   /** Cycles the ledger's running total counts, minus the ones with a per-cycle row to sum. */
   const gap = c.cumulative_cycles === null ? null : c.cumulative_cycles - c.cycles.length;
 
@@ -86,22 +98,22 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
               <th>cycle</th>
               <th>worker</th>
               <th>model</th>
-              <th>out</th>
-              <th>in</th>
-              <th>cache read</th>
-              <th>cache write</th>
-              <th>running total</th>
+              <th class="num">out</th>
+              <th class="num">in</th>
+              <th class="num">cache read</th>
+              <th class="num">cache write</th>
+              <th class="num">running total</th>
             </tr>
-            {recent.map((r) => (
+            {ordered.map((r) => (
               <tr key={r.cycle}>
                 <td class="mono">{r.cycle}</td>
                 <td class="mono">{r.worker ?? <Unknown why="the bullet did not name a worker" />}</td>
                 <td class="mono">{r.model ?? <Unknown why="the bullet did not name a model" />}</td>
-                <td class="mono">{n(r.tokens_out)}</td>
-                <td class="mono">{n(r.tokens_in)}</td>
-                <td class="mono">{n(r.cache_read)}</td>
-                <td class="mono">{n(r.cache_write)}</td>
-                <td class="mono">{n(r.running_total)}</td>
+                {numCell(r.tokens_out)}
+                {numCell(r.tokens_in)}
+                {numCell(r.cache_read)}
+                {numCell(r.cache_write)}
+                {numCell(r.running_total)}
               </tr>
             ))}
           </table>
@@ -123,10 +135,10 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
           <table>
             <tr>
               <th>model</th>
-              <th>cycles</th>
-              <th>out</th>
-              <th>in</th>
-              <th>cache read</th>
+              <th class="num">cycles</th>
+              <th class="num">out</th>
+              <th class="num">in</th>
+              <th class="num">cache read</th>
               <th>missing from these sums</th>
             </tr>
             {c.by_model.map((m) => (
@@ -134,10 +146,10 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
                 <td class="mono">
                   {m.model ?? <Unknown why="the telemetry bullet named no model for these cycles" />}
                 </td>
-                <td class="mono">{m.cycles}</td>
-                <td class="mono">{m.tokens_out === null ? <Unknown why="not one cycle in this bucket had a readable token count — unknown, not zero" /> : n(m.tokens_out)}</td>
-                <td class="mono">{m.tokens_in === null ? <Unknown /> : n(m.tokens_in)}</td>
-                <td class="mono">{m.cache_read === null ? <Unknown /> : n(m.cache_read)}</td>
+                <td class="num">{m.cycles}</td>
+                <td class="num">{m.tokens_out === null ? <Unknown why="not one cycle in this bucket had a readable token count — unknown, not zero" /> : n(m.tokens_out)}</td>
+                <td class="num">{m.tokens_in === null ? <Unknown /> : n(m.tokens_in)}</td>
+                <td class="num">{m.cache_read === null ? <Unknown /> : n(m.cache_read)}</td>
                 <td class={m.partial > 0 ? "wk-models" : "dim"}>
                   {m.partial > 0
                     ? `${m.partial} of ${m.cycles} cycle(s) had an unreadable token field — these sums are LOW by an unknown amount`
@@ -175,11 +187,11 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
               <tr key={`${q.ts}-${i}`}>
                 <td class="mono">{q.ts ?? <Unknown />}</td>
                 <td class="mono">{q.type}</td>
-                <td class="mono">{q.error_type ?? "—"}</td>
+                <td class="mono">{q.error_type ?? dash}</td>
                 <td class="mono">
                   {q.eta ?? <Unknown why="the quota event carries no reset ETA — the wait is of unknown length" />}
                 </td>
-                <td>{q.detail ?? "—"}</td>
+                <td>{q.detail ?? dash}</td>
               </tr>
             ))}
           </table>

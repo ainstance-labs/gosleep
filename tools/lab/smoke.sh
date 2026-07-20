@@ -2907,5 +2907,168 @@ grep -q 'NIGHT=Decided without you' <<<"$G128" \
   || bad "GSL-128 control: the without-you bucket lost the question that truly belongs to it ($G128)"
 
 echo
+echo "== GSL-136 / T4: honest truncation in the DATA layer — Library files & titles, Cost cycles, PR de-dup =="
+# One throwaway repo drives every T4 finding. Each fixture is built one PAST the old cap (40 files,
+# view slice(0,40)) so a surviving cutoff shows up as a WRONG COUNT, not a value that happens to fit.
+T4="$WORK/t4-lib-cost"; rm -rf "$T4"
+mkdir -p "$T4/docs/lab/events" "$T4/docs/lab/questions" "$T4/docs/lab/decisions" \
+         "$T4/docs/handoff" "$T4/docs/dev_history"
+git init -q -b main "$T4" 2>/dev/null || { git init -q "$T4"; git -C "$T4" checkout -q -b main 2>/dev/null; }
+git -C "$T4" config user.email smoke@gosleep.local; git -C "$T4" config user.name smoke
+: > "$T4/docs/lab/questions/queue.jsonl"; : > "$T4/docs/lab/decisions/log.jsonl"
+
+# 43 dev_history files: 41 ordinary + one 130-ish-char heading + one with NO heading. Past the cap.
+for i in $(seq 1 41); do printf '# GSL-%d dev history entry\n' "$i" > "$T4/docs/dev_history/GSL-$i-phase1-entry.md"; done
+T4_LONG="GSL-900 a deliberately overlong dev history heading written to run comfortably past one hundred and ten characters so any cut lands mid word"
+printf '# %s\n' "$T4_LONG" > "$T4/docs/dev_history/GSL-900-phase1-long.md"
+printf 'no leading hash on this line, so the document has no first heading to read a title from.\n' > "$T4/docs/dev_history/GSL-901-phase1-untitled.md"
+# 3 handoff files: a sub-cap shelf — the positive control that count reads reality, not a constant.
+printf '# Handoff A\n' > "$T4/docs/handoff/01-a.md"; printf '# Handoff B\n' > "$T4/docs/handoff/02-b.md"; printf '# Handoff C\n' > "$T4/docs/handoff/03-c.md"
+git -C "$T4" add -A >/dev/null 2>&1; git -C "$T4" commit -q -m "seed t4" >/dev/null 2>&1
+
+# 45 telemetry cycles — five past the old view slice of 40. (backticks are literal inside '...')
+{ printf '## TELEMETRY\n\n'
+  for i in $(seq 1 45); do printf -- '- `cycle=%d worker=w model=claude-opus-4-8 tokens_out=%d tokens_in=100 cache_read=10 | running: cycles=%d total≈%d`\n' "$i" "$((i*1000))" "$i" "$((i*1000))"; done
+  printf '\n## NEXT\n'
+} > "$T4/docs/handoff/ORCHESTRATION-STATE.md"
+
+# A day file so events exist; a two-pulse heartbeat so the runway's context clock (and its gauge) render.
+printf '{"ts":"%sT01:00:00Z","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$TODAY" > "$T4/docs/lab/events/$TODAY.jsonl"
+T4_H0="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+T4_H1="$(python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+{ printf '{"ts":"%s","cycle":10,"context_pct":50,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$T4_H0"
+  printf '{"ts":"%s","cycle":12,"context_pct":60,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$T4_H1"
+} > "$T4/docs/handoff/.orchestrator-heartbeat"
+
+# A PR keyed in BOTH title and branch — the shape that used to double the row's pr column.
+printf '{"prs":[{"number":555,"title":"GSL-500 the epic","state":"OPEN","url":"https://github.com/org/repo/pull/555","headRefName":"GSL-500-slug"}],"issues":[]}\n' > "$T4/gh.json"
+
+GOSLEEP_GH_JSON="$T4/gh.json" bash "$CH" --repo "$T4" --no-poll --quiet --json >/dev/null 2>&1
+T4B="$T4/docs/lab/render_bundle.json"; T4L="$T4/docs/lab/site/library.html"; T4C="$T4/docs/lab/site/cost.html"; T4I="$T4/docs/lab/site/index.html"
+
+# GSL-127: the files column is a COUNT. A count of 40 for a 43-file shelf is a cutoff wearing a
+# measurement's clothes, and it also means 3 artifacts never reached the searchable cross-index.
+T4_DHC="$(jq -r '.library.sections[] | select(.key=="dev_history") | .count' "$T4B" 2>/dev/null)"
+[[ "$T4_DHC" == "43" ]] \
+  && ok "GSL-127 ⭐ the dev_history files count is what was FOUND (43), not the old 40-item cutoff" \
+  || bad "GSL-127 ⭐ the files column still reports a cap, not the count (got $T4_DHC, want 43)"
+T4_DHROWS="$(grep -oE 'href="[^"]*dev_history/GSL-[^"]*"' "$T4L" | wc -l | tr -d ' ')"
+[[ "$T4_DHROWS" == "43" ]] \
+  && ok "GSL-127 ⭐ all 43 dev_history artifacts reach the searchable cross-index — none silently dropped past 40" \
+  || bad "GSL-127 ⭐ the cross-index is missing dev_history rows past the cap (got $T4_DHROWS, want 43)"
+T4_HFC="$(jq -r '.library.sections[] | select(.key=="handoffs") | .count' "$T4B" 2>/dev/null)"
+T4_HFREAL="$(ls "$T4/docs/handoff/"*.md 2>/dev/null | wc -l | tr -d ' ')"
+[[ -n "$T4_HFC" && "$T4_HFC" == "$T4_HFREAL" && "$T4_HFC" -lt 40 ]] \
+  && ok "GSL-127 control: a sub-cap shelf (handoffs, $T4_HFC files) reports exactly what is on disk — the metric reads reality, not a constant" \
+  || bad "GSL-127 control: the handoffs count ($T4_HFC) does not match the $T4_HFREAL files on disk"
+
+# GSL-131: the full heading survives into the bundle. The old cut happened in the data, so the tail
+# was gone from render_bundle.json and the page — unreachable by selection or search.
+T4_LTLEN="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+ts=[it["title"] for s in b["library"]["sections"] for it in s["items"] if it["name"]=="GSL-900-phase1-long.md"]
+print(len(ts[0]) if ts else -1)
+PY
+)"
+[[ "$T4_LTLEN" -gt 110 ]] \
+  && ok "GSL-131 ⭐ a $T4_LTLEN-char heading is stored whole in the bundle — no 110-char mid-word cut in the data" \
+  || bad "GSL-131 ⭐ the heading was truncated at the data layer (len $T4_LTLEN, cut at the old 110)"
+# GSL-9 (not GSL-1) on purpose: the control target must survive the OLD 40-item cap so it is green
+# against 125f29c too. Descending glob sort keeps GSL-901, GSL-900, GSL-9, ... — GSL-1 sorts LAST and
+# the old cap dropped it, which would red this control on the very bug the ⭐ above already covers.
+T4_STLEN="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+ts=[it["title"] for s in b["library"]["sections"] for it in s["items"] if it["name"]=="GSL-9-phase1-entry.md"]
+print(len(ts[0]) if ts else -1)
+PY
+)"
+[[ "$T4_STLEN" -gt 0 && "$T4_STLEN" -lt 110 ]] \
+  && ok "GSL-131 control: a short heading is stored whole and unchanged ($T4_STLEN chars) — removing the cut lengthened nothing" \
+  || bad "GSL-131 control: the short heading is wrong (len $T4_STLEN)"
+
+# GSL-123: a document with no first heading has no title, and that absence renders as unknown-with-a-
+# reason, not as a blank cell that reads like a render fault.
+T4_EMPTY="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+ts=[it["title"] for s in b["library"]["sections"] for it in s["items"] if it["name"]=="GSL-901-phase1-untitled.md"]
+print("EMPTY" if (ts and ts[0]=="") else "NOT")
+PY
+)"
+T4_EMPTYCOUNT="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+print(sum(1 for s in b["library"]["sections"] for it in s["items"] if it["title"]==""))
+PY
+)"
+T4_UNK="$(python3 - "$T4L" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+m=re.search(r'<table id="library-rows">(.*?)</table>', h, re.S)
+print((m.group(1).count('class="unknown"')) if m else -1)
+PY
+)"
+[[ "$T4_EMPTY" == "EMPTY" && "$T4_UNK" == "$T4_EMPTYCOUNT" && "$T4_UNK" -ge 1 ]] \
+  && ok "GSL-123 ⭐ every titleless document (all $T4_UNK, and only those) renders an unknown marker, not a blank cell" \
+  || bad "GSL-123 ⭐ a titleless row is blank or the marker leaked (untitled-in-data=$T4_EMPTYCOUNT, markers=$T4_UNK)"
+grep -q 'dev history entry' "$T4L" \
+  && ok "GSL-123 control: filled titles still render their heading text — the marker did not replace real titles" \
+  || bad "GSL-123 control: a filled title vanished from the page"
+
+# GSL-120: the heading counts cycles-with-a-row; the table must show that many. The old slice(0,40)
+# left the heading at 45 and the table at 40, hiding five cycles with nothing on the page naming them.
+T4_CYC="$(jq -r '.cost.cycles | length' "$T4B" 2>/dev/null)"
+T4_HEAD="$(grep -oE 'Per cycle[^<]*[0-9]+ with a telemetry row' "$T4C" | grep -oE '[0-9]+' | head -1)"
+T4_CROWS="$(python3 - "$T4C" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+m=re.search(r'Per cycle.*?(<table>.*?</table>)', h, re.S)
+print((len(re.findall(r'<tr', m.group(1)))-1) if m else -1)
+PY
+)"
+[[ "$T4_CROWS" == "$T4_CYC" && "$T4_CYC" == "45" ]] \
+  && ok "GSL-120 ⭐ every cycle with a telemetry row is on the page (45 rows == 45 in data) — the slice is gone" \
+  || bad "GSL-120 ⭐ the per-cycle table hides rows (rows=$T4_CROWS, data=$T4_CYC)"
+[[ -n "$T4_HEAD" && "$T4_HEAD" == "$T4_CYC" ]] \
+  && ok "GSL-120 control: the heading counts the same cycles the data holds ($T4_HEAD == $T4_CYC) — heading and table now agree" \
+  || bad "GSL-120 control: the heading number ($T4_HEAD) does not match the data ($T4_CYC)"
+
+# GSL-130 (root): the same PR reached the row twice because its key sat in both title and branch and
+# KEY_RE.findall returned it twice. dict.fromkeys keeps each distinct key once.
+T4_PRN="$(jq -r '[.tasks.rows[] | select(.key=="GSL-500") | .prs[]] | length' "$T4B" 2>/dev/null)"
+[[ "$T4_PRN" == "1" ]] \
+  && ok "GSL-130 ⭐ (root) a PR keyed in title AND branch lands on the row once, not twice — no #NN#NN in the data" \
+  || bad "GSL-130 ⭐ (root) the row's pr column still carries the same PR twice (got $T4_PRN)"
+T4_PRNUM="$(jq -r '[.tasks.rows[] | select(.key=="GSL-500") | .prs[].number] | join(",")' "$T4B" 2>/dev/null)"
+grep -q '555' <<<"$T4_PRNUM" \
+  && ok "GSL-130 control: the PR still reaches its row (#555 present) — de-dup removed the copy, not the link" \
+  || bad "GSL-130 control: the PR fell off the row entirely (got '$T4_PRNUM')"
+
+# GSL-132 (Cost): the ceiling and quota notes each printed a lead sentence the data string then
+# repeated. The data now carries only the reason the lead does not.
+grep -q 'no token ceiling exists on disk' "$T4C" \
+  && bad "GSL-132 ⭐ (Cost) the ceiling note still repeats its lead sentence" \
+  || ok "GSL-132 ⭐ (Cost) the ceiling note states its reason once — the echoed lead is gone"
+grep -q 'no token ceiling on disk' "$T4C" \
+  && ok "GSL-132 control: the on-screen ceiling lead is untouched — text preserved, only the echo removed" \
+  || bad "GSL-132 control: the ceiling lead itself went missing"
+grep -q 'not one quota event has EVER been logged here' "$T4C" \
+  && bad "GSL-132 ⭐ (Cost) the quota note still repeats its lead sentence" \
+  || ok "GSL-132 ⭐ (Cost) the quota note no longer echoes its lead"
+grep -q 'No quota event has ever been logged' "$T4C" \
+  && ok "GSL-132 control: the on-screen quota lead is untouched" \
+  || bad "GSL-132 control: the quota lead itself went missing"
+
+# GSL-118: two percentages side by side as 'N% of M%' read as a product; the gauge now spells the relation.
+grep -qE '[0-9]+% of [0-9]+%' "$T4I" \
+  && bad "GSL-118 ⭐ the context gauge still reads 'N% of M%' — the product misreading is back" \
+  || ok "GSL-118 ⭐ the context gauge no longer pairs two bare percentages as 'N% of M%'"
+grep -q '60%' "$T4I" \
+  && ok "GSL-118 control: the context gauge is present with its 60% level — so the ⭐ tests a real gauge, not an absent one" \
+  || bad "GSL-118 control: the context gauge did not render (no 60%) — the ⭐ above proves nothing"
+
+echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

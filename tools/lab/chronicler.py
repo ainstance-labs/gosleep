@@ -461,9 +461,11 @@ def load_cost(state, events=(), days=()):
     is wrong in either direction."""
     cost = {"cycles": [], "unparsed": 0, "cumulative_total": None, "cumulative_cycles": None,
             "ceiling": None, "ceiling_source": None,
-            "ceiling_why": "no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates "
-                           "it to the epic brief, and no brief names a number "
-                           "(override with GOSLEEP_TOKEN_CEILING)"}
+            # GSL-132: the lead used to repeat the sentence its consumers already print ("There is no
+            # token ceiling on disk." on cost.html, "No ceiling is set" on mobile), so the reader saw
+            # the same claim twice. The why now carries only what the lead does NOT — the reason.
+            "ceiling_why": "manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief "
+                           "names a number (override with GOSLEEP_TOKEN_CEILING)"}
 
     env_ceiling = os.environ.get("GOSLEEP_TOKEN_CEILING")
     if env_ceiling:
@@ -570,11 +572,13 @@ def cost_quota(events, days):
         "events": rows[-20:],
         "total": len(rows),
         "searched": searched,
+        # GSL-132: the lead ("No quota event has ever been logged.") is already printed on the screen
+        # beside this string, so it opened by saying the same thing again. It now begins with the part
+        # the lead does not carry — why an empty section is not the same as a safe one.
         "why_empty": None if rows else (
-            "not one quota event has EVER been logged here. The StopFailure hook that writes "
-            "api.failure is wired, but it has never been observed firing — so this emptiness means "
-            "'never seen', not 'never happened'. A quiet quota and a dead hook look identical from "
-            "here, and until one fires the difference is unknown."),
+            "The StopFailure hook that writes api.failure is wired, but it has never been observed "
+            "firing — so this emptiness means 'never seen', not 'never happened'. A quiet quota and a "
+            "dead hook look identical from here, and until one fires the difference is unknown."),
     }
 
 # ───────────────────────────── collect: fleet (GSL-93) ────────────────────────
@@ -1081,7 +1085,12 @@ def tasks_board(events, git, prs, issues):
             })
 
     for p in prs:
-        for key in KEY_RE.findall("%s %s" % (p.get("title") or "", p.get("headRefName") or "")):
+        # GSL-130 (root): a PR normally carries its key in BOTH title ("GSL-136 …") and branch
+        # ("GSL-136-…"), so KEY_RE.findall returned it twice and the same PR landed on the row's list
+        # twice — one #NN#NN token to the eye, with no space between the two anchors and so no wrap
+        # point either. dict.fromkeys keeps each DISTINCT key once (a PR that names two real keys still
+        # maps to both). The view keeps its own url de-dup as a second line of defence.
+        for key in dict.fromkeys(KEY_RE.findall("%s %s" % (p.get("title") or "", p.get("headRefName") or ""))):
             row(key)["prs"].append({"number": p.get("number"), "state": p.get("state"),
                                     "url": p.get("url"), "title": p.get("title")})
 
@@ -1306,7 +1315,9 @@ def clock_context(hb, pulses):
                          "A missing pulse is not a healthy orchestrator; it is an invisible one.",
                      sources=src)
 
-    gauge = "%d%% of %d%%" % (pct, CONTEXT_CEILING_PCT)
+    # GSL-118: "%d%% of %d%%" read as a product ("50 percent OF 80 percent" = 40%), the opposite of
+    # the fact — the level, and the ceiling it rolls at. Two percentages need the relation spelled out.
+    gauge = "%d%% (rolls at %d%%)" % (pct, CONTEXT_CEILING_PCT)
     if pct >= CONTEXT_CEILING_PCT:
         return clock("context", "orchestrator context", "degrades", "exhausted", hours=0.0, gauge=gauge,
                      why="at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — "
@@ -1660,8 +1671,6 @@ LIBRARY_SECTIONS = (
     ("prd",         "PRD",             "docs/prd",         "*.md",          False),
 )
 
-LIBRARY_LIMIT = 40
-
 
 def doc_title(path):
     """The artifact's own first heading. Markdown answers with `# `, HTML with <title> or <h1>. A row
@@ -1672,15 +1681,20 @@ def doc_title(path):
             head = f.read(8192)
     except OSError:
         return ""
+    # GSL-131: the title is returned WHOLE. It used to end in [:110], which cut 11 of 12 cross-index
+    # headings mid-word with no marker — and because the cut happened here, in the data, the tail was
+    # absent from render_bundle.json and from the page, unreachable by selection or search. A heading
+    # broken on a half-word reads as complete and can reverse its own meaning. The view wraps the tail
+    # (td{overflow-wrap:anywhere}); the data no longer hides it.
     if path.endswith((".html", ".htm")):
         m = (re.search(r"<title[^>]*>(.*?)</title>", head, re.S | re.I)
              or re.search(r"<h1[^>]*>(.*?)</h1>", head, re.S | re.I))
         if not m:
             return ""
-        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(1))).strip()[:110]
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(1))).strip()
     for line in head.splitlines():
         if line.startswith("# "):
-            return line[2:].strip()[:110]
+            return line[2:].strip()
     return ""
 
 
@@ -1713,8 +1727,10 @@ def library_index():
                 "name": os.path.basename(p),
                 "title": doc_title(p),
             })
-            if len(items) >= LIBRARY_LIMIT:
-                break
+            # GSL-127: NO cap. The list used to stop at 40, which made `count` below read 40 for the
+            # dev_history (93) and handoff (46) shelves — the cutoff limit dressed as a file count —
+            # AND silently dropped 59 files from a cross-index whose whole purpose is that every
+            # artifact the night wrote is reachable from here. count == len(items) == what was found.
         total += len(items)
         sections.append({
             "key": key,
