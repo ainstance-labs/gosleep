@@ -2203,6 +2203,126 @@ sh_mono_wraps "$SHI" \
   && ok "GSL-100 ⭐ long unbreakable tokens wrap — a mono card cannot clip the note it is quoting" \
   || bad "GSL-100 ⭐ .mono lacks overflow-wrap: raw JSON clips mid-token and the reader loses text"
 
+echo "== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is =="
+RCP="$REPO_ROOT/tools/rc/rc-preflight.sh"
+
+# The surface names are assembled from fragments on purpose: this harness greps the tree for
+# hard-coded Remote Control flags, and a literal here would make the harness its own violation.
+RCF='--remote'"-control"
+RCK_ACT='inputNeededNotif'"Enabled"
+RCK_DEC='agentPushNotif'"Enabled"
+
+if [[ ! -x "$RCP" ]]; then
+  bad "GSL-104: tools/rc/rc-preflight.sh missing or not executable — nothing can ask about the phone path"
+else
+  ok "GSL-104: rc-preflight.sh present and executable"
+  bash -n "$RCP" && ok "GSL-104: bash -n (syntax)" || bad "GSL-104: bash -n (syntax)"
+
+  # ---- positive controls FIRST -------------------------------------------------
+  # Every assertion below is either "X is absent" or "the verdict is not ready". Both pass
+  # vacuously against a script that says nothing at all, so each detector is first shown input
+  # it MUST reject.
+  grep -q -- "$RCF" "$RCP" \
+    && ok "GSL-104: the SURFACE block really names the flag (positive control — the absence greps below are not vacuous)" \
+    || bad "GSL-104: SURFACE block does not name the flag — every isolation check below would pass over nothing"
+  grep -q "$RCK_ACT" "$RCP" \
+    && ok "GSL-104: the SURFACE block really names the actions-required key (positive control)" \
+    || bad "GSL-104: SURFACE block does not name the actions-required key — the toggle checks guard nothing"
+
+  # The hard-coding detector, shown a file that DOES hard-code the surface.
+  rc_hardcode_hits() { grep -rlE -- "$RCF|$RCK_ACT|$RCK_DEC" "$1" 2>/dev/null; }
+  mkdir -p "$WORK/rc-violator"
+  printf 'claude %s orchestrator   # a caller that pinned the flag itself\n' "$RCF" > "$WORK/rc-violator/brief.sh"
+  [[ -n "$(rc_hardcode_hits "$WORK/rc-violator")" ]] \
+    && ok "GSL-104: the hard-coding detector flags a file that pins the flag (positive control)" \
+    || bad "GSL-104: the hard-coding detector CANNOT see a pinned flag — the swappability check is theatre"
+
+  # ---- ⭐ absent means OFF ------------------------------------------------------
+  # The whole overnight value of Remote Control rides on "push when actions required". Its key
+  # defaults to false, so an ABSENT key is OFF. A preflight that read absence as "probably on"
+  # would tell the owner the phone is covered on exactly the night it is not.
+  printf '{"%s": true}\n' "$RCK_DEC" > "$WORK/rc-settings-absent.json"
+  RC_JSON="$(RC_SETTINGS_FILE="$WORK/rc-settings-absent.json" bash "$RCP" --json 2>/dev/null)"
+  echo "$RC_JSON" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["push_when_actions_required"]=="absent"; assert r["status"]!="ready", r["status"]' \
+    && ok "GSL-104 ⭐ an absent actions-required key reads as OFF and never yields a ready verdict" \
+    || bad "GSL-104 ⭐ an absent toggle was rounded up: the owner would be told the phone is covered while permission prompts stay silent"
+
+  # false is not a different story from absent — both are OFF.
+  printf '{"%s": true, "%s": false}\n' "$RCK_DEC" "$RCK_ACT" > "$WORK/rc-settings-false.json"
+  RC_JSON_F="$(RC_SETTINGS_FILE="$WORK/rc-settings-false.json" bash "$RCP" --json 2>/dev/null)"
+  echo "$RC_JSON_F" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["push_when_actions_required"]=="false"; assert r["status"]!="ready", r["status"]' \
+    && ok "GSL-104 ⭐ an explicitly false toggle also blocks a ready verdict" \
+    || bad "GSL-104 ⭐ a false toggle passed as ready — the verdict does not track the setting"
+
+  # ---- ⭐ the verdict can still be green: not a stuck 'degraded' ----------------
+  if command -v claude >/dev/null 2>&1; then
+    printf '{"%s": true, "%s": true}\n' "$RCK_DEC" "$RCK_ACT" > "$WORK/rc-settings-both.json"
+    RC_JSON_OK="$(RC_SETTINGS_FILE="$WORK/rc-settings-both.json" bash "$RCP" --json 2>/dev/null)"
+    echo "$RC_JSON_OK" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["status"]=="ready", r["status"]' \
+      && ok "GSL-104 ⭐ both toggles on yields ready — the check discriminates, it is not pinned to degraded" \
+      || bad "GSL-104 ⭐ both toggles on still not ready: the verdict ignores its inputs (a constant is not a test)"
+  else
+    note_skip=1
+    ok "GSL-104: claude CLI absent — ready-path check skipped (surface legs cannot be judged here)"
+  fi
+
+  # ---- ⭐ swappability: no executable path outside tools/rc pins the surface ----
+  RC_OFFENDERS=""
+  for d in "$REPO_ROOT/tools" "$REPO_ROOT/.claude"; do
+    [[ -d "$d" ]] || continue
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      case "$f" in "$REPO_ROOT/tools/rc/"*) continue ;; esac
+      RC_OFFENDERS="$RC_OFFENDERS $f"
+    done <<< "$(rc_hardcode_hits "$d")"
+  done
+  [[ -z "${RC_OFFENDERS// /}" ]] \
+    && ok "GSL-104 ⭐ the research-preview surface is named in tools/rc only — when Anthropic renames a flag, one block changes" \
+    || bad "GSL-104 ⭐ Remote Control surface pinned outside tools/rc (${RC_OFFENDERS# }) — a rename now breaks callers silently"
+
+  # ---- ⭐ preflight never pairs, and never spends a token ----------------------
+  # These two assert what the script EXECUTES, so they must not fire on the word `claude`
+  # sitting in a comment or inside a message the script prints. The first draft did exactly
+  # that and reported the file's own explanatory comment as a C1 breach. So strip comments
+  # (quote-aware) and drop lines whose command is a printer, then judge what is left.
+  rc_exec_lines() {
+    python3 - "$1" <<'PY'
+import re,sys
+PRINTERS=("good","warn","dead","note","echo","printf","say")
+for raw in open(sys.argv[1]):
+    line, q, out = raw.rstrip("\n"), None, []
+    for ch in line:                      # drop an unquoted trailing comment
+        if q:
+            if ch == q: q = None
+        elif ch in "\"'": q = ch
+        elif ch == "#": break
+        out.append(ch)
+    line = "".join(out)
+    if line.lstrip().split(" ")[0].rstrip("(") in PRINTERS: continue
+    if line.strip(): print(line)
+PY
+  }
+  RC_EXEC="$(rc_exec_lines "$RCP")"
+
+  # Positive control: the stripper must not swallow the executable lines themselves.
+  grep -qE 'claude[[:space:]]+--version' <<<"$RC_EXEC" \
+    && ok "GSL-104: the comment-stripper preserves real invocations (positive control — the two checks below still have input)" \
+    || bad "GSL-104: the comment-stripper ate the real claude invocations — the C1 and no-pairing checks would pass over an empty file"
+
+  grep -qE 'claude( -p|\b--print)' <<<"$RC_EXEC" \
+    && bad "GSL-104 ⭐ preflight calls a headless model (C1 violation) — a verifier must not cost tokens" \
+    || ok "GSL-104 ⭐ 0-LLM (C1): preflight shells out to no model"
+
+  # Pairing is a QR scan with a human. Any claude invocation here must be an inspection
+  # (--version / --help / command -v), never a session start — a preflight that launched RC
+  # would hijack the terminal it was asked to report on.
+  RC_LAUNCHES="$(grep -nE '(^|[^-[:alnum:]])claude[[:space:]]' <<<"$RC_EXEC" \
+    | grep -v -- '--help' | grep -v -- '--version' | grep -v 'command -v claude' || true)"
+  [[ -z "$RC_LAUNCHES" ]] \
+    && ok "GSL-104 ⭐ preflight only inspects (--version/--help): it reports on the phone path, never starts a session" \
+    || bad "GSL-104 ⭐ preflight invokes claude outside --version/--help ($RC_LAUNCHES) — a report step that could seize the terminal"
+fi
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
