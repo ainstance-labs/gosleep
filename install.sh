@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+# ⛔⛔⛔ ЗАЩИТА — СКРИПТ ВРЕМЕННО ОТКЛЮЧЁН (owner, 2026-07-20) ⛔⛔⛔
+# Агенты могут случайно вызвать install.sh и перезаписать ГЛОБАЛЬНЫЕ скиллы
+# (~/.claude/skills/*, в т.ч. orchestrating-delivery-agents — авторитетна ГЛОБАЛЬНАЯ копия,
+# в локальной skill/ есть проблемы). Текущая стратегия: все проекты работают с глобальным
+# скиллом и проверяют его на практике; sync local→global НЕ выполняется. Обратная
+# синхронизация (global→local, с анализом) — только по явной команде владельца.
+# Снятие защиты — ТОЛЬКО по явной команде владельца: закомментировать две строки ниже.
+echo "install.sh: ⛔ ЗАЩИТА ВКЛЮЧЕНА — sync local→global отключён владельцем 2026-07-20 (см. шапку скрипта)." >&2
+exit 1
 # Install every owned skill subfolder from skill/ into ~/.claude/skills/.
 # Idempotent: re-run after editing any skill/ subfolder to refresh it.
 #

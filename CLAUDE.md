@@ -28,8 +28,11 @@
 
 ## Gates
 
-No CI yet. Verify by running: `./install.sh` after editing `skill/`; report generators and the
-eval runner per README "Use" (fix stale ROOT paths first — GSL-4).
+No CI yet. After editing `skill/<name>/`, verify by targeted sync of THAT skill only:
+`rsync -a skill/<name>/ ~/.claude/skills/<name>/`. ⚠️ **`./install.sh` целиком агентам ЗАПРЕЩЁН**
+(owner 2026-07-20) — он синкает ВСЕ подпапки и перезаписал бы глобальный
+`orchestrating-delivery-agents` (глобальная копия авторитетна; см. Safety rules). Report
+generators and the eval runner per README "Use" (fix stale ROOT paths first — GSL-4).
 
 ## Skill source of truth
 
@@ -48,6 +51,12 @@ skill/
 using `rsync -a --delete`. Sync direction is always **local → global**.
 
 **Safety rules (hard):**
+- ⚠️ **2026-07-20 (owner): `orchestrating-delivery-agents` — авторитетна ГЛОБАЛЬНАЯ копия**
+  (`~/.claude/skills/orchestrating-delivery-agents/`), в локальной `skill/` есть проблемы.
+  НИКОГДА не перезаписывать глобальную автоматически: `./install.sh` целиком не запускать
+  (ни агентом, ни хуком); отдельные скиллы ставить только точечным
+  `rsync -a skill/<name>/ ~/.claude/skills/<name>/`, и никогда — `orchestrating-delivery-agents`
+  без явного указания владельца.
 - `--delete` is scoped to individual named skill dirs (`~/.claude/skills/<name>/`).
 - The script NEVER runs `rsync --delete` or `rm` against the parent `~/.claude/skills/` itself.
 - Unrelated global skills (`gstack`, `gsd-*`, plugins, etc.) are never touched.
