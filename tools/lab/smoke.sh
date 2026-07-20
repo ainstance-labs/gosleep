@@ -2660,6 +2660,82 @@ else
 fi
 
 echo
+echo "== GSL-137 / F5-S4c: the phone projection speaks the redesign's language, within Markdown =="
+# T5 of the GSL-111 relayout. This page is Markdown GitHub renders server-side, so the redesign's CSS
+# never reaches it; what transfers is the LANGUAGE. Four properties below, each built from a fixture so
+# a green run reads real generator output, not this file's prose: a runway deadline stated as an
+# absolute instant (never a countdown a frozen file cannot keep), an icon only where there is an alarm,
+# a trimmed list that says how much it hid, and the one magnitude a table can align, aligned.
+MB5="$WORK/mobile-gsl137"
+mkdir -p "$MB5/docs/lab/events" "$MB5/docs/lab/questions" "$MB5/docs/lab/decisions"
+MB5_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+# A commit (so the pass is fresh) plus two task-status transitions: known states the Tasks table lists.
+{
+  printf '{"ts":"%s","run_id":"r","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"beef137"}}\n' "$MB5_TS"
+  printf '{"ts":"%s","run_id":"r","seq":2,"actor":"w1","type":"tracker.issue.status","src":"poll-fill","data":{"key":"GSL-901","status":"In Progress","occurred_at":"%s"}}\n' "$MB5_TS" "$MB5_TS"
+  printf '{"ts":"%s","run_id":"r","seq":3,"actor":"w1","type":"tracker.issue.status","src":"poll-fill","data":{"key":"GSL-902","status":"Done","occurred_at":"%s"}}\n' "$MB5_TS" "$MB5_TS"
+} > "$MB5/docs/lab/events/$MB_TODAY.jsonl"
+# One open BLOCKER — it makes the blockers clock the next runway event AND puts an alarm in section 1.
+# One open DECISION — a waiting item that is NOT an alarm, so it must carry no icon.
+{
+  printf '{"id":"q-mb5-blk","ts":"%s","type":"BLOCKER","status":"open","from":"w1","task":"GSL-901","question":"MB5-BLOCKER-QUESTION","channel":"chat"}\n' "$MB5_TS"
+  printf '{"id":"q-mb5-dec","ts":"%s","type":"DECISION","status":"open","from":"w1","task":"GSL-902","question":"MB5-DECISION-QUESTION","channel":"chat","default":"the default"}\n' "$MB5_TS"
+} > "$MB5/docs/lab/questions/queue.jsonl"
+# Six decisions in the log; the page shows four, so the honest-truncation marker must name the other two.
+: > "$MB5/docs/lab/decisions/log.jsonl"
+for mb5i in 1 2 3 4 5 6; do
+  printf '{"id":"d-2026-07-20-90%s","ts":"2026-07-20T1%s:00:00Z","re":"q","task":"GSL-90%s","type":"DECISION","question":"?","decision":"MB5-DECISION-%s","made_by":"orchestrator","rule":"r"}\n' "$mb5i" "$mb5i" "$mb5i" "$mb5i" >> "$MB5/docs/lab/decisions/log.jsonl"
+done
+bash "$CH" --repo "$MB5" --no-poll --quiet --json >/dev/null 2>&1
+MB5P="$MB5/docs/lab/mobile/README.md"
+
+# ---- positive control: the fixture really exercised every branch the checks below read --------------
+MB5_TASKROWS="$(jq -r '.tasks.by_status | to_entries | map(select(.key!="unknown")) | length' "$MB5/docs/lab/render_bundle.json" 2>/dev/null)"
+{ [[ -s "$MB5P" ]] && [[ "$(jq -r '.runway.next_event.label' "$MB5/docs/lab/render_bundle.json" 2>/dev/null)" == "open blockers" ]] \
+  && [[ "${MB5_TASKROWS:-0}" -ge 2 ]] && grep -q 'MB5-DECISION-QUESTION' "$MB5P"; } \
+  && ok "GSL-137: the fixture built a page with a next runway event, known task states, a non-alarm question and six decisions (positive control — the checks below have input)" \
+  || bad "GSL-137: the GSL-137 fixture did not exercise a branch the checks below read — they would pass vacuously"
+
+# ---- the next runway event is an ABSOLUTE instant, not a countdown a frozen file cannot keep --------
+# 'Next runway event: X in 1m' counted minutes from a NOW Markdown cannot see: baked at 23:00 it still
+# read 'in 1m' at 03:00, five hours after it passed. The moment itself — generated_at + the offset —
+# does not decay in git. Computed here from the bundle so a typo in the formula fails as loudly as an
+# absence. Both checks read only the runway line, since generated_at also appears in the header above.
+MB5_RUNLINE="$(grep 'Next runway event:' "$MB5P" 2>/dev/null)"
+MB5_EVENT_AT="$(jq -r '((.generated_at|fromdateiso8601) + ((.runway.next_event.hours)*3600)) | strftime("%Y-%m-%dT%H:%M:%SZ")' "$MB5/docs/lab/render_bundle.json" 2>/dev/null)"
+[[ -n "$MB5_EVENT_AT" ]] && grep -qF "\`$MB5_EVENT_AT\`" <<<"$MB5_RUNLINE" \
+  && ok "GSL-137 ⭐ the next runway event prints the absolute moment it is due ($MB5_EVENT_AT) — the reader compares it to the clock in his hand" \
+  || bad "GSL-137 ⭐ no correct absolute moment on the runway line (expected $MB5_EVENT_AT) — the timing was not placed on a clock the reader shares"
+grep -qE 'in \*\*[0-9]' <<<"$MB5_RUNLINE" \
+  && bad "GSL-137 ⭐ the runway line still counts 'in **N**' — a countdown a Markdown file cannot keep as the night wears on" \
+  || ok "GSL-137 ⭐ no relative 'in **N**' on the runway line — the deadline is an instant, not an offset from a NOW this file cannot read"
+
+# ---- an icon only where there is an alarm (redesign section 7.2, projected to Markdown) -------------
+# The colour channel of the seven screens is emoji here. A BLOCKER stops the night and earns 🛑; a
+# DECISION is metadata about a question, and a glyph beside every one of them is the decorative noise
+# the redesign spends itself to remove. Both must hold at once: the alarm marked, the non-alarm bare.
+grep -qE '^- 🛑 \*\*BLOCKER\*\*' "$MB5P" \
+  && ok "GSL-137: the BLOCKER carries its alarm 🛑 (positive control — the discipline is not 'strip every icon')" \
+  || bad "GSL-137: the BLOCKER lost its 🛑 — the one waiting item that stops the night is no longer marked"
+grep -qE '❓ \*\*(DECISION|CLARIFY|FYI)\*\*' "$MB5P" \
+  && bad "GSL-137 ⭐ a non-alarm question still carries a decorative ❓ — status signal spent on metadata, the anti-pattern the redesign names" \
+  || ok "GSL-137 ⭐ the DECISION waits without an icon — the emoji channel is reserved for the verdict that has one"
+
+# ---- a trimmed list says how much it hid (redesign section 6.4: no silent truncation) --------------
+# '…and N more' is the idiom GSL-131 held up as the honest cut. The log has six decisions and the page
+# shows four; the two it drops are named, the same way the commit list names its overflow.
+grep -qF '…and 2 more' "$MB5P" \
+  && ok "GSL-137 ⭐ the decisions list names the two it did not show — the trim is declared, not silent" \
+  || bad "GSL-137 ⭐ four of six decisions shown and the other two vanish unremarked — a silent truncation on the honesty page"
+
+# ---- the count a table can align is right-aligned (redesign section 6.4) ----------------------------
+# The task counts are the one magnitude this projection compares, and Markdown aligns a column with a
+# '--:' rule. The old page joined them into a '· **N** State' sentence with nothing to align.
+awk '/^## 4\. Tasks/{f=1;next} /^## 5\./{f=0} f' "$MB5P" | grep -qF -- '--:' \
+  && ok "GSL-137 ⭐ the Tasks section is a table with a right-aligned count column — the number the reader scans is aligned to compare" \
+  || bad "GSL-137 ⭐ the Tasks counts are not in a right-aligned table — the one magnitude on the page is left unaligned"
+
+echo
 echo "== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best =="
 # Break-glass is five links: tailscale CLI -> tailnet -> an SSH transport -> mosh-server -> tmux.
 # The failure mode this guards is specific and seductive: Tailscale goes green, mosh is installed,

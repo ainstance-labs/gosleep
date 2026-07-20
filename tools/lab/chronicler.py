@@ -2672,18 +2672,6 @@ def _ml(s, n=160):
     t = t.replace("|", "\\|")
     return (t[: n - 1] + "…") if len(t) > n else t
 
-def _hours(h):
-    """A phone reads '28m'. '0.46h' is a number the reader has to finish computing themselves."""
-    try:
-        h = float(h)
-    except (TypeError, ValueError):
-        return "?"
-    if h < 1:
-        return "%dm" % max(1, round(h * 60))
-    if h < 48:
-        return "%.1fh" % h
-    return "%.1fd" % (h / 24.0)
-
 def _age(sec):
     if sec is None:
         return "?"
@@ -2729,7 +2717,7 @@ def mobile_staleness_caveat(st, generated_at):
     fresh_s, dead_s = thr.get("fresh"), thr.get("dead")
     gen     = parse_ts(generated_at)
 
-    L = ["> ⏱️ **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript,"
+    L = ["> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript,"
          " so unlike the seven screens this page cannot re-grade itself when you open it: the verdict"
          " above is what was true at `%s`, not a claim about now. There are two ages here, not one."
          % (generated_at or "?")]
@@ -2826,8 +2814,14 @@ def build_mobile(bundle, ui=None):
             L.append("")
         for i in items:
             typ = (i.get("type") or "?").upper()
-            mark = "🛑" if typ == "BLOCKER" else "❓"
-            L.append("- %s **%s** `%s` — %s" % (mark, typ, _ml(i.get("id"), 40), _ml(i.get("question"), 300)))
+            # An icon only where there is an alarm to carry: a BLOCKER stops the night, so it earns 🛑.
+            # A DECISION or CLARIFY is metadata about the question, not a verdict on it — the word says
+            # what it is, and a second glyph beside every one of them is the decorative noise the rest
+            # of this redesign is spending itself to remove.
+            if typ == "BLOCKER":
+                L.append("- 🛑 **%s** `%s` — %s" % (typ, _ml(i.get("id"), 40), _ml(i.get("question"), 300)))
+            else:
+                L.append("- **%s** `%s` — %s" % (typ, _ml(i.get("id"), 40), _ml(i.get("question"), 300)))
             dflt = i.get("default") or i.get("default_action")
             if dflt:
                 L.append("  <br>default if unanswered: %s" % _ml(dflt, 220))
@@ -2868,9 +2862,11 @@ def build_mobile(bundle, ui=None):
     L.append("")
     prs = [p for p in (dl.get("prs") or []) if (p.get("state") or "").upper() == "OPEN"]
     if prs:
-        L.append("Open PRs:")
+        L.append("Open PRs (%d):" % len(prs))
         for p in prs[:5]:
             L.append("- #%s %s" % (_ml(p.get("number"), 10), _ml(p.get("title"), 120)))
+        if len(prs) > 5:
+            L.append("- …and %d more" % (len(prs) - 5))
         L.append("")
 
     # 4. Tasks — counts only. The full table is 100+ rows; a phone wants the shape, not the list.
@@ -2885,8 +2881,18 @@ def build_mobile(bundle, ui=None):
         unknown = by.pop("unknown", 0)
         lead = [s for s in ("In Progress", "In Review", "To Do", "Done") if s in by]
         rest = sorted(k for k in by if k not in lead)
-        known = " · ".join("**%s** %s" % (by[k], k) for k in lead + rest)
-        L.append(known if known else "No task is in a known state.")
+        order = lead + rest
+        if order:
+            # The count is the one magnitude this section has to compare, and a table is the one place
+            # Markdown will right-align it. Delivery order, not count order — sorting by count floats
+            # the largest number up regardless of what it means; the unknown note below says why absence
+            # is reported apart from the states, not ranked among them.
+            L.append("| Status | Tasks |")
+            L.append("|---|--:|")
+            for k in order:
+                L.append("| %s | %s |" % (_ml(k, 40), by[k]))
+        else:
+            L.append("No task is in a known state.")
         if unknown:
             L.append("")
             L.append("%s more carry no status here — the tracker was last polled **%s** ago, so this"
@@ -2909,8 +2915,26 @@ def build_mobile(bundle, ui=None):
     nx = rw.get("next_event") or {}
     L.append("")
     if nx.get("label"):
-        L.append("Next runway event: **%s** in **%s** — %s."
-                 % (_ml(nx.get("label"), 60), _hours(nx.get("hours")), _ml(nx.get("on_exhaustion"), 40)))
+        # The same lie the staleness grade told, wearing runway's clothes: `in 1m` counted minutes
+        # from a NOW this file cannot see, so a page built at 23:00 kept promising a deadline `in 1m`
+        # at 03:00 — five hours after it passed. Solve the build's own arithmetic once and print the
+        # ABSOLUTE instant instead: generated_at + the offset. A moment does not decay while the file
+        # sits in git, so the reader compares it against the clock in his hand, never against a stale
+        # countdown. Same currency as the STALE/DEAD moments above it.
+        gen = parse_ts(bundle.get("generated_at"))
+        try:
+            hrs = float(nx.get("hours"))
+        except (TypeError, ValueError):
+            hrs = None
+        if gen is not None and hrs is not None:
+            L.append("Next runway event: **%s** — %s at **`%s`**."
+                     % (_ml(nx.get("label"), 60), _ml(nx.get("on_exhaustion"), 40),
+                        _iso(gen + hrs * 3600)))
+        else:
+            L.append("Next runway event: **%s** — %s, but this build could not place it on a clock"
+                     " (no %s), so treat its timing as unknown."
+                     % (_ml(nx.get("label"), 60), _ml(nx.get("on_exhaustion"), 40),
+                        "build time" if gen is None else "eta"))
     else:
         L.append("Runway: `%s` (%s of %s axes known)."
                  % (_ml(rw.get("bound"), 40), rw.get("known"), rw.get("total")))
@@ -2929,9 +2953,10 @@ def build_mobile(bundle, ui=None):
     # reader at 07:00 nothing at all, which is worse than omitting the section.
     recent_dec = sorted((dec.get("recent") or []), key=lambda d: d.get("ts") or "")
     if recent_dec:
+        shown = recent_dec[-4:]
         L.append("")
         L.append("Latest decisions (%s total, newest first):" % dec.get("total"))
-        for d in reversed(recent_dec[-4:]):
+        for d in reversed(shown):
             what = _ml(d.get("decision"), 180)
             task = d.get("task")
             L.append("- **%s**%s — %s"
@@ -2940,6 +2965,12 @@ def build_mobile(bundle, ui=None):
                         _ml((d.get("ts") or "")[:16].replace("T", " "), 20)))
             if d.get("rule"):
                 L.append("  <br>by rule: %s" % _ml(d.get("rule"), 120))
+        # The caption already names the total; the marker makes the gap between it and the four shown
+        # explicit, the same `…and N more` the commit list above uses so the reader learns one idiom
+        # for a trimmed list, not two.
+        total = dec.get("total")
+        if isinstance(total, int) and total > len(shown):
+            L.append("- …and %d more" % (total - len(shown)))
     L.append("")
 
     # 7. Where to go next — and an honest word about which links a phone can actually open.
