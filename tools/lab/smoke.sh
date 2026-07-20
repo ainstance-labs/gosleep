@@ -2254,6 +2254,54 @@ sh_mono_wraps "$SHI" \
   && ok "GSL-100 ⭐ long unbreakable tokens wrap — a mono card cannot clip the note it is quoting" \
   || bad "GSL-100 ⭐ .mono lacks overflow-wrap: raw JSON clips mid-token and the reader loses text"
 
+# ════════ GSL-133 / T1: the two MAJOR findings the redesign's foundation closes ════════
+# Both defects were invisible to every assertion above, and invisible in the same WAY: the markup
+# said the right thing and the page did not show it. Neither is catchable by reading the markup —
+# one needs the stylesheet that markup resolves against, the other a character count on the cell
+# the reader is actually handed.
+#
+#   GSL-124 — .ok/.warn/.dead have sat in the markup since Phase 5 with NO rule behind them, so a
+#     Self-health WARNING printed in rgb(23,23,26): exactly the body colour. Only composite
+#     selectors (.sh-m.ok, .runway.warn, .tag.sev.incident) were ever declared, which is why this
+#     reads as styled on inspection and is not. A page that cannot raise its voice about its own
+#     rot is the failure this laboratory exists to refuse.
+#   GSL-121 — eventDetail() ended in a 90-character slice that cut 37 of the 90 detail values on
+#     the live bundle mid-word: no ellipsis, no tooltip, and the remainder ABSENT FROM THE DOM, so
+#     it could not be recovered even by searching the page. Silent truncation, the same defect
+#     class as the clipped mono card above, one function call away from the reader.
+#
+# Positive controls first and they are not optional: a guard that cannot recognise the broken state
+# is a green tick over nothing.
+sh_bare_ink() { grep -qE "span\.$2\{[^}]*color:var\(--$2\)" "$1"; }
+
+printf '<style>.sh-m.ok{border-left-color:var(--ok)}\n.runway.warn{color:var(--warn)}\n.tag.sev.incident{color:var(--dead)}</style>\n' > "$WORK/inks-prefix.html"
+INKCTL=0
+for C in ok warn dead; do sh_bare_ink "$WORK/inks-prefix.html" "$C" && INKCTL=1; done
+[[ $INKCTL -eq 0 ]] \
+  && ok "GSL-124: the bare-ink detector rejects a composite-only stylesheet (positive control)" \
+  || bad "GSL-124: the bare-ink detector ACCEPTS the pre-fix stylesheet — it cannot see the defect it guards"
+INKMISS=""
+for C in ok warn dead; do sh_bare_ink "$SHI" "$C" || INKMISS="$INKMISS $C"; done
+[[ -z "$INKMISS" ]] \
+  && ok "GSL-124 ⭐ bare .ok/.warn/.dead carry their own ink — a Self-health warning cannot print in body colour" \
+  || bad "GSL-124 ⭐ bare status classes still have no rule ($INKMISS ): the warning is drawn as ordinary prose"
+
+# The fixture carries ONE event whose detail is longer than the cap the view used to apply, so the
+# tail past character 90 exists on the page only if nothing truncated it. Asserted on the GENERATED
+# page, never on the source: the page is what the reader is handed.
+DTL="$WORK/f6-detail"; shx_init "$DTL"
+DTLV="git log --oneline --decorate -- docs/lab/site/index.html docs/lab/site/timeline.html docs/lab/ui/src/theme.ts docs/lab/ui/src/components.tsx"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"claude","type":"vcs.commit","src":"emit","session_id":"s1","data":{"cmd":"%s"}}\n' \
+  "$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")" \
+  "$TODAY" "$DTLV" > "$DTL/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$DTL" --no-poll --quiet --json >/dev/null 2>&1
+[[ ${#DTLV} -gt 90 ]] \
+  && ok "GSL-121: the trap is armed — the fixture detail is ${#DTLV} chars, past the 90 the view used to cut at" \
+  || bad "GSL-121: the fixture detail is only ${#DTLV} chars, so the truncation assertion below proves nothing"
+grep -qF "$DTLV" "$DTL/docs/lab/site/timeline.html" \
+  && ok "GSL-121 ⭐ a ${#DTLV}-character detail reaches the page whole — the silent 90-char cut is gone" \
+  || bad "GSL-121 ⭐ the detail cell is still truncated: everything past character 90 is absent from the DOM"
+
 echo "== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is =="
 RCP="$REPO_ROOT/tools/rc/rc-preflight.sh"
 
