@@ -1,7 +1,6 @@
 import type { VNode } from "preact";
 import type { EpicRollup, RenderBundle, TaskRow } from "../types.js";
-import { BlindSpots, Empty, Unknown } from "../components.js";
-import { ageText, elapsedMs } from "../countdown.js";
+import { Age, BlindSpots, Empty, Unknown } from "../components.js";
 
 /**
  * Screen 3 of PRD R5.2, and F5-S3's acceptance: rows keyed by Jira, links to Jira / GH / commit /
@@ -21,17 +20,6 @@ import { ageText, elapsedMs } from "../countdown.js";
  *   · the epic's task list comes from git topology (merge commit / branch), never from the PR body's
  *     checklist. Prose reports the epic we meant to ship; the topology reports the one we did.
  */
-
-/** An age that keeps aging. Server-rendered against `generated_at` (honest for a reader with JS off),
- *  re-computed against the reader's own clock on open — see client.ts `tickAges`. */
-function Age({ ts, built }: { ts: string; built: number }): VNode {
-  const ms = elapsedMs(ts, built);
-  return (
-    <span class="age" data-age-ts={ts} title={ts}>
-      {isNaN(ms) ? "age unknown" : ageText(ms / 1000)}
-    </span>
-  );
-}
 
 function PrChip({ e }: { e: EpicRollup }): VNode {
   // `data-pr` is the assertion surface: "none" is a claim the page makes out loud, so a test can hold

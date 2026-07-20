@@ -1,7 +1,6 @@
 import type { VNode } from "preact";
 import type { CoverageState, EpicCoverage, RenderBundle, SelfHealth } from "./types.js";
-import { Unknown } from "./components.js";
-import { ageText, elapsedMs } from "./countdown.js";
+import { Age, Unknown } from "./components.js";
 
 /**
  * The anti-rot alarm (GSL-99, PRD R5.3): the dashboard reporting its OWN rot.
@@ -30,16 +29,6 @@ function meterClass(state: string, alarm = false): string {
   return METER_CLASS[state] ?? "unknown";
 }
 
-/** An age that keeps aging — the same mechanism the Tasks board uses (client.ts: tickAges). */
-function LiveAge({ ts, built, id }: { ts: string; built: number; id?: string }): VNode {
-  const ms = elapsedMs(ts, built);
-  return (
-    <span class="age" id={id} data-age-ts={ts} title={ts}>
-      {isNaN(ms) ? "age unknown" : ageText(ms / 1000)}
-    </span>
-  );
-}
-
 /**
  * Meter 1 — freshness. TWO AGES, NEVER ONE.
  *
@@ -62,7 +51,7 @@ function Freshness({ h, built }: { h: SelfHealth; built: number }): VNode {
             than bolting a second suffix on, which is how this line first read "0s old ago". */}
         <span class="sh-k">this build is</span>
         {/* Age #1: the BUILD's own age. 0s at build; it ticks from the moment the reader opens it. */}
-        <LiveAge id="sh-build-age" ts={h.generated_at} built={built} />
+        <Age id="sh-build-age" ts={h.generated_at} built={built} />
         <span class="dim mono"> (built {h.generated_at})</span>
       </div>
       <div class="sh-row">
@@ -200,7 +189,7 @@ function Handoffs({ h, built }: { h: SelfHealth; built: number }): VNode {
         <span class="sh-k">last committed handoff</span>
         {x.last ? (
           <>
-            <span class="mono">{x.last.name}</span>, <LiveAge id="sh-handoff-age" ts={x.last.ts} built={built} />
+            <span class="mono">{x.last.name}</span>, <Age id="sh-handoff-age" ts={x.last.ts} built={built} />
           </>
         ) : (
           <Unknown why="no handoff is committed in this checkout" />
@@ -210,7 +199,7 @@ function Handoffs({ h, built }: { h: SelfHealth; built: number }): VNode {
         <span class="sh-k">last cycle boundary</span>
         {x.boundary ? (
           <>
-            <LiveAge id="sh-boundary-age" ts={x.boundary.ts} built={built} />{" "}
+            <Age id="sh-boundary-age" ts={x.boundary.ts} built={built} />{" "}
             <span class="dim mono">
               ({x.boundary.source}, {x.boundary.total} in the log)
             </span>

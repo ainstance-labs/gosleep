@@ -583,6 +583,73 @@ grep -q 'class="wk-age"' "$FLH" \
   && ok "GSL-98: the card leads with the last-event age (.wk-age is rendered)" \
   || bad "GSL-98: the card does not render the age element — the headline field of the screen is missing"
 
+# ⭐ AND THAT AGE KEEPS AGING (review M3). The whole subject of this screen is how long ago a worker
+# was last heard from, and site/README.md promises in writing that the ages on Tasks/Fleet tick. The
+# ticker (client.ts: tickAges) selects on `[data-age-ts]` and on NOTHING else, so an age rendered as
+# plain build-time text is frozen: a worker drawn `silent 12m` and read three hours later still says
+# 12m. That is wrong in the REASSURING direction, on the one screen the owner opens to ask whether
+# his fleet is alive — which is the exact failure class this phase exists to refuse.
+#
+# Asserted on the MECHANISM, not on a rendered string: every worker's own `last_ts` must appear as
+# the `data-age-ts` of an `.age` span INSIDE that worker's `.wk-age` block (position-matched, so a
+# stray attribute elsewhere on the page cannot satisfy it), and likewise for every roster row. The
+# counts travel with the verdict so that "MISSING=0" can never pass by finding nothing to check.
+FL_TICK="$(python3 - "$FLH" "$FLB" <<'PY'
+import json, re, sys
+html = open(sys.argv[1], encoding="utf-8").read()
+b = json.load(open(sys.argv[2], encoding="utf-8"))["fleet"]
+
+# The age element inside each card, in render order, paired with the worker it belongs to.
+cards = re.findall(r'<div class="wk-age"[^>]*>(.*?)</div>', html, re.S)
+rows  = re.findall(r'<td class="mono">\s*(<span class="age".*?</span>)\s*</td>', html, re.S)
+def ts_of(frag):
+    m = re.search(r'<span class="age"[^>]*\sdata-age-ts="([^"]+)"', frag)
+    return m.group(1) if m else None
+
+workers = [w for w in b["workers"] if w.get("last_ts")]
+roster  = [r for r in b["roster"]  if r.get("last_ts")]
+bad = []
+if len(cards) != len(b["workers"]):
+    bad.append("card-count=%d/%d" % (len(cards), len(b["workers"])))
+for frag, w in zip(cards, b["workers"]):
+    if w.get("last_ts") and ts_of(frag) != w["last_ts"]:
+        bad.append("worker:%s(%s)" % (w["name"], ts_of(frag)))
+have_roster = {ts_of(f) for f in rows}
+for r in roster:
+    if r["last_ts"] not in have_roster:
+        bad.append("roster:%s" % r["actor"])
+print("WORKERS=%d ROSTER=%d FROZEN=%d %s" % (len(workers), len(roster), len(bad), ",".join(bad[:4])))
+PY
+)"
+[[ "$FL_TICK" == "WORKERS=3 "* ]] && [[ "$FL_TICK" != *" ROSTER=0 "* ]] && [[ "$FL_TICK" == *" FROZEN=0 "* ]] \
+  && ok "GSL-98 ⭐ every age on Fleet carries its own data-age-ts — the ticker can reach it, so 'silent 12m' does not still say 12m three hours later" \
+  || bad "GSL-98 ⭐ an age on Fleet is frozen at build time — tickAges cannot select it ($FL_TICK)"
+
+# The other half of that fix, and the trap the phase has already fallen into once: `ageText` ends in
+# "old", so the labels that used to sit around these numbers — `silent for` above the card's age, and
+# a bare ` ago` after the roster's — would now read "silent for 12m old" and "12m old ago". That is
+# the "0s old ago" defect, which shipped under 246 green tests because no assertion read English.
+# So the SIGNATURE is what becomes mechanical, on the rendered text, with the tags stripped first.
+fl_prose_dup() {  # exit 0 when the page carries a doubled temporal suffix
+  python3 -c '
+import re, sys, html
+h = open(sys.argv[1], encoding="utf-8").read()
+t = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", h)).split())
+sys.exit(0 if (re.search(r"old\s+(ago|old)\b", t) or re.search(r"\bfor\s+\d[^ ]*( \d[^ ]*)? old\b", t)) else 1)
+' "$1"
+}
+# The positive control, and it is not optional. Both defect shapes are probed across a tag boundary,
+# because "12m old</span> ago" carries no literal "old ago" in the raw HTML — the reason the first
+# draft of the GSL-99 prose test passed vacuously on a broken build.
+printf '<div><small>silent for</small><span class="age">12m old</span></div>\n' > "$WORK/fl-prose-probe1.html"
+printf '<td><span class="age">12m old</span> ago</td>\n' > "$WORK/fl-prose-probe2.html"
+fl_prose_dup "$WORK/fl-prose-probe1.html" && fl_prose_dup "$WORK/fl-prose-probe2.html" \
+  && ok "GSL-98: the Fleet prose check can SEE both doubled suffixes ('silent for 12m old', '12m old ago') — positive control" \
+  || bad "GSL-98: the Fleet prose check cannot detect the defect it guards — it would pass vacuously"
+fl_prose_dup "$FLH" \
+  && bad "GSL-98: a Fleet age reads with two temporal suffixes — the '0s old ago' defect, again" \
+  || ok "GSL-98: no doubled temporal suffix on Fleet — the labels are noun phrases and the age says 'old' once"
+
 # ⭐ SILENT IS NOT DEAD. The PRD is literal about this: a worker nobody has heard from is not working,
 # but it is not provably gone either, and the screen must say the first without implying the second.
 [[ "$(jq -r '.fleet.workers[] | select(.name=="beta") | .state' "$FLB")" == "silent" ]] \

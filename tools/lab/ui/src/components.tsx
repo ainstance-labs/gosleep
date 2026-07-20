@@ -2,6 +2,7 @@ import type { ComponentChildren, VNode } from "preact";
 import type { LabEvent, RenderBundle } from "./types.js";
 import { VERDICTS } from "./verdicts.js";
 import { countClass, countSentence, type FilterIndex } from "./filter.js";
+import { ageText, elapsedMs } from "./countdown.js";
 
 /** The seven screens of PRD R5.2. One nav, one order, on every page. */
 export const SCREENS = [
@@ -63,6 +64,47 @@ export function StaleBanner({ b }: { b: RenderBundle }): VNode {
 
 export function Empty({ children }: { children: ComponentChildren }): VNode {
   return <div class="card">{children}</div>;
+}
+
+/**
+ * An age that keeps aging. Server-rendered against `generated_at` (honest for a reader with JS off),
+ * re-computed against the reader's own clock on open and every second after — see client.ts
+ * `tickAges`, which selects on `[data-age-ts]` and on nothing else.
+ *
+ * IT LIVES HERE, SHARED, FOR ONE REASON. It was written twice — once on the Tasks board, once on
+ * Self-health — and the third screen that needed it (Fleet, whose ENTIRE subject is how long ago a
+ * worker was last heard from) printed the build-time string instead and froze. A worker rendered
+ * `silent for 12m` and read three hours later still said 12m: wrong, and wrong in the reassuring
+ * direction, on the screen the owner opens to decide whether the fleet is alive. A component that
+ * exists in one place cannot be forgotten by the screen that needs it most.
+ *
+ * `ts` is nullable on purpose: a row with no timestamp must render its fallback prose and carry NO
+ * `data-age-ts`, so the ticker never ages a value it cannot source.
+ */
+export function Age({
+  ts,
+  built,
+  id,
+  fallback,
+}: {
+  ts: string | null;
+  built: number;
+  id?: string;
+  fallback?: string;
+}): VNode {
+  const ms = ts === null ? NaN : elapsedMs(ts, built);
+  if (ts === null || isNaN(ms)) {
+    return (
+      <span class="age" id={id}>
+        {fallback ?? "age unknown"}
+      </span>
+    );
+  }
+  return (
+    <span class="age" id={id} data-age-ts={ts} title={ts}>
+      {ageText(ms / 1000)}
+    </span>
+  );
 }
 
 /**

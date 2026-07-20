@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
 import type { FleetWorker, RenderBundle } from "../types.js";
-import { BlindSpots, Empty, Kpi, Unknown } from "../components.js";
+import { Age, BlindSpots, Empty, Kpi, Unknown } from "../components.js";
 
 /**
  * Screen 5 of PRD R5.2. GSL-93 built the census; GSL-98 puts the cards on it.
@@ -15,21 +15,25 @@ import { BlindSpots, Empty, Kpi, Unknown } from "../components.js";
  * sentences and this screen refuses to say the first when it means the second.
  */
 /** The word above the age. It changes with the state because the same number means different things:
- *  20m since the last event is routine on a live worker and is the whole story on a quiet one. */
+ *  20m since the last event is routine on a live worker and is the whole story on a quiet one.
+ *  Each label is a NOUN PHRASE, because the age beneath it now reads "20m old" — a label ending in
+ *  "for" would have printed "silent for 20m old". */
 const AGE_LABEL: Record<FleetWorker["state"], string> = {
   active: "last event",
-  silent: "silent for",
+  silent: "silent · last event",
   ended: "ended · last event",
 };
 
-function Worker({ w }: { w: FleetWorker }): VNode {
+function Worker({ w, built }: { w: FleetWorker; built: number }): VNode {
   return (
     <div class={`wk ${w.state}`}>
       <div class="wk-top">
-        {/* The age first, and physically above the name: it is the field the reader came for. */}
+        {/* The age first, and physically above the name: it is the field the reader came for — and it
+            KEEPS AGING while the page is open. Baked at build time it would say `silent 12m` three
+            hours later, which is the reassuring direction on the one screen that must not comfort. */}
         <div class="wk-age" title={w.state_why}>
           <small>{AGE_LABEL[w.state]}</small>
-          {w.last_age_human}
+          <Age ts={w.last_ts} built={built} fallback={w.last_age_human} />
         </div>
         <div>
           <div class="wk-name">{w.name}</div>
@@ -102,6 +106,7 @@ function Worker({ w }: { w: FleetWorker }): VNode {
 
 export function Fleet({ b }: { b: RenderBundle }): VNode {
   const f = b.fleet;
+  const built = Date.parse(b.generated_at);
   const noHeartbeat = "the orchestrator heartbeat is missing (it is gitignored — a fresh clone has none)";
 
   return (
@@ -147,7 +152,7 @@ export function Fleet({ b }: { b: RenderBundle }): VNode {
             after {Math.round(f.quiet_after_s / 60)}m; <i>silent</i> is not <i>dead</i>.
           </div>
           {f.workers.map((w) => (
-            <Worker key={w.session_id} w={w} />
+            <Worker key={w.session_id} w={w} built={built} />
           ))}
         </>
       )}
@@ -185,7 +190,9 @@ export function Fleet({ b }: { b: RenderBundle }): VNode {
               <tr key={r.actor}>
                 <td class="mono">{r.actor}</td>
                 <td class="mono">{r.events}</td>
-                <td class="mono">{r.last_age_human} ago</td>
+                <td class="mono">
+                  <Age ts={r.last_ts} built={built} fallback={r.last_age_human} />
+                </td>
                 <td>
                   {Object.entries(r.types).map(([t, n], i) => (
                     <span key={t}>
