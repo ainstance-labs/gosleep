@@ -102,8 +102,10 @@ export function Timeline({ b }: { b: RenderBundle }): VNode {
               const sev = severityOf(e.type);
               return (
                 // The incident marker is SERVER-rendered — a class and a cell, not a script. An
-                // incident that only shows up once JavaScript runs is invisible in the GitHub blob
-                // view on a phone, which is the exact place the owner reads this at 02:00.
+                // incident that only shows up once JavaScript runs is invisible everywhere the
+                // script does not run, and 02:00 on a phone is the exact moment that matters.
+                // (GSL-100 measured one such place off the list: GitHub does not render these
+                // pages at all, so it is not a viewer — it is only a way to move the file.)
                 <tr key={`${e.ts}-${e.seq ?? i}`} data-row={i} class={`sev-${sev}`}>
                   <td class="mono">{(e.ts ?? "").slice(11, 19)}</td>
                   <td>

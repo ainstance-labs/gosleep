@@ -1987,6 +1987,42 @@ sh_prose "$SHI" | grep -q 'old ago' \
   && bad "GSL-99: the page prints a doubled age suffix ('… old ago') — ageText() already says 'old'" \
   || ok "GSL-99: no page doubles the age suffix (the one prose defect 246 mechanism-tests could not see)"
 
+# ════════════ GSL-100 / F5-S4: the page must hold together in a phone-width column ════════════
+# F5-S4 is the criterion the whole phase exists to satisfy — "readable from a phone" — and until
+# GSL-100 nobody had ever opened the page at phone width. Measured 2026-07-20 at 390px, two defects
+# were sitting in plain sight:
+#
+#   1. The nav laid all seven links on ONE unbreakable 469px line inside a 358px column, so Cost and
+#      Library sat off-screen — two of seven screens unreachable. The cause is not a missing
+#      breakpoint: the renderer emits <a>Overview</a><a>Timeline</a> with NO whitespace between the
+#      elements, and inline boxes with no intervening white space have no soft-wrap opportunity at
+#      all. margin-right drew the gaps but never a break. Only a wrapping flex container fixes it.
+#   2. The orchestrator's .mono card CLIPPED its own JSON mid-token ('"context_pct":26,"o'), losing
+#      the rest of the note with nothing on screen to admit anything was missing. Silent truncation
+#      is the exact failure this laboratory exists to refuse.
+#
+# Asserted on the GENERATED page, never on the source: the page is what the reader is handed.
+sh_nav_wraps()  { grep -qE 'nav\{[^}]*flex-wrap:wrap' "$1"; }
+sh_mono_wraps() { grep -qE 'overflow-wrap:anywhere' "$1"; }
+
+# Positive controls FIRST, and they are not optional. A layout guard that cannot recognise the
+# BROKEN layout is the same green tick over nothing the doubled-suffix test was until impl-ui-6 ran
+# it against the parent commit. So both detectors are shown the pre-fix stylesheet and must reject.
+printf '<style>nav{margin:.4rem 0 .2rem;line-height:2}\nnav a{margin-right:.9rem}\ncode,.mono{font-family:monospace;font-size:.85em}</style>\n' > "$WORK/layout-prefix.html"
+sh_nav_wraps "$WORK/layout-prefix.html" \
+  && bad "GSL-100: the nav-wrap detector ACCEPTS the pre-fix stylesheet — it cannot see the defect it guards" \
+  || ok "GSL-100: the nav-wrap detector rejects the pre-fix stylesheet (positive control)"
+sh_mono_wraps "$WORK/layout-prefix.html" \
+  && bad "GSL-100: the mono-wrap detector ACCEPTS the pre-fix stylesheet — it would pass vacuously" \
+  || ok "GSL-100: the mono-wrap detector rejects the pre-fix stylesheet (positive control)"
+
+sh_nav_wraps "$SHI" \
+  && ok "GSL-100 ⭐ the nav wraps — seven links cannot strand Cost and Library off a phone screen" \
+  || bad "GSL-100 ⭐ nav cannot wrap: at 390px the last links leave the viewport, unreachable"
+sh_mono_wraps "$SHI" \
+  && ok "GSL-100 ⭐ long unbreakable tokens wrap — a mono card cannot clip the note it is quoting" \
+  || bad "GSL-100 ⭐ .mono lacks overflow-wrap: raw JSON clips mid-token and the reader loses text"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

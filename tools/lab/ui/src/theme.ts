@@ -1,6 +1,16 @@
 // The whole stylesheet, inlined into every page. No CDN, no font fetch, no external stylesheet:
-// the owner opens this from file://, on a plane, and from GitHub's blob view on a phone. Anything
-// that needs the network is a page that is blank exactly when it matters.
+// the owner opens this from file://, on a plane, and from whatever put the file on his phone.
+// Anything that needs the network is a page that is blank exactly when it matters.
+//
+// NOT "from GitHub's blob view" — that was measured on 2026-07-20 (GSL-100) and is false. GitHub
+// serves these pages as application/vnd.github.raw or text/plain, both with X-Content-Type-Options:
+// nosniff, which explicitly FORBIDS the browser from treating the file as HTML; Pages is unavailable
+// for a private repo on a free plan. GitHub carries the bytes, it does not render them.
+//
+// ⚠️ NO BACKTICKS ANYWHERE BELOW, including inside comments — this whole file is ONE template
+// literal, and a single backtick closes it. This warning already existed further down the file and
+// was still walked into during GSL-100 (four tsc parse errors), so it now lives where nobody can
+// edit this file without seeing it first.
 export const CSS = `
 :root{--bg:#fbfbfa;--fg:#1a1a19;--dim:#6b6b68;--line:#e3e3e0;--card:#fff;
       --ok:#1a7f4b;--warn:#a4600a;--dead:#a51d24;--accent:#3b5bdb;--dead-soft:#fdeaea}
@@ -30,6 +40,13 @@ td,th{text-align:left;padding:.35rem .5rem;border-bottom:1px solid var(--line);v
 th{color:var(--dim);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
 .wrap{overflow-x:auto}
 code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
+/* Monospace carries the unbreakable strings: raw JSON notes, 40-char sha1s, branch names. With the
+   default overflow-wrap they do not wrap — at 390px the orchestrator note was CLIPPED by the card
+   edge mid-token ('"context_pct":26,"o'), losing the rest of the sentence with nothing to show a
+   reader anything was missing. Silent truncation is the failure mode this laboratory exists to
+   refuse, so long tokens break instead. Measured 2026-07-20: card content 833px in a 356px box
+   (GSL-100). Tables are exempt — they scroll inside .wrap, where the swipe is discoverable. */
+.mono:not(table):not(.wrap *){overflow-wrap:anywhere}
 .tag{display:inline-block;padding:.05rem .4rem;border-radius:.3rem;border:1px solid var(--line);
      color:var(--dim);font-size:.72rem}
 .tag.hook{color:var(--ok);border-color:currentColor}
@@ -136,8 +153,11 @@ footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid 
 .filter-count.none{color:var(--dead);background:var(--dead-soft);border-radius:.35rem;
   padding:.35rem .6rem;font-weight:700}
 
-/* An incident is marked in the MARKUP, not by a script: the owner reads this page from GitHub's blob
-   view on a phone at 02:00, where nothing runs. A grade this build could not make is "unknown" --
+/* An incident is marked in the MARKUP, not by a script: the owner reads this on a phone at 02:00,
+   and the page must be right wherever the script did NOT run — JS off, a reader that only renders
+   the document, any transport that merely hands over the file. (Measured GSL-100: GitHub is not
+   even that place — it does not render these pages at all.) A grade this build could not make is
+   "unknown" --
    dashed, muted, never green (see src/severity.ts for why that direction is the only safe one).
    NOTE: no backticks in here, ever. This file is a TS template literal, and one would close it. */
 .tag.sev{text-transform:uppercase;letter-spacing:.04em;font-weight:600}
@@ -148,8 +168,14 @@ footer{color:var(--dim);font-size:.78rem;margin-top:2.5rem;border-top:1px solid 
 tr.sev-incident td{background:var(--dead-soft)}
 tr.sev-incident td:first-child{box-shadow:inset .18rem 0 0 var(--dead)}
 
-nav{margin:.4rem 0 .2rem;line-height:2}
-nav a{margin-right:.9rem}
+/* The nav MUST wrap. It is rendered as adjacent <a> elements with no whitespace between them
+   (<a>Overview</a><a>Timeline</a>...), and inline boxes with no intervening white space have NO
+   soft-wrap opportunity — so margin-right produced visible gaps but not a single break point, and
+   at phone width the last two links (Cost, Library) sat off-screen, unreachable. Measured on
+   2026-07-20 at 390px: nav content 469px inside a 358px column, all 7 links on one line (GSL-100).
+   flex+wrap does not depend on the renderer emitting whitespace JSX would swallow anyway, and gap
+   replaces the trailing margin — a break opportunity between every pair, by construction. */
+nav{margin:.4rem 0 .2rem;line-height:2;display:flex;flex-wrap:wrap;column-gap:.9rem}
 nav a[aria-current="page"]{font-weight:700;text-decoration:none;border-bottom:2px solid currentColor}
 
 /* The build-failed banner. Python writes this one — it is the only markup the view layer does not

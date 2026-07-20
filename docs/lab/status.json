@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-13T18:07:24Z",
+  "generated_at": "2026-07-20T10:51:43Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
-  "date": "2026-07-13",
+  "date": "2026-07-20",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 538,
-    "max_event_age_human": "8m",
-    "latest_event_ts": "2026-07-13T17:58:24Z",
-    "heartbeat_age_s": 552,
+    "max_event_age_s": 167,
+    "max_event_age_human": "2m",
+    "latest_event_ts": "2026-07-20T10:48:53Z",
+    "heartbeat_age_s": 325,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,61 +16,65 @@
     }
   },
   "events": {
-    "total": 459,
-    "today": 393,
+    "total": 508,
+    "today": 37,
     "days": [
       "2026-07-12",
-      "2026-07-13"
+      "2026-07-13",
+      "2026-07-20"
     ],
     "by_type": {
-      "agent.turn_ended": 112,
-      "agent.idle": 44,
-      "handoff.written": 41,
-      "dev_history.written": 39,
-      "vcs.commit": 30,
+      "agent.turn_ended": 129,
+      "agent.idle": 45,
+      "handoff.written": 44,
+      "dev_history.written": 42,
+      "vcs.commit": 33,
+      "agent.terminated": 29,
       "task.completed": 28,
-      "tracker.issue.transitioned": 26,
-      "agent.terminated": 24,
+      "tracker.issue.transitioned": 27,
       "tracker.issue.updated": 24,
-      "pane.ended": 16,
-      "pane.started": 16,
+      "pane.ended": 19,
+      "pane.started": 18,
+      "vcs.push": 13,
       "tracker.issue.created": 12,
-      "vcs.push": 12,
-      "notification.raised": 8,
+      "notification.raised": 11,
+      "question.auto_resolved": 8,
       "task.created": 8,
-      "question.posed": 6,
-      "question.auto_resolved": 5,
+      "question.posed": 7,
+      "decision.made": 6,
       "agent.spawned": 3,
-      "decision.made": 3,
       "vcs.pr.merged": 1,
       "vcs.pr.opened": 1
     },
     "by_src": {
-      "hook:PostToolUse": 167,
-      "hook:Stop": 112,
-      "hook:TeammateIdle": 44,
+      "hook:PostToolUse": 178,
+      "hook:Stop": 129,
+      "hook:TeammateIdle": 45,
+      "hook:SubagentStop": 29,
       "hook:TaskCompleted": 28,
-      "hook:SubagentStop": 24,
-      "emit": 18,
-      "hook:SessionEnd": 16,
-      "hook:SessionStart": 16,
+      "emit": 25,
+      "hook:SessionEnd": 19,
+      "hook:SessionStart": 18,
       "poll-fill": 15,
-      "hook:Notification": 8,
+      "hook:Notification": 11,
       "hook:TaskCreated": 8,
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 250,
+      "claude": 260,
       "ef6c3777": 85,
-      "dd3edd33": 47,
+      "dd3edd33": 63,
+      "orchestrator": 16,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
-      "orchestrator": 10,
+      "ecab62c2": 5,
+      "f03d552e": 5,
       "70cbe176": 3,
       "ca8a1e39": 3,
       "aa7a28cca3c73abc5": 2,
       "ab3b55ad5cc3bfb36": 2,
       "gsl90-setup": 2,
+      "4ec4b8c0": 1,
       "a00bff097e605f499": 1,
       "a0f0f3af9ae562c37": 1,
       "a198207c1aae6407d": 1,
@@ -80,16 +84,21 @@
       "a2ff6cd2567d65e2b": 1,
       "a3055ba3926e2b839": 1,
       "a32e1a070b23f39b4": 1,
+      "a343a285e2060e2e9": 1,
       "a427309da6b948dfd": 1,
       "a503045747e54a2aa": 1,
+      "a5940cc430930b0e5": 1,
       "a5ed2eae40a87789c": 1,
       "a61075657b8f0649b": 1,
+      "a66cff203f32b5147": 1,
       "a6deecd2645c93e07": 1,
       "a712e803767d9690f": 1,
       "a7c5ddb345a6c59a0": 1,
       "a82b373ecbaf0c23c": 1,
+      "aa5b520664085b7b4": 1,
       "aaea689860c6cccdb": 1,
       "ac46c415bfdb4e55a": 1,
+      "ad294a00b0f62d230": 1,
       "add073ddf009d11cb": 1,
       "afc648057d400fa02": 1,
       "fixer-lab": 1,
@@ -97,192 +106,55 @@
       "impl-ui-1": 1,
       "impl-ui-3": 1,
       "impl-ui-4": 1,
-      "impl-ui-5": 1
+      "impl-ui-5": 1,
+      "impl-ui-7": 1
     },
-    "mechanical_share": 0.928
+    "mechanical_share": 0.921
   },
   "questions": {
-    "open": 3,
+    "open": 1,
     "by_type": {
-      "DECISION": 3
+      "DECISION": 1
     },
     "items": [
       {
-        "id": "q-2026-07-13-001",
+        "id": "q-2026-07-20-001",
         "type": "DECISION",
-        "question": "Фаза 5 (UI) на TypeScript — какой фреймворк рендера? Жёсткое ограничение: страницы обязаны открываться из file://, где fetch() локального JSON запрещён CORS, значит данные вшиваются в HTML на build-time. Это статический генератор, не SPA — и это сужает выбор сильнее, чем обычно.",
-        "default": "Preact + preact-render-to-string + esbuild: build-time SSR в self-contained HTML, ~3 КБ рантайма на островки интерактива (фильтр, обратный отсчёт, переоценка свежести)",
-        "auto_apply_at": "2026-07-14T06:00:00Z",
-        "task": "GSL-92",
-        "high_impact": null
-      },
-      {
-        "id": "q-2026-07-13-004",
-        "type": "DECISION",
-        "question": "GSL-97 needs the Library to cross-index reviews / research / RCA (PRD R5.2). None of the three were indexed at all — library_index() globbed only digests/handoffs/dev_history/reports/prd, so docs/reviews (9 files), docs/research (11) and every incident post-mortem were invisible to the dashboard. Serving them adds REQUIRED fields to the render bundle. Bump the schema, or leave the shelves unindexed?",
-        "default": "bump gosleep.lab.render/4 -> /5 and reshape library into declared sections (four places at once: chronicler.py, render.tsx, types.ts, smoke.sh)",
-        "auto_apply_at": "2026-07-13T18:16:59Z",
-        "task": "GSL-97",
-        "high_impact": null
-      },
-      {
-        "id": "q-2026-07-13-005",
-        "type": "DECISION",
-        "question": "C5 denylist collides with the ONLY source of a worker's name: data.raw.teammate_name in the event log. How to read it without killing the safety check?",
-        "default": "Exempt exactly the literal 'teammate_name' from the C5 denylist (a read-only JSON key), keep every other form of every denied word banned, and add a self-test asserting the exemption stays narrow (a fixture with 'teammate.spawned' must still be rejected).",
-        "auto_apply_at": "2026-07-13T18:36:06Z",
-        "task": "GSL-98",
+        "question": "GSL-100 — приёмочная [Docs]-задача — нашла настоящий UI-дефект на самом критерии фазы: на ширине телефона (390px) две nav-ссылки (Cost, Library) уходят за экран, потому что между <a> нет пробелов и у строки нет точки переноса. Чинить в этой же задаче или оставить находкой под отдельный тикет?",
+        "default": "Починить здесь: nav -> flex+wrap+gap в theme.ts (2 строки CSS, без схемы и без нового JS), с замером до/после как доказательством",
+        "auto_apply_at": "2026-07-20T12:34:23Z",
+        "task": "GSL-100",
         "high_impact": null
       }
     ]
   },
   "decisions": {
-    "total": 3,
+    "total": 6,
     "last": {
-      "id": "d-2026-07-13-003",
-      "ts": "2026-07-13T16:51:32Z",
-      "re": "q-2026-07-13-003",
-      "task": "GSL-96",
+      "id": "d-2026-07-20-003",
+      "ts": "2026-07-20T10:21:09Z",
+      "re": "q-2026-07-13-005",
+      "task": "GSL-98",
       "type": "DECISION",
-      "question": "GSL-96 (Jira description) requires GitHub issue links and an epic->PR rollup. Neither is derivable in the view layer from render_bundle schema/3, so the data layer (chronicler.py) must grow: gh issue list + epic membership from git topology, schema /3 -> /4. The cycle brief said 'do not touch chronicler.py'. Proceed?",
-      "qshape": "e79c48cc1b",
-      "decision": "schema render/3 → render/4 bump; C5 = денилист слов не файлов; already merged в GSL-96",
+      "question": "C5 denylist collides with the ONLY source of a worker's name: data.raw.teammate_name in the event log. How to read it without killing the safety check?",
+      "qshape": "c671681da2",
+      "decision": "strict literal teammate_name exemption",
       "made_by": "orchestrator",
-      "rule": "manifest §2.default-hit-at-deadline",
+      "rule": "manifest §2 decide-by-default (stricter than recommendation)",
       "channel": ""
     },
     "manifest_candidates": []
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "83f49f8",
-    "dirty_paths": 10,
+    "head": "66bce16",
+    "dirty_paths": 25,
     "commits_on_date": [
       {
-        "sha": "83f49f8",
+        "sha": "66bce16",
         "author": "R",
-        "ts": "2026-07-13T19:49:34+02:00",
-        "subject": "GSL-99 [UI] Laboratory self-health metrics (R5.3)"
-      },
-      {
-        "sha": "2af58f6",
-        "author": "R",
-        "ts": "2026-07-13T19:19:46+02:00",
-        "subject": "GSL-98 [Docs] Handoff 33 — цикл 57 (impl-ui-5): Fleet+Cost закрыты; мутация дважды поймала спящий тест"
-      },
-      {
-        "sha": "33b9343",
-        "author": "R",
-        "ts": "2026-07-13T19:18:05+02:00",
-        "subject": "GSL-98 [UI] Fleet + Cost screens (R5.1 budget/fleet axes readable)"
-      },
-      {
-        "sha": "6355aee",
-        "author": "R",
-        "ts": "2026-07-13T18:26:49+02:00",
-        "subject": "GSL-97 [Docs] Handoff 32 — записано нарушение: git stash дискарднул resolve-патчи оркестратора"
-      },
-      {
-        "sha": "056c954",
-        "author": "R",
-        "ts": "2026-07-13T18:21:42+02:00",
-        "subject": "GSL-97 [Docs] Handoff 32 — цикл 56 (impl-ui-4): GSL-97 закрыт; описание Jira тоже бывает устаревшим"
-      },
-      {
-        "sha": "fccc720",
-        "author": "R",
-        "ts": "2026-07-13T18:19:00+02:00",
-        "subject": "GSL-97 [UI] Timeline + Library + client JS filter over an inlined island (R5.2/R5.3)"
-      },
-      {
-        "sha": "45d7066",
-        "author": "R",
-        "ts": "2026-07-13T16:43:27+02:00",
-        "subject": "GSL-96 [Docs] Handoff 31 — цикл 55 (impl-ui-3): F5-S3 закрыт; «источника нет» оказалось непроверенным наследством"
-      },
-      {
-        "sha": "c965089",
-        "author": "R",
-        "ts": "2026-07-13T16:40:48+02:00",
-        "subject": "GSL-96 [UI] Tasks board — keyed by Jira, epic→PR rollup (F5-S3)"
-      },
-      {
-        "sha": "4ea51f5",
-        "author": "R",
-        "ts": "2026-07-13T16:00:02+02:00",
-        "subject": "GSL-95 [Docs] Handoff 30 — цикл 54 (impl-ui-2): F5-S2 закрыт; дефолты по таймеру не применяет никто"
-      },
-      {
-        "sha": "164bfa5",
-        "author": "R",
-        "ts": "2026-07-13T15:58:03+02:00",
-        "subject": "GSL-95 [UI] Questions deadline countdown (F5-S2)"
-      },
-      {
-        "sha": "9197f88",
-        "author": "R",
-        "ts": "2026-07-13T14:50:24+02:00",
-        "subject": "GSL-94 [UI][Tooling] Autonomy runway = min(6 axes) with limiting-axis trace (F5-S1)"
-      },
-      {
-        "sha": "d2b2a20",
-        "author": "R",
-        "ts": "2026-07-13T14:36:34+02:00",
-        "subject": "GSL-93 [UI][Tooling] Data contract + 7-screen skeleton — single render bundle, TS interfaces"
-      },
-      {
-        "sha": "6b4cbed",
-        "author": "R",
-        "ts": "2026-07-13T14:23:05+02:00",
-        "subject": "GSL-92 [Tooling][UI] TypeScript scaffold — Preact+esbuild SSG + degrade-without-node"
-      },
-      {
-        "sha": "6d934de",
-        "author": "R",
-        "ts": "2026-07-13T14:03:01+02:00",
-        "subject": "GSL-101 [Docs] R4.2 -> MET: доказательство seq 156 привязано к sha; счётчики приёмки пересчитаны"
-      },
-      {
-        "sha": "7b229c7",
-        "author": "R",
-        "ts": "2026-07-13T13:51:54+02:00",
-        "subject": "GSL-91 [Docs] Леджер закрытия Фазы 4 + разбивка Фазы 5"
-      },
-      {
-        "sha": "5fd1de2",
-        "author": "rommxx",
-        "ts": "2026-07-13T13:37:15+02:00",
-        "subject": "Merge pull request #102 from ainstance-labs/GSL-81-laboratory-auto-doc"
-      },
-      {
-        "sha": "63b1c63",
-        "author": "R",
-        "ts": "2026-07-13T11:53:39+02:00",
-        "subject": "GSL-89 [Docs] R4.2 down to PENDING; acceptance counts made checkable at this sha (REVIEW-gsl81 M2, m4, m5)"
-      },
-      {
-        "sha": "b743002",
-        "author": "R",
-        "ts": "2026-07-13T11:46:31+02:00",
-        "subject": "GSL-86 [Fix] the staleness PROSE re-grades on open, not just the banner (REVIEW-gsl81 M1, m2)"
-      },
-      {
-        "sha": "977a09e",
-        "author": "R",
-        "ts": "2026-07-13T11:42:14+02:00",
-        "subject": "GSL-83 [Fix] phantom commit parser — HEAD must be FRESH and ITS OWN before it lends a sha (REVIEW-gsl81 C1, m1, m3)"
-      },
-      {
-        "sha": "5be2adc",
-        "author": "R",
-        "ts": "2026-07-13T07:52:54+02:00",
-        "subject": "GSL-89 [Docs][Tooling] Phase 4 summary + staleness contract + lab-log --ts/--supersedes"
-      },
-      {
-        "sha": "548fbf8",
-        "author": "R",
-        "ts": "2026-07-13T07:31:13+02:00",
-        "subject": "GSL-88 [Skill] handoff skill emits handoff.written semantic event on write"
+        "ts": "2026-07-20T12:21:12+02:00",
+        "subject": "GSL-90 [Docs] Late-commit orphaned handoff 35 (orchestrator roll ledger)"
       }
     ],
     "prs": [
@@ -381,16 +253,16 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-13T17:58:10Z",
-      "cycle": 58,
-      "context_pct": 63,
+      "ts": "2026-07-20T10:46:15Z",
+      "cycle": 59,
+      "context_pct": 36,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse 24"
+      "note": "pulse: impl-ui-7 on GSL-100, q-001 nav-fix default in play"
     },
-    "live_status": "▶ AUTONOMOUS MODE 2026-07-13 13:38Z (fresh orchestrator, Opus 4.7, resumed из handoff 29 после roll ~14:16Z прошлой сессии на hb 80%). Phase 4 CLOSED (main @ 5fd1de2 = PR #102 merged). **Phase 5 UI in flight** on ветке `GSL-90-ui-orchestration @ 9197f88` (5 коммитов от main). **F5-S1 CLOSED** (cycle 53 impl-ui-1 DONE ~14:15Z: GSL-92 `6b4cbed` TS scaffold + Python view -290 lines + degrade-without-node · GSL-93 `d2b2a20` data contract gosleep.lab.render/3 + 7 screens · GSL-94 `9197f88` autonomy runway=min(6 axes) с limiting-axis trace (stops/degrades/completes; clear≠unknown). Smoke 174/174; hooks-verify 14/14; tsc clean; handoff 29 written). **CYCLE 54 impl-ui-2 SPAWNING ~13:38Z** — GSL-95 Questions+deadline countdown (F5-S2), MUST re-grade on page open (как staleness banner в GSL-86/89, не freeze at build time). После: GSL-96 Tasks (F5-S3) → GSL-97 Timeline+Library → GSL-98 Fleet+Cost (C5 collision передан честно: worker name в data.raw.teammate_name; impl-ui-1 не ослабил safety, скелет на actor) → GSL-99 self-health (R5.3) → GSL-100 приёмка+dev_history+contract (F5-S4) → mechanic PR → reviewer → (fixer) → finalizer → Phase 6 Mobile без остановки. Открытые DECISION: q-2026-07-12-001 (due 08:00Z passed → auto-resolving к дефолту: детерминированный скелет + claude -p опционально; reversibility high); q-2026-07-13-001 (framework UI, дефолт Preact+esbuild применён работает, deadline 2026-07-14T06Z); q-2026-07-13-002 (token ceiling manifest §5 не существует машиночитаемо, дефолт статус-кво high). 0 BLOCKER. next Jira=GSL-102+, next GH=#115. orchestrator pane=%193 | latest handoff=docs/handoff/29-2026-07-13-handoff-impl-ui-1.md | questions: open=3 (0B/3D/0C/0F) lines=3 → resolving q-2026-07-12-001 → open=2 (0B/2D/0C/0F). Fleet cap 3; open_workers=1 (impl-ui-2).",
-    "telemetry_last": "cycle=57 worker=impl-ui-5 model=claude-opus-4-8 (SendMessage COMPLETE + handoff 33 self-report; транскрипт 240 записей верифицирован воркером, один model; TELEMETRY line не отдан в SendMessage — gap flagged, оценка ~360k out на основе 240 записей x 1.5k avg, cache_read est ~40M) tokens_out=~360000 tokens_in=~500 cache_read=~40000000 cache_write=est-unknown | running: cycles=82 total≈7774000 (+гэпы 2a/32/35/48-52/57-cache-write) [GSL-98 Fleet+Cost 33b9343 + handoff 33 2af58f6, R5.1 fleet+budget a"
+    "live_status": "▶ COLD-START 2026-07-20 10:18Z (fresh orchestrator Fable 5, из handoff 35; 7-дневная пауза с roll 07-13 18:23Z). Реальность сверена: main @ 5fd1de2; ветка GSL-90-ui-orchestration @ 66bce16 (после ledger-коммита handoff 35) = remote; tmux чист (%193 = я); флот был 0/3. Housekeeping: 3 expired DECISION auto-resolved к уже применённым дефолтам (d-2026-07-20-001..003). CYCLE 59 impl-ui-7 (Opus 4.8) SPAWNED ~10:25Z — GSL-100 приёмка F5-S4: end-check (file:// + приватный GitHub по факту + light/dark phone width) + сводный dev_history Phase 5 + контракт site/README (устаревшее «no JS»). После COMPLETE: mechanic PR → reviewer → (fixer) → finalizer → Phase 6 Mobile setup (GSL-102+, GH #115+) без остановки. orchestrator pane=%193 | latest handoff=docs/handoff/35-2026-07-13-handoff-orchestrator-roll.md | questions: open=0 (0B/0D/0C/0F) lines=14 | Fleet cap 3; open_workers=1 (impl-ui-7).`\n\n`(Прошлые LIVE-STATUS: смена 2026-07-13 13:38→18:23Z — cycles 53-58, impl-ui-1..6, GSL-92..99; setup-хвост 07-12/13 — cycle 52. Детали: handoff 35 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=58 worker=impl-ui-6 model=claude-opus-4-8 (SendMessage COMPLETE + handoff 34 self-report; транскрипт 168/168 записей one model) tokens_out=291812 tokens_in=528 cache_read=51119820 cache_write=646990 | running: cycles=83 total≈8066000 (+гэпы 2a/32/35/48-52/57-cache-write) [GSL-99 Laboratory self-health metrics R5.3, 3 коммита 83f49f8 (code) + cbdcb26 (проза fix «0s old ago») + e49cf71 (handoff 34) — rule 1-per-task нарушен честно: force-push запрещён, --amend требует его; smoke 230→248/248 "
   },
   "degraded": [],
   "narrative": null,
@@ -407,6 +279,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-13T18:07:24Z"
+    "last_success_at": "2026-07-20T10:51:43Z"
   }
 }
