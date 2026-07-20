@@ -2324,5 +2324,89 @@ PY
 fi
 
 echo
+echo "== GSL-108 / F5-S4c: the phone page — the one surface GitHub agrees to render =="
+# Phase 5 measured that GitHub serves .html as text/plain + nosniff and refused to render it, and
+# closed F5-S4c as REFUTED. What it did not measure is that GitHub renders .md server-side — on a
+# private repo, and for a directory's README.md at a URL with no date in it. That asymmetry is the
+# whole mechanism of this page, so these checks guard the properties that depend on it, not the prose.
+MB="$WORK/mobile-repo"
+mkdir -p "$MB/docs/lab/events" "$MB/docs/lab/questions" "$MB/docs/lab/decisions"
+: > "$MB/docs/lab/questions/queue.jsonl"
+MB_TODAY="$(date -u +%F)"
+MB_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"beef001"}}\n' \
+  "$MB_TS" "$MB_TODAY" > "$MB/docs/lab/events/$MB_TODAY.jsonl"
+# Two decisions, written OLDEST-FIRST (the order the log actually has), with distinguishable text.
+{ printf '{"id":"d-1900-01-01-001","ts":"1900-01-01T00:00:00Z","re":"q-1900-01-01-001","task":"GSL-OLD","type":"DECISION","question":"?","decision":"ELDEST-DECISION-TEXT","made_by":"orchestrator","rule":"r"}\n'
+  printf '{"id":"d-2099-12-31-009","ts":"2099-12-31T23:59:59Z","re":"q-2099-12-31-009","task":"GSL-NEW","type":"DECISION","question":"?","decision":"NEWEST-DECISION-TEXT","made_by":"orchestrator","rule":"r"}\n'
+} > "$MB/docs/lab/decisions/log.jsonl"
+
+bash "$CH" --repo "$MB" --no-poll --quiet --json >/dev/null 2>&1
+MBP="$MB/docs/lab/mobile/README.md"
+
+# ---- positive control: everything below reads a real, complete page ---------------
+MB_SECTIONS="$(grep -c '^## ' "$MBP" 2>/dev/null || echo 0)"
+[[ -s "$MBP" && "$MB_SECTIONS" -ge 7 ]] \
+  && ok "GSL-108: the phone page exists and carries its $MB_SECTIONS sections (positive control — the checks below have input)" \
+  || bad "GSL-108: no phone page (or under 7 sections) — every check below would pass over an empty file"
+
+# ---- ⭐ the filename IS the mechanism ---------------------------------------------
+# GitHub renders a directory's README.md when the DIRECTORY is opened. Any other name (phone.md,
+# index.md) demands the reader find a file by name on a phone at 07:00, and a dated name cannot be
+# bookmarked at all. This check fails if the artifact is renamed or moved out of its own directory.
+[[ -f "$MB/docs/lab/mobile/README.md" ]] \
+  && ok "GSL-108 ⭐ the page is docs/lab/mobile/README.md — opening the directory renders it, and the URL carries no date" \
+  || bad "GSL-108 ⭐ the phone page is not at docs/lab/mobile/README.md — a renamed file is not auto-rendered by a directory open"
+
+# ---- ⭐ derived from the same pass, not hand-authored ------------------------------
+MB_GEN="$(jq -r '.generated_at' "$MB/docs/lab/status.json" 2>/dev/null)"
+[[ -n "$MB_GEN" ]] && grep -qF "$MB_GEN" "$MBP" \
+  && ok "GSL-108 ⭐ the page carries THIS pass's generated_at — it is regenerated, not a document someone maintains" \
+  || bad "GSL-108 ⭐ the page's timestamp is not this pass's — it is drifting from the bundle it claims to project"
+
+# ---- ⭐ it links only where a phone can follow -------------------------------------
+# A .html link opens escaped source on a phone: a dead end dressed as a destination. Markdown links
+# and directory links are the only ones that resolve to something readable.
+MB_HTML_LINKS="$(grep -oE '\]\([^)]*\.html?[^)]*\)' "$MBP" || true)"
+[[ -z "$MB_HTML_LINKS" ]] \
+  && ok "GSL-108 ⭐ no .html link on the phone page — every link resolves to something GitHub will render" \
+  || bad "GSL-108 ⭐ the phone page links to .html ($MB_HTML_LINKS) — on a phone that opens escaped source"
+
+# ---- ⭐ 'latest' means latest ------------------------------------------------------
+# decisions.recent arrives OLDEST-first. Slicing its head under the word "latest" printed the oldest
+# records under a caption that contradicted them. The fixture spans 1900..2099 so any unsorted head
+# slice puts the wrong one first.
+MB_FIRST_DEC="$(grep -oE '(ELDEST|NEWEST)-DECISION-TEXT' "$MBP" | head -1)"
+[[ "$MB_FIRST_DEC" == "NEWEST-DECISION-TEXT" ]] \
+  && ok "GSL-108 ⭐ 'Latest decisions' lists the newest first — the caption and the list agree" \
+  || bad "GSL-108 ⭐ 'Latest decisions' leads with '$MB_FIRST_DEC' — the caption contradicts its own list"
+
+# ---- ⭐ a decision reads as a decision ---------------------------------------------
+# The first cut printed `d-2026-07-13-001 — q-2026-07-12-001`: an id whose description is another id.
+# On a phone that is worse than omitting the section, because it costs a tap to learn nothing.
+grep -qF "NEWEST-DECISION-TEXT" "$MBP" \
+  && ok "GSL-108 ⭐ decisions print what was decided, not an id pointing at another id" \
+  || bad "GSL-108 ⭐ the decision text is missing — the section shows identifiers a reader cannot resolve on a phone"
+
+# ---- ⭐ it outlives the failure that takes the dashboard down ----------------------
+# The seven screens need node; this page does not, because Python builds it from a bundle Python
+# already wrote. If it were written inside the render-succeeded branch, the one surface reachable
+# from bed would vanish on exactly the night the HTML broke.
+MBN="$WORK/mobile-nonode"
+mkdir -p "$MBN/docs/lab"
+cp -R "$MB/docs/lab/events" "$MB/docs/lab/questions" "$MB/docs/lab/decisions" "$MBN/docs/lab/" 2>/dev/null
+MBN_JSON="$(env PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$CH" --repo "$MBN" --no-poll --quiet --json 2>/dev/null)"
+[[ "$(echo "$MBN_JSON" | jq -r '.ui.reason' 2>/dev/null)" == "no-node" ]] \
+  && ok "GSL-108: the no-node fixture really did lose the renderer (control for the check below)" \
+  || bad "GSL-108: the no-node fixture still had node — the survival check below proves nothing"
+MBN_GEN="$(jq -r '.generated_at' "$MBN/docs/lab/status.json" 2>/dev/null)"
+[[ -s "$MBN/docs/lab/mobile/README.md" ]] && grep -qF "$MBN_GEN" "$MBN/docs/lab/mobile/README.md" \
+  && ok "GSL-108 ⭐ with node gone the HTML degrades but the phone page is still written, and current" \
+  || bad "GSL-108 ⭐ no node took the phone page down with the dashboard — the one surface reachable from bed"
+grep -q 'did \*\*not\*\* regenerate' "$MBN/docs/lab/mobile/README.md" 2>/dev/null \
+  && ok "GSL-108 ⭐ and it SAYS the seven screens are stale — the reader is told which of the two they hold" \
+  || bad "GSL-108 ⭐ the phone page is silent about the stale HTML beside it — a fresh page implying a fresh dashboard"
+
+echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
