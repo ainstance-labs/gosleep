@@ -200,8 +200,11 @@ function Handoffs({ h, built }: { h: SelfHealth; built: number }): VNode {
         {x.boundary ? (
           <>
             <Age id="sh-boundary-age" ts={x.boundary.ts} built={built} />{" "}
+            {/* `total` counts CYCLES, not the raw `pane.ended` events it is derived from — a cycle
+                holds up to three panes and they close together. The Searched line below prints both
+                numbers and the debounce window, so the collapse is auditable rather than asserted. */}
             <span class="dim mono">
-              ({x.boundary.source}, {x.boundary.total} in the log)
+              ({x.boundary.source}, {x.boundary.total} cycle boundary(ies))
             </span>
           </>
         ) : (

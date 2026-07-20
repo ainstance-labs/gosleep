@@ -2054,6 +2054,95 @@ sh_prose "$SHI" | grep -q 'old ago' \
   && bad "GSL-99: the page prints a doubled age suffix ('… old ago') — ageText() already says 'old'" \
   || ok "GSL-99: no page doubles the age suffix (the one prose defect 246 mechanism-tests could not see)"
 
+# ──────────── the two orders the fixture above cannot produce (review M1 / M2) ────────────
+#
+# Everything asserted above is real, and all of it ran green over two defects that put a WRONG NUMBER
+# on the page. The reason is the fixture, not the assertions: it encodes a handoff committed INSIDE
+# its cycle, and exactly one boundary per cycle. Neither is a thing this repository does.
+#
+#   · a handoff is COMMITTED, and a commit happens after the pane has closed — that is what a commit
+#     is. On this branch three handoffs were carried in by ledger commits hours later still.
+#   · a cycle holds up to three panes and emits `pane.ended` for each. Two of them nine seconds apart
+#     is one cycle, and the fixture's boundaries are a tidy 60 minutes apart, one per "cycle".
+#
+# So the tests were not hollow — they held a real mechanism, on the one scenario that hid the bug.
+# These two fixtures encode the orders production ACTUALLY produces. Both fail on 9fb5766.
+shx_commit() {  # <repo> <minutes-ago> <subject>
+  GIT_AUTHOR_DATE="$(sh_gts "$2")" GIT_COMMITTER_DATE="$(sh_gts "$2")" \
+    git -C "$1" commit -q --no-gpg-sign -m "$3"
+}
+shx_init() {  # <repo> — a real git repo, because these meters read git
+  mkdir -p "$1/docs/lab/events" "$1/docs/lab/questions" "$1/docs/lab/decisions" "$1/docs/handoff"
+  : > "$1/docs/lab/questions/queue.jsonl"; : > "$1/docs/lab/decisions/log.jsonl"
+  git -C "$1" init -q; git -C "$1" symbolic-ref HEAD refs/heads/main
+  git -C "$1" config user.email smoke@example.com; git -C "$1" config user.name smoke
+  printf 'fixture\n' > "$1/README.md"; git -C "$1" add README.md; shx_commit "$1" 400 "init"
+}
+sh_pane() {  # <seconds-ago> <seq> <session> — one cycle boundary event
+  printf '{"ts":"%s","run_id":"%s","seq":%s,"actor":"claude","type":"pane.ended","src":"hook:SessionEnd","session_id":"%s","data":{}}\n' \
+    "$(python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(seconds=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1")" \
+    "$TODAY" "$2" "$3"
+}
+
+# ⭐ 10. A HANDOFF COMMITTED AFTER THE LAST BOUNDARY DOCUMENTS THE CYCLE THAT IS STILL RUNNING (M1).
+#       The cycle that began at the newest boundary has not ended — nothing closed it — so its
+#       interval runs to NOW. Closed at the top instead, it swallowed every late-committed handoff:
+#       a night written up in full rang the alarm, which is the one direction that destroys trust in
+#       an alarm. The bug's own shape is the fixture: the ONLY handoff here is committed last.
+SHL="$WORK/f5-sh-late"; shx_init "$SHL"
+{ sh_pane 14400 1 s1; sh_pane 10800 2 s2; sh_pane 7200 3 s3; sh_pane 3600 4 s4
+} > "$SHL/docs/lab/events/$TODAY.jsonl"
+printf '# Handoff 01\n' > "$SHL/docs/handoff/01-handoff-late.md"
+git -C "$SHL" add docs/handoff/01-handoff-late.md; shx_commit "$SHL" 20 "docs: handoff 01, committed after the pane closed"
+SHLB="$SHL/docs/lab/render_bundle.json"
+bash "$CH" --repo "$SHL" --no-poll --quiet --json >/dev/null 2>&1
+# The trap is armed FIRST: the handoff really is committed later than the last boundary. Without this
+# the assertion below could pass on a fixture that simply never exercised the case.
+SHL_HO="$(git -C "$SHL" log --diff-filter=A -1 --format=%cI -- docs/handoff/01-handoff-late.md)"
+SHL_BND="$(jq -r '.self_health.handoffs.boundary.ts' "$SHLB")"
+[[ -n "$SHL_HO" && "$(python3 -c "
+import sys,datetime
+p=lambda s: datetime.datetime.fromisoformat(s.replace('Z','+00:00'))
+print('yes' if p(sys.argv[1])>p(sys.argv[2]) else 'no')" "$SHL_HO" "$SHL_BND")" == "yes" ]] \
+  && ok "GSL-99: the trap is armed — the only handoff is committed AFTER the last cycle boundary (the order production always produces)" \
+  || bad "GSL-99: the late-commit trap is not armed, so the assertion below proves nothing (handoff=$SHL_HO boundary=$SHL_BND)"
+[[ "$(jq -r '.self_health.handoffs.undocumented_cycles' "$SHLB")" == "0" ]] \
+  && [[ "$(jq -r '.self_health.handoffs.state' "$SHLB")" == "ok" ]] \
+  && [[ "$(jq -r '.self_health.handoffs.alarm' "$SHLB")" == "false" ]] \
+  && ok "GSL-99 ⭐ a handoff committed after the last boundary documents the running cycle — no phantom debt, no false alarm" \
+  || bad "GSL-99 ⭐ a late-committed handoff documented NOTHING (undoc=$(jq -r '.self_health.handoffs.undocumented_cycles' "$SHLB"), want 0) — the interval is still closed at the top"
+
+# ⭐ 11. THREE PANES OF ONE CYCLE ARE ONE BOUNDARY, NOT THREE (M2). The word on the page is
+#       `N cycle(s) closed with no handoff`, and a cycle in this repository is the orchestrator's
+#       (the Fleet screen prints `59 cycle`; the ledger numbers them). `pane.ended` fires per PANE and
+#       a cycle holds up to three — so a routine three-worker cycle minted two extra "cycles" whose
+#       intervals are seconds wide, which no handoff can land inside. Guaranteed debt, by arithmetic.
+SHD="$WORK/f5-sh-debounce"; shx_init "$SHD"
+{ sh_pane 10800 1 s1                                   # an earlier cycle, hours away
+  sh_pane 3600 2 s2; sh_pane 3595 3 s3; sh_pane 3591 4 s4   # ONE cycle: three panes, 9s apart
+} > "$SHD/docs/lab/events/$TODAY.jsonl"
+printf '# Handoff 01\n' > "$SHD/docs/handoff/01-handoff-debounce.md"
+git -C "$SHD" add docs/handoff/01-handoff-debounce.md; shx_commit "$SHD" 100 "docs: handoff 01"
+SHDB="$SHD/docs/lab/render_bundle.json"; SHDI="$SHD/docs/lab/site/index.html"
+bash "$CH" --repo "$SHD" --no-poll --quiet --json >/dev/null 2>&1
+# Armed: the log really does carry four `pane.ended`, three of them within seconds of each other.
+[[ "$(grep -c '"type":"pane.ended"' "$SHD/docs/lab/events/$TODAY.jsonl")" == "4" ]] \
+  && ok "GSL-99: the trap is armed — four pane closes in the log, three of them seconds apart in one teardown" \
+  || bad "GSL-99: the debounce fixture does not carry the clustered pane closes it is testing"
+[[ "$(jq -r '.self_health.handoffs.boundaries' "$SHDB")" == "2" ]] \
+  && ok "GSL-99 ⭐ four pane closes -> TWO cycle boundaries: the meter counts cycles, which is the word it prints" \
+  || bad "GSL-99 ⭐ the meter counted panes and called them cycles (boundaries=$(jq -r '.self_health.handoffs.boundaries' "$SHDB"), want 2)"
+[[ "$(jq -r '.self_health.handoffs.undocumented_cycles' "$SHDB")" == "0" ]] \
+  && ok "GSL-99 ⭐ the seconds-wide phantom cycles are gone, so the handoff that documented the cycle counts" \
+  || bad "GSL-99 ⭐ phantom debt from clustered panes survives (undoc=$(jq -r '.self_health.handoffs.undocumented_cycles' "$SHDB"), want 0)"
+# The collapse is AUDITABLE, not asserted: both numbers and the window reach the page, so a reader who
+# distrusts the debounce can do the division himself. Under-counting cycles under-states debt — the
+# reassuring direction — and this page does not get to make that trade silently.
+grep -q '4 pane close(s) debounced into 2 cycle boundary(ies) at 600s' "$SHDI" \
+  && sh_prose "$SHDI" | grep -q 'UNDER-states this debt' \
+  && ok "GSL-99 ⭐ the page prints the raw pane count, the cycle count and the window — and names which way the error runs" \
+  || bad "GSL-99 ⭐ the debounce is invisible on the page: a reader cannot tell panes from cycles"
+
 # ════════════ GSL-100 / F5-S4: the page must hold together in a phone-width column ════════════
 # F5-S4 is the criterion the whole phase exists to satisfy — "readable from a phone" — and until
 # GSL-100 nobody had ever opened the page at phone width. Measured 2026-07-20 at 390px, two defects

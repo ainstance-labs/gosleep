@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-20T11:39:55Z",
+  "generated_at": "2026-07-20T11:52:22Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-20",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 429,
+    "max_event_age_s": 441,
     "max_event_age_human": "7m",
-    "latest_event_ts": "2026-07-20T11:32:44Z",
-    "heartbeat_age_s": 527,
+    "latest_event_ts": "2026-07-20T11:44:58Z",
+    "heartbeat_age_s": 10,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,19 +16,19 @@
     }
   },
   "events": {
-    "total": 543,
-    "today": 72,
+    "total": 546,
+    "today": 75,
     "days": [
       "2026-07-12",
       "2026-07-13",
       "2026-07-20"
     ],
     "by_type": {
-      "agent.turn_ended": 145,
+      "agent.turn_ended": 146,
       "agent.idle": 48,
       "handoff.written": 45,
       "dev_history.written": 44,
-      "vcs.commit": 35,
+      "vcs.commit": 37,
       "agent.terminated": 29,
       "tracker.issue.transitioned": 29,
       "task.completed": 28,
@@ -47,8 +47,8 @@
       "vcs.pr.merged": 1
     },
     "by_src": {
-      "hook:PostToolUse": 185,
-      "hook:Stop": 145,
+      "hook:PostToolUse": 187,
+      "hook:Stop": 146,
       "hook:TeammateIdle": 48,
       "hook:SubagentStop": 29,
       "emit": 28,
@@ -61,11 +61,11 @@
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 279,
+      "claude": 281,
       "ef6c3777": 85,
       "dd3edd33": 63,
+      "ecab62c2": 19,
       "orchestrator": 19,
-      "ecab62c2": 18,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
       "f03d552e": 5,
@@ -135,9 +135,15 @@
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "9fb5766",
-    "dirty_paths": 22,
+    "head": "5e6d5ed",
+    "dirty_paths": 20,
     "commits_on_date": [
+      {
+        "sha": "5e6d5ed",
+        "author": "R",
+        "ts": "2026-07-20T13:44:58+02:00",
+        "subject": "GSL-98 [UI] Review fix: the ages on Fleet were frozen at build time (M3)"
+      },
       {
         "sha": "9fb5766",
         "author": "R",
@@ -260,13 +266,13 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-20T11:31:06Z",
-      "cycle": 61,
-      "context_pct": 66,
+      "ts": "2026-07-20T11:52:09Z",
+      "cycle": 62,
+      "context_pct": 71,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "confirming reviewer termination; fixer next"
+      "note": "fixer on M1+M2; roll planned at fixer boundary"
     },
     "live_status": "▶ 2026-07-20 ~11:02Z — CYCLE 59 (impl-ui-7) DONE: GSL-100 закрыт, ФАЗА 5 ПРИНЯТА по доказательствам. Ветка GSL-90-ui-orchestration @ 9fb5766 (dc2a925 основной + 9fb5766 handoff 36), запушена, 11 коммитов от main. smoke 252/252; hooks-verify 14/14; tsc чист; схема render/7. Jira GSL-100 Done (verified). Вердикты: F5-S1 ✅ · F5-S2 ✅ (countdown вживую: 116 мин reader-clock) · F5-S3 ✅ (115 Jira/255 GH/122 commit ссылок) · F5-S4a ✅ file:// · F5-S4b ✅ после nav-фикса · F5-S4c ❌ ОПРОВЕРГНУТ по факту. DECISION q-2026-07-20-001 resolved (default applied, d-2026-07-20-004). impl-ui-7 TERMINATED ~11:07Z (graceful, pane %409 gone). CYCLE 60 mechanic-gsl90 DONE ~11:15Z: PR #115 OPEN/CLEAN (21 коммит, чеклист 11 задач вкл. GSL-101=#114 — нашёл сам, в брифе не было), Jira GSL-90 → In Review verified, Closes #103..#114, Acceptance-таблица честная (S4c опровергнут → вход Фазы 6). mechanic TERMINATED ~11:22Z (pane %410 gone). CYCLE 61 reviewer-gsl90 DONE ~11:39Z: VERDICT FIX — 0C/3M/2m/3nit (полный отчёт docs/reviews/REVIEW-gsl90.md, gitignored). 3 MAJOR (все в self-health/fleet): (1) chronicler.py:1943 handoff после последней границы не учитывается → ложный алярм долга (≥5 при 36 handoff'ах); (2) chronicler.py:1771 pane.ended = граница ПАНЕЛИ, не цикла (до 3 панелей/цикл) → фантомный долг; (3) fleet.tsx:32,188 возрасты воркеров заморожены на сборке вопреки site/README «keep aging» — ошибка в успокаивающую сторону. m2: фикстура smoke:1820 моделирует нереальный порядок — чинить тем же коммитом. Gates на 9fb5766: smoke 252/252, tsc 0, hooks 14/14. reviewer TERMINATED ~11:50Z (pane %411 gone; перед выходом оставил записку fixer'у: m2-фикстуры тем же коммитом что M1+M2, порядок M3→M1→M2, M3 — компонентом из tasks.tsx:30 без нового JS/схемы). CYCLE 62 fixer-gsl90 (Opus 4.8, pane=%412) SPAWNED ~11:52Z — 3 MAJOR обязательны, m/nit по цене, позитивные контроли против 9fb5766, handoff 37. Затем finalizer → → (fixer) → finalizer → Phase 6 Mobile setup (GSL-102+, GH #116+) без остановки. orchest",
     "telemetry_last": "cycle=61 worker=reviewer-gsl90 model=claude-opus-4-8 (транскрипт b73939ec, поле model) tokens_out=112377 tokens_in=172 cache_read=9102115 | running: cycles=86 total≈8423000 (+гэпы 2a/32/35/48-52/57-cache-write) [Review PR #115 @ 9fb5766: VERDICT FIX — 0C/3M/2m/3nit. MAJOR: handoff-долг ложно алярмит (post-boundary handoff не учтён); pane.ended ≠ граница цикла (до 3 панелей/цикл) → фантомный долг; Fleet возрасты заморожены на сборке вопреки README-контракту. Причина слепоты 252 тестов: фикстура m"
@@ -286,6 +292,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-20T11:39:55Z"
+    "last_success_at": "2026-07-20T11:52:22Z"
   }
 }

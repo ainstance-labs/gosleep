@@ -1770,6 +1770,22 @@ NOT_A_HANDOFF = ("ORCHESTRATION-STATE.md",)
 # it is the same one the Fleet screen already keys a worker's end-of-life on.
 CYCLE_BOUNDARY_TYPE = "pane.ended"
 
+# ...but it fires per PANE, and a cycle holds up to THREE of them (manifest §5.slots — the Fleet screen
+# prints that cap on its own KPI row). Two panes of one cycle closing nine seconds apart are not two
+# cycles, and those nine seconds are a window no handoff can physically land in, so each extra pane
+# manufactured a GUARANTEED unit of debt: a routine three-worker cycle invented two undocumented
+# cycles, which is exactly the alarm threshold. The meter was counting panes and calling them cycles.
+#
+# There is no cycle id to key on — a `pane.ended` carries `reason` and `raw`, nothing else — so a run
+# of closes with no gap longer than this window is treated as ONE cycle's teardown, dated by the LAST
+# pane to close, because that is the instant the cycle actually ended.
+#
+# THE ERROR DIRECTION IS NAMED, NOT HIDDEN. Two cycles that genuinely ran closer together than this
+# window are counted as one, which UNDER-states the debt — the reassuring direction, the only one that
+# matters. So the meter prints both numbers on the page: the raw pane count AND the debounced cycle
+# count, with the window beside them, and a reader who distrusts the collapse can do his own division.
+CYCLE_DEBOUNCE_S = int(os.environ.get("GOSLEEP_CYCLE_DEBOUNCE_S", 600))
+
 
 def git_index_files(pathspec):
     """The files the INDEX carries — what a fresh clone gets. `None` means git could not be read at
@@ -1906,8 +1922,30 @@ def handoff_debt(events):
             undated.append(name)
     docs.sort(key=lambda d: d["ts"])
 
-    bounds = sorted(e["ts"] for e in events
-                    if e.get("type") == CYCLE_BOUNDARY_TYPE and e.get("ts"))
+    # Normalised at the door. These strings are about to be compared with `<` against commit dates
+    # that came through `iso_utc` already, and `2026-07-12T23:26:24+0200` sorts ABOVE
+    # `2026-07-12T21:33:25Z` while being the EARLIER instant — the exact trap iso_utc's own docstring
+    # names. Every event in this log carries `Z` today; that is a fact about today, not a guarantee.
+    panes = sorted(t for t in (iso_utc(e.get("ts")) for e in events
+                               if e.get("type") == CYCLE_BOUNDARY_TYPE) if t)
+
+    # Panes -> cycles (see CYCLE_DEBOUNCE_S). A cluster collapses onto its LAST close, which is when
+    # the cycle it belongs to actually ended.
+    bounds = []
+    for t in panes:
+        prev, cur = (parse_ts(bounds[-1]) if bounds else None), parse_ts(t)
+        if prev is not None and cur is not None and cur - prev <= CYCLE_DEBOUNCE_S:
+            bounds[-1] = t
+        else:
+            bounds.append(t)
+
+    if len(panes) != len(bounds):
+        searched += ("; %d pane close(s) debounced into %d cycle boundary(ies) at %ds — a cycle holds "
+                     "up to 3 panes and they close together, so counting panes would count one cycle "
+                     "several times (two cycles closer together than %ds would be counted as one, "
+                     "which UNDER-states this debt)"
+                     % (len(panes), len(bounds), CYCLE_DEBOUNCE_S, CYCLE_DEBOUNCE_S))
+        base["searched"] = searched
 
     base.update({
         "committed": len(docs), "undated": undated, "boundaries": len(bounds),
@@ -1936,13 +1974,24 @@ def handoff_debt(events):
                         "total": len(bounds)}
 
     # Walk back from the newest boundary. A cycle is DOCUMENTED when a handoff was committed inside
-    # it: after the previous boundary, and no later than this one. (A handoff is written before its
-    # own pane closes, which is why the interval is closed at the top — otherwise every worker that
-    # wrote its handoff four minutes before it finished would be counted as debt.)
+    # it: after the previous boundary, and no later than this one.
+    #
+    # THE NEWEST INTERVAL IS OPEN AT THE TOP, and that is the whole correction. The cycle that began
+    # at the last boundary has not ended yet — nothing has closed it — so it runs to NOW, and a
+    # handoff committed inside it documents it.
+    #
+    # The rule this replaces closed every interval at its boundary, reasoning that "a handoff is
+    # written before its own pane closes". That is true of the WRITE and false of the COMMIT — and the
+    # commit is what dates a handoff here (`handoff_add_times` reads `git log --diff-filter=A`). A
+    # commit happens after the pane has closed, by definition; on this branch handoffs 28/29/35 were
+    # carried in by ledger commits hours later still. So every handoff newer than the last boundary
+    # fell into NO interval and documented NOTHING: with 36 handoffs committed on this branch, one
+    # committed right now left all 22 boundaries counted as undocumented debt. The alarm fired
+    # loudest on a night that had been written up in full.
     undoc = 0
     for i in range(len(bounds) - 1, -1, -1):
         lo = bounds[i - 1] if i > 0 else ""
-        hi = bounds[i]
+        hi = bounds[i] if i < len(bounds) - 1 else max(bounds[i], now_iso())
         if any(lo < d["ts"] <= hi for d in docs):
             break
         undoc += 1

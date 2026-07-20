@@ -1,13 +1,13 @@
 {
   "schema": "gosleep.lab.render/7",
-  "generated_at": "2026-07-20T11:39:55Z",
+  "generated_at": "2026-07-20T11:52:22Z",
   "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
   "date": "2026-07-20",
   "staleness": {
-    "max_event_age_s": 429,
+    "max_event_age_s": 441,
     "max_event_age_human": "7m",
-    "latest_event_ts": "2026-07-20T11:32:44Z",
-    "heartbeat_age_s": 527,
+    "latest_event_ts": "2026-07-20T11:44:58Z",
+    "heartbeat_age_s": 10,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -15,10 +15,10 @@
     }
   },
   "self_health": {
-    "generated_at": "2026-07-20T11:39:55Z",
-    "data_age_s": 429,
+    "generated_at": "2026-07-20T11:52:22Z",
+    "data_age_s": 441,
     "data_age_human": "7m",
-    "latest_event_ts": "2026-07-20T11:32:44Z",
+    "latest_event_ts": "2026-07-20T11:44:58Z",
     "grade": "fresh",
     "grade_is_about": "the DATA, at build time. Add (now − generated_at) to `data_age_s` before trusting it: there are two ages here, not one",
     "dev_history": {
@@ -329,9 +329,9 @@
           "state": "ok",
           "why": "",
           "tasks": [
+            "GSL-98",
             "GSL-100",
             "GSL-99",
-            "GSL-98",
             "GSL-97",
             "GSL-96",
             "GSL-95",
@@ -342,9 +342,9 @@
             "GSL-91"
           ],
           "covered": [
+            "GSL-98",
             "GSL-100",
             "GSL-99",
-            "GSL-98",
             "GSL-97",
             "GSL-96",
             "GSL-95",
@@ -365,44 +365,44 @@
     },
     "handoffs": {
       "state": "debt",
-      "searched": "committed `docs/handoff/*.md` (excluding ORCHESTRATION-STATE.md), dated by the commit that ADDED each file; cycle boundaries are `pane.ended` events in docs/lab/events/*.jsonl",
+      "searched": "committed `docs/handoff/*.md` (excluding ORCHESTRATION-STATE.md), dated by the commit that ADDED each file; cycle boundaries are `pane.ended` events in docs/lab/events/*.jsonl; 22 pane close(s) debounced into 19 cycle boundary(ies) at 600s — a cycle holds up to 3 panes and they close together, so counting panes would count one cycle several times (two cycles closer together than 600s would be counted as one, which UNDER-states this debt)",
       "last": {
         "name": "36-2026-07-20-handoff-impl-ui-7.md",
         "ts": "2026-07-20T10:56:58Z",
-        "age_s": 2575,
-        "age_human": "42m"
+        "age_s": 3321,
+        "age_human": "55m"
       },
       "boundary": {
         "ts": "2026-07-20T11:23:43Z",
-        "age_s": 970,
-        "age_human": "16m",
+        "age_s": 1716,
+        "age_human": "28m",
         "source": "pane.ended",
-        "total": 22
+        "total": 19
       },
-      "undocumented_cycles": 2,
+      "undocumented_cycles": 1,
       "alarm_at": 3,
       "alarm": false,
-      "boundaries": 22,
+      "boundaries": 19,
       "committed": 36,
       "uncommitted": [],
       "undated": [],
-      "why": "2 cycle(s) have closed since the last handoff was committed — that is debt, and it is accruing"
+      "why": "1 cycle(s) have closed since the last handoff was committed — that is debt, and it is accruing"
     }
   },
   "events": {
-    "total": 543,
-    "today": 72,
+    "total": 546,
+    "today": 75,
     "days": [
       "2026-07-12",
       "2026-07-13",
       "2026-07-20"
     ],
     "by_type": {
-      "agent.turn_ended": 145,
+      "agent.turn_ended": 146,
       "agent.idle": 48,
       "handoff.written": 45,
       "dev_history.written": 44,
-      "vcs.commit": 35,
+      "vcs.commit": 37,
       "agent.terminated": 29,
       "tracker.issue.transitioned": 29,
       "task.completed": 28,
@@ -421,8 +421,8 @@
       "vcs.pr.merged": 1
     },
     "by_src": {
-      "hook:PostToolUse": 185,
-      "hook:Stop": 145,
+      "hook:PostToolUse": 187,
+      "hook:Stop": 146,
       "hook:TeammateIdle": 48,
       "hook:SubagentStop": 29,
       "emit": 28,
@@ -435,11 +435,11 @@
       "hook:SubagentStart": 3
     },
     "by_actor": {
-      "claude": 279,
+      "claude": 281,
       "ef6c3777": 85,
       "dd3edd33": 63,
+      "ecab62c2": 19,
       "orchestrator": 19,
-      "ecab62c2": 18,
       "poll-fill": 15,
       "a690ba064bba794be": 13,
       "f03d552e": 5,
@@ -486,32 +486,6 @@
     "mechanical_share": 0.921
   },
   "recent_events": [
-    {
-      "ts": "2026-07-13T13:32:04Z",
-      "seq": 278,
-      "actor": "ef6c3777",
-      "type": "pane.ended",
-      "src": "hook:SessionEnd",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T13:32:27Z",
-      "seq": 279,
-      "actor": "dd3edd33",
-      "type": "pane.started",
-      "src": "hook:SessionStart",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-13T13:38:53Z",
-      "seq": 280,
-      "actor": "dd3edd33",
-      "type": "handoff.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/handoff/ORCHESTRATION-STATE.md"
-      }
-    },
     {
       "ts": "2026-07-13T13:39:12Z",
       "seq": 281,
@@ -2264,6 +2238,36 @@
       "type": "agent.turn_ended",
       "src": "hook:Stop",
       "data": {}
+    },
+    {
+      "ts": "2026-07-20T11:40:36Z",
+      "seq": 73,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "d7606b6",
+        "cmd": "git add tools/lab/ui/src/components.tsx tools/lab/ui/src/screens/fleet.tsx tools/lab/ui/src/screens/tasks.tsx tools/lab/ui/src/selfhealth.tsx tools/lab/smoke.sh docs/lab/render_bundle.json docs/lab/status.json docs/lab/site/cost.html docs/lab/site/fleet.html docs/lab/site/index.html docs/lab/site/library.html docs/lab/site/questions.html docs/lab/site/tasks.html docs/lab/site/timeline.html && git commit -q -F \"/private/tmp/claude-501/-Users-romanlidovskyi-Documents-dev-harness-gosleep/94eaac6e-2"
+      }
+    },
+    {
+      "ts": "2026-07-20T11:42:20Z",
+      "seq": 74,
+      "actor": "ecab62c2",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-07-20T11:44:58Z",
+      "seq": 75,
+      "actor": "claude",
+      "type": "vcs.commit",
+      "src": "hook:PostToolUse",
+      "data": {
+        "sha": "5e6d5ed",
+        "cmd": "git add tools/lab/smoke.sh && git commit -q --amend --no-edit && git log --oneline -1 && echo \"--- amended (never pushed) ---\""
+      }
     }
   ],
   "recent_cap": 200,
@@ -2291,9 +2295,9 @@
     "next_event": {
       "axis": "context",
       "label": "orchestrator context",
-      "hours": 0.41,
+      "hours": 0.3,
       "on_exhaustion": "degrades",
-      "why": "self-reported 66%, rising 34.3 %/h -> ceiling 80% in 0.4h; roll heuristic (8-15 cycles, 2 done since the roll at 1.7 cyc/h) says 3.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone"
+      "why": "self-reported 71%, rising 29.6 %/h -> ceiling 80% in 0.3h; roll heuristic (8-15 cycles, 3 done since the roll at 2.0 cyc/h) says 2.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone"
     },
     "clocks": [
       {
@@ -2301,10 +2305,10 @@
         "label": "orchestrator context",
         "on_exhaustion": "degrades",
         "state": "counting",
-        "hours": 0.41,
+        "hours": 0.3,
         "eta": null,
-        "gauge": "66% of 80%",
-        "why": "self-reported 66%, rising 34.3 %/h -> ceiling 80% in 0.4h; roll heuristic (8-15 cycles, 2 done since the roll at 1.7 cyc/h) says 3.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone",
+        "gauge": "71% of 80%",
+        "why": "self-reported 71%, rising 29.6 %/h -> ceiling 80% in 0.3h; roll heuristic (8-15 cycles, 3 done since the roll at 2.0 cyc/h) says 2.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone",
         "sources": [
           "docs/handoff/.orchestrator-heartbeat (gitignored)",
           "watchdog.sh WD_CONTEXT_CEILING_PCT=80"
@@ -2381,7 +2385,7 @@
       }
     ],
     "trace": [
-      "0.4h — orchestrator context: self-reported 66%, rising 34.3 %/h -> ceiling 80% in 0.4h; roll heuristic (8-15 cycles, 2 done since the roll at 1.7 cyc/h) says 3.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone",
+      "0.3h — orchestrator context: self-reported 71%, rising 29.6 %/h -> ceiling 80% in 0.3h; roll heuristic (8-15 cycles, 3 done since the roll at 2.0 cyc/h) says 2.5h — THE TWO DISAGREE BY MORE THAN 2x; taking the shorter, and do not trust the self-report alone",
       "unknown — token budget: no token ceiling exists on disk: manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)",
       "clear — quota window: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)",
       "clear — pane slots: 2 free slot(s)",
@@ -2690,6 +2694,12 @@
         "summary": null,
         "commits": [
           {
+            "sha": "5e6d5ed",
+            "subject": "GSL-98 [UI] Review fix: the ages on Fleet were frozen at build time (M3)",
+            "ts": "2026-07-20T13:44:58+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/5e6d5ed"
+          },
+          {
             "sha": "2af58f6",
             "subject": "GSL-98 [Docs] Handoff 33 — цикл 57 (impl-ui-5): Fleet+Cost закрыты; мутация дважды поймала спящий тест",
             "ts": "2026-07-13T19:19:46+02:00",
@@ -2970,7 +2980,7 @@
         "key": "GSL-89",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:12Z",
-        "status_age_s": 660341,
+        "status_age_s": 661087,
         "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
         "commits": [
           {
@@ -3006,7 +3016,7 @@
         "key": "GSL-88",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:11Z",
-        "status_age_s": 660342,
+        "status_age_s": 661088,
         "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
         "commits": [
           {
@@ -3032,7 +3042,7 @@
         "key": "GSL-87",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:09Z",
-        "status_age_s": 660344,
+        "status_age_s": 661090,
         "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
         "commits": [
           {
@@ -3058,7 +3068,7 @@
         "key": "GSL-86",
         "status": "Done",
         "status_ts": "2026-07-12T21:26:24Z",
-        "status_age_s": 656009,
+        "status_age_s": 656755,
         "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
         "commits": [
           {
@@ -3090,7 +3100,7 @@
         "key": "GSL-85",
         "status": "Done",
         "status_ts": "2026-07-12T20:56:50Z",
-        "status_age_s": 657783,
+        "status_age_s": 658529,
         "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
         "commits": [
           {
@@ -3116,7 +3126,7 @@
         "key": "GSL-84",
         "status": "Done",
         "status_ts": "2026-07-12T20:50:59Z",
-        "status_age_s": 658134,
+        "status_age_s": 658880,
         "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
         "commits": [
           {
@@ -3136,13 +3146,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-84",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/96",
         "gh_number": 96,
-        "status_age_human": "7d 14h"
+        "status_age_human": "7d 15h"
       },
       {
         "key": "GSL-83",
         "status": "Done",
         "status_ts": "2026-07-12T20:46:53Z",
-        "status_age_s": 658380,
+        "status_age_s": 659126,
         "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
         "commits": [
           {
@@ -3168,13 +3178,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-83",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/95",
         "gh_number": 95,
-        "status_age_human": "7d 14h"
+        "status_age_human": "7d 15h"
       },
       {
         "key": "GSL-82",
         "status": "Done",
         "status_ts": "2026-07-12T20:16:09Z",
-        "status_age_s": 660224,
+        "status_age_s": 660970,
         "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
         "commits": [
           {
@@ -3200,7 +3210,7 @@
         "key": "GSL-81",
         "status": "In Progress",
         "status_ts": "2026-07-12T20:14:02Z",
-        "status_age_s": 660351,
+        "status_age_s": 661097,
         "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "commits": [
           {
@@ -5470,7 +5480,7 @@
     },
     "todo": 3,
     "tracker_last_polled": "2026-07-12T21:26:24Z",
-    "tracker_age_s": 656009,
+    "tracker_age_s": 656755,
     "tracker_age_human": "7d 14h",
     "tracker_stale": true,
     "gh_base": "https://github.com/ainstance-labs/gosleep",
@@ -5879,9 +5889,9 @@
         },
         "pr_why": null,
         "tasks": [
+          "GSL-98",
           "GSL-100",
           "GSL-99",
-          "GSL-98",
           "GSL-97",
           "GSL-96",
           "GSL-95",
@@ -5892,7 +5902,7 @@
           "GSL-91"
         ],
         "task_count": 11,
-        "commits": 19,
+        "commits": 20,
         "by_status": {
           "unknown": 11
         },
@@ -5908,9 +5918,9 @@
     "open_workers": 1,
     "cap": 3,
     "free_slots": 2,
-    "cycle": 61,
+    "cycle": 62,
     "orchestrator_status": "ok",
-    "orchestrator_context_pct": 66,
+    "orchestrator_context_pct": 71,
     "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
     "known": true,
     "workers": [
@@ -5921,7 +5931,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T12:55:28Z — this one is over",
         "last_ts": "2026-07-13T12:55:28Z",
-        "last_age_s": 600265,
+        "last_age_s": 601011,
         "last_age_human": "6d 22h",
         "model": "claude-opus-4-8",
         "models": [
@@ -5956,7 +5966,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T12:05:51Z — this one is over",
         "last_ts": "2026-07-13T12:05:51Z",
-        "last_age_s": 603242,
+        "last_age_s": 603988,
         "last_age_human": "6d 23h",
         "model": "claude-opus-4-8",
         "models": [
@@ -5991,8 +6001,8 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T11:40:31Z — this one is over",
         "last_ts": "2026-07-13T11:40:31Z",
-        "last_age_s": 604762,
-        "last_age_human": "6d 23h",
+        "last_age_s": 605508,
+        "last_age_human": "7d 0h",
         "model": "claude-opus-4-8",
         "models": [
           "claude-opus-4-8"
@@ -6025,7 +6035,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T10:02:29Z — this one is over",
         "last_ts": "2026-07-13T10:02:29Z",
-        "last_age_s": 610644,
+        "last_age_s": 611390,
         "last_age_human": "7d 1h",
         "model": "claude-opus-4-8",
         "models": [
@@ -6060,7 +6070,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T09:30:15Z — this one is over",
         "last_ts": "2026-07-13T09:30:15Z",
-        "last_age_s": 612578,
+        "last_age_s": 613324,
         "last_age_human": "7d 2h",
         "model": "claude-opus-4-8",
         "models": [
@@ -6095,7 +6105,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T09:10:15Z — this one is over",
         "last_ts": "2026-07-13T09:10:15Z",
-        "last_age_s": 613778,
+        "last_age_s": 614524,
         "last_age_human": "7d 2h",
         "model": "claude-opus-4-8",
         "models": [
@@ -6130,7 +6140,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T05:56:40Z — this one is over",
         "last_ts": "2026-07-13T05:56:40Z",
-        "last_age_s": 625393,
+        "last_age_s": 626139,
         "last_age_human": "7d 5h",
         "model": "claude-opus-4-8",
         "models": [
@@ -6165,7 +6175,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-12T21:04:19Z — this one is over",
         "last_ts": "2026-07-12T21:04:19Z",
-        "last_age_s": 657334,
+        "last_age_s": 658080,
         "last_age_human": "7d 14h",
         "model": "claude-opus-4-8",
         "models": [
@@ -6254,31 +6264,31 @@
     "workers_searched": "docs/lab/events/*.jsonl — a card per session named by a task.completed event (the only event carrying BOTH a session_id and the worker's name); the model is then read from that session's transcript",
     "roster": [
       {
-        "actor": "ecab62c2",
-        "events": 18,
-        "last_ts": "2026-07-20T11:32:44Z",
-        "types": {
-          "agent.turn_ended": 16,
-          "pane.started": 1,
-          "vcs.push": 1
-        },
-        "last_age_s": 429,
-        "last_age_human": "7m"
-      },
-      {
         "actor": "claude",
-        "events": 279,
-        "last_ts": "2026-07-20T11:32:07Z",
+        "events": 281,
+        "last_ts": "2026-07-20T11:44:58Z",
         "types": {
           "agent.idle": 48,
           "dev_history.written": 44,
-          "vcs.commit": 30,
+          "vcs.commit": 32,
           "tracker.issue.transitioned": 28,
           "agent.turn_ended": 26,
           "task.completed": 26
         },
-        "last_age_s": 466,
+        "last_age_s": 441,
         "last_age_human": "7m"
+      },
+      {
+        "actor": "ecab62c2",
+        "events": 19,
+        "last_ts": "2026-07-20T11:42:20Z",
+        "types": {
+          "agent.turn_ended": 17,
+          "pane.started": 1,
+          "vcs.push": 1
+        },
+        "last_age_s": 599,
+        "last_age_human": "9m"
       },
       {
         "actor": "orchestrator",
@@ -6289,8 +6299,8 @@
           "decision.made": 7,
           "handoff.written": 3
         },
-        "last_age_s": 2481,
-        "last_age_human": "41m"
+        "last_age_s": 3227,
+        "last_age_human": "53m"
       },
       {
         "actor": "impl-ui-7",
@@ -6299,8 +6309,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 3930,
-        "last_age_human": "1h 5m"
+        "last_age_s": 4676,
+        "last_age_human": "1h 17m"
       },
       {
         "actor": "a5940cc430930b0e5",
@@ -6309,8 +6319,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 4180,
-        "last_age_human": "1h 9m"
+        "last_age_s": 4926,
+        "last_age_human": "1h 22m"
       },
       {
         "actor": "f03d552e",
@@ -6320,8 +6330,8 @@
           "agent.turn_ended": 4,
           "notification.raised": 1
         },
-        "last_age_s": 4365,
-        "last_age_human": "1h 12m"
+        "last_age_s": 5111,
+        "last_age_human": "1h 25m"
       },
       {
         "actor": "a66cff203f32b5147",
@@ -6330,8 +6340,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 4693,
-        "last_age_human": "1h 18m"
+        "last_age_s": 5439,
+        "last_age_human": "1h 30m"
       },
       {
         "actor": "4ec4b8c0",
@@ -6340,8 +6350,8 @@
         "types": {
           "pane.ended": 1
         },
-        "last_age_s": 4997,
-        "last_age_human": "1h 23m"
+        "last_age_s": 5743,
+        "last_age_human": "1h 35m"
       },
       {
         "actor": "dd3edd33",
@@ -6355,8 +6365,8 @@
           "pane.started": 1,
           "vcs.commit": 1
         },
-        "last_age_s": 5006,
-        "last_age_human": "1h 23m"
+        "last_age_s": 5752,
+        "last_age_human": "1h 35m"
       },
       {
         "actor": "ad294a00b0f62d230",
@@ -6365,8 +6375,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 5279,
-        "last_age_human": "1h 27m"
+        "last_age_s": 6025,
+        "last_age_human": "1h 40m"
       },
       {
         "actor": "a343a285e2060e2e9",
@@ -6375,8 +6385,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 5367,
-        "last_age_human": "1h 29m"
+        "last_age_s": 6113,
+        "last_age_human": "1h 41m"
       },
       {
         "actor": "aa5b520664085b7b4",
@@ -6385,8 +6395,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 5411,
-        "last_age_human": "1h 30m"
+        "last_age_s": 6157,
+        "last_age_human": "1h 42m"
       },
       {
         "actor": "impl-ui-5",
@@ -6395,7 +6405,7 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 587027,
+        "last_age_s": 587773,
         "last_age_human": "6d 19h"
       },
       {
@@ -6405,7 +6415,7 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 588174,
+        "last_age_s": 588920,
         "last_age_human": "6d 19h"
       },
       {
@@ -6415,7 +6425,7 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 595510,
+        "last_age_s": 596256,
         "last_age_human": "6d 21h"
       },
       {
@@ -6430,7 +6440,7 @@
           "task.completed": 2,
           "pane.ended": 1
         },
-        "last_age_s": 598069,
+        "last_age_s": 598815,
         "last_age_human": "6d 22h"
       },
       {
@@ -6440,8 +6450,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 600690,
-        "last_age_human": "6d 22h"
+        "last_age_s": 601436,
+        "last_age_human": "6d 23h"
       },
       {
         "actor": "ab3b55ad5cc3bfb36",
@@ -6451,7 +6461,7 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 603178,
+        "last_age_s": 603924,
         "last_age_human": "6d 23h"
       },
       {
@@ -6461,7 +6471,7 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 603244,
+        "last_age_s": 603990,
         "last_age_human": "6d 23h"
       },
       {
@@ -6471,7 +6481,7 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 603306,
+        "last_age_s": 604052,
         "last_age_human": "6d 23h"
       }
     ],
@@ -7199,7 +7209,7 @@
     "quota": {
       "events": [],
       "total": 0,
-      "searched": "docs/lab/events/*.jsonl — 543 event(s) over 3 day file(s) (2026-07-12..2026-07-20), matching type in {api.failure, quota.wait_started, quota.wait_ended}",
+      "searched": "docs/lab/events/*.jsonl — 546 event(s) over 3 day file(s) (2026-07-12..2026-07-20), matching type in {api.failure, quota.wait_started, quota.wait_ended}",
       "why_empty": "not one quota event has EVER been logged here. The StopFailure hook that writes api.failure is wired, but it has never been observed firing — so this emptiness means 'never seen', not 'never happened'. A quiet quota and a dead hook look identical from here, and until one fires the difference is unknown."
     }
   },
@@ -7301,9 +7311,15 @@
   },
   "delivery": {
     "branch": "GSL-90-ui-orchestration",
-    "head": "9fb5766",
-    "dirty_paths": 22,
+    "head": "5e6d5ed",
+    "dirty_paths": 20,
     "commits_on_date": [
+      {
+        "sha": "5e6d5ed",
+        "author": "R",
+        "ts": "2026-07-20T13:44:58+02:00",
+        "subject": "GSL-98 [UI] Review fix: the ages on Fleet were frozen at build time (M3)"
+      },
       {
         "sha": "9fb5766",
         "author": "R",
@@ -7426,13 +7442,13 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-20T11:31:06Z",
-      "cycle": 61,
-      "context_pct": 66,
+      "ts": "2026-07-20T11:52:09Z",
+      "cycle": 62,
+      "context_pct": 71,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "confirming reviewer termination; fixer next"
+      "note": "fixer on M1+M2; roll planned at fixer boundary"
     },
     "live_status": "▶ 2026-07-20 ~11:02Z — CYCLE 59 (impl-ui-7) DONE: GSL-100 закрыт, ФАЗА 5 ПРИНЯТА по доказательствам. Ветка GSL-90-ui-orchestration @ 9fb5766 (dc2a925 основной + 9fb5766 handoff 36), запушена, 11 коммитов от main. smoke 252/252; hooks-verify 14/14; tsc чист; схема render/7. Jira GSL-100 Done (verified). Вердикты: F5-S1 ✅ · F5-S2 ✅ (countdown вживую: 116 мин reader-clock) · F5-S3 ✅ (115 Jira/255 GH/122 commit ссылок) · F5-S4a ✅ file:// · F5-S4b ✅ после nav-фикса · F5-S4c ❌ ОПРОВЕРГНУТ по факту. DECISION q-2026-07-20-001 resolved (default applied, d-2026-07-20-004). impl-ui-7 TERMINATED ~11:07Z (graceful, pane %409 gone). CYCLE 60 mechanic-gsl90 DONE ~11:15Z: PR #115 OPEN/CLEAN (21 коммит, чеклист 11 задач вкл. GSL-101=#114 — нашёл сам, в брифе не было), Jira GSL-90 → In Review verified, Closes #103..#114, Acceptance-таблица честная (S4c опровергнут → вход Фазы 6). mechanic TERMINATED ~11:22Z (pane %410 gone). CYCLE 61 reviewer-gsl90 DONE ~11:39Z: VERDICT FIX — 0C/3M/2m/3nit (полный отчёт docs/reviews/REVIEW-gsl90.md, gitignored). 3 MAJOR (все в self-health/fleet): (1) chronicler.py:1943 handoff после последней границы не учитывается → ложный алярм долга (≥5 при 36 handoff'ах); (2) chronicler.py:1771 pane.ended = граница ПАНЕЛИ, не цикла (до 3 панелей/цикл) → фантомный долг; (3) fleet.tsx:32,188 возрасты воркеров заморожены на сборке вопреки site/README «keep aging» — ошибка в успокаивающую сторону. m2: фикстура smoke:1820 моделирует нереальный порядок — чинить тем же коммитом. Gates на 9fb5766: smoke 252/252, tsc 0, hooks 14/14. reviewer TERMINATED ~11:50Z (pane %411 gone; перед выходом оставил записку fixer'у: m2-фикстуры тем же коммитом что M1+M2, порядок M3→M1→M2, M3 — компонентом из tasks.tsx:30 без нового JS/схемы). CYCLE 62 fixer-gsl90 (Opus 4.8, pane=%412) SPAWNED ~11:52Z — 3 MAJOR обязательны, m/nit по цене, позитивные контроли против 9fb5766, handoff 37. Затем finalizer → → (fixer) → finalizer → Phase 6 Mobile setup (GSL-102+, GH #116+) без остановки. orchest",
     "telemetry_last": "cycle=61 worker=reviewer-gsl90 model=claude-opus-4-8 (транскрипт b73939ec, поле model) tokens_out=112377 tokens_in=172 cache_read=9102115 | running: cycles=86 total≈8423000 (+гэпы 2a/32/35/48-52/57-cache-write) [Review PR #115 @ 9fb5766: VERDICT FIX — 0C/3M/2m/3nit. MAJOR: handoff-долг ложно алярмит (post-boundary handoff не учтён); pane.ended ≠ граница цикла (до 3 панелей/цикл) → фантомный долг; Fleet возрасты заморожены на сборке вопреки README-контракту. Причина слепоты 252 тестов: фикстура m"
@@ -8027,7 +8043,7 @@
           {
             "href": "../digest/2026-07-20-morning.md",
             "name": "2026-07-20-morning.md",
-            "title": "Morning digest — 2026-07-20 (night run: 10:07 → 11:32)"
+            "title": "Morning digest — 2026-07-20 (night run: 10:07 → 11:44)"
           },
           {
             "href": "../digest/2026-07-13-morning.md",
