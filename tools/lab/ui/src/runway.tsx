@@ -47,11 +47,18 @@ export function RunwayStrip({ r }: { r: Runway }): VNode {
           ? "clear"
           : "unknown";
 
+  // The tone is a CSS class and nothing else — no number, threshold or formula is decided here.
+  //
+  // GSL-109 split "unknown" off from "warn". They were the same amber, which quietly undid the
+  // distinction this component's whole docstring is about: "under four hours left" is a reading, and
+  // "I could not read the clock" is the absence of one. Painted identically, the second was served
+  // to the owner as the first. `unk` is magenta and dashed — off the green-amber-red axis entirely,
+  // because unknown is not a grade on it. See theme.ts for why the hue was chosen by measurement.
   const tone =
     r.bound === "clear"
       ? "ok"
       : r.bound === "unknown"
-        ? "warn"
+        ? "unk"
         : r.hours !== null && r.hours < 1
           ? "dead"
           : r.hours !== null && r.hours < 4

@@ -365,6 +365,48 @@ grep -qE 'https?://(cdn|fonts|unpkg|cdnjs)' "$CR/docs/lab/site/index.html" \
   && bad "site/ pulls an external resource (file:// would break)" \
   || ok "site/ is self-contained (no CDN/font/script fetches)"
 
+# ⭐ GSL-109: EACH GRADE MUST RESOLVE TO ITS OWN COLOUR. The banner carries class="stale <grade>", so
+# the rule for the "stale" grade was written `.stale.stale` — which is not "stale AND graded stale",
+# it is `.stale` written twice. It matched EVERY banner at the same specificity as `.stale.fresh` and,
+# coming later in source order, won: a FRESH build painted its banner in the WARNING colour, on all
+# seven screens, for the whole of Phase 5. The grade in the markup was correct the entire time; the
+# stylesheet could not express the distinction it was asked for, which is why no assertion on the
+# markup could ever have caught this. So this one runs the CASCADE — it resolves `color` for a real
+# element of each grade against the emitted stylesheet, exactly as a browser would, and demands three
+# different answers. A selector that matches more grades than its own re-reds it.
+SG="$(python3 - "$CR/docs/lab/site/index.html" <<'PY'
+import re, sys
+css = re.search(r"<style>(.*?)</style>", open(sys.argv[1], encoding="utf-8").read(), re.S)
+css = css.group(1) if css else ""
+TOK = re.compile(r'\.([A-Za-z0-9_-]+)|\[([a-z-]+)="([^"]+)"\]')
+def resolve(grade):
+    # A real element: <div class="stale <grade>" data-grade="<grade>">
+    classes, attrs = {"stale", grade}, {"data-grade": grade}
+    best = None
+    for order, m in enumerate(re.finditer(r"([^{}]+)\{([^{}]*)\}", css)):
+        sel, decls = m.group(1).strip(), m.group(2)
+        col = re.search(r"(?:^|;)\s*color\s*:\s*([^;]+)", decls)
+        if not col or not sel.startswith(".stale"):
+            continue
+        # Only compound selectors targeting the element itself: no combinator, no pseudo-element.
+        if re.search(r"[ >+~,:]", sel):
+            continue
+        toks = TOK.findall(sel)
+        if not toks or not all(
+            (c in classes) if c else (attrs.get(a) == v) for c, a, v in toks
+        ):
+            continue
+        spec = len(toks)
+        if best is None or (spec, order) >= (best[0], best[1]):
+            best = (spec, order, col.group(1).strip())
+    return best[2] if best else "NONE"
+print(" ".join(f"{g}={resolve(g)}" for g in ("fresh", "stale", "dead")))
+PY
+)"
+[[ "$SG" == "fresh=var(--ok) stale=var(--warn) dead=var(--dead)" ]] \
+  && ok "⭐ GSL-109: each staleness grade resolves to its OWN colour (a fresh page is not painted amber)" \
+  || bad "⭐ GSL-109: a grade rule bleeds across grades — got [$SG]"
+
 # ───────────────────── GSL-92: the TypeScript view layer ─────────────────────
 #
 # The renderer moved from chronicler.py to tools/lab/ui/ (Preact, server-rendered by esbuild). The
@@ -906,6 +948,15 @@ grep -q 'Cannot say' "$RWU/docs/lab/site/index.html" \
   && grep -q 'different sentences' "$RWU/docs/lab/site/index.html" \
   && ok "F5-S1: the page SAYS it cannot see, and says why that is not a green light" \
   || bad "F5-S1: the page rendered an absence of evidence as evidence of absence"
+# ⭐ GSL-109: and it does not BORROW a grade's colour to say so. "unknown" used to render in the same
+# amber as "under four hours left", which put a reading and the absence of one in one bucket — the
+# exact conflation the prose two lines above spends a paragraph refusing. The tone is presentation
+# only (no number, threshold or formula lives here), but presentation is the whole channel this
+# distinction travels on: the owner reads the colour before he reads the sentence.
+grep -q 'class="runway unk"' "$RWU/docs/lab/site/index.html" \
+  && ! grep -q 'class="runway warn"' "$RWU/docs/lab/site/index.html" \
+  && ok "⭐ GSL-109: an unreadable runway gets its OWN tone, not the warning grade's" \
+  || bad "⭐ GSL-109: 'I cannot see' was painted as 'it is getting late'"
 
 # ── F5-S1 f. An unreadable clock turns an estimate into an UPPER BOUND. The quota says 4h; the budget
 #    cannot be read. The true runway is AT MOST 4h — it can only be shorter, never longer, so "≈ 4h"

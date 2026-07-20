@@ -39,10 +39,15 @@ export interface PageOpts {
 export function renderPage(o: PageOpts): string {
   const shell = render(
     <>
-      <h1>{o.title}</h1>
-      <Nav current={o.screen} />
+      {/* GSL-109: title and nav are page CHROME and are grouped as chrome, so the eye crosses the
+          band once and lands on the content. The nav itself is unchanged — see theme.ts on why its
+          flex+wrap is load-bearing at 390px (GSL-100). */}
+      <header class="masthead">
+        <h1>{o.title}</h1>
+        <Nav current={o.screen} />
+      </header>
       <StaleBanner b={o.bundle} />
-      {o.body}
+      <main>{o.body}</main>
       <Footer />
     </>,
   );
