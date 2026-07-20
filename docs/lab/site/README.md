@@ -69,14 +69,35 @@ Measured on 2026-07-20 against `ainstance-labs/gosleep` — that is **not** what
 | `raw.githubusercontent.com` | `Content-Type: text/plain` + `nosniff` + CSP `sandbox` (a `.md` gets the same — raw serves everything as text) |
 | GitHub Pages | Not enabled (404); org plan is `free`, and Pages for a **private** repo needs Enterprise Cloud |
 
-`nosniff` is the decisive one: the file *is* HTML, and the browser is explicitly **forbidden** to
-treat it as such. There is no URL on github.com that renders these pages. GitHub is a transport for
-the bytes, not a viewer.
+`nosniff` is the decisive one **for these pages**: the file *is* HTML, and the browser is explicitly
+**forbidden** to treat it as such. There is no URL on github.com that renders `.html` from this repo.
 
-What is true — and is the property this contract exists to protect — is that a page is a **single
-file with no dependencies**, so it renders completely once it reaches the phone by any means that
-puts a file on it (download and open in Files, a git client, a sync folder). Keep it that way and
-the transport question stays somebody else's problem.
+### The correction (GSL-108, 2026-07-20)
+
+The sentence that used to close this section — *"GitHub is a transport for the bytes, not a viewer"* —
+was wider than the evidence above, and it cost a phase. The measurements were of `.html` and of `raw`;
+the conclusion was about GitHub. Re-measured against the same private repo, authenticated:
+
+| Path | What GitHub actually returns |
+|---|---|
+| `.md` via Contents API (`Accept: html`) | `<article class="markdown-body">` — **rendered server-side** |
+| `.html` via the same API | `<pre class="plain">&lt;!doctype html&gt;` — **escaped**, shown as source |
+| a directory's `README.md` | rendered too (`GET /readme/<dir>`) |
+| a directory with **no** `README.md` | `404` — the negative control, so the row above is not a default |
+
+GitHub is **both**: a viewer for Markdown, a transport for everything else. `nosniff` never governed
+Markdown, because Markdown is never handed to the browser to interpret — GitHub renders it to HTML on
+its own servers and ships the result. The private repo was never the obstacle; the file extension was.
+
+So the phone surface is Markdown, and it exists: **`docs/lab/mobile/README.md`**, regenerated from the
+same `render_bundle.json` these seven screens render from, at a URL that carries no date and therefore
+survives being bookmarked. Open the *directory* on a phone and GitHub renders it.
+
+What remains true — and is the property this contract exists to protect — is that a page here is a
+**single file with no dependencies**, so it renders completely once it reaches a phone by any means
+that puts a file on it (download and open in Files, a git client, a sync folder). That is the desktop
+and offline path. It is no longer the *only* path, and "the transport question is somebody else's
+problem" is no longer an acceptable place to stop: it is what left `F5-S4c` open.
 
 ## Layout
 

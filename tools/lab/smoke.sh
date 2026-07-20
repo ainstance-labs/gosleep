@@ -365,6 +365,48 @@ grep -qE 'https?://(cdn|fonts|unpkg|cdnjs)' "$CR/docs/lab/site/index.html" \
   && bad "site/ pulls an external resource (file:// would break)" \
   || ok "site/ is self-contained (no CDN/font/script fetches)"
 
+# ⭐ GSL-109: EACH GRADE MUST RESOLVE TO ITS OWN COLOUR. The banner carries class="stale <grade>", so
+# the rule for the "stale" grade was written `.stale.stale` — which is not "stale AND graded stale",
+# it is `.stale` written twice. It matched EVERY banner at the same specificity as `.stale.fresh` and,
+# coming later in source order, won: a FRESH build painted its banner in the WARNING colour, on all
+# seven screens, for the whole of Phase 5. The grade in the markup was correct the entire time; the
+# stylesheet could not express the distinction it was asked for, which is why no assertion on the
+# markup could ever have caught this. So this one runs the CASCADE — it resolves `color` for a real
+# element of each grade against the emitted stylesheet, exactly as a browser would, and demands three
+# different answers. A selector that matches more grades than its own re-reds it.
+SG="$(python3 - "$CR/docs/lab/site/index.html" <<'PY'
+import re, sys
+css = re.search(r"<style>(.*?)</style>", open(sys.argv[1], encoding="utf-8").read(), re.S)
+css = css.group(1) if css else ""
+TOK = re.compile(r'\.([A-Za-z0-9_-]+)|\[([a-z-]+)="([^"]+)"\]')
+def resolve(grade):
+    # A real element: <div class="stale <grade>" data-grade="<grade>">
+    classes, attrs = {"stale", grade}, {"data-grade": grade}
+    best = None
+    for order, m in enumerate(re.finditer(r"([^{}]+)\{([^{}]*)\}", css)):
+        sel, decls = m.group(1).strip(), m.group(2)
+        col = re.search(r"(?:^|;)\s*color\s*:\s*([^;]+)", decls)
+        if not col or not sel.startswith(".stale"):
+            continue
+        # Only compound selectors targeting the element itself: no combinator, no pseudo-element.
+        if re.search(r"[ >+~,:]", sel):
+            continue
+        toks = TOK.findall(sel)
+        if not toks or not all(
+            (c in classes) if c else (attrs.get(a) == v) for c, a, v in toks
+        ):
+            continue
+        spec = len(toks)
+        if best is None or (spec, order) >= (best[0], best[1]):
+            best = (spec, order, col.group(1).strip())
+    return best[2] if best else "NONE"
+print(" ".join(f"{g}={resolve(g)}" for g in ("fresh", "stale", "dead")))
+PY
+)"
+[[ "$SG" == "fresh=var(--ok) stale=var(--warn) dead=var(--dead)" ]] \
+  && ok "⭐ GSL-109: each staleness grade resolves to its OWN colour (a fresh page is not painted amber)" \
+  || bad "⭐ GSL-109: a grade rule bleeds across grades — got [$SG]"
+
 # ───────────────────── GSL-92: the TypeScript view layer ─────────────────────
 #
 # The renderer moved from chronicler.py to tools/lab/ui/ (Preact, server-rendered by esbuild). The
@@ -906,6 +948,15 @@ grep -q 'Cannot say' "$RWU/docs/lab/site/index.html" \
   && grep -q 'different sentences' "$RWU/docs/lab/site/index.html" \
   && ok "F5-S1: the page SAYS it cannot see, and says why that is not a green light" \
   || bad "F5-S1: the page rendered an absence of evidence as evidence of absence"
+# ⭐ GSL-109: and it does not BORROW a grade's colour to say so. "unknown" used to render in the same
+# amber as "under four hours left", which put a reading and the absence of one in one bucket — the
+# exact conflation the prose two lines above spends a paragraph refusing. The tone is presentation
+# only (no number, threshold or formula lives here), but presentation is the whole channel this
+# distinction travels on: the owner reads the colour before he reads the sentence.
+grep -q 'class="runway unk"' "$RWU/docs/lab/site/index.html" \
+  && ! grep -q 'class="runway warn"' "$RWU/docs/lab/site/index.html" \
+  && ok "⭐ GSL-109: an unreadable runway gets its OWN tone, not the warning grade's" \
+  || bad "⭐ GSL-109: 'I cannot see' was painted as 'it is getting late'"
 
 # ── F5-S1 f. An unreadable clock turns an estimate into an UPPER BOUND. The quota says 4h; the budget
 #    cannot be read. The true runway is AT MOST 4h — it can only be shorter, never longer, so "≈ 4h"
@@ -2202,6 +2253,435 @@ sh_nav_wraps "$SHI" \
 sh_mono_wraps "$SHI" \
   && ok "GSL-100 ⭐ long unbreakable tokens wrap — a mono card cannot clip the note it is quoting" \
   || bad "GSL-100 ⭐ .mono lacks overflow-wrap: raw JSON clips mid-token and the reader loses text"
+
+echo "== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is =="
+RCP="$REPO_ROOT/tools/rc/rc-preflight.sh"
+
+# The surface names are assembled from fragments on purpose: this harness greps the tree for
+# hard-coded Remote Control flags, and a literal here would make the harness its own violation.
+RCF='--remote'"-control"
+RCK_ACT='inputNeededNotif'"Enabled"
+RCK_DEC='agentPushNotif'"Enabled"
+
+if [[ ! -x "$RCP" ]]; then
+  bad "GSL-104: tools/rc/rc-preflight.sh missing or not executable — nothing can ask about the phone path"
+else
+  ok "GSL-104: rc-preflight.sh present and executable"
+  bash -n "$RCP" && ok "GSL-104: bash -n (syntax)" || bad "GSL-104: bash -n (syntax)"
+
+  # ---- positive controls FIRST -------------------------------------------------
+  # Every assertion below is either "X is absent" or "the verdict is not ready". Both pass
+  # vacuously against a script that says nothing at all, so each detector is first shown input
+  # it MUST reject.
+  grep -q -- "$RCF" "$RCP" \
+    && ok "GSL-104: the SURFACE block really names the flag (positive control — the absence greps below are not vacuous)" \
+    || bad "GSL-104: SURFACE block does not name the flag — every isolation check below would pass over nothing"
+  grep -q "$RCK_ACT" "$RCP" \
+    && ok "GSL-104: the SURFACE block really names the actions-required key (positive control)" \
+    || bad "GSL-104: SURFACE block does not name the actions-required key — the toggle checks guard nothing"
+
+  # The hard-coding detector, shown a file that DOES hard-code the surface.
+  rc_hardcode_hits() { grep -rlE -- "$RCF|$RCK_ACT|$RCK_DEC" "$1" 2>/dev/null; }
+  mkdir -p "$WORK/rc-violator"
+  printf 'claude %s orchestrator   # a caller that pinned the flag itself\n' "$RCF" > "$WORK/rc-violator/brief.sh"
+  [[ -n "$(rc_hardcode_hits "$WORK/rc-violator")" ]] \
+    && ok "GSL-104: the hard-coding detector flags a file that pins the flag (positive control)" \
+    || bad "GSL-104: the hard-coding detector CANNOT see a pinned flag — the swappability check is theatre"
+
+  # ---- ⭐ absent means OFF ------------------------------------------------------
+  # The whole overnight value of Remote Control rides on "push when actions required". Its key
+  # defaults to false, so an ABSENT key is OFF. A preflight that read absence as "probably on"
+  # would tell the owner the phone is covered on exactly the night it is not.
+  printf '{"%s": true}\n' "$RCK_DEC" > "$WORK/rc-settings-absent.json"
+  RC_JSON="$(RC_SETTINGS_FILE="$WORK/rc-settings-absent.json" bash "$RCP" --json 2>/dev/null)"
+  echo "$RC_JSON" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["push_when_actions_required"]=="absent"; assert r["status"]!="ready", r["status"]' \
+    && ok "GSL-104 ⭐ an absent actions-required key reads as OFF and never yields a ready verdict" \
+    || bad "GSL-104 ⭐ an absent toggle was rounded up: the owner would be told the phone is covered while permission prompts stay silent"
+
+  # false is not a different story from absent — both are OFF.
+  printf '{"%s": true, "%s": false}\n' "$RCK_DEC" "$RCK_ACT" > "$WORK/rc-settings-false.json"
+  RC_JSON_F="$(RC_SETTINGS_FILE="$WORK/rc-settings-false.json" bash "$RCP" --json 2>/dev/null)"
+  echo "$RC_JSON_F" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["push_when_actions_required"]=="false"; assert r["status"]!="ready", r["status"]' \
+    && ok "GSL-104 ⭐ an explicitly false toggle also blocks a ready verdict" \
+    || bad "GSL-104 ⭐ a false toggle passed as ready — the verdict does not track the setting"
+
+  # ---- ⭐ the verdict can still be green: not a stuck 'degraded' ----------------
+  if command -v claude >/dev/null 2>&1; then
+    printf '{"%s": true, "%s": true}\n' "$RCK_DEC" "$RCK_ACT" > "$WORK/rc-settings-both.json"
+    RC_JSON_OK="$(RC_SETTINGS_FILE="$WORK/rc-settings-both.json" bash "$RCP" --json 2>/dev/null)"
+    echo "$RC_JSON_OK" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["status"]=="ready", r["status"]' \
+      && ok "GSL-104 ⭐ both toggles on yields ready — the check discriminates, it is not pinned to degraded" \
+      || bad "GSL-104 ⭐ both toggles on still not ready: the verdict ignores its inputs (a constant is not a test)"
+  else
+    note_skip=1
+    ok "GSL-104: claude CLI absent — ready-path check skipped (surface legs cannot be judged here)"
+  fi
+
+  # ---- ⭐ swappability: no executable path outside tools/rc pins the surface ----
+  RC_OFFENDERS=""
+  for d in "$REPO_ROOT/tools" "$REPO_ROOT/.claude"; do
+    [[ -d "$d" ]] || continue
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      case "$f" in "$REPO_ROOT/tools/rc/"*) continue ;; esac
+      RC_OFFENDERS="$RC_OFFENDERS $f"
+    done <<< "$(rc_hardcode_hits "$d")"
+  done
+  [[ -z "${RC_OFFENDERS// /}" ]] \
+    && ok "GSL-104 ⭐ the research-preview surface is named in tools/rc only — when Anthropic renames a flag, one block changes" \
+    || bad "GSL-104 ⭐ Remote Control surface pinned outside tools/rc (${RC_OFFENDERS# }) — a rename now breaks callers silently"
+
+  # ---- ⭐ preflight never pairs, and never spends a token ----------------------
+  # These two assert what the script EXECUTES, so they must not fire on the word `claude`
+  # sitting in a comment or inside a message the script prints. The first draft did exactly
+  # that and reported the file's own explanatory comment as a C1 breach. So strip comments
+  # (quote-aware) and drop lines whose command is a printer, then judge what is left.
+  rc_exec_lines() {
+    python3 - "$1" <<'PY'
+import re,sys
+PRINTERS=("good","warn","dead","note","echo","printf","say")
+for raw in open(sys.argv[1]):
+    line, q, out = raw.rstrip("\n"), None, []
+    for ch in line:                      # drop an unquoted trailing comment
+        if q:
+            if ch == q: q = None
+        elif ch in "\"'": q = ch
+        elif ch == "#": break
+        out.append(ch)
+    line = "".join(out)
+    if line.lstrip().split(" ")[0].rstrip("(") in PRINTERS: continue
+    if line.strip(): print(line)
+PY
+  }
+  RC_EXEC="$(rc_exec_lines "$RCP")"
+
+  # Positive control: the stripper must not swallow the executable lines themselves.
+  grep -qE 'claude[[:space:]]+--version' <<<"$RC_EXEC" \
+    && ok "GSL-104: the comment-stripper preserves real invocations (positive control — the two checks below still have input)" \
+    || bad "GSL-104: the comment-stripper ate the real claude invocations — the C1 and no-pairing checks would pass over an empty file"
+
+  grep -qE 'claude( -p|\b--print)' <<<"$RC_EXEC" \
+    && bad "GSL-104 ⭐ preflight calls a headless model (C1 violation) — a verifier must not cost tokens" \
+    || ok "GSL-104 ⭐ 0-LLM (C1): preflight shells out to no model"
+
+  # Pairing is a QR scan with a human. Any claude invocation here must be an inspection
+  # (--version / --help / command -v), never a session start — a preflight that launched RC
+  # would hijack the terminal it was asked to report on.
+  RC_LAUNCHES="$(grep -nE '(^|[^-[:alnum:]])claude[[:space:]]' <<<"$RC_EXEC" \
+    | grep -v -- '--help' | grep -v -- '--version' | grep -v 'command -v claude' || true)"
+  [[ -z "$RC_LAUNCHES" ]] \
+    && ok "GSL-104 ⭐ preflight only inspects (--version/--help): it reports on the phone path, never starts a session" \
+    || bad "GSL-104 ⭐ preflight invokes claude outside --version/--help ($RC_LAUNCHES) — a report step that could seize the terminal"
+fi
+
+echo
+echo "== GSL-108 / F5-S4c: the phone page — the one surface GitHub agrees to render =="
+# Phase 5 measured that GitHub serves .html as text/plain + nosniff and refused to render it, and
+# closed F5-S4c as REFUTED. What it did not measure is that GitHub renders .md server-side — on a
+# private repo, and for a directory's README.md at a URL with no date in it. That asymmetry is the
+# whole mechanism of this page, so these checks guard the properties that depend on it, not the prose.
+MB="$WORK/mobile-repo"
+mkdir -p "$MB/docs/lab/events" "$MB/docs/lab/questions" "$MB/docs/lab/decisions"
+: > "$MB/docs/lab/questions/queue.jsonl"
+MB_TODAY="$(date -u +%F)"
+MB_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"beef001"}}\n' \
+  "$MB_TS" "$MB_TODAY" > "$MB/docs/lab/events/$MB_TODAY.jsonl"
+# Two decisions, written OLDEST-FIRST (the order the log actually has), with distinguishable text.
+{ printf '{"id":"d-1900-01-01-001","ts":"1900-01-01T00:00:00Z","re":"q-1900-01-01-001","task":"GSL-OLD","type":"DECISION","question":"?","decision":"ELDEST-DECISION-TEXT","made_by":"orchestrator","rule":"r"}\n'
+  printf '{"id":"d-2099-12-31-009","ts":"2099-12-31T23:59:59Z","re":"q-2099-12-31-009","task":"GSL-NEW","type":"DECISION","question":"?","decision":"NEWEST-DECISION-TEXT","made_by":"orchestrator","rule":"r"}\n'
+} > "$MB/docs/lab/decisions/log.jsonl"
+
+bash "$CH" --repo "$MB" --no-poll --quiet --json >/dev/null 2>&1
+MBP="$MB/docs/lab/mobile/README.md"
+
+# ---- positive control: everything below reads a real, complete page ---------------
+MB_SECTIONS="$(grep -c '^## ' "$MBP" 2>/dev/null || echo 0)"
+[[ -s "$MBP" && "$MB_SECTIONS" -ge 7 ]] \
+  && ok "GSL-108: the phone page exists and carries its $MB_SECTIONS sections (positive control — the checks below have input)" \
+  || bad "GSL-108: no phone page (or under 7 sections) — every check below would pass over an empty file"
+
+# ---- ⭐ the filename IS the mechanism ---------------------------------------------
+# GitHub renders a directory's README.md when the DIRECTORY is opened. Any other name (phone.md,
+# index.md) demands the reader find a file by name on a phone at 07:00, and a dated name cannot be
+# bookmarked at all. This check fails if the artifact is renamed or moved out of its own directory.
+[[ -f "$MB/docs/lab/mobile/README.md" ]] \
+  && ok "GSL-108 ⭐ the page is docs/lab/mobile/README.md — opening the directory renders it, and the URL carries no date" \
+  || bad "GSL-108 ⭐ the phone page is not at docs/lab/mobile/README.md — a renamed file is not auto-rendered by a directory open"
+
+# ---- ⭐ derived from the same pass, not hand-authored ------------------------------
+MB_GEN="$(jq -r '.generated_at' "$MB/docs/lab/status.json" 2>/dev/null)"
+[[ -n "$MB_GEN" ]] && grep -qF "$MB_GEN" "$MBP" \
+  && ok "GSL-108 ⭐ the page carries THIS pass's generated_at — it is regenerated, not a document someone maintains" \
+  || bad "GSL-108 ⭐ the page's timestamp is not this pass's — it is drifting from the bundle it claims to project"
+
+# ---- ⭐ it links only where a phone can follow -------------------------------------
+# A .html link opens escaped source on a phone: a dead end dressed as a destination. Markdown links
+# and directory links are the only ones that resolve to something readable.
+MB_HTML_LINKS="$(grep -oE '\]\([^)]*\.html?[^)]*\)' "$MBP" || true)"
+[[ -z "$MB_HTML_LINKS" ]] \
+  && ok "GSL-108 ⭐ no .html link on the phone page — every link resolves to something GitHub will render" \
+  || bad "GSL-108 ⭐ the phone page links to .html ($MB_HTML_LINKS) — on a phone that opens escaped source"
+
+# ---- ⭐ 'latest' means latest ------------------------------------------------------
+# decisions.recent arrives OLDEST-first. Slicing its head under the word "latest" printed the oldest
+# records under a caption that contradicted them. The fixture spans 1900..2099 so any unsorted head
+# slice puts the wrong one first.
+MB_FIRST_DEC="$(grep -oE '(ELDEST|NEWEST)-DECISION-TEXT' "$MBP" | head -1)"
+[[ "$MB_FIRST_DEC" == "NEWEST-DECISION-TEXT" ]] \
+  && ok "GSL-108 ⭐ 'Latest decisions' lists the newest first — the caption and the list agree" \
+  || bad "GSL-108 ⭐ 'Latest decisions' leads with '$MB_FIRST_DEC' — the caption contradicts its own list"
+
+# ---- ⭐ a decision reads as a decision ---------------------------------------------
+# The first cut printed `d-2026-07-13-001 — q-2026-07-12-001`: an id whose description is another id.
+# On a phone that is worse than omitting the section, because it costs a tap to learn nothing.
+grep -qF "NEWEST-DECISION-TEXT" "$MBP" \
+  && ok "GSL-108 ⭐ decisions print what was decided, not an id pointing at another id" \
+  || bad "GSL-108 ⭐ the decision text is missing — the section shows identifiers a reader cannot resolve on a phone"
+
+# ---- ⭐ it outlives the failure that takes the dashboard down ----------------------
+# The seven screens need node; this page does not, because Python builds it from a bundle Python
+# already wrote. If it were written inside the render-succeeded branch, the one surface reachable
+# from bed would vanish on exactly the night the HTML broke.
+MBN="$WORK/mobile-nonode"
+mkdir -p "$MBN/docs/lab"
+cp -R "$MB/docs/lab/events" "$MB/docs/lab/questions" "$MB/docs/lab/decisions" "$MBN/docs/lab/" 2>/dev/null
+MBN_JSON="$(env PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$CH" --repo "$MBN" --no-poll --quiet --json 2>/dev/null)"
+[[ "$(echo "$MBN_JSON" | jq -r '.ui.reason' 2>/dev/null)" == "no-node" ]] \
+  && ok "GSL-108: the no-node fixture really did lose the renderer (control for the check below)" \
+  || bad "GSL-108: the no-node fixture still had node — the survival check below proves nothing"
+MBN_GEN="$(jq -r '.generated_at' "$MBN/docs/lab/status.json" 2>/dev/null)"
+[[ -s "$MBN/docs/lab/mobile/README.md" ]] && grep -qF "$MBN_GEN" "$MBN/docs/lab/mobile/README.md" \
+  && ok "GSL-108 ⭐ with node gone the HTML degrades but the phone page is still written, and current" \
+  || bad "GSL-108 ⭐ no node took the phone page down with the dashboard — the one surface reachable from bed"
+grep -q 'did \*\*not\*\* regenerate' "$MBN/docs/lab/mobile/README.md" 2>/dev/null \
+  && ok "GSL-108 ⭐ and it SAYS the seven screens are stale — the reader is told which of the two they hold" \
+  || bad "GSL-108 ⭐ the phone page is silent about the stale HTML beside it — a fresh page implying a fresh dashboard"
+
+echo
+echo "== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best =="
+# Break-glass is five links: tailscale CLI -> tailnet -> an SSH transport -> mosh-server -> tmux.
+# The failure mode this guards is specific and seductive: Tailscale goes green, mosh is installed,
+# and the path LOOKS ready — but mosh bootstraps mosh-server over SSH, so with no SSH terminator
+# the tailnet leads nowhere. A preflight that graded the links it could see and stayed quiet about
+# that one would hand the owner a false green on the one night the path is load-bearing.
+BGP="$REPO_ROOT/tools/breakglass/bg-preflight.sh"
+BGR="$REPO_ROOT/docs/runbooks/break-glass.md"
+
+if [[ ! -x "$BGP" ]]; then
+  bad "GSL-107: tools/breakglass/bg-preflight.sh missing or not executable — nothing can ask whether the last line is reachable"
+else
+  ok "GSL-107: bg-preflight.sh present and executable"
+  bash -n "$BGP" && ok "GSL-107: bash -n (syntax)" || bad "GSL-107: bash -n (syntax)"
+
+  # A hermetic tailnet: the verdicts below must not depend on whether the owner has installed
+  # Tailscale since this was written. FAKE_RUNSSH drives the one pref the transport check reads.
+  BGFAKE="$WORK/bg-fakebin"; mkdir -p "$BGFAKE"
+  cat > "$BGFAKE/tailscale" <<'BGEOF'
+#!/usr/bin/env bash
+if [[ "$1" == "status" ]]; then
+  echo '{"BackendState":"Running","Self":{"TailscaleIPs":["100.101.102.103"]}}'
+elif [[ "$1" == "debug" && "$2" == "prefs" ]]; then
+  [[ "${FAKE_RUNSSH:-}" == "none" ]] || echo "{\"RunSSH\":${FAKE_RUNSSH:-true}}"
+fi
+BGEOF
+  printf '#!/usr/bin/env bash\necho "mosh-server (fake)"\n' > "$BGFAKE/mosh-server"
+  # tmux is faked too: a machine with no live sessions has nothing to attach to, and that is a
+  # real degraded state — but it must not be the reason the ready control below fails.
+  printf '#!/usr/bin/env bash\n[[ "$1" == "list-sessions" ]] && echo fleet\nexit 0\n' > "$BGFAKE/tmux"
+  chmod +x "$BGFAKE"/*
+  bg_run() {  # $1 = RunSSH value (true|false|none), $2 = sshd state (on|off); echoes the JSON
+    env PATH="$BGFAKE:$PATH" FAKE_RUNSSH="$1" BG_SSHD_STATE="$2" bash "$BGP" --json 2>/dev/null
+  }
+  bg_status() { python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$1" 2>/dev/null; }
+
+  # ---- positive control FIRST --------------------------------------------------
+  # Every ⭐ below asserts "the verdict is NOT ready". All of them pass vacuously against a script
+  # pinned to degraded, so the discriminating case is proven before any of them is believed.
+  BG_READY="$(bg_run true off)"
+  [[ "$(bg_status "$BG_READY")" == "ready" ]] \
+    && ok "GSL-107: a complete chain does yield ready (positive control — the not-ready checks below discriminate)" \
+    || bad "GSL-107: a complete chain never reports ready — the verdict is pinned, and every check below proves nothing"
+
+  # ---- ⭐ a green tailnet is not a transport -----------------------------------
+  BG_NOSSH="$(bg_run false off)"
+  [[ "$(bg_status "$BG_NOSSH")" != "ready" ]] \
+    && ok "GSL-107 ⭐ tailnet up + mosh installed + NO ssh transport never reads ready — mosh would have nothing to bootstrap over" \
+    || bad "GSL-107 ⭐ a transportless chain reported ready: the owner is told break-glass works on the night the tailnet leads nowhere"
+
+  # ---- ⭐ unknown is not off, and it is certainly not on -----------------------
+  # Tailscale is absent from this machine, so the RunSSH probe is written from the documented
+  # surface and unproven. An unreadable probe must therefore report unknown — and unknown must
+  # never be rounded up into a green verdict (the GSL-109 lesson, applied to a chain instead of a colour).
+  BG_UNK="$(bg_run none off)"
+  python3 -c 'import json,sys
+r=json.load(sys.stdin)
+assert r["tailscale_ssh"]=="unknown", r["tailscale_ssh"]
+assert r["status"]!="ready", r["status"]' <<<"$BG_UNK" \
+    && ok "GSL-107 ⭐ an unreadable ssh-transport probe reads unknown and never yields ready — it is not rounded up" \
+    || bad "GSL-107 ⭐ an unknown transport was treated as present: a probe that cannot see is reporting good news"
+
+  # ---- ⭐ the exposure of the fallback path is stated, not swallowed -----------
+  # Remote Login DOES complete the chain, so a preflight optimising for green would happily call
+  # it ready. It also opens :22 on every interface the Mac has. F6-S4 says "without opening
+  # inbound ports"; a path that satisfies the router and not the machine must say so out loud.
+  BG_RL="$(env PATH="$BGFAKE:$PATH" FAKE_RUNSSH=false BG_SSHD_STATE=on bash "$BGP" 2>/dev/null)"
+  grep -qi "every interface" <<<"$BG_RL" \
+    && ok "GSL-107 ⭐ Remote Login as the only transport is reported WITH its exposure (:22 on every interface)" \
+    || bad "GSL-107 ⭐ the fallback path's exposure is silent — the owner opens :22 to cafe Wi-Fi believing 'no inbound ports' still holds"
+
+  # ---- ⭐ preflight reports; it does not act ------------------------------------
+  # Installing a VPN, enabling sshd or killing a pane are owner decisions made awake. A verifier
+  # that took any of them would be an incident, not a report.
+  bg_exec_lines() {  # strip comments and printer lines, same discipline as the GSL-104 block
+    python3 - "$1" <<'PY'
+import sys
+PRINTERS=("good","warn","dead","note","echo","printf")
+for raw in open(sys.argv[1]):
+    line, q, out = raw.rstrip("\n"), None, []
+    for ch in line:
+        if q:
+            if ch == q: q = None
+        elif ch in "\"'": q = ch
+        elif ch == "#": break
+        out.append(ch)
+    line = "".join(out)
+    if line.lstrip().split(" ")[0].rstrip("(") in PRINTERS: continue
+    if line.strip(): print(line)
+PY
+  }
+  BG_EXEC="$(bg_exec_lines "$BGP")"
+  grep -qE 'tailscale.*status|TS_STATUS_CMD' <<<"$BG_EXEC" \
+    && ok "GSL-107: the comment-stripper preserves the real tailscale invocations (positive control — the mutation greps below have input)" \
+    || bad "GSL-107: the comment-stripper ate the tailscale invocations — the no-mutation checks would pass over an empty file"
+  bg_mutation_hits() { grep -nE '(tailscale[[:space:]]+(up|login|logout)|brew[[:space:]]+install|systemsetup|kill-pane|launchctl[[:space:]]+(load|bootstrap))' <<<"$1" || true; }
+  # Positive control for the detector itself: shown a script that really does bring up the VPN,
+  # it must fire. Without this, a typo in the pattern would read as "preflight is clean forever".
+  [[ -n "$(bg_mutation_hits 'tailscale up --ssh')" ]] \
+    && ok "GSL-107: the mutation detector fires on a real \`tailscale up\` (positive control — the check below is not vacuous)" \
+    || bad "GSL-107: the mutation detector CANNOT see a VPN being brought up — the no-mutation check below guards nothing"
+  BG_MUTATIONS="$(bg_mutation_hits "$BG_EXEC")"
+  [[ -z "$BG_MUTATIONS" ]] \
+    && ok "GSL-107 ⭐ preflight only inspects: it never brings up a VPN, opens sshd, or touches a pane" \
+    || bad "GSL-107 ⭐ preflight mutates the machine ($BG_MUTATIONS) — a report step that changes what it reports on"
+  grep -qE 'claude( -p|\b--print)' <<<"$BG_EXEC" \
+    && bad "GSL-107 ⭐ preflight calls a headless model (C1 violation) — a verifier must not cost tokens" \
+    || ok "GSL-107 ⭐ 0-LLM (C1): preflight shells out to no model"
+fi
+
+# ---- the runbook's load-bearing warnings -------------------------------------------
+# These guard PROPERTIES a future edit could quietly drop, not phrasing. Each one exists because
+# losing it costs the owner something specific at 4am.
+if [[ ! -s "$BGR" ]]; then
+  bad "GSL-107: docs/runbooks/break-glass.md missing — the preflight points at a runbook that is not there"
+else
+  BG_SECTIONS="$(grep -c '^## ' "$BGR")"
+  [[ "$BG_SECTIONS" -ge 8 ]] \
+    && ok "GSL-107: the runbook is complete ($BG_SECTIONS sections — positive control for the content checks below)" \
+    || bad "GSL-107: the runbook has only $BG_SECTIONS sections — the checks below would pass over a stub"
+
+  # ⭐ The kill-pane invariant. A runbook that teaches pane-killing from a phone and omits this
+  # is the 2026-07-07 incident with better ergonomics.
+  grep -qE 'kill-pane -a' "$BGR" && grep -qiE 'НИКОГДА|⛔' "$BGR" \
+    && ok "GSL-107 ⭐ the runbook names \`kill-pane -a\` and forbids it outright" \
+    || bad "GSL-107 ⭐ the runbook teaches killing panes from a phone without forbidding \`kill-pane -a\` — the 2026-07-07 fleet kill, re-armed"
+
+  # ⭐ ...and the REASON, which is what makes the rule survive a rewrite: positional pane addresses
+  # renumber when a neighbour dies, so an id read minutes ago on a phone can name a different pane.
+  grep -qE '%[0-9]+' "$BGR" && grep -qiE 'перенумеров|сменил позиционный' "$BGR" \
+    && ok "GSL-107 ⭐ the runbook explains WHY only %id is safe — positional addresses renumber under a phone-lag delay" \
+    || bad "GSL-107 ⭐ the %id rule is stated without its mechanism — a future edit will 'simplify' it back to positional targets"
+
+  # ⭐ The phone-attach flags. Without ignore-size a bedtime attach resizes the desktop panes for
+  # everyone (window-size is 'latest' on this machine), and the owner meets a mangled fleet at dawn.
+  # The property is per-COMMAND, not per-document: prose may say "tmux attach" freely, but every
+  # concrete `tmux attach -t …` the owner could copy at 4am must carry the flag. A weaker grep for
+  # the bare word passed while a mutant stripped the flag from all three commands and left the
+  # explanatory table intact — which is exactly the edit a future rewrite would make.
+  BG_ATTACH_CMDS="$(grep -c 'tmux attach -t' "$BGR")"
+  BG_ATTACH_BARE="$(grep 'tmux attach -t' "$BGR" | grep -vc 'ignore-size')"
+  [[ "$BG_ATTACH_CMDS" -ge 2 ]] \
+    && ok "GSL-107: the runbook really does spell out attach commands ($BG_ATTACH_CMDS — positive control for the check below)" \
+    || bad "GSL-107: no concrete attach command in the runbook — the ignore-size check below has nothing to guard"
+  [[ "$BG_ATTACH_BARE" -eq 0 ]] \
+    && ok "GSL-107 ⭐ every copyable attach command carries -f ignore-size — a 4am attach cannot reshape the desktop fleet" \
+    || bad "GSL-107 ⭐ $BG_ATTACH_BARE attach command(s) omit ignore-size — a phone-sized client resizes every pane the fleet has"
+
+  # ⭐ The honesty gate. Tailscale is not installed here, so F6-S4 is NOT closed. This check exists
+  # because the cheapest possible edit — flipping one table cell to ✅ — would silently convert an
+  # unproven plan into a claimed capability, and nothing else in the repo would notice.
+  grep -qE 'НЕ ЗАКРЫТО' "$BGR" \
+    && ok "GSL-107 ⭐ the runbook still states F6-S4 is NOT closed — a written path is not a proven one" \
+    || bad "GSL-107 ⭐ F6-S4 is no longer marked open: the runbook claims a capability nobody has exercised from a phone"
+fi
+
+echo "== GSL-110 / phase acceptance: a verdict table is only worth the runs behind it =="
+# The Phase 6 acceptance closed ZERO of four success criteria. That is an uncomfortable document,
+# and uncomfortable documents get smoothed — not by a rewrite, but by the cheapest edit there is:
+# one table cell flipped from ❌ to ✅ while someone assembles the PR. Nothing else in this repo
+# would notice. These checks are the thing that notices. Each guards a distinct way the acceptance
+# could start claiming more than was proven.
+ACC="$REPO_ROOT/docs/dev_history/GSL-110-phase6-cycle69-acceptance.md"
+if [[ ! -f "$ACC" ]]; then
+  bad "GSL-110: the Phase 6 acceptance file is missing — the phase has no recorded verdicts"
+else
+  # Positive control: the criterion rows must actually exist, or every check below passes vacuously
+  # over a document that simply never mentioned F6-S at all.
+  ACC_ROWS="$(grep -c '^| \*\*F6-S' "$ACC")"
+  [[ "$ACC_ROWS" -ge 8 ]] \
+    && ok "GSL-110: the acceptance really does carry per-criterion rows ($ACC_ROWS — positive control for the checks below)" \
+    || bad "GSL-110: only $ACC_ROWS F6-S rows in the acceptance — the verdict checks below would guard nothing"
+
+  # ⭐ F6-S2 / F6-S3 were never built: no answer-path, no ntfy hook. The verdict word must survive
+  # on EVERY row that states them, not merely appear somewhere in the file.
+  for crit in S2 S3; do
+    n_bad="$(grep "^| \*\*F6-$crit\*\*" "$ACC" | grep -vc 'НЕ ДОСТАВЛЕН')"
+    [[ "$n_bad" -eq 0 ]] \
+      && ok "GSL-110 ⭐ F6-$crit is still recorded as НЕ ДОСТАВЛЕН — an unwritten feature cannot be an accepted one" \
+      || bad "GSL-110 ⭐ $n_bad row(s) for F6-$crit no longer say НЕ ДОСТАВЛЕН: the acceptance claims a capability with no code behind it"
+  done
+
+  # ⭐ F6-S4 is UNPROVEN, not refuted and not met — Tailscale is an owner install. Marking it ✅
+  # would assert a phone attach nobody has ever performed.
+  n_bad="$(grep '^| \*\*F6-S4\*\*' "$ACC" | grep -vc 'НЕ ПРОВЕРЕН')"
+  [[ "$n_bad" -eq 0 ]] \
+    && ok "GSL-110 ⭐ F6-S4 is still marked НЕ ПРОВЕРЕН — a written runbook is not an exercised path" \
+    || bad "GSL-110 ⭐ F6-S4 is no longer marked unproven: the acceptance claims an attach nobody has run from a phone"
+
+  # ⭐ The headline count. Prose can be softened one clause at a time; a number cannot be softened
+  # without being wrong. If any criterion ever genuinely closes, this line changes deliberately.
+  grep -qE '0 из 4 (закрыто|закрыт)' "$ACC" \
+    && ok "GSL-110 ⭐ the acceptance still states the score plainly: 0 of 4 criteria closed" \
+    || bad "GSL-110 ⭐ the '0 из 4' score line is gone — the phase result can now be read as complete"
+
+  # ⭐ ⏳ vs ❌ is the whole honesty of this table: 'blocked on the owner' and 'never implemented'
+  # are different failures with different owners and different costs. Collapsing them into one
+  # symbol would flatter S2/S3 and slander S4 in the same stroke.
+  grep -qE 'разные вещи' "$ACC" && grep -q 'не реализован' "$ACC" \
+    && ok "GSL-110 ⭐ the acceptance still distinguishes 'not verified' from 'not implemented' in words" \
+    || bad "GSL-110 ⭐ the ⏳/❌ distinction is gone — unbuilt features and unrun tests now read identically"
+
+  # ⭐ Three of four verdicts rest on ABSENCE (no ntfy, no curl, no answered_by). Absence is the
+  # weakest evidence there is — a typo in a pattern produces the same empty output. The positive
+  # controls are what make those zeroes mean something; without them the table is unfalsifiable.
+  grep -q 'Позитивные контроли' "$ACC" && grep -q 'True' "$ACC" && grep -q 'False' "$ACC" \
+    && ok "GSL-110 ⭐ the positive controls are recorded — the empty greps are proven to be able to find things" \
+    || bad "GSL-110 ⭐ the positive-control table is gone: the acceptance's zeroes could now be a broken detector"
+
+  # ⭐ The non-obvious structural finding: GSL-105 carries F6-S3 outright AND the load-bearing half
+  # of F6-S1, because a fleet-level BLOCKER has no per-session push to ride on. Lose this and the
+  # remaining work reads as four equal tasks instead of one binding constraint.
+  grep -qE 'связывающ' "$ACC" && grep -qE 'два критерия' "$ACC" \
+    && ok "GSL-110 ⭐ GSL-105 is still named as the binding constraint holding two of four criteria" \
+    || bad "GSL-110 ⭐ the S1↔R6.2 dependency is gone — GSL-105 now looks like one task among several"
+
+  # ⭐ Every landed task of the phase must own a dev_history file. This is the check that found the
+  # GSL-103 hole in the first place: five cycles each wrote their own file and none counted the set.
+  ACC_HIST="$(ls -1 "$REPO_ROOT/docs/dev_history/" | grep -c '^GSL-1[0-9][0-9]-phase6-')"
+  [[ "$ACC_HIST" -ge 6 ]] \
+    && ok "GSL-110 ⭐ every landed Phase 6 task owns a dev_history file ($ACC_HIST) — the GSL-103 hole stays closed" \
+    || bad "GSL-110 ⭐ only $ACC_HIST Phase 6 dev_history files: a landed task has lost its history again (GSL-103 class)"
+fi
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

@@ -2305,14 +2305,35 @@ Measured on 2026-07-20 against `ainstance-labs/gosleep` — that is **not** what
 | `raw.githubusercontent.com` | `Content-Type: text/plain` + `nosniff` + CSP `sandbox` (a `.md` gets the same — raw serves everything as text) |
 | GitHub Pages | Not enabled (404); org plan is `free`, and Pages for a **private** repo needs Enterprise Cloud |
 
-`nosniff` is the decisive one: the file *is* HTML, and the browser is explicitly **forbidden** to
-treat it as such. There is no URL on github.com that renders these pages. GitHub is a transport for
-the bytes, not a viewer.
+`nosniff` is the decisive one **for these pages**: the file *is* HTML, and the browser is explicitly
+**forbidden** to treat it as such. There is no URL on github.com that renders `.html` from this repo.
 
-What is true — and is the property this contract exists to protect — is that a page is a **single
-file with no dependencies**, so it renders completely once it reaches the phone by any means that
-puts a file on it (download and open in Files, a git client, a sync folder). Keep it that way and
-the transport question stays somebody else's problem.
+### The correction (GSL-108, 2026-07-20)
+
+The sentence that used to close this section — *"GitHub is a transport for the bytes, not a viewer"* —
+was wider than the evidence above, and it cost a phase. The measurements were of `.html` and of `raw`;
+the conclusion was about GitHub. Re-measured against the same private repo, authenticated:
+
+| Path | What GitHub actually returns |
+|---|---|
+| `.md` via Contents API (`Accept: html`) | `<article class="markdown-body">` — **rendered server-side** |
+| `.html` via the same API | `<pre class="plain">&lt;!doctype html&gt;` — **escaped**, shown as source |
+| a directory's `README.md` | rendered too (`GET /readme/<dir>`) |
+| a directory with **no** `README.md` | `404` — the negative control, so the row above is not a default |
+
+GitHub is **both**: a viewer for Markdown, a transport for everything else. `nosniff` never governed
+Markdown, because Markdown is never handed to the browser to interpret — GitHub renders it to HTML on
+its own servers and ships the result. The private repo was never the obstacle; the file extension was.
+
+So the phone surface is Markdown, and it exists: **`docs/lab/mobile/README.md`**, regenerated from the
+same `render_bundle.json` these seven screens render from, at a URL that carries no date and therefore
+survives being bookmarked. Open the *directory* on a phone and GitHub renders it.
+
+What remains true — and is the property this contract exists to protect — is that a page here is a
+**single file with no dependencies**, so it renders completely once it reaches a phone by any means
+that puts a file on it (download and open in Files, a git client, a sync folder). That is the desktop
+and offline path. It is no longer the *only* path, and "the transport question is somebody else's
+problem" is no longer an acceptable place to stop: it is what left `F5-S4c` open.
 
 ## Layout
 
@@ -2593,6 +2614,255 @@ def apply_retention(ctx):
                     pass
     return report
 
+# ───────────────────────────── build: the phone page (GSL-108) ────────────────
+#
+# WHY THIS SURFACE IS MARKDOWN AND NOT ONE MORE .html — closes F5-S4c, refuted in Phase 5.
+#
+# Phase 5 measured that a private repo will not serve the dashboard to a phone: raw.githubusercontent
+# sends text/plain + nosniff, and Pages on a private repo needs Enterprise Cloud. That measurement is
+# correct and it still stands. The CONCLUSION drawn from it — "GitHub is a transport for the bytes,
+# not a viewer" — was wider than the evidence, and it is what kept this page from existing.
+#
+# Re-measured 2026-07-20 against ainstance-labs/gosleep (private, authenticated):
+#
+#   .md   through the Contents API  ->  <article class="markdown-body">          RENDERED server-side
+#   .html through the same API      ->  <pre class="plain">&lt;!doctype html&gt;  ESCAPED, shown as source
+#   a directory's README.md         ->  rendered as well (GET /readme/<dir>)
+#   a directory with no README.md   ->  404  (the negative control: the 200 above is not a default)
+#
+# GitHub is BOTH — a viewer for Markdown, a transport for everything else. nosniff never governed
+# Markdown, because Markdown is never handed to the browser to interpret: GitHub renders it to HTML
+# on its own servers and ships the result. The private repo was never the obstacle. The file
+# extension was.
+#
+# Three properties follow, and each is load-bearing rather than incidental:
+#
+#   1. It is named README.md, so opening the DIRECTORY renders it. The URL carries no date and never
+#      changes. The digest cannot do this job: it is <date>-morning.md, so a bookmark taken today is
+#      wrong tomorrow, and a phone at 07:00 is exactly where you cannot go hunting for a filename.
+#   2. It is projected from render_bundle.json — the same bundle the seven screens render from — so
+#      it cannot drift from them. This is a view of the dashboard, not a second dashboard.
+#   3. It is built by Python from a bundle Python already wrote, so it survives the one failure that
+#      takes the HTML down (no node — see the degrade contract in docs/lab/site/README.md). When the
+#      desktop dashboard is frozen under a red banner, the phone page is still current, and it says
+#      which of the two the reader is holding.
+#
+# It links to .md and to directories ONLY. A link to a .html here would open the escaped source on a
+# phone — a dead end dressed as a destination, and the reader would blame their phone.
+
+def _ml(s, n=160):
+    """One line, safe inside a Markdown table cell, bounded."""
+    t = " ".join(str(s if s is not None else "").split())
+    t = t.replace("|", "\\|")
+    return (t[: n - 1] + "…") if len(t) > n else t
+
+def _hours(h):
+    """A phone reads '28m'. '0.46h' is a number the reader has to finish computing themselves."""
+    try:
+        h = float(h)
+    except (TypeError, ValueError):
+        return "?"
+    if h < 1:
+        return "%dm" % max(1, round(h * 60))
+    if h < 48:
+        return "%.1fh" % h
+    return "%.1fd" % (h / 24.0)
+
+def _age(sec):
+    if sec is None:
+        return "?"
+    sec = int(sec)
+    if sec < 90:
+        return "%ds" % sec
+    if sec < 5400:
+        return "%dm" % (sec // 60)
+    if sec < 172800:
+        return "%dh" % (sec // 3600)
+    return "%dd" % (sec // 86400)
+
+MOBILE_GRADE = {
+    "fresh": ("🟢", "FRESH"),
+    "stale": ("🟡", "STALE"),
+    "dead":  ("🔴", "DEAD"),
+}
+
+def build_mobile(bundle, ui=None):
+    """The phone projection of the seven screens. Every number is read out of the bundle — nothing is
+    recomputed here, because a second implementation of the same number is a second chance to be
+    wrong about it."""
+    st   = bundle.get("staleness") or {}
+    grade = st.get("grade") or "dead"
+    dot, word = MOBILE_GRADE.get(grade, ("🔴", "DEAD"))
+    q    = bundle.get("questions") or {}
+    fl   = bundle.get("fleet") or {}
+    dl   = bundle.get("delivery") or {}
+    tk   = bundle.get("tasks") or {}
+    co   = bundle.get("cost") or {}
+    rw   = bundle.get("runway") or {}
+    ev   = bundle.get("events") or {}
+    dec  = bundle.get("decisions") or {}
+    date = bundle.get("date") or "?"
+
+    L = []
+    L.append("# gosleep — the phone page")
+    L.append("")
+    L.append("%s **%s** · generated `%s` · last event **%s** ago · day `%s`"
+             % (dot, word, bundle.get("generated_at") or "?",
+                st.get("max_event_age_human") or _age(st.get("max_event_age_s")), date))
+    L.append("")
+    L.append("> Regenerated by `tools/lab/chronicler.sh` from `docs/lab/render_bundle.json` — the same"
+             " bundle the seven screens render from. **Never hand-edited:** an edit here survives until"
+             " the next pass and is a lie with a timestamp on it.")
+    L.append("")
+
+    # 1. The only section that asks anything of the reader. It goes first because at 07:00 the
+    #    question "is anything waiting on me?" is the whole reason the page was opened.
+    items = [i for i in (q.get("items") or []) if i]
+    L.append("## 1. Waiting for you (%d)" % (q.get("open") or 0))
+    L.append("")
+    if not items:
+        L.append("Nothing open. No decision is being held for you.")
+    else:
+        blockers = [i for i in items if (i.get("type") or "").upper() == "BLOCKER"]
+        if blockers:
+            L.append("**%d BLOCKER(s) — work is stopped until these are answered.**" % len(blockers))
+            L.append("")
+        for i in items:
+            typ = (i.get("type") or "?").upper()
+            mark = "🛑" if typ == "BLOCKER" else "❓"
+            L.append("- %s **%s** `%s` — %s" % (mark, typ, _ml(i.get("id"), 40), _ml(i.get("question"), 300)))
+            dflt = i.get("default") or i.get("default_action")
+            if dflt:
+                L.append("  <br>default if unanswered: %s" % _ml(dflt, 220))
+            if i.get("auto_applies_at"):
+                L.append("  <br>auto-applies: `%s`" % _ml(i.get("auto_applies_at"), 40))
+    L.append("")
+
+    # 2. Fleet + orchestrator: is anything running, and does it have room.
+    L.append("## 2. Fleet")
+    L.append("")
+    if not fl.get("known", True):
+        L.append("Unknown — %s" % _ml(fl.get("source"), 200))
+    else:
+        L.append("| | |")
+        L.append("|---|---|")
+        L.append("| Open workers | **%s** of cap %s (%s free) |"
+                 % (fl.get("open_workers"), fl.get("cap"), fl.get("free_slots")))
+        L.append("| Cycle | %s |" % _ml(fl.get("cycle"), 40))
+        L.append("| Orchestrator | %s · context %s%% |"
+                 % (_ml(fl.get("orchestrator_status"), 40), fl.get("orchestrator_context_pct")))
+    L.append("")
+
+    # 3. Delivery: where the code is right now.
+    L.append("## 3. Delivery")
+    L.append("")
+    L.append("Branch `%s` @ `%s`%s" % (_ml(dl.get("branch"), 60), _ml(dl.get("head"), 12),
+             (" · %d dirty path(s)" % dl["dirty_paths"]) if dl.get("dirty_paths") else ""))
+    L.append("")
+    commits = dl.get("commits_on_date") or []
+    if commits:
+        L.append("Shipped %s (%d):" % (date, len(commits)))
+        for c in commits[:8]:
+            L.append("- `%s` %s" % (_ml(c.get("sha"), 12), _ml(c.get("subject"), 120)))
+        if len(commits) > 8:
+            L.append("- …and %d more" % (len(commits) - 8))
+    else:
+        L.append("No commits on %s." % date)
+    L.append("")
+    prs = [p for p in (dl.get("prs") or []) if (p.get("state") or "").upper() == "OPEN"]
+    if prs:
+        L.append("Open PRs:")
+        for p in prs[:5]:
+            L.append("- #%s %s" % (_ml(p.get("number"), 10), _ml(p.get("title"), 120)))
+        L.append("")
+
+    # 4. Tasks — counts only. The full table is 100+ rows; a phone wants the shape, not the list.
+    by = dict(tk.get("by_status") or {})
+    L.append("## 4. Tasks")
+    L.append("")
+    if by:
+        # Delivery order, not count order. Sorting by count puts `unknown` — which is an absence of
+        # information, not a state of any task — first and largest, and the reader's eye lands on the
+        # one number that says nothing. Known states lead; the unknowns are reported after, as the
+        # measurement gap they are.
+        unknown = by.pop("unknown", 0)
+        lead = [s for s in ("In Progress", "In Review", "To Do", "Done") if s in by]
+        rest = sorted(k for k in by if k not in lead)
+        known = " · ".join("**%s** %s" % (by[k], k) for k in lead + rest)
+        L.append(known if known else "No task is in a known state.")
+        if unknown:
+            L.append("")
+            L.append("%s more carry no status here — the tracker was last polled **%s** ago, so this"
+                     " is what the poll missed, not %s idle tasks."
+                     % (unknown, tk.get("tracker_age_human") or _age(tk.get("tracker_age_s")), unknown))
+    else:
+        L.append("No task data.")
+    L.append("")
+
+    # 5. Cost & runway.
+    L.append("## 5. Cost & runway")
+    L.append("")
+    L.append("Cumulative **%s** tokens over %s cycle(s)."
+             % ("{:,}".format(co["cumulative_total"]) if isinstance(co.get("cumulative_total"), int)
+                else "?", co.get("cumulative_cycles")))
+    if co.get("ceiling") is None:
+        L.append("")
+        L.append("**No ceiling is set**, so there is no percentage to be at — %s"
+                 % _ml(co.get("ceiling_why"), 240))
+    nx = rw.get("next_event") or {}
+    L.append("")
+    if nx.get("label"):
+        L.append("Next runway event: **%s** in **%s** — %s."
+                 % (_ml(nx.get("label"), 60), _hours(nx.get("hours")), _ml(nx.get("on_exhaustion"), 40)))
+    else:
+        L.append("Runway: `%s` (%s of %s axes known)."
+                 % (_ml(rw.get("bound"), 40), rw.get("known"), rw.get("total")))
+    L.append("")
+
+    # 6. Today's activity, and how much of it was mechanical rather than model-written.
+    L.append("## 6. Activity")
+    L.append("")
+    L.append("**%s** events today of **%s** total%s."
+             % (ev.get("today"), ev.get("total"),
+                (" · %d%% mechanical" % round((ev.get("mechanical_share") or 0) * 100))
+                if ev.get("mechanical_share") is not None else ""))
+    # `decisions.recent` arrives OLDEST-first. Slicing the head of it under the word "latest" printed
+    # the four oldest records on the page — a caption that contradicted its own list. Sort, then take
+    # the tail. And print the DECISION: an id whose text is another id ("d-…-001 — q-…-001") tells a
+    # reader at 07:00 nothing at all, which is worse than omitting the section.
+    recent_dec = sorted((dec.get("recent") or []), key=lambda d: d.get("ts") or "")
+    if recent_dec:
+        L.append("")
+        L.append("Latest decisions (%s total, newest first):" % dec.get("total"))
+        for d in reversed(recent_dec[-4:]):
+            what = _ml(d.get("decision"), 180)
+            task = d.get("task")
+            L.append("- **%s**%s — %s"
+                     % (what if what else "(no text recorded)",
+                        (" `%s`" % _ml(task, 20)) if task else "",
+                        _ml((d.get("ts") or "")[:16].replace("T", " "), 20)))
+            if d.get("rule"):
+                L.append("  <br>by rule: %s" % _ml(d.get("rule"), 120))
+    L.append("")
+
+    # 7. Where to go next — and an honest word about which links a phone can actually open.
+    L.append("## 7. The rest of the dashboard")
+    L.append("")
+    if ui is not None and not ui.get("ok"):
+        L.append("⚠️ The seven HTML screens did **not** regenerate this pass (`%s`) and are stale."
+                 " This page is not — it is built without node, straight from the bundle."
+                 % _ml(ui.get("reason"), 60))
+        L.append("")
+    L.append("- [Morning digests](../digest/) — Markdown, renders on a phone like this page does.")
+    L.append("- The seven screens live in `docs/lab/site/` as self-contained HTML. **GitHub will not"
+             " render them** — it shows `.html` as escaped source, on every surface, private repo or"
+             " not. Open them from a desktop clone over `file://`, or see"
+             " [the transport table](../site/README.md).")
+    L.append("")
+    L.append("<sub>`%s` · schema `%s`</sub>" % (_ml(bundle.get("generated_by"), 120),
+                                                _ml(bundle.get("schema"), 40)))
+    return "\n".join(L) + "\n"
+
 # ───────────────────────────── poll-fill hook (GSL-87) ────────────────────────
 
 def poll_fill():
@@ -2690,6 +2960,13 @@ def main():
             log("UI render degraded (%s) — pages left stale under a banner" % reason)
 
         written.append(lab_write("docs/lab/site/README.md", SITE_README))
+
+        # The phone page (GSL-108). Written AFTER the render attempt so it can say whether the HTML
+        # screens are current, and OUTSIDE its success branch so it is written whether they are or
+        # not — the one surface the owner can reach from bed must not be the one that disappears when
+        # node does. It is a projection of `bundle`, so it costs no new reads of the world.
+        os.makedirs(os.path.join(LAB, "mobile"), exist_ok=True) if not ARGS["dry_run"] else None
+        written.append(lab_write("docs/lab/mobile/README.md", build_mobile(bundle, ui)))
 
         # status.json is written LAST because it is the only artifact that knows how the render went;
         # it is also the one file a torn write would be catastrophic in, which is why it — like every
