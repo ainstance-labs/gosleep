@@ -73,7 +73,7 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
           and it was broken here in the most expensive place: a reader who sums the table below does
           not reach the cumulative total, and nothing told him why. */}
       {gap !== null && gap > 0 ? (
-        <div class="filter-count" data-cycle-gap={String(gap)}>
+        <div class="scope-note" data-cycle-gap={String(gap)}>
           <b>{gap}</b> of the <b>{c.cumulative_cycles}</b> cycles the ledger counts have no
           per-cycle row here, so <b>every sum below is LOW by an unknown amount</b> — the cumulative
           total above is the only figure that covers them.

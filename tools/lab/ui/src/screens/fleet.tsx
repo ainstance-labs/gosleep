@@ -159,7 +159,9 @@ export function Fleet({ b }: { b: RenderBundle }): VNode {
               included. Two sources, two questions — the counts need not be the same set.
             </p>
           ) : null}
-          <div class="filter-count">
+          {/* scope-note, not filter-count (GSL-160): there is no filter on this screen, and the
+              live count's className is a client.ts contract this static caption must not wear. */}
+          <div class="scope-note">
             A card per worker the log can name. <b>{f.unnamed_sessions}</b> other session(s) have
             events but no name — they completed no task, so the log never learned who they were. Silent
             after {Math.round(f.quiet_after_s / 60)}m; <i>silent</i> is not <i>dead</i>.

@@ -328,6 +328,11 @@ code{font-family:var(--mono);font-size:.9em;background:var(--sunken);border-radi
 .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
 .tag.dead,.tag.BLOCKER{background:var(--dead-soft);color:var(--dead);
       border-color:var(--dead-border)}
+/* The high-impact flag on a question shares dead's triple by VALUE, never by NAME (GSL-160):
+   "this question is typed BLOCKER" and "a wrong default here is expensive" are different meanings
+   that happen to agree on a colour, and the next editor of .tag.BLOCKER must be free to move the
+   type badge without silently repainting the flag. */
+.tag.high-impact{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
 .tag.unknown,.tag.pr-unknown{background:var(--unk-soft);color:var(--unk);
       border-color:var(--unk-border);text-decoration:none}
 .tag.sev.incident{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
@@ -358,9 +363,15 @@ span.dead{color:var(--dead)}
    and a bare em dash in the cost tables — so a reader met two appearances of one phenomenon.
    Italic is dropped (it leaked onto sibling labels wherever the class sat on a container), the
    dotted underline stays as the second channel that does not depend on hue, and the tooltip stays.
-   The underline is scoped to span so it cannot propagate down into a card's children. */
-.unknown{color:var(--unk);font-style:normal;cursor:help}
-span.unknown{text-decoration:underline dotted;text-underline-offset:2px}
+   ⚠️ THE WHOLE RULE IS SCOPED TO span, not only the underline (GSL-156). The same class sits on
+   CONTAINERS — class="card sh-m unknown", class="clock unknown" — and a bare .unknown rule painted
+   every child that had no colour rule of its own (the Freshness heading, a READ value like
+   "8h 17m", the card's prose) in status magenta, with cursor:help over the whole card: rule 2
+   broken by the absence marker itself. Only the span that SAYS "unknown" is the marker; a
+   container takes its state on the left edge (.sh-m.unknown) or on the value ink
+   (.clock.unknown .clock-val), never in the ink of its prose. */
+span.unknown{color:var(--unk);font-style:normal;cursor:help;
+      text-decoration:underline dotted;text-underline-offset:2px}
 /* A caveat is not an alarm: what this screen cannot see is stated quietly, on the inset surface,
    without borrowing amber from the states that earned it. */
 .card.blind{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
@@ -396,6 +407,13 @@ span.unknown{text-decoration:underline dotted;text-underline-offset:2px}
 .runway-bind{font:500 var(--t-xs)/1.45 var(--mono);border:1px solid var(--neutral-border);
       background:var(--neutral-soft);color:var(--neutral);border-radius:var(--r-pill);
       padding:1px 6px;white-space:nowrap}
+/* The clear-state badge carries a JUDGEMENT — "nothing is going to stop the night" — so it takes
+   the ok triple WHOLE: background, ink and border of one role, the single badge shape spec 7.1
+   allows (same as .tag.ok). Without this rule the generic span.ok repainted only the ink and the
+   badge shipped half-dressed: green words on a neutral shell with a neutral border (GSL-159).
+   Latent today (the committed bundle is bound=unknown) but clear is the good ending this
+   dashboard exists for, and its first clear build must not be the first test of this rule. */
+.runway-bind.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-border)}
 .runway-say,.runway-next{font:400 var(--t-base)/1.5 var(--sans);color:var(--dim);max-width:68ch}
 .runway-say{margin-top:var(--s3)}
 .runway-next{margin-top:var(--s2)}
@@ -453,6 +471,12 @@ span.unknown{text-decoration:underline dotted;text-underline-offset:2px}
 .filter-count.filtered{color:var(--warn)}
 .filter-count.none{color:var(--dead);background:var(--dead-soft);border-radius:var(--r1);
       padding:var(--s2) var(--s3)}
+/* The STATIC caption that names what is not on screen — Fleet's unnamed sessions, Cost's cycles
+   with no per-cycle row. Same quiet voice as the filter count, deliberately its OWN name
+   (GSL-160): the count above is a live element whose className client.ts rewrites wholesale, and
+   a screen with no filter must not wear that client contract as decoration. One role = one name
+   (the GSL-151 rule). */
+.scope-note{color:var(--muted);font-size:var(--t-sm);margin:var(--s2) 0}
 
 /* An incident is marked in the MARKUP, not by a script: the owner reads this on a phone at 02:00
    and the page must be right wherever the script did not run. These two rules come AFTER the hover

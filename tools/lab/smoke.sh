@@ -3417,6 +3417,123 @@ grep -Eq 'border[^;}]*dashed' "$CR/docs/lab/site/index.html" \
   && bad "GSL-152 guard: a dashed border RULE exists in the built stylesheet" \
   || ok "GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)"
 
+# ────────── fix wave 3: a dead-graded lab of its OWN for the meter checks ──────────
+# $CR is dead-graded when first built, but the queue check above (lab-emit at :1045) appends a
+# question NOW and rebuilds it — by the time this tail runs, $CR grades fresh again, and a grep
+# that "checks dead" against it would be checking a fresh page. Measured, not guessed: the first
+# version of the GSL-157 grep below did exactly that and failed against sh-m ok. The wave-3 meter
+# checks get their own 20h-stale build and prove the grade from status.json, not from the calendar.
+FW3="$WORK/fw3-dead"; rm -rf "$FW3"; mkdir -p "$FW3/docs/lab/events" "$FW3/docs/lab/questions" "$FW3/docs/lab/decisions"
+: > "$FW3/docs/lab/questions/queue.jsonl"; : > "$FW3/docs/lab/decisions/log.jsonl"
+FW3_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=20)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"c0ffee1"}}\n' "$FW3_TS" \
+  > "$FW3/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$FW3" --no-poll --quiet >/dev/null 2>&1
+
+# ────────── GSL-156 (fix wave 3): the absence marker's ink belongs to the SPAN, never a container ──────────
+# The class `unknown` sits on whole containers too (class="card sh-m unknown", class="clock unknown"),
+# and the bare .unknown rule painted every child without a colour rule of its own — the Freshness
+# heading, a READ value like "8h 17m", the card's prose — in status magenta, with cursor:help over
+# the whole card. That is rule 2 of spec section 1 broken by the absence marker itself. The colour
+# and cursor must be scoped to span, exactly as the underline already was; a container takes its
+# state on the left edge (.sh-m.unknown), never in the ink of its prose. Greps read the stylesheet
+# of a BUILT page — the same bytes the browser reads.
+CRI="$FW3/docs/lab/site/index.html"
+grep -q 'span\.unknown{color:var(--unk)' "$CRI" \
+  && ok "GSL-156: the absence marker's colour+cursor rule is scoped to span.unknown" \
+  || bad "GSL-156: no span-scoped .unknown colour rule in the built stylesheet — the marker lost its ink or the scope"
+grep -q '^\.unknown{' "$CRI" \
+  && bad "GSL-156: a bare .unknown rule survives — containers still hand magenta ink and cursor:help to their prose" \
+  || ok "GSL-156: no bare .unknown rule — a container class cannot repaint its children"
+grep -q 'class="card sh-m unknown"' "$CRI" \
+  && ok "GSL-156 control: the fixture really renders a container wearing the class (the guard above bites)" \
+  || bad "GSL-156 control: no container carries class unknown on the fixture Overview — the guard is vacuous"
+
+# ────────── GSL-157 (fix wave 3): dead is a READ verdict, never the unknown state ──────────
+# The Freshness ternary had no branch for dead, so grade=dead fell into "unknown" — and the meter
+# answered a red DEAD banner two blocks up with the cannot-read magenta, though the reading exists
+# (the age is a number, the verdict is computed). "Nothing is fresh" and "I cannot read the clock"
+# are different sentences (spec section 4.3, the GSL-109 invariant); confusing them here softens
+# the verdict on the screen that answers "can I go to sleep". The fw3-dead fixture is 20h stale, so
+# its build IS dead-graded and the meter must wear .sh-m.dead — red edge and fill, same as the banner.
+grep -q 'class="card sh-m dead" id="sh-freshness"' "$CRI" \
+  && ok "GSL-157: at grade=dead the Freshness meter wears .sh-m.dead — it agrees with the banner" \
+  || bad "GSL-157: the dead-graded Freshness meter does not wear .sh-m.dead"
+grep -q 'class="card sh-m unknown" id="sh-freshness"' "$CRI" \
+  && bad "GSL-157: Freshness still encodes grade=dead as unknown — cannot-read magenta for a verdict it HAS read" \
+  || ok "GSL-157: Freshness no longer answers a read verdict with the cannot-read state"
+# The witness is status.json, NOT a grep for class="stale dead": that string also sits in the
+# page's verdicts JSON island, so the HTML grep is vacuously green on a fresh page.
+[[ "$(jq -r .staleness.grade "$FW3/docs/lab/status.json" 2>/dev/null)" == "dead" ]] \
+  && ok "GSL-157 control: the fixture build really grades itself dead (status.json is the witness)" \
+  || bad "GSL-157 control: the fixture is not dead-graded — the meter greps above prove nothing"
+
+# ────────── GSL-158 (fix wave 3): one absence, one paint — the Tasks dash is muted like its siblings ──────────
+# Spec 6.5 paints the absence placeholder --muted so a hole does not read as a datum, and Cost and
+# Library both ship the muted glyph for it. The Tasks gh-column dash — the same phenomenon, a key
+# the READABLE mirror does not contain — wore class="dim": one absence, two colours on neighbouring
+# screens. $FP is the F5-S3 board whose GSL-702 row renders exactly that dash (check 6 above is the
+# proof the cell exists at all).
+grep -q 'class="muted" title="no GitHub issue mirrors this key"' "$FP" \
+  && ok "GSL-158: the Tasks absence dash is painted muted (spec 6.5), same as Cost and Library" \
+  || bad "GSL-158: the Tasks gh-column dash is not the muted absence glyph"
+grep -q 'class="dim" title="no GitHub issue mirrors this key"' "$FP" \
+  && bad "GSL-158: the dash still wears dim — one absence, two paints across screens" \
+  || ok "GSL-158: no dim-painted absence dash remains on the board"
+grep -q '\.muted{color:var(--muted)}' "$FP" \
+  && ok "GSL-158 control: the built board's stylesheet defines .muted — the glyph is actually painted" \
+  || bad "GSL-158 control: .muted has no rule on the built board — a role class nobody paints"
+
+# ────────── GSL-159 (fix wave 3): the clear-state runway badge wears the ok triple whole ──────────
+# At bound=clear the badge says "nothing is going to stop the night" — a judgement, so it takes the
+# one badge shape spec 7.1 allows: background, ink and border of ONE role. Without its own rule the
+# generic span.ok repainted only the ink and the badge shipped half-dressed — green words on a
+# neutral shell with a neutral border. The state is LATENT on committed data (bound=unknown), which
+# is exactly why the rule is asserted in the built stylesheet: the first clear build must not be
+# the first test of it.
+grep -q '\.runway-bind\.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-border)}' "$CRI" \
+  && ok "GSL-159: .runway-bind.ok carries the full ok triple (spec 7.1) in the built stylesheet" \
+  || bad "GSL-159: no ok-triple rule for the clear-state runway badge — it will ship half-painted"
+grep -q '"runway-bind ok"' "$REPO_ROOT/tools/lab/ui/src/runway.tsx" \
+  && ok "GSL-159 control: runway.tsx really emits class runway-bind ok on the clear branch (the rule has a customer)" \
+  || bad "GSL-159 control: no clear-branch badge markup in runway.tsx — the rule above paints nothing"
+
+# ────────── GSL-160 (fix wave 3): one role = one name — no class is worn for its looks ──────────
+# Three role borrowings, same defect class GSL-151 already ruled on. Fleet's static caption and
+# Cost's cycle-gap note wore .filter-count — the LIVE filter counter whose className client.ts
+# rewrites wholesale, a contract neither screen participates in (neither has a filter). The
+# questions "high impact" flag wore .tag.BLOCKER — the type badge's name — so the next editor of
+# either rule would silently repaint a meaning they never heard of. Each role now owns its name:
+# .scope-note for the static what-is-not-on-screen caption, .tag.high-impact for the flag; the
+# borrowed rules keep their own customers.
+grep -q 'class="filter-count' "$REPO_ROOT/tools/lab/ui/src/screens/fleet.tsx" \
+  && bad "GSL-160: fleet.tsx still borrows the live filter counter's class for a static caption" \
+  || ok "GSL-160: fleet.tsx no longer marks up with .filter-count — the borrowed name went home"
+grep -q 'class="filter-count' "$REPO_ROOT/tools/lab/ui/src/screens/cost.tsx" \
+  && bad "GSL-160: cost.tsx still borrows .filter-count for the cycle-gap note" \
+  || ok "GSL-160: cost.tsx no longer marks up with .filter-count"
+grep -q 'class="scope-note" data-cycle-gap' "$REPO_ROOT/tools/lab/ui/src/screens/cost.tsx" \
+  && ok "GSL-160: the Cost gap-note keeps its data-cycle-gap contract on the new role class" \
+  || bad "GSL-160: the gap-note lost either its role class or its data-cycle-gap attribute"
+grep -q 'class="tag BLOCKER"' "$REPO_ROOT/tools/lab/ui/src/screens/questions.tsx" \
+  && bad "GSL-160: the high-impact flag still wears the BLOCKER type badge's name" \
+  || ok "GSL-160: questions.tsx no longer dresses the flag in the type badge's class (comments may name it in refusals — the grep holds the MARKUP form, the GSL-152 lesson)"
+grep -q 'class="tag high-impact"' "$REPO_ROOT/tools/lab/ui/src/screens/questions.tsx" \
+  && ok "GSL-160: the high-impact flag wears its own role class" \
+  || bad "GSL-160: no .tag.high-impact markup in questions.tsx — the flag went missing"
+grep -q 'class="scope-note"' "$FL/docs/lab/site/fleet.html" \
+  && ok "GSL-160: the built Fleet page marks its caption with the new role class" \
+  || bad "GSL-160: no .scope-note caption on the fixture Fleet page (its workers exist, the caption must render)"
+grep -q '\.scope-note{color:var(--muted)' "$CRI" \
+  && ok "GSL-160 control: the stylesheet defines .scope-note — the caption is actually painted" \
+  || bad "GSL-160 control: .scope-note has no rule — a role class nobody paints"
+grep -q '\.tag\.high-impact{background:var(--dead-soft)' "$CRI" \
+  && ok "GSL-160 control: the stylesheet defines .tag.high-impact with dead's triple by value" \
+  || bad "GSL-160 control: .tag.high-impact has no rule — the flag lost its colour in the rename"
+grep -q '\.filter-count{' "$CRI" \
+  && ok "GSL-160 control: the live filter counter keeps its own rule — the rename took nothing from it" \
+  || bad "GSL-160 control: the .filter-count rule vanished — the rename broke the live counter"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

@@ -1,8 +1,8 @@
 # gosleep — the phone page
 
-🔴 **DEAD at build** · generated `2026-07-23T20:39:05Z` · freshest event **8h 17m** old at that moment (`2026-07-23T12:21:24Z`) · day `2026-07-23`
+🔴 **DEAD at build** · generated `2026-07-23T22:09:39Z` · freshest event **9h 48m** old at that moment (`2026-07-23T12:21:24Z`) · day `2026-07-23`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-23T20:39:05Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-23T22:09:39Z`, not a claim about now. There are two ages here, not one.
 >
 > This page already graded itself **DEAD** at build time. It cannot degrade further, and every minute since has only made that verdict more true.
 
@@ -18,18 +18,18 @@ Unknown — docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fre
 
 ## 3. Delivery
 
-Branch `GSL-153-fix-wave-2` @ `7ece7fd` · 15 dirty path(s)
+Branch `GSL-161-fix-wave-3` @ `db4043b`
 
-Shipped 2026-07-23 (19):
-- `7ece7fd` GSL-152 Комментарий RunwayStrip описывает unk по факту: магента + сплошная граница, запрет пунктира назван, а не нарушен
-- `6564302` GSL-151 Cost partial-ячейка носит собственный .partial-note вместо заимствованного .wk-models: одна роль — одно имя
-- `eec90f3` GSL-149 Severity-фасет Timeline строится из SEVERITIES: worst-first вместо порядка появления, пересечение с фактом сохр…
-- `50d6143` GSL-148 doc_title декодирует HTML-сущности: html.unescape после снятия тегов, Library экранирует ровно один раз
-- `6433506` GSL-147 Статусы Jira на Tasks board носят цвет спеки 7.2: tag st ok/warn/info, guard от утечки .tag.info на timeline
-- `2194035` GSL-146 Каскад label-спанов больше не глотает span.unknown: :not(.unknown) в .kpi span/.wk-f span, значение-отсутствие …
-- `10e63d7` GSL-145 [Docs][Evals] Verification run 02 audit dashboard
-- `ff062fd` GSL-144 [Docs][Evals] Verification run 02 regression lane
-- …and 11 more
+Shipped 2026-07-23 (29):
+- `db4043b` GSL-157 Смоук волны 3: собственная dead-фикстура fw3-dead — $CR к хвосту прогона уже fresh (вопрос-эмит :1045), свидете…
+- `be38783` GSL-160 Заимствованные имена ролей возвращены хозяевам: .scope-note для статических caption Fleet/Cost, .tag.high-impac…
+- `9f6ec45` GSL-159 Бейдж runway-bind в состоянии clear носит ok-тройку целиком: фон, чернила и граница одной роли по спеке 7.1
+- `eea0425` GSL-158 Глиф отсутствия gh-зеркала на Tasks покрашен --muted по спеке 6.5: единый вид отсутствия с Cost и Library
+- `22a6122` GSL-157 Freshness при grade=dead носит .sh-m.dead: прочитанный вердикт больше не рендерится состоянием «не могу прочита…
+- `9601d43` GSL-156 Правило .unknown скоуплено на span: контейнерный класс не красит прозу self-health карточки, cursor:help только…
+- `4b91dfc` GSL-155 [Docs][Evals] Verification run 03 audit dashboard
+- `6860674` GSL-154 [Docs][Evals] Verification run 03 regression lane
+- …and 21 more
 
 ## 4. Tasks
 
@@ -39,7 +39,7 @@ Shipped 2026-07-23 (19):
 | To Do | 3 |
 | Done | 5 |
 
-132 more carry no status here — the tracker was last polled **10d 23h** ago, so this is what the poll missed, not 132 idle tasks.
+140 more carry no status here — the tracker was last polled **11d 0h** ago, so this is what the poll missed, not 140 idle tasks.
 
 ## 5. Cost & runway
 

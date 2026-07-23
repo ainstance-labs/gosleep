@@ -15,11 +15,16 @@ import { Age, Unknown } from "./components.js";
  * not evidence, and it must never be dressed in the colour of proof.
  */
 
-/** state → the class that colours it. `empty` and `unknown` are BOTH kept away from green on purpose. */
+/** state → the class that colours it. `empty` and `unknown` are BOTH kept away from green on purpose.
+ * `dead` is the opposite of `unknown` and must never fall into it: dead is a verdict the meter HAS
+ * read (the reading exists and it is bad), unknown is the absence of a reading. GSL-157 was exactly
+ * that confusion — a dead-graded Freshness wearing the cannot-read magenta two blocks under a red
+ * DEAD banner, the page contradicting itself in the softening direction. */
 const METER_CLASS: Record<string, string> = {
   ok: "ok",
   gaps: "warn",
   debt: "warn",
+  dead: "dead",
   empty: "dim",
   unknown: "unknown",
 };
@@ -43,8 +48,12 @@ function meterClass(state: string, alarm = false): string {
  * do that sum himself, and cannot do it from one number.
  */
 function Freshness({ h, built }: { h: SelfHealth; built: number }): VNode {
+  // dead maps to dead, NEVER to unknown (GSL-157). At grade=dead the reading exists — the age is a
+  // number, the verdict is computed — and the banner two blocks up is already red. A card that
+  // answers it with the cannot-read magenta softens the verdict, which is the one direction this
+  // page must never err in. unknown stays as the fallback for a grade that is genuinely absent.
   return (
-    <div class={"card sh-m " + meterClass(h.grade === "fresh" ? "ok" : h.grade === "stale" ? "gaps" : "unknown")} id="sh-freshness">
+    <div class={"card sh-m " + meterClass(h.grade === "fresh" ? "ok" : h.grade === "stale" ? "gaps" : h.grade === "dead" ? "dead" : "unknown")} id="sh-freshness">
       <div class="sh-h">Freshness — two ages, not one</div>
       <div class="sh-row">
         {/* `ageText` already ends in "old" (countdown.ts) — the label is phrased to run into it rather
