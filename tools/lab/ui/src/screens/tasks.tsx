@@ -106,7 +106,9 @@ function Row({ r, built, gh }: { r: TaskRow; built: number; gh: boolean }): VNod
         ) : gh ? (
           // The mirror WAS read, and this key is not in it: the issue was never opened. An empty cell
           // is the honest report of that; a link would have to be invented to fill it.
-          <span class="dim" title="no GitHub issue mirrors this key">
+          // Muted, not dim (spec 6.5, GSL-158): this is the same absence glyph Cost and Library
+          // paint muted, and one phenomenon must not wear two colours on neighbouring screens.
+          <span class="muted" title="no GitHub issue mirrors this key">
             —
           </span>
         ) : (

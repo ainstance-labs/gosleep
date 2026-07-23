@@ -3453,6 +3453,22 @@ grep -q 'class="stale dead"' "$CRI" \
   && ok "GSL-157 control: the fixture build really grades itself dead (the banner is the witness)" \
   || bad "GSL-157 control: the fixture is not dead-graded — the meter greps above prove nothing"
 
+# ────────── GSL-158 (fix wave 3): one absence, one paint — the Tasks dash is muted like its siblings ──────────
+# Spec 6.5 paints the absence placeholder --muted so a hole does not read as a datum, and Cost and
+# Library both ship the muted glyph for it. The Tasks gh-column dash — the same phenomenon, a key
+# the READABLE mirror does not contain — wore class="dim": one absence, two colours on neighbouring
+# screens. $FP is the F5-S3 board whose GSL-702 row renders exactly that dash (check 6 above is the
+# proof the cell exists at all).
+grep -q 'class="muted" title="no GitHub issue mirrors this key"' "$FP" \
+  && ok "GSL-158: the Tasks absence dash is painted muted (spec 6.5), same as Cost and Library" \
+  || bad "GSL-158: the Tasks gh-column dash is not the muted absence glyph"
+grep -q 'class="dim" title="no GitHub issue mirrors this key"' "$FP" \
+  && bad "GSL-158: the dash still wears dim — one absence, two paints across screens" \
+  || ok "GSL-158: no dim-painted absence dash remains on the board"
+grep -q '\.muted{color:var(--muted)}' "$FP" \
+  && ok "GSL-158 control: the built board's stylesheet defines .muted — the glyph is actually painted" \
+  || bad "GSL-158 control: .muted has no rule on the built board — a role class nobody paints"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
