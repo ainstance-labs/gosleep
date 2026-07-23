@@ -3153,6 +3153,26 @@ grep -q 'dev history entry' "$T4L" \
   && ok "GSL-123 control: filled titles still render their heading text — the marker did not replace real titles" \
   || bad "GSL-123 control: a filled title vanished from the page"
 
+# GSL-123 (the BUILT artifact, not the fixture): the reworded fallback lived in the source while the
+# committed library.html stayed as built two commits earlier — the fix existed everywhere except the
+# one file a reader opens, and run 01 found exactly that. So the committed page itself is held to the
+# rule: a cross-index row carries a real title or the unknown marker, never a blank cell. Any page
+# built by any post-fix chronicler satisfies this; only a stale pre-fix build can fail it.
+LIVE_LIB="$REPO_ROOT/docs/lab/site/library.html"
+python3 - "$LIVE_LIB" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+rows=re.findall(r'<tr data-row="\d+">(.*?)</tr>', h, re.S)
+blank=0
+for b in rows:
+    tds=re.findall(r'<td[^>]*>(.*?)</td>', b, re.S)
+    if len(tds)>=3 and not re.sub(r'<[^>]+>','',tds[2]).strip(): blank+=1
+sys.exit(1 if (blank or len(rows) < 50) else 0)
+PY
+[[ $? -eq 0 ]] \
+  && ok "GSL-123 ⭐ (built artifact) every cross-index row in docs/lab/site/library.html carries a title or the unknown marker — no blank cell shipped" \
+  || bad "GSL-123 ⭐ (built artifact) the committed library.html ships a blank title cell (or the table went missing) — the built page lags its own source"
+
 # GSL-120: the heading counts cycles-with-a-row; the table must show that many. The old slice(0,40)
 # left the heading at 45 and the table at 40, hiding five cycles with nothing on the page naming them.
 T4_CYC="$(jq -r '.cost.cycles | length' "$T4B" 2>/dev/null)"
