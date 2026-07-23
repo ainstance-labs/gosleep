@@ -218,7 +218,10 @@ p,.card p,.blind{font:400 var(--t-base)/1.5 var(--sans);color:var(--dim);max-wid
    ONCE A SECOND, and proportional digits make the whole line twitch sideways on every tick. */
 .kpi b,.clock-val{display:block;font:500 var(--t-hero)/1.15 var(--mono);
       font-variant-numeric:tabular-nums;color:var(--fg)}
-.kpi span,.clock-axis{display:block;font:400 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
+/* :not(.unknown) is load-bearing: the Unknown marker is a span too, and it sits INSIDE .kpi b —
+   an unqualified ".kpi span" (0,1,1) out-specifies ".unknown" (0,1,0) and repaints the one value
+   the spec singles out (8.3: unknown keeps --unk at value size) as an 11px muted caption. */
+.kpi span:not(.unknown),.clock-axis{display:block;font:400 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
       letter-spacing:.06em;color:var(--muted);margin-top:var(--s1)}
 .clocks{display:grid;gap:var(--s2);grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
       margin-top:var(--s3)}
@@ -484,7 +487,9 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .wk-why{color:var(--dim);font:400 var(--t-base)/1.5 var(--sans);margin:var(--s2) 0;max-width:68ch}
 .wk-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s2) var(--s3);
       border-top:1px solid var(--line-subtle);padding-top:var(--s2);font-size:var(--t-md)}
-.wk-f span{display:block;color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
+/* :not(.unknown) for the same cascade reason as ".kpi span": a field whose value is unknown puts
+   span.unknown NEXT TO the label span, and the label rule must not caption-ify the value. */
+.wk-f span:not(.unknown){display:block;color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
       text-transform:uppercase;letter-spacing:.06em}
 .wk-task{margin-top:var(--s2);font-size:var(--t-md)}
 .wk-models{color:var(--warn)}

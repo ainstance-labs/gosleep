@@ -3303,6 +3303,24 @@ PY
   && ok "GSL-132 control: the drift fixture still grades (fresh, age ≥ 40s) — the ⭐ compared two real numbers" \
   || bad "GSL-132 control: the drift fixture produced no usable age — the ⭐ above proves nothing"
 
+# ────────── GSL-146 (fix wave 2): the absence marker is a VALUE, never a caption ──────────
+# The Unknown span sits where a value sits — inside `.kpi b`, beside a `.wk-f` label — and the
+# generic label selectors (`.kpi span`, `.wk-f span`, specificity 0,1,1) also matched span.unknown,
+# out-specifying `.unknown` (0,1,0). The cascade then painted the one value the spec singles out
+# (section 8.3: "значение unknown красится --unk") as an 11px muted uppercase caption, on every
+# unknown KPI tile and worker field of Fleet and Cost, in both themes. The label rules must EXCLUDE
+# the marker. These greps read the stylesheet of a BUILT page — the same bytes the browser reads.
+FW2H="$CR/docs/lab/site/fleet.html"
+grep -q '\.kpi span:not(\.unknown)' "$FW2H" \
+  && ok "GSL-146: the KPI label selector excludes span.unknown — the value is not a caption" \
+  || bad "GSL-146: .kpi span swallows span.unknown — an unknown KPI renders as two captions"
+grep -q '\.wk-f span:not(\.unknown)' "$FW2H" \
+  && ok "GSL-146: the worker-field label selector excludes span.unknown" \
+  || bad "GSL-146: .wk-f span swallows span.unknown — the absence marker loses --unk"
+grep -q 'class="unknown"' "$FW2H" \
+  && ok "GSL-146 control: the fixture Fleet page really renders span.unknown (the greps above bite)" \
+  || bad "GSL-146 control: no span.unknown on the fixture Fleet page — the checks above are vacuous"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
