@@ -3483,6 +3483,42 @@ grep -q '"runway-bind ok"' "$REPO_ROOT/tools/lab/ui/src/runway.tsx" \
   && ok "GSL-159 control: runway.tsx really emits class runway-bind ok on the clear branch (the rule has a customer)" \
   || bad "GSL-159 control: no clear-branch badge markup in runway.tsx — the rule above paints nothing"
 
+# ────────── GSL-160 (fix wave 3): one role = one name — no class is worn for its looks ──────────
+# Three role borrowings, same defect class GSL-151 already ruled on. Fleet's static caption and
+# Cost's cycle-gap note wore .filter-count — the LIVE filter counter whose className client.ts
+# rewrites wholesale, a contract neither screen participates in (neither has a filter). The
+# questions "high impact" flag wore .tag.BLOCKER — the type badge's name — so the next editor of
+# either rule would silently repaint a meaning they never heard of. Each role now owns its name:
+# .scope-note for the static what-is-not-on-screen caption, .tag.high-impact for the flag; the
+# borrowed rules keep their own customers.
+grep -q 'class="filter-count' "$REPO_ROOT/tools/lab/ui/src/screens/fleet.tsx" \
+  && bad "GSL-160: fleet.tsx still borrows the live filter counter's class for a static caption" \
+  || ok "GSL-160: fleet.tsx no longer marks up with .filter-count — the borrowed name went home"
+grep -q 'class="filter-count' "$REPO_ROOT/tools/lab/ui/src/screens/cost.tsx" \
+  && bad "GSL-160: cost.tsx still borrows .filter-count for the cycle-gap note" \
+  || ok "GSL-160: cost.tsx no longer marks up with .filter-count"
+grep -q 'class="scope-note" data-cycle-gap' "$REPO_ROOT/tools/lab/ui/src/screens/cost.tsx" \
+  && ok "GSL-160: the Cost gap-note keeps its data-cycle-gap contract on the new role class" \
+  || bad "GSL-160: the gap-note lost either its role class or its data-cycle-gap attribute"
+grep -q 'class="tag BLOCKER"' "$REPO_ROOT/tools/lab/ui/src/screens/questions.tsx" \
+  && bad "GSL-160: the high-impact flag still wears the BLOCKER type badge's name" \
+  || ok "GSL-160: questions.tsx no longer dresses the flag in the type badge's class (comments may name it in refusals — the grep holds the MARKUP form, the GSL-152 lesson)"
+grep -q 'class="tag high-impact"' "$REPO_ROOT/tools/lab/ui/src/screens/questions.tsx" \
+  && ok "GSL-160: the high-impact flag wears its own role class" \
+  || bad "GSL-160: no .tag.high-impact markup in questions.tsx — the flag went missing"
+grep -q 'class="scope-note"' "$FL/docs/lab/site/fleet.html" \
+  && ok "GSL-160: the built Fleet page marks its caption with the new role class" \
+  || bad "GSL-160: no .scope-note caption on the fixture Fleet page (its workers exist, the caption must render)"
+grep -q '\.scope-note{color:var(--muted)' "$CRI" \
+  && ok "GSL-160 control: the stylesheet defines .scope-note — the caption is actually painted" \
+  || bad "GSL-160 control: .scope-note has no rule — a role class nobody paints"
+grep -q '\.tag\.high-impact{background:var(--dead-soft)' "$CRI" \
+  && ok "GSL-160 control: the stylesheet defines .tag.high-impact with dead's triple by value" \
+  || bad "GSL-160 control: .tag.high-impact has no rule — the flag lost its colour in the rename"
+grep -q '\.filter-count{' "$CRI" \
+  && ok "GSL-160 control: the live filter counter keeps its own rule — the rename took nothing from it" \
+  || bad "GSL-160 control: the .filter-count rule vanished — the rename broke the live counter"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

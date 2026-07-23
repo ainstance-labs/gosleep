@@ -73,7 +73,9 @@ function Item({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
       <div>
         <span class={`tag ${q.type}`}>{q.type}</span> <code>{q.id}</code>{" "}
         {q.task ? <code>{q.task}</code> : null}{" "}
-        {q.high_impact ? <span class="tag BLOCKER">high impact</span> : null}
+        {/* Its own class, not "tag BLOCKER" (GSL-160): the flag borrows the BLOCKER colour by
+            value, and borrowing the NAME would tie two meanings to one rule. */}
+        {q.high_impact ? <span class="tag high-impact">high impact</span> : null}
       </div>
       <p>
         <b>{q.question}</b>

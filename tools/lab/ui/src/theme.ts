@@ -328,6 +328,11 @@ code{font-family:var(--mono);font-size:.9em;background:var(--sunken);border-radi
 .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
 .tag.dead,.tag.BLOCKER{background:var(--dead-soft);color:var(--dead);
       border-color:var(--dead-border)}
+/* The high-impact flag on a question shares dead's triple by VALUE, never by NAME (GSL-160):
+   "this question is typed BLOCKER" and "a wrong default here is expensive" are different meanings
+   that happen to agree on a colour, and the next editor of .tag.BLOCKER must be free to move the
+   type badge without silently repainting the flag. */
+.tag.high-impact{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
 .tag.unknown,.tag.pr-unknown{background:var(--unk-soft);color:var(--unk);
       border-color:var(--unk-border);text-decoration:none}
 .tag.sev.incident{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
@@ -466,6 +471,12 @@ span.unknown{color:var(--unk);font-style:normal;cursor:help;
 .filter-count.filtered{color:var(--warn)}
 .filter-count.none{color:var(--dead);background:var(--dead-soft);border-radius:var(--r1);
       padding:var(--s2) var(--s3)}
+/* The STATIC caption that names what is not on screen — Fleet's unnamed sessions, Cost's cycles
+   with no per-cycle row. Same quiet voice as the filter count, deliberately its OWN name
+   (GSL-160): the count above is a live element whose className client.ts rewrites wholesale, and
+   a screen with no filter must not wear that client contract as decoration. One role = one name
+   (the GSL-151 rule). */
+.scope-note{color:var(--muted);font-size:var(--t-sm);margin:var(--s2) 0}
 
 /* An incident is marked in the MARKUP, not by a script: the owner reads this on a phone at 02:00
    and the page must be right wherever the script did not run. These two rules come AFTER the hover
