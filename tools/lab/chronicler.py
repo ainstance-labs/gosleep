@@ -2,7 +2,7 @@
 # gosleep lab — chronicler (GSL-86). The T3 regenerator. Invoked via tools/lab/chronicler.sh.
 # See that wrapper for the full contract; this file is the implementation.
 # python3 stdlib only. 0 API keys (C1).
-import sys, os, re, json, subprocess, time, datetime, glob
+import sys, os, re, json, subprocess, time, datetime, glob, html
 
 # ───────────────────────────── args ─────────────────────────────
 
@@ -1699,7 +1699,11 @@ def doc_title(path):
              or re.search(r"<h1[^>]*>(.*?)</h1>", head, re.S | re.I))
         if not m:
             return ""
-        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(1))).strip()
+        # GSL-148: decode entities AFTER stripping tags. A <title> arrives entity-encoded (&amp;),
+        # and the view layer escapes on render; without a decode here the bundle carries "&amp;",
+        # the page prints the five characters, and a search for "&" cannot match the row. Decoding
+        # after the tag strip keeps a literal "&lt;b&gt;" in a title as text instead of a tag.
+        return html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(1))).strip())
     for line in head.splitlines():
         if line.startswith("# "):
             return line[2:].strip()

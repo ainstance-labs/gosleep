@@ -3350,6 +3350,27 @@ grep -q '\.tag\.info{' "$STP2" \
   && bad "GSL-147 guard: a bare .tag.info rule exists — it would repaint the timeline's sev=info column" \
   || ok "GSL-147 guard: no bare .tag.info rule — sev=info on the timeline stays neutral (7.2 caveat)"
 
+# ────────── GSL-148 (fix wave 2): a title is quoted, not re-encoded ──────────
+# doc_title() lifted the raw <title> text of an HTML report without decoding entities, so the
+# bundle carried "&amp;"; the view then escaped it AGAIN and the Library printed the five
+# characters "&amp;" to the reader — the dashboard misquoting the data it indexes. The bundle must
+# carry the character itself; the built page then escapes it exactly once.
+AMPW="$WORK/fw2-amp"; mkdir -p "$AMPW/docs/lab/events" "$AMPW/docs/reports/amp-probe"
+printf '{"ts":"%sT20:10:00Z","run_id":"x","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"abc1234"}}\n' "$TODAY" \
+  > "$AMPW/docs/lab/events/$TODAY.jsonl"
+printf '<title>Amp &amp; sand — fixture</title>\n' > "$AMPW/docs/reports/amp-probe/index.html"
+bash "$CH" --repo "$AMPW" --no-poll --quiet --json >/dev/null 2>&1
+jq -e '.library.sections[] | select(.key=="reports") | .items[] | select(.title=="Amp & sand — fixture")' \
+   "$AMPW/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-148: doc_title decodes entities — the bundle carries the ampersand, not its encoding" \
+  || bad "GSL-148: the bundle still carries '&amp;' — doc_title does not html.unescape"
+grep -q 'Amp &amp; sand — fixture' "$AMPW/docs/lab/site/library.html" \
+  && ok "GSL-148: the built Library cell escapes the decoded title exactly once" \
+  || bad "GSL-148: the once-escaped title form is missing from the built Library page"
+grep -q '&amp;amp;' "$AMPW/docs/lab/site/library.html" \
+  && bad "GSL-148: double escape — the Library prints literal '&amp;' to the reader" \
+  || ok "GSL-148: no double escape anywhere on the built Library page"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
