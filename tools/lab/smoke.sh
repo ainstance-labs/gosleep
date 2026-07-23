@@ -3417,6 +3417,19 @@ grep -Eq 'border[^;}]*dashed' "$CR/docs/lab/site/index.html" \
   && bad "GSL-152 guard: a dashed border RULE exists in the built stylesheet" \
   || ok "GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)"
 
+# ────────── fix wave 3: a dead-graded lab of its OWN for the meter checks ──────────
+# $CR is dead-graded when first built, but the queue check above (lab-emit at :1045) appends a
+# question NOW and rebuilds it — by the time this tail runs, $CR grades fresh again, and a grep
+# that "checks dead" against it would be checking a fresh page. Measured, not guessed: the first
+# version of the GSL-157 grep below did exactly that and failed against sh-m ok. The wave-3 meter
+# checks get their own 20h-stale build and prove the grade from status.json, not from the calendar.
+FW3="$WORK/fw3-dead"; rm -rf "$FW3"; mkdir -p "$FW3/docs/lab/events" "$FW3/docs/lab/questions" "$FW3/docs/lab/decisions"
+: > "$FW3/docs/lab/questions/queue.jsonl"; : > "$FW3/docs/lab/decisions/log.jsonl"
+FW3_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=20)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"c0ffee1"}}\n' "$FW3_TS" \
+  > "$FW3/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$FW3" --no-poll --quiet >/dev/null 2>&1
+
 # ────────── GSL-156 (fix wave 3): the absence marker's ink belongs to the SPAN, never a container ──────────
 # The class `unknown` sits on whole containers too (class="card sh-m unknown", class="clock unknown"),
 # and the bare .unknown rule painted every child without a colour rule of its own — the Freshness
@@ -3425,7 +3438,7 @@ grep -Eq 'border[^;}]*dashed' "$CR/docs/lab/site/index.html" \
 # and cursor must be scoped to span, exactly as the underline already was; a container takes its
 # state on the left edge (.sh-m.unknown), never in the ink of its prose. Greps read the stylesheet
 # of a BUILT page — the same bytes the browser reads.
-CRI="$CR/docs/lab/site/index.html"
+CRI="$FW3/docs/lab/site/index.html"
 grep -q 'span\.unknown{color:var(--unk)' "$CRI" \
   && ok "GSL-156: the absence marker's colour+cursor rule is scoped to span.unknown" \
   || bad "GSL-156: no span-scoped .unknown colour rule in the built stylesheet — the marker lost its ink or the scope"
@@ -3441,16 +3454,18 @@ grep -q 'class="card sh-m unknown"' "$CRI" \
 # answered a red DEAD banner two blocks up with the cannot-read magenta, though the reading exists
 # (the age is a number, the verdict is computed). "Nothing is fresh" and "I cannot read the clock"
 # are different sentences (spec section 4.3, the GSL-109 invariant); confusing them here softens
-# the verdict on the screen that answers "can I go to sleep". The $CR fixture is 20h stale, so its
-# build IS dead-graded and the meter must wear .sh-m.dead — red edge and fill, same as the banner.
+# the verdict on the screen that answers "can I go to sleep". The fw3-dead fixture is 20h stale, so
+# its build IS dead-graded and the meter must wear .sh-m.dead — red edge and fill, same as the banner.
 grep -q 'class="card sh-m dead" id="sh-freshness"' "$CRI" \
   && ok "GSL-157: at grade=dead the Freshness meter wears .sh-m.dead — it agrees with the banner" \
   || bad "GSL-157: the dead-graded Freshness meter does not wear .sh-m.dead"
 grep -q 'class="card sh-m unknown" id="sh-freshness"' "$CRI" \
   && bad "GSL-157: Freshness still encodes grade=dead as unknown — cannot-read magenta for a verdict it HAS read" \
   || ok "GSL-157: Freshness no longer answers a read verdict with the cannot-read state"
-grep -q 'class="stale dead"' "$CRI" \
-  && ok "GSL-157 control: the fixture build really grades itself dead (the banner is the witness)" \
+# The witness is status.json, NOT a grep for class="stale dead": that string also sits in the
+# page's verdicts JSON island, so the HTML grep is vacuously green on a fresh page.
+[[ "$(jq -r .staleness.grade "$FW3/docs/lab/status.json" 2>/dev/null)" == "dead" ]] \
+  && ok "GSL-157 control: the fixture build really grades itself dead (status.json is the witness)" \
   || bad "GSL-157 control: the fixture is not dead-graded — the meter greps above prove nothing"
 
 # ────────── GSL-158 (fix wave 3): one absence, one paint — the Tasks dash is muted like its siblings ──────────

@@ -51,7 +51,8 @@ Jira: GSL-156 · GH: #160 · находка 1 (MAJOR) аудита verifier-skep
 - `tools/lab/ui/src/theme.ts` — блок «Absence, rendered ONE way»: правило слито в
   `span.unknown{…}`, несущий комментарий объясняет контейнерные носители класса.
 - `tools/lab/smoke.sh` — блок «GSL-156 (fix wave 3)»: греп span-скоупленного правила в собранном
-  index.html фикстуры $CR + guard «нет голого `.unknown{`» + контроль невакуумности
+  index.html собственной dead-фикстуры волны 3 (fw3-dead; $CR к хвосту прогона уже fresh —
+  вопрос-эмит на :1045 пересобирает её) + guard «нет голого `.unknown{`» + контроль невакуумности
   (`class="card sh-m unknown"` реально присутствует).
 
 ### Как проверено прогоном
