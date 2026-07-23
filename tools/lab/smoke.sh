@@ -3436,6 +3436,23 @@ grep -q 'class="card sh-m unknown"' "$CRI" \
   && ok "GSL-156 control: the fixture really renders a container wearing the class (the guard above bites)" \
   || bad "GSL-156 control: no container carries class unknown on the fixture Overview — the guard is vacuous"
 
+# ────────── GSL-157 (fix wave 3): dead is a READ verdict, never the unknown state ──────────
+# The Freshness ternary had no branch for dead, so grade=dead fell into "unknown" — and the meter
+# answered a red DEAD banner two blocks up with the cannot-read magenta, though the reading exists
+# (the age is a number, the verdict is computed). "Nothing is fresh" and "I cannot read the clock"
+# are different sentences (spec section 4.3, the GSL-109 invariant); confusing them here softens
+# the verdict on the screen that answers "can I go to sleep". The $CR fixture is 20h stale, so its
+# build IS dead-graded and the meter must wear .sh-m.dead — red edge and fill, same as the banner.
+grep -q 'class="card sh-m dead" id="sh-freshness"' "$CRI" \
+  && ok "GSL-157: at grade=dead the Freshness meter wears .sh-m.dead — it agrees with the banner" \
+  || bad "GSL-157: the dead-graded Freshness meter does not wear .sh-m.dead"
+grep -q 'class="card sh-m unknown" id="sh-freshness"' "$CRI" \
+  && bad "GSL-157: Freshness still encodes grade=dead as unknown — cannot-read magenta for a verdict it HAS read" \
+  || ok "GSL-157: Freshness no longer answers a read verdict with the cannot-read state"
+grep -q 'class="stale dead"' "$CRI" \
+  && ok "GSL-157 control: the fixture build really grades itself dead (the banner is the witness)" \
+  || bad "GSL-157 control: the fixture is not dead-graded — the meter greps above prove nothing"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
