@@ -3406,6 +3406,17 @@ grep -q '\.partial-note{' "$FL/docs/lab/site/cost.html" \
   && ok "GSL-151 control: the stylesheet defines .partial-note — the cell is actually painted" \
   || bad "GSL-151 control: .partial-note has no rule — a role class nobody paints"
 
+# ────────── GSL-152 (fix wave 2): a comment may not describe the banned pattern as current ──────────
+# The RunwayStrip tone comment still said unk is "magenta and dashed". The dashed half stopped being
+# true when the redesign removed every dashed border (spec section 11); a shipped comment describing
+# the banned edge as behaviour is drift that points the next editor at reintroducing it.
+grep -q 'magenta and dashed' "$REPO_ROOT/tools/lab/ui/src/runway.tsx" \
+  && bad "GSL-152: runway.tsx still describes unk as 'magenta and dashed' — the dashes are gone" \
+  || ok "GSL-152: no runway.tsx comment sells the banned dashed edge as current behaviour"
+grep -Eq 'border[^;}]*dashed' "$CR/docs/lab/site/index.html" \
+  && bad "GSL-152 guard: a dashed border RULE exists in the built stylesheet" \
+  || ok "GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

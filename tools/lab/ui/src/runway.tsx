@@ -52,8 +52,11 @@ export function RunwayStrip({ r }: { r: Runway }): VNode {
   // GSL-109 split "unknown" off from "warn". They were the same amber, which quietly undid the
   // distinction this component's whole docstring is about: "under four hours left" is a reading, and
   // "I could not read the clock" is the absence of one. Painted identically, the second was served
-  // to the owner as the first. `unk` is magenta and dashed — off the green-amber-red axis entirely,
-  // because unknown is not a grade on it. See theme.ts for why the hue was chosen by measurement.
+  // to the owner as the first. `unk` is magenta — off the green-amber-red axis entirely, because
+  // unknown is not a grade on it — carried as ink and a SOLID border edge: the redesign bans dashed
+  // borders outright (spec section 11; the sole dotted survivor is the .unknown underline), so this
+  // comment must not sell the banned edge as current behaviour (GSL-152). See theme.ts for why the
+  // hue was chosen by measurement.
   const tone =
     r.bound === "clear"
       ? "ok"
