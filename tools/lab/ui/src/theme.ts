@@ -358,9 +358,15 @@ span.dead{color:var(--dead)}
    and a bare em dash in the cost tables — so a reader met two appearances of one phenomenon.
    Italic is dropped (it leaked onto sibling labels wherever the class sat on a container), the
    dotted underline stays as the second channel that does not depend on hue, and the tooltip stays.
-   The underline is scoped to span so it cannot propagate down into a card's children. */
-.unknown{color:var(--unk);font-style:normal;cursor:help}
-span.unknown{text-decoration:underline dotted;text-underline-offset:2px}
+   ⚠️ THE WHOLE RULE IS SCOPED TO span, not only the underline (GSL-156). The same class sits on
+   CONTAINERS — class="card sh-m unknown", class="clock unknown" — and a bare .unknown rule painted
+   every child that had no colour rule of its own (the Freshness heading, a READ value like
+   "8h 17m", the card's prose) in status magenta, with cursor:help over the whole card: rule 2
+   broken by the absence marker itself. Only the span that SAYS "unknown" is the marker; a
+   container takes its state on the left edge (.sh-m.unknown) or on the value ink
+   (.clock.unknown .clock-val), never in the ink of its prose. */
+span.unknown{color:var(--unk);font-style:normal;cursor:help;
+      text-decoration:underline dotted;text-underline-offset:2px}
 /* A caveat is not an alarm: what this screen cannot see is stated quietly, on the inset surface,
    without borrowing amber from the states that earned it. */
 .card.blind{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}

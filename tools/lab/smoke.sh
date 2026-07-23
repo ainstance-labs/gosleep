@@ -3417,6 +3417,25 @@ grep -Eq 'border[^;}]*dashed' "$CR/docs/lab/site/index.html" \
   && bad "GSL-152 guard: a dashed border RULE exists in the built stylesheet" \
   || ok "GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)"
 
+# ────────── GSL-156 (fix wave 3): the absence marker's ink belongs to the SPAN, never a container ──────────
+# The class `unknown` sits on whole containers too (class="card sh-m unknown", class="clock unknown"),
+# and the bare .unknown rule painted every child without a colour rule of its own — the Freshness
+# heading, a READ value like "8h 17m", the card's prose — in status magenta, with cursor:help over
+# the whole card. That is rule 2 of spec section 1 broken by the absence marker itself. The colour
+# and cursor must be scoped to span, exactly as the underline already was; a container takes its
+# state on the left edge (.sh-m.unknown), never in the ink of its prose. Greps read the stylesheet
+# of a BUILT page — the same bytes the browser reads.
+CRI="$CR/docs/lab/site/index.html"
+grep -q 'span\.unknown{color:var(--unk)' "$CRI" \
+  && ok "GSL-156: the absence marker's colour+cursor rule is scoped to span.unknown" \
+  || bad "GSL-156: no span-scoped .unknown colour rule in the built stylesheet — the marker lost its ink or the scope"
+grep -q '^\.unknown{' "$CRI" \
+  && bad "GSL-156: a bare .unknown rule survives — containers still hand magenta ink and cursor:help to their prose" \
+  || ok "GSL-156: no bare .unknown rule — a container class cannot repaint its children"
+grep -q 'class="card sh-m unknown"' "$CRI" \
+  && ok "GSL-156 control: the fixture really renders a container wearing the class (the guard above bites)" \
+  || bad "GSL-156 control: no container carries class unknown on the fixture Overview — the guard is vacuous"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
