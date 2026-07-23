@@ -218,7 +218,10 @@ p,.card p,.blind{font:400 var(--t-base)/1.5 var(--sans);color:var(--dim);max-wid
    ONCE A SECOND, and proportional digits make the whole line twitch sideways on every tick. */
 .kpi b,.clock-val{display:block;font:500 var(--t-hero)/1.15 var(--mono);
       font-variant-numeric:tabular-nums;color:var(--fg)}
-.kpi span,.clock-axis{display:block;font:400 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
+/* :not(.unknown) is load-bearing: the Unknown marker is a span too, and it sits INSIDE .kpi b —
+   an unqualified ".kpi span" (0,1,1) out-specifies ".unknown" (0,1,0) and repaints the one value
+   the spec singles out (8.3: unknown keeps --unk at value size) as an 11px muted caption. */
+.kpi span:not(.unknown),.clock-axis{display:block;font:400 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
       letter-spacing:.06em;color:var(--muted);margin-top:var(--s1)}
 .clocks{display:grid;gap:var(--s2);grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
       margin-top:var(--s3)}
@@ -330,6 +333,10 @@ code{font-family:var(--mono);font-size:.9em;background:var(--sunken);border-radi
 .tag.sev.incident{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
 .tag.sev.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
 .tag.sev.unknown{background:var(--unk-soft);color:var(--unk);border-color:var(--unk-border)}
+/* The Tasks-board status chip (spec 7.2: Done -> ok, To Do -> warn, In Progress -> info). Done and
+   To Do ride the generic .tag.ok/.tag.warn pairs above; info exists ONLY under the st scope — a
+   bare .tag.info would also match the timeline's "tag sev info", the one default 7.2 keeps neutral. */
+.tag.st.info{background:var(--info-soft);color:var(--info);border-color:var(--info-border)}
 /* sev=info is left NEUTRAL although --info exists: info stands in 181 of 200 timeline rows, so
    colouring it would colour the screen. A default is not highlighted; warn and incident earn it.
    The --info role stays in the palette for a lone informational badge elsewhere. */
@@ -358,6 +365,11 @@ span.unknown{text-decoration:underline dotted;text-underline-offset:2px}
    without borrowing amber from the states that earned it. */
 .card.blind{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
 .stale-note{color:var(--dim)}
+/* The Cost per-model "missing from these sums" cell: a caveat that EARNED warning ink — the sums
+   are LOW by an unknown amount. Its own role name on purpose: it used to borrow .wk-models, a
+   class defined for and named after the Fleet worker card, so the next editor of that class could
+   not know a second screen depended on it (GSL-151). One role = one name. */
+.partial-note{color:var(--warn)}
 
 /* ── The autonomy runway: the answer to the only question asked at midnight. It was the single
    loudest source of the slop complaint — a full-width purple fill, a dashed border, and a 40px
@@ -484,7 +496,9 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .wk-why{color:var(--dim);font:400 var(--t-base)/1.5 var(--sans);margin:var(--s2) 0;max-width:68ch}
 .wk-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s2) var(--s3);
       border-top:1px solid var(--line-subtle);padding-top:var(--s2);font-size:var(--t-md)}
-.wk-f span{display:block;color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
+/* :not(.unknown) for the same cascade reason as ".kpi span": a field whose value is unknown puts
+   span.unknown NEXT TO the label span, and the label rule must not caption-ify the value. */
+.wk-f span:not(.unknown){display:block;color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
       text-transform:uppercase;letter-spacing:.06em}
 .wk-task{margin-top:var(--s2);font-size:var(--t-md)}
 .wk-models{color:var(--warn)}

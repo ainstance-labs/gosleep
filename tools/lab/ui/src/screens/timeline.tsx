@@ -2,7 +2,7 @@ import type { VNode } from "preact";
 import type { LabEvent, RenderBundle } from "../types.js";
 import { BlindSpots, Empty, FilterBar, FilterCount, eventDetail, srcClass } from "../components.js";
 import { facetValues, type FilterIndex, type FilterRow } from "../filter.js";
-import { severityOf } from "../severity.js";
+import { SEVERITIES, severityOf } from "../severity.js";
 
 /** The island the client reads back, and the table's row ids. Wired in render.tsx; asserted in smoke.sh. */
 export const TIMELINE_ISLAND = "timeline-index";
@@ -44,7 +44,8 @@ export function timelineIndex(b: RenderBundle): FilterIndex {
       { key: "type", label: "type", values: facetValues(rows, "type") },
       // Worst-first, not alphabetical: at 03:00 the owner opens `incident`, not `agent.turn_ended`.
       // Intersected with what is actually here, so the box never offers a grade that matches nothing.
-      { key: "severity", label: "severity", values: facetValues(rows, "severity") },
+      // SEVERITIES carries the order; generic facetValues() would offer appearance order (GSL-149).
+      { key: "severity", label: "severity", values: SEVERITIES.filter((s) => rows.some((r) => r.severity === s)) },
       // Provenance is a filter and not just a colour: "show me only what the hooks SAW" is the query
       // that separates the mechanical record (0 tokens, no model's cooperation) from what an agent
       // merely told us, and it is the one query that can audit the difference.

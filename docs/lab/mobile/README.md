@@ -1,8 +1,8 @@
 # gosleep — the phone page
 
-🔴 **DEAD at build** · generated `2026-07-23T18:18:15Z` · freshest event **5h 56m** old at that moment (`2026-07-23T12:21:24Z`) · day `2026-07-23`
+🔴 **DEAD at build** · generated `2026-07-23T20:39:05Z` · freshest event **8h 17m** old at that moment (`2026-07-23T12:21:24Z`) · day `2026-07-23`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-23T18:18:15Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-23T20:39:05Z`, not a claim about now. There are two ages here, not one.
 >
 > This page already graded itself **DEAD** at build time. It cannot degrade further, and every minute since has only made that verdict more true.
 
@@ -18,16 +18,18 @@ Unknown — docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fre
 
 ## 3. Delivery
 
-Branch `GSL-141-fix-wave-1` @ `ea8733c` · 1 dirty path(s)
+Branch `GSL-153-fix-wave-2` @ `7ece7fd` · 15 dirty path(s)
 
-Shipped 2026-07-23 (7):
-- `ea8733c` GSL-118 Подпись контекст-часов: ⭐ требует «60% (rolls at 80%)», не только запрещает «of»
-- `911b007` GSL-132 Проза: «polled … old» → «ago», единый момент для двух возрастов
-- `2b5e888` GSL-122 Timeline: «that half of the log» → вычисленная доля hook-событий
-- `af83943` GSL-140 [Docs][Design] Design showcase GSL-138 run 01
-- `fed234e` GSL-139 [Docs][Process] Verification dashboard GSL-138 run 01
-- `77b3bd8` Merge pull request #135 from ainstance-labs/GSL-111-ui-redesign
-- `8c83174` GSL-111 [Docs] Shift-71 ledger: handoff 46, orchestration state, morning digest, queue/decisions/events Смена 71: аудит…
+Shipped 2026-07-23 (19):
+- `7ece7fd` GSL-152 Комментарий RunwayStrip описывает unk по факту: магента + сплошная граница, запрет пунктира назван, а не нарушен
+- `6564302` GSL-151 Cost partial-ячейка носит собственный .partial-note вместо заимствованного .wk-models: одна роль — одно имя
+- `eec90f3` GSL-149 Severity-фасет Timeline строится из SEVERITIES: worst-first вместо порядка появления, пересечение с фактом сохр…
+- `50d6143` GSL-148 doc_title декодирует HTML-сущности: html.unescape после снятия тегов, Library экранирует ровно один раз
+- `6433506` GSL-147 Статусы Jira на Tasks board носят цвет спеки 7.2: tag st ok/warn/info, guard от утечки .tag.info на timeline
+- `2194035` GSL-146 Каскад label-спанов больше не глотает span.unknown: :not(.unknown) в .kpi span/.wk-f span, значение-отсутствие …
+- `10e63d7` GSL-145 [Docs][Evals] Verification run 02 audit dashboard
+- `ff062fd` GSL-144 [Docs][Evals] Verification run 02 regression lane
+- …and 11 more
 
 ## 4. Tasks
 
@@ -37,7 +39,7 @@ Shipped 2026-07-23 (7):
 | To Do | 3 |
 | Done | 5 |
 
-122 more carry no status here — the tracker was last polled **10d 20h** ago, so this is what the poll missed, not 122 idle tasks.
+132 more carry no status here — the tracker was last polled **10d 23h** ago, so this is what the poll missed, not 132 idle tasks.
 
 ## 5. Cost & runway
 

@@ -3303,6 +3303,120 @@ PY
   && ok "GSL-132 control: the drift fixture still grades (fresh, age ≥ 40s) — the ⭐ compared two real numbers" \
   || bad "GSL-132 control: the drift fixture produced no usable age — the ⭐ above proves nothing"
 
+# ────────── GSL-146 (fix wave 2): the absence marker is a VALUE, never a caption ──────────
+# The Unknown span sits where a value sits — inside `.kpi b`, beside a `.wk-f` label — and the
+# generic label selectors (`.kpi span`, `.wk-f span`, specificity 0,1,1) also matched span.unknown,
+# out-specifying `.unknown` (0,1,0). The cascade then painted the one value the spec singles out
+# (section 8.3: "значение unknown красится --unk") as an 11px muted uppercase caption, on every
+# unknown KPI tile and worker field of Fleet and Cost, in both themes. The label rules must EXCLUDE
+# the marker. These greps read the stylesheet of a BUILT page — the same bytes the browser reads.
+FW2H="$CR/docs/lab/site/fleet.html"
+grep -q '\.kpi span:not(\.unknown)' "$FW2H" \
+  && ok "GSL-146: the KPI label selector excludes span.unknown — the value is not a caption" \
+  || bad "GSL-146: .kpi span swallows span.unknown — an unknown KPI renders as two captions"
+grep -q '\.wk-f span:not(\.unknown)' "$FW2H" \
+  && ok "GSL-146: the worker-field label selector excludes span.unknown" \
+  || bad "GSL-146: .wk-f span swallows span.unknown — the absence marker loses --unk"
+grep -q 'class="unknown"' "$FW2H" \
+  && ok "GSL-146 control: the fixture Fleet page really renders span.unknown (the greps above bite)" \
+  || bad "GSL-146 control: no span.unknown on the fixture Fleet page — the checks above are vacuous"
+
+# ────────── GSL-147 (fix wave 2): the status column carries the judgement channel ──────────
+# Spec section 7.2 lists three Jira statuses among the COLOURED values: Done -> ok, To Do -> warn,
+# In Progress -> info. The board rendered every status as a bare neutral chip, so the one column the
+# owner reads to decide whether he can sleep was indistinguishable from metadata like MERGED. The
+# tone rides a scoped "tag st <tone>" class; a status the spec table does not list stays neutral.
+STW2="$WORK/fw2-status-tones"; mkdir -p "$STW2/docs/lab/events"
+{ printf '{"ts":"%sT20:00:01Z","run_id":"x","seq":1,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-901","status":"Done","summary":"tone probe done","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT20:00:02Z","run_id":"x","seq":2,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-902","status":"To Do","summary":"tone probe todo","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT20:00:03Z","run_id":"x","seq":3,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-903","status":"In Progress","summary":"tone probe wip","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT20:00:04Z","run_id":"x","seq":4,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-904","status":"In Review","summary":"tone probe neutral","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+} > "$STW2/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$STW2" --no-poll --quiet --json >/dev/null 2>&1
+STP2="$STW2/docs/lab/site/tasks.html"
+grep -q 'class="tag st ok">Done<' "$STP2" \
+  && ok "GSL-147: Done wears --ok (spec 7.2: задачи)" \
+  || bad "GSL-147: Done renders neutral — the judgement channel is silent"
+grep -q 'class="tag st warn">To Do<' "$STP2" \
+  && ok "GSL-147: To Do wears --warn" \
+  || bad "GSL-147: To Do renders neutral"
+grep -q 'class="tag st info">In Progress<' "$STP2" \
+  && ok "GSL-147: In Progress wears --info (the lone informational badge 7.2 allows)" \
+  || bad "GSL-147: In Progress renders neutral"
+grep -q 'class="tag">In Review<' "$STP2" \
+  && ok "GSL-147 control: a status 7.2 does not list (In Review) stays neutral — colour is earned" \
+  || bad "GSL-147 control: an unlisted status was coloured, or the neutral chip form changed"
+grep -q '\.tag\.info{' "$STP2" \
+  && bad "GSL-147 guard: a bare .tag.info rule exists — it would repaint the timeline's sev=info column" \
+  || ok "GSL-147 guard: no bare .tag.info rule — sev=info on the timeline stays neutral (7.2 caveat)"
+
+# ────────── GSL-148 (fix wave 2): a title is quoted, not re-encoded ──────────
+# doc_title() lifted the raw <title> text of an HTML report without decoding entities, so the
+# bundle carried "&amp;"; the view then escaped it AGAIN and the Library printed the five
+# characters "&amp;" to the reader — the dashboard misquoting the data it indexes. The bundle must
+# carry the character itself; the built page then escapes it exactly once.
+AMPW="$WORK/fw2-amp"; mkdir -p "$AMPW/docs/lab/events" "$AMPW/docs/reports/amp-probe"
+printf '{"ts":"%sT20:10:00Z","run_id":"x","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"abc1234"}}\n' "$TODAY" \
+  > "$AMPW/docs/lab/events/$TODAY.jsonl"
+printf '<title>Amp &amp; sand — fixture</title>\n' > "$AMPW/docs/reports/amp-probe/index.html"
+bash "$CH" --repo "$AMPW" --no-poll --quiet --json >/dev/null 2>&1
+jq -e '.library.sections[] | select(.key=="reports") | .items[] | select(.title=="Amp & sand — fixture")' \
+   "$AMPW/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-148: doc_title decodes entities — the bundle carries the ampersand, not its encoding" \
+  || bad "GSL-148: the bundle still carries '&amp;' — doc_title does not html.unescape"
+grep -q 'Amp &amp; sand — fixture' "$AMPW/docs/lab/site/library.html" \
+  && ok "GSL-148: the built Library cell escapes the decoded title exactly once" \
+  || bad "GSL-148: the once-escaped title form is missing from the built Library page"
+grep -q '&amp;amp;' "$AMPW/docs/lab/site/library.html" \
+  && bad "GSL-148: double escape — the Library prints literal '&amp;' to the reader" \
+  || ok "GSL-148: no double escape anywhere on the built Library page"
+
+# ────────── GSL-149 (fix wave 2): the severity facet is worst-first, as its own comment promises ──────────
+# The facet was built with generic facetValues() — appearance order — so the shipped page offered
+# info, warn, incident and the owner scanning for trouble found `incident` at the BOTTOM. The FT
+# fixture holds every severity at once, with the benign ones appearing first in the feed: exactly
+# the ordering trap. The options must follow SEVERITIES (incident, warn, info, unknown), still
+# intersected with what is actually present.
+SEVOPTS="$(python3 - "$FT/docs/lab/site/timeline.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'<select data-facet="severity">(.*?)</select>', h, re.S)
+print(",".join(re.findall(r'<option value="([^"]+)"', m.group(1))) if m else "NO_SELECT")
+PY
+)"
+[[ "$SEVOPTS" == "incident,warn,info,unknown" ]] \
+  && ok "GSL-149: severity options are worst-first (incident,warn,info,unknown) despite a benign-first feed" \
+  || bad "GSL-149: severity options follow appearance order, not SEVERITIES ($SEVOPTS)"
+
+# ────────── GSL-151 (fix wave 2): one role = one name ──────────
+# The Cost "missing from these sums" cell borrowed .wk-models — a class defined for and named after
+# the Fleet worker card's multi-model warning line. The amber was right; the vocabulary was wrong:
+# the next editor of .wk-models could not know a second screen depended on it. The cell now wears
+# its own role class (.partial-note); the worker-card class stays where its name points.
+grep -q 'wk-models' "$REPO_ROOT/tools/lab/ui/src/screens/cost.tsx" \
+  && bad "GSL-151: cost.tsx still borrows the worker-card class .wk-models" \
+  || ok "GSL-151: cost.tsx no longer references .wk-models — the borrowed name went home"
+grep -q 'class="partial-note"' "$FL/docs/lab/site/cost.html" \
+  && ok "GSL-151: the partial-sums cell wears its own role class on the built Cost page" \
+  || bad "GSL-151: no .partial-note cell on the fixture Cost page (its ledger has partial=1)"
+grep -q 'class="wk-models"' "$FL/docs/lab/site/cost.html" \
+  && bad "GSL-151: the built Cost page still MARKS UP a cell with the worker-card class" \
+  || ok "GSL-151: no Cost markup wears the worker-card class (the shared stylesheet may define it)"
+grep -q '\.partial-note{' "$FL/docs/lab/site/cost.html" \
+  && ok "GSL-151 control: the stylesheet defines .partial-note — the cell is actually painted" \
+  || bad "GSL-151 control: .partial-note has no rule — a role class nobody paints"
+
+# ────────── GSL-152 (fix wave 2): a comment may not describe the banned pattern as current ──────────
+# The RunwayStrip tone comment still said unk is "magenta and dashed". The dashed half stopped being
+# true when the redesign removed every dashed border (spec section 11); a shipped comment describing
+# the banned edge as behaviour is drift that points the next editor at reintroducing it.
+grep -q 'magenta and dashed' "$REPO_ROOT/tools/lab/ui/src/runway.tsx" \
+  && bad "GSL-152: runway.tsx still describes unk as 'magenta and dashed' — the dashes are gone" \
+  || ok "GSL-152: no runway.tsx comment sells the banned dashed edge as current behaviour"
+grep -Eq 'border[^;}]*dashed' "$CR/docs/lab/site/index.html" \
+  && bad "GSL-152 guard: a dashed border RULE exists in the built stylesheet" \
+  || ok "GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
