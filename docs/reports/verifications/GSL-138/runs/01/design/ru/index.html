@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-138 ран 01 — Обзор дизайна</title>
+  <link rel="stylesheet" href="../../assets/styles.css">
+  <script>
+    /* Тема ставится до первой отрисовки, чтобы не мигнуть не той темой;
+       переключатель подключается после загрузки DOM. Без внешних зависимостей. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+  <style>
+    /* ---- Дополнения обзора поверх ../../assets/styles.css ---- */
+
+    /* Две панели с фиксированной темой: каждая ПРИНУДИТЕЛЬНО несёт свою палитру
+       Laboratory, чтобы обе темы были видны рядом независимо от темы читателя. */
+    .panel-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    @media (max-width: 860px) { .panel-pair { grid-template-columns: 1fr; } }
+    .lab-panel { border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .lab-panel h4 { margin: 0 0 12px; font-size: 11px; font-weight: 650; text-transform: uppercase;
+      letter-spacing: 0.06em; opacity: 0.75; }
+    .lab-panel.light { background: #f5f7f9; color: #1a1b1c;
+      --lab-bg:#f5f7f9; --lab-card:#ffffff; --lab-sunken:#f2f3f6; --lab-raised:#eaebee;
+      --lab-fg:#1a1b1c; --lab-dim:#5a5b5d; --lab-muted:#68696b;
+      --lab-line:#d6d7da; --lab-line-subtle:#e3e4e7; --lab-line-strong:#7f8083;
+      --lab-accent:#0068a5; --lab-accent-solid:#0077bc;
+      --lab-ok:#007835; --lab-ok-soft:#e6fae9; --lab-ok-border:#b1dfb9;
+      --lab-warn:#976500; --lab-warn-soft:#fff1df; --lab-warn-border:#eccb9e;
+      --lab-dead:#902828; --lab-dead-soft:#ffefee; --lab-dead-border:#fcc0ba;
+      --lab-info:#0068a5; --lab-info-soft:#eaf5ff; --lab-info-border:#abd7fd;
+      --lab-unk:#8e4d9d; --lab-unk-soft:#fceeff; --lab-unk-border:#e6c3ee;
+      --lab-neutral:#68696b; --lab-neutral-soft:#f2f3f6; --lab-neutral-border:#cfd1d4; }
+    .lab-panel.dark { background: #0d0e10; color: #f0f2f4;
+      --lab-bg:#0d0e10; --lab-card:#151618; --lab-sunken:#1d1e20; --lab-raised:#28292b;
+      --lab-fg:#f0f2f4; --lab-dim:#b6b7ba; --lab-muted:#97989b;
+      --lab-line:#343537; --lab-line-subtle:#28292b; --lab-line-strong:#737477;
+      --lab-accent:#71bfff; --lab-accent-solid:#006eae;
+      --lab-ok:#7cdd93; --lab-ok-soft:#1e2d21; --lab-ok-border:#295233;
+      --lab-warn:#ffc673; --lab-warn-soft:#322717; --lab-warn-border:#5e4216;
+      --lab-dead:#f07f77; --lab-dead-soft:#372321; --lab-dead-border:#683834;
+      --lab-info:#71bfff; --lab-info-soft:#1c2b37; --lab-info-border:#244b6b;
+      --lab-unk:#d58fe5; --lab-unk-soft:#302432; --lab-unk-border:#583b5f;
+      --lab-neutral:#97989b; --lab-neutral-soft:#28292b; --lab-neutral-border:#46484a; }
+
+    /* Свотчи */
+    .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .swatch { display: flex; align-items: center; gap: 9px; padding: 7px 8px;
+      border-radius: 7px; background: var(--lab-card); border: 1px solid var(--lab-line); }
+    .swatch .chip { width: 28px; height: 28px; border-radius: 7px;
+      border: 1px solid var(--lab-line); flex: none; }
+    .swatch .chip.trio { display: inline-flex; align-items: center; justify-content: center;
+      font: 600 11px/1 ui-monospace, Menlo, monospace; }
+    .swatch .sw-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .swatch .sw-t b { font-size: 11.5px; font-weight: 600; color: var(--lab-fg); }
+    .swatch .sw-t code { font: 400 10px/1.4 ui-monospace, Menlo, monospace;
+      color: var(--lab-dim); background: none; border: 0; padding: 0; white-space: normal; }
+
+    /* Типографическая шкала */
+    .type-row { display: flex; align-items: baseline; gap: 16px; padding: 9px 0;
+      border-bottom: 1px dashed var(--border); }
+    .type-row:last-child { border-bottom: 0; }
+    .type-row .tk { font-family: var(--mono); font-size: 11.5px; color: var(--text-3);
+      min-width: 168px; flex: none; }
+    .type-row .tv { color: var(--text); line-height: 1.3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+
+    /* Отступы и радиусы */
+    .space-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+    .space-row .tk { font-family: var(--mono); font-size: 11.5px; color: var(--text-3);
+      min-width: 168px; flex: none; }
+    .space-bar { height: 10px; background: var(--accent); border-radius: 3px; }
+    .radii-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+    .radius-box { width: 66px; height: 44px; background: var(--surface-2);
+      border: 1px solid var(--border-strong); display: flex; align-items: center;
+      justify-content: center; font-family: var(--mono); font-size: 10.5px; color: var(--text-2); }
+
+    /* Живые образцы компонентов (в границах .lab-panel, верны отгруженному CSS) */
+    .lab-nav { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+    .lab-nav a { padding: 4px 8px; border-radius: 6px; font-size: 13px; line-height: 1.5;
+      color: var(--lab-dim); text-decoration: none; white-space: nowrap; cursor: default; }
+    .lab-nav a.on { background: var(--lab-raised); color: var(--lab-fg); font-weight: 500; }
+    .lab-banner { border: 1px solid; border-radius: 6px; padding: 8px 12px;
+      font-size: 13px; margin-bottom: 12px; }
+    .lab-banner::before { content: ""; display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: currentColor; margin-right: 8px; vertical-align: 0.05em; }
+    .lab-banner b { font-weight: 500; }
+    .lab-banner small { display: block; font-weight: 400; font-size: 11px; line-height: 1.5;
+      margin-top: 4px; color: var(--lab-muted); }
+    .lab-banner.ok { background: var(--lab-ok-soft); color: var(--lab-ok);
+      border-color: var(--lab-ok-border); }
+    .lab-banner.warn { background: var(--lab-warn-soft); color: var(--lab-warn);
+      border-color: var(--lab-warn-border); }
+    .lab-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+    .lab-tag { display: inline-flex; align-items: center; padding: 1px 6px;
+      border-radius: 999px; border: 1px solid var(--lab-neutral-border);
+      background: var(--lab-neutral-soft); color: var(--lab-neutral);
+      font: 500 11px/1.45 ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .lab-tag.ok { background: var(--lab-ok-soft); color: var(--lab-ok); border-color: var(--lab-ok-border); }
+    .lab-tag.warn { background: var(--lab-warn-soft); color: var(--lab-warn); border-color: var(--lab-warn-border); }
+    .lab-tag.dead { background: var(--lab-dead-soft); color: var(--lab-dead); border-color: var(--lab-dead-border); }
+    .lab-tag.info { background: var(--lab-info-soft); color: var(--lab-info); border-color: var(--lab-info-border); }
+    .lab-tag.unk { background: var(--lab-unk-soft); color: var(--lab-unk); border-color: var(--lab-unk-border); }
+    .lab-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px;
+      background: var(--lab-card); border: 1px solid var(--lab-line); border-radius: 6px; }
+    .lab-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--lab-muted); font-weight: 500; text-align: left; padding: 6px 10px;
+      border-bottom: 1px solid var(--lab-line-subtle); }
+    .lab-table td { padding: 6px 10px; border-bottom: 1px solid var(--lab-line-subtle);
+      color: var(--lab-fg); }
+    .lab-table tr:last-child td { border-bottom: 0; }
+    .lab-table .m { font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+      color: var(--lab-dim); }
+    .lab-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .lab-kpi { background: var(--lab-card); border: 1px solid var(--lab-line);
+      border-radius: 6px; padding: 10px 14px; }
+    .lab-kpi b { display: block; font: 500 20px/1.15 ui-monospace, Menlo, monospace;
+      font-variant-numeric: tabular-nums; color: var(--lab-fg); }
+    .lab-kpi span { display: block; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--lab-muted); margin-top: 4px; }
+
+    /* Карточки страниц: сетка кадров + кнопки */
+    .page-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .shots.frames { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .shot-img.desk { aspect-ratio: 1280 / 800; object-fit: cover; object-position: top; }
+    .shot-img.mob { aspect-ratio: 390 / 620; object-fit: cover; object-position: top; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-138 ран 01 — Обзор дизайна</span>
+        <span class="subtitle">Редизайн Laboratory UI · эпик GSL-111 · сам дизайн, на одной странице</span>
+      </div>
+      <div class="header-meta">
+        <a class="hbtn" href="../../ru/index.html">← Отчёт</a>
+        <span class="hbtn" aria-label="Эпик">GSL-111</span>
+        <!-- Переключение языка: русская версия -> английский корень -->
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="intro-h">
+      <h2 class="section-title" id="intro-h">Что это</h2>
+      <article class="card pad">
+        <p>Приёмочный отчёт рядом проверяет <em>утверждения</em>; эта страница показывает
+        <strong>дизайн</strong>. Это визуальный обзор редизайна Laboratory UI
+        (эпик <a href="https://ainstance-labs.atlassian.net/browse/GSL-111">GSL-111</a>,
+        референсный стиль: Mastra Studio / Supabase): система токенов с живыми образцами,
+        ключевые компоненты, отрисованные вживую в обеих темах, и все семь экранов
+        с кадрами первого вьюпорта.</p>
+        <p><code>pages/</code> — замороженный снапшот <code>docs/lab/site/*.html</code> на момент
+        рана 01 (<code>main @ fed234e</code>, 2026-07-23). Каждая страница полностью
+        самодостаточна — инлайновые CSS и JS, без внешних ресурсов — поэтому снапшот
+        открывается из <code>file://</code> ровно так же, как живой сайт. Все кадры ниже —
+        строго первый вьюпорт (1280 × 800 и 390 × 844, DPR 1, светлая и тёмная темы), сняты
+        с этого самого снапшота — никаких полотен на всю страницу.</p>
+      </article>
+    </section>
+
+    <section aria-labelledby="ds-h">
+      <h2 class="section-title" id="ds-h">Дизайн-система</h2>
+
+      <article class="card pad">
+        <h3>Палитра — обе темы, вживую</h3>
+        <p>Одна палитра, объявленная один раз: четыре уровня поверхностей и шесть статусных
+        оттенков. Индекс поверхности означает <strong>роль, а не светлоту</strong>: в светлой
+        теме &laquo;raised&raquo; темнее карточки, потому что ярче белого ничего не бывает. Каждый
+        статусный цвет — тройка: чернила, мягкая заливка, рамка; ниже она показана живым чипом
+        на собственной заливке.</p>
+        <div class="panel-pair">
+          <div class="lab-panel light">
+            <h4>Светлая</h4>
+            <div class="swatches">
+              <div class="swatch"><span class="chip" style="background:#f5f7f9"></span><span class="sw-t"><b>bg</b><code>#f5f7f9</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#ffffff"></span><span class="sw-t"><b>card</b><code>#ffffff</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#f2f3f6"></span><span class="sw-t"><b>sunken</b><code>#f2f3f6</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#eaebee"></span><span class="sw-t"><b>raised</b><code>#eaebee</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#1a1b1c"></span><span class="sw-t"><b>fg</b><code>#1a1b1c</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#5a5b5d"></span><span class="sw-t"><b>dim</b><code>#5a5b5d</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#68696b"></span><span class="sw-t"><b>muted</b><code>#68696b</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#d6d7da"></span><span class="sw-t"><b>line</b><code>#d6d7da</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#7f8083"></span><span class="sw-t"><b>line-strong</b><code>#7f8083</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#0068a5"></span><span class="sw-t"><b>accent</b><code>#0068a5</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#0077bc"></span><span class="sw-t"><b>accent-solid</b><code>#0077bc</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#e6fae9;border-color:#b1dfb9;color:#007835">Aa</span><span class="sw-t"><b>ok</b><code>#007835 · #e6fae9 · #b1dfb9</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#fff1df;border-color:#eccb9e;color:#976500">Aa</span><span class="sw-t"><b>warn</b><code>#976500 · #fff1df · #eccb9e</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#ffefee;border-color:#fcc0ba;color:#902828">Aa</span><span class="sw-t"><b>dead</b><code>#902828 · #ffefee · #fcc0ba</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#eaf5ff;border-color:#abd7fd;color:#0068a5">Aa</span><span class="sw-t"><b>info</b><code>#0068a5 · #eaf5ff · #abd7fd</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#fceeff;border-color:#e6c3ee;color:#8e4d9d">Aa</span><span class="sw-t"><b>unk</b><code>#8e4d9d · #fceeff · #e6c3ee</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#f2f3f6;border-color:#cfd1d4;color:#68696b">Aa</span><span class="sw-t"><b>neutral</b><code>#68696b · #f2f3f6 · #cfd1d4</code></span></div>
+            </div>
+          </div>
+          <div class="lab-panel dark">
+            <h4>Тёмная</h4>
+            <div class="swatches">
+              <div class="swatch"><span class="chip" style="background:#0d0e10"></span><span class="sw-t"><b>bg</b><code>#0d0e10</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#151618"></span><span class="sw-t"><b>card</b><code>#151618</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#1d1e20"></span><span class="sw-t"><b>sunken</b><code>#1d1e20</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#28292b"></span><span class="sw-t"><b>raised</b><code>#28292b</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#f0f2f4"></span><span class="sw-t"><b>fg</b><code>#f0f2f4</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#b6b7ba"></span><span class="sw-t"><b>dim</b><code>#b6b7ba</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#97989b"></span><span class="sw-t"><b>muted</b><code>#97989b</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#343537"></span><span class="sw-t"><b>line</b><code>#343537</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#737477"></span><span class="sw-t"><b>line-strong</b><code>#737477</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#71bfff"></span><span class="sw-t"><b>accent</b><code>#71bfff</code></span></div>
+              <div class="swatch"><span class="chip" style="background:#006eae"></span><span class="sw-t"><b>accent-solid</b><code>#006eae</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#1e2d21;border-color:#295233;color:#7cdd93">Aa</span><span class="sw-t"><b>ok</b><code>#7cdd93 · #1e2d21 · #295233</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#322717;border-color:#5e4216;color:#ffc673">Aa</span><span class="sw-t"><b>warn</b><code>#ffc673 · #322717 · #5e4216</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#372321;border-color:#683834;color:#f07f77">Aa</span><span class="sw-t"><b>dead</b><code>#f07f77 · #372321 · #683834</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#1c2b37;border-color:#244b6b;color:#71bfff">Aa</span><span class="sw-t"><b>info</b><code>#71bfff · #1c2b37 · #244b6b</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#302432;border-color:#583b5f;color:#d58fe5">Aa</span><span class="sw-t"><b>unk</b><code>#d58fe5 · #302432 · #583b5f</code></span></div>
+              <div class="swatch"><span class="chip trio" style="background:#28292b;border-color:#46484a;color:#97989b">Aa</span><span class="sw-t"><b>neutral</b><code>#97989b · #28292b · #46484a</code></span></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card pad">
+        <h3>Типографическая шкала</h3>
+        <p>Системный стек шрифтов; моноширинный — для чисел, ключей и путей. База интерфейса —
+        <strong>13&nbsp;px</strong> (<code>--t-md</code>, шаг <code>text-ui-smd</code> из Mastra для
+        плотных инструментов); проза поднимается <em>вверх</em> до 14&nbsp;px — и только она.
+        Максимальный вес шрифта во всей системе — <strong>500</strong>: иерархию несут размер
+        и цвет, а не жирность.</p>
+        <div class="type-row"><span class="tk">--t-hero · 1.75rem / 28px</span><span class="tv" style="font-size:28px;font-weight:500">Laboratory 14,325,000</span></div>
+        <div class="type-row"><span class="tk">--t-xl · 1.25rem / 20px</span><span class="tv" style="font-size:20px;font-weight:500">Заголовок страницы — Overview</span></div>
+        <div class="type-row"><span class="tk">--t-lg · 1rem / 16px</span><span class="tv" style="font-size:16px;font-weight:500">Заголовок раздела — Delivery</span></div>
+        <div class="type-row"><span class="tk">--t-base · .875rem / 14px</span><span class="tv" style="font-size:14px">Проза: лаборатория пишет себя сама, пока флот работает.</span></div>
+        <div class="type-row"><span class="tk">--t-md · .8125rem / 13px</span><span class="tv" style="font-size:13px">База интерфейса: таблицы, навигация, карточки, поля воркеров.</span></div>
+        <div class="type-row"><span class="tk">--t-sm · .75rem / 12px</span><span class="tv" style="font-size:12px">Моноширинные блоки, вторичная мета.</span></div>
+        <div class="type-row"><span class="tk">--t-xs · .6875rem / 11px</span><span class="tv" style="font-size:11px">Теги, заголовки колонок, подписи KPI.</span></div>
+      </article>
+
+      <article class="card pad">
+        <h3>Отступы и радиусы</h3>
+        <p>Четыре шкалы, объявленные один раз — ничему ниже не позволено изобрести значение вне
+        шкалы. Это ограничение и есть продукт: число, обязанное прийти из шкалы, не может
+        уплыть.</p>
+        <div class="space-row"><span class="tk">--s1 · .25rem / 4px</span><span class="space-bar" style="width:4px"></span></div>
+        <div class="space-row"><span class="tk">--s2 · .5rem / 8px</span><span class="space-bar" style="width:8px"></span></div>
+        <div class="space-row"><span class="tk">--s3 · .75rem / 12px</span><span class="space-bar" style="width:12px"></span></div>
+        <div class="space-row"><span class="tk">--s4 · 1rem / 16px</span><span class="space-bar" style="width:16px"></span></div>
+        <div class="space-row"><span class="tk">--s5 · 1.5rem / 24px</span><span class="space-bar" style="width:24px"></span></div>
+        <div class="space-row"><span class="tk">--s6 · 2rem / 32px</span><span class="space-bar" style="width:32px"></span></div>
+        <div class="space-row"><span class="tk">--s7 · 3rem / 48px</span><span class="space-bar" style="width:48px"></span></div>
+        <div class="radii-row">
+          <div class="radius-box" style="border-radius:4px">--r1 4px</div>
+          <div class="radius-box" style="border-radius:6px">--r2 6px</div>
+          <div class="radius-box" style="border-radius:8px">--r3 8px</div>
+          <div class="radius-box" style="border-radius:999px">pill</div>
+        </div>
+      </article>
+
+      <article class="card pad">
+        <h3>Ключевые компоненты — вживую, не скриншотами</h3>
+        <p>Отрисованы прямо здесь, значениями отгруженного CSS. Табы, не пилюли — активный пункт
+        отмечен <em>плотностью фона</em>, а не акцентом (синий означает &laquo;ссылка&raquo;, и страница,
+        на которой вы уже находитесь, не должна читаться как самая важная ссылка на ней). Баннер
+        свежести — контракт честности каждой страницы; статусные теги несут семантическую
+        палитру.</p>
+        <div class="panel-pair">
+          <div class="lab-panel light">
+            <h4>Светлая</h4>
+            <div class="lab-nav"><a class="on">Overview</a><a>Timeline</a><a>Tasks</a><a>Questions</a><a>Fleet</a><a>Cost</a><a>Library</a></div>
+            <div class="lab-banner ok"><b>FRESH · last event 3m ago</b><small>generated_at 2026-07-23T13:47:44Z · thresholds fresh≤30m, dead&gt;3h · Live — the laboratory is writing itself right now.</small></div>
+            <p class="lab-tags"><span class="lab-tag ok">ok</span><span class="lab-tag warn">warn</span><span class="lab-tag dead">dead</span><span class="lab-tag info">info</span><span class="lab-tag unk">unknown</span><span class="lab-tag">neutral</span></p>
+            <table class="lab-table">
+              <tr><th>sha</th><th>subject</th><th>author</th></tr>
+              <tr><td class="m">fed234e</td><td>GSL-139 Verification dashboard run 01</td><td class="m">R</td></tr>
+              <tr><td class="m">77b3bd8</td><td>Merge pull request #135</td><td class="m">rommxx</td></tr>
+            </table>
+            <div class="lab-kpis">
+              <div class="lab-kpi"><b>31</b><span>events today</span></div>
+              <div class="lab-kpi"><b>93%</b><span>mechanical (0-token)</span></div>
+            </div>
+          </div>
+          <div class="lab-panel dark">
+            <h4>Тёмная</h4>
+            <div class="lab-nav"><a class="on">Overview</a><a>Timeline</a><a>Tasks</a><a>Questions</a><a>Fleet</a><a>Cost</a><a>Library</a></div>
+            <div class="lab-banner warn"><b>STALE · last event 2h 46m ago</b><small>generated_at 2026-07-23T13:47:44Z · Stale — nothing has been logged for a while. Delivery may still be running; this page is not.</small></div>
+            <p class="lab-tags"><span class="lab-tag ok">ok</span><span class="lab-tag warn">warn</span><span class="lab-tag dead">dead</span><span class="lab-tag info">info</span><span class="lab-tag unk">unknown</span><span class="lab-tag">neutral</span></p>
+            <table class="lab-table">
+              <tr><th>sha</th><th>subject</th><th>author</th></tr>
+              <tr><td class="m">fed234e</td><td>GSL-139 Verification dashboard run 01</td><td class="m">R</td></tr>
+              <tr><td class="m">77b3bd8</td><td>Merge pull request #135</td><td class="m">rommxx</td></tr>
+            </table>
+            <div class="lab-kpis">
+              <div class="lab-kpi"><b>31</b><span>events today</span></div>
+              <div class="lab-kpi"><b>93%</b><span>mechanical (0-token)</span></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section aria-labelledby="pages-h">
+      <h2 class="section-title" id="pages-h">Семь экранов</h2>
+      <p class="gallery-note">Каждый кадр — только первый вьюпорт: 1280 × 800 и 390 × 844 при
+      DPR 1, обе темы, сняты вживую со снапшота в <code>pages/</code> через <code>file://</code>.
+      Клик по кадру открывает полный размер; стрелки листают четыре кадра страницы.
+      &laquo;Открыть снапшот&raquo; — замороженная копия рана 01; &laquo;Открыть живую страницу&raquo; —
+      текущий <code>docs/lab/site/</code> вашего чекаута, который мог уйти вперёд после рана.</p>
+
+      <div class="findings">
+        <article class="card finding">
+          <h3>Overview — <code>index.html</code></h3>
+          <p class="finding-body">Главный экран: баннер свежести с тикающим возрастом, блок
+          runway с шестью стоп-часами, карточки self-health, ряд KPI и состояние доставки.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/index-1280-light.png" alt="Overview, 1280 px, светлая" data-lightbox-group="pg-index" data-caption="Overview · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/index-1280-dark.png" alt="Overview, 1280 px, тёмная" data-lightbox-group="pg-index" data-caption="Overview · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/index-390-light.png" alt="Overview, 390 px, светлая" data-lightbox-group="pg-index" data-caption="Overview · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/index-390-dark.png" alt="Overview, 390 px, тёмная" data-lightbox-group="pg-index" data-caption="Overview · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/index.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/index.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+
+        <article class="card finding">
+          <h3>Timeline — <code>timeline.html</code></h3>
+          <p class="finding-body">Полный журнал событий лаборатории по дням с семантической
+          подкраской строк по важности. Обе сводные таблицы скроллятся внутри своего wrap на
+          390&nbsp;px.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/timeline-1280-light.png" alt="Timeline, 1280 px, светлая" data-lightbox-group="pg-timeline" data-caption="Timeline · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/timeline-1280-dark.png" alt="Timeline, 1280 px, тёмная" data-lightbox-group="pg-timeline" data-caption="Timeline · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/timeline-390-light.png" alt="Timeline, 390 px, светлая" data-lightbox-group="pg-timeline" data-caption="Timeline · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/timeline-390-dark.png" alt="Timeline, 390 px, тёмная" data-lightbox-group="pg-timeline" data-caption="Timeline · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/timeline.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/timeline.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+
+        <article class="card finding">
+          <h3>Tasks — <code>tasks.html</code></h3>
+          <p class="finding-body">Доска доставки: эпики и задачи с коммитами и dev history,
+          читаемыми вживую из репозитория; устарелость трекера раскрыта честно, чипы эпиков
+          различают ok/warn, ссылки на PR — по одной.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/tasks-1280-light.png" alt="Tasks, 1280 px, светлая" data-lightbox-group="pg-tasks" data-caption="Tasks · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/tasks-1280-dark.png" alt="Tasks, 1280 px, тёмная" data-lightbox-group="pg-tasks" data-caption="Tasks · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/tasks-390-light.png" alt="Tasks, 390 px, светлая" data-lightbox-group="pg-tasks" data-caption="Tasks · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/tasks-390-dark.png" alt="Tasks, 390 px, тёмная" data-lightbox-group="pg-tasks" data-caption="Tasks · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/tasks.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/tasks.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+
+        <article class="card finding">
+          <h3>Questions — <code>questions.html</code></h3>
+          <p class="finding-body">Очередь вопросов в четырёх корзинах — открытые, отвеченные,
+          истёкшие и &laquo;Decided by you&raquo; — чтобы ночь автономных решений оставалась
+          проверяемой утром.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/questions-1280-light.png" alt="Questions, 1280 px, светлая" data-lightbox-group="pg-questions" data-caption="Questions · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/questions-1280-dark.png" alt="Questions, 1280 px, тёмная" data-lightbox-group="pg-questions" data-caption="Questions · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/questions-390-light.png" alt="Questions, 390 px, светлая" data-lightbox-group="pg-questions" data-caption="Questions · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/questions-390-dark.png" alt="Questions, 390 px, тёмная" data-lightbox-group="pg-questions" data-caption="Questions · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/questions.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/questions.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+
+        <article class="card finding">
+          <h3>Fleet — <code>fleet.html</code></h3>
+          <p class="finding-body">Панели воркеров и их жизненные циклы; над карточками — мост
+          сверки, &laquo;молчит — не значит мёртв&raquo;, отделяющий известное от просто неуслышанного.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/fleet-1280-light.png" alt="Fleet, 1280 px, светлая" data-lightbox-group="pg-fleet" data-caption="Fleet · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/fleet-1280-dark.png" alt="Fleet, 1280 px, тёмная" data-lightbox-group="pg-fleet" data-caption="Fleet · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/fleet-390-light.png" alt="Fleet, 390 px, светлая" data-lightbox-group="pg-fleet" data-caption="Fleet · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/fleet-390-dark.png" alt="Fleet, 390 px, тёмная" data-lightbox-group="pg-fleet" data-caption="Fleet · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/fleet.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/fleet.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+
+        <article class="card finding">
+          <h3>Cost — <code>cost.html</code></h3>
+          <p class="finding-body">Учёт токенов и стоимости по циклам — &laquo;Per cycle — 66&raquo;
+          равно числу строк, а непокрытый отрезок раскрыт прозой, а не спрятан.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/cost-1280-light.png" alt="Cost, 1280 px, светлая" data-lightbox-group="pg-cost" data-caption="Cost · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/cost-1280-dark.png" alt="Cost, 1280 px, тёмная" data-lightbox-group="pg-cost" data-caption="Cost · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/cost-390-light.png" alt="Cost, 390 px, светлая" data-lightbox-group="pg-cost" data-caption="Cost · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/cost-390-dark.png" alt="Cost, 390 px, тёмная" data-lightbox-group="pg-cost" data-caption="Cost · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/cost.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/cost.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+
+        <article class="card finding">
+          <h3>Library — <code>library.html</code></h3>
+          <p class="finding-body">Полки: хэндоффы, dev history, дайджесты и решения с настоящими
+          счётчиками файлов (Handoffs 46, Dev history 93) и заголовками, сохраняемыми целиком
+          до 158 символов.</p>
+          <div class="shots frames">
+            <figure class="shot"><img class="shot-img desk" src="../assets/library-1280-light.png" alt="Library, 1280 px, светлая" data-lightbox-group="pg-library" data-caption="Library · 1280 × светлая"><figcaption class="shot-cap">1280 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img desk" src="../assets/library-1280-dark.png" alt="Library, 1280 px, тёмная" data-lightbox-group="pg-library" data-caption="Library · 1280 × тёмная"><figcaption class="shot-cap">1280 · тёмная</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/library-390-light.png" alt="Library, 390 px, светлая" data-lightbox-group="pg-library" data-caption="Library · 390 × светлая"><figcaption class="shot-cap">390 · светлая</figcaption></figure>
+            <figure class="shot"><img class="shot-img mob" src="../assets/library-390-dark.png" alt="Library, 390 px, тёмная" data-lightbox-group="pg-library" data-caption="Library · 390 × тёмная"><figcaption class="shot-cap">390 · тёмная</figcaption></figure>
+          </div>
+          <div class="page-actions">
+            <a class="hbtn" href="../pages/library.html">Открыть снапшот →</a>
+            <a class="hbtn" href="../../../../../../../lab/site/library.html">Открыть живую страницу ↗</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="mob-h">
+      <h2 class="section-title" id="mob-h">За пределами сайта — мобильная md-проекция</h2>
+      <article class="card pad">
+        <h3>Markdown-проекция для телефона — <code>docs/lab/mobile/README.md</code></h3>
+        <p>Та же лаборатория, спроецированная в чистый Markdown для чтения с телефона (GitHub
+        mobile, любой md-просмотрщик) — пересобрана в том же визуальном языке в рамках этого
+        эпика (GSL-137), с честной пометкой об устаревании на момент сборки. Это артефакт того
+        же рендерера, а не отдельный продукт.</p>
+        <div class="page-actions">
+          <a class="hbtn" href="../../../../../../../lab/mobile/README.md">Открыть README.md ↗</a>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Обзор дизайна для <a href="../../ru/index.html">GSL-138 ран 01</a> · задача GSL-140 · снапшот <code>docs/lab/site</code> @ <code>main fed234e</code> · 2026-07-23</span>
+      <span>Самодостаточен · открывается из <code>file://</code> · без зависимостей</span>
+    </div>
+  </footer>
+
+  <script src="../../assets/lightbox.js" defer></script>
+</body>
+</html>
