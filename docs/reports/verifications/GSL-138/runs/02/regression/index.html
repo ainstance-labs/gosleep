@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run 02 — Regression lane · GSL-138</title>
+<style>
+  :root{
+    --bg:#f7f7f6; --panel:#ffffff; --fg:#1b1b1e; --muted:#5f5f5c; --line:#e3e3dd;
+    --line-strong:#c8c8c0; --accent:#2b52c4;
+    --hold:#1f7a3d; --hold-soft:#e7f3ea; --hold-border:#bfe0c9;
+    --reg:#b3261e; --reg-soft:#fbe9e7; --reg-border:#f0c2bd;
+    --nv:#8a6d00; --nv-soft:#f6efd8; --nv-border:#e6d69a;
+    --crit:#b3261e; --major:#8a6d00; --minor:#5f5f5c; --docs:#2b52c4;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0d0e10; --panel:#161719; --fg:#e6e6e3; --muted:#9a9a95; --line:#2a2b2e;
+      --line-strong:#3d3d44; --accent:#7aa2ff;
+      --hold:#7cdd93; --hold-soft:#16241a; --hold-border:#295233;
+      --reg:#ff6a5e; --reg-soft:#2a1614; --reg-border:#5e2b26;
+      --nv:#ffc673; --nv-soft:#2a2210; --nv-border:#5e4a16;
+      --crit:#ff6a5e; --major:#ffc673; --minor:#9a9a95; --docs:#7aa2ff;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d0e10; --panel:#161719; --fg:#e6e6e3; --muted:#9a9a95; --line:#2a2b2e;
+    --line-strong:#3d3d44; --accent:#7aa2ff;
+    --hold:#7cdd93; --hold-soft:#16241a; --hold-border:#295233;
+    --reg:#ff6a5e; --reg-soft:#2a1614; --reg-border:#5e2b26;
+    --nv:#ffc673; --nv-soft:#2a2210; --nv-border:#5e4a16;
+    --crit:#ff6a5e; --major:#ffc673; --minor:#9a9a95; --docs:#7aa2ff;
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f7f6; --panel:#ffffff; --fg:#1b1b1e; --muted:#5f5f5c; --line:#e3e3dd;
+    --line-strong:#c8c8c0; --accent:#2b52c4;
+    --hold:#1f7a3d; --hold-soft:#e7f3ea; --hold-border:#bfe0c9;
+    --reg:#b3261e; --reg-soft:#fbe9e7; --reg-border:#f0c2bd;
+    --nv:#8a6d00; --nv-soft:#f6efd8; --nv-border:#e6d69a;
+    --crit:#b3261e; --major:#8a6d00; --minor:#5f5f5c; --docs:#2b52c4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--sans);
+    -webkit-font-smoothing:antialiased;padding:32px 20px 64px}
+  .wrap{max-width:1040px;margin:0 auto}
+  header h1{font-size:22px;font-weight:600;margin:0 0 4px}
+  header .sub{color:var(--muted);font-size:13px;margin:0 0 20px}
+  header .sub code{font-family:var(--mono);font-size:12px}
+  .cards{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 24px}
+  .card{flex:1 1 150px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:14px 16px}
+  .card .n{font-size:26px;font-weight:600;line-height:1.1}
+  .card.hold .n{color:var(--hold)} .card.reg .n{color:var(--reg)} .card.nv .n{color:var(--nv)}
+  .card .l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--fg);margin:0 0 24px}
+  .note b{font-weight:600}
+  .note code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    font-weight:600;margin:28px 0 10px}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  table{border-collapse:collapse;width:100%;min-width:720px;font-size:13.5px}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--hold-soft)}
+  @media (prefers-color-scheme: dark){ tbody tr:hover{background:#1b1c1f} }
+  :root[data-theme="dark"] tbody tr:hover{background:#1b1c1f}
+  .key{font-family:var(--mono);font-size:12.5px;font-weight:600;white-space:nowrap}
+  .key a{color:var(--accent);text-decoration:none}
+  .key a:hover{text-decoration:underline}
+  .sev{display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;
+    letter-spacing:.04em;margin-top:3px}
+  .sev.crit{color:var(--crit)} .sev.major{color:var(--major)}
+  .sev.minor{color:var(--minor)} .sev.docs{color:var(--docs)}
+  .inv{color:var(--fg);max-width:400px}
+  .verdict{white-space:nowrap}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;
+    border:1px solid;letter-spacing:.02em}
+  .badge.hold{color:var(--hold);background:var(--hold-soft);border-color:var(--hold-border)}
+  .badge.reg{color:var(--reg);background:var(--reg-soft);border-color:var(--reg-border)}
+  .badge.nv{color:var(--nv);background:var(--nv-soft);border-color:var(--nv-border)}
+  .ev{font-family:var(--mono);font-size:11.5px;color:var(--muted);max-width:280px;word-break:break-word}
+  .ev b{color:var(--fg);font-weight:600}
+  .shots{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 0}
+  figure{margin:0;flex:1 1 300px;max-width:360px}
+  figure img{width:100%;height:auto;border:1px solid var(--line-strong);border-radius:8px;display:block}
+  figcaption{font-size:12px;color:var(--muted);margin-top:6px;font-family:var(--mono)}
+  .ru{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:20px 22px;margin:32px 0 0}
+  .ru h2{margin-top:0}
+  .ru p{margin:0 0 10px;font-size:14px}
+  .ru ul{margin:0 0 10px;padding-left:20px;font-size:14px}
+  .ru li{margin:3px 0}
+  .ru code{font-family:var(--mono);font-size:12px}
+  footer{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+  .toggle{position:fixed;top:14px;right:14px;background:var(--panel);border:1px solid var(--line-strong);
+    color:var(--fg);border-radius:8px;padding:6px 10px;font:12px var(--sans);cursor:pointer}
+</style>
+</head>
+<body>
+<button class="toggle" id="tt" aria-label="Toggle theme">◐ theme</button>
+<div class="wrap">
+<header>
+  <h1>Run 02 — Regression lane</h1>
+  <p class="sub">Acceptance epic <b>GSL-138</b> · regression over prior findings · <code>main</code> @ <code>54fe290</code> · tracking task <b>GSL-144</b><br>
+  Verifies that already-closed findings <b>stay closed</b> in the committed artifacts. Not a fresh audit — it hunts no new problems, fixes nothing.</p>
+</header>
+
+<div class="cards">
+  <div class="card hold"><div class="n">22</div><div class="l">HOLDS</div></div>
+  <div class="card reg"><div class="n">0</div><div class="l">Regressed</div></div>
+  <div class="card nv"><div class="n">0</div><div class="l">Not verifiable</div></div>
+  <div class="card"><div class="n">22</div><div class="l">Invariants checked</div></div>
+</div>
+
+<div class="note">
+  <b>Method.</b> The working tree is dirty from a parallel chronicler run, so every built-artifact invariant is checked against the <b>committed blob</b>
+  (<code>git show 54fe290:&lt;path&gt;</code>), never the modified file on disk. Source under <code>tools/lab/ui/src</code> is clean (tree == HEAD) and is grepped directly.
+  GSL-114 is measured live in Chromium at 390×844 (viewport, never fullPage). All 22 invariants hold — no <code>[REGRESSION]</code> tickets were filed.
+</div>
+
+<h2>Shift-71 audit findings — GSL-113 … GSL-132 (all Done, label <span style="font-family:var(--mono)">verifier</span>)</h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Ticket</th><th>Invariant (must be true in the artifact)</th><th>Verdict</th><th>Evidence — line:file / frame</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-113">GSL-113</a><br><span class="sev crit">critical</span></td>
+      <td class="inv">Mobile projection degrades instead of claiming FRESH forever — header re-graded, two-ages caveat present.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>mobile/README.md:3,5</b> — header <b>“🔴 DEAD at build … 5h 56m old at that moment”</b>; caveats “at build time”, “two ages”.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-114">GSL-114</a><br><span class="sev major">major</span></td>
+      <td class="inv">Timeline @390px: no page overflow; the two summary tables’ <code>n</code> column fits the card (with <code>.wrap</code> scroll fallback).</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev">Chromium 390px: <b>scrollWidth==clientWidth==390</b>, pageOverflow 0, 7 nav links; summary tables 366==366 in <code>.wrap</code> overflow-x:auto (theme.ts:277). See frames below.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-115">GSL-115</a><br><span class="sev major">major</span></td>
+      <td class="inv">Without JS the header does not assert “FRESH · Live … right now”; the live verdict is JS-only.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>site/index.html</b> <code>&lt;noscript&gt;</code>: “frozen at the build … Trust the timestamp, not the tense.” Live-verdict string lives only in the JS data map.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-116">GSL-116</a><br><span class="sev minor">minor</span></td>
+      <td class="inv">Overview prints the question type <em>with</em> a semantic colour modifier (BLOCKER ≠ FYI grey).</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>screens/overview.tsx:73</b> — <code>class={`tag ${i.type}`}</code>.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-117">GSL-117</a><br><span class="sev minor">minor</span></td>
+      <td class="inv">Filter select/button borders meet WCAG 1.4.11 (≥ 3:1).</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>theme.ts:432–436</b> — <code>.filters select/input/button</code> use <code>--line-strong</code> (measured 3.95:1 light / 3.87:1 dark).</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-118">GSL-118</a><br><span class="sev minor">minor · fix-wave 1</span></td>
+      <td class="inv">Context gauge reads “X% (rolls at Y%)”, never the “N% of M%” product misreading — in source and built pages.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>chronicler.py:1328</b> — <code>"%d%% (rolls at %d%%)"</code>; grep <code>[0-9]+% of [0-9]+%</code> over built pages → 0.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-119">GSL-119</a><br><span class="sev minor">minor</span></td>
+      <td class="inv"><code>.unknown</code> no longer italicises the whole clock container; axis labels stay upright.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>theme.ts:355–356</b> — <code>.unknown{font-style:normal}</code>, dotted underline scoped to <code>span.unknown</code>; clock styling scoped to <code>.clock.unknown .clock-val</code> (235–236).</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-120">GSL-120</a><br><span class="sev major">major</span></td>
+      <td class="inv">Cost declares its per-cycle incompleteness rather than silently showing fewer rows than promised.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>site/cost.html</b> — “30 of the 107 cycles the ledger counts have no per-cycle row here, so every sum below is LOW by an unknown amount”; “107 cycles run”.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-121">GSL-121</a><br><span class="sev major">major</span></td>
+      <td class="inv">Detail values are returned whole and wrap; no silent <code>.slice(0,90)</code> mid-word clip.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>components.tsx:207–218</b> — “THE VALUE IS RETURNED WHOLE … values WRAP rather than clip”; the old <code>.slice(0,90)</code> removed.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-122">GSL-122</a><br><span class="sev minor">minor · fix-wave 1</span></td>
+      <td class="inv">Timeline provenance caption prints the computed hook share, not “that half of the log”.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>site/timeline.html:469</b> — “that <b>93%</b> of the log”; source <code>screens/timeline.tsx:178</code> uses <code>mechanical_share</code>; “that half” → 0 hits.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-123">GSL-123</a><br><span class="sev minor">minor · fix-wave 1</span></td>
+      <td class="inv">Library cross-index: an untitled row carries an <code>unknown</code> marker; zero blank title cells in the built page.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>site/library.html</b> — 1 unknown marker (“no first heading to read a title from”), 0 <code>&lt;td&gt;&lt;/td&gt;</code>, 171 rows; source <code>screens/library.tsx:86</code>.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-124">GSL-124</a><br><span class="sev major">major</span></td>
+      <td class="inv">Meter classes <code>.ok / .warn / .dead</code> are declared, so a warning renders in warn ink, not body colour.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>theme.ts:324–326, 346–348</b> — <code>.tag.ok/.warn/.dead</code> + <code>span.ok/.warn/.dead</code>; mirrored in built pages’ inline CSS.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-125">GSL-125</a><br><span class="sev minor">minor</span></td>
+      <td class="inv">Epic coverage chip differs for ok vs warn (colour carries information).</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>theme.ts:324–325</b> — <code>.tag.ok</code> uses <code>--ok-*</code>, <code>.tag.warn</code> uses <code>--warn-*</code> (distinct fill + border).</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-126">GSL-126</a><br><span class="sev major">major</span></td>
+      <td class="inv">The staleness banner re-ages against the reader’s clock every second inside the fresh window (grade still only worsens).</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>client.ts:41–63</b> — <code>regradeStaleness()</code>; the early-return-that-froze-the-age bug is removed and documented (“one page, two ages, one of them false”).</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-127">GSL-127</a><br><span class="sev major">major</span></td>
+      <td class="inv">Library “files” column shows the real file count, not the list-cutoff cap of 40.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>screens/library.tsx:108–112</b> — “<code>s.count</code> is now the count of files FOUND, not a list-cutoff limit”; bundle shelves Dev history 99, Handoffs 47.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-128">GSL-128</a><br><span class="sev major">major</span></td>
+      <td class="inv">An owner-answered question is not filed under “Decided without you”.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>screens/questions.tsx:160–164</b> — split by authorship: <code>decidedByYou = answered_by==="owner"</code>; the rest is “without you”.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-129">GSL-129</a><br><span class="sev major">major</span></td>
+      <td class="inv">Fleet’s “N live workers” KPI no longer contradicts all-ended cards — the two sources are reconciled in prose.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>screens/fleet.tsx:149–159</b> — bridge note: “live workers … counts panes open right now … these cards are every worker the log could name … Two sources, two questions.”</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-130">GSL-130</a><br><span class="sev minor">minor</span></td>
+      <td class="inv">Tasks epic rows print the PR link once — no doubled <code>#NNN#NNN</code> token.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>site/tasks.html</b> — <code>#[0-9]+#[0-9]+</code> → 0; adjacent <code>&lt;/a&gt;&lt;a … pull&gt;</code> → 0.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-131">GSL-131</a><br><span class="sev major">major</span></td>
+      <td class="inv">Library headings are not cut at 110 chars mid-word in the render bundle.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>render_bundle.json</b> — 19 titles exceed 110 chars (cap gone); 0 titles end in an ellipsis; the single 110-char title ends on “)”.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-132">GSL-132</a><br><span class="sev minor">minor · fix-wave 1</span></td>
+      <td class="inv">Prose pack: Tasks “Last polled … ago” (not “old”) + <code>data-age-suffix</code> contract; Cost tautologies gone; Overview two-ages sum is exact.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>tasks.tsx:176</b> <code>suffix="ago"</code>, <b>client.ts:195</b> reads it back; built tasks carries <code>data-age-suffix="ago"</code>; Cost “no token ceiling” echo → 0; <b>status.json</b> <code>max_event_age_s 21411 == generated_at − latest 21411</code>.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Fix-wave 1 process artifacts — GSL-141 (docs completeness)</h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Ticket</th><th>Invariant (must be true in the artifact)</th><th>Verdict</th><th>Evidence — line:file</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-142">GSL-142</a><br><span class="sev docs">docs</span></td>
+      <td class="inv">dev_history README documents the per-task assets convention, the file-naming scheme, and the run-vs-dev_history separation.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>docs/dev_history/README.md:12–31</b> — <code>assets/&lt;TASK-KEY&gt;/</code>, naming <code>&lt;page&gt;-&lt;width&gt;-&lt;theme&gt;.png</code>, historical footnote, run-copy is one-way.</td>
+    </tr>
+    <tr>
+      <td class="key"><a href="https://ainstance-labs.atlassian.net/browse/GSL-143">GSL-143</a><br><span class="sev docs">docs</span></td>
+      <td class="inv">verifications README is a complete run standard: path/numbering, EN+RU dashboard, mandatory <code>design/</code>, fullPage ban (1280 &amp; 390, both themes), numbered items with Jira chips, file:// self-containment, references runs/01.</td>
+      <td class="verdict"><span class="badge hold">HOLDS</span></td>
+      <td class="ev"><b>docs/reports/verifications/README.md</b> — all listed points present; <code>GSL-138/runs/01/</code> cited as the reference example.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Evidence frames — GSL-114 (Timeline @ 390×844, viewport)</h2>
+<div class="shots">
+  <figure>
+    <img src="assets/timeline-390-light.png" alt="Timeline at 390px, light theme — no horizontal overflow, 7 nav links, visible control borders">
+    <figcaption>timeline-390-light · scrollWidth==clientWidth==390, 7 nav links, control borders visible (GSL-117)</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/timeline-390-dark.png" alt="Timeline at 390px, dark theme — genuinely dark background rgb(13,14,16)">
+    <figcaption>timeline-390-dark · body bg rgb(13,14,16), luminance 14 — genuinely dark, pageOverflow 0</figcaption>
+  </figure>
+</div>
+
+<div class="ru">
+  <h2>Русская сводка</h2>
+  <p><b>Регрессионный лейн run 02</b> по приёмочному эпику GSL-138, на <code>main</code> @ <code>54fe290</code>. Задача — подтвердить, что ранее закрытые находки <b>остаются закрытыми</b> в закоммиченных артефактах. Новых проблем не искал (это параллельный fresh-аудитор), ничего не чинил.</p>
+  <p><b>Итог: 22 из 22 инвариантов HOLDS. Регрессий (REGRESSED) — 0. Непроверяемых (NOT-VERIFIABLE) — 0.</b> Новых <code>[REGRESSION]</code>-тикетов не заведено.</p>
+  <ul>
+    <li><b>Смена 71 (GSL-113…132)</b> — все 20 находок держатся: мобильная проекция деградирует (DEAD at build), Timeline на 390px не переполняется, часы контекста говорят «(rolls at)», курсив <code>.unknown</code> не протекает, Cost честно объявляет усечение, Library показывает реальные счётчики файлов и маркер <code>unknown</code>, Tasks не дублирует ссылку PR, баннер переоценивает возраст каждую секунду.</li>
+    <li><b>Фикс-волна 1 (GSL-118/122/123/132)</b> — перепроверена по финальным фиксам: инвариант двух возрастов сходится точно (<code>21411 == 21411</code>), «that 93% of the log», маркер untitled доехал до построенной страницы, суффикс «ago» + контракт <code>data-age-suffix</code>.</li>
+    <li><b>Docs-артефакты (GSL-142/143)</b> существуют и полны.</li>
+  </ul>
+  <p><b>Ключевое методическое решение.</b> Рабочее дерево грязное после параллельного chronicler-прогона, поэтому все built-инварианты проверялись по закоммиченному блобу (<code>git show 54fe290:…</code>), а не по изменённому файлу на диске; исходники <code>tools/lab/ui/src</code> чисты (дерево == HEAD). GSL-114 измерен вживую в Chromium на 390×844 (viewport, не fullPage).</p>
+</div>
+
+<footer>
+  gosleep · verification run 02 · regression lane · task GSL-144 · generated against main @ 54fe290.
+  Terms LANDED / HOLDS / REGRESSED / NOT-VERIFIABLE and severities CRITICAL / MAJOR / MINOR are not translated (run standard, GSL-143).
+</footer>
+</div>
+<script>
+  (function(){
+    var b=document.getElementById('tt');
+    b.addEventListener('click',function(){
+      var cur=document.documentElement.getAttribute('data-theme');
+      var next=cur==='dark'?'light':(cur==='light'?'dark':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
+      document.documentElement.setAttribute('data-theme',next);
+    });
+  })();
+</script>
+</body>
+</html>
