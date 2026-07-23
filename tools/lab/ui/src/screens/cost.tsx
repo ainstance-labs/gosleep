@@ -150,7 +150,7 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
                 <td class="num">{m.tokens_out === null ? <Unknown why="not one cycle in this bucket had a readable token count — unknown, not zero" /> : n(m.tokens_out)}</td>
                 <td class="num">{m.tokens_in === null ? <Unknown /> : n(m.tokens_in)}</td>
                 <td class="num">{m.cache_read === null ? <Unknown /> : n(m.cache_read)}</td>
-                <td class={m.partial > 0 ? "wk-models" : "dim"}>
+                <td class={m.partial > 0 ? "partial-note" : "dim"}>
                   {m.partial > 0
                     ? `${m.partial} of ${m.cycles} cycle(s) had an unreadable token field — these sums are LOW by an unknown amount`
                     : "nothing — every cycle parsed"}

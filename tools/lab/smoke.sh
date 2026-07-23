@@ -3388,6 +3388,24 @@ PY
   && ok "GSL-149: severity options are worst-first (incident,warn,info,unknown) despite a benign-first feed" \
   || bad "GSL-149: severity options follow appearance order, not SEVERITIES ($SEVOPTS)"
 
+# ────────── GSL-151 (fix wave 2): one role = one name ──────────
+# The Cost "missing from these sums" cell borrowed .wk-models — a class defined for and named after
+# the Fleet worker card's multi-model warning line. The amber was right; the vocabulary was wrong:
+# the next editor of .wk-models could not know a second screen depended on it. The cell now wears
+# its own role class (.partial-note); the worker-card class stays where its name points.
+grep -q 'wk-models' "$REPO_ROOT/tools/lab/ui/src/screens/cost.tsx" \
+  && bad "GSL-151: cost.tsx still borrows the worker-card class .wk-models" \
+  || ok "GSL-151: cost.tsx no longer references .wk-models — the borrowed name went home"
+grep -q 'class="partial-note"' "$FL/docs/lab/site/cost.html" \
+  && ok "GSL-151: the partial-sums cell wears its own role class on the built Cost page" \
+  || bad "GSL-151: no .partial-note cell on the fixture Cost page (its ledger has partial=1)"
+grep -q 'class="wk-models"' "$FL/docs/lab/site/cost.html" \
+  && bad "GSL-151: the built Cost page still MARKS UP a cell with the worker-card class" \
+  || ok "GSL-151: no Cost markup wears the worker-card class (the shared stylesheet may define it)"
+grep -q '\.partial-note{' "$FL/docs/lab/site/cost.html" \
+  && ok "GSL-151 control: the stylesheet defines .partial-note — the cell is actually painted" \
+  || bad "GSL-151 control: .partial-note has no rule — a role class nobody paints"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

@@ -365,6 +365,11 @@ span.unknown{text-decoration:underline dotted;text-underline-offset:2px}
    without borrowing amber from the states that earned it. */
 .card.blind{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
 .stale-note{color:var(--dim)}
+/* The Cost per-model "missing from these sums" cell: a caveat that EARNED warning ink — the sums
+   are LOW by an unknown amount. Its own role name on purpose: it used to borrow .wk-models, a
+   class defined for and named after the Fleet worker card, so the next editor of that class could
+   not know a second screen depended on it (GSL-151). One role = one name. */
+.partial-note{color:var(--warn)}
 
 /* ── The autonomy runway: the answer to the only question asked at midnight. It was the single
    loudest source of the slop complaint — a full-width purple fill, a dashed border, and a 40px
