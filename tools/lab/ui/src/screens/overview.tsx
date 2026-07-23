@@ -66,7 +66,11 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
               <tr key={i.id}>
                 <td class="mono">{i.id}</td>
                 <td>
-                  <span class="tag">{i.type}</span>
+                  {/* GSL-116: the type carries the grade, so it carries the class. Only BLOCKER
+                      matches a colour rule (.tag.BLOCKER -> dead); DECISION/CLARIFY/FYI fall to the
+                      neutral default. Before this, a BLOCKER was painted the same grey as an FYI —
+                      the one type that means "stop" read as the one that means "for information". */}
+                  <span class={`tag ${i.type}`}>{i.type}</span>
                 </td>
                 <td>{i.question}</td>
                 <td class="mono">{i.auto_apply_at ?? i.default ?? ""}</td>

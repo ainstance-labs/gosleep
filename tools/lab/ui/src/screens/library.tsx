@@ -1,7 +1,10 @@
 import type { VNode } from "preact";
 import type { LibraryEntry, RenderBundle } from "../types.js";
-import { Empty, FilterBar, FilterCount } from "../components.js";
+import { Empty, FilterBar, FilterCount, Unknown } from "../components.js";
 import { facetValues, type FilterIndex, type FilterRow } from "../filter.js";
+
+/** The absence glyph, muted (spec 6.5) so an empty cell does not read as a datum. */
+const dash = <span class="muted">&mdash;</span>;
 
 export const LIBRARY_ISLAND = "library-index";
 const SCOPE = "library-rows";
@@ -76,7 +79,11 @@ export function Library({ b }: { b: RenderBundle }): VNode {
                 <td class="mono">
                   <a href={r.href}>{r.name}</a>
                 </td>
-                <td>{r.title}</td>
+                {/* GSL-123: an empty title cell reads as a render glitch next to 131 filled ones. A
+                    document with no first heading has no title to read, and that absence is a fact —
+                    shown as `unknown` with its reason, the way every other missing value on these
+                    screens is (GSL-94/98/99), not as a blank. */}
+                <td>{r.title ? r.title : <Unknown why="the document has no first heading to read a title from" />}</td>
               </tr>
             ))}
           </table>
@@ -92,13 +99,16 @@ export function Library({ b }: { b: RenderBundle }): VNode {
           <tr>
             <th>kind</th>
             <th>source</th>
-            <th>files</th>
+            <th class="num">files</th>
           </tr>
           {b.library.sections.map((s) => (
             <tr key={s.key}>
               <td>{s.label}</td>
               <td class="mono">{s.source}</td>
-              <td class="mono">
+              {/* GSL-127: s.count is now the count of files FOUND, not a list-cutoff limit. It used to
+                  read 40 for the dev_history (93) and handoff (46) shelves because the list stopped at
+                  40 — the cap dressed as a measurement. Right-aligned as the quantity it is (spec 6.4). */}
+              <td class="num">
                 {s.count}
                 {s.dir_exists ? null : <span class="stale-note"> · no such directory</span>}
               </td>
@@ -122,7 +132,7 @@ export function Library({ b }: { b: RenderBundle }): VNode {
               <tr key={`${d.ts ?? ""}-${i}`}>
                 <td class="mono">{String(d.ts ?? "").slice(0, 16)}</td>
                 <td>{d.decision}</td>
-                <td class="mono">{d.rule ?? "—"}</td>
+                <td class="mono">{d.rule ?? dash}</td>
               </tr>
             ))}
           </table>

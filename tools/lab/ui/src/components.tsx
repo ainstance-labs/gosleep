@@ -58,6 +58,18 @@ export function StaleBanner({ b }: { b: RenderBundle }): VNode {
         {Math.floor(st.thresholds_s.dead / 3600)}h ·{" "}
         <span id="stale-verdict">{VERDICTS[g]}</span>
       </small>
+      {/* GSL-115: with JS off, nothing re-grades. The build-time verdict then stands unbounded — and
+          when that verdict is "fresh", the sentence beside it ("Live — the laboratory is writing
+          itself right now") keeps asserting the present tense forever, on a page that may be days old.
+          The banner is honest only if a reader who runs no script is TOLD the age is frozen. This
+          renders exactly when scripting is off; with JS on the browser hides it and the live re-grade
+          speaks instead. It carries no age string, so the "… old" ticker and its doubled-suffix guard
+          never touch it. */}
+      <noscript>
+        JavaScript is off, so this banner is frozen at the build ({b.generated_at}): the age above does
+        not tick and the verdict does not re-grade. Trust the timestamp, not the tense — a page open
+        long enough has outlived its own present tense.
+      </noscript>
     </div>
   );
 }
@@ -186,12 +198,26 @@ export function srcClass(src: string | undefined): string {
  * back to. smoke.sh asserts BOTH directions here — that a live sha is rendered, and that a
  * superseded one is not — because a renderer that prints nothing at all would pass the second
  * assertion vacuously.
+ *
+ * GSL-124/GSL-121: THE VALUE IS RETURNED WHOLE. This used to end in .slice(0, 90), which cut 37 of
+ * the 90 detail values on the current bundle — mid-word, with no ellipsis and no tooltip, and with
+ * the remainder absent from the DOM entirely, so it could not even be recovered by searching the
+ * page. Silent truncation is the one failure mode this laboratory exists to refuse, and a dashboard
+ * that clips the evidence it is quoting is making the reader's decision for him.
+ *
+ * The cut was believed to be upstream, in the generator: the design spec (section 6.4) says these
+ * values arrive "already pre-truncated at ~90 characters" and rules the matter out of scope for the
+ * view layer on that basis. Measurement showed the premise was wrong — the truncation was HERE, in
+ * the view, one call away from the reader. The rest of that same section is what now carries the
+ * long values: td{overflow-wrap:anywhere} wraps the tail, on the deliberate instruction that long
+ * values WRAP rather than clip. No ellipsis is added — that would be new visible text, which the
+ * spec forbids — and no new line of prose appears anywhere.
  */
 export function eventDetail(e: LabEvent): string {
   const d = (e.data ?? {}) as Record<string, unknown>;
   for (const k of ["sha", "path", "key", "question", "error_type", "decision", "cmd"]) {
     const v = d[k];
-    if (v !== undefined && v !== null && v !== "") return String(v).slice(0, 90);
+    if (v !== undefined && v !== null && v !== "") return String(v);
   }
   return "";
 }

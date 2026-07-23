@@ -128,10 +128,17 @@ function Row({ r, built, gh }: { r: TaskRow; built: number; gh: boolean }): VNod
         ))}
       </td>
       <td class="mono">
-        {r.prs.map((p) => (
-          <a key={p.number} href={p.url}>
-            #{p.number}
-          </a>
+        {/* GSL-130: the bundle lists a task's merge PR twice (same url, same number), so this column
+            rendered #134#134 — one token to the eye, with no space between the two anchors and so no
+            soft-wrap point either, the same adjacency hazard GSL-100 measured on the nav. De-duped by
+            url, an identical PR is shown once; a genuine second PR would still render, separated. The
+            bundle keeps its duplicate — this is the view refusing to repeat one identical link, not a
+            data edit (the data layer is out of the reface's scope). */}
+        {[...new Map(r.prs.map((p) => [p.url, p])).values()].map((p, i) => (
+          <span key={p.url}>
+            {i > 0 ? " " : ""}
+            <a href={p.url}>#{p.number}</a>
+          </span>
         ))}
       </td>
     </tr>

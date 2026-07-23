@@ -146,6 +146,19 @@ export function Fleet({ b }: { b: RenderBundle }): VNode {
         </Empty>
       ) : (
         <>
+          {/* GSL-129: the KPI at the top says "N live workers" and these cards are almost all ended,
+              which reads as one contradictory set unless the two are told apart. They measure
+              different things from different sources — the live count is the orchestrator's open
+              panes right now; a card is any worker the LOG could name over the whole window. The
+              reconciliation used to sit far below in "what this screen cannot see"; it belongs here,
+              where the two numbers collide. Shown only when a live count actually exists to bridge. */}
+          {f.open_workers !== null ? (
+            <p class="stale-note">
+              The <b>live workers</b> tile above counts panes open right now, from the orchestrator's
+              heartbeat; these cards are every worker the log could name over the window, ended ones
+              included. Two sources, two questions — the counts need not be the same set.
+            </p>
+          ) : null}
           <div class="filter-count">
             A card per worker the log can name. <b>{f.unnamed_sessions}</b> other session(s) have
             events but no name — they completed no task, so the log never learned who they were. Silent

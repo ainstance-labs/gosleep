@@ -2254,6 +2254,156 @@ sh_mono_wraps "$SHI" \
   && ok "GSL-100 ⭐ long unbreakable tokens wrap — a mono card cannot clip the note it is quoting" \
   || bad "GSL-100 ⭐ .mono lacks overflow-wrap: raw JSON clips mid-token and the reader loses text"
 
+# ════════ GSL-133 / T1: the two MAJOR findings the redesign's foundation closes ════════
+# Both defects were invisible to every assertion above, and invisible in the same WAY: the markup
+# said the right thing and the page did not show it. Neither is catchable by reading the markup —
+# one needs the stylesheet that markup resolves against, the other a character count on the cell
+# the reader is actually handed.
+#
+#   GSL-124 — .ok/.warn/.dead have sat in the markup since Phase 5 with NO rule behind them, so a
+#     Self-health WARNING printed in rgb(23,23,26): exactly the body colour. Only composite
+#     selectors (.sh-m.ok, .runway.warn, .tag.sev.incident) were ever declared, which is why this
+#     reads as styled on inspection and is not. A page that cannot raise its voice about its own
+#     rot is the failure this laboratory exists to refuse.
+#   GSL-121 — eventDetail() ended in a 90-character slice that cut 37 of the 90 detail values on
+#     the live bundle mid-word: no ellipsis, no tooltip, and the remainder ABSENT FROM THE DOM, so
+#     it could not be recovered even by searching the page. Silent truncation, the same defect
+#     class as the clipped mono card above, one function call away from the reader.
+#
+# Positive controls first and they are not optional: a guard that cannot recognise the broken state
+# is a green tick over nothing.
+sh_bare_ink() { grep -qE "span\.$2\{[^}]*color:var\(--$2\)" "$1"; }
+
+printf '<style>.sh-m.ok{border-left-color:var(--ok)}\n.runway.warn{color:var(--warn)}\n.tag.sev.incident{color:var(--dead)}</style>\n' > "$WORK/inks-prefix.html"
+INKCTL=0
+for C in ok warn dead; do sh_bare_ink "$WORK/inks-prefix.html" "$C" && INKCTL=1; done
+[[ $INKCTL -eq 0 ]] \
+  && ok "GSL-124: the bare-ink detector rejects a composite-only stylesheet (positive control)" \
+  || bad "GSL-124: the bare-ink detector ACCEPTS the pre-fix stylesheet — it cannot see the defect it guards"
+INKMISS=""
+for C in ok warn dead; do sh_bare_ink "$SHI" "$C" || INKMISS="$INKMISS $C"; done
+[[ -z "$INKMISS" ]] \
+  && ok "GSL-124 ⭐ bare .ok/.warn/.dead carry their own ink — a Self-health warning cannot print in body colour" \
+  || bad "GSL-124 ⭐ bare status classes still have no rule ($INKMISS ): the warning is drawn as ordinary prose"
+
+# The fixture carries ONE event whose detail is longer than the cap the view used to apply, so the
+# tail past character 90 exists on the page only if nothing truncated it. Asserted on the GENERATED
+# page, never on the source: the page is what the reader is handed.
+DTL="$WORK/f6-detail"; shx_init "$DTL"
+DTLV="git log --oneline --decorate -- docs/lab/site/index.html docs/lab/site/timeline.html docs/lab/ui/src/theme.ts docs/lab/ui/src/components.tsx"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"claude","type":"vcs.commit","src":"emit","session_id":"s1","data":{"cmd":"%s"}}\n' \
+  "$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")" \
+  "$TODAY" "$DTLV" > "$DTL/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$DTL" --no-poll --quiet --json >/dev/null 2>&1
+[[ ${#DTLV} -gt 90 ]] \
+  && ok "GSL-121: the trap is armed — the fixture detail is ${#DTLV} chars, past the 90 the view used to cut at" \
+  || bad "GSL-121: the fixture detail is only ${#DTLV} chars, so the truncation assertion below proves nothing"
+grep -qF "$DTLV" "$DTL/docs/lab/site/timeline.html" \
+  && ok "GSL-121 ⭐ a ${#DTLV}-character detail reaches the page whole — the silent 90-char cut is gone" \
+  || bad "GSL-121 ⭐ the detail cell is still truncated: everything past character 90 is absent from the DOM"
+
+# ════════ GSL-134 / T2: the three MAJOR findings this pass closes ════════
+# Same family as everything above: the markup or the data was right and the page still misled the
+# reader. None is catchable by reading a class name — one needs the client bundle run against a moved
+# clock, one needs the page rendered from a bundle that carries a live count, one needs the banner
+# inspected for the escape hatch a no-JS reader depends on.
+
+# ── GSL-126 ⭐: the banner age must keep ticking INSIDE the fresh window, not only when the grade
+#    drops. The old regrade() returned early whenever the grade did not get worse, and the early
+#    return took the AGE with it: a page opened 29 minutes after the build still read "last event 7s
+#    ago" while the self-health card two blocks down showed the true 29m. The grade DID update on a
+#    threshold crossing, so the mechanism looked alive; it was wired to the threshold, not the clock.
+#    Run the page's OWN inlined bundle with a stub DOM and a moved clock — nothing is mocked but the
+#    environment, and the staleness dataset is ours so the fresh window is controlled rather than
+#    whatever tonight's data happens to be.
+cat > "$WORK/gsl126.mjs" <<'JS'
+import { readFileSync } from "node:fs";
+const html = readFileSync(process.argv[2], "utf8");
+const m = html.match(/<script>([\s\S]*?)<\/script>/);   // the one <script> with no attrs: the client bundle
+if (!m) { console.log("NO_CLIENT=1"); process.exit(0); }
+const code = m[1];
+const GEN = "2026-07-20T00:00:00Z";
+const built = Date.parse(GEN);
+function open(nowMs) {
+  const staleness = { className: "stale fresh",
+    dataset: { grade: "fresh", generatedAt: GEN, eventAgeS: "7", freshS: "1800", deadS: "10800" } };
+  const head = { textContent: "SEED" };
+  const verdict = { textContent: "SEEDV" };
+  const verdicts = { textContent: JSON.stringify({ fresh: "FRESHV", stale: "STALEV", dead: "DEADV" }) };
+  const byId = { staleness, "stale-head": head, "stale-verdict": verdict, verdicts };
+  const document = { getElementById: (id) => byId[id] ?? null, querySelectorAll: () => [] };
+  new Function("document", "setInterval", "Date", code)(
+    document, () => 0, { now: () => nowMs, parse: (s) => Date.parse(s) });
+  return { head, staleness };
+}
+const t0  = open(built);
+const t20 = open(built + 20 * 60 * 1000);            // still inside fresh (< 30m)
+const t4h = open(built + 4 * 3600 * 1000);           // past dead (> 3h)
+console.log("T0_HEAD="   + t0.head.textContent);
+console.log("T20_HEAD="  + t20.head.textContent);
+console.log("T20_GRADE=" + t20.staleness.dataset.grade);
+console.log("T4H_GRADE=" + t4h.staleness.dataset.grade);
+JS
+G126="$(node "$WORK/gsl126.mjs" "$SHI" 2>&1)"
+grep -qE 'T0_HEAD=.*last event 7s ago' <<<"$G126" \
+  && ok "GSL-126: at the build instant the banner age is honest (7s) — the no-JS reader is not lied to (positive control)" \
+  || bad "GSL-126: the build-instant banner age is wrong ($(grep '^T0_HEAD=' <<<"$G126"))"
+grep -qE 'T20_HEAD=.*last event 20m ago' <<<"$G126" && grep -q 'T20_GRADE=fresh' <<<"$G126" \
+  && ok "GSL-126 ⭐ opened 20m after the build and still fresh, the banner reads 20m — the age ticks inside the window, not only on a grade drop" \
+  || bad "GSL-126 ⭐ the banner age is FROZEN inside the fresh window (still 7s at +20m): $(grep '^T20_' <<<"$G126")"
+grep -q 'T4H_GRADE=dead' <<<"$G126" \
+  && ok "GSL-126: 4h on, the verdict still re-grades to DEAD — the never-soften guard is intact (positive control)" \
+  || bad "GSL-126: the re-grade to dead broke ($(grep '^T4H_GRADE=' <<<"$G126"))"
+
+# ── GSL-129 ⭐: the "live workers" KPI and the (mostly ended) worker cards are different populations
+#    from different sources — open panes now vs every worker the log could name over the window. Set
+#    side by side with no bridge they read as one contradictory set ("2 live" over eight ended cards).
+#    The bridge sentence tells them apart and appears IFF a live count exists to bridge, ABOVE the
+#    first card. Rendered from the REAL bundle with the count forced on, then off: the page is what the
+#    reader is handed, so it is asserted on the rendered page, never on the source.
+BR="$WORK/gsl129"; mkdir -p "$BR"
+G129P='the log could name over the window'   # a phrase from the bridge itself, absent from every comment
+jq '.fleet.open_workers = 2'    "$REPO_ROOT/docs/lab/render_bundle.json" | node "$REPO_ROOT/tools/lab/ui/build.mjs" > "$BR/live.json" 2>/dev/null
+jq '.fleet.open_workers = null' "$REPO_ROOT/docs/lab/render_bundle.json" | node "$REPO_ROOT/tools/lab/ui/build.mjs" > "$BR/null.json" 2>/dev/null
+G129="$(python3 - "$BR/live.json" "$BR/null.json" "$G129P" <<'PY'
+import json, sys
+live = json.load(open(sys.argv[1]))["pages"]["fleet.html"]
+none = json.load(open(sys.argv[2]))["pages"]["fleet.html"]
+p = sys.argv[3]
+i, c = live.find(p), live.find('class="wk ')
+print("LIVE_PRESENT=%d" % (1 if i >= 0 else 0))
+print("LIVE_BEFORE_CARD=%d" % (1 if (i >= 0 and c >= 0 and i < c) else 0))
+print("NULL_PRESENT=%d" % (1 if none.find(p) >= 0 else 0))
+PY
+)"
+grep -q 'NULL_PRESENT=0' <<<"$G129" \
+  && ok "GSL-129: with the live count unknown the bridge is absent — it appears only when two numbers exist to reconcile (positive control)" \
+  || bad "GSL-129: the bridge prints even with no live count — it is unconditional, so it proves nothing ($G129)"
+grep -q 'LIVE_PRESENT=1' <<<"$G129" && grep -q 'LIVE_BEFORE_CARD=1' <<<"$G129" \
+  && ok "GSL-129 ⭐ '2 live workers' over ended cards no longer reads as one set — a bridge above the first card names the two as different questions" \
+  || bad "GSL-129 ⭐ the KPI and the cards stand adjacent with no reconciliation ($G129)"
+
+# ── GSL-115 ⭐: with JS off nothing re-grades, so a fresh-graded page keeps asserting "Live — the
+#    laboratory is writing itself right now" forever, on a file that may be days old. The finding
+#    measured ZERO <noscript> anywhere. The honest degradation is a <noscript> INSIDE the banner that
+#    tells a scriptless reader the age is frozen at build time. Asserted structurally, so an empty
+#    <noscript></noscript> cannot satisfy it.
+sh_banner_noscript() {  # exit 0 iff the staleness banner carries a non-empty <noscript>
+  python3 -c '
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r"id=\"staleness\".*?</div>", h, re.S)
+sys.exit(0 if (m and re.search(r"<noscript>\s*\S", m.group(0))) else 1)
+' "$1"
+}
+printf '<div class="stale fresh" id="staleness"><span id="stale-head">FRESH</span><small>x</small></div>\n' > "$WORK/gsl115-prefix.html"
+sh_banner_noscript "$WORK/gsl115-prefix.html" \
+  && bad "GSL-115: the noscript detector ACCEPTS a banner with none — it cannot see the defect it guards" \
+  || ok "GSL-115: the noscript detector rejects the pre-fix banner (positive control)"
+sh_banner_noscript "$SHI" \
+  && ok "GSL-115 ⭐ the staleness banner carries a <noscript> — a no-JS reader is told the age is frozen, not left under a permanent 'right now'" \
+  || bad "GSL-115 ⭐ the banner has no <noscript>: with JS off the build-time 'Live … right now' stands unbounded"
+
 echo "== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is =="
 RCP="$REPO_ROOT/tools/rc/rc-preflight.sh"
 
@@ -2510,6 +2660,82 @@ else
 fi
 
 echo
+echo "== GSL-137 / F5-S4c: the phone projection speaks the redesign's language, within Markdown =="
+# T5 of the GSL-111 relayout. This page is Markdown GitHub renders server-side, so the redesign's CSS
+# never reaches it; what transfers is the LANGUAGE. Four properties below, each built from a fixture so
+# a green run reads real generator output, not this file's prose: a runway deadline stated as an
+# absolute instant (never a countdown a frozen file cannot keep), an icon only where there is an alarm,
+# a trimmed list that says how much it hid, and the one magnitude a table can align, aligned.
+MB5="$WORK/mobile-gsl137"
+mkdir -p "$MB5/docs/lab/events" "$MB5/docs/lab/questions" "$MB5/docs/lab/decisions"
+MB5_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+# A commit (so the pass is fresh) plus two task-status transitions: known states the Tasks table lists.
+{
+  printf '{"ts":"%s","run_id":"r","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"beef137"}}\n' "$MB5_TS"
+  printf '{"ts":"%s","run_id":"r","seq":2,"actor":"w1","type":"tracker.issue.status","src":"poll-fill","data":{"key":"GSL-901","status":"In Progress","occurred_at":"%s"}}\n' "$MB5_TS" "$MB5_TS"
+  printf '{"ts":"%s","run_id":"r","seq":3,"actor":"w1","type":"tracker.issue.status","src":"poll-fill","data":{"key":"GSL-902","status":"Done","occurred_at":"%s"}}\n' "$MB5_TS" "$MB5_TS"
+} > "$MB5/docs/lab/events/$MB_TODAY.jsonl"
+# One open BLOCKER — it makes the blockers clock the next runway event AND puts an alarm in section 1.
+# One open DECISION — a waiting item that is NOT an alarm, so it must carry no icon.
+{
+  printf '{"id":"q-mb5-blk","ts":"%s","type":"BLOCKER","status":"open","from":"w1","task":"GSL-901","question":"MB5-BLOCKER-QUESTION","channel":"chat"}\n' "$MB5_TS"
+  printf '{"id":"q-mb5-dec","ts":"%s","type":"DECISION","status":"open","from":"w1","task":"GSL-902","question":"MB5-DECISION-QUESTION","channel":"chat","default":"the default"}\n' "$MB5_TS"
+} > "$MB5/docs/lab/questions/queue.jsonl"
+# Six decisions in the log; the page shows four, so the honest-truncation marker must name the other two.
+: > "$MB5/docs/lab/decisions/log.jsonl"
+for mb5i in 1 2 3 4 5 6; do
+  printf '{"id":"d-2026-07-20-90%s","ts":"2026-07-20T1%s:00:00Z","re":"q","task":"GSL-90%s","type":"DECISION","question":"?","decision":"MB5-DECISION-%s","made_by":"orchestrator","rule":"r"}\n' "$mb5i" "$mb5i" "$mb5i" "$mb5i" >> "$MB5/docs/lab/decisions/log.jsonl"
+done
+bash "$CH" --repo "$MB5" --no-poll --quiet --json >/dev/null 2>&1
+MB5P="$MB5/docs/lab/mobile/README.md"
+
+# ---- positive control: the fixture really exercised every branch the checks below read --------------
+MB5_TASKROWS="$(jq -r '.tasks.by_status | to_entries | map(select(.key!="unknown")) | length' "$MB5/docs/lab/render_bundle.json" 2>/dev/null)"
+{ [[ -s "$MB5P" ]] && [[ "$(jq -r '.runway.next_event.label' "$MB5/docs/lab/render_bundle.json" 2>/dev/null)" == "open blockers" ]] \
+  && [[ "${MB5_TASKROWS:-0}" -ge 2 ]] && grep -q 'MB5-DECISION-QUESTION' "$MB5P"; } \
+  && ok "GSL-137: the fixture built a page with a next runway event, known task states, a non-alarm question and six decisions (positive control — the checks below have input)" \
+  || bad "GSL-137: the GSL-137 fixture did not exercise a branch the checks below read — they would pass vacuously"
+
+# ---- the next runway event is an ABSOLUTE instant, not a countdown a frozen file cannot keep --------
+# 'Next runway event: X in 1m' counted minutes from a NOW Markdown cannot see: baked at 23:00 it still
+# read 'in 1m' at 03:00, five hours after it passed. The moment itself — generated_at + the offset —
+# does not decay in git. Computed here from the bundle so a typo in the formula fails as loudly as an
+# absence. Both checks read only the runway line, since generated_at also appears in the header above.
+MB5_RUNLINE="$(grep 'Next runway event:' "$MB5P" 2>/dev/null)"
+MB5_EVENT_AT="$(jq -r '((.generated_at|fromdateiso8601) + ((.runway.next_event.hours)*3600)) | strftime("%Y-%m-%dT%H:%M:%SZ")' "$MB5/docs/lab/render_bundle.json" 2>/dev/null)"
+[[ -n "$MB5_EVENT_AT" ]] && grep -qF "\`$MB5_EVENT_AT\`" <<<"$MB5_RUNLINE" \
+  && ok "GSL-137 ⭐ the next runway event prints the absolute moment it is due ($MB5_EVENT_AT) — the reader compares it to the clock in his hand" \
+  || bad "GSL-137 ⭐ no correct absolute moment on the runway line (expected $MB5_EVENT_AT) — the timing was not placed on a clock the reader shares"
+grep -qE 'in \*\*[0-9]' <<<"$MB5_RUNLINE" \
+  && bad "GSL-137 ⭐ the runway line still counts 'in **N**' — a countdown a Markdown file cannot keep as the night wears on" \
+  || ok "GSL-137 ⭐ no relative 'in **N**' on the runway line — the deadline is an instant, not an offset from a NOW this file cannot read"
+
+# ---- an icon only where there is an alarm (redesign section 7.2, projected to Markdown) -------------
+# The colour channel of the seven screens is emoji here. A BLOCKER stops the night and earns 🛑; a
+# DECISION is metadata about a question, and a glyph beside every one of them is the decorative noise
+# the redesign spends itself to remove. Both must hold at once: the alarm marked, the non-alarm bare.
+grep -qE '^- 🛑 \*\*BLOCKER\*\*' "$MB5P" \
+  && ok "GSL-137: the BLOCKER carries its alarm 🛑 (positive control — the discipline is not 'strip every icon')" \
+  || bad "GSL-137: the BLOCKER lost its 🛑 — the one waiting item that stops the night is no longer marked"
+grep -qE '❓ \*\*(DECISION|CLARIFY|FYI)\*\*' "$MB5P" \
+  && bad "GSL-137 ⭐ a non-alarm question still carries a decorative ❓ — status signal spent on metadata, the anti-pattern the redesign names" \
+  || ok "GSL-137 ⭐ the DECISION waits without an icon — the emoji channel is reserved for the verdict that has one"
+
+# ---- a trimmed list says how much it hid (redesign section 6.4: no silent truncation) --------------
+# '…and N more' is the idiom GSL-131 held up as the honest cut. The log has six decisions and the page
+# shows four; the two it drops are named, the same way the commit list names its overflow.
+grep -qF '…and 2 more' "$MB5P" \
+  && ok "GSL-137 ⭐ the decisions list names the two it did not show — the trim is declared, not silent" \
+  || bad "GSL-137 ⭐ four of six decisions shown and the other two vanish unremarked — a silent truncation on the honesty page"
+
+# ---- the count a table can align is right-aligned (redesign section 6.4) ----------------------------
+# The task counts are the one magnitude this projection compares, and Markdown aligns a column with a
+# '--:' rule. The old page joined them into a '· **N** State' sentence with nothing to align.
+awk '/^## 4\. Tasks/{f=1;next} /^## 5\./{f=0} f' "$MB5P" | grep -qF -- '--:' \
+  && ok "GSL-137 ⭐ the Tasks section is a table with a right-aligned count column — the number the reader scans is aligned to compare" \
+  || bad "GSL-137 ⭐ the Tasks counts are not in a right-aligned table — the one magnitude on the page is left unaligned"
+
+echo
 echo "== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best =="
 # Break-glass is five links: tailscale CLI -> tailnet -> an SSH transport -> mosh-server -> tmux.
 # The failure mode this guards is specific and seductive: Tailscale goes green, mosh is installed,
@@ -2733,6 +2959,242 @@ else
     && ok "GSL-110 ⭐ every landed Phase 6 task owns a dev_history file ($ACC_HIST) — the GSL-103 hole stays closed" \
     || bad "GSL-110 ⭐ only $ACC_HIST Phase 6 dev_history files: a landed task has lost its history again (GSL-103 class)"
 fi
+
+# ════════ GSL-135 / T3: the two MAJOR findings the Tasks/Timeline/Questions reface closes ════════
+# Both are invisible to every mechanism test above, and invisible in the same way T1's and T2's were:
+# the data is right and the view files it wrong. One is a wrapper two tables never got; the other is
+# a fourth bucket the questions taxonomy never had. Each ships with a control that must stay green.
+
+# ── GSL-114: the two summary tables at the foot of the feed must scroll like every other table.
+# They shipped bare in a card that let their content spill past its edge — the only two of the
+# thirteen tables without the scroll wrapper the rest have — so at 390px the count column ran off the
+# card with nothing to scroll it and the numbers were unreachable on a phone, while the names beside
+# them looked complete. The fix is structural: the same wrapper the feed table already has, and the
+# count moved to the right-aligned tabular column section 6.4 specifies. Asserting the WRAPPER (smoke
+# cannot measure a pixel) is the contract-level proof; the live 390px scrollWidth is measured with
+# the browser in the task's screenshot pass.
+T3T="$WORK/t3-timeline"; rm -rf "$T3T"; mkdir -p "$T3T/docs/lab/events" "$T3T/docs/lab/questions"
+T3TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"aa11bb2"}}\n' "$T3TS"
+  printf '{"ts":"%s","run_id":"x","seq":2,"actor":"w1","type":"agent.turn_ended","src":"emit","data":{}}\n' "$T3TS"
+} > "$T3T/docs/lab/events/$TODAY.jsonl"
+: > "$T3T/docs/lab/questions/queue.jsonl"
+bash "$CH" --repo "$T3T" --no-poll --quiet --json >/dev/null 2>&1
+G114="$(python3 - "$T3T/docs/lab/site/timeline.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+def wrapper_of(header):
+    m = re.search(r'<div class="([a-z]+)"><table><tr><th>' + header + r'</th>', h)
+    return m.group(1) if m else "MISSING"
+def numcol(header):
+    return "yes" if re.search(r'<th>' + header + r'</th><th class="num">n</th>', h) else "no"
+feed = "yes" if '<div class="wrap"><table id="timeline-rows">' in h else "no"
+print("TYPE_WRAP=%s|PROV_WRAP=%s|TYPE_NUM=%s|PROV_NUM=%s|FEED_WRAP=%s" % (
+    wrapper_of("type"), wrapper_of("provenance"), numcol("type"), numcol("provenance"), feed))
+PY
+)"
+grep -q 'TYPE_WRAP=wrap|PROV_WRAP=wrap' <<<"$G114" \
+  && ok "GSL-114 ⭐ both summary tables sit in a scroll wrapper, not a card that clips their count at 390px" \
+  || bad "GSL-114 ⭐ a summary table is still bare in a card — its count column is unreachable on a phone ($G114)"
+grep -q 'TYPE_NUM=yes|PROV_NUM=yes' <<<"$G114" \
+  && ok "GSL-114: the count column is right-aligned and tabular (section 6.4), not the left mono it had" \
+  || bad "GSL-114: the count column did not take the numeric column ($G114)"
+grep -q 'FEED_WRAP=yes' <<<"$G114" \
+  && ok "GSL-114 control: the feed table's wrapper is detected — a green control proving the probe can see one" \
+  || bad "GSL-114 control: the feed-table wrapper probe failed, so the check above proves nothing ($G114)"
+
+# ── GSL-128: a question the OWNER answered is not "decided without you". The three-bucket taxonomy
+# filed every closed question under "Decided without you" regardless of answered_by, so an owner's own
+# answer (answered_by=owner, the exact patch F6-S2 writes) sat under a heading that contradicted the
+# `by` column one cell over. The fix splits closed by authorship into a fourth section. Fixture: one
+# question the owner answered, one the night auto-resolved — the section each lands in is the test.
+T3Q="$WORK/t3-questions"; rm -rf "$T3Q"; mkdir -p "$T3Q/docs/lab/events" "$T3Q/docs/lab/questions"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w1","type":"cycle.started","src":"emit","data":{}}\n' "$T3TS" > "$T3Q/docs/lab/events/$TODAY.jsonl"
+{ printf '{"id":"q-t3-owner","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-128","question":"the owner decided this one himself","default":"status quo","reversibility":"high","status":"answered","answered_by":"owner","channel":"chat","answer":"option B"}\n' "$T3TS"
+  printf '{"id":"q-t3-night","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-128","question":"the night decided this one","default":"status quo","reversibility":"high","status":"auto-resolved"}\n' "$T3TS"
+} > "$T3Q/docs/lab/questions/queue.jsonl"
+bash "$CH" --repo "$T3Q" --no-poll --quiet --json >/dev/null 2>&1
+G128="$(python3 - "$T3Q/docs/lab/site/questions.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+def section_of(qid):
+    i = h.find(qid)
+    if i < 0: return "ABSENT"
+    heads = [m.group(1).strip() for m in re.finditer(r'<h2>([^<(]+)', h) if m.start() < i]
+    return heads[-1] if heads else "NONE"
+print("OWNER=%s|NIGHT=%s|HAS_BYYOU=%s" % (
+    section_of("q-t3-owner"), section_of("q-t3-night"), "yes" if "Decided by you" in h else "no"))
+PY
+)"
+grep -q 'OWNER=Decided by you' <<<"$G128" \
+  && ok "GSL-128 ⭐ a question the owner answered lands in 'Decided by you' — the authorship the by column already prints" \
+  || bad "GSL-128 ⭐ an owner-answered question is filed away from its author, still under decided-without-you ($G128)"
+grep -q 'NIGHT=Decided without you' <<<"$G128" \
+  && ok "GSL-128 control: a night-auto-resolved question stays in 'Decided without you' — the bucket that is now honest" \
+  || bad "GSL-128 control: the without-you bucket lost the question that truly belongs to it ($G128)"
+
+echo
+echo "== GSL-136 / T4: honest truncation in the DATA layer — Library files & titles, Cost cycles, PR de-dup =="
+# One throwaway repo drives every T4 finding. Each fixture is built one PAST the old cap (40 files,
+# view slice(0,40)) so a surviving cutoff shows up as a WRONG COUNT, not a value that happens to fit.
+T4="$WORK/t4-lib-cost"; rm -rf "$T4"
+mkdir -p "$T4/docs/lab/events" "$T4/docs/lab/questions" "$T4/docs/lab/decisions" \
+         "$T4/docs/handoff" "$T4/docs/dev_history"
+git init -q -b main "$T4" 2>/dev/null || { git init -q "$T4"; git -C "$T4" checkout -q -b main 2>/dev/null; }
+git -C "$T4" config user.email smoke@gosleep.local; git -C "$T4" config user.name smoke
+: > "$T4/docs/lab/questions/queue.jsonl"; : > "$T4/docs/lab/decisions/log.jsonl"
+
+# 43 dev_history files: 41 ordinary + one 130-ish-char heading + one with NO heading. Past the cap.
+for i in $(seq 1 41); do printf '# GSL-%d dev history entry\n' "$i" > "$T4/docs/dev_history/GSL-$i-phase1-entry.md"; done
+T4_LONG="GSL-900 a deliberately overlong dev history heading written to run comfortably past one hundred and ten characters so any cut lands mid word"
+printf '# %s\n' "$T4_LONG" > "$T4/docs/dev_history/GSL-900-phase1-long.md"
+printf 'no leading hash on this line, so the document has no first heading to read a title from.\n' > "$T4/docs/dev_history/GSL-901-phase1-untitled.md"
+# 3 handoff files: a sub-cap shelf — the positive control that count reads reality, not a constant.
+printf '# Handoff A\n' > "$T4/docs/handoff/01-a.md"; printf '# Handoff B\n' > "$T4/docs/handoff/02-b.md"; printf '# Handoff C\n' > "$T4/docs/handoff/03-c.md"
+git -C "$T4" add -A >/dev/null 2>&1; git -C "$T4" commit -q -m "seed t4" >/dev/null 2>&1
+
+# 45 telemetry cycles — five past the old view slice of 40. (backticks are literal inside '...')
+{ printf '## TELEMETRY\n\n'
+  for i in $(seq 1 45); do printf -- '- `cycle=%d worker=w model=claude-opus-4-8 tokens_out=%d tokens_in=100 cache_read=10 | running: cycles=%d total≈%d`\n' "$i" "$((i*1000))" "$i" "$((i*1000))"; done
+  printf '\n## NEXT\n'
+} > "$T4/docs/handoff/ORCHESTRATION-STATE.md"
+
+# A day file so events exist; a two-pulse heartbeat so the runway's context clock (and its gauge) render.
+printf '{"ts":"%sT01:00:00Z","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$TODAY" > "$T4/docs/lab/events/$TODAY.jsonl"
+T4_H0="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+T4_H1="$(python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+{ printf '{"ts":"%s","cycle":10,"context_pct":50,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$T4_H0"
+  printf '{"ts":"%s","cycle":12,"context_pct":60,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$T4_H1"
+} > "$T4/docs/handoff/.orchestrator-heartbeat"
+
+# A PR keyed in BOTH title and branch — the shape that used to double the row's pr column.
+printf '{"prs":[{"number":555,"title":"GSL-500 the epic","state":"OPEN","url":"https://github.com/org/repo/pull/555","headRefName":"GSL-500-slug"}],"issues":[]}\n' > "$T4/gh.json"
+
+GOSLEEP_GH_JSON="$T4/gh.json" bash "$CH" --repo "$T4" --no-poll --quiet --json >/dev/null 2>&1
+T4B="$T4/docs/lab/render_bundle.json"; T4L="$T4/docs/lab/site/library.html"; T4C="$T4/docs/lab/site/cost.html"; T4I="$T4/docs/lab/site/index.html"
+
+# GSL-127: the files column is a COUNT. A count of 40 for a 43-file shelf is a cutoff wearing a
+# measurement's clothes, and it also means 3 artifacts never reached the searchable cross-index.
+T4_DHC="$(jq -r '.library.sections[] | select(.key=="dev_history") | .count' "$T4B" 2>/dev/null)"
+[[ "$T4_DHC" == "43" ]] \
+  && ok "GSL-127 ⭐ the dev_history files count is what was FOUND (43), not the old 40-item cutoff" \
+  || bad "GSL-127 ⭐ the files column still reports a cap, not the count (got $T4_DHC, want 43)"
+T4_DHROWS="$(grep -oE 'href="[^"]*dev_history/GSL-[^"]*"' "$T4L" | wc -l | tr -d ' ')"
+[[ "$T4_DHROWS" == "43" ]] \
+  && ok "GSL-127 ⭐ all 43 dev_history artifacts reach the searchable cross-index — none silently dropped past 40" \
+  || bad "GSL-127 ⭐ the cross-index is missing dev_history rows past the cap (got $T4_DHROWS, want 43)"
+T4_HFC="$(jq -r '.library.sections[] | select(.key=="handoffs") | .count' "$T4B" 2>/dev/null)"
+T4_HFREAL="$(ls "$T4/docs/handoff/"*.md 2>/dev/null | wc -l | tr -d ' ')"
+[[ -n "$T4_HFC" && "$T4_HFC" == "$T4_HFREAL" && "$T4_HFC" -lt 40 ]] \
+  && ok "GSL-127 control: a sub-cap shelf (handoffs, $T4_HFC files) reports exactly what is on disk — the metric reads reality, not a constant" \
+  || bad "GSL-127 control: the handoffs count ($T4_HFC) does not match the $T4_HFREAL files on disk"
+
+# GSL-131: the full heading survives into the bundle. The old cut happened in the data, so the tail
+# was gone from render_bundle.json and the page — unreachable by selection or search.
+T4_LTLEN="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+ts=[it["title"] for s in b["library"]["sections"] for it in s["items"] if it["name"]=="GSL-900-phase1-long.md"]
+print(len(ts[0]) if ts else -1)
+PY
+)"
+[[ "$T4_LTLEN" -gt 110 ]] \
+  && ok "GSL-131 ⭐ a $T4_LTLEN-char heading is stored whole in the bundle — no 110-char mid-word cut in the data" \
+  || bad "GSL-131 ⭐ the heading was truncated at the data layer (len $T4_LTLEN, cut at the old 110)"
+# GSL-9 (not GSL-1) on purpose: the control target must survive the OLD 40-item cap so it is green
+# against 125f29c too. Descending glob sort keeps GSL-901, GSL-900, GSL-9, ... — GSL-1 sorts LAST and
+# the old cap dropped it, which would red this control on the very bug the ⭐ above already covers.
+T4_STLEN="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+ts=[it["title"] for s in b["library"]["sections"] for it in s["items"] if it["name"]=="GSL-9-phase1-entry.md"]
+print(len(ts[0]) if ts else -1)
+PY
+)"
+[[ "$T4_STLEN" -gt 0 && "$T4_STLEN" -lt 110 ]] \
+  && ok "GSL-131 control: a short heading is stored whole and unchanged ($T4_STLEN chars) — removing the cut lengthened nothing" \
+  || bad "GSL-131 control: the short heading is wrong (len $T4_STLEN)"
+
+# GSL-123: a document with no first heading has no title, and that absence renders as unknown-with-a-
+# reason, not as a blank cell that reads like a render fault.
+T4_EMPTY="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+ts=[it["title"] for s in b["library"]["sections"] for it in s["items"] if it["name"]=="GSL-901-phase1-untitled.md"]
+print("EMPTY" if (ts and ts[0]=="") else "NOT")
+PY
+)"
+T4_EMPTYCOUNT="$(python3 - "$T4B" <<'PY'
+import json,sys
+b=json.load(open(sys.argv[1]))
+print(sum(1 for s in b["library"]["sections"] for it in s["items"] if it["title"]==""))
+PY
+)"
+T4_UNK="$(python3 - "$T4L" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+m=re.search(r'<table id="library-rows">(.*?)</table>', h, re.S)
+print((m.group(1).count('class="unknown"')) if m else -1)
+PY
+)"
+[[ "$T4_EMPTY" == "EMPTY" && "$T4_UNK" == "$T4_EMPTYCOUNT" && "$T4_UNK" -ge 1 ]] \
+  && ok "GSL-123 ⭐ every titleless document (all $T4_UNK, and only those) renders an unknown marker, not a blank cell" \
+  || bad "GSL-123 ⭐ a titleless row is blank or the marker leaked (untitled-in-data=$T4_EMPTYCOUNT, markers=$T4_UNK)"
+grep -q 'dev history entry' "$T4L" \
+  && ok "GSL-123 control: filled titles still render their heading text — the marker did not replace real titles" \
+  || bad "GSL-123 control: a filled title vanished from the page"
+
+# GSL-120: the heading counts cycles-with-a-row; the table must show that many. The old slice(0,40)
+# left the heading at 45 and the table at 40, hiding five cycles with nothing on the page naming them.
+T4_CYC="$(jq -r '.cost.cycles | length' "$T4B" 2>/dev/null)"
+T4_HEAD="$(grep -oE 'Per cycle[^<]*[0-9]+ with a telemetry row' "$T4C" | grep -oE '[0-9]+' | head -1)"
+T4_CROWS="$(python3 - "$T4C" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+m=re.search(r'Per cycle.*?(<table>.*?</table>)', h, re.S)
+print((len(re.findall(r'<tr', m.group(1)))-1) if m else -1)
+PY
+)"
+[[ "$T4_CROWS" == "$T4_CYC" && "$T4_CYC" == "45" ]] \
+  && ok "GSL-120 ⭐ every cycle with a telemetry row is on the page (45 rows == 45 in data) — the slice is gone" \
+  || bad "GSL-120 ⭐ the per-cycle table hides rows (rows=$T4_CROWS, data=$T4_CYC)"
+[[ -n "$T4_HEAD" && "$T4_HEAD" == "$T4_CYC" ]] \
+  && ok "GSL-120 control: the heading counts the same cycles the data holds ($T4_HEAD == $T4_CYC) — heading and table now agree" \
+  || bad "GSL-120 control: the heading number ($T4_HEAD) does not match the data ($T4_CYC)"
+
+# GSL-130 (root): the same PR reached the row twice because its key sat in both title and branch and
+# KEY_RE.findall returned it twice. dict.fromkeys keeps each distinct key once.
+T4_PRN="$(jq -r '[.tasks.rows[] | select(.key=="GSL-500") | .prs[]] | length' "$T4B" 2>/dev/null)"
+[[ "$T4_PRN" == "1" ]] \
+  && ok "GSL-130 ⭐ (root) a PR keyed in title AND branch lands on the row once, not twice — no #NN#NN in the data" \
+  || bad "GSL-130 ⭐ (root) the row's pr column still carries the same PR twice (got $T4_PRN)"
+T4_PRNUM="$(jq -r '[.tasks.rows[] | select(.key=="GSL-500") | .prs[].number] | join(",")' "$T4B" 2>/dev/null)"
+grep -q '555' <<<"$T4_PRNUM" \
+  && ok "GSL-130 control: the PR still reaches its row (#555 present) — de-dup removed the copy, not the link" \
+  || bad "GSL-130 control: the PR fell off the row entirely (got '$T4_PRNUM')"
+
+# GSL-132 (Cost): the ceiling and quota notes each printed a lead sentence the data string then
+# repeated. The data now carries only the reason the lead does not.
+grep -q 'no token ceiling exists on disk' "$T4C" \
+  && bad "GSL-132 ⭐ (Cost) the ceiling note still repeats its lead sentence" \
+  || ok "GSL-132 ⭐ (Cost) the ceiling note states its reason once — the echoed lead is gone"
+grep -q 'no token ceiling on disk' "$T4C" \
+  && ok "GSL-132 control: the on-screen ceiling lead is untouched — text preserved, only the echo removed" \
+  || bad "GSL-132 control: the ceiling lead itself went missing"
+grep -q 'not one quota event has EVER been logged here' "$T4C" \
+  && bad "GSL-132 ⭐ (Cost) the quota note still repeats its lead sentence" \
+  || ok "GSL-132 ⭐ (Cost) the quota note no longer echoes its lead"
+grep -q 'No quota event has ever been logged' "$T4C" \
+  && ok "GSL-132 control: the on-screen quota lead is untouched" \
+  || bad "GSL-132 control: the quota lead itself went missing"
+
+# GSL-118: two percentages side by side as 'N% of M%' read as a product; the gauge now spells the relation.
+grep -qE '[0-9]+% of [0-9]+%' "$T4I" \
+  && bad "GSL-118 ⭐ the context gauge still reads 'N% of M%' — the product misreading is back" \
+  || ok "GSL-118 ⭐ the context gauge no longer pairs two bare percentages as 'N% of M%'"
+grep -q '60%' "$T4I" \
+  && ok "GSL-118 control: the context gauge is present with its 60% level — so the ⭐ tests a real gauge, not an absent one" \
+  || bad "GSL-118 control: the context gauge did not render (no 60%) — the ⭐ above proves nothing"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
