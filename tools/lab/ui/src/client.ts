@@ -190,7 +190,9 @@ function tickAges(): void {
       const ms = elapsedMs(el.dataset["ageTs"] ?? "", clock);
       // An unreadable timestamp keeps whatever the server said — it is not aged from an invented one.
       if (isNaN(ms)) continue;
-      el.textContent = ageText(ms / 1000);
+      // The grammar is the server's choice, read back from the element (GSL-132) — a repaint may
+      // change the number, never the sentence around it.
+      el.textContent = ageText(ms / 1000, el.dataset["ageSuffix"] === "ago" ? "ago" : "old");
     }
   };
 

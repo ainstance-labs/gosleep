@@ -98,11 +98,14 @@ export function Age({
   built,
   id,
   fallback,
+  suffix,
 }: {
   ts: string | null;
   built: number;
   id?: string;
   fallback?: string;
+  /** GSL-132: "ago" for slots after a verb ("Last polled … ago"); default "old" everywhere else. */
+  suffix?: "old" | "ago";
 }): VNode {
   const ms = ts === null ? NaN : elapsedMs(ts, built);
   if (ts === null || isNaN(ms)) {
@@ -112,9 +115,11 @@ export function Age({
       </span>
     );
   }
+  // data-age-suffix rides along for the ticker: a repaint that forgot the grammar would turn
+  // "Last polled 8d 0h ago" back into "… old" one second after the page opens.
   return (
-    <span class="age" id={id} data-age-ts={ts} title={ts}>
-      {ageText(ms / 1000)}
+    <span class="age" id={id} data-age-ts={ts} data-age-suffix={suffix ?? "old"} title={ts}>
+      {ageText(ms / 1000, suffix ?? "old")}
     </span>
   );
 }

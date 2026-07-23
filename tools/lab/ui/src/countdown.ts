@@ -51,10 +51,16 @@ export function countdownText(remainingS: number): string {
  *
  * So it is the same deal as the countdown: server-rendered against `generated_at` (honest with JS off),
  * re-computed against the reader's clock the moment the page opens. Same formatter, two clocks.
+ *
+ * The suffix exists because one word does not fit every sentence (GSL-132): "this build is 2m old"
+ * needs "old", but "Last polled 7d 20h old" is not English — a slot after a verb needs "ago". It is
+ * a parameter of THIS formatter rather than a second formatter, so the two forms cannot drift; the
+ * client reads the choice back from the element (data-age-suffix) before it repaints, so a re-graded
+ * age keeps the grammar the server chose.
  */
-export function ageText(elapsedS: number): string {
+export function ageText(elapsedS: number, suffix: "old" | "ago" = "old"): string {
   const s = Math.max(0, Math.round(elapsedS));
-  return dur(s) + " old";
+  return dur(s) + " " + suffix;
 }
 
 /** Milliseconds since `iso`, measured on `nowMs`. NaN if it does not parse. Never negative in prose:

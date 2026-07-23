@@ -1164,16 +1164,24 @@ def lab_write(target_rel, content, as_json=False):
 def build_status(ctx):
     ev, day_ev = ctx["events"], ctx["day_events"]
     last_ts = max([e.get("ts", "") for e in ev], default="") or None
-    age = (NOW - parse_ts(last_ts)) if last_ts and parse_ts(last_ts) else None
+    # GSL-132: ONE instant for the stamp and for every age printed beside it. These ages used to be
+    # measured against NOW (process start) while generated_at was stamped here, at assembly — so a
+    # pass that spent 3s collecting (a slow gh, a big log) printed "7s old" next to a stamp that
+    # says 10s, in the very block that teaches the reader to ADD two ages. Both numbers truncate to
+    # the second from the same clock reading, so `max_event_age_s == generated_at − latest_event_ts`
+    # holds exactly, and anyone re-doing the sum from the file gets the file's own answer.
+    gen = time.time()
+    gen_iso = datetime.datetime.fromtimestamp(gen, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    age = (gen - parse_ts(last_ts)) if last_ts and parse_ts(last_ts) else None
     hb = ctx["heartbeat"]
     hb_age = None
     if hb and hb.get("ts") and parse_ts(hb["ts"]):
-        hb_age = NOW - parse_ts(hb["ts"])
+        hb_age = gen - parse_ts(hb["ts"])
 
     q_open = [q for q in ctx["questions"] if q.get("status") == "open"]
     status = {
         "schema": "gosleep.lab.status/1",
-        "generated_at": now_iso(),
+        "generated_at": gen_iso,
         "generated_by": "tools/lab/chronicler.sh (GSL-86)",
         "date": ctx["date"],
         "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
