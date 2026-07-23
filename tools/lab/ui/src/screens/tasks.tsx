@@ -170,7 +170,11 @@ export function Tasks({ b }: { b: RenderBundle }): VNode {
           <span class="stale-note">Tracker statuses are stale.</span>{" "}
           {t.tracker_last_polled ? (
             <>
-              Last polled <Age ts={t.tracker_last_polled} built={built} /> ({t.tracker_last_polled}).
+              {/* GSL-132: this slot follows a verb, so it takes "ago" — "Last polled 7d 20h old" was
+                  the one place the default suffix produced a sentence no one would say. The mobile
+                  projection already wrote "ago" for the same fact. */}
+              Last polled <Age ts={t.tracker_last_polled} built={built} suffix="ago" /> (
+              {t.tracker_last_polled}).
             </>
           ) : (
             <>The tracker has never been polled on this machine.</>

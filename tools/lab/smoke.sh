@@ -3060,7 +3060,16 @@ git -C "$T4" add -A >/dev/null 2>&1; git -C "$T4" commit -q -m "seed t4" >/dev/n
 } > "$T4/docs/handoff/ORCHESTRATION-STATE.md"
 
 # A day file so events exist; a two-pulse heartbeat so the runway's context clock (and its gauge) render.
-printf '{"ts":"%sT01:00:00Z","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$TODAY" > "$T4/docs/lab/events/$TODAY.jsonl"
+# The mix is 3 hook: + 1 emit + 1 poll-fill = a 60% mechanical share, so the Timeline caption has a
+# share to print that is NOT a round "half" (GSL-122) — and the tracker event, learned 8 days ago,
+# turns the Tasks staleness banner on so its "Last polled … ago" sentence renders (GSL-132).
+T4_POLL8D="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=8)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+{ printf '{"ts":"%sT01:00:00Z","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:05Z","run_id":"x","seq":2,"actor":"w","type":"agent.turn_ended","src":"hook:Stop","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:10Z","run_id":"x","seq":3,"actor":"w","type":"vcs.commit","src":"hook:PostToolUse","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:15Z","run_id":"x","seq":4,"actor":"w","type":"agent.idle","src":"hook:TeammateIdle","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:20Z","run_id":"x","seq":5,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-600","status":"To Do","summary":"stale tracker probe","occurred_at":"%s"}}\n' "$TODAY" "$T4_POLL8D"
+} > "$T4/docs/lab/events/$TODAY.jsonl"
 T4_H0="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
 T4_H1="$(python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
 { printf '{"ts":"%s","cycle":10,"context_pct":50,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$T4_H0"
@@ -3144,6 +3153,26 @@ grep -q 'dev history entry' "$T4L" \
   && ok "GSL-123 control: filled titles still render their heading text — the marker did not replace real titles" \
   || bad "GSL-123 control: a filled title vanished from the page"
 
+# GSL-123 (the BUILT artifact, not the fixture): the reworded fallback lived in the source while the
+# committed library.html stayed as built two commits earlier — the fix existed everywhere except the
+# one file a reader opens, and run 01 found exactly that. So the committed page itself is held to the
+# rule: a cross-index row carries a real title or the unknown marker, never a blank cell. Any page
+# built by any post-fix chronicler satisfies this; only a stale pre-fix build can fail it.
+LIVE_LIB="$REPO_ROOT/docs/lab/site/library.html"
+python3 - "$LIVE_LIB" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+rows=re.findall(r'<tr data-row="\d+">(.*?)</tr>', h, re.S)
+blank=0
+for b in rows:
+    tds=re.findall(r'<td[^>]*>(.*?)</td>', b, re.S)
+    if len(tds)>=3 and not re.sub(r'<[^>]+>','',tds[2]).strip(): blank+=1
+sys.exit(1 if (blank or len(rows) < 50) else 0)
+PY
+[[ $? -eq 0 ]] \
+  && ok "GSL-123 ⭐ (built artifact) every cross-index row in docs/lab/site/library.html carries a title or the unknown marker — no blank cell shipped" \
+  || bad "GSL-123 ⭐ (built artifact) the committed library.html ships a blank title cell (or the table went missing) — the built page lags its own source"
+
 # GSL-120: the heading counts cycles-with-a-row; the table must show that many. The old slice(0,40)
 # left the heading at 45 and the table at 40, hiding five cycles with nothing on the page naming them.
 T4_CYC="$(jq -r '.cost.cycles | length' "$T4B" 2>/dev/null)"
@@ -3188,13 +3217,91 @@ grep -q 'No quota event has ever been logged' "$T4C" \
   && ok "GSL-132 control: the on-screen quota lead is untouched" \
   || bad "GSL-132 control: the quota lead itself went missing"
 
-# GSL-118: two percentages side by side as 'N% of M%' read as a product; the gauge now spells the relation.
-grep -qE '[0-9]+% of [0-9]+%' "$T4I" \
-  && bad "GSL-118 ⭐ the context gauge still reads 'N% of M%' — the product misreading is back" \
-  || ok "GSL-118 ⭐ the context gauge no longer pairs two bare percentages as 'N% of M%'"
+# GSL-118: two percentages side by side as 'N% of M%' read as a product; the gauge now spells the
+# relation. The ⭐ DEMANDS the reworded gauge rather than merely banning the old one, because run 01
+# could not confirm the fix on live data (context=unknown renders no gauge at all) — this fixture
+# drives a real two-pulse heartbeat, so here the wording is required, not just permitted.
+if grep -qE '[0-9]+% of [0-9]+%' "$T4I"; then
+  bad "GSL-118 ⭐ the context gauge still reads 'N% of M%' — the product misreading is back"
+elif grep -q '60% (rolls at 80%)' "$T4I"; then
+  ok "GSL-118 ⭐ the gauge spells the relation — '60% (rolls at 80%)': a level and its ceiling, not a product"
+else
+  bad "GSL-118 ⭐ the gauge neither misreads as 'N% of M%' nor spells '60% (rolls at 80%)' — it went missing"
+fi
 grep -q '60%' "$T4I" \
   && ok "GSL-118 control: the context gauge is present with its 60% level — so the ⭐ tests a real gauge, not an absent one" \
   || bad "GSL-118 control: the context gauge did not render (no 60%) — the ⭐ above proves nothing"
+
+# GSL-122: the provenance caption called the hook-sourced share "that half of the log" when the real
+# figure was 92.8% — a word with a numeric value, wrong by nearly 2x, printed under the very table
+# that lets the reader check it. The caption now prints the share COMPUTED from the same bundle field
+# the Overview KPI reads (mechanical_share; 3 of these 5 fixture events are hook: -> 60%).
+T4T="$T4/docs/lab/site/timeline.html"
+if grep -q 'that half of the log' "$T4T"; then
+  bad "GSL-122 ⭐ the provenance caption still calls the hook share 'that half of the log'"
+elif grep -q 'that 60% of the log' "$T4T"; then
+  ok "GSL-122 ⭐ the caption prints the computed hook share (60% here), not the word 'half'"
+else
+  bad "GSL-122 ⭐ the caption neither says 'half' nor prints the computed 60% share — the sentence went missing or the share is wrong"
+fi
+grep -q "cost 0 tokens and needed no model" "$T4T" \
+  && ok "GSL-122 control: the rest of the caption survived — only the share wording changed" \
+  || bad "GSL-122 control: the caption's tail sentence vanished from the page"
+
+# GSL-132 (Tasks): the staleness banner read "Last polled 7d 20h old (…)" — the age formatter's
+# default suffix dropped into a slot that follows a verb, where English wants "ago" (the mobile
+# projection already wrote "ago" for the same fact). The fixture's tracker poll is 8 days old, so
+# the banner is ON and the sentence is on the page to be read.
+T4TASKS="$T4/docs/lab/site/tasks.html"
+T4_POLLSENT="$(python3 - "$T4TASKS" <<'PY'
+import re,sys
+h=open(sys.argv[1]).read()
+m=re.search(r'Last polled.{0,300}?\)\.', h, re.S)
+print(re.sub(r'\s+'," ",re.sub(r'<[^>]+>','',m.group(0))) if m else "NO-SENTENCE")
+PY
+)"
+case "$T4_POLLSENT" in
+  *" old ("*) bad "GSL-132 ⭐ (Tasks) the staleness banner still says 'Last polled … old' ($T4_POLLSENT)";;
+  *" ago ("*) ok  "GSL-132 ⭐ (Tasks) the banner says 'Last polled … ago' — the verb slot got its adverb";;
+  *)          bad "GSL-132 ⭐ (Tasks) the 'Last polled' sentence did not render (got: $T4_POLLSENT)";;
+esac
+grep -q '8d 0h' <<<"$T4_POLLSENT" \
+  && ok "GSL-132 control: the banner carries the fixture's real 8-day age — a live Age element, not pasted prose" \
+  || bad "GSL-132 control: the 8d age went missing from the banner ($T4_POLLSENT)"
+grep -q 'data-age-suffix="ago"' "$T4TASKS" \
+  && ok "GSL-132 control: the grammar rides the element (data-age-suffix) — the ticker cannot repaint 'ago' back into 'old'" \
+  || bad "GSL-132 control: no data-age-suffix on the page — the first client repaint will undo the wording"
+
+# GSL-132 (Overview, the two-ages block): "its freshest event was 7s old" beside a generated_at that
+# says 10s. The ages were measured against NOW (process start) while the stamp was minted at
+# assembly, seconds later — so the one block that teaches the reader to ADD two ages printed numbers
+# that do not sum. The fake gh below sleeps between the two clock readings the old code used, forcing
+# the drift; the fixed chronicler reads the clock once, so the identity holds no matter how slow the
+# collectors are.
+FRD="$WORK/fresh-drift"; rm -rf "$FRD"; mkdir -p "$FRD/docs/lab/events" "$FRD/docs/lab/questions"
+: > "$FRD/docs/lab/questions/queue.jsonl"
+FRD_TS="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(seconds=40)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+printf '{"ts":"%s","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$FRD_TS" > "$FRD/docs/lab/events/$TODAY.jsonl"
+FRD_BIN="$WORK/fakebin"; mkdir -p "$FRD_BIN"
+printf '#!/usr/bin/env bash\nsleep 2\nexit 1\n' > "$FRD_BIN/gh"; chmod +x "$FRD_BIN/gh"
+PATH="$FRD_BIN:$PATH" bash "$CH" --repo "$FRD" --no-poll --quiet >/dev/null 2>&1
+python3 - "$FRD/docs/lab/status.json" <<'PY'
+import json,sys,datetime
+s=json.load(open(sys.argv[1])); st=s["staleness"]
+p=lambda t: datetime.datetime.strptime(t,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc).timestamp()
+sys.exit(0 if st["max_event_age_s"] == int(p(s["generated_at"]) - p(st["latest_event_ts"])) else 1)
+PY
+[[ $? -eq 0 ]] \
+  && ok "GSL-132 ⭐ (two ages) max_event_age_s == generated_at − latest_event_ts even with slow collectors — one clock reading for the stamp and the age" \
+  || bad "GSL-132 ⭐ (two ages) the printed age and the stamp disagree about the same instant — the reader's sum will not check out"
+python3 - "$FRD/docs/lab/status.json" <<'PY'
+import json,sys
+st=json.load(open(sys.argv[1]))["staleness"]
+sys.exit(0 if (st["grade"]=="fresh" and isinstance(st["max_event_age_s"],int) and st["max_event_age_s"]>=40) else 1)
+PY
+[[ $? -eq 0 ]] \
+  && ok "GSL-132 control: the drift fixture still grades (fresh, age ≥ 40s) — the ⭐ compared two real numbers" \
+  || bad "GSL-132 control: the drift fixture produced no usable age — the ⭐ above proves nothing"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
