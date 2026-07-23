@@ -3060,7 +3060,16 @@ git -C "$T4" add -A >/dev/null 2>&1; git -C "$T4" commit -q -m "seed t4" >/dev/n
 } > "$T4/docs/handoff/ORCHESTRATION-STATE.md"
 
 # A day file so events exist; a two-pulse heartbeat so the runway's context clock (and its gauge) render.
-printf '{"ts":"%sT01:00:00Z","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$TODAY" > "$T4/docs/lab/events/$TODAY.jsonl"
+# The mix is 3 hook: + 1 emit + 1 poll-fill = a 60% mechanical share, so the Timeline caption has a
+# share to print that is NOT a round "half" (GSL-122) — and the tracker event, learned 8 days ago,
+# turns the Tasks staleness banner on so its "Last polled … ago" sentence renders (GSL-132).
+T4_POLL8D="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=8)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+{ printf '{"ts":"%sT01:00:00Z","run_id":"x","seq":1,"actor":"w","type":"cycle.started","src":"emit","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:05Z","run_id":"x","seq":2,"actor":"w","type":"agent.turn_ended","src":"hook:Stop","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:10Z","run_id":"x","seq":3,"actor":"w","type":"vcs.commit","src":"hook:PostToolUse","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:15Z","run_id":"x","seq":4,"actor":"w","type":"agent.idle","src":"hook:TeammateIdle","data":{}}\n' "$TODAY"
+  printf '{"ts":"%sT01:00:20Z","run_id":"x","seq":5,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-600","status":"To Do","summary":"stale tracker probe","occurred_at":"%s"}}\n' "$TODAY" "$T4_POLL8D"
+} > "$T4/docs/lab/events/$TODAY.jsonl"
 T4_H0="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
 T4_H1="$(python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
 { printf '{"ts":"%s","cycle":10,"context_pct":50,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$T4_H0"
@@ -3195,6 +3204,22 @@ grep -qE '[0-9]+% of [0-9]+%' "$T4I" \
 grep -q '60%' "$T4I" \
   && ok "GSL-118 control: the context gauge is present with its 60% level — so the ⭐ tests a real gauge, not an absent one" \
   || bad "GSL-118 control: the context gauge did not render (no 60%) — the ⭐ above proves nothing"
+
+# GSL-122: the provenance caption called the hook-sourced share "that half of the log" when the real
+# figure was 92.8% — a word with a numeric value, wrong by nearly 2x, printed under the very table
+# that lets the reader check it. The caption now prints the share COMPUTED from the same bundle field
+# the Overview KPI reads (mechanical_share; 3 of these 5 fixture events are hook: -> 60%).
+T4T="$T4/docs/lab/site/timeline.html"
+if grep -q 'that half of the log' "$T4T"; then
+  bad "GSL-122 ⭐ the provenance caption still calls the hook share 'that half of the log'"
+elif grep -q 'that 60% of the log' "$T4T"; then
+  ok "GSL-122 ⭐ the caption prints the computed hook share (60% here), not the word 'half'"
+else
+  bad "GSL-122 ⭐ the caption neither says 'half' nor prints the computed 60% share — the sentence went missing or the share is wrong"
+fi
+grep -q "cost 0 tokens and needed no model" "$T4T" \
+  && ok "GSL-122 control: the rest of the caption survived — only the share wording changed" \
+  || bad "GSL-122 control: the caption's tail sentence vanished from the page"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

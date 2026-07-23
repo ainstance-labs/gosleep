@@ -167,10 +167,16 @@ export function Timeline({ b }: { b: RenderBundle }): VNode {
         </div>
       </div>
 
+      {/* GSL-122: this line used to say "that half of the log" over a share that was actually 92.8%
+          — "half" has a numeric value, and it was wrong by nearly 2x, printed under the very table
+          that lets the reader check it. The share is now COMPUTED from the same bundle field the
+          Overview KPI prints ("N% mechanical"), rounded the same way, so the prose and the numbers
+          cannot drift apart again. */}
       <div class="card">
         Provenance is queryable, not claimed:{" "}
-        <code>jq -r 'select(.src|startswith("hook:")).type' docs/lab/events/*.jsonl</code> — that half
-        of the log cost 0 tokens and needed no model's cooperation.
+        <code>jq -r 'select(.src|startswith("hook:")).type' docs/lab/events/*.jsonl</code> — that{" "}
+        {Math.round(b.events.mechanical_share * 100)}% of the log cost 0 tokens and needed no model's
+        cooperation.
       </div>
 
       <BlindSpots
