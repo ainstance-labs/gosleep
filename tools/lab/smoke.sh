@@ -3197,10 +3197,17 @@ grep -q 'No quota event has ever been logged' "$T4C" \
   && ok "GSL-132 control: the on-screen quota lead is untouched" \
   || bad "GSL-132 control: the quota lead itself went missing"
 
-# GSL-118: two percentages side by side as 'N% of M%' read as a product; the gauge now spells the relation.
-grep -qE '[0-9]+% of [0-9]+%' "$T4I" \
-  && bad "GSL-118 ⭐ the context gauge still reads 'N% of M%' — the product misreading is back" \
-  || ok "GSL-118 ⭐ the context gauge no longer pairs two bare percentages as 'N% of M%'"
+# GSL-118: two percentages side by side as 'N% of M%' read as a product; the gauge now spells the
+# relation. The ⭐ DEMANDS the reworded gauge rather than merely banning the old one, because run 01
+# could not confirm the fix on live data (context=unknown renders no gauge at all) — this fixture
+# drives a real two-pulse heartbeat, so here the wording is required, not just permitted.
+if grep -qE '[0-9]+% of [0-9]+%' "$T4I"; then
+  bad "GSL-118 ⭐ the context gauge still reads 'N% of M%' — the product misreading is back"
+elif grep -q '60% (rolls at 80%)' "$T4I"; then
+  ok "GSL-118 ⭐ the gauge spells the relation — '60% (rolls at 80%)': a level and its ceiling, not a product"
+else
+  bad "GSL-118 ⭐ the gauge neither misreads as 'N% of M%' nor spells '60% (rolls at 80%)' — it went missing"
+fi
 grep -q '60%' "$T4I" \
   && ok "GSL-118 control: the context gauge is present with its 60% level — so the ⭐ tests a real gauge, not an absent one" \
   || bad "GSL-118 control: the context gauge did not render (no 60%) — the ⭐ above proves nothing"
