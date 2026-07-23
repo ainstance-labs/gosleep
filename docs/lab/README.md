@@ -46,6 +46,28 @@ Any of them can be absent — the pass still completes, and the gap is **named**
 (`degraded[]`), on the page, and in the digest. "Section 5 is empty" and "section 5 could not be read"
 look identical to a sleeping owner; they are not the same thing.
 
+### Rebuild discipline — the derivatives ship with the tree that made them (GSL-150)
+
+The committed derivatives (`site/*.html`, `mobile/README.md`, `render_bundle.json`,
+`status.json`) describe the checkout **at the instant of the pass** — branch name, HEAD, file
+counts. Run 02 caught the failure mode this invites: a wave rebuilt its pages, then three more
+documentation commits landed **without** a regeneration, and the merge carried derivatives into
+`main` that named the *previous* branch as the current checkout and undercounted `dev_history` by
+the three files written after the pass. Every page honestly carried `generated_at`, but the error
+ran in the reassuring direction — which is this laboratory's named anti-goal.
+
+The rule, so nobody rediscovers it per wave:
+
+- **The regeneration is the LAST commit of a wave.** Write every source the pass indexes first —
+  dev_history, README indexes, reports — then run `tools/lab/chronicler.sh` and commit all
+  derivatives together as the branch's final commit.
+- **No commit after the rebuild.** If anything touching `docs/**` or the view sources must land
+  after it, the rebuild moves: re-run the chronicler and let the regeneration ride that commit.
+- **After the merge, the derivatives still describe the branch tip** (a merge commit adds history
+  the pass never saw, and the Delivery card names the branch it ran on). That residue is healed by
+  the next routine chronicler pass on `main` — run one after merging if the Delivery card matters
+  right now.
+
 ## Staleness — the contract every derived artifact signs (F4-S3)
 
 This is the whole reason a page can be trusted at 07:00 without opening a terminal: **a dead page looks

@@ -1,11 +1,11 @@
 {
   "schema": "gosleep.lab.render/7",
-  "generated_at": "2026-07-23T18:18:15Z",
+  "generated_at": "2026-07-23T20:39:05Z",
   "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
   "date": "2026-07-23",
   "staleness": {
-    "max_event_age_s": 21411,
-    "max_event_age_human": "5h 56m",
+    "max_event_age_s": 29861,
+    "max_event_age_human": "8h 17m",
     "latest_event_ts": "2026-07-23T12:21:24Z",
     "heartbeat_age_s": null,
     "grade": "dead",
@@ -15,9 +15,9 @@
     }
   },
   "self_health": {
-    "generated_at": "2026-07-23T18:18:15Z",
-    "data_age_s": 21411,
-    "data_age_human": "5h 56m",
+    "generated_at": "2026-07-23T20:39:05Z",
+    "data_age_s": 29861,
+    "data_age_human": "8h 17m",
     "latest_event_ts": "2026-07-23T12:21:24Z",
     "grade": "dead",
     "grade_is_about": "the DATA, at build time. Add (now − generated_at) to `data_age_s` before trusting it: there are two ages here, not one",
@@ -26,6 +26,29 @@
       "why": "",
       "searched": "`git ls-files -- docs/dev_history/GSL-*.md` — the git INDEX, which is what `git show :<path>` resolves and what a fresh clone gets. The working tree is deliberately NOT consulted.",
       "epics": [
+        {
+          "key": "GSL-141",
+          "state": "ok",
+          "why": "",
+          "tasks": [
+            "GSL-143",
+            "GSL-142",
+            "GSL-123",
+            "GSL-118",
+            "GSL-132",
+            "GSL-122"
+          ],
+          "covered": [
+            "GSL-143",
+            "GSL-142",
+            "GSL-123",
+            "GSL-118",
+            "GSL-132",
+            "GSL-122"
+          ],
+          "missing": [],
+          "task_count": 6
+        },
         {
           "key": "GSL-111",
           "state": "gaps",
@@ -415,27 +438,35 @@
           "task_count": 4
         },
         {
-          "key": "GSL-141",
+          "key": "GSL-153",
           "state": "ok",
           "why": "",
           "tasks": [
-            "GSL-118",
-            "GSL-132",
-            "GSL-122"
+            "GSL-152",
+            "GSL-151",
+            "GSL-149",
+            "GSL-148",
+            "GSL-147",
+            "GSL-146"
           ],
           "covered": [
-            "GSL-118",
-            "GSL-132",
-            "GSL-122"
+            "GSL-152",
+            "GSL-151",
+            "GSL-149",
+            "GSL-148",
+            "GSL-147",
+            "GSL-146"
           ],
           "missing": [],
-          "task_count": 3
+          "task_count": 6
         }
       ],
-      "tasks": 104,
-      "covered": 96,
+      "tasks": 113,
+      "covered": 105,
       "missing": 8,
-      "uncommitted": []
+      "uncommitted": [
+        "GSL-150-fixwave2-rebuild-discipline.md"
+      ]
     },
     "handoffs": {
       "state": "ok",
@@ -443,13 +474,13 @@
       "last": {
         "name": "46-2026-07-23-handoff-shift71-standby.md",
         "ts": "2026-07-23T12:21:35Z",
-        "age_s": 21398,
-        "age_human": "5h 56m"
+        "age_s": 29847,
+        "age_human": "8h 17m"
       },
       "boundary": {
         "ts": "2026-07-21T00:15:03Z",
-        "age_s": 237790,
-        "age_human": "2d 18h",
+        "age_s": 246239,
+        "age_human": "2d 20h",
         "source": "pane.ended",
         "total": 40
       },
@@ -2558,7 +2589,7 @@
         "hours": null,
         "eta": null,
         "gauge": "3 To Do (stale)",
-        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (10d 20h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
+        "why": "the task board has not been polled since 2026-07-12T21:26:24Z (10d 23h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
         "sources": [
           "docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)"
         ]
@@ -2570,7 +2601,7 @@
       "clear — quota window: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)",
       "unknown — pane slots: no heartbeat: the live worker count is unreadable. Not zero — unreadable.",
       "clear — open blockers: nothing the fleet is doing is waiting on a human",
-      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (10d 20h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
+      "unknown — work remaining: the task board has not been polled since 2026-07-12T21:26:24Z (10d 23h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
     ]
   },
   "queue": {
@@ -3020,13 +3051,266 @@
   "tasks": {
     "rows": [
       {
-        "key": "GSL-143",
+        "key": "GSL-153",
         "status": null,
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
         "commits": [],
         "dev_history": [],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-153",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/148",
+        "gh_number": 148,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-152",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "7ece7fd",
+            "subject": "GSL-152 Комментарий RunwayStrip описывает unk по факту: магента + сплошная граница, запрет пунктира назван, а не нарушен",
+            "ts": "2026-07-23T22:34:35+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/7ece7fd"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-152-fixwave2-runway-comment.md",
+            "href": "../../dev_history/GSL-152-fixwave2-runway-comment.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-152",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/155",
+        "gh_number": 155,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-151",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "6564302",
+            "subject": "GSL-151 Cost partial-ячейка носит собственный .partial-note вместо заимствованного .wk-models: одна роль — одно имя",
+            "ts": "2026-07-23T22:33:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6564302"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-151-fixwave2-partial-note-class.md",
+            "href": "../../dev_history/GSL-151-fixwave2-partial-note-class.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-151",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/154",
+        "gh_number": 154,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-150",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [],
+        "dev_history": [
+          {
+            "name": "GSL-150-fixwave2-rebuild-discipline.md",
+            "href": "../../dev_history/GSL-150-fixwave2-rebuild-discipline.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-150",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/153",
+        "gh_number": 153,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-149",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "eec90f3",
+            "subject": "GSL-149 Severity-фасет Timeline строится из SEVERITIES: worst-first вместо порядка появления, пересечение с фактом сохранено",
+            "ts": "2026-07-23T22:29:09+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/eec90f3"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-149-fixwave2-severity-facet-order.md",
+            "href": "../../dev_history/GSL-149-fixwave2-severity-facet-order.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-149",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/152",
+        "gh_number": 152,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-148",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "50d6143",
+            "subject": "GSL-148 doc_title декодирует HTML-сущности: html.unescape после снятия тегов, Library экранирует ровно один раз",
+            "ts": "2026-07-23T22:26:55+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/50d6143"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-148-fixwave2-doctitle-unescape.md",
+            "href": "../../dev_history/GSL-148-fixwave2-doctitle-unescape.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-148",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/151",
+        "gh_number": 151,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-147",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "6433506",
+            "subject": "GSL-147 Статусы Jira на Tasks board носят цвет спеки 7.2: tag st ok/warn/info, guard от утечки .tag.info на timeline",
+            "ts": "2026-07-23T22:23:38+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/6433506"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-147-fixwave2-status-tones.md",
+            "href": "../../dev_history/GSL-147-fixwave2-status-tones.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-147",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/150",
+        "gh_number": 150,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-146",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "2194035",
+            "subject": "GSL-146 Каскад label-спанов больше не глотает span.unknown: :not(.unknown) в .kpi span/.wk-f span, значение-отсутствие снова --unk",
+            "ts": "2026-07-23T22:18:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/2194035"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-146-fixwave2-unknown-cascade.md",
+            "href": "../../dev_history/GSL-146-fixwave2-unknown-cascade.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-146",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/149",
+        "gh_number": 149,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-145",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "10e63d7",
+            "subject": "GSL-145 [Docs][Evals] Verification run 02 audit dashboard",
+            "ts": "2026-07-23T22:01:14+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/10e63d7"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-145-verification-run02-audit-dashboard.md",
+            "href": "../../dev_history/GSL-145-verification-run02-audit-dashboard.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-145",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/147",
+        "gh_number": 147,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-144",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "ff062fd",
+            "subject": "GSL-144 [Docs][Evals] Verification run 02 regression lane",
+            "ts": "2026-07-23T21:46:24+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/ff062fd"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-144-run02-regression.md",
+            "href": "../../dev_history/GSL-144-run02-regression.md"
+          }
+        ],
+        "prs": [],
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-144",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/146",
+        "gh_number": 146,
+        "status_age_human": "never"
+      },
+      {
+        "key": "GSL-143",
+        "status": null,
+        "status_ts": null,
+        "status_age_s": null,
+        "summary": null,
+        "commits": [
+          {
+            "sha": "204c732",
+            "subject": "GSL-143 Стандарт verification runs: docs/reports/verifications/README.md",
+            "ts": "2026-07-23T20:26:33+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/204c732"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-143-fixwave1-verification-runs-standard.md",
+            "href": "../../dev_history/GSL-143-fixwave1-verification-runs-standard.md"
+          }
+        ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-143",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/144",
@@ -3039,8 +3323,20 @@
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
-        "commits": [],
-        "dev_history": [],
+        "commits": [
+          {
+            "sha": "10ed22e",
+            "subject": "GSL-142 Конвенция скриншот-ассетов: per-task папки задокументированы как норма",
+            "ts": "2026-07-23T20:24:48+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/10ed22e"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-142-fixwave1-assets-convention.md",
+            "href": "../../dev_history/GSL-142-fixwave1-assets-convention.md"
+          }
+        ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-142",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/143",
@@ -3053,9 +3349,23 @@
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
-        "commits": [],
+        "commits": [
+          {
+            "sha": "54fe290",
+            "subject": "Merge pull request #145 from ainstance-labs/GSL-141-fix-wave-1",
+            "ts": "2026-07-23T20:50:32+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/54fe290"
+          }
+        ],
         "dev_history": [],
-        "prs": [],
+        "prs": [
+          {
+            "number": 145,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/145",
+            "title": "GSL-141 Fix wave 1: verification run 01 findings"
+          }
+        ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-141",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/138",
         "gh_number": 138,
@@ -3311,8 +3621,20 @@
         "status_ts": null,
         "status_age_s": null,
         "summary": null,
-        "commits": [],
-        "dev_history": [],
+        "commits": [
+          {
+            "sha": "3d3e7fc",
+            "subject": "GSL-123 Library: маркер unknown доехал до построенной страницы + пересборка волны",
+            "ts": "2026-07-23T20:22:53+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/3d3e7fc"
+          }
+        ],
+        "dev_history": [
+          {
+            "name": "GSL-123-fixwave1-library-untitled-marker.md",
+            "href": "../../dev_history/GSL-123-fixwave1-library-untitled-marker.md"
+          }
+        ],
         "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-123",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/141",
@@ -4166,7 +4488,7 @@
         "key": "GSL-89",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:12Z",
-        "status_age_s": 943441,
+        "status_age_s": 951890,
         "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
         "commits": [
           {
@@ -4196,13 +4518,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-89",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/101",
         "gh_number": 101,
-        "status_age_human": "10d 22h"
+        "status_age_human": "11d 0h"
       },
       {
         "key": "GSL-88",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:11Z",
-        "status_age_s": 943442,
+        "status_age_s": 951891,
         "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
         "commits": [
           {
@@ -4222,13 +4544,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-88",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/100",
         "gh_number": 100,
-        "status_age_human": "10d 22h"
+        "status_age_human": "11d 0h"
       },
       {
         "key": "GSL-87",
         "status": "To Do",
         "status_ts": "2026-07-12T20:14:09Z",
-        "status_age_s": 943444,
+        "status_age_s": 951893,
         "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
         "commits": [
           {
@@ -4248,13 +4570,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-87",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/99",
         "gh_number": 99,
-        "status_age_human": "10d 22h"
+        "status_age_human": "11d 0h"
       },
       {
         "key": "GSL-86",
         "status": "Done",
         "status_ts": "2026-07-12T21:26:24Z",
-        "status_age_s": 939109,
+        "status_age_s": 947558,
         "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
         "commits": [
           {
@@ -4280,13 +4602,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-86",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/98",
         "gh_number": 98,
-        "status_age_human": "10d 20h"
+        "status_age_human": "10d 23h"
       },
       {
         "key": "GSL-85",
         "status": "Done",
         "status_ts": "2026-07-12T20:56:50Z",
-        "status_age_s": 940883,
+        "status_age_s": 949332,
         "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
         "commits": [
           {
@@ -4306,13 +4628,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-85",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/97",
         "gh_number": 97,
-        "status_age_human": "10d 21h"
+        "status_age_human": "10d 23h"
       },
       {
         "key": "GSL-84",
         "status": "Done",
         "status_ts": "2026-07-12T20:50:59Z",
-        "status_age_s": 941234,
+        "status_age_s": 949683,
         "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
         "commits": [
           {
@@ -4332,13 +4654,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-84",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/96",
         "gh_number": 96,
-        "status_age_human": "10d 21h"
+        "status_age_human": "10d 23h"
       },
       {
         "key": "GSL-83",
         "status": "Done",
         "status_ts": "2026-07-12T20:46:53Z",
-        "status_age_s": 941480,
+        "status_age_s": 949929,
         "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
         "commits": [
           {
@@ -4364,13 +4686,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-83",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/95",
         "gh_number": 95,
-        "status_age_human": "10d 21h"
+        "status_age_human": "10d 23h"
       },
       {
         "key": "GSL-82",
         "status": "Done",
         "status_ts": "2026-07-12T20:16:09Z",
-        "status_age_s": 943324,
+        "status_age_s": 951773,
         "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
         "commits": [
           {
@@ -4390,13 +4712,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-82",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/94",
         "gh_number": 94,
-        "status_age_human": "10d 22h"
+        "status_age_human": "11d 0h"
       },
       {
         "key": "GSL-81",
         "status": "In Progress",
         "status_ts": "2026-07-12T20:14:02Z",
-        "status_age_s": 943451,
+        "status_age_s": 951900,
         "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "commits": [
           {
@@ -4418,7 +4740,7 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-81",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/93",
         "gh_number": 93,
-        "status_age_human": "10d 22h"
+        "status_age_human": "11d 0h"
       },
       {
         "key": "GSL-80",
@@ -6581,18 +6903,48 @@
       }
     ],
     "by_status": {
-      "unknown": 122,
+      "unknown": 132,
       "Done": 5,
       "To Do": 3,
       "In Progress": 1
     },
     "todo": 3,
     "tracker_last_polled": "2026-07-12T21:26:24Z",
-    "tracker_age_s": 939109,
-    "tracker_age_human": "10d 20h",
+    "tracker_age_s": 947558,
+    "tracker_age_human": "10d 23h",
     "tracker_stale": true,
     "gh_base": "https://github.com/ainstance-labs/gosleep",
     "epics": [
+      {
+        "key": "GSL-141",
+        "summary": "GSL-141: [UI][Process] Fix wave 1: verification run 01 findings",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-141",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/138",
+        "gh_number": 138,
+        "pr": {
+          "number": 145,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/145",
+          "title": "GSL-141 Fix wave 1: verification run 01 findings"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-143",
+          "GSL-142",
+          "GSL-123",
+          "GSL-118",
+          "GSL-132",
+          "GSL-122"
+        ],
+        "task_count": 6,
+        "commits": 6,
+        "by_status": {
+          "unknown": 6
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
       {
         "key": "GSL-111",
         "summary": "GSL-111: [UI] Laboratory redesign: professional developer-tool style (Mastra/Supabase)",
@@ -7101,22 +7453,25 @@
         "merged": true
       },
       {
-        "key": "GSL-141",
-        "summary": "GSL-141: [UI][Process] Fix wave 1: verification run 01 findings",
-        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-141",
-        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/138",
-        "gh_number": 138,
+        "key": "GSL-153",
+        "summary": "GSL-153: [UI] Fix wave 2: verification run 02 findings",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-153",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/148",
+        "gh_number": 148,
         "pr": null,
         "pr_why": "no pull request names this epic",
         "tasks": [
-          "GSL-118",
-          "GSL-132",
-          "GSL-122"
+          "GSL-152",
+          "GSL-151",
+          "GSL-149",
+          "GSL-148",
+          "GSL-147",
+          "GSL-146"
         ],
-        "task_count": 3,
-        "commits": 3,
+        "task_count": 6,
+        "commits": 6,
         "by_status": {
-          "unknown": 3
+          "unknown": 6
         },
         "membership": "branch",
         "membership_why": "read off the epic's branch, which the trunk does not carry yet",
@@ -7143,12 +7498,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T12:55:28Z — this one is over",
         "last_ts": "2026-07-13T12:55:28Z",
-        "last_age_s": 883365,
-        "last_age_human": "10d 5h",
+        "last_age_s": 891814,
+        "last_age_human": "10d 7h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T11:57:43Z",
@@ -7176,12 +7531,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T12:05:51Z — this one is over",
         "last_ts": "2026-07-13T12:05:51Z",
-        "last_age_s": 886342,
-        "last_age_human": "10d 6h",
+        "last_age_s": 894791,
+        "last_age_human": "10d 8h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T11:39:25Z",
@@ -7209,12 +7564,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T11:40:31Z — this one is over",
         "last_ts": "2026-07-13T11:40:31Z",
-        "last_age_s": 887862,
-        "last_age_human": "10d 6h",
+        "last_age_s": 896311,
+        "last_age_human": "10d 8h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T10:06:17Z",
@@ -7241,12 +7596,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T10:02:29Z — this one is over",
         "last_ts": "2026-07-13T10:02:29Z",
-        "last_age_s": 893744,
-        "last_age_human": "10d 8h",
+        "last_age_s": 902193,
+        "last_age_human": "10d 10h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T09:31:06Z",
@@ -7274,12 +7629,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T09:30:15Z — this one is over",
         "last_ts": "2026-07-13T09:30:15Z",
-        "last_age_s": 895678,
-        "last_age_human": "10d 8h",
+        "last_age_s": 904127,
+        "last_age_human": "10d 11h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T09:10:31Z",
@@ -7307,12 +7662,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T09:10:15Z — this one is over",
         "last_ts": "2026-07-13T09:10:15Z",
-        "last_age_s": 896878,
-        "last_age_human": "10d 9h",
+        "last_age_s": 905327,
+        "last_age_human": "10d 11h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T09:06:23Z",
@@ -7340,12 +7695,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T05:56:40Z — this one is over",
         "last_ts": "2026-07-13T05:56:40Z",
-        "last_age_s": 908493,
-        "last_age_human": "10d 12h",
+        "last_age_s": 916942,
+        "last_age_human": "10d 14h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": "2026-07-13T05:21:28Z",
@@ -7373,12 +7728,12 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-12T21:04:19Z — this one is over",
         "last_ts": "2026-07-12T21:04:19Z",
-        "last_age_s": 940434,
-        "last_age_human": "10d 21h",
+        "last_age_s": 948883,
+        "last_age_human": "10d 23h",
         "model": null,
         "models": [],
         "model_source": null,
-        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
+        "model_why": "no transcript on disk for this session under /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-2 (~/.claude/projects/<repo-slug>/<session-id>.jsonl). The model is UNKNOWN — and it stays unknown: the worker's own word for it is exactly what this field refuses to trust.",
         "pane": null,
         "pane_why": "no pane id reaches the event log — no hook payload carries one (checked: zero events, any day, have a pane/window/tty field)",
         "started_ts": null,
@@ -7489,8 +7844,8 @@
           "handoff.written": 8,
           "question.posed": 5
         },
-        "last_age_s": 21409,
-        "last_age_human": "5h 56m"
+        "last_age_s": 29858,
+        "last_age_human": "8h 17m"
       },
       {
         "actor": "a7ea0b3f6b265d528",
@@ -7499,8 +7854,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 21555,
-        "last_age_human": "5h 59m"
+        "last_age_s": 30004,
+        "last_age_human": "8h 20m"
       },
       {
         "actor": "f97ce3bc",
@@ -7514,8 +7869,8 @@
           "pane.started": 1,
           "tracker.issue.updated": 1
         },
-        "last_age_s": 21559,
-        "last_age_human": "5h 59m"
+        "last_age_s": 30008,
+        "last_age_human": "8h 20m"
       },
       {
         "actor": "a5570bd9a96f4f596",
@@ -7524,8 +7879,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 21709,
-        "last_age_human": "6h 1m"
+        "last_age_s": 30158,
+        "last_age_human": "8h 22m"
       },
       {
         "actor": "a37c4e4b7f81f3924",
@@ -7534,8 +7889,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 32366,
-        "last_age_human": "8h 59m"
+        "last_age_s": 40815,
+        "last_age_human": "11h 20m"
       },
       {
         "actor": "claude",
@@ -7549,8 +7904,8 @@
           "tracker.issue.created": 50,
           "agent.turn_ended": 48
         },
-        "last_age_s": 237790,
-        "last_age_human": "2d 18h"
+        "last_age_s": 246239,
+        "last_age_human": "2d 20h"
       },
       {
         "actor": "impl-t3",
@@ -7559,8 +7914,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 247459,
-        "last_age_human": "2d 20h"
+        "last_age_s": 255908,
+        "last_age_human": "2d 23h"
       },
       {
         "actor": "impl-t2",
@@ -7569,8 +7924,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 250580,
-        "last_age_human": "2d 21h"
+        "last_age_s": 259029,
+        "last_age_human": "2d 23h"
       },
       {
         "actor": "fix-113",
@@ -7579,8 +7934,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 253007,
-        "last_age_human": "2d 22h"
+        "last_age_s": 261456,
+        "last_age_human": "3d 0h"
       },
       {
         "actor": "ui-tasks-setup",
@@ -7589,8 +7944,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 254778,
-        "last_age_human": "2d 22h"
+        "last_age_s": 263227,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "owner",
@@ -7600,8 +7955,8 @@
           "decision.made": 2,
           "question.answered": 2
         },
-        "last_age_s": 255193,
-        "last_age_human": "2d 22h"
+        "last_age_s": 263642,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a5b85412f580faeec",
@@ -7611,8 +7966,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 256783,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265232,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "aa117183c8ccdf0f0",
@@ -7621,8 +7976,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256824,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265273,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a191a1a6d143e6940",
@@ -7632,8 +7987,8 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 256855,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265304,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a8d707ccb511b52a1",
@@ -7642,8 +7997,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256863,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265312,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "ad4a503d9cd335935",
@@ -7652,8 +8007,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256886,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265335,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a123bd4a1d4112000",
@@ -7662,8 +8017,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256918,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265367,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a9ba1546d87e07478",
@@ -7672,8 +8027,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256926,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265375,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a2b0f99c4f5d3b366",
@@ -7682,8 +8037,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256950,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265399,
+        "last_age_human": "3d 1h"
       },
       {
         "actor": "a89aea44407ffccc4",
@@ -7692,8 +8047,8 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 256958,
-        "last_age_human": "2d 23h"
+        "last_age_s": 265407,
+        "last_age_human": "3d 1h"
       }
     ],
     "blind_spots": [
@@ -8926,10 +9281,82 @@
     ]
   },
   "delivery": {
-    "branch": "GSL-141-fix-wave-1",
-    "head": "ea8733c",
-    "dirty_paths": 1,
+    "branch": "GSL-153-fix-wave-2",
+    "head": "7ece7fd",
+    "dirty_paths": 15,
     "commits_on_date": [
+      {
+        "sha": "7ece7fd",
+        "author": "R",
+        "ts": "2026-07-23T22:34:35+02:00",
+        "subject": "GSL-152 Комментарий RunwayStrip описывает unk по факту: магента + сплошная граница, запрет пунктира назван, а не нарушен"
+      },
+      {
+        "sha": "6564302",
+        "author": "R",
+        "ts": "2026-07-23T22:33:14+02:00",
+        "subject": "GSL-151 Cost partial-ячейка носит собственный .partial-note вместо заимствованного .wk-models: одна роль — одно имя"
+      },
+      {
+        "sha": "eec90f3",
+        "author": "R",
+        "ts": "2026-07-23T22:29:09+02:00",
+        "subject": "GSL-149 Severity-фасет Timeline строится из SEVERITIES: worst-first вместо порядка появления, пересечение с фактом сохранено"
+      },
+      {
+        "sha": "50d6143",
+        "author": "R",
+        "ts": "2026-07-23T22:26:55+02:00",
+        "subject": "GSL-148 doc_title декодирует HTML-сущности: html.unescape после снятия тегов, Library экранирует ровно один раз"
+      },
+      {
+        "sha": "6433506",
+        "author": "R",
+        "ts": "2026-07-23T22:23:38+02:00",
+        "subject": "GSL-147 Статусы Jira на Tasks board носят цвет спеки 7.2: tag st ok/warn/info, guard от утечки .tag.info на timeline"
+      },
+      {
+        "sha": "2194035",
+        "author": "R",
+        "ts": "2026-07-23T22:18:14+02:00",
+        "subject": "GSL-146 Каскад label-спанов больше не глотает span.unknown: :not(.unknown) в .kpi span/.wk-f span, значение-отсутствие снова --unk"
+      },
+      {
+        "sha": "10e63d7",
+        "author": "R",
+        "ts": "2026-07-23T22:01:14+02:00",
+        "subject": "GSL-145 [Docs][Evals] Verification run 02 audit dashboard"
+      },
+      {
+        "sha": "ff062fd",
+        "author": "R",
+        "ts": "2026-07-23T21:46:24+02:00",
+        "subject": "GSL-144 [Docs][Evals] Verification run 02 regression lane"
+      },
+      {
+        "sha": "54fe290",
+        "author": "rommxx",
+        "ts": "2026-07-23T20:50:32+02:00",
+        "subject": "Merge pull request #145 from ainstance-labs/GSL-141-fix-wave-1"
+      },
+      {
+        "sha": "204c732",
+        "author": "R",
+        "ts": "2026-07-23T20:26:33+02:00",
+        "subject": "GSL-143 Стандарт verification runs: docs/reports/verifications/README.md"
+      },
+      {
+        "sha": "10ed22e",
+        "author": "R",
+        "ts": "2026-07-23T20:24:48+02:00",
+        "subject": "GSL-142 Конвенция скриншот-ассетов: per-task папки задокументированы как норма"
+      },
+      {
+        "sha": "3d3e7fc",
+        "author": "R",
+        "ts": "2026-07-23T20:22:53+02:00",
+        "subject": "GSL-123 Library: маркер unknown доехал до построенной страницы + пересборка волны"
+      },
       {
         "sha": "ea8733c",
         "author": "R",
@@ -8974,6 +9401,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 145,
+        "state": "MERGED",
+        "title": "GSL-141 Fix wave 1: verification run 01 findings",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/145",
+        "mergedAt": "2026-07-23T18:50:33Z"
+      },
       {
         "number": 135,
         "state": "MERGED",
@@ -9753,6 +10187,61 @@
             "title": "GSL-16 — Restructure skill/ into per-skill subfolders + multi-skill install.sh"
           },
           {
+            "href": "../../dev_history/GSL-152-fixwave2-runway-comment.md",
+            "name": "GSL-152-fixwave2-runway-comment.md",
+            "title": "GSL-152 — Комментарий RunwayStrip больше не описывает unk как «magenta and dashed»: пунктир запрещён спекой и убран из описания"
+          },
+          {
+            "href": "../../dev_history/GSL-151-fixwave2-partial-note-class.md",
+            "name": "GSL-151-fixwave2-partial-note-class.md",
+            "title": "GSL-151 — Ячейка «missing from these sums» на Cost носит собственный класс .partial-note, а не заимствованный .wk-models"
+          },
+          {
+            "href": "../../dev_history/GSL-150-fixwave2-rebuild-discipline.md",
+            "name": "GSL-150-fixwave2-rebuild-discipline.md",
+            "title": "GSL-150 — Rebuild-дисциплина derived-страниц задокументирована как норма; пересборка волны — её последний коммит"
+          },
+          {
+            "href": "../../dev_history/GSL-149-fixwave2-severity-facet-order.md",
+            "name": "GSL-149-fixwave2-severity-facet-order.md",
+            "title": "GSL-149 — Severity-фасет Timeline упорядочен worst-first, как и обещал его собственный комментарий"
+          },
+          {
+            "href": "../../dev_history/GSL-148-fixwave2-doctitle-unescape.md",
+            "name": "GSL-148-fixwave2-doctitle-unescape.md",
+            "title": "GSL-148 — doc_title декодирует HTML-сущности: Library больше не печатает литеральный «&amp;» в тайтлах отчётов"
+          },
+          {
+            "href": "../../dev_history/GSL-147-fixwave2-status-tones.md",
+            "name": "GSL-147-fixwave2-status-tones.md",
+            "title": "GSL-147 — Статусы Jira на Tasks board получили судейский цвет по спеке 7.2: Done → ok, To Do → warn, In Progress → info"
+          },
+          {
+            "href": "../../dev_history/GSL-146-fixwave2-unknown-cascade.md",
+            "name": "GSL-146-fixwave2-unknown-cascade.md",
+            "title": "GSL-146 — Каскад label-спанов больше не глотает span.unknown: значение-отсутствие вернуло себе --unk и размер значения"
+          },
+          {
+            "href": "../../dev_history/GSL-145-verification-run02-audit-dashboard.md",
+            "name": "GSL-145-verification-run02-audit-dashboard.md",
+            "title": "GSL-145 — Verification run 02: independent audit dashboard"
+          },
+          {
+            "href": "../../dev_history/GSL-144-run02-regression.md",
+            "name": "GSL-144-run02-regression.md",
+            "title": "GSL-144 — Verification run 02: regression lane"
+          },
+          {
+            "href": "../../dev_history/GSL-143-fixwave1-verification-runs-standard.md",
+            "name": "GSL-143-fixwave1-verification-runs-standard.md",
+            "title": "GSL-143 — Стандарт verification runs: docs/reports/verifications/README.md"
+          },
+          {
+            "href": "../../dev_history/GSL-142-fixwave1-assets-convention.md",
+            "name": "GSL-142-fixwave1-assets-convention.md",
+            "title": "GSL-142 — Конвенция скриншот-ассетов: per-task папки задокументированы как норма"
+          },
+          {
             "href": "../../dev_history/GSL-140-design-showcase-run01.md",
             "name": "GSL-140-design-showcase-run01.md",
             "title": "GSL-140 — Design showcase: GSL-138 run 01 (визуальный обзор редизайна)"
@@ -9776,6 +10265,11 @@
             "href": "../../dev_history/GSL-13-harden-eval-scenarios-e17-verify-watchdog.md",
             "name": "GSL-13-harden-eval-scenarios-e17-verify-watchdog.md",
             "title": "GSL-13 — Author E17 / VERIFY-REQUEST / Watchdog Eval Scenarios"
+          },
+          {
+            "href": "../../dev_history/GSL-123-fixwave1-library-untitled-marker.md",
+            "name": "GSL-123-fixwave1-library-untitled-marker.md",
+            "title": "GSL-123 — Library: пустой тайтл → маркер unknown ДОЕХАЛ до построенной страницы"
           },
           {
             "href": "../../dev_history/GSL-122-fixwave1-timeline-half-share.md",
@@ -9848,7 +10342,7 @@
             "title": "GSL-10 — On-disk state durability + telemetry recovery across orchestrator rollover (skill)"
           }
         ],
-        "count": 99
+        "count": 111
       },
       {
         "key": "reviews",
@@ -9896,7 +10390,7 @@
           {
             "href": "../../reports/headless-and-supervision/index.html",
             "name": "index.html",
-            "title": "Headless Claude (claude -p), Subscription &amp; Orchestrator Supervision — gosleep report"
+            "title": "Headless Claude (claude -p), Subscription & Orchestrator Supervision — gosleep report"
           },
           {
             "href": "../../reports/autosk-anatomy/index.html",
@@ -9906,7 +10400,7 @@
           {
             "href": "../../reports/autonomy-lab-ui/index.html",
             "name": "index.html",
-            "title": "GoSleep — Autonomy, Question Buffer, Laboratory, UI &amp; Mobile"
+            "title": "GoSleep — Autonomy, Question Buffer, Laboratory, UI & Mobile"
           }
         ],
         "count": 5
@@ -9982,6 +10476,11 @@
         "dir_exists": true,
         "items": [
           {
+            "href": "../digest/2026-07-23-morning.md",
+            "name": "2026-07-23-morning.md",
+            "title": "Morning digest — 2026-07-23 (night run: 03:14 → 12:21)"
+          },
+          {
             "href": "../digest/2026-07-21-morning.md",
             "name": "2026-07-21-morning.md",
             "title": "Morning digest — 2026-07-21 (смена 71: аудит Фаз 5-6 + редизайн UI)"
@@ -10002,7 +10501,7 @@
             "title": "Morning digest — 2026-07-12 (night run: 20:43 → 21:38)"
           }
         ],
-        "count": 4
+        "count": 5
       },
       {
         "key": "prd",
@@ -10024,16 +10523,12 @@
         "count": 2
       }
     ],
-    "total": 170
+    "total": 183
   },
   "degraded": [
     {
       "source": "heartbeat",
       "why": "no .orchestrator-heartbeat (orchestrator never wrote one)"
-    },
-    {
-      "source": "fleet-model",
-      "why": "no transcript dir at /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl) — every model reads unkno"
     }
   ],
   "narrative": null

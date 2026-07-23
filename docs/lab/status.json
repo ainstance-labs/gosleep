@@ -1,12 +1,12 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-23T18:18:15Z",
+  "generated_at": "2026-07-23T20:39:05Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-23",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 21411,
-    "max_event_age_human": "5h 56m",
+    "max_event_age_s": 29861,
+    "max_event_age_human": "8h 17m",
     "latest_event_ts": "2026-07-23T12:21:24Z",
     "heartbeat_age_s": null,
     "grade": "dead",
@@ -294,10 +294,82 @@
     "manifest_candidates": []
   },
   "delivery": {
-    "branch": "GSL-141-fix-wave-1",
-    "head": "ea8733c",
-    "dirty_paths": 1,
+    "branch": "GSL-153-fix-wave-2",
+    "head": "7ece7fd",
+    "dirty_paths": 15,
     "commits_on_date": [
+      {
+        "sha": "7ece7fd",
+        "author": "R",
+        "ts": "2026-07-23T22:34:35+02:00",
+        "subject": "GSL-152 Комментарий RunwayStrip описывает unk по факту: магента + сплошная граница, запрет пунктира назван, а не нарушен"
+      },
+      {
+        "sha": "6564302",
+        "author": "R",
+        "ts": "2026-07-23T22:33:14+02:00",
+        "subject": "GSL-151 Cost partial-ячейка носит собственный .partial-note вместо заимствованного .wk-models: одна роль — одно имя"
+      },
+      {
+        "sha": "eec90f3",
+        "author": "R",
+        "ts": "2026-07-23T22:29:09+02:00",
+        "subject": "GSL-149 Severity-фасет Timeline строится из SEVERITIES: worst-first вместо порядка появления, пересечение с фактом сохранено"
+      },
+      {
+        "sha": "50d6143",
+        "author": "R",
+        "ts": "2026-07-23T22:26:55+02:00",
+        "subject": "GSL-148 doc_title декодирует HTML-сущности: html.unescape после снятия тегов, Library экранирует ровно один раз"
+      },
+      {
+        "sha": "6433506",
+        "author": "R",
+        "ts": "2026-07-23T22:23:38+02:00",
+        "subject": "GSL-147 Статусы Jira на Tasks board носят цвет спеки 7.2: tag st ok/warn/info, guard от утечки .tag.info на timeline"
+      },
+      {
+        "sha": "2194035",
+        "author": "R",
+        "ts": "2026-07-23T22:18:14+02:00",
+        "subject": "GSL-146 Каскад label-спанов больше не глотает span.unknown: :not(.unknown) в .kpi span/.wk-f span, значение-отсутствие снова --unk"
+      },
+      {
+        "sha": "10e63d7",
+        "author": "R",
+        "ts": "2026-07-23T22:01:14+02:00",
+        "subject": "GSL-145 [Docs][Evals] Verification run 02 audit dashboard"
+      },
+      {
+        "sha": "ff062fd",
+        "author": "R",
+        "ts": "2026-07-23T21:46:24+02:00",
+        "subject": "GSL-144 [Docs][Evals] Verification run 02 regression lane"
+      },
+      {
+        "sha": "54fe290",
+        "author": "rommxx",
+        "ts": "2026-07-23T20:50:32+02:00",
+        "subject": "Merge pull request #145 from ainstance-labs/GSL-141-fix-wave-1"
+      },
+      {
+        "sha": "204c732",
+        "author": "R",
+        "ts": "2026-07-23T20:26:33+02:00",
+        "subject": "GSL-143 Стандарт verification runs: docs/reports/verifications/README.md"
+      },
+      {
+        "sha": "10ed22e",
+        "author": "R",
+        "ts": "2026-07-23T20:24:48+02:00",
+        "subject": "GSL-142 Конвенция скриншот-ассетов: per-task папки задокументированы как норма"
+      },
+      {
+        "sha": "3d3e7fc",
+        "author": "R",
+        "ts": "2026-07-23T20:22:53+02:00",
+        "subject": "GSL-123 Library: маркер unknown доехал до построенной страницы + пересборка волны"
+      },
       {
         "sha": "ea8733c",
         "author": "R",
@@ -342,6 +414,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 145,
+        "state": "MERGED",
+        "title": "GSL-141 Fix wave 1: verification run 01 findings",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/145",
+        "mergedAt": "2026-07-23T18:50:33Z"
+      },
       {
         "number": 135,
         "state": "MERGED",
@@ -472,10 +551,6 @@
     {
       "source": "heartbeat",
       "why": "no .orchestrator-heartbeat (orchestrator never wrote one)"
-    },
-    {
-      "source": "fleet-model",
-      "why": "no transcript dir at /Users/romanlidovskyi/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep-fix-wave-1 (~/.claude/projects/<repo-slug>/<session-id>.jsonl) — every model reads unkno"
     }
   ],
   "narrative": null,
@@ -492,6 +567,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-23T18:18:15Z"
+    "last_success_at": "2026-07-23T20:39:05Z"
   }
 }
