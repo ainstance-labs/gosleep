@@ -402,6 +402,13 @@ span.unknown{color:var(--unk);font-style:normal;cursor:help;
 .runway-bind{font:500 var(--t-xs)/1.45 var(--mono);border:1px solid var(--neutral-border);
       background:var(--neutral-soft);color:var(--neutral);border-radius:var(--r-pill);
       padding:1px 6px;white-space:nowrap}
+/* The clear-state badge carries a JUDGEMENT — "nothing is going to stop the night" — so it takes
+   the ok triple WHOLE: background, ink and border of one role, the single badge shape spec 7.1
+   allows (same as .tag.ok). Without this rule the generic span.ok repainted only the ink and the
+   badge shipped half-dressed: green words on a neutral shell with a neutral border (GSL-159).
+   Latent today (the committed bundle is bound=unknown) but clear is the good ending this
+   dashboard exists for, and its first clear build must not be the first test of this rule. */
+.runway-bind.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-border)}
 .runway-say,.runway-next{font:400 var(--t-base)/1.5 var(--sans);color:var(--dim);max-width:68ch}
 .runway-say{margin-top:var(--s3)}
 .runway-next{margin-top:var(--s2)}

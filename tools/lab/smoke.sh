@@ -3469,6 +3469,20 @@ grep -q '\.muted{color:var(--muted)}' "$FP" \
   && ok "GSL-158 control: the built board's stylesheet defines .muted — the glyph is actually painted" \
   || bad "GSL-158 control: .muted has no rule on the built board — a role class nobody paints"
 
+# ────────── GSL-159 (fix wave 3): the clear-state runway badge wears the ok triple whole ──────────
+# At bound=clear the badge says "nothing is going to stop the night" — a judgement, so it takes the
+# one badge shape spec 7.1 allows: background, ink and border of ONE role. Without its own rule the
+# generic span.ok repainted only the ink and the badge shipped half-dressed — green words on a
+# neutral shell with a neutral border. The state is LATENT on committed data (bound=unknown), which
+# is exactly why the rule is asserted in the built stylesheet: the first clear build must not be
+# the first test of it.
+grep -q '\.runway-bind\.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-border)}' "$CRI" \
+  && ok "GSL-159: .runway-bind.ok carries the full ok triple (spec 7.1) in the built stylesheet" \
+  || bad "GSL-159: no ok-triple rule for the clear-state runway badge — it will ship half-painted"
+grep -q '"runway-bind ok"' "$REPO_ROOT/tools/lab/ui/src/runway.tsx" \
+  && ok "GSL-159 control: runway.tsx really emits class runway-bind ok on the clear branch (the rule has a customer)" \
+  || bad "GSL-159 control: no clear-branch badge markup in runway.tsx — the rule above paints nothing"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
