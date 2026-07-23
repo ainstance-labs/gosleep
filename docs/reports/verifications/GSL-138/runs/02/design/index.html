@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GSL-138 run 02 — design lane</title>
+<style>
+:root{color-scheme:light;
+  --bg:#f5f7f9;--card:#ffffff;--sunken:#f2f3f6;--raised:#eaebee;
+  --fg:#1a1b1c;--dim:#5a5b5d;--muted:#68696b;
+  --line:#d6d7da;--line-subtle:#e3e4e7;--line-strong:#7f8083;
+  --accent:#0068a5;
+  --ok:#007835;--ok-soft:#e6fae9;--ok-border:#b1dfb9;
+  --warn:#976500;--warn-soft:#fff1df;--warn-border:#eccb9e;
+  --dead:#902828;--dead-soft:#ffefee;--dead-border:#fcc0ba;
+  --info:#0068a5;--info-soft:#eaf5ff;--info-border:#abd7fd;
+  --unk:#8e4d9d;--unk-soft:#fceeff;--unk-border:#e6c3ee;
+  --neutral:#68696b;--neutral-soft:#f2f3f6;--neutral-border:#cfd1d4;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#0d0e10;--card:#151618;--sunken:#1d1e20;--raised:#28292b;
+  --fg:#f0f2f4;--dim:#b6b7ba;--muted:#97989b;
+  --line:#343537;--line-subtle:#28292b;--line-strong:#737477;
+  --accent:#71bfff;
+  --ok:#7cdd93;--ok-soft:#1e2d21;--ok-border:#295233;
+  --warn:#ffc673;--warn-soft:#322717;--warn-border:#5e4216;
+  --dead:#f07f77;--dead-soft:#372321;--dead-border:#683834;
+  --info:#71bfff;--info-soft:#1c2b37;--info-border:#244b6b;
+  --unk:#d58fe5;--unk-soft:#302432;--unk-border:#583b5f;
+  --neutral:#97989b;--neutral-soft:#28292b;--neutral-border:#46484a}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#0d0e10;--card:#151618;--sunken:#1d1e20;--raised:#28292b;
+  --fg:#f0f2f4;--dim:#b6b7ba;--muted:#97989b;
+  --line:#343537;--line-subtle:#28292b;--line-strong:#737477;
+  --accent:#71bfff;
+  --ok:#7cdd93;--ok-soft:#1e2d21;--ok-border:#295233;
+  --warn:#ffc673;--warn-soft:#322717;--warn-border:#5e4216;
+  --dead:#f07f77;--dead-soft:#372321;--dead-border:#683834;
+  --info:#71bfff;--info-soft:#1c2b37;--info-border:#244b6b;
+  --unk:#d58fe5;--unk-soft:#302432;--unk-border:#583b5f;
+  --neutral:#97989b;--neutral-soft:#28292b;--neutral-border:#46484a}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:70rem;padding:1.5rem 1.5rem 3rem;background:var(--bg);color:var(--fg);font:400 .8125rem/1.5 var(--sans)}
+h1{font:500 1.25rem/1.3 var(--sans);margin:0 0 .25rem}
+h2{font:500 1rem/1.4 var(--sans);margin:2rem 0 .75rem}
+p{color:var(--dim);max-width:68ch}
+.ru{color:var(--muted)}
+a{color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:.375rem;padding:.75rem 1rem;margin:.5rem 0}
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem}
+.s{border:1px solid var(--line);border-radius:.375rem;overflow:hidden;background:var(--card)}
+.s .chip{height:2.2rem}
+.s .lbl{padding:.25rem .5rem;font:400 .6875rem/1.5 var(--mono);color:var(--dim)}
+.toggle{position:fixed;top:.75rem;right:.75rem;background:var(--card);border:1px solid var(--line-strong);border-radius:.375rem;color:var(--fg);padding:.25rem .6rem;cursor:pointer;font:400 .8125rem var(--sans)}
+table{width:100%;border-collapse:collapse;background:var(--card)}
+td,th{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line-subtle);vertical-align:top}
+th{font:500 .6875rem/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--sunken);border-bottom:1px solid var(--line)}
+.tag{display:inline-flex;align-items:center;padding:1px 6px;border-radius:999px;border:1px solid var(--neutral-border);background:var(--neutral-soft);color:var(--neutral);font:500 .6875rem/1.45 var(--mono);white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-border)}
+.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
+.tag.dead{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
+.tag.info{background:var(--info-soft);color:var(--info);border-color:var(--info-border)}
+.tag.unk{background:var(--unk-soft);color:var(--unk);border-color:var(--unk-border)}
+.tscale div{border-bottom:1px solid var(--line-subtle);padding:.25rem 0}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.75rem}
+.gal figure{margin:0;border:1px solid var(--line);border-radius:.375rem;overflow:hidden;background:var(--card)}
+.gal img{width:100%;display:block}
+.gal figcaption{padding:.25rem .5rem;font:400 .6875rem/1.5 var(--mono);color:var(--dim)}
+code{font-family:var(--mono);font-size:.9em;background:var(--sunken);border-radius:.25rem;padding:0 4px}
+.sp span{display:inline-block;background:var(--accent);height:.75rem;vertical-align:middle;margin-right:.5rem}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="var r=document.documentElement,d=r.getAttribute('data-theme')?r.getAttribute('data-theme')==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.setAttribute('data-theme',d?'light':'dark')">Theme</button>
+
+<h1>GSL-138 run 02 — design lane / дизайн-лейн</h1>
+<p>Design-system overview of the audited state (main @ <code>54fe290</code>), the frozen snapshot of all seven pages, and the full frame gallery. Bilingual: English first, <span class="ru">русский — серым</span>.</p>
+<p class="ru">Обзор дизайн-системы аудируемого состояния (main @ <code>54fe290</code>), замороженный снапшот всех семи страниц и полная галерея кадров. Токены ниже — живые: перещёлкните тему кнопкой справа сверху, значения возьмутся из той же таблицы, что и на страницах.</p>
+
+<h2>Delta vs the approved baseline (runs/01) / Дельта от одобренного baseline</h2>
+<div class="card">
+<p><b>CSS: identical on all 7 pages.</b> The style block of every live page at 54fe290 is byte-identical to the approved runs/01 snapshot — no visual regression against the accepted state.</p>
+<p><b>Client JS: one delta</b> — the GSL-132 "ago" suffix (fix-wave commit <code>911b007</code>): <code>ageText()</code> gained a suffix parameter and <code>tickAges()</code> reads it back from <code>data-age-suffix</code>. Justified by git history, not a regression.</p>
+<p><b>Content: fresh data</b> — the pages were rebuilt at <code>2026-07-23T18:18:15Z</code> (grade DEAD at build; the red banner is the honest committed state).</p>
+<p class="ru">CSS всех семи страниц байт-в-байт совпадает со снапшотом runs/01 — визуальных регрессий против принятого состояния нет. Единственная дельта клиентского JS — суффикс «ago» (GSL-132, коммит фикс-волны 911b007), оправдана git-историей. Контент — свежая перегенерация 18:18:15Z, грейд DEAD на билде: красный баннер — честное закоммиченное состояние.</p>
+</div>
+
+<h2>Surfaces &amp; ink / Поверхности и чернила</h2>
+<div class="sw">
+<div class="s"><div class="chip" style="background:var(--bg)"></div><div class="lbl">--bg</div></div>
+<div class="s"><div class="chip" style="background:var(--card)"></div><div class="lbl">--card</div></div>
+<div class="s"><div class="chip" style="background:var(--sunken)"></div><div class="lbl">--sunken</div></div>
+<div class="s"><div class="chip" style="background:var(--raised)"></div><div class="lbl">--raised</div></div>
+<div class="s"><div class="chip" style="background:var(--fg)"></div><div class="lbl">--fg</div></div>
+<div class="s"><div class="chip" style="background:var(--dim)"></div><div class="lbl">--dim</div></div>
+<div class="s"><div class="chip" style="background:var(--muted)"></div><div class="lbl">--muted</div></div>
+<div class="s"><div class="chip" style="background:var(--line)"></div><div class="lbl">--line</div></div>
+<div class="s"><div class="chip" style="background:var(--line-strong)"></div><div class="lbl">--line-strong</div></div>
+<div class="s"><div class="chip" style="background:var(--accent)"></div><div class="lbl">--accent</div></div>
+</div>
+
+<h2>Status roles / Статусные роли</h2>
+<div class="sw">
+<div class="s"><div class="chip" style="background:var(--ok)"></div><div class="lbl">--ok</div></div>
+<div class="s"><div class="chip" style="background:var(--ok-soft)"></div><div class="lbl">--ok-soft</div></div>
+<div class="s"><div class="chip" style="background:var(--warn)"></div><div class="lbl">--warn</div></div>
+<div class="s"><div class="chip" style="background:var(--warn-soft)"></div><div class="lbl">--warn-soft</div></div>
+<div class="s"><div class="chip" style="background:var(--dead)"></div><div class="lbl">--dead</div></div>
+<div class="s"><div class="chip" style="background:var(--dead-soft)"></div><div class="lbl">--dead-soft</div></div>
+<div class="s"><div class="chip" style="background:var(--info)"></div><div class="lbl">--info</div></div>
+<div class="s"><div class="chip" style="background:var(--unk)"></div><div class="lbl">--unk</div></div>
+<div class="s"><div class="chip" style="background:var(--unk-soft)"></div><div class="lbl">--unk-soft</div></div>
+<div class="s"><div class="chip" style="background:var(--neutral)"></div><div class="lbl">--neutral</div></div>
+</div>
+
+<h2>Type scale / Шкала типографики</h2>
+<div class="card tscale">
+<div style="font:400 .6875rem/1.5 var(--sans)">--t-xs 11px — column headers, micro labels / заголовки колонок</div>
+<div style="font:400 .75rem/1.5 var(--sans)">--t-sm 12px — secondary captions, footer / вторичные подписи</div>
+<div style="font:400 .8125rem/1.5 var(--sans)">--t-md 13px — interface &amp; table base / база интерфейса и таблиц</div>
+<div style="font:400 .875rem/1.5 var(--sans)">--t-base 14px — card prose / проза карточек</div>
+<div style="font:500 1rem/1.4 var(--sans)">--t-lg 16px — h2 section heading / заголовок секции</div>
+<div style="font:500 1.25rem/1.3 var(--sans)">--t-xl 20px — h1 screen name / имя экрана</div>
+<div style="font:500 1.75rem/1.15 var(--mono);font-variant-numeric:tabular-nums">--t-hero 28px — 461,861,060</div>
+</div>
+
+<h2>Spacing / Отступы (base 4px)</h2>
+<div class="card sp">
+<div><span style="width:.25rem"></span><code>--s1</code> 4px</div>
+<div><span style="width:.5rem"></span><code>--s2</code> 8px</div>
+<div><span style="width:.75rem"></span><code>--s3</code> 12px</div>
+<div><span style="width:1rem"></span><code>--s4</code> 16px</div>
+<div><span style="width:1.5rem"></span><code>--s5</code> 24px</div>
+<div><span style="width:2rem"></span><code>--s6</code> 32px</div>
+<div><span style="width:3rem"></span><code>--s7</code> 48px</div>
+</div>
+
+<h2>Components, live / Компоненты живым HTML</h2>
+<div class="card">
+<p>Badges (one shape; colour earned by judgement only / цвет — только за оценку):</p>
+<p>
+<span class="tag ok">fresh</span> <span class="tag warn">stale</span> <span class="tag dead">incident</span>
+<span class="tag unk">unknown</span> <span class="tag info">In Progress*</span> <span class="tag">hook:PostToolUse</span>
+<span class="tag">MERGED</span> <span class="tag">claude-opus-4-8</span>
+</p>
+<p class="ru">* так статус In Progress должен выглядеть по спеке 7.2 — на сданной доске он нейтрален (пункт 2 отчёта).</p>
+</div>
+<div class="card">
+<p>Table density (32px rows, 11px caps headers, hover, no zebra / плотность таблиц):</p>
+<table>
+<tr><th>utc</th><th>sev</th><th>type</th></tr>
+<tr><td style="font-family:var(--mono)">12:21:24</td><td><span class="tag">info</span></td><td>handoff.written</td></tr>
+<tr><td style="font-family:var(--mono)">09:30:45</td><td><span class="tag dead">incident</span></td><td>api.failure</td></tr>
+</table>
+</div>
+
+<h2>Frozen pages / Замороженный снапшот страниц</h2>
+<div class="card">
+<p>
+<a href="pages/index.html">index</a> · <a href="pages/timeline.html">timeline</a> · <a href="pages/tasks.html">tasks</a> ·
+<a href="pages/questions.html">questions</a> · <a href="pages/fleet.html">fleet</a> · <a href="pages/cost.html">cost</a> ·
+<a href="pages/library.html">library</a>
+</p>
+<p class="ru">Копии семи страниц ровно в аудируемом состоянии (main @ 54fe290) — источник изменится следующей фикс-волной, ран останется самодостаточным свидетельством.</p>
+</div>
+
+<h2>All 28 frames / Все 28 кадров (viewport, обе темы)</h2>
+<div class="gal" id="gal"></div>
+<script>
+(function(){
+  var pages=["index","timeline","tasks","questions","fleet","cost","library"];
+  var variants=[["1280","light"],["1280","dark"],["390","light"],["390","dark"]];
+  var g=document.getElementById("gal");
+  pages.forEach(function(p){variants.forEach(function(v){
+    var f=document.createElement("figure");
+    var name=p+"-"+v[0]+"-"+v[1]+".png";
+    f.innerHTML='<img loading="lazy" src="../assets/'+name+'" alt="'+name+'"><figcaption>'+name+'</figcaption>';
+    g.appendChild(f);
+  })});
+})();
+</script>
+</body>
+</html>
