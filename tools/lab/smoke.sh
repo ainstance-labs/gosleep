@@ -3371,6 +3371,23 @@ grep -q '&amp;amp;' "$AMPW/docs/lab/site/library.html" \
   && bad "GSL-148: double escape — the Library prints literal '&amp;' to the reader" \
   || ok "GSL-148: no double escape anywhere on the built Library page"
 
+# ────────── GSL-149 (fix wave 2): the severity facet is worst-first, as its own comment promises ──────────
+# The facet was built with generic facetValues() — appearance order — so the shipped page offered
+# info, warn, incident and the owner scanning for trouble found `incident` at the BOTTOM. The FT
+# fixture holds every severity at once, with the benign ones appearing first in the feed: exactly
+# the ordering trap. The options must follow SEVERITIES (incident, warn, info, unknown), still
+# intersected with what is actually present.
+SEVOPTS="$(python3 - "$FT/docs/lab/site/timeline.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'<select data-facet="severity">(.*?)</select>', h, re.S)
+print(",".join(re.findall(r'<option value="([^"]+)"', m.group(1))) if m else "NO_SELECT")
+PY
+)"
+[[ "$SEVOPTS" == "incident,warn,info,unknown" ]] \
+  && ok "GSL-149: severity options are worst-first (incident,warn,info,unknown) despite a benign-first feed" \
+  || bad "GSL-149: severity options follow appearance order, not SEVERITIES ($SEVOPTS)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
