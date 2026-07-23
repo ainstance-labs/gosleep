@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design system overview — verification run 03 (GSL-111 @ d632e31)</title>
+<style>
+:root{
+  --bg:#f5f7f9; --card:#ffffff; --sunken:#f2f3f6; --raised:#eaebee;
+  --fg:#1a1b1c; --dim:#5a5b5d; --muted:#68696b;
+  --line:#d6d7da; --line-subtle:#e3e4e7; --line-strong:#7f8083;
+  --accent:#0068a5;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:64rem;padding:24px 24px 48px;background:var(--bg);color:var(--fg);font:400 13px/1.5 var(--sans)}
+h1{font:500 20px/1.3 var(--sans);margin:0 0 4px}
+h2{font:500 16px/1.4 var(--sans);margin:32px 0 12px}
+p.note{color:var(--dim);max-width:68ch;font-size:14px}
+.ru{color:var(--muted);font-size:12px}
+.grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.sw{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--card)}
+.sw .chip{height:44px}
+.sw .lbl{padding:6px 8px;font:400 11px/1.4 var(--mono)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:8px 0}
+.dark-panel{background:#0d0e10;border-color:#343537;color:#f0f2f4}
+table{width:100%;border-collapse:collapse;background:var(--card);font:400 13px/1.5 var(--sans)}
+th{padding:4px 10px;font:500 11px/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;background:var(--sunken);border-bottom:1px solid var(--line)}
+td{padding:6px 10px;border-bottom:1px solid var(--line-subtle);vertical-align:top}
+td.mono,.mono{font-family:var(--mono)}
+.tag{display:inline-flex;align-items:center;padding:1px 6px;border-radius:999px;border:1px solid #cfd1d4;background:#f2f3f6;color:#68696b;font:500 11px/1.45 var(--mono);white-space:nowrap;margin-right:4px}
+.t-ok{background:#e6fae9;color:#007835;border-color:#b1dfb9}
+.t-warn{background:#fff1df;color:#976500;border-color:#eccb9e}
+.t-dead{background:#ffefee;color:#902828;border-color:#fcc0ba}
+.t-info{background:#eaf5ff;color:#0068a5;border-color:#abd7fd}
+.t-unk{background:#fceeff;color:#8e4d9d;border-color:#e6c3ee}
+.d .tag{background:#28292b;color:#97989b;border-color:#46484a}
+.d .t-ok{background:#1e2d21;color:#7cdd93;border-color:#295233}
+.d .t-warn{background:#322717;color:#ffc673;border-color:#5e4216}
+.d .t-dead{background:#372321;color:#f07f77;border-color:#683834}
+.d .t-info{background:#1c2b37;color:#71bfff;border-color:#244b6b}
+.d .t-unk{background:#302432;color:#d58fe5;border-color:#583b5f}
+.type-row{display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--line-subtle);padding:6px 0}
+.type-row .m{font:400 11px/1.4 var(--mono);color:var(--muted);min-width:14rem}
+.sp{background:var(--accent);height:12px;display:inline-block;border-radius:2px;vertical-align:middle;opacity:.55}
+.kpi-demo{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;display:inline-block;min-width:180px;margin-right:8px}
+.kpi-demo b{display:block;font:500 28px/1.15 var(--mono);font-variant-numeric:tabular-nums}
+.kpi-demo span{display:block;font:400 11px/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:4px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<h1>Design system overview — run 03 <span class="ru">/ Обзор дизайн-системы — ран 03</span></h1>
+<p class="note">Live values copied from <code class="mono">tools/lab/ui/src/theme.ts</code> @ d632e31, verified equal to spec GSL-112 section 4.4 token block byte-for-byte. Swatches and components below are live HTML, not images. <span class="ru">Значения скопированы из theme.ts @ d632e31 и сверены со спекой GSL-112 (раздел 4.4) байт-в-байт. Свотчи и компоненты — живой HTML, не картинки.</span></p>
+<p class="note">Audited page snapshots / Снапшоты аудированных страниц: <a href="pages/index.html">index</a> · <a href="pages/timeline.html">timeline</a> · <a href="pages/tasks.html">tasks</a> · <a href="pages/questions.html">questions</a> · <a href="pages/fleet.html">fleet</a> · <a href="pages/cost.html">cost</a> · <a href="pages/library.html">library</a></p>
+
+<h2>Surfaces &amp; ink — light <span class="ru">/ Поверхности и чернила — светлая</span></h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#f5f7f9"></div><div class="lbl">--bg #f5f7f9</div></div>
+  <div class="sw"><div class="chip" style="background:#ffffff"></div><div class="lbl">--card #ffffff</div></div>
+  <div class="sw"><div class="chip" style="background:#f2f3f6"></div><div class="lbl">--sunken #f2f3f6</div></div>
+  <div class="sw"><div class="chip" style="background:#eaebee"></div><div class="lbl">--raised #eaebee</div></div>
+  <div class="sw"><div class="chip" style="background:#1a1b1c"></div><div class="lbl">--fg #1a1b1c</div></div>
+  <div class="sw"><div class="chip" style="background:#5a5b5d"></div><div class="lbl">--dim #5a5b5d</div></div>
+  <div class="sw"><div class="chip" style="background:#68696b"></div><div class="lbl">--muted #68696b</div></div>
+  <div class="sw"><div class="chip" style="background:#d6d7da"></div><div class="lbl">--line #d6d7da</div></div>
+  <div class="sw"><div class="chip" style="background:#7f8083"></div><div class="lbl">--line-strong #7f8083</div></div>
+  <div class="sw"><div class="chip" style="background:#0068a5"></div><div class="lbl">--accent #0068a5</div></div>
+</div>
+
+<h2>Surfaces &amp; ink — dark <span class="ru">/ Тёмная</span></h2>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#0d0e10"></div><div class="lbl">--bg #0d0e10</div></div>
+  <div class="sw"><div class="chip" style="background:#151618"></div><div class="lbl">--card #151618</div></div>
+  <div class="sw"><div class="chip" style="background:#1d1e20"></div><div class="lbl">--sunken #1d1e20</div></div>
+  <div class="sw"><div class="chip" style="background:#28292b"></div><div class="lbl">--raised #28292b</div></div>
+  <div class="sw"><div class="chip" style="background:#f0f2f4"></div><div class="lbl">--fg #f0f2f4</div></div>
+  <div class="sw"><div class="chip" style="background:#b6b7ba"></div><div class="lbl">--dim #b6b7ba</div></div>
+  <div class="sw"><div class="chip" style="background:#97989b"></div><div class="lbl">--muted #97989b</div></div>
+  <div class="sw"><div class="chip" style="background:#343537"></div><div class="lbl">--line #343537</div></div>
+  <div class="sw"><div class="chip" style="background:#737477"></div><div class="lbl">--line-strong #737477</div></div>
+  <div class="sw"><div class="chip" style="background:#71bfff"></div><div class="lbl">--accent #71bfff</div></div>
+</div>
+
+<h2>Status badges — both themes live <span class="ru">/ Статусные бейджи — обе темы живьём</span></h2>
+<div class="panel">
+  <span class="tag t-ok">fresh</span><span class="tag t-warn">stale</span><span class="tag t-dead">dead</span><span class="tag t-info">In Progress</span><span class="tag t-unk">unknown</span><span class="tag">hook:PostToolUse</span><span class="tag">claude-opus-4-8</span><span class="tag">MERGED</span>
+</div>
+<div class="panel dark-panel d">
+  <span class="tag t-ok">fresh</span><span class="tag t-warn">stale</span><span class="tag t-dead">dead</span><span class="tag t-info">In Progress</span><span class="tag t-unk">unknown</span><span class="tag">hook:PostToolUse</span><span class="tag">claude-opus-4-8</span><span class="tag">MERGED</span>
+</div>
+<p class="note">Rule 2 of the spec: only judgement earns colour; provenance, models and PR states stay neutral. <span class="ru">Правило 2 спеки: цвет получает только оценка; провенанс, модели и состояния PR — нейтральные.</span></p>
+
+<h2>Type scale <span class="ru">/ Шкала типографики</span></h2>
+<div class="panel">
+  <div class="type-row"><span class="m">--t-hero 28px / 1.15 · 500 mono</span><span style="font:500 28px/1.15 var(--mono)">14,325,000</span></div>
+  <div class="type-row"><span class="m">--t-xl 20px / 1.3 · 500 (h1)</span><span style="font:500 20px/1.3 var(--sans)">Laboratory</span></div>
+  <div class="type-row"><span class="m">--t-lg 16px / 1.4 · 500 (h2)</span><span style="font:500 16px/1.4 var(--sans)">Section heading</span></div>
+  <div class="type-row"><span class="m">--t-base 14px / 1.5 · 400 (prose)</span><span style="font:400 14px/1.5 var(--sans);color:var(--dim)">Card prose, one step down in ink, 68ch measure.</span></div>
+  <div class="type-row"><span class="m">--t-md 13px / 1.5 · 400 (base, td)</span><span style="font:400 13px/1.5 var(--sans)">Interface base and table cells</span></div>
+  <div class="type-row"><span class="m">--t-sm 12px / 1.5 · 400</span><span style="font:400 12px/1.5 var(--sans);color:var(--muted)">Secondary captions, footer, provenance</span></div>
+  <div class="type-row"><span class="m">--t-xs 11px / 1.5 · 500 caps .06em (th)</span><span style="font:500 11px/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Column header</span></div>
+</div>
+<p class="note">Maximum weight in the whole system is 500 — verified live: no element on any of the 7 pages computes a weight above 500. <span class="ru">Максимальный вес во всей системе — 500; проверено на живых страницах: ни один элемент не рендерится жирнее.</span></p>
+
+<h2>Spacing scale (4px base) <span class="ru">/ Шкала отступов (база 4px)</span></h2>
+<div class="panel mono" style="font-size:11px">
+  --s1 <span class="sp" style="width:4px"></span> 4 ·
+  --s2 <span class="sp" style="width:8px"></span> 8 ·
+  --s3 <span class="sp" style="width:12px"></span> 12 ·
+  --s4 <span class="sp" style="width:16px"></span> 16 ·
+  --s5 <span class="sp" style="width:24px"></span> 24 ·
+  --s6 <span class="sp" style="width:32px"></span> 32 ·
+  --s7 <span class="sp" style="width:48px"></span> 48
+  &nbsp;&nbsp;|&nbsp;&nbsp; radii: --r1 4 · --r2 6 · --r3 8 · --r-pill 999
+</div>
+
+<h2>Components <span class="ru">/ Компоненты</span></h2>
+<div>
+  <div class="kpi-demo"><b>12</b><span>events today</span></div>
+  <div class="kpi-demo"><b style="color:#8e4d9d;text-decoration:underline dotted;text-underline-offset:2px">unknown</b><span>ceiling</span></div>
+</div>
+<div class="panel" style="border-left:2px solid #8e4d9d;border-radius:8px;margin-top:8px">
+  <span style="font:500 11px/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">RUNWAY</span>
+  <span style="font:500 28px/1.15 var(--mono);color:#8e4d9d;margin:0 8px">unknown</span>
+  <span class="tag">no readable stopping clock</span>
+  <div style="font:400 14px/1.5 var(--sans);color:var(--dim);max-width:68ch;margin-top:8px">The runway card: value and badge carry the meaning; the left edge thickens with alarm; only dead earns a fill.</div>
+</div>
+<table style="margin-top:8px">
+  <tr><th>utc</th><th>sev</th><th>type</th><th style="text-align:right">n</th></tr>
+  <tr><td class="mono">12:21:24</td><td><span class="tag">info</span></td><td>handoff.written</td><td class="mono" style="text-align:right;font-variant-numeric:tabular-nums">1,345</td></tr>
+  <tr style="background:#ffefee"><td class="mono" style="box-shadow:inset 2px 0 0 #902828">09:30:45</td><td><span class="tag t-dead">incident</span></td><td>api.failure</td><td class="mono" style="text-align:right;font-variant-numeric:tabular-nums">1</td></tr>
+</table>
+<p class="note">Table: 11px caps headers on sunken, 13px cells, ~32px rows, hover instead of zebra, numbers right-aligned tabular; the incident row carries a server-rendered semantic tint and an inset left edge. <span class="ru">Таблица: капс-заголовки 11px на sunken, ячейки 13px, строки ~32px, hover вместо зебры, числа вправо tabular; incident-строка несёт серверную семантическую подсветку и врезанную левую грань.</span></p>
+</body>
+</html>
