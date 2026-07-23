@@ -1,0 +1,385 @@
+<!doctype html>
+<!--
+  agentic-report-creator — English report skeleton (the root index.html).
+  The invoking skill substitutes the double-brace slots (listed below) and writes to
+  docs/reports/<slug>/index.html. UI chrome below is English; the Russian sibling
+  lives in ru/index.html, rendered from templates/ru-shell.html.
+
+  Slots:
+    en         html lang ("en")
+    Laboratory redesign — verification run 04        report title (also used in <title>)
+    main @ 1f1899f after fix wave 3 · 7 pages + mobile projection + generator tools/lab/ui     one-line subtitle
+    2026-07-24         report date, e.g. 2026-07-15
+    GSL-138         Jira epic key, e.g. TLM-360 (or "")
+    assets/  relative asset prefix — "assets/" at root, "../assets/" under ru/
+    <div class="card hero">
+  <div class="score-ring" style="--score: 92" data-band="good">
+    <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"></circle><circle class="value" cx="60" cy="60" r="52"></circle></svg>
+    <div class="num"><b>92</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>Laboratory redesign — verification run 04</h1>
+    <p class="lead">Fresh-eyes audit of build <code>1f1899f</code>: three lanes (architecture / functionality / design), three norm layers (spec GSL-112 → approved run-03 baseline → industry standards). 5 findings, all MINOR; gates green, pages byte-reproducible.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MINOR-POLISH</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">5</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">5</span><span class="k">Total</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Severity distribution">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:0%"></span>
+      <span class="seg-minor" style="width:100%"></span>
+    </div>
+  </div>
+</div> executive-summary block (hero + counts) — see SKILL.md
+    <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-164</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Data-layer contract doc</span>
+    <span class="lane-tag">architecture</span>
+  </div>
+  <h3>docs/lab/README.md drifted from the layer it documents — phantom telemetry.jsonl, «all 3 pages», 3 of 7 site screens</h3>
+  <div class="finding-body"><p>The contract document for the laboratory data layer makes three claims the tree at <code>1f1899f</code> contradicts.</p>
+<ul><li>The layout tree lists <code>telemetry.jsonl</code> («per-cycle token/cost lines») — no such file exists in the commit, and <code>grep -rn 'telemetry.jsonl' tools/lab/</code> finds no writer or reader. The actual cost source is <code>docs/handoff/ORCHESTRATION-STATE.md</code> § TELEMETRY (chronicler.py:414-428), exactly what cost.html states.</li><li>The staleness table says <code>generated_at</code> appears in «status.json · all 3 pages · the digest», and the prose says «a coloured banner at the top of all three pages» — seven pages exist since Phase 5 and all seven carry the banner.</li><li>The layout tree lists only <code>site/index.html</code>, <code>site/timeline.html</code>, <code>site/library.html</code> — 3 of the 7 committed screens.</li></ul>
+<p>A consumer following this contract looks for a cost source that does not exist and undercounts the surfaces bound by the staleness contract. Norm layer: INDUSTRY-STANDARD (doc-code consistency); the spec and the approved baseline are silent on data-layer docs.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">docs/lab/README.md (layout tree, staleness table)</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">git ls-tree 1f1899f -- docs/lab/ · tools/lab/chronicler.py:414-428</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-165</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Library — Where this index looked</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Shelf count does not reproduce from its printed glob — Reports says 5, the glob matches 6</h3>
+  <div class="finding-body"><p>The whole point of the «Where this index looked» table is reproducibility: each shelf prints the glob it ran so the reader can re-run it and get the same number.</p>
+<p>The Reports row prints source <code>docs/reports/*/index.html</code> with count <b>5</b>. Running that glob against the same tree yields <b>6</b> files: the sixth, <code>docs/reports/token-overage-incident-2026-06-28/index.html</code>, is silently claimed by the <code>rca</code> section first — chronicler.py:1661-1676 documents the first-match-wins rule («a file is claimed by the FIRST section whose glob matches it»), but nothing on the rendered page mentions it. The printed glob over-matches the printed count by one.</p>
+<p>The dedup itself is correct and documented in code; what fails is only the page-level reproducibility of the printed number. Norm layer: INDUSTRY-STANDARD (the page's own data-honesty doctrine).</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">the page's own rule: «each shelf prints the glob it ran»</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/chronicler.py:1659-1676 · docs/lab/site/library.html</span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="assets/library-1280-light-shelves.png" alt="Reports shelf prints its glob with count 5 — the glob itself matches 6 files" data-lightbox-group="finding-2" data-caption="Reports shelf prints its glob with count 5 — the glob itself matches 6 files"><figcaption class="shot-cap">Reports shelf prints its glob with count 5 — the glob itself matches 6 files</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-166</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Library — cross-index</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>File column names six rows «index.html» — the distinguishing slug lives only in the href and outside the search haystack</h3>
+  <div class="finding-body"><p>All 5 Reports rows and 1 RCA row render their file cell as the literal <code>index.html</code> — six visually identical names in a column whose job is identification. The distinguishing report slug (<code>orchestrator-landscape</code>, <code>autosk-anatomy</code>, …) exists only inside the link's href, which the eye does not see and the client-side search does not match: <code>libraryIndex()</code> builds the haystack as <code>name + title</code> only (library.tsx:41-46). Searching for <code>autosk-anatomy</code> returns 0 rows even though the artifact is indexed; only the human-language title matches.</p>
+<p>Every row is still reachable via title search and the kind facet — the failure is degraded findability plus a column of six identical labels. Present in the approved baseline too (not a regression). Norm layer: INDUSTRY-STANDARD (cross-index convention: the identifying path segment is displayed and searchable).</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">library.tsx docstring: «the owner types overage and stops caring»</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/ui/src/screens/library.tsx:41-46 · chronicler.py library section builder</span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="assets/library-1280-light-reports.png" alt="Kind = Reports: five rows all named index.html" data-lightbox-group="finding-3" data-caption="Kind = Reports: five rows all named index.html"><figcaption class="shot-cap">Kind = Reports: five rows all named index.html</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-167</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">KPI grid — narrow viewports</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>.grid renders two ~190px columns at 391–416px where spec 9.3 promises one column for the whole ≤416px band</h3>
+  <div class="finding-body"><p>Spec GSL-112 section 9.3 (breakpoint table) states for <code>.grid</code>: «одна колонка» at ≤416px. The stylesheet has no <code>.grid</code> rule inside <code>@media (max-width:26rem)</code> (theme.ts:558-566); the collapse relies entirely on <code>repeat(auto-fit,minmax(180px,1fr))</code> running out of room, which happens only at ≤390px content width.</p>
+<p>Measured in Chromium on the committed pages:</p>
+<ul><li>viewport 390px → <code>366px</code> (one column) — matches the spec;</li><li>viewport 400px → <code>184px 184px</code> (two columns);</li><li>viewport 414px (iPhone Plus class) → <code>191px 191px</code> (two columns).</li></ul>
+<p>No horizontal overflow occurs anywhere (scrollWidth == clientWidth), and spec 8.3's prose only vouches for 390px itself, so the 9.3 table row is the stricter, violated norm. No self-documented justification exists for the 391–416 band. Norm layer: SPEC-VIOLATION.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">docs/design/ui-redesign-spec.md section 9.3 (.grid row)</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/ui/src/theme.ts:212, :558-566</span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="assets/index-414-light-grid.png" alt="414×844: KPI tiles in two ~191px columns inside the ≤416px band" data-lightbox-group="finding-4" data-caption="414×844: KPI tiles in two ~191px columns inside the ≤416px band"><figcaption class="shot-cap">414×844: KPI tiles in two ~191px columns inside the ≤416px band</figcaption></figure>
+<figure class="shot"><img class="shot-img" src="assets/index-390-light.png" alt="390×844: the same grid correctly collapses to one column" data-lightbox-group="finding-4" data-caption="390×844: the same grid correctly collapses to one column"><figcaption class="shot-cap">390×844: the same grid correctly collapses to one column</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <span class="jira-chip">GSL-168</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Accessibility semantics</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Pages ship no document language (WCAG 3.1.1) and no th scope on 13 data tables (WCAG 1.3.1)</h3>
+  <div class="finding-body"><p><code>renderPage()</code> emits <code>&lt;!doctype html&gt;&lt;meta charset=&quot;utf-8&quot;&gt;…</code> with no <code>&lt;html&gt;</code> open tag at all (page.tsx:57-66), so the browser synthesizes an <code>html</code> element without <code>lang</code> — <code>grep -c '&lt;html' docs/lab/site/index.html</code> → 0 on every page. WCAG 2.x SC 3.1.1 (Language of Page, Level A) requires the default human language to be programmatically determinable.</p>
+<p>None of the 13 data tables sets <code>scope</code> on its <code>th</code> cells, and header rows are plain <code>&lt;tr&gt;&lt;th&gt;</code> without <code>thead</code>. For simple single-header tables AT usually copes, but <code>scope=&quot;col&quot;</code> is the baseline association mechanism (SC 1.3.1 / H63), and the widest tables here have 7-8 columns.</p>
+<p>Both fixes are attribute-only — no new visible text (spec 1.1 intact), and none of the smoke-asserted attribute orderings involves <code>th</code> or a root <code>html</code> tag; the «first attribute-less script» stands (smoke.sh:1395/1576/1767) should be re-run in the same task. Norm layer: INDUSTRY-STANDARD; severity MINOR for a single-known-user internal dashboard, but formally a Level A criterion is unmet.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">WCAG 2.1 SC 3.1.1 (A) · SC 1.3.1 / H63</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/ui/src/page.tsx:57-66 · components.tsx:244-250 · screens/*.tsx</span></div></div>
+  
+</article>rendered findings list
+    <section aria-labelledby="arch-h"><h2 class="section-title" id="arch-h">Architecture notes, gates and run context</h2>
+<article class="card arch-note"><h3>Gates and reproducibility at 1f1899f</h3><div class="arch-body"><p>All gates ran in a clean worktree checked out at the audited merge commit — never in the dirty shared tree.</p>
+<ul><li><code>bash tools/lab/smoke.sh</code> → <b>RESULT: PASS=404 FAIL=0</b> (the spec's acceptance floor is PASS ≥ 312).</li><li><code>cd tools/lab/ui &amp;&amp; npx tsc --noEmit</code> → 0 errors.</li><li><b>Byte-identical regeneration:</b> <code>bash tools/lab/ui/render.sh &lt; docs/lab/render_bundle.json</code> reproduces all 7 committed pages exactly (the only diff artifact is jq's trailing newline). The committed HTML is provably the output of the committed generator over the committed bundle — no hand edits.</li><li>Both themes photograph correctly in both switch directions (<code>prefers-color-scheme</code> and <code>:root[data-theme]</code>): computed body background <code>#f5f7f9</code> light / <code>#0d0e10</code> dark on all seven pages.</li><li>390px invariant: <code>scrollWidth == clientWidth == 390</code>, all 7 nav links present, on all seven screens.</li><li>Client behaviours driven live over localhost: staleness banner re-grades on open (<code>DEAD · last event 10h 18m ago</code> from a 9h 48m build — correct arithmetic), timeline filter narrows to 1 incident of 200, zero-state says «0 of 200 shown — the filter is hiding every row» with the red fill, reset restores, library text search works, ages tick with the correct suffix grammar («11d 1h ago»).</li></ul></div></article>
+<article class="card arch-note"><h3>Data-truth spot checks — the bundle against its sources</h3><div class="arch-body"><p>Every number re-derived independently from the committed sources at 1f1899f matched the rendered pages:</p>
+<ul><li>events: 1345 total lines across <code>docs/lab/events/*.jsonl</code>, 12 with a 2026-07-23 <code>ts</code>, 93% mechanical (1252/1345 hook-sourced) — matches Overview, Timeline and the mobile projection.</li><li>staleness: newest event <code>2026-07-23T12:21:24Z</code> vs <code>generated_at 22:09:39Z</code> → 35 295 s = 9h 48m, grade <code>dead</code> — matches the banner, status.json and mobile.</li><li>questions: 39 queue records fold to 19 questions, 0 open (2 answered · 1 answered-by-default · 16 auto-resolved) — matches Questions (17 decided without you + 2 by you).</li><li>cost: cumulative 14 325 000 over 107 cycles from the last TELEMETRY bullet; 77 per-cycle rows + 30-cycle gap named on the page.</li><li>tasks: 149 rows = 140 unknown + 5 Done + 3 To Do + 1 In Progress; commits on 2026-07-23 = 29 (an initial mismatch of mine was a timezone artifact of the check, not of the chronicler).</li><li>runway: bound <code>unknown</code>, 2/6 axes readable — consistent with the four unknown clocks; the prose counts only *stopping* clocks («1 of them»: budget), which is correct and initially reads as a contradiction of the 2/6 trace — it is not.</li><li>status.json and render_bundle.json carry the same pass (<code>generated_at</code> equal).</li></ul></div></article>
+<article class="card arch-note"><h3>What to look at — debatable calls and documented deviations</h3><div class="arch-body"><p>Where to look: Library (both findings live there), index.html at 391–416px widths, and the two contract docs. What I accepted without filing, so the owner can overrule:</p>
+<ul><li><b><code>td{overflow-wrap:break-word; max-width:34ch}</code> vs spec 6.4's literal <code>anywhere</code></b> — theme.ts:251-266 documents the measured reason (with <code>anywhere</code> the 8-character timestamp broke across three lines; the table ran 1253px inside a 976px wrapper). Treated as intentional-documented; the spec's own greppable contract (smoke.sh:2237) is still honoured via the mono-block rule.</li><li><b><code>.wk-models</code> warn ink on a mid-session model switch (Fleet)</b> — spec 7.2 lists model names as neutral metadata, but this element is an anomaly flag («⚠ also:»), not a model badge; latent in the current bundle (no worker carries two models). Accepted as judgement-carrying; debatable.</li><li><b>Delivery card names <code>GSL-161-fix-wave-3 @ db4043b</code> after the merge</b> — expected residue under the GSL-150 rebuild discipline (the regeneration was the branch's last commit); heals on the next chronicler pass on main.</li><li><b><code>sev=info</code> renders neutral in Timeline</b> — per spec 7.2's explicit carve-out (info stands in 181 of 200 rows).</li><li><b><code>clock-kind</code> labels (STOPS/DEGRADES/COMPLETES) carry status ink even on a clear clock</b> — spec is silent, approved baseline shows the same; left alone per layer order.</li><li><b>The «Decided by you» heading on Questions</b> — a new heading despite spec 1.1's freeze, but it is the documented deviation the owner accepted via q-2026-07-20-013 (visible in the Library decisions log).</li><li><b>Verdict score 92/100</b> — my own scale for 0 CRITICAL / 0 MAJOR / 5 MINOR on a surface this size; the number is a summary, not a measurement.</li></ul></div></article>
+<article class="card arch-note"><h3>Regression lane</h3><div class="arch-body"><p>Whether the findings of runs 01–03 actually landed is a separate lane with separate eyes, per the independence rule: this fresh-eyes audit never read the prior reports. The parallel regression worker's report lives at <a href="regression/index.html">./regression/</a>.</p></div></article>
+<article class="card arch-note"><h3>Design snapshot and baseline deltas</h3><div class="arch-body"><p>The snapshot of all seven audited pages as committed at 1f1899f, plus the bilingual design-system overview, lives at <a href="design/index.html">./design/</a> (pages under <a href="design/pages/">design/pages/</a>).</p>
+<p>Against the approved baseline (run 03 <code>design/pages/</code>), the CSS delta is exactly the five fix-wave-3 rules — no other visual change:</p>
+<ul><li>GSL-156 — <code>.unknown</code> scoped to <code>span</code>: the container class no longer paints a whole card's prose magenta.</li><li>GSL-157 — Freshness at <code>grade=dead</code> wears <code>.sh-m.dead</code> (read verdict, not «cannot read»).</li><li>GSL-158 — the absent-gh-mirror dash on Tasks painted <code>--muted</code> (one absence glyph across screens).</li><li>GSL-159 — <code>.runway-bind.ok</code> carries the full ok triple (latent until the first <code>clear</code> build).</li><li>GSL-160 — <code>.scope-note</code> for static captions; <code>.tag.high-impact</code> borrows dead's triple by value, not by name.</li></ul>
+<p>All five verified live by computed style on the committed pages. The remaining page diffs vs the baseline are data (a newer chronicler pass: 22:09:39Z vs 20:39:05Z), not design.</p></div></article>
+</section>
+<section aria-labelledby="gal-h"><h2 class="section-title" id="gal-h">Gallery — 7 pages × 2 viewports × 2 themes (28 captures)</h2><article class="card arch-note"><div class="arch-body"><p>Committed pages captured over localhost at strict 1280×800 and 390×844 viewports, no full-page canvases; dark theme forced via the <code>data-theme</code> attribute (both switch directions verified by computed background).</p></div></article>
+<article class="card arch-note"><h3>index.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-1280-light.png" alt="index.html · 1280px · light" data-lightbox-group="gallery-index" data-caption="index.html · 1280px · light"><figcaption class="shot-cap">index.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-1280-dark.png" alt="index.html · 1280px · dark" data-lightbox-group="gallery-index" data-caption="index.html · 1280px · dark"><figcaption class="shot-cap">index.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-390-light.png" alt="index.html · 390px · light" data-lightbox-group="gallery-index" data-caption="index.html · 390px · light"><figcaption class="shot-cap">index.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-390-dark.png" alt="index.html · 390px · dark" data-lightbox-group="gallery-index" data-caption="index.html · 390px · dark"><figcaption class="shot-cap">index.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>timeline.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-1280-light.png" alt="timeline.html · 1280px · light" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 1280px · light"><figcaption class="shot-cap">timeline.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-1280-dark.png" alt="timeline.html · 1280px · dark" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 1280px · dark"><figcaption class="shot-cap">timeline.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-390-light.png" alt="timeline.html · 390px · light" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 390px · light"><figcaption class="shot-cap">timeline.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-390-dark.png" alt="timeline.html · 390px · dark" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 390px · dark"><figcaption class="shot-cap">timeline.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>tasks.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-1280-light.png" alt="tasks.html · 1280px · light" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 1280px · light"><figcaption class="shot-cap">tasks.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-1280-dark.png" alt="tasks.html · 1280px · dark" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 1280px · dark"><figcaption class="shot-cap">tasks.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-390-light.png" alt="tasks.html · 390px · light" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 390px · light"><figcaption class="shot-cap">tasks.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-390-dark.png" alt="tasks.html · 390px · dark" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 390px · dark"><figcaption class="shot-cap">tasks.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>questions.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-1280-light.png" alt="questions.html · 1280px · light" data-lightbox-group="gallery-questions" data-caption="questions.html · 1280px · light"><figcaption class="shot-cap">questions.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-1280-dark.png" alt="questions.html · 1280px · dark" data-lightbox-group="gallery-questions" data-caption="questions.html · 1280px · dark"><figcaption class="shot-cap">questions.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-390-light.png" alt="questions.html · 390px · light" data-lightbox-group="gallery-questions" data-caption="questions.html · 390px · light"><figcaption class="shot-cap">questions.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-390-dark.png" alt="questions.html · 390px · dark" data-lightbox-group="gallery-questions" data-caption="questions.html · 390px · dark"><figcaption class="shot-cap">questions.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>fleet.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-1280-light.png" alt="fleet.html · 1280px · light" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 1280px · light"><figcaption class="shot-cap">fleet.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-1280-dark.png" alt="fleet.html · 1280px · dark" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 1280px · dark"><figcaption class="shot-cap">fleet.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-390-light.png" alt="fleet.html · 390px · light" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 390px · light"><figcaption class="shot-cap">fleet.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-390-dark.png" alt="fleet.html · 390px · dark" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 390px · dark"><figcaption class="shot-cap">fleet.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>cost.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-1280-light.png" alt="cost.html · 1280px · light" data-lightbox-group="gallery-cost" data-caption="cost.html · 1280px · light"><figcaption class="shot-cap">cost.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-1280-dark.png" alt="cost.html · 1280px · dark" data-lightbox-group="gallery-cost" data-caption="cost.html · 1280px · dark"><figcaption class="shot-cap">cost.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-390-light.png" alt="cost.html · 390px · light" data-lightbox-group="gallery-cost" data-caption="cost.html · 390px · light"><figcaption class="shot-cap">cost.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-390-dark.png" alt="cost.html · 390px · dark" data-lightbox-group="gallery-cost" data-caption="cost.html · 390px · dark"><figcaption class="shot-cap">cost.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>library.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-1280-light.png" alt="library.html · 1280px · light" data-lightbox-group="gallery-library" data-caption="library.html · 1280px · light"><figcaption class="shot-cap">library.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-1280-dark.png" alt="library.html · 1280px · dark" data-lightbox-group="gallery-library" data-caption="library.html · 1280px · dark"><figcaption class="shot-cap">library.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-390-light.png" alt="library.html · 390px · light" data-lightbox-group="gallery-library" data-caption="library.html · 390px · light"><figcaption class="shot-cap">library.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-390-dark.png" alt="library.html · 390px · dark" data-lightbox-group="gallery-library" data-caption="library.html · 390px · dark"><figcaption class="shot-cap">library.html · 390px · dark</figcaption></figure></div></article></section> optional architecture-notes block (or "")
+    verifier-04 (verifier-skeptic, fresh eyes)      who/what produced the report
+    1f1899f   commit / build under audit (or "")
+    2026-07-23 22:55 UTC generation timestamp
+
+  Assets: this template LINKS the shared CSS/JS by relative path. To make a single
+  self-contained file instead, replace the <link>/<script src> tags with inline
+  <style>…</style> / <script>…</script> holding the file contents. Both work.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laboratory redesign — verification run 04</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script>
+    /* Set theme before first paint to avoid a flash of the wrong theme,
+       then wire the toggle once the DOM is ready. No external dependency. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">Laboratory redesign — verification run 04</span>
+        <span class="subtitle">main @ 1f1899f after fix wave 3 · 7 pages + mobile projection + generator tools/lab/ui</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Epic">GSL-138</span>
+        <span class="hbtn" aria-label="Date">2026-07-24</span>
+        <!-- Language switch: English root -> Russian sibling -->
+        <a class="hbtn lang-switch" href="ru/index.html" hreflang="ru">EN <span aria-hidden="true">⇄</span> RU</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Toggle color theme">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Theme</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Executive summary -->
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Executive summary</h2>
+      <div class="card hero">
+  <div class="score-ring" style="--score: 92" data-band="good">
+    <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"></circle><circle class="value" cx="60" cy="60" r="52"></circle></svg>
+    <div class="num"><b>92</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>Laboratory redesign — verification run 04</h1>
+    <p class="lead">Fresh-eyes audit of build <code>1f1899f</code>: three lanes (architecture / functionality / design), three norm layers (spec GSL-112 → approved run-03 baseline → industry standards). 5 findings, all MINOR; gates green, pages byte-reproducible.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MINOR-POLISH</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">5</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">5</span><span class="k">Total</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Severity distribution">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:0%"></span>
+      <span class="seg-minor" style="width:100%"></span>
+    </div>
+  </div>
+</div>
+    </section>
+
+    <!-- Findings -->
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Findings</h2>
+      <div class="findings">
+        <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-164</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Data-layer contract doc</span>
+    <span class="lane-tag">architecture</span>
+  </div>
+  <h3>docs/lab/README.md drifted from the layer it documents — phantom telemetry.jsonl, «all 3 pages», 3 of 7 site screens</h3>
+  <div class="finding-body"><p>The contract document for the laboratory data layer makes three claims the tree at <code>1f1899f</code> contradicts.</p>
+<ul><li>The layout tree lists <code>telemetry.jsonl</code> («per-cycle token/cost lines») — no such file exists in the commit, and <code>grep -rn 'telemetry.jsonl' tools/lab/</code> finds no writer or reader. The actual cost source is <code>docs/handoff/ORCHESTRATION-STATE.md</code> § TELEMETRY (chronicler.py:414-428), exactly what cost.html states.</li><li>The staleness table says <code>generated_at</code> appears in «status.json · all 3 pages · the digest», and the prose says «a coloured banner at the top of all three pages» — seven pages exist since Phase 5 and all seven carry the banner.</li><li>The layout tree lists only <code>site/index.html</code>, <code>site/timeline.html</code>, <code>site/library.html</code> — 3 of the 7 committed screens.</li></ul>
+<p>A consumer following this contract looks for a cost source that does not exist and undercounts the surfaces bound by the staleness contract. Norm layer: INDUSTRY-STANDARD (doc-code consistency); the spec and the approved baseline are silent on data-layer docs.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">docs/lab/README.md (layout tree, staleness table)</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">git ls-tree 1f1899f -- docs/lab/ · tools/lab/chronicler.py:414-428</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-165</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Library — Where this index looked</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Shelf count does not reproduce from its printed glob — Reports says 5, the glob matches 6</h3>
+  <div class="finding-body"><p>The whole point of the «Where this index looked» table is reproducibility: each shelf prints the glob it ran so the reader can re-run it and get the same number.</p>
+<p>The Reports row prints source <code>docs/reports/*/index.html</code> with count <b>5</b>. Running that glob against the same tree yields <b>6</b> files: the sixth, <code>docs/reports/token-overage-incident-2026-06-28/index.html</code>, is silently claimed by the <code>rca</code> section first — chronicler.py:1661-1676 documents the first-match-wins rule («a file is claimed by the FIRST section whose glob matches it»), but nothing on the rendered page mentions it. The printed glob over-matches the printed count by one.</p>
+<p>The dedup itself is correct and documented in code; what fails is only the page-level reproducibility of the printed number. Norm layer: INDUSTRY-STANDARD (the page's own data-honesty doctrine).</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">the page's own rule: «each shelf prints the glob it ran»</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/chronicler.py:1659-1676 · docs/lab/site/library.html</span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="assets/library-1280-light-shelves.png" alt="Reports shelf prints its glob with count 5 — the glob itself matches 6 files" data-lightbox-group="finding-2" data-caption="Reports shelf prints its glob with count 5 — the glob itself matches 6 files"><figcaption class="shot-cap">Reports shelf prints its glob with count 5 — the glob itself matches 6 files</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-166</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Library — cross-index</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>File column names six rows «index.html» — the distinguishing slug lives only in the href and outside the search haystack</h3>
+  <div class="finding-body"><p>All 5 Reports rows and 1 RCA row render their file cell as the literal <code>index.html</code> — six visually identical names in a column whose job is identification. The distinguishing report slug (<code>orchestrator-landscape</code>, <code>autosk-anatomy</code>, …) exists only inside the link's href, which the eye does not see and the client-side search does not match: <code>libraryIndex()</code> builds the haystack as <code>name + title</code> only (library.tsx:41-46). Searching for <code>autosk-anatomy</code> returns 0 rows even though the artifact is indexed; only the human-language title matches.</p>
+<p>Every row is still reachable via title search and the kind facet — the failure is degraded findability plus a column of six identical labels. Present in the approved baseline too (not a regression). Norm layer: INDUSTRY-STANDARD (cross-index convention: the identifying path segment is displayed and searchable).</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">library.tsx docstring: «the owner types overage and stops caring»</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/ui/src/screens/library.tsx:41-46 · chronicler.py library section builder</span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="assets/library-1280-light-reports.png" alt="Kind = Reports: five rows all named index.html" data-lightbox-group="finding-3" data-caption="Kind = Reports: five rows all named index.html"><figcaption class="shot-cap">Kind = Reports: five rows all named index.html</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-167</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">KPI grid — narrow viewports</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>.grid renders two ~190px columns at 391–416px where spec 9.3 promises one column for the whole ≤416px band</h3>
+  <div class="finding-body"><p>Spec GSL-112 section 9.3 (breakpoint table) states for <code>.grid</code>: «одна колонка» at ≤416px. The stylesheet has no <code>.grid</code> rule inside <code>@media (max-width:26rem)</code> (theme.ts:558-566); the collapse relies entirely on <code>repeat(auto-fit,minmax(180px,1fr))</code> running out of room, which happens only at ≤390px content width.</p>
+<p>Measured in Chromium on the committed pages:</p>
+<ul><li>viewport 390px → <code>366px</code> (one column) — matches the spec;</li><li>viewport 400px → <code>184px 184px</code> (two columns);</li><li>viewport 414px (iPhone Plus class) → <code>191px 191px</code> (two columns).</li></ul>
+<p>No horizontal overflow occurs anywhere (scrollWidth == clientWidth), and spec 8.3's prose only vouches for 390px itself, so the 9.3 table row is the stricter, violated norm. No self-documented justification exists for the 391–416 band. Norm layer: SPEC-VIOLATION.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">docs/design/ui-redesign-spec.md section 9.3 (.grid row)</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/ui/src/theme.ts:212, :558-566</span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="assets/index-414-light-grid.png" alt="414×844: KPI tiles in two ~191px columns inside the ≤416px band" data-lightbox-group="finding-4" data-caption="414×844: KPI tiles in two ~191px columns inside the ≤416px band"><figcaption class="shot-cap">414×844: KPI tiles in two ~191px columns inside the ≤416px band</figcaption></figure>
+<figure class="shot"><img class="shot-img" src="assets/index-390-light.png" alt="390×844: the same grid correctly collapses to one column" data-lightbox-group="finding-4" data-caption="390×844: the same grid correctly collapses to one column"><figcaption class="shot-cap">390×844: the same grid correctly collapses to one column</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <span class="jira-chip">GSL-168</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Accessibility semantics</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Pages ship no document language (WCAG 3.1.1) and no th scope on 13 data tables (WCAG 1.3.1)</h3>
+  <div class="finding-body"><p><code>renderPage()</code> emits <code>&lt;!doctype html&gt;&lt;meta charset=&quot;utf-8&quot;&gt;…</code> with no <code>&lt;html&gt;</code> open tag at all (page.tsx:57-66), so the browser synthesizes an <code>html</code> element without <code>lang</code> — <code>grep -c '&lt;html' docs/lab/site/index.html</code> → 0 on every page. WCAG 2.x SC 3.1.1 (Language of Page, Level A) requires the default human language to be programmatically determinable.</p>
+<p>None of the 13 data tables sets <code>scope</code> on its <code>th</code> cells, and header rows are plain <code>&lt;tr&gt;&lt;th&gt;</code> without <code>thead</code>. For simple single-header tables AT usually copes, but <code>scope=&quot;col&quot;</code> is the baseline association mechanism (SC 1.3.1 / H63), and the widest tables here have 7-8 columns.</p>
+<p>Both fixes are attribute-only — no new visible text (spec 1.1 intact), and none of the smoke-asserted attribute orderings involves <code>th</code> or a root <code>html</code> tag; the «first attribute-less script» stands (smoke.sh:1395/1576/1767) should be re-run in the same task. Norm layer: INDUSTRY-STANDARD; severity MINOR for a single-known-user internal dashboard, but formally a Level A criterion is unmet.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Design</span><span class="ref-v">WCAG 2.1 SC 3.1.1 (A) · SC 1.3.1 / H63</span></div><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">tools/lab/ui/src/page.tsx:57-66 · components.tsx:244-250 · screens/*.tsx</span></div></div>
+  
+</article>
+      </div>
+    </section>
+
+    <!-- Architecture notes (optional; renders nothing if the slot is empty) -->
+    <section aria-labelledby="arch-h"><h2 class="section-title" id="arch-h">Architecture notes, gates and run context</h2>
+<article class="card arch-note"><h3>Gates and reproducibility at 1f1899f</h3><div class="arch-body"><p>All gates ran in a clean worktree checked out at the audited merge commit — never in the dirty shared tree.</p>
+<ul><li><code>bash tools/lab/smoke.sh</code> → <b>RESULT: PASS=404 FAIL=0</b> (the spec's acceptance floor is PASS ≥ 312).</li><li><code>cd tools/lab/ui &amp;&amp; npx tsc --noEmit</code> → 0 errors.</li><li><b>Byte-identical regeneration:</b> <code>bash tools/lab/ui/render.sh &lt; docs/lab/render_bundle.json</code> reproduces all 7 committed pages exactly (the only diff artifact is jq's trailing newline). The committed HTML is provably the output of the committed generator over the committed bundle — no hand edits.</li><li>Both themes photograph correctly in both switch directions (<code>prefers-color-scheme</code> and <code>:root[data-theme]</code>): computed body background <code>#f5f7f9</code> light / <code>#0d0e10</code> dark on all seven pages.</li><li>390px invariant: <code>scrollWidth == clientWidth == 390</code>, all 7 nav links present, on all seven screens.</li><li>Client behaviours driven live over localhost: staleness banner re-grades on open (<code>DEAD · last event 10h 18m ago</code> from a 9h 48m build — correct arithmetic), timeline filter narrows to 1 incident of 200, zero-state says «0 of 200 shown — the filter is hiding every row» with the red fill, reset restores, library text search works, ages tick with the correct suffix grammar («11d 1h ago»).</li></ul></div></article>
+<article class="card arch-note"><h3>Data-truth spot checks — the bundle against its sources</h3><div class="arch-body"><p>Every number re-derived independently from the committed sources at 1f1899f matched the rendered pages:</p>
+<ul><li>events: 1345 total lines across <code>docs/lab/events/*.jsonl</code>, 12 with a 2026-07-23 <code>ts</code>, 93% mechanical (1252/1345 hook-sourced) — matches Overview, Timeline and the mobile projection.</li><li>staleness: newest event <code>2026-07-23T12:21:24Z</code> vs <code>generated_at 22:09:39Z</code> → 35 295 s = 9h 48m, grade <code>dead</code> — matches the banner, status.json and mobile.</li><li>questions: 39 queue records fold to 19 questions, 0 open (2 answered · 1 answered-by-default · 16 auto-resolved) — matches Questions (17 decided without you + 2 by you).</li><li>cost: cumulative 14 325 000 over 107 cycles from the last TELEMETRY bullet; 77 per-cycle rows + 30-cycle gap named on the page.</li><li>tasks: 149 rows = 140 unknown + 5 Done + 3 To Do + 1 In Progress; commits on 2026-07-23 = 29 (an initial mismatch of mine was a timezone artifact of the check, not of the chronicler).</li><li>runway: bound <code>unknown</code>, 2/6 axes readable — consistent with the four unknown clocks; the prose counts only *stopping* clocks («1 of them»: budget), which is correct and initially reads as a contradiction of the 2/6 trace — it is not.</li><li>status.json and render_bundle.json carry the same pass (<code>generated_at</code> equal).</li></ul></div></article>
+<article class="card arch-note"><h3>What to look at — debatable calls and documented deviations</h3><div class="arch-body"><p>Where to look: Library (both findings live there), index.html at 391–416px widths, and the two contract docs. What I accepted without filing, so the owner can overrule:</p>
+<ul><li><b><code>td{overflow-wrap:break-word; max-width:34ch}</code> vs spec 6.4's literal <code>anywhere</code></b> — theme.ts:251-266 documents the measured reason (with <code>anywhere</code> the 8-character timestamp broke across three lines; the table ran 1253px inside a 976px wrapper). Treated as intentional-documented; the spec's own greppable contract (smoke.sh:2237) is still honoured via the mono-block rule.</li><li><b><code>.wk-models</code> warn ink on a mid-session model switch (Fleet)</b> — spec 7.2 lists model names as neutral metadata, but this element is an anomaly flag («⚠ also:»), not a model badge; latent in the current bundle (no worker carries two models). Accepted as judgement-carrying; debatable.</li><li><b>Delivery card names <code>GSL-161-fix-wave-3 @ db4043b</code> after the merge</b> — expected residue under the GSL-150 rebuild discipline (the regeneration was the branch's last commit); heals on the next chronicler pass on main.</li><li><b><code>sev=info</code> renders neutral in Timeline</b> — per spec 7.2's explicit carve-out (info stands in 181 of 200 rows).</li><li><b><code>clock-kind</code> labels (STOPS/DEGRADES/COMPLETES) carry status ink even on a clear clock</b> — spec is silent, approved baseline shows the same; left alone per layer order.</li><li><b>The «Decided by you» heading on Questions</b> — a new heading despite spec 1.1's freeze, but it is the documented deviation the owner accepted via q-2026-07-20-013 (visible in the Library decisions log).</li><li><b>Verdict score 92/100</b> — my own scale for 0 CRITICAL / 0 MAJOR / 5 MINOR on a surface this size; the number is a summary, not a measurement.</li></ul></div></article>
+<article class="card arch-note"><h3>Regression lane</h3><div class="arch-body"><p>Whether the findings of runs 01–03 actually landed is a separate lane with separate eyes, per the independence rule: this fresh-eyes audit never read the prior reports. The parallel regression worker's report lives at <a href="regression/index.html">./regression/</a>.</p></div></article>
+<article class="card arch-note"><h3>Design snapshot and baseline deltas</h3><div class="arch-body"><p>The snapshot of all seven audited pages as committed at 1f1899f, plus the bilingual design-system overview, lives at <a href="design/index.html">./design/</a> (pages under <a href="design/pages/">design/pages/</a>).</p>
+<p>Against the approved baseline (run 03 <code>design/pages/</code>), the CSS delta is exactly the five fix-wave-3 rules — no other visual change:</p>
+<ul><li>GSL-156 — <code>.unknown</code> scoped to <code>span</code>: the container class no longer paints a whole card's prose magenta.</li><li>GSL-157 — Freshness at <code>grade=dead</code> wears <code>.sh-m.dead</code> (read verdict, not «cannot read»).</li><li>GSL-158 — the absent-gh-mirror dash on Tasks painted <code>--muted</code> (one absence glyph across screens).</li><li>GSL-159 — <code>.runway-bind.ok</code> carries the full ok triple (latent until the first <code>clear</code> build).</li><li>GSL-160 — <code>.scope-note</code> for static captions; <code>.tag.high-impact</code> borrows dead's triple by value, not by name.</li></ul>
+<p>All five verified live by computed style on the committed pages. The remaining page diffs vs the baseline are data (a newer chronicler pass: 22:09:39Z vs 20:39:05Z), not design.</p></div></article>
+</section>
+<section aria-labelledby="gal-h"><h2 class="section-title" id="gal-h">Gallery — 7 pages × 2 viewports × 2 themes (28 captures)</h2><article class="card arch-note"><div class="arch-body"><p>Committed pages captured over localhost at strict 1280×800 and 390×844 viewports, no full-page canvases; dark theme forced via the <code>data-theme</code> attribute (both switch directions verified by computed background).</p></div></article>
+<article class="card arch-note"><h3>index.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-1280-light.png" alt="index.html · 1280px · light" data-lightbox-group="gallery-index" data-caption="index.html · 1280px · light"><figcaption class="shot-cap">index.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-1280-dark.png" alt="index.html · 1280px · dark" data-lightbox-group="gallery-index" data-caption="index.html · 1280px · dark"><figcaption class="shot-cap">index.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-390-light.png" alt="index.html · 390px · light" data-lightbox-group="gallery-index" data-caption="index.html · 390px · light"><figcaption class="shot-cap">index.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/index-390-dark.png" alt="index.html · 390px · dark" data-lightbox-group="gallery-index" data-caption="index.html · 390px · dark"><figcaption class="shot-cap">index.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>timeline.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-1280-light.png" alt="timeline.html · 1280px · light" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 1280px · light"><figcaption class="shot-cap">timeline.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-1280-dark.png" alt="timeline.html · 1280px · dark" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 1280px · dark"><figcaption class="shot-cap">timeline.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-390-light.png" alt="timeline.html · 390px · light" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 390px · light"><figcaption class="shot-cap">timeline.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/timeline-390-dark.png" alt="timeline.html · 390px · dark" data-lightbox-group="gallery-timeline" data-caption="timeline.html · 390px · dark"><figcaption class="shot-cap">timeline.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>tasks.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-1280-light.png" alt="tasks.html · 1280px · light" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 1280px · light"><figcaption class="shot-cap">tasks.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-1280-dark.png" alt="tasks.html · 1280px · dark" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 1280px · dark"><figcaption class="shot-cap">tasks.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-390-light.png" alt="tasks.html · 390px · light" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 390px · light"><figcaption class="shot-cap">tasks.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/tasks-390-dark.png" alt="tasks.html · 390px · dark" data-lightbox-group="gallery-tasks" data-caption="tasks.html · 390px · dark"><figcaption class="shot-cap">tasks.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>questions.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-1280-light.png" alt="questions.html · 1280px · light" data-lightbox-group="gallery-questions" data-caption="questions.html · 1280px · light"><figcaption class="shot-cap">questions.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-1280-dark.png" alt="questions.html · 1280px · dark" data-lightbox-group="gallery-questions" data-caption="questions.html · 1280px · dark"><figcaption class="shot-cap">questions.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-390-light.png" alt="questions.html · 390px · light" data-lightbox-group="gallery-questions" data-caption="questions.html · 390px · light"><figcaption class="shot-cap">questions.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/questions-390-dark.png" alt="questions.html · 390px · dark" data-lightbox-group="gallery-questions" data-caption="questions.html · 390px · dark"><figcaption class="shot-cap">questions.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>fleet.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-1280-light.png" alt="fleet.html · 1280px · light" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 1280px · light"><figcaption class="shot-cap">fleet.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-1280-dark.png" alt="fleet.html · 1280px · dark" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 1280px · dark"><figcaption class="shot-cap">fleet.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-390-light.png" alt="fleet.html · 390px · light" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 390px · light"><figcaption class="shot-cap">fleet.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/fleet-390-dark.png" alt="fleet.html · 390px · dark" data-lightbox-group="gallery-fleet" data-caption="fleet.html · 390px · dark"><figcaption class="shot-cap">fleet.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>cost.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-1280-light.png" alt="cost.html · 1280px · light" data-lightbox-group="gallery-cost" data-caption="cost.html · 1280px · light"><figcaption class="shot-cap">cost.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-1280-dark.png" alt="cost.html · 1280px · dark" data-lightbox-group="gallery-cost" data-caption="cost.html · 1280px · dark"><figcaption class="shot-cap">cost.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-390-light.png" alt="cost.html · 390px · light" data-lightbox-group="gallery-cost" data-caption="cost.html · 390px · light"><figcaption class="shot-cap">cost.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/cost-390-dark.png" alt="cost.html · 390px · dark" data-lightbox-group="gallery-cost" data-caption="cost.html · 390px · dark"><figcaption class="shot-cap">cost.html · 390px · dark</figcaption></figure></div></article>
+<article class="card arch-note"><h3>library.html</h3><div class="shots"><figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-1280-light.png" alt="library.html · 1280px · light" data-lightbox-group="gallery-library" data-caption="library.html · 1280px · light"><figcaption class="shot-cap">library.html · 1280px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-1280-dark.png" alt="library.html · 1280px · dark" data-lightbox-group="gallery-library" data-caption="library.html · 1280px · dark"><figcaption class="shot-cap">library.html · 1280px · dark</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-390-light.png" alt="library.html · 390px · light" data-lightbox-group="gallery-library" data-caption="library.html · 390px · light"><figcaption class="shot-cap">library.html · 390px · light</figcaption></figure>
+<figure class="shot"><img class="shot-img" loading="lazy" src="assets/library-390-dark.png" alt="library.html · 390px · dark" data-lightbox-group="gallery-library" data-caption="library.html · 390px · dark"><figcaption class="shot-cap">library.html · 390px · dark</figcaption></figure></div></article></section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Generated by <strong>verifier-04 (verifier-skeptic, fresh eyes)</strong> · 2026-07-23 22:55 UTC</span>
+      <span>Audited build <code>1f1899f</code></span>
+    </div>
+  </footer>
+
+  <script src="assets/lightbox.js" defer></script>
+</body>
+</html>

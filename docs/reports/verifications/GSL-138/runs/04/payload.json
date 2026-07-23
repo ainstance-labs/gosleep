@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "title": "Laboratory redesign — verification run 04",
+    "subtitle": "main @ 1f1899f after fix wave 3 · 7 pages + mobile projection + generator tools/lab/ui",
+    "epic": "GSL-138",
+    "date": "2026-07-24",
+    "auditor": "verifier-04 (verifier-skeptic, fresh eyes)",
+    "shipped_at": "1f1899f",
+    "lang": "en"
+  },
+  "verdict": {
+    "score": 92,
+    "level": "MINOR-POLISH",
+    "band": "good",
+    "counts": { "critical": 0, "major": 0, "minor": 5 }
+  },
+  "findings": [
+    {
+      "number": 1,
+      "jira": "GSL-164",
+      "severity": "MINOR",
+      "area": "Data-layer contract doc",
+      "lane": "architecture",
+      "labels": ["verifier", "architecture", "run-04"],
+      "title": "docs/lab/README.md drifted from the layer it documents — phantom telemetry.jsonl, «all 3 pages», 3 of 7 site screens",
+      "description": "The contract document for the laboratory data layer makes three claims the tree at `1f1899f` contradicts.\n\n- The layout tree lists `telemetry.jsonl` («per-cycle token/cost lines») — no such file exists in the commit, and `grep -rn 'telemetry.jsonl' tools/lab/` finds no writer or reader. The actual cost source is `docs/handoff/ORCHESTRATION-STATE.md` § TELEMETRY (chronicler.py:414-428), exactly what cost.html states.\n- The staleness table says `generated_at` appears in «status.json · all 3 pages · the digest», and the prose says «a coloured banner at the top of all three pages» — seven pages exist since Phase 5 and all seven carry the banner.\n- The layout tree lists only `site/index.html`, `site/timeline.html`, `site/library.html` — 3 of the 7 committed screens.\n\nA consumer following this contract looks for a cost source that does not exist and undercounts the surfaces bound by the staleness contract. Norm layer: INDUSTRY-STANDARD (doc-code consistency); the spec and the approved baseline are silent on data-layer docs.",
+      "prototype_ref": "docs/lab/README.md (layout tree, staleness table)",
+      "shipped_ref": "git ls-tree 1f1899f -- docs/lab/ · tools/lab/chronicler.py:414-428"
+    },
+    {
+      "number": 2,
+      "jira": "GSL-165",
+      "severity": "MINOR",
+      "area": "Library — Where this index looked",
+      "lane": "functionality",
+      "labels": ["verifier", "functionality", "run-04"],
+      "title": "Shelf count does not reproduce from its printed glob — Reports says 5, the glob matches 6",
+      "description": "The whole point of the «Where this index looked» table is reproducibility: each shelf prints the glob it ran so the reader can re-run it and get the same number.\n\nThe Reports row prints source `docs/reports/*/index.html` with count **5**. Running that glob against the same tree yields **6** files: the sixth, `docs/reports/token-overage-incident-2026-06-28/index.html`, is silently claimed by the `rca` section first — chronicler.py:1661-1676 documents the first-match-wins rule («a file is claimed by the FIRST section whose glob matches it»), but nothing on the rendered page mentions it. The printed glob over-matches the printed count by one.\n\nThe dedup itself is correct and documented in code; what fails is only the page-level reproducibility of the printed number. Norm layer: INDUSTRY-STANDARD (the page's own data-honesty doctrine).",
+      "prototype_ref": "the page's own rule: «each shelf prints the glob it ran»",
+      "shipped_ref": "tools/lab/chronicler.py:1659-1676 · docs/lab/site/library.html",
+      "screenshots": [
+        { "caption": "Reports shelf prints its glob with count 5 — the glob itself matches 6 files", "src": "assets/library-1280-light-shelves.png" }
+      ]
+    },
+    {
+      "number": 3,
+      "jira": "GSL-166",
+      "severity": "MINOR",
+      "area": "Library — cross-index",
+      "lane": "functionality",
+      "labels": ["verifier", "functionality", "pixel-perfect", "run-04"],
+      "title": "File column names six rows «index.html» — the distinguishing slug lives only in the href and outside the search haystack",
+      "description": "All 5 Reports rows and 1 RCA row render their file cell as the literal `index.html` — six visually identical names in a column whose job is identification. The distinguishing report slug (`orchestrator-landscape`, `autosk-anatomy`, …) exists only inside the link's href, which the eye does not see and the client-side search does not match: `libraryIndex()` builds the haystack as `name + title` only (library.tsx:41-46). Searching for `autosk-anatomy` returns 0 rows even though the artifact is indexed; only the human-language title matches.\n\nEvery row is still reachable via title search and the kind facet — the failure is degraded findability plus a column of six identical labels. Present in the approved baseline too (not a regression). Norm layer: INDUSTRY-STANDARD (cross-index convention: the identifying path segment is displayed and searchable).",
+      "prototype_ref": "library.tsx docstring: «the owner types overage and stops caring»",
+      "shipped_ref": "tools/lab/ui/src/screens/library.tsx:41-46 · chronicler.py library section builder",
+      "screenshots": [
+        { "caption": "Kind = Reports: five rows all named index.html", "src": "assets/library-1280-light-reports.png" }
+      ]
+    },
+    {
+      "number": 4,
+      "jira": "GSL-167",
+      "severity": "MINOR",
+      "area": "KPI grid — narrow viewports",
+      "lane": "design",
+      "labels": ["verifier", "pixel-perfect", "run-04"],
+      "title": ".grid renders two ~190px columns at 391–416px where spec 9.3 promises one column for the whole ≤416px band",
+      "description": "Spec GSL-112 section 9.3 (breakpoint table) states for `.grid`: «одна колонка» at ≤416px. The stylesheet has no `.grid` rule inside `@media (max-width:26rem)` (theme.ts:558-566); the collapse relies entirely on `repeat(auto-fit,minmax(180px,1fr))` running out of room, which happens only at ≤390px content width.\n\nMeasured in Chromium on the committed pages:\n\n- viewport 390px → `366px` (one column) — matches the spec;\n- viewport 400px → `184px 184px` (two columns);\n- viewport 414px (iPhone Plus class) → `191px 191px` (two columns).\n\nNo horizontal overflow occurs anywhere (scrollWidth == clientWidth), and spec 8.3's prose only vouches for 390px itself, so the 9.3 table row is the stricter, violated norm. No self-documented justification exists for the 391–416 band. Norm layer: SPEC-VIOLATION.",
+      "prototype_ref": "docs/design/ui-redesign-spec.md section 9.3 (.grid row)",
+      "shipped_ref": "tools/lab/ui/src/theme.ts:212, :558-566",
+      "screenshots": [
+        { "caption": "414×844: KPI tiles in two ~191px columns inside the ≤416px band", "src": "assets/index-414-light-grid.png" },
+        { "caption": "390×844: the same grid correctly collapses to one column", "src": "assets/index-390-light.png" }
+      ]
+    },
+    {
+      "number": 5,
+      "jira": "GSL-168",
+      "severity": "MINOR",
+      "area": "Accessibility semantics",
+      "lane": "design",
+      "labels": ["verifier", "pixel-perfect", "run-04"],
+      "title": "Pages ship no document language (WCAG 3.1.1) and no th scope on 13 data tables (WCAG 1.3.1)",
+      "description": "`renderPage()` emits `<!doctype html><meta charset=\"utf-8\">…` with no `<html>` open tag at all (page.tsx:57-66), so the browser synthesizes an `html` element without `lang` — `grep -c '<html' docs/lab/site/index.html` → 0 on every page. WCAG 2.x SC 3.1.1 (Language of Page, Level A) requires the default human language to be programmatically determinable.\n\nNone of the 13 data tables sets `scope` on its `th` cells, and header rows are plain `<tr><th>` without `thead`. For simple single-header tables AT usually copes, but `scope=\"col\"` is the baseline association mechanism (SC 1.3.1 / H63), and the widest tables here have 7-8 columns.\n\nBoth fixes are attribute-only — no new visible text (spec 1.1 intact), and none of the smoke-asserted attribute orderings involves `th` or a root `html` tag; the «first attribute-less script» stands (smoke.sh:1395/1576/1767) should be re-run in the same task. Norm layer: INDUSTRY-STANDARD; severity MINOR for a single-known-user internal dashboard, but formally a Level A criterion is unmet.",
+      "prototype_ref": "WCAG 2.1 SC 3.1.1 (A) · SC 1.3.1 / H63",
+      "shipped_ref": "tools/lab/ui/src/page.tsx:57-66 · components.tsx:244-250 · screens/*.tsx"
+    }
+  ],
+  "architecture_notes": [
+    {
+      "title": "Gates and reproducibility at 1f1899f",
+      "body": "All gates ran in a clean worktree checked out at the audited merge commit — never in the dirty shared tree.\n\n- `bash tools/lab/smoke.sh` → **RESULT: PASS=404 FAIL=0** (the spec's acceptance floor is PASS ≥ 312).\n- `cd tools/lab/ui && npx tsc --noEmit` → 0 errors.\n- **Byte-identical regeneration:** `bash tools/lab/ui/render.sh < docs/lab/render_bundle.json` reproduces all 7 committed pages exactly (the only diff artifact is jq's trailing newline). The committed HTML is provably the output of the committed generator over the committed bundle — no hand edits.\n- Both themes photograph correctly in both switch directions (`prefers-color-scheme` and `:root[data-theme]`): computed body background `#f5f7f9` light / `#0d0e10` dark on all seven pages.\n- 390px invariant: `scrollWidth == clientWidth == 390`, all 7 nav links present, on all seven screens.\n- Client behaviours driven live over localhost: staleness banner re-grades on open (`DEAD · last event 10h 18m ago` from a 9h 48m build — correct arithmetic), timeline filter narrows to 1 incident of 200, zero-state says «0 of 200 shown — the filter is hiding every row» with the red fill, reset restores, library text search works, ages tick with the correct suffix grammar («11d 1h ago»)."
+    },
+    {
+      "title": "Data-truth spot checks — the bundle against its sources",
+      "body": "Every number re-derived independently from the committed sources at 1f1899f matched the rendered pages:\n\n- events: 1345 total lines across `docs/lab/events/*.jsonl`, 12 with a 2026-07-23 `ts`, 93% mechanical (1252/1345 hook-sourced) — matches Overview, Timeline and the mobile projection.\n- staleness: newest event `2026-07-23T12:21:24Z` vs `generated_at 22:09:39Z` → 35 295 s = 9h 48m, grade `dead` — matches the banner, status.json and mobile.\n- questions: 39 queue records fold to 19 questions, 0 open (2 answered · 1 answered-by-default · 16 auto-resolved) — matches Questions (17 decided without you + 2 by you).\n- cost: cumulative 14 325 000 over 107 cycles from the last TELEMETRY bullet; 77 per-cycle rows + 30-cycle gap named on the page.\n- tasks: 149 rows = 140 unknown + 5 Done + 3 To Do + 1 In Progress; commits on 2026-07-23 = 29 (an initial mismatch of mine was a timezone artifact of the check, not of the chronicler).\n- runway: bound `unknown`, 2/6 axes readable — consistent with the four unknown clocks; the prose counts only *stopping* clocks («1 of them»: budget), which is correct and initially reads as a contradiction of the 2/6 trace — it is not.\n- status.json and render_bundle.json carry the same pass (`generated_at` equal)."
+    },
+    {
+      "title": "What to look at — debatable calls and documented deviations",
+      "body": "Where to look: Library (both findings live there), index.html at 391–416px widths, and the two contract docs. What I accepted without filing, so the owner can overrule:\n\n- **`td{overflow-wrap:break-word; max-width:34ch}` vs spec 6.4's literal `anywhere`** — theme.ts:251-266 documents the measured reason (with `anywhere` the 8-character timestamp broke across three lines; the table ran 1253px inside a 976px wrapper). Treated as intentional-documented; the spec's own greppable contract (smoke.sh:2237) is still honoured via the mono-block rule.\n- **`.wk-models` warn ink on a mid-session model switch (Fleet)** — spec 7.2 lists model names as neutral metadata, but this element is an anomaly flag («⚠ also:»), not a model badge; latent in the current bundle (no worker carries two models). Accepted as judgement-carrying; debatable.\n- **Delivery card names `GSL-161-fix-wave-3 @ db4043b` after the merge** — expected residue under the GSL-150 rebuild discipline (the regeneration was the branch's last commit); heals on the next chronicler pass on main.\n- **`sev=info` renders neutral in Timeline** — per spec 7.2's explicit carve-out (info stands in 181 of 200 rows).\n- **`clock-kind` labels (STOPS/DEGRADES/COMPLETES) carry status ink even on a clear clock** — spec is silent, approved baseline shows the same; left alone per layer order.\n- **The «Decided by you» heading on Questions** — a new heading despite spec 1.1's freeze, but it is the documented deviation the owner accepted via q-2026-07-20-013 (visible in the Library decisions log).\n- **Verdict score 92/100** — my own scale for 0 CRITICAL / 0 MAJOR / 5 MINOR on a surface this size; the number is a summary, not a measurement."
+    },
+    {
+      "title": "Regression lane",
+      "body": "Whether the findings of runs 01–03 actually landed is a separate lane with separate eyes, per the independence rule: this fresh-eyes audit never read the prior reports. The parallel regression worker's report lives at [./regression/](regression/index.html)."
+    },
+    {
+      "title": "Design snapshot and baseline deltas",
+      "body": "The snapshot of all seven audited pages as committed at 1f1899f, plus the bilingual design-system overview, lives at [./design/](design/index.html) (pages under [design/pages/](design/pages/)).\n\nAgainst the approved baseline (run 03 `design/pages/`), the CSS delta is exactly the five fix-wave-3 rules — no other visual change:\n\n- GSL-156 — `.unknown` scoped to `span`: the container class no longer paints a whole card's prose magenta.\n- GSL-157 — Freshness at `grade=dead` wears `.sh-m.dead` (read verdict, not «cannot read»).\n- GSL-158 — the absent-gh-mirror dash on Tasks painted `--muted` (one absence glyph across screens).\n- GSL-159 — `.runway-bind.ok` carries the full ok triple (latent until the first `clear` build).\n- GSL-160 — `.scope-note` for static captions; `.tag.high-impact` borrows dead's triple by value, not by name.\n\nAll five verified live by computed style on the committed pages. The remaining page diffs vs the baseline are data (a newer chronicler pass: 22:09:39Z vs 20:39:05Z), not design."
+    }
+  ],
+  "translations": {
+    "ru": {
+      "meta.title": "Редизайн Laboratory — верификационный ран 04",
+      "meta.subtitle": "main @ 1f1899f после фикс-волны 3 · 7 страниц + мобильная проекция + генератор tools/lab/ui",
+      "findings[1].area": "Контракт-документ data-слоя",
+      "findings[1].title": "docs/lab/README.md разошёлся со слоем, который описывает: фантомный telemetry.jsonl, «all 3 pages», 3 из 7 экранов",
+      "findings[1].description": "Контракт-документ data-слоя лаборатории делает три утверждения, которым дерево на `1f1899f` противоречит.\n\n- В layout-дереве значится `telemetry.jsonl` («per-cycle token/cost lines») — файла в коммите нет, и `grep -rn 'telemetry.jsonl' tools/lab/` не находит ни писателя, ни читателя. Фактический источник стоимости — `docs/handoff/ORCHESTRATION-STATE.md` § TELEMETRY (chronicler.py:414-428), ровно это и пишет cost.html.\n- Таблица staleness утверждает, что `generated_at` живёт в «status.json · all 3 pages · the digest», а проза — «coloured banner at the top of all three pages»: страниц с Фазы 5 семь, и баннер несут все семь.\n- Layout-дерево перечисляет только `site/index.html`, `site/timeline.html`, `site/library.html` — 3 из 7 закоммиченных экранов.\n\nЧитатель этого контракта ищет несуществующий источник стоимости и недосчитывается поверхностей, связанных staleness-контрактом. Слой нормы: INDUSTRY-STANDARD (согласованность документации и кода); спека и одобренный baseline о доках data-слоя молчат.",
+      "findings[2].area": "Library — Where this index looked",
+      "findings[2].title": "Счётчик полки не воспроизводится из напечатанного глоба: Reports пишет 5, глоб находит 6",
+      "findings[2].description": "Смысл таблицы «Where this index looked» — воспроизводимость: каждая полка печатает свой глоб, чтобы читатель прогнал его и получил то же число.\n\nСтрока Reports печатает источник `docs/reports/*/index.html` со счётчиком **5**. Тот же глоб по тому же дереву даёт **6** файлов: шестой, `docs/reports/token-overage-incident-2026-06-28/index.html`, молча забрала секция `rca` — правило «файл достаётся ПЕРВОЙ секции, чей глоб его матчит» задокументировано в chronicler.py:1661-1676, но на отрендеренной странице о нём ни слова. Напечатанный глоб пере-матчивает напечатанный счётчик на единицу.\n\nСама дедупликация корректна и задокументирована в коде; ломается только воспроизводимость числа на уровне страницы. Слой нормы: INDUSTRY-STANDARD (собственная доктрина честности данных этой страницы).",
+      "findings[2].screenshots[0].caption": "Полка Reports печатает глоб со счётчиком 5 — сам глоб матчит 6 файлов",
+      "findings[3].area": "Library — кросс-индекс",
+      "findings[3].title": "Колонка файла шесть раз подряд пишет «index.html» — различающий slug живёт только в href и вне поискового индекса",
+      "findings[3].description": "Все 5 строк Reports и 1 строка RCA рендерят ячейку файла как литеральный `index.html` — шесть визуально одинаковых имён в колонке, чья работа — идентификация. Различающий slug отчёта (`orchestrator-landscape`, `autosk-anatomy`, …) существует только внутри href ссылки: глаз его не видит, а клиентский поиск не матчит — `libraryIndex()` строит стог как `name + title` (library.tsx:41-46). Поиск `autosk-anatomy` возвращает 0 строк, хотя артефакт проиндексирован; матчится только человеческий титул.\n\nКаждая строка по-прежнему достижима через поиск по титулу и фасет kind — страдает находимость плюс колонка из шести одинаковых меток. Есть и в одобренном baseline (не регресс). Слой нормы: INDUSTRY-STANDARD (конвенция кросс-индексов: идентифицирующий сегмент пути показывается и ищется).",
+      "findings[3].screenshots[0].caption": "Kind = Reports: пять строк с именем index.html",
+      "findings[4].area": "KPI-сетка — узкие вьюпорты",
+      "findings[4].title": ".grid даёт две колонки по ~190px на 391–416px, где спека 9.3 обещает одну на всю полосу ≤416px",
+      "findings[4].description": "Спека GSL-112, раздел 9.3 (таблица брейкпоинта), для `.grid` пишет: «одна колонка» при ≤416px. В стилях нет правила `.grid` внутри `@media (max-width:26rem)` (theme.ts:558-566); коллапс целиком держится на том, что `repeat(auto-fit,minmax(180px,1fr))` упирается в ширину — а это происходит только при контенте ≤390px.\n\nЗамерено в Chromium на закоммиченных страницах:\n\n- вьюпорт 390px → `366px` (одна колонка) — по спеке;\n- вьюпорт 400px → `184px 184px` (две колонки);\n- вьюпорт 414px (класс iPhone Plus) → `191px 191px` (две колонки).\n\nГоризонтального переполнения нет нигде (scrollWidth == clientWidth), а проза раздела 8.3 ручается лишь за сами 390px, так что строка таблицы 9.3 — более строгая и именно она нарушена. Самодокументированного обоснования для полосы 391–416 нет. Слой нормы: SPEC-VIOLATION.",
+      "findings[4].screenshots[0].caption": "414×844: KPI-плитки в две колонки по ~191px внутри полосы ≤416px",
+      "findings[4].screenshots[1].caption": "390×844: та же сетка корректно складывается в одну колонку",
+      "findings[5].area": "Семантика доступности",
+      "findings[5].title": "Страницы не объявляют язык документа (WCAG 3.1.1), th без scope в 13 таблицах (WCAG 1.3.1)",
+      "findings[5].description": "`renderPage()` печатает `<!doctype html><meta charset=\"utf-8\">…` вообще без открывающего тега `<html>` (page.tsx:57-66) — браузер синтезирует элемент `html` без `lang`: `grep -c '<html' docs/lab/site/index.html` → 0 на каждой странице. WCAG 2.x SC 3.1.1 (Language of Page, уровень A) требует программно определимого языка документа.\n\nНи одна из 13 таблиц не ставит `scope` на `th`, шапки — голые `<tr><th>` без `thead`. Для простых таблиц AT обычно справляется, но `scope=\"col\"` — базовый механизм ассоциации (SC 1.3.1 / H63), а самые широкие таблицы здесь на 7-8 колонок.\n\nОба фикса — только атрибуты: нового видимого текста нет (раздел 1.1 спеки цел), и ни один из порядко-чувствительных smoke-ассертов раздела 10 не касается `th` или корневого `html`; ассерты «первого безатрибутного script» (smoke.sh:1395/1576/1767) перегнать в той же задаче. Слой нормы: INDUSTRY-STANDARD; MINOR для внутреннего дашборда одного пользователя, но формально критерий уровня A не выполнен.",
+      "architecture_notes[0].title": "Гейты и воспроизводимость на 1f1899f",
+      "architecture_notes[0].body": "Все гейты гонялись в чистом worktree на аудируемом merge-коммите — никогда в грязном общем дереве.\n\n- `bash tools/lab/smoke.sh` → **RESULT: PASS=404 FAIL=0** (порог приёмки спеки — PASS ≥ 312).\n- `cd tools/lab/ui && npx tsc --noEmit` → 0 ошибок.\n- **Побайтовая регенерация:** `bash tools/lab/ui/render.sh < docs/lab/render_bundle.json` воспроизводит все 7 закоммиченных страниц точно (единственный артефакт диффа — хвостовой перевод строки от jq). Закоммиченный HTML доказуемо является выводом закоммиченного генератора над закоммиченным bundle — ручных правок нет.\n- Обе темы снимаются корректно в обе стороны переключения (`prefers-color-scheme` и `:root[data-theme]`): computed-фон body `#f5f7f9` light / `#0d0e10` dark на всех семи страницах.\n- Инвариант 390px: `scrollWidth == clientWidth == 390`, все 7 ссылок навигации на месте, на всех семи экранах.\n- Клиентское поведение прогнано вживую через localhost: баннер пере-грейдится на открытии («DEAD · last event 10h 18m ago» от билда 9h 48m — арифметика верна), фильтр timeline сужает до 1 инцидента из 200, нулевое состояние пишет «0 of 200 shown — the filter is hiding every row» с красной заливкой, reset восстанавливает, текстовый поиск library работает, возрасты тикают с верной грамматикой суффикса («11d 1h ago»).",
+      "architecture_notes[1].title": "Правдивость данных — bundle против источников",
+      "architecture_notes[1].body": "Каждое число, независимо перевыведенное из закоммиченных источников на 1f1899f, совпало с отрендеренными страницами:\n\n- события: 1345 строк в `docs/lab/events/*.jsonl`, 12 с `ts` за 2026-07-23, 93% механики (1252/1345 от хуков) — совпадает с Overview, Timeline и мобильной проекцией.\n- staleness: свежайшее событие `2026-07-23T12:21:24Z` против `generated_at 22:09:39Z` → 35 295 с = 9h 48m, грейд `dead` — совпадает с баннером, status.json и mobile.\n- вопросы: 39 записей очереди складываются в 19 вопросов, 0 открытых (2 answered · 1 answered-by-default · 16 auto-resolved) — совпадает с Questions (17 decided without you + 2 by you).\n- стоимость: кумулятив 14 325 000 за 107 циклов из последнего TELEMETRY-буллета; 77 per-cycle строк + гэп в 30 циклов назван на странице.\n- задачи: 149 строк = 140 unknown + 5 Done + 3 To Do + 1 In Progress; коммитов за 2026-07-23 — 29 (мой первоначальный «недосчёт» оказался таймзонным артефактом проверки, не chronicler'а).\n- runway: bound `unknown`, читаемы 2/6 осей — согласуется с четырьмя unknown-часами; проза считает только *останавливающие* часы («1 of them»: budget), что верно и лишь на первый взгляд противоречит трейсу 2/6.\n- status.json и render_bundle.json несут один и тот же пасс (`generated_at` равны).",
+      "architecture_notes[2].title": "На что обратить внимание — спорные решения и задокументированные отходы",
+      "architecture_notes[2].body": "Куда смотреть: Library (обе находки живут там), index.html на ширинах 391–416px и два контракт-дока. Что я принял без тикета — чтобы владелец мог переиграть:\n\n- **`td{overflow-wrap:break-word; max-width:34ch}` против литерального `anywhere` из раздела 6.4 спеки** — theme.ts:251-266 документирует измеренную причину (с `anywhere` восьмисимвольный таймстемп ломался на три строки; таблица занимала 1253px внутри обёртки 976px). Принято как intentional-documented; греппуемый контракт спеки (smoke.sh:2237) соблюдён через правило mono-блока.\n- **Янтарный `.wk-models` на смене модели посреди сессии (Fleet)** — спека 7.2 относит имена моделей к нейтральным метаданным, но этот элемент — флаг аномалии («⚠ also:»), не бейдж модели; в текущем bundle латентен (ни у одного воркера нет двух моделей). Принято как несущее оценку; спорно.\n- **Карточка Delivery называет `GSL-161-fix-wave-3 @ db4043b` после мержа** — ожидаемый осадок правила пересборки GSL-150 (регенерация была последним коммитом ветки); лечится следующим проходом chronicler на main.\n- **`sev=info` в Timeline нейтрален** — по явной оговорке спеки 7.2 (info стоит в 181 из 200 строк).\n- **Метки `clock-kind` (STOPS/DEGRADES/COMPLETES) несут статусные чернила даже на чистых часах** — спека молчит, одобренный baseline такой же; оставлено по порядку слоёв.\n- **Заголовок «Decided by you» на Questions** — новый заголовок вопреки заморозке 1.1, но это задокументированный отход, принятый владельцем через q-2026-07-20-013 (виден в логе решений Library).\n- **Оценка 92/100** — моя собственная шкала для 0 CRITICAL / 0 MAJOR / 5 MINOR на поверхности такого размера; число — сводка, не измерение.",
+      "architecture_notes[3].title": "Лейн регрессии",
+      "architecture_notes[3].body": "Доехали ли находки ранов 01–03 — отдельный лейн с отдельными глазами, по правилу независимости: этот fresh-eyes аудит прошлых отчётов не читал. Отчёт параллельного regression-воркера: [./regression/](regression/index.html).",
+      "architecture_notes[4].title": "Дизайн-снапшот и дельты от baseline",
+      "architecture_notes[4].body": "Снапшот всех семи аудируемых страниц, как они закоммичены на 1f1899f, плюс билингвальный обзор дизайн-системы: [./design/](design/index.html) (страницы в [design/pages/](design/pages/)).\n\nОтносительно одобренного baseline (ран 03, `design/pages/`) CSS-дельта — ровно пять правил фикс-волны 3, других визуальных изменений нет:\n\n- GSL-156 — `.unknown` заскоуплен на `span`: контейнерный класс больше не красит прозу целой карточки магентой.\n- GSL-157 — Freshness при `grade=dead` носит `.sh-m.dead` (прочитанный вердикт, а не «не могу прочитать»).\n- GSL-158 — глиф отсутствия gh-зеркала на Tasks покрашен `--muted` (единый вид отсутствия между экранами).\n- GSL-159 — `.runway-bind.ok` несёт полную ok-тройку (латентно до первого `clear`-билда).\n- GSL-160 — `.scope-note` для статических подписей; `.tag.high-impact` заимствует тройку dead по значению, не по имени.\n\nВсе пять проверены вживую по computed-стилям закоммиченных страниц. Остальные диффы страниц против baseline — данные (более свежий проход chronicler: 22:09:39Z против 20:39:05Z), не дизайн."
+    }
+  }
+}

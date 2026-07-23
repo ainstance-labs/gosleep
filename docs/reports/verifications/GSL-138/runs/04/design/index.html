@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run 04 — design system overview / обзор дизайн-системы</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#f7f8fa; --card:#ffffff; --ink:#1a1b1c; --dim:#5a5b5d; --line:#d9dadd;
+    --accent:#0068a5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0d0e10; --card:#151618; --ink:#f0f2f4; --dim:#b6b7ba; --line:#343537; --accent:#71bfff;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0 auto;max-width:70rem;padding:1.5rem 1.5rem 3rem;background:var(--bg);color:var(--ink);
+       font-size:14px;line-height:1.55}
+  h1{font-size:20px;font-weight:600;margin:0 0 .25rem}
+  h2{font-size:16px;font-weight:600;margin:2rem 0 .75rem;border-bottom:1px solid var(--line);padding-bottom:.35rem}
+  h3{font-size:13px;font-weight:600;margin:1rem 0 .5rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+  p{color:var(--dim);max-width:72ch;margin:.4rem 0}
+  a{color:var(--accent)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;
+       background:color-mix(in srgb, var(--ink) 7%, transparent);border-radius:4px;padding:0 4px}
+  table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);
+        border-radius:8px;overflow:hidden;font-size:13px;margin:.5rem 0 1rem}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);text-align:left;
+     padding:6px 10px;border-bottom:1px solid var(--line);background:color-mix(in srgb, var(--ink) 4%, transparent)}
+  td{padding:6px 10px;border-bottom:1px solid color-mix(in srgb, var(--line) 55%, transparent);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td.mono, .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line);
+      vertical-align:-2px;margin-right:6px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}
+  .pages a{display:inline-block;margin:0 .8rem .4rem 0;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .ru{border-left:3px solid var(--line);padding-left:.9rem}
+  .badge-demo{display:inline-flex;align-items:center;padding:1px 6px;border-radius:999px;border:1px solid;
+      font:500 11px/1.45 ui-monospace,Menlo,monospace;white-space:nowrap;margin-right:.4rem}
+  .note{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.75rem 1rem;margin:.5rem 0}
+</style>
+</head>
+<body>
+  <h1>Verification run 04 — design system overview</h1>
+  <p>Snapshot of the audited state: <code>main @ 1f1899f</code> (after fix wave 3), built
+     <code>2026-07-23T22:09:39Z</code>, audited 2026-07-24. All values below are read from
+     <code>tools/lab/ui/src/theme.ts</code> at the audited commit and verified by computed style in Chromium.
+     Back to the <a href="../index.html">run 04 dashboard</a>.</p>
+  <p class="ru" lang="ru">Снапшот аудируемого состояния: <code>main @ 1f1899f</code> (после фикс-волны 3).
+     Значения ниже прочитаны из <code>theme.ts</code> на аудируемом коммите и проверены computed-стилями в Chromium.
+     Назад к <a href="../index.html">дашборду рана 04</a> (русская версия — <a href="../ru/index.html">ru/</a>).</p>
+
+  <h2>Audited pages — the committed snapshot / снапшот проверявшихся страниц</h2>
+  <p>Byte-exact copies of the seven committed pages (self-contained, open from file://).
+     <span lang="ru">Побайтовые копии семи закоммиченных страниц; следующая фикс-волна их перепишет — ран остаётся свидетельством того, что именно принималось.</span></p>
+  <div class="pages">
+    <a href="pages/index.html">index.html</a><a href="pages/timeline.html">timeline.html</a><a href="pages/tasks.html">tasks.html</a><a href="pages/questions.html">questions.html</a><a href="pages/fleet.html">fleet.html</a><a href="pages/cost.html">cost.html</a><a href="pages/library.html">library.html</a>
+  </div>
+
+  <h2>Delta against the approved baseline (run 03) / дельта от одобренного baseline</h2>
+  <div class="note">
+    <p>Exactly five CSS rules changed since the run-03 approved snapshot — the fix-wave-3 set. No other visual change; remaining page diffs are data (a newer chronicler pass: 22:09:39Z vs 20:39:05Z).</p>
+    <p class="ru" lang="ru">Ровно пять CSS-правил изменились с одобренного снапшота рана 03 — набор фикс-волны 3. Других визуальных изменений нет; остальные диффы страниц — данные (более свежий проход chronicler).</p>
+    <table>
+      <tr><th>fix</th><th>rule</th><th>effect / эффект</th></tr>
+      <tr><td class="mono">GSL-156</td><td class="mono">span.unknown{…}</td><td>the container class no longer paints a card's prose magenta / контейнерный класс больше не красит прозу карточки</td></tr>
+      <tr><td class="mono">GSL-157</td><td class="mono">.sh-m.dead on Freshness</td><td>a read dead verdict no longer wears the cannot-read magenta / прочитанный вердикт не носит магенту «не могу прочитать»</td></tr>
+      <tr><td class="mono">GSL-158</td><td class="mono">.muted on the Tasks gh dash</td><td>one absence glyph across screens / единый вид отсутствия между экранами</td></tr>
+      <tr><td class="mono">GSL-159</td><td class="mono">.runway-bind.ok{…}</td><td>the clear badge carries the full ok triple (latent) / бейдж clear несёт полную ok-тройку (латентно)</td></tr>
+      <tr><td class="mono">GSL-160</td><td class="mono">.scope-note · .tag.high-impact</td><td>own names for static captions and the flag / собственные имена для статических подписей и флага</td></tr>
+    </table>
+  </div>
+
+  <h2>Surfaces, ink, borders / поверхности, чернила, границы</h2>
+  <div class="grid2">
+    <div>
+      <h3>Light</h3>
+      <table>
+        <tr><th>token</th><th>value</th><th>role / роль</th></tr>
+        <tr><td class="mono">--bg</td><td class="mono"><span class="sw" style="background:#f5f7f9"></span>#f5f7f9</td><td>page / плоскость страницы</td></tr>
+        <tr><td class="mono">--card</td><td class="mono"><span class="sw" style="background:#ffffff"></span>#ffffff</td><td>panel, table / панель, таблица</td></tr>
+        <tr><td class="mono">--sunken</td><td class="mono"><span class="sw" style="background:#f2f3f6"></span>#f2f3f6</td><td>th, hover, inset / второй уровень</td></tr>
+        <tr><td class="mono">--raised</td><td class="mono"><span class="sw" style="background:#eaebee"></span>#eaebee</td><td>active nav / активный пункт</td></tr>
+        <tr><td class="mono">--fg</td><td class="mono"><span class="sw" style="background:#1a1b1c"></span>#1a1b1c</td><td>primary ink / основной текст</td></tr>
+        <tr><td class="mono">--dim</td><td class="mono"><span class="sw" style="background:#5a5b5d"></span>#5a5b5d</td><td>prose / проза</td></tr>
+        <tr><td class="mono">--muted</td><td class="mono"><span class="sw" style="background:#68696b"></span>#68696b</td><td>th, labels / метки</td></tr>
+        <tr><td class="mono">--line</td><td class="mono"><span class="sw" style="background:#d6d7da"></span>#d6d7da</td><td>hairline / волосок</td></tr>
+        <tr><td class="mono">--line-strong</td><td class="mono"><span class="sw" style="background:#7f8083"></span>#7f8083</td><td>controls (3.95:1)</td></tr>
+        <tr><td class="mono">--accent</td><td class="mono"><span class="sw" style="background:#0068a5"></span>#0068a5</td><td>links (5.96:1)</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Dark</h3>
+      <table>
+        <tr><th>token</th><th>value</th><th>role / роль</th></tr>
+        <tr><td class="mono">--bg</td><td class="mono"><span class="sw" style="background:#0d0e10"></span>#0d0e10</td><td>page</td></tr>
+        <tr><td class="mono">--card</td><td class="mono"><span class="sw" style="background:#151618"></span>#151618</td><td>panel</td></tr>
+        <tr><td class="mono">--sunken</td><td class="mono"><span class="sw" style="background:#1d1e20"></span>#1d1e20</td><td>th, hover, inset</td></tr>
+        <tr><td class="mono">--raised</td><td class="mono"><span class="sw" style="background:#28292b"></span>#28292b</td><td>active nav</td></tr>
+        <tr><td class="mono">--fg</td><td class="mono"><span class="sw" style="background:#f0f2f4"></span>#f0f2f4</td><td>primary ink</td></tr>
+        <tr><td class="mono">--dim</td><td class="mono"><span class="sw" style="background:#b6b7ba"></span>#b6b7ba</td><td>prose</td></tr>
+        <tr><td class="mono">--muted</td><td class="mono"><span class="sw" style="background:#97989b"></span>#97989b</td><td>th, labels</td></tr>
+        <tr><td class="mono">--line</td><td class="mono"><span class="sw" style="background:#343537"></span>#343537</td><td>hairline</td></tr>
+        <tr><td class="mono">--line-strong</td><td class="mono"><span class="sw" style="background:#737477"></span>#737477</td><td>controls (3.87:1)</td></tr>
+        <tr><td class="mono">--accent</td><td class="mono"><span class="sw" style="background:#71bfff"></span>#71bfff</td><td>links (9.14:1)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Status roles / статусные роли</h2>
+  <p>fg / bg / border per role; hue constant across themes, lightness spread by design (spec 4.5.1).
+     <span lang="ru">Тон один в обеих темах, светлоты разведены намеренно; цвет никогда не единственный носитель смысла — рядом всегда слово из данных.</span></p>
+  <table>
+    <tr><th>role</th><th>light fg/bg/border</th><th>dark fg/bg/border</th><th>badge (light values)</th></tr>
+    <tr><td class="mono">--ok</td><td class="mono">#007835 / #e6fae9 / #b1dfb9</td><td class="mono">#7cdd93 / #1e2d21 / #295233</td><td><span class="badge-demo" style="color:#007835;background:#e6fae9;border-color:#b1dfb9">fresh</span></td></tr>
+    <tr><td class="mono">--warn</td><td class="mono">#976500 / #fff1df / #eccb9e</td><td class="mono">#ffc673 / #322717 / #5e4216</td><td><span class="badge-demo" style="color:#976500;background:#fff1df;border-color:#eccb9e">warn</span></td></tr>
+    <tr><td class="mono">--dead</td><td class="mono">#902828 / #ffefee / #fcc0ba</td><td class="mono">#f07f77 / #372321 / #683834</td><td><span class="badge-demo" style="color:#902828;background:#ffefee;border-color:#fcc0ba">incident</span></td></tr>
+    <tr><td class="mono">--info</td><td class="mono">#0068a5 / #eaf5ff / #abd7fd</td><td class="mono">#71bfff / #1c2b37 / #244b6b</td><td><span class="badge-demo" style="color:#0068a5;background:#eaf5ff;border-color:#abd7fd">In Progress</span></td></tr>
+    <tr><td class="mono">--unk</td><td class="mono">#8e4d9d / #fceeff / #e6c3ee</td><td class="mono">#d58fe5 / #302432 / #583b5f</td><td><span class="badge-demo" style="color:#8e4d9d;background:#fceeff;border-color:#e6c3ee">unknown</span></td></tr>
+    <tr><td class="mono">--neutral</td><td class="mono">#68696b / #f2f3f6 / #cfd1d4</td><td class="mono">#97989b / #28292b / #46484a</td><td><span class="badge-demo" style="color:#68696b;background:#f2f3f6;border-color:#cfd1d4">hook:PostToolUse</span></td></tr>
+  </table>
+
+  <h2>Type scale / шкала типографики</h2>
+  <table>
+    <tr><th>token</th><th>px</th><th>line-height</th><th>use / назначение</th></tr>
+    <tr><td class="mono">--t-xs</td><td class="mono">11</td><td class="mono">1.5</td><td>column headers, micro-labels, badges / заголовки колонок, бейджи</td></tr>
+    <tr><td class="mono">--t-sm</td><td class="mono">12</td><td class="mono">1.5</td><td>secondary captions, footer / вторичные подписи, футер</td></tr>
+    <tr><td class="mono">--t-md</td><td class="mono">13</td><td class="mono">1.5</td><td>interface + table base / база интерфейса и таблиц</td></tr>
+    <tr><td class="mono">--t-base</td><td class="mono">14</td><td class="mono">1.5</td><td>card prose / проза карточек</td></tr>
+    <tr><td class="mono">--t-lg</td><td class="mono">16</td><td class="mono">1.4</td><td>h2</td></tr>
+    <tr><td class="mono">--t-xl</td><td class="mono">20</td><td class="mono">1.3</td><td>h1</td></tr>
+    <tr><td class="mono">--t-hero</td><td class="mono">28</td><td class="mono">1.15</td><td>KPI, runway, .wk-age (tabular-nums)</td></tr>
+  </table>
+  <p>Maximum weight anywhere: <b>500</b> (measured: zero computed weights above 500 across all seven pages).
+     <span lang="ru">Максимальный вес — 500; замер по всем страницам не нашёл ни одного значения выше.</span></p>
+
+  <h2>Spacing &amp; radii / отступы и радиусы</h2>
+  <table>
+    <tr><th>scale</th><th>values</th></tr>
+    <tr><td class="mono">--s1…--s7</td><td class="mono">4 / 8 / 12 / 16 / 24 / 32 / 48 px</td></tr>
+    <tr><td class="mono">--r1 / --r2 / --r3 / --r-pill</td><td class="mono">4 / 6 / 8 / 999 px</td></tr>
+    <tr><td>td / th padding</td><td class="mono">6px 10px / 4px 10px → rows ≈ 32px / 28px</td></tr>
+    <tr><td>page padding</td><td class="mono">24px desktop · 12px ≤416px</td></tr>
+  </table>
+  <p>Borders 1px everywhere; 2px only for the dead state's edge. No shadows, no dashed borders
+     (the only dotted survivor is the <code>span.unknown</code> underline — text-decoration, not a border; verified by computed style).
+     <span lang="ru">Границы всюду 1px, 2px — только у состояния dead; теней и пунктирных рамок нет (замерено).</span></p>
+</body>
+</html>
