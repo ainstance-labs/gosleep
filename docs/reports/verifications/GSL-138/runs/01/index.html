@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-138 — Laboratory UI redesign acceptance · run 01</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script>
+    /* Set theme before first paint to avoid a flash of the wrong theme,
+       then wire the toggle once the DOM is ready. No external dependency. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-138 — Laboratory UI redesign acceptance · run 01</span>
+        <span class="subtitle">Verification dashboard · epic GSL-111 · PR #135 merged</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Epic">GSL-111</span>
+        <span class="hbtn" aria-label="Date">2026-07-23</span>
+        <!-- Language switch: English root -> Russian sibling -->
+        <a class="hbtn lang-switch" href="ru/index.html" hreflang="ru">EN <span aria-hidden="true">⇄</span> RU</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Toggle color theme">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Theme</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Executive summary</h2>
+<div class="card hero">
+  <div>
+    <h1>GSL-138 — Laboratory UI redesign acceptance · run 01</h1>
+    <p class="lead">Run 01 of the acceptance report for the Laboratory UI redesign epic
+<a href="https://ainstance-labs.atlassian.net/browse/GSL-111">GSL-111</a> (Mastra Studio / Supabase reference style). PR #135 is merged;
+main is at <code>77b3bd8</code>. The owner had twice called the previous UI &laquo;AI-slop&raquo;; this pass went
+from written references and a 969-line spec (GSL-112), not from the implementer's taste.</p>
+<p class="lead">Verdict of the mechanical acceptance: <strong>all 10 MAJOR audit findings are dead</strong>,
+re-verified by a live run on the built pages &mdash; not by worker reports. The smoke gate grew
+<strong>312 &rarr; 358</strong> assertions, FAIL=0. 5 of 9 MINOR closed along the way; 4 stay open as known
+limitations of this run. Errors you flag on this report become the input of <code>runs/02</code>.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MAJOR-CLEAN · 10/10</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">10</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">9</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">19</span><span class="k">Total</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Severity distribution">
+      <span class="seg-major" style="width:53%"></span>
+      <span class="seg-minor" style="width:47%"></span>
+    </div>
+  </div>
+</div>
+    </section>
+    <section aria-labelledby="attn-h">
+      <h2 class="section-title" id="attn-h">What to check — owner attention</h2>
+
+<article class="card pad">
+  <h3>Where to look — pages and states</h3>
+  <p>Open the pages locally from <code>main</code> and walk them <strong>in both themes</strong> and
+  <strong>at 390&nbsp;px</strong>. The app has no runtime theme toggle &mdash; by design: dark activates via the OS
+  preference (<code>prefers-color-scheme</code>) or by stamping <code>data-theme="dark"</code> on <code>&lt;html&gt;</code>.
+  All 7 pages keep <code>scrollWidth == clientWidth == 390</code> at 390&nbsp;px.</p>
+  <ul>
+    <li><strong>Overview</strong> — <code>docs/lab/site/index.html</code> — freshness banner (age ticks every second,
+      honest <code>&lt;noscript&gt;</code>), question-type chips in semantic color, meter warnings in status paint.</li>
+    <li><strong>Fleet</strong> — <code>docs/lab/site/fleet.html</code> — the reconciliation bridge above the cards
+      (&laquo;silent is not dead&raquo;).</li>
+    <li><strong>Tasks</strong> — <code>docs/lab/site/tasks.html</code> — full detail values wrap instead of the
+      90-char cut; single PR links; epic chips distinguish ok/warn.</li>
+    <li><strong>Timeline</strong> — <code>docs/lab/site/timeline.html</code> — both summary tables scroll inside
+      <code>.wrap</code> at 390&nbsp;px.</li>
+    <li><strong>Library</strong> — <code>docs/lab/site/library.html</code> — real file counts (Handoffs 46,
+      Dev history 93), titles whole up to 158 chars. (The Reviews shelf honestly prints
+      &laquo;0 &middot; no such directory&raquo; &mdash; a data-layer glob quirk, not a redesign regression.)</li>
+    <li><strong>Questions</strong> — <code>docs/lab/site/questions.html</code> — the 4th bucket &laquo;Decided by you&raquo;.</li>
+    <li><strong>Cost</strong> — <code>docs/lab/site/cost.html</code> — &laquo;Per cycle &mdash; 66&raquo; equals the row
+      count; the uncovered stretch is disclosed in prose.</li>
+    <li><strong>Mobile md projection</strong> — <code>docs/lab/mobile/README.md</code> — new visual language plus the
+      honest build-time staleness note (GSL-113, PR #134; the one CRITICAL of the audit, fixed outside this epic).</li>
+  </ul>
+</article>
+<article class="card pad">
+  <h3>Debatable decisions — worth your eyes</h3>
+  <p>Honest list of the places where the implementation chose a side. None of them is hidden in the code;
+  each is deliberate and each is reversible if you disagree.</p>
+  <ol>
+    <li><strong>Tabs, not a sidebar.</strong> The spec (decision <code>q-2026-07-20-008</code>) picked horizontal
+      wrapping tabs over a Mastra-style sidebar &mdash; cheaper on mobile, but it is the single biggest deviation
+      from the visual reference. Confirm the navigation feel is what you wanted.</li>
+    <li><strong>Table cells cap at 34ch with <code>break-word</code>, not <code>anywhere</code>.</strong>
+      <code>theme.ts:263</code> (<code>td{overflow-wrap:break-word;max-width:34ch}</code>); the comment at
+      <code>theme.ts:248</code> calls the break-word-vs-anywhere difference load-bearing. Long unbroken tokens fold
+      later than with <code>anywhere</code>; check Tasks/Timeline tables with long paths.</li>
+    <li><strong>Status colors scoped to <code>span</code> (GSL-124).</strong> A bare <code>.ok</code> would flood a whole
+      container (the GSL-119 italic-leak lesson). Cost of the choice: a future status element that is not a
+      <code>&lt;span&gt;</code> silently loses its paint.</li>
+    <li><strong>Traffic-light CVD limitation.</strong> The green/amber/red status triple cannot pass the dataviz
+      categorical &Delta;E gate under deuteranopia (red&harr;green &Delta;E 4.2) &mdash; by construction, inherited from
+      GSL-109. Mitigation: status is never carried by color alone &mdash; a word sits next to the color, the banner
+      scales by shape, numbers are not painted with status color. Accepted consciously; flagged so it is your
+      decision, not ours.</li>
+    <li><strong>Screenshot folder discrepancy (finalizer's finding).</strong> Ticket GSL-138 said
+      <code>assets/GSL-111/</code>; the artifacts actually live per-task in <code>docs/dev_history/assets/GSL-138/</code>
+      per the orchestrator's live brief. The copies in this report's <code>assets/</code> are the same files.</li>
+  </ol>
+</article>
+    </section>
+    <section aria-labelledby="major-h">
+      <h2 class="section-title" id="major-h">Closed MAJOR — verified by live run (1–10)</h2>
+      <div class="findings">
+<article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-114">GSL-114</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Timeline · 390 px</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline summary-table values unreachable at 390 px</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> on a 390&nbsp;px viewport the value column of Timeline's two summary tables was
+clipped &mdash; no truncation marker, no way to scroll to the numbers.</p>
+<p><strong>Now:</strong> all 3 summary tables sit in a <code>div.wrap</code> with <code>overflow-x:auto</code>;
+numbers are right-aligned and tabular; the page itself keeps <code>scrollWidth == clientWidth == 390</code>.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T3 (GSL-135, 125f29c) — timeline tables wrapped in div.wrap</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :2997 (+ controls :3000, :3003)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">timeline.html — 3/3 tables in .wrap; 390 px scrollWidth==390</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/timeline-390-light.png" alt="Timeline at 390 px — light"
+           data-lightbox-group="finding-1" data-caption="Timeline at 390 px — light" loading="lazy">
+      <figcaption class="shot-cap">Timeline at 390 px — light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/timeline-390-dark.png" alt="Timeline at 390 px — dark"
+           data-lightbox-group="finding-1" data-caption="Timeline at 390 px — dark" loading="lazy">
+      <figcaption class="shot-cap">Timeline at 390 px — dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-115">GSL-115</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Freshness banner · no-JS</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Header claimed FRESH · Live forever with JS disabled</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> with JavaScript disabled the header kept asserting
+&laquo;FRESH &middot; Live &mdash; the laboratory is writing itself right now&raquo; &mdash; indefinitely, on any stale data.</p>
+<p><strong>Now:</strong> the banner ships a <code>&lt;noscript&gt;</code> fallback; present (&times;2) in every one of the 7 built pages.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T2 (GSL-134, 88bbf12) — noscript fallback in the banner</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :2404 (+ control :2401)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">&lt;noscript&gt; ×2 in all 7 pages</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-120">GSL-120</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Cost</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Cost promised 67 per-cycle rows, silently showed 40</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> the page heading promised 67 per-cycle rows while the table rendered 40 &mdash;
+a silent <code>slice(0,40)</code>, undisclosed by a single line.</p>
+<p><strong>Now:</strong> the cap is gone; the heading &laquo;Per cycle &mdash; 66&raquo; equals the 66 rendered rows,
+and the not-fully-covered stretch is disclosed in prose (&laquo;95 cycles &hellip; LOW by an unknown amount&raquo;).</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T4 (GSL-136, 63c7467) — truncation honesty in the data layer</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :3159 (+ control :3162)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">cost.html — Per cycle 66 == 66 rows; gap disclosed</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/cost-1280-light.png" alt="Cost, 1280 px — light"
+           data-lightbox-group="finding-3" data-caption="Cost, 1280 px — light" loading="lazy">
+      <figcaption class="shot-cap">Cost, 1280 px — light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/cost-1280-dark.png" alt="Cost, 1280 px — dark"
+           data-lightbox-group="finding-3" data-caption="Cost, 1280 px — dark" loading="lazy">
+      <figcaption class="shot-cap">Cost, 1280 px — dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-121">GSL-121</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Detail cells</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Detail cells hard-cut at 90 characters</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> detail cells were cut at exactly 90 characters with no ellipsis &mdash; paths and
+values broke mid-word.</p>
+<p><strong>Now:</strong> the <code>.slice(0,90)</code> is deleted from <code>components.tsx</code>; the whole value
+comes back and <em>wraps</em> (<code>overflow-wrap:anywhere</code>) instead of being cut.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T1 (GSL-133, 235fb69) — components.tsx returns the whole value</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :2302 (+ control :2299)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">built DOM: full values, overflow-wrap:anywhere</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-124">GSL-124</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Status classes</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Status classes .ok/.warn/.dead were never declared</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> <code>.ok</code>/<code>.warn</code>/<code>.dead</code> existed in markup but not in CSS &mdash;
+a meter warning printed in plain body-text color.</p>
+<p><strong>Now:</strong> <code>span.ok/.warn/.dead{color:var(--&hellip;)}</code> declared at <code>theme.ts:346-348</code>,
+deliberately scoped to <code>span</code> (a bare <code>.ok</code> would flood a whole container &mdash; the GSL-119 lesson).
+In the built DOM the warning renders in status paint, not body color. The scope choice is flagged in
+&laquo;What to check&raquo; below.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T1 (GSL-133) — theme.ts:346-348, span-scoped status colors</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :2286 (+ control :2281)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">built DOM: span.warn/.ok painted with status color</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-6">
+  <div class="finding-head">
+    <span class="finding-index">6</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-126">GSL-126</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Freshness banner</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Banner froze the event age inside the fresh window</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> within the fresh window the numeric age never updated &mdash; &laquo;last event 7s ago&raquo;
+still on screen 29 minutes later.</p>
+<p><strong>Now:</strong> <code>regradeStaleness()</code> repaints the numeric age <em>every second</em> independent of
+grade changes &mdash; the early return no longer swallows the age tick (<code>client.ts:43-57</code>).</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T2 (GSL-134) — client.ts:43-57 splits age tick from grade change</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :2352 (+ controls :2349, :2355)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">age repaints each second regardless of grade</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-7">
+  <div class="finding-head">
+    <span class="finding-index">7</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-127">GSL-127</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Library</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Files column printed the cap (40/40), not the counts</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> the &laquo;files&raquo; column printed 40 and 40 &mdash; the fetch cap, not the number of files
+(really 93 and 46).</p>
+<p><strong>Now:</strong> the column prints the real counts &mdash; Handoffs <strong>46</strong>, Dev history <strong>93</strong>.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T4 (GSL-136) — real counts in the data layer</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :3080, :3084 (+ control :3089)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">library.html — Handoffs 46, Dev history 93</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/library-1280-light.png" alt="Library, 1280 px — light"
+           data-lightbox-group="finding-7" data-caption="Library, 1280 px — light" loading="lazy">
+      <figcaption class="shot-cap">Library, 1280 px — light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/library-1280-dark.png" alt="Library, 1280 px — dark"
+           data-lightbox-group="finding-7" data-caption="Library, 1280 px — dark" loading="lazy">
+      <figcaption class="shot-cap">Library, 1280 px — dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card finding" id="finding-8">
+  <div class="finding-head">
+    <span class="finding-index">8</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-128">GSL-128</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Questions</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Owner-answered question filed under Decided without you</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> a question the owner had answered was listed in the
+&laquo;Decided without you&raquo; bucket &mdash; the classification called the owner's own decision someone else's.</p>
+<p><strong>Now:</strong> a 4th bucket &laquo;Decided by you&raquo; keyed on <code>answered_by</code>; owner answers land there.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T3 (GSL-135) — 4th bucket keyed on answered_by</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :3030</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">questions.html — 4 buckets incl. «Decided by you»</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/questions-1280-light.png" alt="Questions, 1280 px — light"
+           data-lightbox-group="finding-8" data-caption="Questions, 1280 px — light" loading="lazy">
+      <figcaption class="shot-cap">Questions, 1280 px — light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/questions-1280-dark.png" alt="Questions, 1280 px — dark"
+           data-lightbox-group="finding-8" data-caption="Questions, 1280 px — dark" loading="lazy">
+      <figcaption class="shot-cap">Questions, 1280 px — dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card finding" id="finding-9">
+  <div class="finding-head">
+    <span class="finding-index">9</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-129">GSL-129</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Fleet</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Fleet promised 2 live workers above week-dead cards</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> the KPI said &laquo;2 live workers&raquo; while all 8 cards below were ended a week
+earlier &mdash; KPI and cards read as one contradicting set.</p>
+<p><strong>Now:</strong> a reconciliation bridge above the first card: &laquo;A card per worker the log can name.
+25 other session(s) have events but no name &hellip; silent is not dead&raquo; &mdash; the two sets are explicitly different.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T2 (GSL-134) — reconciliation bridge above the cards</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :2383 (+ control :2380)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">fleet.html — bridge present above the first card</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/fleet-1280-light.png" alt="Fleet, 1280 px — light"
+           data-lightbox-group="finding-9" data-caption="Fleet, 1280 px — light" loading="lazy">
+      <figcaption class="shot-cap">Fleet, 1280 px — light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/fleet-1280-dark.png" alt="Fleet, 1280 px — dark"
+           data-lightbox-group="finding-9" data-caption="Fleet, 1280 px — dark" loading="lazy">
+      <figcaption class="shot-cap">Fleet, 1280 px — dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card finding" id="finding-10">
+  <div class="finding-head">
+    <span class="finding-index">10</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-131">GSL-131</a>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Library · data layer</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Library titles cut at 110 characters in the bundle</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> titles were truncated at 110 characters at bundle-build time &mdash;
+11 of 12 broke mid-word before the page even saw them.</p>
+<p><strong>Now:</strong> full titles are stored in <code>render_bundle.json</code>; the longest &mdash;
+<strong>158</strong> characters &mdash; is kept whole.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Fix</span><span class="ref-v">T4 (GSL-136) — data-layer cut removed</span></div>
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">smoke.sh :3102 (+ control :3115)</span></div>
+    <div class="ref-row"><span class="ref-k">Live</span><span class="ref-v">render_bundle.json — max title 158 chars, whole</span></div>
+  </div>
+</article>
+      </div>
+    </section>
+    <section aria-labelledby="minor-h">
+      <h2 class="section-title" id="minor-h">Closed MINOR — incidental (11–15)</h2>
+      <div class="findings">
+<article class="card finding" id="finding-11">
+  <div class="finding-head">
+    <span class="finding-index">11</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-116">GSL-116</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Overview</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Question type without semantic color on Overview</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> the question-type chip carried no semantic color &mdash; BLOCKER looked like FYI
+on the landing screen. <strong>Now:</strong> <code>overview.tsx</code> emits the chip with a per-type class
+(<code>tag &lt;type&gt;</code>), so the type carries its semantic color.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">live check on built overview DOM</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-12">
+  <div class="finding-head">
+    <span class="finding-index">12</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-117">GSL-117</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Filter controls</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Filter control borders at 1.6:1 contrast</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> select/button borders held 1.6:1 contrast against a 3:1 WCAG threshold &mdash;
+the controls were barely visible. <strong>Now:</strong> borders moved to <code>--line-strong</code>; measured live:
+<strong>3.68:1</strong> (light) and <strong>4.13:1</strong> (dark).</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">live contrast measurement on built pages</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-13">
+  <div class="finding-head">
+    <span class="finding-index">13</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-119">GSL-119</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Clock captions</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Italic .unknown leaked onto clock captions</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> <code>.unknown</code> on the clock container leaked italics onto the
+&laquo;stops&raquo; / &laquo;completes&raquo; captions. <strong>Now:</strong> <code>.unknown{font-style:normal}</code>,
+dotted underline scoped to <code>span.unknown</code>; no leak on <code>clock.unknown</code> live.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">live check on clock.unknown</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-14">
+  <div class="finding-head">
+    <span class="finding-index">14</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-125">GSL-125</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Epic coverage chip</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Epic coverage chip identical for ok and warn</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> the chip was equally grey for ok and warn &mdash; an epic with a gap was
+indistinguishable from a complete one. <strong>Now:</strong> <code>.tag.ok/.warn/.dead</code> declared (T1);
+the chip distinguishes ok from warn by color.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">live check on tasks.html epic chips</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-15">
+  <div class="finding-head">
+    <span class="finding-index">15</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-130">GSL-130</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="LANDED">LANDED</span>
+    <span class="area-tag">Tasks</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Epic PR link doubled — #125#125</h3>
+  <div class="finding-body">
+    <p><strong>Was:</strong> the epic PR link rendered twice back-to-back without a space &mdash;
+&laquo;#125#125&raquo; in 15 rows. <strong>Now:</strong> 0 such pairs in <code>tasks.html</code>.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Gate</span><span class="ref-v">grep on built tasks.html — 0 doubled pairs</span></div>
+  </div>
+</article>
+      </div>
+    </section>
+    <section aria-labelledby="open-h">
+      <h2 class="section-title" id="open-h">Open MINOR — known limitations of run 01 (16–19)</h2>
+      <div class="findings">
+<article class="card finding" id="finding-16">
+  <div class="finding-head">
+    <span class="finding-index">16</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-118">GSL-118</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="NOT-LANDED">NOT-LANDED</span>
+    <span class="area-tag">Context clock</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Context-clock caption reads as «50% of 80%»</h3>
+  <div class="finding-body">
+    <p><strong>Still open.</strong> The &laquo;X% of Y%&raquo; caption on the ORCHESTRATOR CONTEXT card reads as
+&laquo;50 percent of 80 percent&raquo;. Not confirmed closed: on current data <code>context=unknown</code> and the label
+does not render at all; no reword was found in the source. Cannot even be demonstrated on today's data &mdash;
+which is also why it is MINOR.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">State</span><span class="ref-v">Jira: To Do — backlog for a later run</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-17">
+  <div class="finding-head">
+    <span class="finding-index">17</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-122">GSL-122</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="NOT-LANDED">NOT-LANDED</span>
+    <span class="area-tag">Timeline · prose</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Timeline calls a ~92.8% share «that half of the log»</h3>
+  <div class="finding-body">
+    <p><strong>Still open.</strong> Timeline still says &laquo;that half of the log&raquo; about a share that is
+actually ~92.8% (919 of 990 events carry <code>src=hook:</code>). The prose was not touched. MINOR: a wording
+inaccuracy; no data is hidden.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">State</span><span class="ref-v">Jira: To Do — backlog for a later run</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-18">
+  <div class="finding-head">
+    <span class="finding-index">18</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-123">GSL-123</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="NOT-LANDED">NOT-LANDED</span>
+    <span class="area-tag">Library · cross-index</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Cross-index row with an empty title and no marker</h3>
+  <div class="finding-body">
+    <p><strong>Still open.</strong> One cross-index row still has an empty title cell without an honest
+&laquo;no title&raquo; marker (was two; the data shifted, the marker was never added). MINOR: an honesty marker on a
+single cell; the row itself is present and correct.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">State</span><span class="ref-v">Jira: To Do — backlog for a later run</span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-19">
+  <div class="finding-head">
+    <span class="finding-index">19</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-132">GSL-132</a>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="status-chip" data-status="PARTIAL">PARTIAL</span>
+    <span class="area-tag">Prose pack</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>Prose pack partially closed: «polled … old», 7s vs 10s</h3>
+  <div class="finding-body">
+    <p><strong>Partially closed.</strong> The Cost tautologies are fixed, but Tasks still prints
+&laquo;Last polled 8d 2h <em>old</em>&raquo; instead of &laquo;ago&raquo;; the 7s-vs-10s item on Overview does not
+reproduce on the current (DEAD) data, so it stays unconfirmed. MINOR: wording only.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">State</span><span class="ref-v">Jira: To Do — backlog for a later run</span></div>
+  </div>
+</article>
+      </div>
+    </section>
+    <section aria-labelledby="gates-h">
+      <h2 class="section-title" id="gates-h">Gates &amp; verification</h2>
+
+<article class="card pad">
+  <h3>Gates — before / after</h3>
+  <div class="table-wrap"><table class="gate-table">
+    <thead><tr><th>Gate</th><th>Before (Phase 6 close, cycle 69)</th><th>After (acceptance @ <code>905124a</code>)</th><th>Reproduce locally</th></tr></thead>
+    <tbody>
+      <tr><td>smoke</td><td>PASS=312 FAIL=0</td><td><strong>PASS=358 FAIL=0</strong> (+46)</td><td><code>./tools/lab/smoke.sh</code></td></tr>
+      <tr><td>TypeScript</td><td>0 errors</td><td><strong>0 errors</strong></td><td><code>cd tools/lab/ui &amp;&amp; npx tsc --noEmit</code></td></tr>
+      <tr><td>chronicler</td><td>7 pages</td><td><strong>7 pages</strong></td><td><code>./tools/lab/chronicler.sh --no-poll</code></td></tr>
+      <tr><td>hooks</td><td>14/14</td><td><strong>14/14</strong></td><td><code>./tools/lab/hooks-verify.sh</code></td></tr>
+      <tr><td>schema <code>gosleep.lab.render/7</code></td><td>unchanged</td><td><strong>unchanged</strong></td><td>held by <code>smoke.sh :428</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Every ⭐-assert behind the 10 MAJOR carries a <strong>positive control</strong> (the detector provably catches
+  the pre-fix defect), so a green run is not vacuous. Verification was double: (1) all 10 asserts inside the
+  358-PASS live smoke run, and (2) an independent sweep over the <em>real</em> built artifacts
+  (<code>docs/lab/site/*.html</code>, <code>render_bundle.json</code>, sources) &mdash; not over fixtures.
+  The known pre-existing flake at <code>smoke.sh:234</code> (killed writer's temp-file race, known since cycle 56)
+  did not fire in the acceptance run.</p>
+  <p><strong>Screenshot protocol:</strong> 28 sheets, 7 pages &times; {light, dark} &times; {1280, 390}. Before every
+  shutter the computed background was measured (light <code>rgb(245,247,249)</code>, dark <code>rgb(13,14,16)</code>);
+  both dark activation paths (<code>prefers-color-scheme</code> and <code>data-theme="dark"</code>) verified; all
+  14 light/dark pairs differ by sha256 &mdash; the byte-identical &laquo;dark&raquo; sheet failure class of GSL-109
+  did not reproduce.</p>
+</article>
+    </section>
+    <section aria-labelledby="shots-h">
+      <h2 class="section-title" id="shots-h">Screenshots — light/dark pairs per page</h2>
+<p class="gallery-note">Click any thumbnail — the lightbox opens; walk a page's four sheets with the arrow keys.</p>
+<article class="card pad">
+  <h3>Overview — <code>docs/lab/site/index.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/index-1280-light.png" alt="Overview — 1280 px · light"
+           data-lightbox-group="page-index" data-caption="Overview — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/index-1280-dark.png" alt="Overview — 1280 px · dark"
+           data-lightbox-group="page-index" data-caption="Overview — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/index-390-light.png" alt="Overview — 390 px · light"
+           data-lightbox-group="page-index" data-caption="Overview — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/index-390-dark.png" alt="Overview — 390 px · dark"
+           data-lightbox-group="page-index" data-caption="Overview — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card pad">
+  <h3>Fleet — <code>docs/lab/site/fleet.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/fleet-1280-light.png" alt="Fleet — 1280 px · light"
+           data-lightbox-group="page-fleet" data-caption="Fleet — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/fleet-1280-dark.png" alt="Fleet — 1280 px · dark"
+           data-lightbox-group="page-fleet" data-caption="Fleet — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/fleet-390-light.png" alt="Fleet — 390 px · light"
+           data-lightbox-group="page-fleet" data-caption="Fleet — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/fleet-390-dark.png" alt="Fleet — 390 px · dark"
+           data-lightbox-group="page-fleet" data-caption="Fleet — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card pad">
+  <h3>Tasks — <code>docs/lab/site/tasks.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/tasks-1280-light.png" alt="Tasks — 1280 px · light"
+           data-lightbox-group="page-tasks" data-caption="Tasks — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/tasks-1280-dark.png" alt="Tasks — 1280 px · dark"
+           data-lightbox-group="page-tasks" data-caption="Tasks — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/tasks-390-light.png" alt="Tasks — 390 px · light"
+           data-lightbox-group="page-tasks" data-caption="Tasks — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/tasks-390-dark.png" alt="Tasks — 390 px · dark"
+           data-lightbox-group="page-tasks" data-caption="Tasks — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card pad">
+  <h3>Timeline — <code>docs/lab/site/timeline.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/timeline-1280-light.png" alt="Timeline — 1280 px · light"
+           data-lightbox-group="page-timeline" data-caption="Timeline — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/timeline-1280-dark.png" alt="Timeline — 1280 px · dark"
+           data-lightbox-group="page-timeline" data-caption="Timeline — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/timeline-390-light.png" alt="Timeline — 390 px · light"
+           data-lightbox-group="page-timeline" data-caption="Timeline — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/timeline-390-dark.png" alt="Timeline — 390 px · dark"
+           data-lightbox-group="page-timeline" data-caption="Timeline — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card pad">
+  <h3>Library — <code>docs/lab/site/library.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/library-1280-light.png" alt="Library — 1280 px · light"
+           data-lightbox-group="page-library" data-caption="Library — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/library-1280-dark.png" alt="Library — 1280 px · dark"
+           data-lightbox-group="page-library" data-caption="Library — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/library-390-light.png" alt="Library — 390 px · light"
+           data-lightbox-group="page-library" data-caption="Library — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/library-390-dark.png" alt="Library — 390 px · dark"
+           data-lightbox-group="page-library" data-caption="Library — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card pad">
+  <h3>Questions — <code>docs/lab/site/questions.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/questions-1280-light.png" alt="Questions — 1280 px · light"
+           data-lightbox-group="page-questions" data-caption="Questions — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/questions-1280-dark.png" alt="Questions — 1280 px · dark"
+           data-lightbox-group="page-questions" data-caption="Questions — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/questions-390-light.png" alt="Questions — 390 px · light"
+           data-lightbox-group="page-questions" data-caption="Questions — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/questions-390-dark.png" alt="Questions — 390 px · dark"
+           data-lightbox-group="page-questions" data-caption="Questions — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+<article class="card pad">
+  <h3>Cost — <code>docs/lab/site/cost.html</code></h3>
+  <div class="shots">
+    <figure class="shot">
+      <img class="shot-img" src="assets/cost-1280-light.png" alt="Cost — 1280 px · light"
+           data-lightbox-group="page-cost" data-caption="Cost — 1280 px · light" loading="lazy">
+      <figcaption class="shot-cap">1280 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/cost-1280-dark.png" alt="Cost — 1280 px · dark"
+           data-lightbox-group="page-cost" data-caption="Cost — 1280 px · dark" loading="lazy">
+      <figcaption class="shot-cap">1280 px · dark</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/cost-390-light.png" alt="Cost — 390 px · light"
+           data-lightbox-group="page-cost" data-caption="Cost — 390 px · light" loading="lazy">
+      <figcaption class="shot-cap">390 px · light</figcaption>
+    </figure>
+    <figure class="shot">
+      <img class="shot-img" src="assets/cost-390-dark.png" alt="Cost — 390 px · dark"
+           data-lightbox-group="page-cost" data-caption="Cost — 390 px · dark" loading="lazy">
+      <figcaption class="shot-cap">390 px · dark</figcaption>
+    </figure>
+  </div>
+</article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Generated by <strong>report-138 · agentic-report-creator</strong> · 2026-07-23 14:06 UTC</span>
+      <span>Audited build <code>77b3bd8</code></span>
+    </div>
+  </footer>
+
+  <script src="assets/lightbox.js" defer></script>
+</body>
+</html>

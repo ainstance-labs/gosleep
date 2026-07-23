@@ -202,3 +202,7 @@ Legacy pre-GSL history (the TLM / tasty-lunch era, numbered `00`–`10`) lives i
 
 **Итог эпика: 10/10 MAJOR мертвы механически; вердикт владельца — ожидается** (гейт «dark действительно
 тёмный + глаза владельца»). Разбор — `GSL-111-phase-ui-redesign.md`.
+
+## Standalone — Verification dashboard reports (новая система приёмки)
+
+- [GSL-139 — verification dashboard GSL-138 run 01: первый ран новой системы приёмки — самодостаточный HTML-дашборд (`docs/reports/verifications/GSL-138/runs/01/`, file://, zero-deps, EN+RU, обе темы, лайтбокс) по скиллу `agentic-report-creator`; 19 пронумерованных пунктов с Jira-чипами и статусами LANDED/PARTIAL/NOT-LANDED (10 MAJOR + 5 попутных MINOR + 4 открытых), секция «на что обратить внимание» для владельца (табы vs сайдбар, 34ch+break-word, span-scope GSL-124, CVD-светофор, расхождение папок скриншотов), таблица гейтов с воспроизведением, галерея 7×4 листа; факты сверены с Jira живьём (массовый Done уже случился — открыты ровно 118/122/123/132); ошибки владельца по отчёту → runs/02](GSL-139-process-verification-report-run01.md)
