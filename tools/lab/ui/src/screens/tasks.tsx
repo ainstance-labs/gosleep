@@ -83,6 +83,17 @@ function Epic({ e, known, built }: { e: EpicRollup; known: Set<string>; built: n
   );
 }
 
+/* Spec section 7.2 ("Цветные — только оценка") grants judgement colour to exactly three Jira
+   statuses: Done → --ok, To Do → --warn, In Progress → --info. Anything else a tracker may carry
+   (In Review, Blocked…) is not in the table and stays neutral — colour is earned, never default.
+   The tone rides a scoped "st" class (mirroring the sev badge idiom) so that .tag.info can never
+   exist as a bare pair and leak onto the timeline's sev column, which spec 7.2 keeps neutral. */
+const STATUS_TONE: Record<string, string> = {
+  Done: "ok",
+  "To Do": "warn",
+  "In Progress": "info",
+};
+
 function Row({ r, built, gh }: { r: TaskRow; built: number; gh: boolean }): VNode {
   return (
     <tr id={"task-" + r.key}>
@@ -104,7 +115,9 @@ function Row({ r, built, gh }: { r: TaskRow; built: number; gh: boolean }): VNod
       </td>
       <td>
         {r.status ? (
-          <span class="tag">{r.status}</span>
+          <span class={STATUS_TONE[r.status] ? `tag st ${STATUS_TONE[r.status]}` : "tag"}>
+            {r.status}
+          </span>
         ) : (
           <Unknown why="no tracker.issue.updated event has ever carried a status for this key — and a commit is not a status" />
         )}{" "}

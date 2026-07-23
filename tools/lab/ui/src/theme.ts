@@ -333,6 +333,10 @@ code{font-family:var(--mono);font-size:.9em;background:var(--sunken);border-radi
 .tag.sev.incident{background:var(--dead-soft);color:var(--dead);border-color:var(--dead-border)}
 .tag.sev.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
 .tag.sev.unknown{background:var(--unk-soft);color:var(--unk);border-color:var(--unk-border)}
+/* The Tasks-board status chip (spec 7.2: Done -> ok, To Do -> warn, In Progress -> info). Done and
+   To Do ride the generic .tag.ok/.tag.warn pairs above; info exists ONLY under the st scope — a
+   bare .tag.info would also match the timeline's "tag sev info", the one default 7.2 keeps neutral. */
+.tag.st.info{background:var(--info-soft);color:var(--info);border-color:var(--info-border)}
 /* sev=info is left NEUTRAL although --info exists: info stands in 181 of 200 timeline rows, so
    colouring it would colour the screen. A default is not highlighted; warn and incident earn it.
    The --info role stays in the palette for a lone informational badge elsewhere. */

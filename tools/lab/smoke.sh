@@ -3321,6 +3321,35 @@ grep -q 'class="unknown"' "$FW2H" \
   && ok "GSL-146 control: the fixture Fleet page really renders span.unknown (the greps above bite)" \
   || bad "GSL-146 control: no span.unknown on the fixture Fleet page — the checks above are vacuous"
 
+# ────────── GSL-147 (fix wave 2): the status column carries the judgement channel ──────────
+# Spec section 7.2 lists three Jira statuses among the COLOURED values: Done -> ok, To Do -> warn,
+# In Progress -> info. The board rendered every status as a bare neutral chip, so the one column the
+# owner reads to decide whether he can sleep was indistinguishable from metadata like MERGED. The
+# tone rides a scoped "tag st <tone>" class; a status the spec table does not list stays neutral.
+STW2="$WORK/fw2-status-tones"; mkdir -p "$STW2/docs/lab/events"
+{ printf '{"ts":"%sT20:00:01Z","run_id":"x","seq":1,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-901","status":"Done","summary":"tone probe done","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT20:00:02Z","run_id":"x","seq":2,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-902","status":"To Do","summary":"tone probe todo","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT20:00:03Z","run_id":"x","seq":3,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-903","status":"In Progress","summary":"tone probe wip","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+  printf '{"ts":"%sT20:00:04Z","run_id":"x","seq":4,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-904","status":"In Review","summary":"tone probe neutral","occurred_at":"%sT20:00:00Z"}}\n' "$TODAY" "$TODAY"
+} > "$STW2/docs/lab/events/$TODAY.jsonl"
+bash "$CH" --repo "$STW2" --no-poll --quiet --json >/dev/null 2>&1
+STP2="$STW2/docs/lab/site/tasks.html"
+grep -q 'class="tag st ok">Done<' "$STP2" \
+  && ok "GSL-147: Done wears --ok (spec 7.2: задачи)" \
+  || bad "GSL-147: Done renders neutral — the judgement channel is silent"
+grep -q 'class="tag st warn">To Do<' "$STP2" \
+  && ok "GSL-147: To Do wears --warn" \
+  || bad "GSL-147: To Do renders neutral"
+grep -q 'class="tag st info">In Progress<' "$STP2" \
+  && ok "GSL-147: In Progress wears --info (the lone informational badge 7.2 allows)" \
+  || bad "GSL-147: In Progress renders neutral"
+grep -q 'class="tag">In Review<' "$STP2" \
+  && ok "GSL-147 control: a status 7.2 does not list (In Review) stays neutral — colour is earned" \
+  || bad "GSL-147 control: an unlisted status was coloured, or the neutral chip form changed"
+grep -q '\.tag\.info{' "$STP2" \
+  && bad "GSL-147 guard: a bare .tag.info rule exists — it would repaint the timeline's sev=info column" \
+  || ok "GSL-147 guard: no bare .tag.info rule — sev=info on the timeline stays neutral (7.2 caveat)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi
