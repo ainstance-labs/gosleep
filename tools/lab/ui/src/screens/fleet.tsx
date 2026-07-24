@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
-import type { FleetWorker, RenderBundle } from "../types.js";
-import { Age, BlindSpots, Empty, Kpi, Unknown } from "../components.js";
+import type { FleetWorker, LinkBases, RenderBundle } from "../types.js";
+import { Age, BlindSpots, Empty, Ids, Kpi, Unknown } from "../components.js";
 
 /**
  * Screen 5 of PRD R5.2. GSL-93 built the census; GSL-98 puts the cards on it.
@@ -24,7 +24,15 @@ const AGE_LABEL: Record<FleetWorker["state"], string> = {
   ended: "ended · last event",
 };
 
-function Worker({ w, built }: { w: FleetWorker; built: number }): VNode {
+function Worker({
+  w,
+  built,
+  links,
+}: {
+  w: FleetWorker;
+  built: number;
+  links: LinkBases | undefined;
+}): VNode {
   return (
     <div class={`wk ${w.state}`}>
       <div class="wk-top">
@@ -98,7 +106,13 @@ function Worker({ w, built }: { w: FleetWorker; built: number }): VNode {
 
       <div class="wk-task">
         <span class="dim">task: </span>
-        {w.task ?? <Unknown why="no task.created/completed for this session names a subject" />}
+        {/* GSL-205: the subject a task.completed named opens with its key. Reading which worker did
+            what and then having to go and find the ticket by hand is the seam this closes. */}
+        {w.task ? (
+          <Ids text={w.task} links={links} />
+        ) : (
+          <Unknown why="no task.created/completed for this session names a subject" />
+        )}
       </div>
     </div>
   );
@@ -167,7 +181,7 @@ export function Fleet({ b }: { b: RenderBundle }): VNode {
             after {Math.round(f.quiet_after_s / 60)}m; <i>silent</i> is not <i>dead</i>.
           </div>
           {f.workers.map((w) => (
-            <Worker key={w.session_id} w={w} built={built} />
+            <Worker key={w.session_id} w={w} built={built} links={b.links} />
           ))}
         </>
       )}

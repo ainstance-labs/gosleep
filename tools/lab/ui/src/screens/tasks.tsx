@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
-import type { EpicRollup, RenderBundle, TaskRow } from "../types.js";
-import { Age, BlindSpots, Empty, Unknown } from "../components.js";
+import type { EpicRollup, LinkBases, RenderBundle, TaskRow } from "../types.js";
+import { Age, BlindSpots, Empty, Ids, Unknown } from "../components.js";
 
 /**
  * Screen 3 of PRD R5.2, and F5-S3's acceptance: rows keyed by Jira, links to Jira / GH / commit /
@@ -39,7 +39,15 @@ function PrChip({ e }: { e: EpicRollup }): VNode {
   );
 }
 
-function Epic({ e, known, built }: { e: EpicRollup; known: Set<string>; built: number }): VNode {
+function Epic({
+  e,
+  known,
+  links,
+}: {
+  e: EpicRollup;
+  known: Set<string>;
+  links: LinkBases | undefined;
+}): VNode {
   const counts = Object.entries(e.by_status);
   return (
     <details class="epic" data-epic={e.key} data-membership={e.membership} open={!e.merged}>
@@ -62,7 +70,7 @@ function Epic({ e, known, built }: { e: EpicRollup; known: Set<string>; built: n
 
       {e.tasks.length === 0 ? (
         <Empty>
-          No task commit is attributable to this epic. {e.membership_why}.
+          No task commit is attributable to this epic. <Ids text={e.membership_why} links={links} />.
         </Empty>
       ) : (
         <p class="mono">
@@ -77,7 +85,10 @@ function Epic({ e, known, built }: { e: EpicRollup; known: Set<string>; built: n
         </p>
       )}
       <p class="dim">
-        {e.commits} commit{e.commits === 1 ? "" : "s"} · membership {e.membership_why}.
+        {e.commits} commit{e.commits === 1 ? "" : "s"} · membership{" "}
+        {/* GSL-205: this sentence names the merge commit and the branch, both of which carry
+            identifiers the reader would otherwise have to retype. */}
+        <Ids text={e.membership_why} links={links} />.
       </p>
     </details>
   );
@@ -208,7 +219,7 @@ export function Tasks({ b }: { b: RenderBundle }): VNode {
           branch per epic is the invariant this rollup reads; without it, membership is not knowable.)
         </Empty>
       ) : (
-        t.epics.map((e) => <Epic key={e.key} e={e} known={known} built={built} />)
+        t.epics.map((e) => <Epic key={e.key} e={e} known={known} links={b.links} />)
       )}
 
       <h2>Board — {t.rows.length} tasks</h2>

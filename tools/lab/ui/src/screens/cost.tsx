@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
 import type { RenderBundle } from "../types.js";
-import { BlindSpots, Empty, Kpi, Unknown } from "../components.js";
+import { BlindSpots, Empty, Ids, Kpi, Unknown } from "../components.js";
 
 function n(x: number | null): string {
   return x === null ? "—" : x.toLocaleString("en-US");
@@ -107,7 +107,12 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
             {ordered.map((r) => (
               <tr key={r.cycle}>
                 <td class="mono">{r.cycle}</td>
-                <td class="mono">{r.worker ?? <Unknown why="the bullet did not name a worker" />}</td>
+                {/* GSL-205: a telemetry bullet's worker name routinely carries the epic or task it
+                    was spawned for (gsl81-reviewer, GSL-205-impl) — the one thread from spend back
+                    to the work that caused it. */}
+                <td class="mono">
+                  {r.worker ? <Ids text={r.worker} links={b.links} /> : <Unknown why="the bullet did not name a worker" />}
+                </td>
                 <td class="mono">{r.model ?? <Unknown why="the bullet did not name a model" />}</td>
                 {numCell(r.tokens_out)}
                 {numCell(r.tokens_in)}
@@ -191,7 +196,7 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
                 <td class="mono">
                   {q.eta ?? <Unknown why="the quota event carries no reset ETA — the wait is of unknown length" />}
                 </td>
-                <td>{q.detail ?? dash}</td>
+                <td>{q.detail ? <Ids text={q.detail} links={b.links} /> : dash}</td>
               </tr>
             ))}
           </table>

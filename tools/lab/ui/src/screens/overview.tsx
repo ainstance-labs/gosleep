@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
 import type { RenderBundle } from "../types.js";
-import { Empty, EventsTable, eventsOn } from "../components.js";
+import { Empty, EventsTable, Ids, Sha, eventsOn } from "../components.js";
 import { RunwayStrip } from "../runway.js";
 import { SelfHealthPanel } from "../selfhealth.js";
 
@@ -64,7 +64,18 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
             </tr>
             {q.items.map((i) => (
               <tr key={i.id}>
-                <td class="mono">{i.id}</td>
+                <td class="mono">
+                  {i.id}
+                  {/* GSL-205: every one of these rows carries a Jira key, and not one of them was
+                      clickable. The id itself is the queue's own, and stays text — it resolves to a
+                      line in questions/queue.jsonl, not to a URL. */}
+                  {i.task ? (
+                    <>
+                      {" "}
+                      <Ids text={i.task} links={b.links} />
+                    </>
+                  ) : null}
+                </td>
                 <td>
                   {/* GSL-116: the type carries the grade, so it carries the class. Only BLOCKER
                       matches a colour rule (.tag.BLOCKER -> dead); DECISION/CLARIFY/FYI fall to the
@@ -72,7 +83,9 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
                       the one type that means "stop" read as the one that means "for information". */}
                   <span class={`tag ${i.type}`}>{i.type}</span>
                 </td>
-                <td>{i.question}</td>
+                <td>
+                  <Ids text={i.question} links={b.links} />
+                </td>
                 <td class="mono">{i.auto_apply_at ?? i.default ?? ""}</td>
               </tr>
             ))}
@@ -82,7 +95,8 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
 
       <h2>Delivery</h2>
       <div class="card mono">
-        branch <b>{d.branch}</b> @ {d.head} · {d.dirty_paths} dirty path(s)
+        branch <b>{d.branch}</b> @ {d.head ? <Sha sha={d.head} links={b.links} /> : d.head} ·{" "}
+        {d.dirty_paths} dirty path(s)
       </div>
       {d.commits_on_date.length === 0 ? (
         <Empty>No commits on {b.date}.</Empty>
@@ -96,8 +110,14 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
             </tr>
             {d.commits_on_date.map((c) => (
               <tr key={c.sha}>
-                <td class="mono">{c.sha}</td>
-                <td>{c.subject}</td>
+                <td class="mono">
+                  <Sha sha={c.sha} links={b.links} title={c.subject} />
+                </td>
+                {/* A commit subject opens with the task key by convention (one commit per task), so
+                    this cell is where the board's rows and the day's work meet. */}
+                <td>
+                  <Ids text={c.subject} links={b.links} />
+                </td>
                 <td class="mono">{c.author}</td>
               </tr>
             ))}
@@ -111,7 +131,7 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
           {openPrs.map((p, i) => (
             <span key={p.number}>
               {i > 0 ? " · " : ""}
-              <a href={p.url}>#{p.number}</a> {p.title}
+              <a href={p.url}>#{p.number}</a> <Ids text={p.title ?? ""} links={b.links} />
             </span>
           ))}
         </div>
@@ -127,7 +147,7 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
       <h2>
         Timeline — {b.date} (last 25 of {b.events.today})
       </h2>
-      <EventsTable events={eventsOn(b, b.date)} limit={25} />
+      <EventsTable events={eventsOn(b, b.date)} limit={25} links={b.links} />
       <div class="card">
         <a href="timeline.html">Full timeline &rarr;</a>
       </div>

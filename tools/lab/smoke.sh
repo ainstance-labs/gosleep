@@ -1892,7 +1892,17 @@ import os, re, sys
 h = open(sys.argv[1], encoding="utf-8").read()
 site = sys.argv[2]
 rows = re.search(r'<table id="library-rows">(.*?)</table>', h, re.S)
-hrefs = re.findall(r'<a href="([^"]+)"', rows.group(1)) if rows else []
+# GSL-205 put a SECOND kind of anchor in these rows: the Jira key inside a document title, which
+# resolves at the tracker and has no file behind it by construction. This assertion is about the
+# ARTIFACT links — the memory that survives retention still opens — so identifier links are excluded
+# by the mark they all carry, and are asserted separately under GSL-205. Excluding them by "looks
+# absolute" would have been the loose version: an artifact href is always repo-relative, so the
+# tighter test is the one that names what it is skipping.
+# (NO APOSTROPHES IN THIS BLOCK: bash 3.2 counts quotes inside a quoted heredoc that sits in $( ),
+#  and one stray one turns this assignment into a parse error — the chronicler.sh header lesson.)
+tags = re.findall(r'<a\s([^>]*?)>', rows.group(1), re.S) if rows else []
+hrefs = [m.group(1) for t in tags if "data-idlink" not in t
+         for m in [re.search(r'href="([^"]+)"', t)] if m]
 dead = [x for x in hrefs if not os.path.isfile(os.path.join(site, x))]
 print("LINKS=%d|DEAD=%s" % (len(hrefs), ",".join(dead) or "none"))
 PY
@@ -3533,6 +3543,75 @@ grep -q '\.tag\.high-impact{background:var(--dead-soft)' "$CRI" \
 grep -q '\.filter-count{' "$CRI" \
   && ok "GSL-160 control: the live filter counter keeps its own rule — the rename took nothing from it" \
   || bad "GSL-160 control: the .filter-count rule vanished — the rename broke the live counter"
+
+echo "== GSL-205: one identifier -> link, on every screen =="
+# The defect was not "a screen forgot a link" — it was that ONE screen (Tasks, 796 links) knew how to
+# resolve an identifier and the other six printed the same identifiers as dead text (Questions: 7).
+# So this fixture asserts the RULE, not a screen: a key in a queue item and a key in a timeline detail
+# must both come out as anchors, from the same base, and a sha must resolve to a commit.
+#
+# It also asserts the REFUSAL, on a twin fixture whose only difference is a remote that is not
+# GitHub: with no GitHub base on disk the pages must print the identifier as text rather than invent
+# an org. A link that resolves on somebody else's repository is worse than no link, which is the
+# whole reason the base is produced in Python and travels in the bundle instead of being spelled in
+# seven screens.
+#
+# Both fixtures are REAL git repositories with ONE empty commit. That is not ceremony: load_git()
+# reads the remote only after `rev-parse HEAD` succeeds, so a repo with no commit degrades whole and
+# the remote is never read — and a fixture that is no repository at all is worse still, because git
+# walks UP out of .artifacts/ and answers with THIS repository's remote (which is exactly what the
+# $CR fixture unknowingly does).
+lk_repo() {  # <dir> <remote-url>
+  mkdir -p "$1/docs/lab/events" "$1/docs/lab/questions" "$1/docs/lab/decisions"
+  : > "$1/docs/lab/questions/queue.jsonl"; : > "$1/docs/lab/decisions/log.jsonl"
+  git -C "$1" init -q >/dev/null 2>&1
+  git -C "$1" remote add origin "$2" >/dev/null 2>&1
+  git -C "$1" -c user.name=smoke -c user.email=smoke@local commit -q --allow-empty -m "GSL-205 fixture" >/dev/null 2>&1
+  LK_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+  { printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"tracker.issue.updated","src":"emit","data":{"key":"GSL-205"}}\n' "$LK_TS" "$TODAY"
+    printf '{"ts":"%s","run_id":"%s","seq":2,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"dec0de5"}}\n' "$LK_TS" "$TODAY"
+  } > "$1/docs/lab/events/$TODAY.jsonl"
+  GOSLEEP_LAB_DIR="$1/docs/lab" "$LE" question --type DECISION --from smoke-links --task GSL-205 \
+    --question "does the timeline linkify GSL-205 too?" --default "yes" --reversibility high >/dev/null 2>&1
+  bash "$CH" --repo "$1" --no-poll --quiet --json >/dev/null 2>&1
+}
+LK="$WORK/gsl205-links";   lk_repo "$LK"  https://github.com/ainstance-labs/gosleep.git
+LK0="$WORK/gsl205-nogh";   lk_repo "$LK0" git@gitlab.example.com:someone/else.git
+
+LKB="$LK/docs/lab/render_bundle.json"
+[[ -n "$(jq -r '.links.jira_base // empty' "$LKB")" ]] \
+  && ok "GSL-205: the bundle carries a jira_base — the view never spells the tracker's host itself" \
+  || bad "GSL-205: no links.jira_base in the bundle (every key on six screens goes back to dead text)"
+[[ "$(jq -r '.links.gh_base' "$LKB")" == "https://github.com/ainstance-labs/gosleep" ]] \
+  && ok "GSL-205: gh_base is read off the git remote, normalised (no .git suffix)" \
+  || bad "GSL-205: gh_base wrong -> $(jq -r '.links.gh_base' "$LKB")"
+LK_TL="$(grep -c 'data-idlink' "$LK/docs/lab/site/timeline.html" || true)"
+LK_QS="$(grep -c 'data-idlink' "$LK/docs/lab/site/questions.html" || true)"
+[[ "$LK_TL" -gt 0 ]] \
+  && ok "GSL-205: Timeline prints $LK_TL linked identifier(s) — it printed 114 unlinked ones before" \
+  || bad "GSL-205: Timeline has no data-idlink anchor (its detail column went back to dead text)"
+[[ "$LK_QS" -gt 0 ]] \
+  && ok "GSL-205: Questions prints $LK_QS linked identifier(s) — it had 7 links against Tasks' 796" \
+  || bad "GSL-205: Questions has no data-idlink anchor (every queue item carries a key)"
+grep -q 'href="https://ainstance-labs.atlassian.net/browse/GSL-205"' "$LK/docs/lab/site/questions.html" \
+  && ok "GSL-205: the queue item's key resolves at the tracker, not at a plausible-looking guess" \
+  || bad "GSL-205: the queue item's key is not an anchor to its Jira issue"
+grep -q 'href="https://github.com/ainstance-labs/gosleep/commit/dec0de5"' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-205: a detail whose FIELD is sha becomes a commit link (never a bare 7-hex lookalike)" \
+  || bad "GSL-205: the sha detail on Timeline is not linked to its commit"
+# The refusal, on the twin whose remote is not GitHub: unknown base -> plain text, never a guess.
+[[ "$(jq -r '.links.gh_base' "$LK0/docs/lab/render_bundle.json")" == "null" ]] \
+  && ok "GSL-205 control: a non-GitHub remote -> gh_base is null, not a guessed org" \
+  || bad "GSL-205 control: gh_base invented off a remote that is not github.com"
+[[ -n "$(jq -r '.links.gh_base_why // empty' "$LK0/docs/lab/render_bundle.json")" ]] \
+  && ok "GSL-205 control: the absent base says WHY, the way every other absence on these screens does" \
+  || bad "GSL-205 control: gh_base is null with no reason attached"
+grep -q 'data-idlink="dec0de5"' "$LK0/docs/lab/site/timeline.html" \
+  && bad "GSL-205 control: a sha was linked with no GitHub base on disk — the link resolves nowhere" \
+  || ok "GSL-205 control: with no GitHub base the sha stays text (a wrong link is worse than none)"
+grep -q 'href="https://ainstance-labs.atlassian.net/browse/GSL-205"' "$LK0/docs/lab/site/questions.html" \
+  && ok "GSL-205 control: the Jira half is independent — a missing GitHub base does not silence it" \
+  || bad "GSL-205 control: the Jira link vanished because the GitHub base was absent"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

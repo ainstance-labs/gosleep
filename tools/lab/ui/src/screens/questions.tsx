@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
-import type { QueueItem, RenderBundle } from "../types.js";
-import { Empty } from "../components.js";
+import type { LinkBases, QueueItem, RenderBundle } from "../types.js";
+import { Empty, Ids } from "../components.js";
 import { countdownText, remainingMs } from "../countdown.js";
 
 /**
@@ -66,25 +66,43 @@ function Deadline({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
   );
 }
 
-function Item({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
+function Item({
+  q,
+  builtMs,
+  links,
+}: {
+  q: QueueItem;
+  builtMs: number;
+  links: LinkBases | undefined;
+}): VNode {
   const isBlocker = q.type === "BLOCKER";
   return (
     <div class="card">
       <div>
         <span class={`tag ${q.type}`}>{q.type}</span> <code>{q.id}</code>{" "}
-        {q.task ? <code>{q.task}</code> : null}{" "}
+        {/* GSL-205: all 20 queue items name a task and this screen shipped 7 outbound links against
+            the board's 796. The key was already printed here — it was simply not a link. */}
+        {q.task ? (
+          <code>
+            <Ids text={q.task} links={links} />
+          </code>
+        ) : null}{" "}
         {/* Its own class, not "tag BLOCKER" (GSL-160): the flag borrows the BLOCKER colour by
             value, and borrowing the NAME would tie two meanings to one rule. */}
         {q.high_impact ? <span class="tag high-impact">high impact</span> : null}
       </div>
       <p>
-        <b>{q.question}</b>
+        <b>
+          <Ids text={q.question} links={links} />
+        </b>
       </p>
       {q.default ? (
         <p>
           <small>
-            <b>Default:</b> {q.default}
-            {q.default_rationale ? <> — {q.default_rationale}</> : null}
+            <b>Default:</b> <Ids text={q.default} links={links} />
+            {q.default_rationale ? (
+              <> — <Ids text={q.default_rationale} links={links} /></>
+            ) : null}
           </small>
         </p>
       ) : isBlocker ? (
@@ -107,7 +125,7 @@ function Item({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
       {q.impact_if_wrong ? (
         <p>
           <small>
-            <b>If the default is wrong:</b> {q.impact_if_wrong}
+            <b>If the default is wrong:</b> <Ids text={q.impact_if_wrong} links={links} />
           </small>
         </p>
       ) : null}
@@ -119,7 +137,13 @@ function Item({ q, builtMs }: { q: QueueItem; builtMs: number }): VNode {
  * The closed-question table, shared by the two "decided" sections. Its columns and the neutral
  * status tag are the shipped design; GSL-128 only changed WHICH rows each instance is handed.
  */
-function ClosedTable({ items }: { items: QueueItem[] }): VNode {
+function ClosedTable({
+  items,
+  links,
+}: {
+  items: QueueItem[];
+  links: LinkBases | undefined;
+}): VNode {
   return (
     <div class="wrap">
       <table>
@@ -136,10 +160,16 @@ function ClosedTable({ items }: { items: QueueItem[] }): VNode {
             <td>
               <span class={`tag ${x.type}`}>{x.type}</span>
             </td>
-            <td>{x.question}</td>
+            <td>
+              <Ids text={x.question} links={links} />
+            </td>
             <td>
               <span class="tag">{x.status}</span>
-              {x.answer ? <> {x.answer}</> : x.default ? <> {x.default}</> : null}
+              {x.answer ? (
+                <> <Ids text={x.answer} links={links} /></>
+              ) : x.default ? (
+                <> <Ids text={x.default} links={links} /></>
+              ) : null}
             </td>
             {/* Who closed it. "answered-by-default" with no name is not a gap — it is the night
                 answering for itself, and saying so is the point of the column. */}
@@ -207,19 +237,19 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
           morning.
         </Empty>
       ) : (
-        blockers.map((x) => <Item key={x.id} q={x} builtMs={builtMs} />)
+        blockers.map((x) => <Item key={x.id} q={x} builtMs={builtMs} links={b.links} />)
       )}
 
       <h2>Waiting for you, but not waiting on you ({others.length})</h2>
       {others.length === 0 ? (
         <Empty>Nothing open.</Empty>
       ) : (
-        others.map((x) => <Item key={x.id} q={x} builtMs={builtMs} />)
+        others.map((x) => <Item key={x.id} q={x} builtMs={builtMs} links={b.links} />)
       )}
 
       <h2>Decided without you ({decidedWithoutYou.length})</h2>
       {decidedWithoutYou.length > 0 ? (
-        <ClosedTable items={decidedWithoutYou} />
+        <ClosedTable items={decidedWithoutYou} links={b.links} />
       ) : q.closed_items.length === 0 ? (
         <Empty>The queue has never closed a question.</Empty>
       ) : null}
@@ -237,7 +267,7 @@ export function Questions({ b }: { b: RenderBundle }): VNode {
       {decidedByYou.length > 0 ? (
         <>
           <h2>Decided by you ({decidedByYou.length})</h2>
-          <ClosedTable items={decidedByYou} />
+          <ClosedTable items={decidedByYou} links={b.links} />
         </>
       ) : null}
     </>

@@ -540,4 +540,27 @@ export interface RenderBundle {
   library: Library;
   degraded: Degradation[];
   narrative: { text?: string } | null;
+  /**
+   * GSL-205: the two URL prefixes every screen needs to turn a printed identifier into a link.
+   *
+   * OPTIONAL ON PURPOSE. A bundle written by an older chronicler carries no `links` block, and a
+   * screen that then invented a prefix would ship links pointing at somebody else's tracker. Absent
+   * block → the identifier renders as the plain text it always was. That is the same rule the rest
+   * of this dashboard lives by: no source, no claim.
+   */
+  links?: LinkBases;
+}
+
+/**
+ * Where an identifier resolves. Produced once, in Python, from the same constants the Tasks board's
+ * per-row `jira_url` / `gh_url` are built from — so a key linked from the Timeline and the same key
+ * linked from the board cannot point at two different places.
+ */
+export interface LinkBases {
+  /** e.g. https://ainstance-labs.atlassian.net/browse — no trailing slash. */
+  jira_base: string | null;
+  /** e.g. https://github.com/ainstance-labs/gosleep — no trailing slash. `null` when the remote is not GitHub. */
+  gh_base: string | null;
+  /** Why `gh_base` is null, for the screens that must explain an absence rather than hide it. */
+  gh_base_why?: string | null;
 }

@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
 import type { LabEvent, RenderBundle } from "../types.js";
-import { BlindSpots, Empty, FilterBar, FilterCount, eventDetail, srcClass } from "../components.js";
+import { BlindSpots, Empty, EventDetail, FilterBar, FilterCount, srcClass } from "../components.js";
 import { facetValues, type FilterIndex, type FilterRow } from "../filter.js";
 import { SEVERITIES, severityOf } from "../severity.js";
 
@@ -117,7 +117,11 @@ export function Timeline({ b }: { b: RenderBundle }): VNode {
                   <td>
                     <span class={`tag ${srcClass(e.src)}`}>{e.src}</span>
                   </td>
-                  <td class="mono">{eventDetail(e)}</td>
+                  <td class="mono">
+                    {/* GSL-205: 114 of these 200 cells carried a sha or a key as dead text on the
+                        screen that prints more identifiers than any other. */}
+                    <EventDetail e={e} links={b.links} />
+                  </td>
                 </tr>
               );
             })}

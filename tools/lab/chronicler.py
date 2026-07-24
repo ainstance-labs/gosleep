@@ -2152,6 +2152,28 @@ def build_render_bundle(ctx, status):
         "library": library_index(),
         "degraded": DEGRADED,
         "narrative": ctx.get("narrative"),
+        # GSL-205: the two prefixes the view layer needs to turn a printed identifier into a link,
+        # produced HERE so that a key linked from the Timeline and the same key linked from the Tasks
+        # board cannot resolve to two different trackers -- they are built from the same constants
+        # (JIRA_BASE, gh_base) that already build every per-row jira_url/gh_url below.
+        #
+        # ADDITIVE, and the view treats it as optional. An older bundle carries no `links` block and
+        # the screens then print identifiers as the plain text they always were -- never a guessed
+        # org. That is why this did not need a schema bump: nothing that reads /7 today can break on
+        # a key it does not look at, and nothing that reads /7 tomorrow may INVENT this one.
+        "links": link_bases(ctx),
+    }
+
+
+def link_bases(ctx):
+    """Where an identifier resolves. `gh_base` is None off a non-GitHub remote, and says why."""
+    gh = gh_base(ctx["git"].get("remote"))
+    return {
+        "jira_base": JIRA_BASE,
+        "gh_base": gh,
+        "gh_base_why": None if gh else
+        "git remote 'origin' is absent or is not a github.com URL, so no issue, PR or commit on "
+        "these screens can be linked -- an invented org would resolve on somebody else's repository",
     }
 
 

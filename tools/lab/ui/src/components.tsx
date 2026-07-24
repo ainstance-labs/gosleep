@@ -1,5 +1,5 @@
 import type { ComponentChildren, VNode } from "preact";
-import type { LabEvent, RenderBundle } from "./types.js";
+import type { LabEvent, LinkBases, RenderBundle } from "./types.js";
 import { VERDICTS } from "./verdicts.js";
 import { countClass, countSentence, type FilterIndex } from "./filter.js";
 import { ageText, elapsedMs } from "./countdown.js";
@@ -76,6 +76,100 @@ export function StaleBanner({ b }: { b: RenderBundle }): VNode {
 
 export function Empty({ children }: { children: ComponentChildren }): VNode {
   return <div class="card">{children}</div>;
+}
+
+/* ═══════════════════ GSL-205: ONE identifier → link, on every screen ═══════════════════
+ *
+ * The defect this closes was not "a screen forgot a link". It was that the Tasks board owned the
+ * ONLY implementation of "an identifier resolves somewhere", and every other screen printed the same
+ * identifiers as dead text: 796 outbound links on Tasks against 7 on Questions, while all 20 queue
+ * items carried a Jira key and 114 of 200 timeline rows carried a clickable identifier in plain
+ * prose. The owner's own directive is that the laboratory is the single place from which everything
+ * can be checked — an identifier he has to copy, paste and search for is that promise broken once
+ * per row.
+ *
+ * So the rule is a FUNCTION and not a habit. A screen does not decide how a key becomes a URL; it
+ * hands its text here. Three consequences, and each is the reason this is not seven local helpers:
+ *
+ *   · one prefix. The Tasks board's per-row jira_url and a key linkified out of a timeline detail
+ *     are built from the SAME base, produced once in Python. Two spellings of one tracker is the
+ *     failure where a link resolves — on somebody else's site.
+ *   · one refusal. No base on disk (an older bundle, a non-GitHub remote) → the text renders exactly
+ *     as it did before. This dashboard's oldest rule: no source, no claim. It does not guess an org.
+ *   · one shape. Every generated link wears data-idlink, so a test can count them per screen instead
+ *     of trusting that seven files each remembered.
+ *
+ * WHY #N GOES TO /issues/N AND NOT /pull/N. Issues and pull requests share one numbering space on
+ * GitHub, so a number alone cannot say which it is — and tasks.tsx already refuses to guess (it will
+ * not borrow an epic's issue number for its PR, because the wrong link would RESOLVE rather than
+ * 404). /issues/N is the one form that is never wrong: GitHub redirects it to the pull request when
+ * N is a pull request. Guessing is avoided by picking the URL that does not need a guess.
+ */
+
+/** Jira keys and GitHub issue/PR references, as they appear inside free prose. */
+const ID_RE = /(GSL-\d+|#\d{1,6})/g;
+
+function jiraHref(key: string, links: LinkBases | undefined): string | null {
+  const base = links?.jira_base;
+  return base ? base.replace(/\/+$/, "") + "/" + key : null;
+}
+
+function ghIssueHref(n: string, links: LinkBases | undefined): string | null {
+  const base = links?.gh_base;
+  return base ? base.replace(/\/+$/, "") + "/issues/" + n : null;
+}
+
+/** A commit. Callers pass this ONLY where the value is known to be a sha — see `eventDetailField`. */
+export function commitHref(sha: string, links: LinkBases | undefined): string | null {
+  const base = links?.gh_base;
+  return base && /^[0-9a-f]{7,40}$/i.test(sha) ? base.replace(/\/+$/, "") + "/commit/" + sha : null;
+}
+
+/**
+ * Free text with every identifier in it turned into a link. Text that carries none — the vast
+ * majority of cells — comes back as the single string it went in as, so this costs nothing to call
+ * everywhere, which is exactly why it is called everywhere.
+ */
+export function Ids({ text, links }: { text: string; links: LinkBases | undefined }): VNode {
+  const parts = text.split(ID_RE);
+  if (parts.length === 1) return <>{text}</>;
+  return (
+    <>
+      {parts.map((p, i) => {
+        // split() with one capture group alternates literal / captured / literal …, so the odd
+        // indices — and only those — are the matches. No second pass, no re-testing.
+        if (i % 2 === 0) return p;
+        const href = p.charAt(0) === "#" ? ghIssueHref(p.slice(1), links) : jiraHref(p, links);
+        return href ? (
+          <a key={`${p}-${i}`} href={href} data-idlink={p}>
+            {p}
+          </a>
+        ) : (
+          p
+        );
+      })}
+    </>
+  );
+}
+
+/** A commit sha, linked when a GitHub base exists and the value really looks like one. */
+export function Sha({
+  sha,
+  links,
+  title,
+}: {
+  sha: string;
+  links: LinkBases | undefined;
+  title?: string;
+}): VNode {
+  const href = commitHref(sha, links);
+  return href ? (
+    <a href={href} data-idlink={sha} title={title}>
+      {sha}
+    </a>
+  ) : (
+    <span title={title}>{sha}</span>
+  );
 }
 
 /**
@@ -218,16 +312,45 @@ export function srcClass(src: string | undefined): string {
  * values WRAP rather than clip. No ellipsis is added — that would be new visible text, which the
  * spec forbids — and no new line of prose appears anywhere.
  */
-export function eventDetail(e: LabEvent): string {
+export function eventDetailParts(e: LabEvent): { field: string; value: string } {
   const d = (e.data ?? {}) as Record<string, unknown>;
   for (const k of ["sha", "path", "key", "question", "error_type", "decision", "cmd"]) {
     const v = d[k];
-    if (v !== undefined && v !== null && v !== "") return String(v);
+    if (v !== undefined && v !== null && v !== "") return { field: k, value: String(v) };
   }
-  return "";
+  return { field: "", value: "" };
 }
 
-export function EventsTable({ events, limit }: { events: LabEvent[]; limit?: number }): VNode {
+export function eventDetail(e: LabEvent): string {
+  return eventDetailParts(e).value;
+}
+
+/**
+ * The detail cell, rendered as the KIND of thing it is (GSL-205). Until this, every detail was one
+ * undifferentiated mono string, which is why a commit sha and a Jira key — the two values on this
+ * dashboard that most obviously lead somewhere — led nowhere on the screen that prints the most of
+ * them. The field name is not decoration: it is the only thing that licenses a commit URL, and a
+ * bare 7-hex token linkified on looks alone would eventually point at a commit that does not exist.
+ */
+export function EventDetail({ e, links }: { e: LabEvent; links: LinkBases | undefined }): VNode {
+  const { field, value } = eventDetailParts(e);
+  if (value === "") return <>{""}</>;
+  if (field === "sha") return <Sha sha={value} links={links} />;
+  // A path is a location in this repository, not an identifier: it gets no link (the file may not
+  // exist on the default branch, and a link that 404s is the failure this screen refuses), but it
+  // is still scanned, because commit subjects and error strings ride in the same slot.
+  return <Ids text={value} links={links} />;
+}
+
+export function EventsTable({
+  events,
+  limit,
+  links,
+}: {
+  events: LabEvent[];
+  limit?: number;
+  links?: LinkBases;
+}): VNode {
   const slice = limit === undefined ? events : events.slice(-limit);
   const rows = [...slice].reverse();
   if (rows.length === 0) {
@@ -256,7 +379,9 @@ export function EventsTable({ events, limit }: { events: LabEvent[]; limit?: num
             <td>
               <span class={`tag ${srcClass(e.src)}`}>{e.src}</span>
             </td>
-            <td class="mono">{eventDetail(e)}</td>
+            <td class="mono">
+              <EventDetail e={e} links={links} />
+            </td>
           </tr>
         ))}
       </table>
