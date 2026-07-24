@@ -3772,6 +3772,45 @@ grep -q 'gates/smoke.json' "$REPO_ROOT/tools/lab/smoke.sh" \
   && ok "GSL-206 control: both gate runners write their own receipt (the reader has a writer)" \
   || bad "GSL-206 control: a gate runner writes no receipt — its tile can only ever read unknown"
 
+echo "== GSL-209: a theme switch, one search, and a reason you can reach without a mouse =="
+# Two controls the dashboard shipped without at all, and one explanation that could only be read with
+# a pointer. Both controls ship `hidden` and are revealed by the client — the FilterBar doctrine: a
+# control the reader can operate that changes nothing is worse than no control.
+S209=0
+for P in index timeline tasks questions fleet cost library; do
+  grep -q 'id="page-controls"' "$LK/docs/lab/site/$P.html" || S209=1
+  grep -q 'id="page-search"' "$LK/docs/lab/site/$P.html" || S209=1
+  grep -q 'id="theme-toggle"' "$LK/docs/lab/site/$P.html" || S209=1
+done
+[[ "$S209" -eq 0 ]] \
+  && ok "GSL-209: all seven screens carry the search box and the theme switch" \
+  || bad "GSL-209: a screen is missing one of the two page controls"
+grep -q '<div class="chrome-controls" id="page-controls" hidden>' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-209: the controls ship hidden — with JS off the reader never sees a dead control" \
+  || bad "GSL-209: the control band is visible before anything has wired it"
+# The theme has to actually survive a reload, which means it has to be written down somewhere.
+grep -q 'gosleep-theme' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-209: the chosen theme is persisted, so it survives the reload" \
+  || bad "GSL-209: nothing persists the theme — every open would revert to the OS setting"
+grep -q 'data-theme' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-209 control: the stylesheet honours an explicit data-theme in BOTH directions" \
+  || bad "GSL-209 control: no data-theme rules — the toggle would move an attribute nothing reads"
+# The reason behind `unknown` — reachable from a keyboard and present as TEXT, not only in title=.
+grep -q 'class="unknown" tabindex="0"' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-209: an unknown value is focusable, so its reason is reachable by Tab and by tap" \
+  || bad "GSL-209: the unknown marker is still pointer-only"
+grep -q '<span class="unk-why">no tracker.issue.updated event has ever carried a status' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-209 ⭐ the reason is IN THE DOM as text — page search finds it, a screen reader reads it" \
+  || bad "GSL-209 ⭐ the reason still lives only in a title attribute"
+grep -q 'span\.unknown:focus \.unk-why' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-209 control: the stylesheet reveals the reason on FOCUS, not only on hover" \
+  || bad "GSL-209 control: .unk-why is revealed on hover alone — a pointer feature again"
+# One visibility rule. Two mechanisms now hide rows, and the filter's count sentence must stay true
+# about the DOM rather than about its own verdict — the rail is the whole safety story of filter.ts.
+grep -q 'fHidden' "$LK/docs/lab/site/timeline.html" && grep -q 'sHidden' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-209: the island filter and the page search AND their two verdicts through one function" \
+  || bad "GSL-209: search and filter each set hidden directly — one will silently undo the other"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 

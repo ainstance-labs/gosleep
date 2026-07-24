@@ -230,10 +230,54 @@ export function Age({
  * as 0, never as a plausible default, never as a green tick.
  */
 export function Unknown({ why }: { why?: string }): VNode {
+  const reason = why ?? "no source on disk for this value";
+  // GSL-209: the reason used to be delivered by `title=` alone. A tooltip is a MOUSE feature: it is
+  // unreachable from a keyboard, unreachable on a phone (where this dashboard is explicitly meant to
+  // be read), and invisible to anything that is not a pointer. The reason is not decoration here —
+  // it is the half of the value that says WHY it is missing, and this whole component exists because
+  // "nobody is working" and "I cannot see who is working" must never render alike.
+  //
+  // Three doors to one string, and no JavaScript in any of them:
+  //   title      — the mouse, unchanged (the pointer user loses nothing)
+  //   tabindex+  — a keyboard Tab focuses it, and :focus reveals the reason inline
+  //   the DOM    — the text is IN the page, so page search finds it and a screen reader reads it
+  //
+  // THE TRADE-OFF, STATED: this adds a tab stop per unknown, and the Tasks board has 152 of them.
+  // That is a real cost and it was weighed against the alternative, which is 152 explanations that
+  // a keyboard user cannot reach at all. A value that cannot state its own absence is the failure
+  // this dashboard was built to refuse; a long tab order is an inconvenience.
   return (
-    <span class="unknown" title={why ?? "no source on disk for this value"}>
+    <span class="unknown" tabindex={0} title={reason} aria-label={"unknown — " + reason}>
       unknown
+      <span class="unk-why">{reason}</span>
     </span>
+  );
+}
+
+/**
+ * GSL-209: the two controls this dashboard shipped without — a theme switch and one search across
+ * whatever the screen is showing.
+ *
+ * SHIPS `hidden`, LIKE THE FILTER BAR, and for the same reason: a control the reader can operate
+ * that changes nothing is worse than no control at all. client.ts reveals it only once it has wired
+ * both halves. With scripting off the page is exactly what it always was.
+ *
+ * The count line beside it is not a caption — it is the same safety rail filter.ts is built around.
+ * A page sitting under a search somebody forgot looks exactly like a quiet night: empty. So the
+ * moment one row is hidden, the page says so, in words, next to the box that hid it.
+ */
+export function PageControls(): VNode {
+  return (
+    <div class="chrome-controls" id="page-controls" hidden>
+      <label class="ctl-search">
+        <span>search</span>
+        <input type="search" id="page-search" placeholder="anything on this screen" />
+      </label>
+      <p class="filter-count" id="page-search-count" hidden></p>
+      <button type="button" id="theme-toggle" aria-pressed="false">
+        theme
+      </button>
+    </div>
   );
 }
 

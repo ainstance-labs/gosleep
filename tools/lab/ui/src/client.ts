@@ -217,6 +217,27 @@ function tickAges(): void {
  *
  * Every screen ships this bundle; only two carry islands. The rest fall out of the loop immediately.
  */
+/* ═══════════════ GSL-209: ONE visibility rule, two things that hide rows ═══════════════
+ *
+ * The island filter (below) and the page search (further down) both want to hide table rows, and a
+ * row must not be able to be hidden by one and un-hidden by the other. The bug that shape produces
+ * is not a wobble — it is the filter's count sentence going quietly false ("all 200 shown" over a
+ * table where the search has hidden 190), and that sentence is the safety rail the whole filter
+ * feature is built around.
+ *
+ * So neither of them touches `hidden` directly. Each records its own verdict in its own dataset
+ * flag, and this one function ANDs them. A third mechanism tomorrow adds a third flag here and
+ * nothing else changes.
+ */
+function setVisible(row: HTMLElement, key: "fHidden" | "sHidden", hide: boolean): void {
+  if (hide) row.dataset[key] = "1";
+  else delete row.dataset[key];
+  row.hidden = row.dataset["fHidden"] === "1" || row.dataset["sHidden"] === "1";
+}
+
+/** What the island filters must re-run when the page search changes what is visible. */
+const RECOUNT: Array<() => void> = [];
+
 function initFilters(): void {
   for (const bar of Array.from(document.querySelectorAll<HTMLElement>("[data-filter-island]"))) {
     const idx = readJson<FilterIndex>(bar.dataset["filterIsland"] ?? "");
@@ -232,21 +253,23 @@ function initFilters(): void {
       const active: Record<string, string> = {};
       for (const s of selects) active[s.dataset["facet"] ?? ""] = s.value;
 
-      let shown = 0;
       for (const r of rows) {
         // The island's record for THIS row, joined on the index the renderer stamped into both.
         // A row with no record survives — see matchesFilter: hiding a row we failed to classify is
         // an invisible subtraction from the feed the owner reads to find out what broke tonight.
         const ok = matchesFilter(idx.rows[Number(r.dataset["row"])], active, idx.search, search?.value ?? "");
-        r.hidden = !ok;
-        if (ok) shown++;
+        setVisible(r, "fHidden", !ok);
       }
 
-      // The rail. Counted over the rows actually IN the table, not over idx.total: if those two ever
-      // disagree, the DOM is what the reader is looking at, and the sentence must be true about that.
+      // The rail. Counted over the rows actually VISIBLE in the table, not over idx.total and not
+      // over this filter's own verdict: since GSL-209 the page search can hide a row too, and a
+      // sentence that counted only what THIS control hid would be false the moment the other one
+      // ran. What the reader is looking at is the DOM, and the sentence must be true about that.
+      const shown = rows.filter((r) => !r.hidden).length;
       countEl.textContent = countSentence(shown, rows.length);
       countEl.className = countClass(shown, rows.length);
     };
+    RECOUNT.push(apply);
 
     for (const s of selects) s.addEventListener("change", apply);
     if (search) search.addEventListener("input", apply);
@@ -265,7 +288,138 @@ function initFilters(): void {
   }
 }
 
+/**
+ * GSL-209 — the theme switch.
+ *
+ * The stylesheet already declared dark twice (`prefers-color-scheme` AND `:root[data-theme]`), so
+ * the whole mechanism is one attribute on <html>. What did not exist was any way for a reader to
+ * MOVE it: the dashboard followed the operating system and offered no opinion of its own, which is
+ * fine at a desk and wrong at 03:00 in a dark room on a laptop set to light.
+ *
+ * IT IS PERSISTED, and filter.ts explains why that is not a contradiction. A filter is a VIEW OF
+ * THE DATA, and a remembered filter is the forgotten-filter trap with a memory: the owner opens the
+ * page tomorrow and reads last week's narrow slice as tonight's whole night. A theme hides nothing
+ * and means nothing; it is a preference about ink. Remembering it is what a reader expects, and
+ * forgetting it every time is the annoyance, not the safeguard.
+ *
+ * localStorage can THROW on file:// under some settings, which is exactly where this page is meant
+ * to work. Every touch of it is guarded, and a failure costs the memory, never the toggle.
+ */
+function initTheme(): void {
+  const btn = document.getElementById("theme-toggle") as HTMLButtonElement | null;
+  const controls = document.getElementById("page-controls");
+  if (!btn || !controls) return;
+  const root = document.documentElement;
+
+  const read = (): string | null => {
+    try { return localStorage.getItem("gosleep-theme"); } catch { return null; }
+  };
+  const write = (v: string): void => {
+    try { localStorage.setItem("gosleep-theme", v); } catch { /* file:// may refuse; the toggle still works */ }
+  };
+  /** What the reader is looking at right now — the explicit choice, else the system's. */
+  const effective = (): string => {
+    const set = root.getAttribute("data-theme");
+    if (set === "dark" || set === "light") return set;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  };
+  const paint = (): void => {
+    const now = effective();
+    btn.setAttribute("aria-pressed", now === "dark" ? "true" : "false");
+    // The label names WHERE THE CLICK GOES, not where you are: a button that says "dark" while the
+    // page is dark reads as a state readout that has stopped working.
+    btn.textContent = now === "dark" ? "light theme" : "dark theme";
+  };
+
+  const saved = read();
+  if (saved === "dark" || saved === "light") root.setAttribute("data-theme", saved);
+  paint();
+
+  btn.addEventListener("click", () => {
+    const next = effective() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    write(next);
+    paint();
+  });
+
+  // The band is revealed HERE, at the end, and by the control that can always do something. The
+  // search box may have taken itself out above (a screen with nothing to search); the theme button
+  // works on every page there is.
+  controls.hidden = false;
+}
+
+/**
+ * GSL-209 — one search across whatever this screen is showing.
+ *
+ * Two screens had a filter; the other five had no way to find anything at all, on pages that run to
+ * twelve thousand pixels. This searches the rendered TEXT of every table row on the page, which is
+ * a deliberately different thing from the island filter beside it on Timeline and Library:
+ *
+ *   the island filter matches RECORDS — typed facets, exact values, the data behind the cells.
+ *   this matches WHAT IS PRINTED — because the reader is looking for a string he saw, and he does
+ *   not know or care which column it lives in.
+ *
+ * They compose rather than compete: both go through setVisible, and the island's count sentence is
+ * recomputed from the DOM afterwards, so it stays true about the table the reader is looking at.
+ *
+ * AND IT SAYS WHAT IT HID. The same rail as filter.ts, for the same reason — a page under a
+ * forgotten search is indistinguishable from a quiet night.
+ */
+function initSearch(): void {
+  const box = document.getElementById("page-search") as HTMLInputElement | null;
+  const countEl = document.getElementById("page-search-count");
+  const controls = document.getElementById("page-controls");
+  if (!box || !countEl || !controls) return;
+
+  // WHAT COUNTS AS A ROW. Not every screen is a table: the queue is a stack of cards, the Tasks
+  // board rolls its epics up in <details>. Searching only <tr> would have left Questions — the one
+  // screen whose entire subject is "what is waiting for you" — with a box that finds nothing.
+  //
+  // A unit is a table row with cells, a card, or an epic rollup. A container that HOLDS one of the
+  // others is excluded, so hiding a unit never hides the unit inside it (and a card wrapping a
+  // table is a section heading, not a search hit).
+  //
+  // Captured ONCE: these pages are static, written at build time — nothing here ever creates a unit.
+  const rows: HTMLElement[] = [];
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>("main tr, main .card, main details.epic"))) {
+    if (el.tagName === "TR" && !el.querySelector("td")) continue; // the header row
+    if (el.tagName !== "TR" && el.querySelector("table, .card, details.epic")) continue;
+    rows.push(el);
+  }
+
+  const apply = (): void => {
+    const q = box.value.trim().toLowerCase();
+    for (const r of rows) {
+      setVisible(r, "sHidden", q !== "" && !(r.textContent ?? "").toLowerCase().includes(q));
+    }
+    // Recompute the island filters' sentences over the new DOM before writing our own.
+    for (const f of RECOUNT) f();
+
+    const shown = rows.filter((r) => !r.hidden).length;
+    countEl.hidden = q === "";
+    countEl.textContent = countSentence(shown, rows.length);
+    countEl.className = countClass(shown, rows.length);
+  };
+
+  box.addEventListener("input", apply);
+  // Escape clears — the cheapest possible exit from a search that hid everything.
+  box.addEventListener("keydown", (e) => {
+    if ((e as KeyboardEvent).key === "Escape") { box.value = ""; apply(); }
+  });
+
+  // Revealed only now that it can actually do something. A search box over zero units would be a
+  // control that changes nothing, which is the one thing worse than no control — so on such a page
+  // the BOX goes away and the theme button (which always works) stays.
+  if (rows.length === 0) {
+    const label = controls.querySelector<HTMLElement>(".ctl-search");
+    if (label) label.hidden = true;
+  }
+}
+
 regradeStaleness();
 tickCountdowns();
 tickAges();
 initFilters();
+// AFTER initFilters: the search pushes its recount through RECOUNT, which the filters fill in.
+initSearch();
+initTheme();

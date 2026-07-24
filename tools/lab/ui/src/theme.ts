@@ -378,8 +378,39 @@ span.dead{color:var(--dead)}
    broken by the absence marker itself. Only the span that SAYS "unknown" is the marker; a
    container takes its state on the left edge (.sh-m.unknown) or on the value ink
    (.clock.unknown .clock-val), never in the ink of its prose. */
-span.unknown{color:var(--unk);font-style:normal;cursor:help;
+span.unknown{color:var(--unk);font-style:normal;cursor:help;position:relative;
       text-decoration:underline dotted;text-underline-offset:2px}
+/* GSL-209: the reason, reachable without a mouse. It was delivered by title= alone — a POINTER
+   feature: no keyboard, no touch, and this dashboard is explicitly meant to be read on a phone.
+   The text now lives in the DOM (so page search finds it and a screen reader reads it) and is
+   revealed on hover AND on focus, which is what makes Tab and a tap work. Absolutely positioned so
+   revealing it never reflows the table underneath — a tooltip that moves the row the reader is
+   pointing at is worse than none. */
+span.unknown .unk-why{display:none}
+span.unknown:hover .unk-why,span.unknown:focus .unk-why,span.unknown:focus-within .unk-why{
+      display:block;position:absolute;z-index:5;left:0;top:calc(100% + 4px);width:max-content;
+      max-width:46ch;padding:var(--s2) var(--s3);border-radius:var(--r2);
+      background:var(--card);border:1px solid var(--unk-border);color:var(--fg);
+      font:400 var(--t-base)/1.5 var(--sans);text-decoration:none;
+      box-shadow:0 2px 8px rgba(0,0,0,.18)}
+span.unknown:focus{outline:2px solid var(--unk);outline-offset:2px}
+
+/* GSL-209: the two controls the dashboard shipped without. Chrome, therefore quieter than data
+   (rule 1) — a bordered input and a bordered button, no fill, no colour. Both ship hidden and are
+   revealed by client.ts once wired; with scripting off neither is ever seen. */
+.chrome-controls{display:flex;align-items:center;gap:var(--s2) var(--s3);flex-wrap:wrap;
+      margin-top:var(--s3)}
+.ctl-search{display:flex;align-items:center;gap:var(--s2)}
+.ctl-search>span{color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
+      text-transform:uppercase;letter-spacing:.06em}
+#page-search{min-width:22ch;padding:4px var(--s2);border-radius:var(--r1);
+      border:1px solid var(--line);background:var(--card);color:var(--fg);
+      font:400 var(--t-md)/1.5 var(--sans)}
+#theme-toggle{margin-left:auto;padding:4px var(--s3);border-radius:var(--r1);
+      border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;
+      font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em}
+#theme-toggle:hover{color:var(--fg);border-color:var(--line-strong,var(--line))}
+#page-search-count{margin:0}
 /* A caveat is not an alarm: what this screen cannot see is stated quietly, on the inset surface,
    without borrowing amber from the states that earned it. */
 .card.blind{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
