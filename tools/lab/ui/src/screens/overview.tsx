@@ -19,10 +19,15 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
 
       {/* R5.3 (GSL-99): and immediately under the answer, what the answer is WORTH. A dashboard that
           has quietly gone stale is worse than no dashboard — it still looks authoritative. So the
-          page's own rot is reported here, above the evidence it qualifies, not buried at the bottom. */}
+          page's own rot is reported here, above the evidence it qualifies, not buried at the bottom.
+
+          GSL-207 kept the POSITION and folded the DETAIL (see selfhealth.tsx): the three verdicts
+          stay on screen in one line, the twelve hundred pixels behind them do not. Measured before:
+          the KPI tiles below began at 2010px and "Waiting for you" at 2114px — the two blocks the
+          owner opens this page for, both past two full screens of scrolling. */}
       <SelfHealthPanel b={b} />
 
-      <div class="grid">
+      <div class="grid" id="overview-kpi">
         <div class="kpi">
           <b>{b.events.today}</b>
           <span>events today</span>
@@ -48,7 +53,7 @@ export function Overview({ b }: { b: RenderBundle }): VNode {
         </>
       ) : null}
 
-      <h2>Waiting for you ({q.open})</h2>
+      <h2 id="waiting-for-you">Waiting for you ({q.open})</h2>
       {q.items.length === 0 ? (
         <Empty>
           Nothing is waiting for you. The night decided everything it was licensed to decide.

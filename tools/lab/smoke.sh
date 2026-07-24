@@ -3328,9 +3328,20 @@ FW2H="$CR/docs/lab/site/fleet.html"
 grep -q '\.kpi span:not(\.unknown)' "$FW2H" \
   && ok "GSL-146: the KPI label selector excludes span.unknown — the value is not a caption" \
   || bad "GSL-146: .kpi span swallows span.unknown — an unknown KPI renders as two captions"
-grep -q '\.wk-f span:not(\.unknown)' "$FW2H" \
-  && ok "GSL-146: the worker-field label selector excludes span.unknown" \
-  || bad "GSL-146: .wk-f span swallows span.unknown — the absence marker loses --unk"
+# GSL-207 retired the worker CARD and with it the `.wk-f` field grid, so the selector this half
+# guarded no longer exists. The guard is not deleted — it is made conditional, because the defect is
+# a property of ANY generic descendant-span label rule, and the day someone reintroduces one on this
+# screen it must still be caught. Silently dropping the assertion would trade a real check for a
+# green count, which is the failure mode this file exists to refuse.
+if grep -q '\.wk-f span' "$FW2H"; then
+  grep -q '\.wk-f span:not(\.unknown)' "$FW2H" \
+    && ok "GSL-146: the worker-field label selector excludes span.unknown" \
+    || bad "GSL-146: .wk-f span swallows span.unknown — the absence marker loses --unk"
+else
+  grep -q '\.wk-f' "$FW2H" \
+    && bad "GSL-146: a .wk-f rule is back on Fleet without the :not(.unknown) label guard" \
+    || ok "GSL-146: the worker-field grid retired with the card (GSL-207) — no generic label selector is left on Fleet to swallow span.unknown"
+fi
 grep -q 'class="unknown"' "$FW2H" \
   && ok "GSL-146 control: the fixture Fleet page really renders span.unknown (the greps above bite)" \
   || bad "GSL-146 control: no span.unknown on the fixture Fleet page — the checks above are vacuous"
@@ -3668,6 +3679,41 @@ grep -q 'class="key-col"' "$LK/docs/lab/site/tasks.html" \
 grep -q 'td\.key-col,th\.key-col{min-width:9ch' "$LK/docs/lab/site/tasks.html" \
   && ok "GSL-208 control: the stylesheet actually defines .key-col — the class has a customer" \
   || bad "GSL-208 control: .key-col is marked up but never painted"
+
+echo "== GSL-207: the hygiene fold, and the fleet as a table =="
+# Measured before this: the KPI tiles began at 2010px and "Waiting for you" at 2114px, behind ~1200px
+# of self-health meters. The DETAIL folds; the VERDICT does not — three chips carry all three meter
+# states in the summary line whether the fold is open or shut. Nothing is hidden except evidence.
+grep -q '<details class="sh-fold"' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-207: the self-health detail is folded, not deleted and not left 1200px tall" \
+  || bad "GSL-207: no fold on the self-health panel"
+SH_CHIPS="$(grep -o 'class="sh-chip[^"]*"' "$LK/docs/lab/site/index.html" | wc -l | tr -d ' ')"
+[[ "$SH_CHIPS" -eq 3 ]] \
+  && ok "GSL-207: all three meter verdicts stay on screen as chips — the fold costs no information" \
+  || bad "GSL-207: expected 3 verdict chips in the fold summary, found $SH_CHIPS"
+# The fold is CLOSED on a fresh page (this fixture) and OPEN on a dead one ($FW3, the GSL-157
+# fixture, whose whole purpose is to grade itself dead). That is the entire policy: it opens when the
+# meters are about the correctness of what is on screen, and on nothing else.
+grep -q '<details class="sh-fold" open' "$LK/docs/lab/site/index.html" \
+  && bad "GSL-207: the fold is open on a FRESH page — it would be open on most days, which is no fold" \
+  || ok "GSL-207: on a fresh page the fold stays shut and the KPI tiles come up the screen"
+grep -q '<details class="sh-fold" open' "$CRI" \
+  && ok "GSL-207 ⭐ on a DEAD page the fold opens itself — the evidence is in the way, before the numbers" \
+  || bad "GSL-207 ⭐ a dead page folded its own rot report away. That is the defect this panel exists to prevent."
+grep -q '\.sh-fold>summary{cursor:pointer' "$CRI" \
+  && ok "GSL-207 control: the stylesheet paints the fold summary — the class has a customer" \
+  || bad "GSL-207 control: .sh-fold has no rule"
+# Fleet: nine cards of eight fields each, for eight workers eleven days old, is a table.
+grep -q '<table id="fleet-rows">' "$FLH" \
+  && ok "GSL-207: Fleet renders its workers as one table, not as a card per worker" \
+  || bad "GSL-207: Fleet is still a stack of cards"
+FL_ROWS="$(grep -o '<tr class="wk [a-z]*"' "$FLH" | wc -l | tr -d ' ')"
+[[ "$FL_ROWS" -eq 3 ]] \
+  && ok "GSL-207: three named workers -> three table rows, each still carrying its state class" \
+  || bad "GSL-207: expected 3 worker rows on the fixture Fleet, found $FL_ROWS"
+grep -q '\.wk\.silent \.wk-age{color:var(--warn)}' "$FLH" \
+  && ok "GSL-207: silent is still AMBER on the row — the table did not earn the right to say dead" \
+  || bad "GSL-207: the silent worker lost its amber when the card became a row"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

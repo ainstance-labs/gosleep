@@ -239,10 +239,65 @@ export function SelfHealthPanel({ b }: { b: RenderBundle }): VNode {
   const built = Date.parse(b.generated_at);
   return (
     <section id="self-health" data-grade={h.grade} data-dh={h.dev_history.state} data-ho={h.handoffs.state}>
-      <h2>What this laboratory knows about its own rot</h2>
-      <Freshness h={h} built={built} />
-      <DevHistory h={h} />
-      <Handoffs h={h} built={built} />
+      {/*
+        GSL-207: FOLDED, NOT REMOVED, AND NEVER SILENT.
+
+        These three meters are ~1200px tall, and they sat between the runway strip and everything the
+        owner opens this page for — measured, the KPI tiles began at 2010px and "Waiting for you" at
+        2114px, both below two full screens of a page whose whole job is to be read at 07:00.
+
+        The temptation was to move them to the bottom. That would have been the wrong fix twice over:
+        the panel qualifies the answer above it, and a page that buries its own rot report is the
+        exact failure this panel was built to prevent (GSL-99). So the DETAIL folds and the VERDICT
+        does not — the summary line below carries all three states and is always on screen, in one
+        line instead of twelve hundred pixels.
+
+        WHAT OPENS IT, and why exactly one thing. A fold that hides a problem is the forgotten-filter
+        trap wearing a triangle (filter.ts), so the bar had to be drawn somewhere defensible. It is
+        drawn at `grade === "dead"` and nowhere else: that is the one state where the meters are
+        about the CORRECTNESS OF WHAT IS ON SCREEN — the numbers below may be days old — so the
+        evidence belongs open, in the reader's way, before he reads them.
+
+        `dev_history: gaps` and `handoffs: debt` deliberately do NOT open it, and the handoff alarm
+        does not either. They are true of a live project on most days (today: 6 undocumented cycles
+        against an alarm_at of 3), and a fold that is open on most days is not a fold — it is the
+        1200px this ticket exists to fold away. They are also not about the data on this page: they
+        are process debt, and the chip states them, in words, at the top, every time.
+
+        Nothing is concealed either way. The three chips print all three states whether the fold is
+        open or shut, and an alarm gets its own sentence beside them. What folds is the EVIDENCE,
+        never the verdict.
+      */}
+      <details class="sh-fold" open={h.grade === "dead"}>
+        <summary>
+          <span class="sh-fold-title">What this laboratory knows about its own rot</span>{" "}
+          {/* Its own class, never `sh-m` (the GSL-160 lesson): `sh-m` is the meter CARD's left-edge
+              rule, and a chip wearing it would satisfy the GSL-157 assertion that the Freshness card
+              turns red — from up here, where nothing was measured. Same tones, by value, different
+              name. And the WORD is beside the colour, always, because hue is never the only channel. */}
+          <span class={"sh-chip " + meterClass(h.grade === "fresh" ? "ok" : h.grade === "stale" ? "gaps" : h.grade === "dead" ? "dead" : "unknown")}>
+            freshness {h.grade}
+          </span>{" "}
+          <span class={"sh-chip " + meterClass(h.dev_history.state)}>
+            dev_history {h.dev_history.state}
+          </span>{" "}
+          <span class={"sh-chip " + meterClass(h.handoffs.state, h.handoffs.alarm)}>
+            handoffs {h.handoffs.state}
+          </span>
+          {/* An alarm may not be delivered as a colour alone: hue is the second channel here, never
+              the only one, and this one is folded shut by default. So it says it. */}
+          {h.handoffs.alarm ? (
+            <span class="sh-alarm">
+              {" "}
+              — {h.handoffs.undocumented_cycles ?? "some"} cycle(s) closed with nothing written down,
+              past the alarm at {h.handoffs.alarm_at}
+            </span>
+          ) : null}
+        </summary>
+        <Freshness h={h} built={built} />
+        <DevHistory h={h} />
+        <Handoffs h={h} built={built} />
+      </details>
     </section>
   );
 }

@@ -62,8 +62,42 @@ def log(msg):
 # status.json, and on the page — because "the digest is missing section 5" and "there was nothing in
 # section 5" look identical to a sleeping owner, and they are not the same thing at all.
 DEGRADED = []
+HOME = os.path.expanduser("~")
+
+
+def unhome(v):
+    """GSL-208: a value the owner reads must not carry the owner's home directory.
+
+    Two rewrites, in this order, and NOTHING else is touched:
+
+      <repo>/docs/lab/x.md   ->  docs/lab/x.md      a location in THIS repository, said as one
+      ~/anything/else        ->  ~/anything/else    still a path, minus the account name
+
+    Why both. Only the first would leave every sibling worktree (`gosleep-audit-preserve`, where the
+    audit ran) printing /Users/<name>/... in full, which is the leak, and the leak is not this one
+    repository -- it is the account name and the machine layout, in a file that is COMMITTED and read
+    on a phone. Only the second would keep this repository shouting an absolute prefix at itself on
+    every row, which is noise, not information.
+
+    NOT A TRUNCATION. GSL-124 is the standing rule here: values travel whole. Nothing is cut, nothing
+    is elided, no ellipsis is added -- a prefix is rewritten to a shorter spelling of the SAME place,
+    and the remainder of the string is byte-for-byte what the emitter wrote. Applied to every string
+    in the projected payload rather than to `path` alone, because the raw-output fields (`cmd`) carry
+    the same prefix and are read by the same eyes.
+    """
+    if not isinstance(v, str) or "/" not in v:
+        return v
+    if REPO and REPO != "/":
+        v = v.replace(REPO.rstrip("/") + "/", "")
+    if HOME and HOME != "/":
+        v = v.replace(HOME.rstrip("/") + "/", "~/")
+    return v
+
+
 def degrade(source, why):
-    DEGRADED.append({"source": source, "why": str(why)[:200]})
+    # GSL-208: a degradation message names the path it could not read, and that path is usually an
+    # absolute one under the home directory. Same leak, different door.
+    DEGRADED.append({"source": source, "why": unhome(str(why))[:200]})
     log("degraded: %s — %s" % (source, str(why)[:120]))
 
 # lab-emit resolves the lab through GOSLEEP_LAB_DIR, so a chronicler pointed at --repo <throwaway>
@@ -2096,38 +2130,6 @@ RECENT_CAP = int(os.environ.get("GOSLEEP_RECENT_CAP", 200))
 # eventDetail). Add a key here the day a screen needs it -- not before.
 EVENT_VIEW_KEYS = ("ts", "seq", "actor", "type", "src")
 EVENT_DATA_KEYS = ("sha", "path", "key", "question", "error_type", "decision", "cmd")
-
-
-HOME = os.path.expanduser("~")
-
-
-def unhome(v):
-    """GSL-208: a value the owner reads must not carry the owner's home directory.
-
-    Two rewrites, in this order, and NOTHING else is touched:
-
-      <repo>/docs/lab/x.md   ->  docs/lab/x.md      a location in THIS repository, said as one
-      ~/anything/else        ->  ~/anything/else    still a path, minus the account name
-
-    Why both. Only the first would leave every sibling worktree (`gosleep-audit-preserve`, where the
-    audit ran) printing /Users/<name>/... in full, which is the leak, and the leak is not this one
-    repository -- it is the account name and the machine layout, in a file that is COMMITTED and read
-    on a phone. Only the second would keep this repository shouting an absolute prefix at itself on
-    every row, which is noise, not information.
-
-    NOT A TRUNCATION. GSL-124 is the standing rule here: values travel whole. Nothing is cut, nothing
-    is elided, no ellipsis is added -- a prefix is rewritten to a shorter spelling of the SAME place,
-    and the remainder of the string is byte-for-byte what the emitter wrote. Applied to every string
-    in the projected payload rather than to `path` alone, because the raw-output fields (`cmd`) carry
-    the same prefix and are read by the same eyes.
-    """
-    if not isinstance(v, str) or "/" not in v:
-        return v
-    if REPO and REPO != "/":
-        v = v.replace(REPO.rstrip("/") + "/", "")
-    if HOME and HOME != "/":
-        v = v.replace(HOME.rstrip("/") + "/", "~/")
-    return v
 
 
 def project_event(e):

@@ -505,35 +505,30 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .ui-degraded code{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);
       padding:0 var(--s1)}
 
-/* GSL-98: the worker card. THE AGE IS THE HEADLINE and the CSS is where that stops being an
-   opinion — it is set in the largest type on the card, above the name, because a worker nobody has
-   heard from in an hour is not working, it is silent.
+/* GSL-98/GSL-207: the worker ROW. THE AGE IS STILL THE HEADLINE and the CSS is where that stops
+   being an opinion — it is the only value in the row set in mono display type, because a worker
+   nobody has heard from in an hour is not working, it is silent.
+   GSL-207 retired the card: eight of nine workers eleven days old is a list, and a list of one
+   question ("who is quiet, and for how long") is a column, not 2.5 screens of equal-weight cards.
+   The type scale drops from hero to lg accordingly — in a row, hero is shouting; the ink and the
+   position carry the emphasis instead.
    Three states, three inks. SILENT IS AMBER, never red: red would read as dead, and dead is the
    one claim this screen is not entitled to make — a worker thinking inside a long tool call and a
    worker whose process is gone look identical from here. ENDED is muted grey; a finished worker is
    not a problem.
-   ⚠️ NOTHING MAY BE NESTED INSIDE .wk-age beyond what is already there: smoke.sh:645 captures its
+   ⚠️ NOTHING MAY BE NESTED INSIDE .wk-age beyond what is already there: smoke.sh captures its
    contents non-greedily, and client.ts repaints it by textContent. */
-.wk{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);
-      padding:var(--s3) var(--s4);margin:var(--s2) 0}
-.wk-top{display:flex;align-items:baseline;gap:var(--s2) var(--s3);flex-wrap:wrap}
-.wk-age{font:500 var(--t-hero)/1.15 var(--mono);font-variant-numeric:tabular-nums}
+.wk-age{font:500 var(--t-lg)/1.2 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .wk-age small{display:block;font:400 var(--t-xs)/1.5 var(--sans);color:var(--muted);
       text-transform:uppercase;letter-spacing:.06em}
 .wk-name{font:400 var(--t-md)/1.5 var(--mono);color:var(--fg)}
 .wk.active .wk-age{color:var(--ok)}
 .wk.silent .wk-age{color:var(--warn)}
 .wk.ended  .wk-age{color:var(--muted)}
-.wk.silent{border-color:var(--warn-border)}
-.wk-why{color:var(--dim);font:400 var(--t-base)/1.5 var(--sans);margin:var(--s2) 0;max-width:68ch}
-.wk-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s2) var(--s3);
-      border-top:1px solid var(--line-subtle);padding-top:var(--s2);font-size:var(--t-md)}
-/* :not(.unknown) for the same cascade reason as ".kpi span": a field whose value is unknown puts
-   span.unknown NEXT TO the label span, and the label rule must not caption-ify the value. */
-.wk-f span:not(.unknown){display:block;color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
-      text-transform:uppercase;letter-spacing:.06em}
-.wk-task{margin-top:var(--s2);font-size:var(--t-md)}
-.wk-models{color:var(--warn)}
+/* Amber on the left edge of the row, since a tr cannot carry a border the way the card did. */
+.wk.silent td:first-child{box-shadow:inset 2px 0 0 var(--warn)}
+.wk-why{color:var(--dim);font:400 var(--t-base)/1.4 var(--sans);margin:var(--s1) 0 0;max-width:44ch}
+.wk-models{color:var(--warn);font-size:var(--t-xs)}
 
 /* GSL-99: the self-health meters — the page reporting its own rot. The state lives on the LEFT
    EDGE of the card, not in the ink of its prose: the card is full of sentences, and tinting all of
@@ -547,6 +542,22 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .sh-m.dead{border-left-color:var(--dead);background:var(--dead-soft)}
 .sh-m.dim{border-left-color:var(--line)}
 .sh-m.unknown{border-left-color:var(--unk)}
+/* GSL-207: the fold and its always-visible verdict chips. The triangle is the browser default and
+   is left alone — a <details> that hides its own affordance is a control nobody finds. The chips
+   carry the three meter states in ONE line so the folding costs the reader no information, only
+   1200px; they take their own name (never .sh-m, which is the meter CARD rule) and each prints its
+   state as a WORD beside its colour, because hue is a second channel here and never the only one. */
+.sh-fold>summary{cursor:pointer;padding:var(--s2) 0;list-style-position:outside}
+.sh-fold-title{font:500 var(--t-lg)/1.3 var(--sans);color:var(--fg)}
+.sh-chip{display:inline-block;font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
+      letter-spacing:.06em;padding:1px var(--s2);border-radius:var(--r1);
+      background:var(--sunken);color:var(--muted);border-left:2px solid var(--line)}
+.sh-chip.ok{border-left-color:var(--ok)}
+.sh-chip.warn{border-left-color:var(--warn)}
+.sh-chip.dead{border-left-color:var(--dead);background:var(--dead-soft)}
+.sh-chip.dim{border-left-color:var(--line)}
+.sh-chip.unknown{border-left-color:var(--unk)}
+.sh-alarm{color:var(--warn);font:400 var(--t-base)/1.5 var(--sans)}
 .sh-h{font-weight:500;margin-bottom:var(--s2);font-size:var(--t-md)}
 .sh-row{font-size:var(--t-md);margin:var(--s1) 0}
 .sh-k{color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
@@ -567,7 +578,9 @@ footer{color:var(--muted);font-size:var(--t-sm);margin-top:var(--s7);
   body{padding:var(--s3) var(--s3) var(--s6)}
   h1{font-size:var(--t-lg)}
   .runway{padding:var(--s3)}
-  .runway-big,.kpi b,.clock-val,.wk-age{font-size:var(--t-xl)}
+  /* .wk-age left out since GSL-207: it is a table cell now, at --t-lg, and this rule would make it
+     BIGGER on a phone than on the desktop it was tuned for. */
+  .runway-big,.kpi b,.clock-val{font-size:var(--t-xl)}
   .sh-k{min-width:auto;display:block}
   td{padding:6px 8px}
   th{padding:4px 8px}

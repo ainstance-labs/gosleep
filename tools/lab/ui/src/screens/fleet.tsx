@@ -24,6 +24,26 @@ const AGE_LABEL: Record<FleetWorker["state"], string> = {
   ended: "ended · last event",
 };
 
+/**
+ * GSL-207: ONE ROW PER WORKER, not one card.
+ *
+ * The card was right when a worker was an event. It is wrong now: eight of nine workers on the live
+ * board are eleven days old, and nine cards of eight fields each is 2.5 screens of scrolling to
+ * answer a question — "who has been quiet, and for how long" — that is a single sorted column. A
+ * card gives every worker the same weight; a table lets the eye run down one column and stop at the
+ * one that is wrong. That is the instrument-not-presentation rule of the design spec, applied to the
+ * screen that had drifted furthest from it.
+ *
+ * WHAT SURVIVES THE CHANGE, deliberately and by contract:
+ *   · `.wk-age` still wraps the age, still with nothing nested inside it beyond its label and the
+ *     Age span — smoke.sh captures its contents non-greedily and client.ts repaints it by
+ *     textContent, and both would break silently on a wrapper.
+ *   · the state class still rides the row, so `.wk.silent .wk-age` still paints amber. SILENT IS
+ *     AMBER, NEVER RED: this screen may not claim a worker is dead, and the table did not earn that
+ *     right by being a table.
+ *   · every `unknown` keeps its reason. A denser layout is not a licence to drop the half of a
+ *     value that says why it is missing.
+ */
 function Worker({
   w,
   built,
@@ -34,78 +54,58 @@ function Worker({
   links: LinkBases | undefined;
 }): VNode {
   return (
-    <div class={`wk ${w.state}`}>
-      <div class="wk-top">
-        {/* The age first, and physically above the name: it is the field the reader came for — and it
-            KEEPS AGING while the page is open. Baked at build time it would say `silent 12m` three
-            hours later, which is the reassuring direction on the one screen that must not comfort. */}
+    <tr class={`wk ${w.state}`} data-worker={w.name} data-state={w.state}>
+      <td class="mono key-col">
+        <span class="wk-name">{w.name}</span>
+      </td>
+      <td>
+        <b>{w.state}</b>
+        <div class="wk-why">{w.state_why}</div>
+      </td>
+      {/* The age, and it KEEPS AGING while the page is open. Baked at build time it would say
+          `silent 12m` three hours later — the reassuring direction, on the one screen that must
+          not comfort. It leads the data columns because it is the field the reader came for. */}
+      <td>
         <div class="wk-age" title={w.state_why}>
           <small>{AGE_LABEL[w.state]}</small>
           <Age ts={w.last_ts} built={built} fallback={w.last_age_human} />
         </div>
-        <div>
-          <div class="wk-name">{w.name}</div>
-          <div class="wk-why">{w.state_why}</div>
-        </div>
-      </div>
-
-      <div class="wk-f">
-        <div>
-          <span>state</span>
-          <b>{w.state}</b>
-        </div>
-        <div>
-          <span>model (from the transcript, not self-report)</span>
-          {w.model === null ? (
-            <Unknown why={w.model_why ?? undefined} />
-          ) : (
-            <b class="mono" title={w.model_source ?? undefined}>
-              {w.model}
-            </b>
-          )}
-          {/* Two models in one session is a mid-session switch. It is shown, not averaged away. */}
-          {w.models.length > 1 ? (
-            <div class="wk-models" title="more than one model appears in this session's transcript">
-              ⚠ also: {w.models.slice(1).join(", ")}
-            </div>
-          ) : null}
-        </div>
-        <div>
-          <span>pane</span>
-          <Unknown why={w.pane_why} />
-        </div>
-        <div>
-          <span>session</span>
-          <b class="mono" title={w.session_id}>
-            {w.session_short}
+      </td>
+      <td class="mono">
+        {w.model === null ? (
+          <Unknown why={w.model_why ?? undefined} />
+        ) : (
+          <b class="mono" title={w.model_source ?? undefined}>
+            {w.model}
           </b>
+        )}
+        {/* Two models in one session is a mid-session switch. It is shown, not averaged away. */}
+        {w.models.length > 1 ? (
+          <div class="wk-models" title="more than one model appears in this session's transcript">
+            ⚠ also: {w.models.slice(1).join(", ")}
+          </div>
+        ) : null}
+      </td>
+      <td class="mono">
+        <b class="mono" title={w.session_id}>
+          {w.session_short}
+        </b>
+        <div class="wk-why">
+          pane <Unknown why={w.pane_why} />
         </div>
-        <div>
-          <span>started</span>
-          {w.started_ts ? (
-            <b class="mono">{w.started_ts.slice(11, 19)}</b>
-          ) : (
-            <Unknown why={w.started_why ?? undefined} />
-          )}
-        </div>
-        <div>
-          <span>tokens out (ledger)</span>
-          {w.tokens_out === null ? (
-            <Unknown why={w.tokens_why ?? undefined} />
-          ) : (
-            <b class="mono" title={w.tokens_source}>
-              {w.tokens_out.toLocaleString("en-US")}
-            </b>
-          )}
-        </div>
-        <div>
-          <span>events</span>
-          <b class="mono">{w.events}</b>
-        </div>
-      </div>
-
-      <div class="wk-task">
-        <span class="dim">task: </span>
+      </td>
+      <td class="mono">
+        {w.started_ts ? w.started_ts.slice(11, 19) : <Unknown why={w.started_why ?? undefined} />}
+      </td>
+      <td class="num">
+        {w.tokens_out === null ? (
+          <Unknown why={w.tokens_why ?? undefined} />
+        ) : (
+          <span title={w.tokens_source}>{w.tokens_out.toLocaleString("en-US")}</span>
+        )}
+      </td>
+      <td class="num">{w.events}</td>
+      <td>
         {/* GSL-205: the subject a task.completed named opens with its key. Reading which worker did
             what and then having to go and find the ticket by hand is the seam this closes. */}
         {w.task ? (
@@ -113,8 +113,8 @@ function Worker({
         ) : (
           <Unknown why="no task.created/completed for this session names a subject" />
         )}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 
@@ -180,9 +180,24 @@ export function Fleet({ b }: { b: RenderBundle }): VNode {
             events but no name — they completed no task, so the log never learned who they were. Silent
             after {Math.round(f.quiet_after_s / 60)}m; <i>silent</i> is not <i>dead</i>.
           </div>
-          {f.workers.map((w) => (
-            <Worker key={w.session_id} w={w} built={built} links={b.links} />
-          ))}
+          <div class="wrap">
+            <table id="fleet-rows">
+              <tr>
+                <th class="key-col">worker</th>
+                <th>state</th>
+                <th>last event</th>
+                <th>model (transcript, not self-report)</th>
+                <th>session</th>
+                <th>started</th>
+                <th class="num">tokens out (ledger)</th>
+                <th class="num">events</th>
+                <th>task</th>
+              </tr>
+              {f.workers.map((w) => (
+                <Worker key={w.session_id} w={w} built={built} links={b.links} />
+              ))}
+            </table>
+          </div>
         </>
       )}
 
