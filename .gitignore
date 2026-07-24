@@ -48,3 +48,11 @@ docs/lab/scratch/
 # leaves one beside its target. lab-write sweeps them on the next pass; git never sees them.
 docs/lab/.*.tmp
 docs/lab/**/.*.tmp
+
+# Browser tooling runtime — written by the agent's own tools, never by the project.
+# gstack's browse skill drops its audit log and a capability probe here.
+.gstack/
+# The Playwright CLI dumps one page-<timestamp>.yml snapshot per look at a page:
+# dozens per QA session, all reproducible by looking again. Untracked they only
+# lengthened `git status` for the next agent — and rode along on any `git add -A`.
+.playwright-cli/

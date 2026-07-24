@@ -1,0 +1,194 @@
+[
+  {
+    "term_en": "Orchestrator",
+    "def_en": "The single agent session that plans the work, starts the worker agents, checks on them and writes down what happened. In this project it is one Claude Code session running in a terminal. Everything else in this report either serves it or worries about what happens when it stops.",
+    "term_ru": "Оркестратор",
+    "def_ru": "Одна агентская сессия, которая планирует работу, запускает воркеров, проверяет их и записывает, что произошло. В этом проекте это одна сессия Claude Code в терминале. Всё остальное в отчёте либо обслуживает её, либо беспокоится о том, что будет, когда она остановится."
+  },
+  {
+    "term_en": "Worker (teammate agent)",
+    "def_en": "A short-lived agent the orchestrator starts for one job — audit this zone, write this report, fix these files. It has its own context and reports back with a message. It cannot start other workers: the platform allows exactly one level of nesting.",
+    "term_ru": "Воркер (агент-напарник)",
+    "def_ru": "Короткоживущий агент, которого оркестратор запускает под одну задачу — проверить зону, написать отчёт, починить файлы. У него свой контекст, и он отчитывается сообщением. Сам он воркеров запускать не может: платформа даёт ровно один уровень вложенности."
+  },
+  {
+    "term_en": "Pulse (heartbeat)",
+    "def_en": "The orchestrator's habit of waking itself every few minutes to check the fleet, and the small file it writes each time to prove it is alive. Two different things share the name: the discipline (“check every 5–10 minutes”) and the artefact (a line of JSON on disk).",
+    "term_ru": "Пульс (heartbeat)",
+    "def_ru": "Привычка оркестратора будить себя каждые несколько минут, чтобы проверить флот, и маленький файл, который он при этом пишет, доказывая, что жив. Под одним словом живут две вещи: дисциплина («проверяться каждые 5–10 минут») и артефакт (строка JSON на диске)."
+  },
+  {
+    "term_en": "Watchdog / supervisor",
+    "def_en": "A program that watches the orchestrator from outside and restarts it if it dies. Ours is written and tested but has never been switched on. “Switched on” has a precise meaning here — see <em>armed</em>.",
+    "term_ru": "Сторож (watchdog) / супервизор",
+    "def_ru": "Программа, которая смотрит на оркестратора снаружи и перезапускает его, если он умер. Наша написана и протестирована, но ни разу не была включена. У слова «включена» здесь точный смысл — см. «вооружён»."
+  },
+  {
+    "term_en": "Armed",
+    "def_en": "A mechanism is <em>armed</em> when something on this machine will actually run it without a person: a launchd job exists, a cron line exists, a hook fires. Code that merely exists and passes its tests is <em>built</em>, not armed. The whole audit turns on this distinction.",
+    "term_ru": "Вооружён (armed)",
+    "def_ru": "Механизм «вооружён», когда на этой машине есть кто-то, кто его запустит без человека: заведено задание launchd, есть строка в cron, срабатывает хук. Код, который просто существует и проходит тесты, — «построен», но не вооружён. На этом различии держится весь аудит."
+  },
+  {
+    "term_en": "launchd / cron",
+    "def_en": "The two ways macOS runs something on a schedule without a human. <code>launchd</code> is the modern system service manager; <code>cron</code> is the classic timer table. Neither of them currently holds a single entry for this project.",
+    "term_ru": "launchd / cron",
+    "def_ru": "Два способа заставить macOS запускать что-то по расписанию без человека. <code>launchd</code> — современный менеджер системных служб, <code>cron</code> — классическая таблица таймеров. Сейчас ни в одном из них нет ни одной записи по этому проекту."
+  },
+  {
+    "term_en": "Headless mode (<code>claude -p</code>)",
+    "def_en": "Running an agent with a single prompt and no interactive terminal: it starts, answers, exits. Useful for scripts and timers. The open question was whether it works on a subscription instead of a paid API key — measured during this audit, it does.",
+    "term_ru": "Headless-режим (<code>claude -p</code>)",
+    "def_ru": "Запуск агента одним промптом без интерактивного терминала: стартовал, ответил, вышел. Удобно для скриптов и таймеров. Открытым был вопрос, работает ли он по подписке, а не по платному API-ключу — в этом аудите замерено: работает."
+  },
+  {
+    "term_en": "Subscription vs API key",
+    "def_en": "Two ways to pay for model calls. The subscription is the flat plan you already have; the API key bills per token. If an autonomous mechanism needed an API key, it would be a second, metered bill running all night — which is why the headless question mattered.",
+    "term_ru": "Подписка против API-ключа",
+    "def_ru": "Два способа оплачивать вызовы модели. Подписка — это тариф, который у вас уже есть; API-ключ тарифицируется по токенам. Если бы автономный механизм требовал ключа, это был бы второй, счётчиковый счёт, работающий всю ночь, — потому вопрос про headless и был важен."
+  },
+  {
+    "term_en": "Circuit breaker",
+    "def_en": "Borrowed from electrics: a rule that trips and stops a loop when it repeats without progress — “this step has been visited five times, stop and escalate”. Ours exists as two pages of prose and has never fired, because nothing counts the visits.",
+    "term_ru": "Circuit breaker (предохранитель)",
+    "def_ru": "Термин из электрики: правило, которое срабатывает и останавливает цикл, если он повторяется без прогресса — «этот шаг посещён пять раз, стой и эскалируй». У нас он существует как две страницы прозы и ни разу не сработал, потому что посещения никто не считает."
+  },
+  {
+    "term_en": "Question buffer",
+    "def_en": "The mechanism that lets an agent park a question instead of stopping to ask you. Each question gets a type, a deadline and a default answer; you read the batch in the morning. This is the one pillar the skills hold confidently.",
+    "term_ru": "Буфер вопросов",
+    "def_ru": "Механизм, который позволяет агенту отложить вопрос вместо остановки. У каждого вопроса есть тип, дедлайн и дефолтный ответ; вы читаете их пачкой утром. Это единственный столп, который скиллы держат уверенно."
+  },
+  {
+    "term_en": "Default by deadline",
+    "def_en": "The rule that a parked question answers itself with its default once its deadline passes, so the night is not blocked. The audit found the rule written down everywhere and applied by nobody — no process exists that walks the queue and applies it.",
+    "term_ru": "Дефолт по дедлайну",
+    "def_ru": "Правило, по которому отложенный вопрос сам отвечает своим дефолтом, когда проходит дедлайн, чтобы ночь не блокировалась. Аудит нашёл правило записанным везде и применяемым никем: не существует процесса, который проходит очередь и применяет его."
+  },
+  {
+    "term_en": "Decision manifest",
+    "def_en": "Your written standing preferences, so an agent can decide small things the way you would. Each automatic decision is supposed to cite the clause it relied on. Today three decisions cite a clause identifier that does not exist in the manifest.",
+    "term_ru": "Манифест решений",
+    "def_ru": "Ваши записанные постоянные предпочтения, чтобы агент решал мелочи так, как решили бы вы. Каждое автоматическое решение должно цитировать пункт, на который опирается. Сегодня три решения цитируют идентификатор пункта, которого в манифесте нет."
+  },
+  {
+    "term_en": "Laboratory / chronicler",
+    "def_en": "The laboratory is the self-documenting layer: hooks capture raw events while agents work, and a builder called the <em>chronicler</em> turns them into the pages you open. The capture is automatic. The builder is not — nothing runs it on a schedule.",
+    "term_ru": "Лаборатория / летописец",
+    "def_ru": "Лаборатория — самодокументирующийся слой: хуки ловят сырые события, пока агенты работают, а сборщик, «летописец», превращает их в страницы, которые вы открываете. Ловля автоматическая. Сборка — нет: её ничто не запускает по расписанию."
+  },
+  {
+    "term_en": "Stale (freshness)",
+    "def_en": "Data is <em>stale</em> when it is older than the interval it promises. A dashboard rebuilt on demand and read a day later shows yesterday's world with today's confidence. Freshness is why an unarmed builder is not a cosmetic problem.",
+    "term_ru": "Протухшее (свежесть)",
+    "def_ru": "Данные «протухли», когда они старше интервала, который сами обещают. Дашборд, собранный по требованию и прочитанный через сутки, показывает вчерашний мир с сегодняшней уверенностью. Из-за свежести невооружённый сборщик — не косметическая проблема."
+  },
+  {
+    "term_en": "Idempotent",
+    "def_en": "A job you can safely run twice: running it again changes nothing new. This is the property that makes a machine tick safe — if two ticks overlap, or one runs after a crash, nothing is duplicated or corrupted.",
+    "term_ru": "Идемпотентный",
+    "def_ru": "Работа, которую безопасно запустить дважды: повторный запуск ничего нового не меняет. Именно это свойство делает машинный тик безопасным — если два тика наложились или один сработал после падения, ничего не задвоится и не испортится."
+  },
+  {
+    "term_en": "Machine tick",
+    "def_en": "The proposed cure for most of this report: one small scheduled job, outside any model, that runs a list of idempotent chores — rebuild the dashboard, apply due defaults, refresh task statuses, check what is armed — and writes one line to one ledger.",
+    "term_ru": "Машинный тик",
+    "def_ru": "Предлагаемое лечение большей части этого отчёта: одна маленькая задача по расписанию, вне любой модели, которая прогоняет список идемпотентных работ — пересобрать дашборд, применить наступившие дефолты, обновить статусы задач, проверить вооружённость — и пишет одну строку в один леджер."
+  },
+  {
+    "term_en": "Ledger",
+    "def_en": "An append-only log of what a mechanism did and when — the thing you read afterwards to find out whether the night went well. A mechanism without a ledger can only be judged by whether its output looks right.",
+    "term_ru": "Леджер",
+    "def_ru": "Журнал «только добавление» о том, что механизм делал и когда, — то, что читают потом, чтобы понять, как прошла ночь. О механизме без леджера можно судить только по тому, выглядит ли его результат правильным."
+  },
+  {
+    "term_en": "Context window / roll",
+    "def_en": "A model session can hold only so much text; when it fills, the session must hand over to a fresh one — a <em>roll</em>. Rolling too early wastes a session; rolling too late loses the thread. The rule for when to roll is one of the five places the skill contradicts your orders.",
+    "term_ru": "Контекстное окно / ролл",
+    "def_ru": "Сессия модели вмещает ограниченный объём текста; когда он заполняется, сессия должна передать дело свежей — это «ролл». Ролл слишком рано тратит сессию впустую, слишком поздно — теряет нить. Правило о моменте ролла — одно из пяти мест, где скилл противоречит вашим приказам."
+  },
+  {
+    "term_en": "Prompt-cache TTL",
+    "def_en": "How long the provider keeps a session's prompt cached so the next call is cheap. The skill's whole cadence economics was calculated against a five-minute window. That window is now an hour, which invalidates the reasoning built on top of it.",
+    "term_ru": "TTL промпт-кэша",
+    "def_ru": "Сколько провайдер держит промпт сессии в кэше, чтобы следующий вызов был дешёвым. Вся экономика каденции в скилле рассчитана против пятиминутного окна. Сейчас это окно — час, и рассуждение, построенное на нём, перестало быть верным."
+  },
+  {
+    "term_en": "Handoff",
+    "def_en": "A written note one session leaves so the next one can continue with no memory of the conversation: where we are, what is running, what to do next. Today an agent writes it by hand when it remembers to.",
+    "term_ru": "Handoff",
+    "def_ru": "Записка, которую одна сессия оставляет следующей, чтобы та продолжила без памяти о разговоре: где мы, что запущено, что делать дальше. Сегодня её пишет агент руками, когда вспомнит."
+  },
+  {
+    "term_en": "PRD",
+    "def_en": "Product Requirements Document — the phase-by-phase development plan. It matters here because the orchestrator is told to pick up the next phase on its own, and it picks it from a document that has not changed since 8 July.",
+    "term_ru": "PRD",
+    "def_ru": "Документ требований к продукту — план развития по фазам. Он важен здесь потому, что оркестратору велено самому брать следующую фазу, а берёт он её из документа, который не менялся с 8 июля."
+  },
+  {
+    "term_en": "Epic / Task",
+    "def_en": "The two-level work hierarchy this project uses in Jira: an Epic is a body of work with one branch and one pull request, a Task is one commit inside it. Every finding below points at the epic that would close it.",
+    "term_ru": "Эпик / Задача",
+    "def_ru": "Двухуровневая иерархия работ в Jira, принятая в проекте: Эпик — объём работ с одной веткой и одним pull request, Задача — один коммит внутри него. Каждая находка ниже указывает на эпик, который её закроет."
+  },
+  {
+    "term_en": "Red team",
+    "def_en": "An independent pass whose job is to attack findings, not to add them: reproduce the evidence, and withdraw or downgrade anything that does not survive. Three red teams ran here; what they withdrew has its own section.",
+    "term_ru": "Красная команда",
+    "def_ru": "Независимый проход, чья задача — атаковать находки, а не добавлять их: воспроизвести доказательство и отозвать или понизить всё, что не устояло. Здесь работали три красные команды; отозванному отведён отдельный раздел."
+  },
+  {
+    "term_en": "Calibration",
+    "def_en": "Adjusting a severity label after review — usually downward. This report always shows the calibrated severity as the headline and the auditor's original label struck through beside it, so a withdrawn alarm can never read as a live one.",
+    "term_ru": "Калибровка",
+    "def_ru": "Изменение метки серьёзности после проверки — как правило, в сторону понижения. В этом отчёте главной всегда стоит откалиброванная метка, а рядом зачёркнута исходная метка аудитора, чтобы отменённая тревога никогда не читалась как живая."
+  },
+  {
+    "term_en": "CRITICAL / MAJOR / MINOR / INFO",
+    "def_en": "Severity constants, kept in English in both languages because they are identifiers, not words. CRITICAL means broken and doing harm right now; MAJOR means a real gap with a workaround or a delay; MINOR is a defect worth fixing cheaply; INFO carries no defect.",
+    "term_ru": "CRITICAL / MAJOR / MINOR / INFO",
+    "def_ru": "Константы серьёзности; они остаются английскими в обеих версиях, потому что это идентификаторы, а не слова. CRITICAL — сломано и вредит прямо сейчас; MAJOR — настоящий пробел с обходным путём или отсрочкой; MINOR — дефект, который дёшево починить; INFO — не дефект вовсе."
+  },
+  {
+    "term_en": "Loop engineering",
+    "def_en": "The current craft name for designing an agent's repeating cycle: when it wakes, what it checks, when it stops, how it escapes a loop that is going nowhere. Most of what is missing in this report is loop engineering that was written down but never wired up.",
+    "term_ru": "Loop engineering",
+    "def_ru": "Нынешнее название ремесла проектирования повторяющегося цикла агента: когда он просыпается, что проверяет, когда останавливается, как выходит из цикла, который никуда не ведёт. Бо́льшая часть недостающего в этом отчёте — это loop engineering, записанный, но не подключённый."
+  },
+  {
+    "term_en": "Loopback server (127.0.0.1)",
+    "def_en": "A web server that listens only on this machine — nothing from the network can reach it. It is the cheapest way to turn a folder of static pages into a console you can click, without authentication, deployment or a database.",
+    "term_ru": "Сервер на loopback (127.0.0.1)",
+    "def_ru": "Веб-сервер, который слушает только на этой машине: из сети до него не достучаться. Это самый дешёвый способ превратить папку статических страниц в пульт, по которому можно кликать, — без аутентификации, деплоя и базы данных."
+  },
+  {
+    "term_en": "SSE (server-sent events)",
+    "def_en": "A one-way channel that lets a page receive updates as they happen instead of showing whatever was true when it was built. It is what turns the dashboard from a photograph into a window.",
+    "term_ru": "SSE (server-sent events)",
+    "def_ru": "Односторонний канал, по которому страница получает обновления по мере их появления, а не показывает то, что было правдой в момент сборки. Именно он превращает дашборд из фотографии в окно."
+  },
+  {
+    "term_en": "Permission relay (Channels)",
+    "def_en": "A platform feature that forwards an agent's “may I run this?” prompt to another surface — a phone, say — so you can approve it remotely. It matters for autonomy: a permission prompt at 3 a.m. would otherwise end the night.",
+    "term_ru": "Relay разрешений (Channels)",
+    "def_ru": "Возможность платформы переслать запрос агента «можно я это выполню?» на другую поверхность — например, на телефон, — чтобы вы одобрили удалённо. Для автономности это важно: иначе запрос разрешения в три ночи заканчивает ночь."
+  },
+  {
+    "term_en": "Runway",
+    "def_en": "The autonomy indicator: how long the orchestrator can keep going before it hits a wall — context, budget, or a blocking question. It has never produced a number in any build, because two of its inputs do not physically exist.",
+    "term_ru": "RUNWAY",
+    "def_ru": "Индикатор автономности: сколько оркестратор ещё протянет, прежде чем упрётся в стену — контекст, бюджет или блокирующий вопрос. Он не выдал числа ни в одной сборке, потому что двух его входов физически не существует."
+  },
+  {
+    "term_en": "Smoke test",
+    "def_en": "A fast test suite that answers one question — is the thing fundamentally working? A green smoke run says the code is correct; it says nothing about whether anything on this machine ever calls that code.",
+    "term_ru": "Смоук-тест",
+    "def_ru": "Быстрый набор тестов, отвечающий на один вопрос: работает ли вещь в принципе. Зелёный смоук говорит, что код верен; он ничего не говорит о том, вызывает ли этот код хоть кто-нибудь на этой машине."
+  },
+  {
+    "term_en": "tmux pane",
+    "def_en": "A split of a terminal window. Each worker agent lives in its own pane, which is how the orchestrator starts and watches them. It is also why the fleet is capped at about three concurrent workers on this machine.",
+    "term_ru": "Панель tmux",
+    "def_ru": "Часть разделённого окна терминала. Каждый воркер живёт в своей панели — так оркестратор их запускает и наблюдает. По этой же причине флот на этой машине упирается примерно в трёх одновременных воркеров."
+  }
+]

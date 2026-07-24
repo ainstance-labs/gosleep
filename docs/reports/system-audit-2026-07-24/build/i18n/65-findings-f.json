@@ -1,0 +1,106 @@
+{
+  "findings[74].recommendation": { "src": "e3065601e4", "en": "Pick one form and bring CLAUDE.md into line." },
+  "findings[74].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[75].title": { "src": "dd12735822", "en": "By default the watchdog reads its re-wake brief from the non-authoritative local copy" },
+  "findings[75].evidence": { "src": "4f6c470eab", "en": "watchdog.sh:126 — WD_REWAKE_BRIEF defaults to $WD_REPO_ROOT/skill/orchestrating-delivery-agents/references/re-wake-brief.md." },
+  "findings[75].means": { "src": "b5f0652982", "en": "Harmless today (the files are identical), but on the first divergence the machine path for recovering the orchestrator would follow the copy the owner declared problematic." },
+  "findings[75].recommendation": { "src": "d7a0ac4ada", "en": "Point the default at ~/.claude/skills/... instead, or set WD_REWAKE_BRIEF explicitly in watchdog.conf when the watchdog is installed." },
+  "findings[75].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[76].title": { "src": "ea6a0b51be", "en": "The rule “no git stash in the shared tree” is absent from all five skills" },
+  "findings[76].evidence": { "src": "153102aad2", "en": "grep -ril stash across the five skills → nothing. The memory file no-git-stash-in-shared-tree.md: “HARD: git stash inside = reset --hard; it killed the orchestrator's resolve patches in a live queue.jsonl on 2026-07-13”." },
+  "findings[76].means": { "src": "4966e95d7c", "en": "An incident that cost live queue data is known only to this machine. The skill contains detailed rules about force-push and kill-pane, but nothing about stash." },
+  "findings[76].recommendation": { "src": "6cfb572596", "en": "Add one line to the “Concurrency & git safety” section, next to the force-push prohibition." },
+  "findings[76].calibration": { "src": "0c9910a584", "en": "Not reviewed by a red team. Overlaps with the red team's blind spot 2. RAISED BY THE RED TEAM from INFO to MINOR — one of the two upgrades across three calibrations. The search was widened beyond the skills: the word stash appears in NONE of the six skills, nor in the root CLAUDE.md, nor in manifest.md. The one expensive lesson with no home at all, and the only incident in the project's history that cost DATA rather than time." },
+
+  "findings[77].title": { "src": "620d6bd724", "en": "The tasty-lunch reference: we have no ADRs, no lessons-learned, no wiki — and we do have duplicate folders" },
+  "findings[77].evidence": { "src": "7b50b504f0", "en": "tasty-lunch has adr/ (18 numbered ADRs), lessons-learned/ (20 files), wiki/ (13 HTML), plan/ (9 documents), workflow/, research-before-prd/. We have none of these; we do have runbooks/ 4 against their 2. Our own rough edges: docs/report/ and docs/reports/ coexisting, as do docs/dev_history/ and the legacy docs/dev-history/." },
+  "findings[77].means": { "src": "ea32c69498", "en": "Our operational side is stronger (the laboratory, runbooks, the event log); theirs is the explanatory one: why the system is built this way, what lessons were drawn, how to enter the project from scratch. The mandate asked for both, and named tasty-lunch as the reference." },
+  "findings[77].recommendation": { "src": "1366116e03", "en": "The cheapest and most useful is lessons-learned/: the material already exists across 48 handoffs and in MEMORY. Then adr/ for decisions of the “Preact + esbuild SSG” and “the Python/TypeScript boundary” class." },
+  "findings[77].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[78].title": { "src": "da86ea60c4", "en": "The KPI “questions per night → 0” cannot be computed: there have been no real nights" },
+  "findings[78].evidence": { "src": "e87e61a3ea", "en": "An analysis of 1,916 events over the window 2026-07-12 → 2026-07-24. In the deep night hours 03:00–06:00, across 7 days with logs, there are 18 events; a single 20:00 hour yields 424. The digest of 23 July claims a “night run: 03:14 → 22:23”, while the night interval in fact contains one event followed by 5 h 32 min of silence." },
+  "findings[78].means": { "src": "fe3c2a2cee", "en": "The declared autonomy metric is not merely unmet — there is nothing to measure it on. The system has never once worked in the interval it is named GoSleep for." },
+  "findings[78].recommendation": { "src": "d3564d360e", "en": "Run one controlled night with a fixed task and a known set of forks. Without it, any claim about autonomy stays unverifiable." },
+  "findings[78].calibration": { "src": "a294e9c9c0", "en": "The red team lowered this to MINOR: qualitatively true, but it states that “the experiment was never run”." },
+
+  "findings[79].title": { "src": "ee30ea259c", "en": "The console does not open from a phone — only the markdown projection works" },
+  "findings[79].evidence": { "src": "4da0a92213", "en": "docs/lab/mobile/README.md:77 — “GitHub will not render them — it shows .html as escaped source, on every surface”. The md page itself prints “DEAD after 2026-07-24T01:23:09Z”; at the time of the audit it is dead by its own criterion." },
+  "findings[79].means": { "src": "efdde20bf3", "en": "The phone surface exists and does not lie, but it is dead, because nobody rebuilt it." },
+  "findings[79].recommendation": { "src": "9c9b99216e", "en": "Cleared along with the builder's automatic trigger. Mobile development is frozen by the owner's directive." },
+  "findings[79].calibration": { "src": "8fa7c43403", "en": "The red team lowered this to MINOR: the owner's directive of 2026-07-24 pauses the mobile side." },
+
+  "findings[80].title": { "src": "a7250b48b8", "en": "The self-health meter names its debts honestly and fixes none of them" },
+  "findings[80].evidence": { "src": "af1ba42886", "en": "self_health.dev_history: state gaps, epic GSL-111 → missing [GSL-138, 137, 136, 135, 134, 133, 112]; epic GSL-24 → missing [GSL-30]. self_health.handoffs: state debt, alarm true, undocumented_cycles 13 against a threshold of 3. GSL-30 has been outstanding since 13 July — 11 days after the system pointed at it itself." },
+  "findings[80].means": { "src": "5d1cddb9f5", "en": "The self-health meter is the strongest part of the laboratory: it is honest, it names debts individually, and it does not paint green what it never checked. But it is a meter — it fixes nothing." },
+  "findings[80].recommendation": { "src": "f0dfef4929", "en": "A debt the meter can name individually should automatically become an FYI entry in the queue, or a task; otherwise the meter is a dashboard nobody looks at." },
+  "findings[80].calibration": { "src": "f9cee74221", "en": "The red team did not reproduce the item-by-item reconciliation." },
+
+  "findings[81].title": { "src": "37f1924359", "en": "Of the eight loop-engineering items: 2 done, 3 partial, 3 not done" },
+  "findings[81].evidence": { "src": "910ca47eac", "en": "Each item of the loop-engineering report checked against the disk: night mode + morning digest — DONE (6 digests, 29 heartbeat lines with a mode field); question buffer — DONE (43 queue lines, 21 question.posed events); self-pulse — PARTIAL (cadence about 1860 s against the declared 270/540); watchdog — built, not armed; circuit breaker — prose only; definition-of-done, per-cycle learnings, sleep-time consolidation — exist under different names." },
+  "findings[81].means": { "src": "9a5f43929d", "en": "The two that shipped are exactly the most valuable for night work. But this is far from “the mandate is largely fulfilled”. What is missing is not the concept but an automatic run of the acceptance checklist at a phase boundary." },
+  "findings[81].recommendation": { "src": "6d3d9746b6", "en": "The highest-yield next step is a machine-checkable definition of phase readiness: it is cheaper than the rest and directly strengthens both the breaker (giving it an honest “no progress” signal) and the watchdog (giving it a progress indicator beyond mtime)." },
+  "findings[81].calibration": { "src": "a22cdb8a3c", "en": "The red team lowered this to MINOR and corrected the method: items 5/7/8 were declared missing by grepping for English phrases, whereas in substance they exist under different names." },
+
+  "findings[82].title": { "src": "cd5ac32298", "en": "The skills use the section sign against the owner's rule" },
+  "findings[82].evidence": { "src": "7a6e76c5be", "en": "18 occurrences in orchestrating, 2 in delivery-workflow. The rule is the memory file no-section-sign-in-text.md (owner, 2026-07-20, “do not rework what exists”)." },
+  "findings[82].means": { "src": "7ecf6813b0", "en": "Formally a violation, though the owner explicitly allowed not reworking it retroactively. What matters more: the rule exists only in this machine's memory and never made it into the skill, so new edits will reproduce it again." },
+  "findings[82].recommendation": { "src": "c7fd5a1bbb", "en": "Replace it with “section N” at the next major edit; put the rule into the skill." },
+  "findings[82].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[83].title": { "src": "c9da900237", "en": "Early GitHub mirrors do not carry the Jira key in the title" },
+  "findings[83].evidence": { "src": "7922ca5c6a", "en": "19 GitHub issues (#25, #26, #28…#46) do not contain GSL-N in the title — for example #43 corresponds to GSL-37." },
+  "findings[83].means": { "src": "92184a46d7", "en": "For the older part of the project, automatically reconciling three sources requires fuzzy matching. On new tasks the convention is observed." },
+  "findings[83].recommendation": { "src": "00fec98d46", "en": "Do nothing (this is history), but state the mirror title format explicitly in the convention." },
+  "findings[83].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[84].title": { "src": "fef3a77d60", "en": "The watchdog code is strong and the smoke suite really is green — the problem is not craftsmanship" },
+  "findings[84].evidence": { "src": "1514e4a1a9", "en": "bash tools/watchdog/smoke.sh → RESULT: 75 passed, 0 failed. Every branch is covered: identity gate C1, kill-verify M2, route-through-reap, the restart budget and backoff, the Gastown debounce, the single-flight lock, config validation, plist rendering. The static gates “0-LLM check” and “kill-pane safety (explicit -t only, no -a)” — PASS." },
+  "findings[84].means": { "src": "d309ed22d4", "en": "The problem is not code quality or tests, but that everything was checked only against invented fixtures and never once against the live machine. The gap between a green smoke run and a non-working mechanism is the central lesson of this zone." },
+  "findings[84].recommendation": { "src": "c9926237b9", "en": "Add one reality gate that compares the config against the live machine. It would have caught findings 6 and 16 in seconds." },
+  "findings[84].calibration": { "src": "8a6aa57e99", "en": "The red team confirmed it." },
+
+  "findings[85].title": { "src": "7f2024a167", "en": "What is done well, and what must not be broken while improving the rest" },
+  "findings[85].evidence": { "src": "fdb88c16ea", "en": "Three gates were run independently and matched figure for figure: smoke 404/404 with FAIL=0, hooks-verify 14 pass 0 fail, chronicler 7 screens with ui.ok true. The console: 375 local links, 188 to commits, 181 to Jira, 142 to issues, 41 to PRs, 0 broken local ones; all 182 commit hashes resolve through git cat-file. The question buffer: a typology guard, sha256 deduplication, an mkdir lock that reclaims a stale one, a deadline clamp." },
+  "findings[85].means": { "src": "70576e849b", "en": "Shift 72's mechanical claims are true. The divergences the audit found are specific, not evidence that “the reports lie in general”. The product's engineering honesty is its main asset: unknown with a reason instead of a zero, a verdict that can only get worse, every screen printing its own glob, a filter obliged to say what it hid." },
+  "findings[85].recommendation": { "src": "aa91fca135", "en": "Change nothing. Use it as the foundation. A live server makes that honesty cheaper: the fresher the data, the less often you have to explain why it is missing." },
+  "findings[85].calibration": { "src": "cc352103d2", "en": "The red team confirmed: countdown.ts:26-36 deliberately prints “nobody applied the default”, and smoke.sh:1362 checks that text with a gate — the project deliberately refuses to let itself pass a capability off as a fact." },
+
+  "findings[86].title": { "src": "3b69975ce8", "en": "Autonomy was bought by removing all permissions, and that trade is recorded nowhere as a decision" },
+  "findings[86].evidence": { "src": "1ee9289f90", "en": "The autonomy report: a permission prompt stops work dead (20 notification.raised events). The red team: .claude/settings.json contains no allow, no deny, no ask and no defaultMode; the orchestrator was started as claude --dangerously-skip-permissions. No report joined these two facts." },
+  "findings[86].means": { "src": "4077ac884b", "en": "The problem “a permission prompt ends the night” is already solved — by there being no permissions left. This is the largest trade-off in the project, and it was not a decision: it simply happened." },
+  "findings[86].recommendation": { "src": "3faaa3b1f3", "en": "Raised to the owner as a separate question with three options and an analysis of the Channels permission relay." },
+  "findings[86].calibration": { "src": "09b887b8fc", "en": "A synthesiser finding; visible only when two reports are put together." },
+
+  "findings[87].title": { "src": "012f5cb476", "en": "The mandate's central deliverable — an “intelligent orchestrator” — stopped learning while the market moved" },
+  "findings[87].evidence": { "src": "08b4da7ee0", "en": "The skills have been frozen since 2026-07-10. Over the same period: the loop-engineering canon settled in June and accumulated practices; the platform shipped background sessions under a supervisor, Channels with permission relay, and Desktop tasks with catch-up runs; 5dive released risk tiers, a recovery ladder and a public autonomy metric; warren deleted two subsystems as unnecessary." },
+  "findings[87].means": { "src": "9ecc11685a", "en": "You asked for an orchestrator “built to the most modern approaches on the market today”. The rivals report describes what to adopt; the skills audit describes what is frozen; together they say there is nowhere to adopt it into." },
+  "findings[87].recommendation": { "src": "2e807a027f", "en": "Restoring the learning loop (epic 2) is a precondition for borrowing anything from rivals." },
+  "findings[87].calibration": { "src": "b3be321834", "en": "A synthesiser finding; no individual auditor can see it." },
+
+  "findings[88].title": { "src": "4a0f1acc70", "en": "context_pct is not fabricated but frozen — and that gives a free stall detector" },
+  "findings[88].evidence": { "src": "78c6d2deea", "en": "The supervision report reads “98 for days on end” as an untrustworthy self-report (“a fabricated number defeats roll-at-~70%”). The red team independently found that cycle 81 occupies 71 heartbeat lines across 60.8 hours. If 71 consecutive pulses of one cycle carry the same number, that is not fabrication but a frozen value." },
+  "findings[88].means": { "src": "ee86a6a3a9", "en": "The practical conclusion is stronger than the original: the signal “this field has not changed for N ticks” catches a stall as reliably as the cycle counter, costs zero tokens, and requires no trust in the model at all." },
+  "findings[88].recommendation": { "src": "0a0f9a5e5f", "en": "Add a check for an unchanging context_pct, alongside a motionless cycle, to the reality gate and to the watchdog." },
+  "findings[88].calibration": { "src": "1b6ab1e7b7", "en": "A contradiction resolved by the synthesiser." },
+
+  "findings[89].title": { "src": "9327726ca9", "en": "There is no surface anywhere for “what of the built is armed right now”" },
+  "findings[89].evidence": { "src": "fd72fcae19", "en": "Four findings in four reports — “the watchdog is not installed”, “the web has no watchdog or gates”, “code ready != mechanism working”, “a quarter of the skill describes mechanisms that do not exist” — describe one hole from four sides." },
+  "findings[89].means": { "src": "ba6bef2ccc", "en": "You built a watchdog, a breaker, quota-wait, a verifier watchdog, a learning loop and telemetry — and have not one screen saying which of them are switched on. A single “armed / not armed” strip on Overview would have exposed all of this on day one." },
+  "findings[89].recommendation": { "src": "f0f0a991cc", "en": "armed-check as a tick task (epic 3), as a tile on Overview (epic 4), and as an acceptance criterion for a phase (epic 8)." },
+  "findings[89].calibration": { "src": "4d4c875c5a", "en": "A synthesiser finding." },
+
+  "findings[90].title": { "src": "1015ed441d", "en": "The best answer to the supervision blind spot was sitting in the research report, and nobody joined them" },
+  "findings[90].evidence": { "src": "86b065fd52", "en": "The supervision audit discovered that launchd StartInterval does not tick while the machine sleeps, and proposed caffeinate. The research report independently found that Claude Desktop scheduled tasks perform a catch-up run after wake — “Desktop checks whether each task missed any runs in the last seven days… starts exactly one catch-up run for the most recently missed time”." },
+  "findings[90].means": { "src": "aedfaceb44", "en": "The correct answer to one zone's blind spot was lying in another zone's report, and no auditor made the connection, because they are different zones." },
+  "findings[90].recommendation": { "src": "f732285ad7", "en": "Pre-flight both tick carriers; the fork is raised to the owner." },
+  "findings[90].calibration": { "src": "4d4c875c5a", "en": "A synthesiser finding." },
+
+  "findings[91].title": { "src": "fffa02fc3b", "en": "There is an autonomy metric that would produce a number today — unlike RUNWAY" },
+  "findings[91].evidence": { "src": "d12d570688", "en": "RUNWAY needs six inputs and has produced no number across 17 consecutive builds. 5dive computes 1 − asks/shipped over a rolling 7-day window from data we already hold: the question queue, the archive and closed tasks." },
+  "findings[91].means": { "src": "38c0a16f1d", "en": "We built an indicator that needs six inputs and does not answer, and did not build the one that needs data already sitting on disk." },
+  "findings[91].recommendation": { "src": "60b1b02208", "en": "Introduce a second metric beside RUNWAY, with an honest section on what it does not claim." },
+  "findings[91].calibration": { "src": "4d4c875c5a", "en": "A synthesiser finding." }
+}

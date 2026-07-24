@@ -1,0 +1,5 @@
+{
+  "_comment": "Numbers a figure needs that the payload does not carry as its own field. Each one must be corroborated by payload prose; build.py warns if it is not.",
+  "critical_claimed": 13,
+  "_critical_claimed_source": "headline.note_on_counts — 'Всего меток CRITICAL было тринадцать (шесть в первой волне, четыре в веб-аудите, пять в аудите скиллов)'. Derived from findings alone this reads 11, because three labels were folded into one finding during calibration."
+}

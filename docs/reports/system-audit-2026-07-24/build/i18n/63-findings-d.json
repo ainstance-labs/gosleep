@@ -1,0 +1,95 @@
+{
+  "findings[42].means": { "src": "aa0bb66a0b", "en": "A fresh agent reading CLAUDE.md will not learn about two of the skills, and will be advised to run a script the owner disabled as dangerous." },
+  "findings[42].recommendation": { "src": "65eeac04ed", "en": "Bring both documents into line with the actual list of 7, and replace the install.sh section with a description of the policy actually in force." },
+  "findings[42].calibration": { "src": "c275071542", "en": "Not reviewed by a red team. DOWNGRADED: the dangerous half is already neutralised MECHANICALLY — install.sh begins with exit 1 and an explanation in its header, and the guard was verified by running it. A fresh agent obeying the README gets a clear refusal, not overwritten skills. What remains is a documentation inaccuracy." },
+
+  "findings[43].title": { "src": "3315eed69b", "en": "A reference file is still stuck in the pre-phase “stop and ask” logic" },
+  "findings[43].evidence": { "src": "306ae95b36", "en": "lifecycle-and-edge-cases.md E14 — “Decision forks → Pause and ask the human (AskUserQuestion)”; E7 says the same for a hung worker. SKILL.md:417-460 — “the question RECORD is primary”, and at night AskUserQuestion is forbidden except for a BLOCKER." },
+  "findings[43].means": { "src": "5788bc20bb", "en": "Two files of the same skill give incompatible answers to the most frequent question of an autonomous night. The reference was not updated when Phase 3 shipped." },
+  "findings[43].recommendation": { "src": "d0f35510cc", "en": "Rewrite E7/E14 in terms of the question typology; leave a pointer in the reference to the “Question buffer” section so the rule lives in one place." },
+  "findings[43].calibration": { "src": "02c29648cf", "en": "Not reviewed by a red team. DOWNGRADED, partially confirmed. E7 does NOT fail the check: there AskUserQuestion is proposed at a fork with an irreversible action, and under the Phase 3 typology irreversibility forcibly makes the question a BLOCKER (lab-emit.sh:284 mechanically rejects reversibility=low), and BLOCKER is the one type permitted to wake the owner. E7 is consistent with Phase 3. E14 diverges on only one branch out of four." },
+
+  "findings[44].title": { "src": "d3db9f5f06", "en": "The main skill runs to 36+ thousand tokens, with rules duplicated fourfold" },
+  "findings[44].evidence": { "src": "fed77f9fe8", "en": "132,240 bytes for the bundle ≈ 35.7 thousand tokens; the harness measured a single SKILL.md at 38,701 tokens. The “keep monitoring” prohibition is repeated 4 times (lines 113-122, 960, 982, 1003), the finalisation fork 5 times." },
+  "findings[44].means": { "src": "e3cd2c3fce", "en": "A fifth of the context window goes on instructions before work begins, and the redundancy concentrates on two or three themes while whole topics (pillars 3, 6, 9) are not covered at all. By mid-task the agent is working from the Quick reference table rather than from the sections." },
+  "findings[44].recommendation": { "src": "891ea5ea46", "en": "Split it into a core (<=400 lines) and per-topic references loaded on demand; each rule in exactly one place plus one line in the Quick reference." },
+  "findings[44].calibration": { "src": "c99e21aec9", "en": "Not reviewed by a red team. DOWNGRADED: the auditor's own two size estimates differ by 44 %, and the lower one is impossible (2.56 bytes per token does not happen for English prose); the honest range is 33–36 thousand. The phrase “keep monitoring” occurs THREE times, not four. The duplication is declared a deliberate device. The key conclusion — “the agent works from the table rather than the sections” — is a hypothesis presented as a consequence, unsupported by any observation." },
+
+  "findings[45].title": { "src": "afa32911ac", "en": "delivery-workflow and orchestrating give incompatible instructions about browser checks" },
+  "findings[45].evidence": { "src": "2fab262003", "en": "delivery-workflow:97 — “for UI work, delegate the browser check to a single cheap subagent”; SKILL.md:856-867 and worker-cycle-template:69 — “a worker NEVER drives the browser, it sends VERIFY-REQUEST to the orchestrator”." },
+  "findings[45].means": { "src": "34dff03bb0", "en": "A worker loads both skills (the main one explicitly tells it to load delivery-workflow) and receives two opposite orders about an action that already cost an hour of downtime once." },
+  "findings[45].recommendation": { "src": "bd9b6a0e4e", "en": "In delivery-workflow, replace the step with a pointer: “UI verification follows the head skill's VERIFY-REQUEST rule”." },
+  "findings[45].calibration": { "src": "4edb690f14", "en": "Not reviewed by a red team. DOWNGRADED: these are two modes of working. delivery-workflow is a playbook that also covers a lone agent with no orchestrator, who has nobody to send a VERIFY-REQUEST to. A worker inside a fleet gets the rule twice in its own operational document (worker-cycle-template:69 and :82). The practical exposure is low." },
+
+  "findings[46].title": { "src": "0bad11afcb", "en": "The provenance of autonomous decisions is not checked: three cite a manifest clause that does not exist" },
+  "findings[46].evidence": { "src": "b561395dd3", "en": "21 records in decisions/log.jsonl. d-2026-07-13-001/-002/-003 cite “manifest section 2.default-hit-at-deadline” — grep across manifest.md → NOT FOUND. The cause: lab-emit.sh:424-426 checks only that the --rule string is NON-EMPTY." },
+  "findings[46].means": { "src": "7e0aa4dead", "en": "The advertised “manifest-driven autonomy” is in practice autonomy by verbal delegation and by precedent from its own past decisions. The system cited a non-existent rule three times and nobody noticed, because there was nothing to check it with." },
+  "findings[46].recommendation": { "src": "dc328cc13c", "en": "Validate --rule against the manifest; allow an explicit bypass for delegations and mark such decisions in the digest as “decided outside the manifest” — that is material for candidates." },
+  "findings[46].calibration": { "src": "4fe72ee76c", "en": "The red team corrected the wording: not “0 of 21” but “3 cite a non-existent identifier, about 8 cite a real section in a non-canonical format”. The root cause and severity stand." },
+
+  "findings[47].title": { "src": "8907bf8f55", "en": "Cumulative cost is understated by 1,672,000 tokens and contradicted by its own table" },
+  "findings[47].evidence": { "src": "ada53e8443", "en": "chronicler.py:492-493 — cumulative_total is assigned inside a loop, so the last row in file order wins rather than the maximum. cost.cumulative_total = 14,325,000 (cycle 81), while the largest running_total in the same table is 15,997,000 (cycle 98). A 10.5 % difference." },
+  "findings[47].means": { "src": "43e2e9094a", "en": "The headline spend figure is a tenth too low and is contradicted by the table beneath it. If a ceiling ever appears, used_pct will be computed from an understated numerator." },
+  "findings[47].recommendation": { "src": "860e5ce626", "en": "Take max(running_total), or the row with the highest cycle; add an assert that the tile is >= the table's maximum." },
+  "findings[47].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[48].title": { "src": "ac1af484f2", "en": "telemetry.jsonl is declared in the PRD and in the laboratory README, but does not exist" },
+  "findings[48].evidence": { "src": "4a0382f412", "en": "PRD:462-463 lists telemetry.jsonl in the docs/lab/ layout; ls docs/lab/telemetry.jsonl → no such file. Recorded independently by the run 04 verifier as GSL-164." },
+  "findings[48].means": { "src": "dc01a22c8c", "en": "The Cost screen builds its telemetry from STATE rather than from the declared source; the documentation promises a file that does not exist." },
+  "findings[48].recommendation": { "src": "6835452ce9", "en": "Either strike it from the PRD and docs/lab/README.md, or implement it. Ticket GSL-164 is already filed." },
+  "findings[48].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[49].title": { "src": "afc8485b0f", "en": "Defaults were applied before their deadline: 10 out of 20" },
+  "findings[49].evidence": { "src": "0f8682dc38", "en": "The red team's full analysis of queue.jsonl: 21 base records, 22 patches, 20 auto-resolved patches across 18 unique records, 10 early and 10 late. Also, cmd_resolve does not check the current status: two records received two auto-resolved patches each." },
+  "findings[49].means": { "src": "c641348427", "en": "The point of auto_apply_at is “the default applies only at the moment the owner COULD have seen the question: the morning digest plus an hour to veto”. In practice the veto cushion failed in half the cases." },
+  "findings[49].recommendation": { "src": "c28ca7455f", "en": "resolve should refuse to close a record before auto_apply_at (an early choice is recorded as answered-by-default) and should be idempotent." },
+  "findings[49].calibration": { "src": "cbcbbd8b55", "en": "The red team: the figure was corrected from “13 of 19” to “10 of 20”; the claim “asked and closed in the same second” was withdrawn — the comparison was against the time it was filed, and in reality it was 2 hours before the deadline. Lowered to MINOR." },
+
+  "findings[50].title": { "src": "2968a68ea6", "en": "Learning from the owner's behaviour has produced not a single candidate in the project's lifetime" },
+  "findings[50].evidence": { "src": "5458d08cd6", "en": "lab-emit.sh candidates → empty; --min 2 → empty; --min 1 --json → 21 rows, meaning 21 decisions form 21 unique groups. Every digest: “Manifest candidates: none”. The manifest has one commit, dated 2026-07-10." },
+  "findings[50].means": { "src": "5af1ed3020", "en": "The fact is correct, THE DIAGNOSIS IS REFUTED. The threshold has nothing to do with it: qshape is a hash of the question's shape, the log holds 21 records, all 21 hashes are DIFFERENT, and the largest group size is one." },
+  "findings[50].recommendation": { "src": "b9fd5e478a", "en": "Lowering the threshold to 2 WOULD ACHIEVE NOTHING — with a maximum of 1, no threshold >= 2 can fire. What is needed is semantic grouping, or an honest admission that 21 unique questions in two weeks produce no repeats. Plus a line “candidates: N (shapes: M)” in the digest, so that the zero is visible." },
+  "findings[50].calibration": { "src": "d6236cb32a", "en": "The red team lowered this to MINOR: 21 decisions in 14 days is simply too few for a three-repeat threshold. A heuristic that did not fire is not a breakage. Three independent confirmations of the fact. THE DIAGNOSIS WAS REWRITTEN BY THE RED TEAM through a direct reading of cmd_candidates. In the first draft the synthesiser recommended lowering the threshold — that recommendation is withdrawn as useless." },
+
+  "findings[51].title": { "src": "44945da279", "en": "The ./install.sh gate in all six PRD phases is physically unexecutable" },
+  "findings[51].evidence": { "src": "f95a9a1a51", "en": "install.sh:2-10 — since 2026-07-20, an unconditional echo “PROTECTION ENABLED” and exit 1. grep -c install.sh across the PRD → 8, all in lines reading “Gates: ./install.sh passes”." },
+  "findings[51].means": { "src": "f3afa5197c", "en": "A formal acceptance criterion for every phase cannot be met. In practice that means phase acceptance has for four days rested on something else, described nowhere." },
+  "findings[51].recommendation": { "src": "07b8d7af7f", "en": "Replace the gate with a targeted rsync -a skill/<name>/ ~/.claude/skills/<name>/ plus bash -n and tools/lab/smoke.sh." },
+  "findings[51].calibration": { "src": "13ff1fd575", "en": "The red team lowered this to MINOR: the replacement is already written into CLAUDE.md, so this is a stale reference rather than a broken process." },
+
+  "findings[52].title": { "src": "68d12faa28", "en": "Handoffs and dev_history are still written by an agent by hand — the laboratory merely records the fact" },
+  "findings[52].evidence": { "src": "f53ca12800", "en": "The event dictionary contains handoff.written — an event stating that a handoff has already been written. There is no writer. In the log: handoff.written 111 events, dev_history.written 112, both from a PostToolUse hook on Write|Edit. There is no generator in tools/." },
+  "findings[52].means": { "src": "418d32b11b", "en": "You no longer have to write “make a handoff” — but not because the laboratory does it; because it is written into a skill. The mandate asked for infrastructure and got discipline. Discipline breaks exactly when there is nobody to keep it — at night." },
+  "findings[52].recommendation": { "src": "fe4945ecec", "en": "A deterministic handoff skeleton built from data that already exists (cycle events, commits, tasks, questions); the agent then writes only “Part 1, in plain words”." },
+  "findings[52].calibration": { "src": "5b79cb0b7c", "en": "The red team lowered this to MINOR: it describes a chosen architecture, not a defect." },
+
+  "findings[53].title": { "src": "aab8916d4e", "en": "The last two morning digests were written by hand; the machine-written one for 23 July is uncommitted" },
+  "findings[53].evidence": { "src": "ab94a499d2", "en": "Machine digests carry the banner “Generated by chronicler.sh… Regenerated only — never hand-edited” and mode 600. The files 2026-07-21-morning.md and 2026-07-24-morning.md are mode 644 with no banner. git status → ?? docs/lab/digest/2026-07-23-morning.md." },
+  "findings[53].means": { "src": "fb335e85b5", "en": "Mechanising the morning report — the one part of pillar 5 carried through to the end — has regressed to hand-writing over the last two shifts. That is a regression, not an unfinished piece." },
+  "findings[53].recommendation": { "src": "95851e5fa6", "en": "Forbid hand-written digests under the same rule as hand-written pages; if the chronicler lacks the data for a section, extend the chronicler rather than bypass it." },
+  "findings[53].calibration": { "src": "017feb3d29", "en": "The red team lowered this to MINOR." },
+
+  "findings[54].title": { "src": "b51b8d7f4b", "en": "archive.jsonl loses 18 of 21 closed questions — a hyphen/underscore mismatch" },
+  "findings[54].evidence": { "src": "608e68131c", "en": "chronicler.py:2592 — closed is filtered by statuses including auto_resolved (underscore). The actual statuses from lab-emit list --status all: auto-resolved 18, answered 2, answered-by-default 1 (hyphen). Result: archive.jsonl holds exactly 2 records. The same list is used in --compact-queue." },
+  "findings[54].means": { "src": "f97470cb1b", "en": "The question archive, meant as long-term memory of decisions taken on your behalf, loses 86 percent of its content." },
+  "findings[54].recommendation": { "src": "88b63bc48a", "en": "Bring the list into line with the actual values, or normalise statuses in one place; add an assert that “archived count == closed count”." },
+  "findings[54].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[55].title": { "src": "ffea9aa702", "en": "The acceptance-run standard has fallen behind practice: design/ru/ is lost, the regression/ lane is undocumented" },
+  "findings[55].evidence": { "src": "d2209cb5b7", "en": "README:24-33 describes a structure in which design/ has its own assets/ and ru/. In fact design/ru/ exists only for run 01. The regression/ lane is present in 02/03/04 and plays a key role in the cycle, yet is not mentioned in the standard's structure. The constants LANDED/PARTIAL/NOT-LANDED do not appear in runs 02 and 04." },
+  "findings[55].means": { "src": "57d87bf5c9", "en": "The reference run 01 remains the only one fully compliant with the standard; the document by which “the next run is assembled without reading the conversation” no longer describes what is actually done." },
+  "findings[55].recommendation": { "src": "9d8f6639a5", "en": "Add regression/ to the standard's structure, decide the fate of design/ru/, and add an assert that “every item carries one of the three statuses”." },
+  "findings[55].calibration": { "src": "85847cf372", "en": "Two independent confirmations." },
+
+  "findings[56].title": { "src": "86784b3127", "en": "The quota-wait mechanism — the most complex part of the contract — has never once executed" },
+  "findings[56].evidence": { "src": "a5e4e86f9a", "en": "grep quiesced across the heartbeat → 0; grep quota-wait → 0. Of 200 lines the statuses are: ok 199, rolling 1. And yet quota-wait carries the system's most elaborate knot: the ETA-bounded shield, the alarm-clock backstop, a dedicated quota_wait_expired event type, a whole contract section in the skill. api.failure — 1 event out of 1,933." },
+  "findings[56].means": { "src": "0d1ffcbf08", "en": "The trickiest and riskiest mechanism — the one that decides when it is ALLOWED to kill an orchestrator that is legitimately silent — exists only as code and simulation. It will fire for the first time at night, unwitnessed, on a real fleet." },
+  "findings[56].recommendation": { "src": "942abb968c", "en": "Do not treat this path as tested. If the watchdog is to be switched on, switch it on in “ledger only, no kill” mode for several days." },
+  "findings[56].calibration": { "src": "39650f5f65", "en": "The red team lowered this to MINOR: a safety net that has not fired is not a defect; the risk arises on the day the watchdog is armed." },
+
+  "findings[57].title": { "src": "3768141647", "en": "launchd does not cover machine sleep; an ad-hoc caffeinate is what holds sleep off" },
+  "findings[57].evidence": { "src": "6c6b6643a3", "en": "The plist template uses StartInterval + RunAtLoad — architecturally correct (the OS does the watching) — but StartInterval does not tick while the machine sleeps. pmset -g custom: sleep 1 on both battery and mains. Sleep is held off only by ad-hoc assertions: one caffeinate -i -t 28000 (about 7.8 h) and a dozen short-lived ones." },
+  "findings[57].means": { "src": "90b720c43f", "en": "For a project called GoSleep, the question “will the Mac itself fall asleep” is first-order. Right now night-time wakefulness rests on a manually started timer with a fixed duration, not on a setting." },
+  "findings[57].recommendation": { "src": "bcd433e519", "en": "Make holding off sleep an explicit part of the night protocol. An alternative found in the research report: Claude Desktop scheduled tasks have a catch-up run after wake, which launchd StartInterval does not." },
+  "findings[57].calibration": { "src": "f5b7bac297", "en": "The red team: the machine survives sleep but not shutdown; sessions become failed and require a human." }
+}
