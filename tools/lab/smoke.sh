@@ -3715,6 +3715,75 @@ grep -q '\.wk\.silent \.wk-age{color:var(--warn)}' "$FLH" \
   && ok "GSL-207: silent is still AMBER on the row — the table did not earn the right to say dead" \
   || bad "GSL-207: the silent worker lost its amber when the card became a row"
 
+echo "== GSL-206: the supervisor tile and the gates strip =="
+# The mandate opens on "the orchestrator has nobody to orchestrate it from above". The mechanism
+# exists; until now the web could not say whether it was RUNNING, and the gates were a sentence typed
+# by hand into a text file. Both now travel in the bundle, under the rule the rest of this dashboard
+# lives by: a value with no source is `unknown` WITH ITS REASON, never a comfortable zero.
+[[ "$(jq -r '.supervision.armed' "$LKB")" == "false" ]] \
+  && ok "GSL-206: with no launchd agent installed the supervisor reads NOT ARMED — a fact, not a shrug" \
+  || bad "GSL-206: supervision.armed is $(jq -r '.supervision.armed' "$LKB") on a machine with no agent"
+[[ -n "$(jq -r '.supervision.last_tick_why // empty' "$LKB")" ]] \
+  && ok "GSL-206: a supervisor that never woke says so, with the file it looked for" \
+  || bad "GSL-206: last_tick is absent with no reason attached"
+[[ -n "$(jq -r '.supervision.loaded_why // empty' "$LKB")" ]] \
+  && ok "GSL-206: the half that was NOT measured (launchctl) is stated out loud, not implied by silence" \
+  || bad "GSL-206: the tile claims 'armed' without saying that loaded-ness was never checked"
+[[ "$(jq -r '.gates.runs | length' "$LKB")" == "3" ]] \
+  && ok "GSL-206: all three declared gates get a tile — a gate that stopped writing cannot vanish" \
+  || bad "GSL-206: the gates strip is built from whatever files exist, so a broken gate disappears"
+[[ "$(jq -r '[.gates.runs[] | select(.state=="unknown") | select(.cmd != null and .cmd != "")] | length' "$LKB")" == "3" ]] \
+  && ok "GSL-206: with no receipts every gate reads unknown AND names the command that fills it" \
+  || bad "GSL-206: an unknown gate is not actionable (no cmd) or was graded without a receipt"
+grep -q 'id="supervisor" data-armed="false"' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-206: Overview renders the supervisor tile with its state on the element" \
+  || bad "GSL-206: no supervisor tile on Overview"
+GT_UNK="$(grep -o 'data-state="unknown"' "$LK/docs/lab/site/index.html" | wc -l | tr -d ' ')"
+[[ "$GT_UNK" -ge 3 ]] \
+  && ok "GSL-206: three gate tiles render unknown rather than a plausible green" \
+  || bad "GSL-206: expected 3 unknown gate tiles on the fixture Overview, found $GT_UNK"
+
+# ⭐ The receipts are read, and a FAILING one keeps saying so. Without this the pass/fail branches
+# would never execute and the strip would be asserted only in the state it happens to start in.
+mkdir -p "$LK/.artifacts/lab/gates"
+printf '{"gate":"smoke","ts":"%s","pass":404,"fail":0,"runner":"tools/lab/smoke.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$LK/.artifacts/lab/gates/smoke.json"
+printf '{"gate":"hooks-verify","ts":"%s","pass":12,"fail":2,"runner":"tools/lab/hooks-verify.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$LK/.artifacts/lab/gates/hooks-verify.json"
+bash "$CH" --repo "$LK" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(jq -r '.gates.runs[] | select(.name=="smoke") | .state' "$LKB")" == "pass" ]] \
+  && ok "GSL-206 ⭐ a green receipt reads pass, with the run's own timestamp" \
+  || bad "GSL-206 ⭐ a green smoke receipt did not read pass ($(jq -r '.gates.runs[] | select(.name=="smoke") | .state' "$LKB"))"
+[[ "$(jq -r '.gates.runs[] | select(.name=="hooks-verify") | .state' "$LKB")" == "fail" ]] \
+  && ok "GSL-206 ⭐ a receipt recording a failure keeps saying fail until a passing run replaces it" \
+  || bad "GSL-206 ⭐ a failing receipt was not reported as a failure"
+[[ "$(jq -r '.gates.runs[] | select(.name=="tsc") | .state' "$LKB")" == "unknown" ]] \
+  && ok "GSL-206 ⭐ the gate with no receipt stays unknown while its neighbours are graded" \
+  || bad "GSL-206 ⭐ tsc was graded without a receipt"
+grep -q 'data-gate="smoke" data-state="pass"' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-206: the built page paints the passing gate on the element, not only in the bundle" \
+  || bad "GSL-206: the gate state did not reach the rendered tile"
+grep -q '\.kpi\.gate\.unknown{border-left-color:var(--unk)}' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-206 control: unknown keeps its own hue off the green-amber-red axis — the rule exists" \
+  || bad "GSL-206 control: .kpi.gate.unknown has no rule, so 'never ran' would paint like 'failed'"
+# The runners really write these receipts — otherwise the strip above is a reader with no writer.
+grep -q 'gates/smoke.json' "$REPO_ROOT/tools/lab/smoke.sh" \
+  && grep -q 'gates/hooks-verify.json' "$REPO_ROOT/tools/lab/hooks-verify.sh" \
+  && ok "GSL-206 control: both gate runners write their own receipt (the reader has a writer)" \
+  || bad "GSL-206 control: a gate runner writes no receipt — its tile can only ever read unknown"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
+
+# GSL-206: leave a receipt. Until now a green gate left NOTHING on disk (this script deletes its own
+# work dir when it passes), so the only record that the gates ran was a sentence typed by hand into
+# ORCHESTRATION-STATE.md — which is exactly the "take it on faith" the owner said he was done with.
+# One line of JSON, in a gitignored directory, is what lets the dashboard print WHEN this last ran
+# and what it said. A FAILING run writes one too: a receipt that only ever records success is a
+# green light wired to nothing.
+mkdir -p "$REPO_ROOT/.artifacts/lab/gates" 2>/dev/null
+printf '{"gate":"smoke","ts":"%s","pass":%d,"fail":%d,"runner":"tools/lab/smoke.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PASS" "$FAIL" \
+  > "$REPO_ROOT/.artifacts/lab/gates/smoke.json" 2>/dev/null || true
+
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

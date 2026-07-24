@@ -549,6 +549,54 @@ export interface RenderBundle {
    * of this dashboard lives by: no source, no claim.
    */
   links?: LinkBases;
+  /** GSL-206: is anything watching the orchestrator, and when did it last wake. Optional — see LinkBases. */
+  supervision?: Supervision;
+  /** GSL-206: when each gate last ran and what it said. Optional for the same reason. */
+  gates?: Gates;
+}
+
+/**
+ * The supervisor, as the files on disk can describe it.
+ *
+ * `armed` is a BOOLEAN and not a grade, because its two values are two facts, not a good one and a
+ * bad one: a launchd agent is installed, or it is not. Everything that cannot be read from a file —
+ * whether launchd has loaded it, whether the configured session exists — is a `*_why` string that
+ * says so out loud rather than a default that quietly reads as health.
+ */
+export interface Supervision {
+  armed: boolean;
+  armed_why: string;
+  loaded_why: string;
+  last_tick_ts: string | null;
+  last_tick_age_human: string;
+  last_tick_why: string | null;
+  ticks: number | null;
+  ledger_lines: number | null;
+  ledger_why: string | null;
+  restarts: number | null;
+  restarts_why: string | null;
+  configured: boolean;
+  configured_why: string | null;
+  searched: string;
+  runbook: string;
+}
+
+export interface GateRun {
+  name: string;
+  /** `unknown` means no receipt — NOT a pass. A gate that has not run has not passed. */
+  state: "pass" | "fail" | "unknown";
+  ts: string | null;
+  age_human: string | null;
+  passed: number | null;
+  failed: number | null;
+  /** The exact command that produces this receipt, so an unknown tile is actionable. */
+  cmd: string;
+  why: string | null;
+}
+
+export interface Gates {
+  runs: GateRun[];
+  searched: string;
 }
 
 /**

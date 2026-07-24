@@ -191,4 +191,13 @@ say ""
 say "== verdict: $PASS pass, $FAIL fail =="
 [ "$FAIL" -eq 0 ] || say "DEGRADED — a failing hook above is a hook that will silently log NOTHING."
 say "log: $LOG"
+
+# GSL-206: the machine-readable half of that log line. The dashboard cannot parse prose, and the
+# owner should not have to take "hooks-verify 14/14" from a hand-written STATE file on faith.
+# A failing run writes a receipt too — see the note in smoke.sh on why that matters.
+mkdir -p "$REPO_ROOT/.artifacts/lab/gates" 2>/dev/null
+printf '{"gate":"hooks-verify","ts":"%s","pass":%d,"fail":%d,"runner":"tools/lab/hooks-verify.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PASS" "$FAIL" \
+  > "$REPO_ROOT/.artifacts/lab/gates/hooks-verify.json" 2>/dev/null || true
+
 exit "$([ "$FAIL" -eq 0 ] && echo 0 || echo 1)"

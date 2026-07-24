@@ -558,6 +558,14 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .sh-chip.dim{border-left-color:var(--line)}
 .sh-chip.unknown{border-left-color:var(--unk)}
 .sh-alarm{color:var(--warn);font:400 var(--t-base)/1.5 var(--sans)}
+/* GSL-206: the gate tiles. They are KPI tiles with one addition — a left edge that grades, because
+   pass / fail / unknown is a judgement and judgement is what earns colour here. UNKNOWN keeps its
+   own hue off the green-amber-red axis: "the gate failed" and "the gate never ran" are different
+   sentences and painting them alike is the defect this palette was rebuilt to remove. */
+.kpi.gate{border-left:2px solid var(--line)}
+.kpi.gate.pass{border-left-color:var(--ok)}
+.kpi.gate.fail{border-left-color:var(--dead);background:var(--dead-soft)}
+.kpi.gate.unknown{border-left-color:var(--unk)}
 .sh-h{font-weight:500;margin-bottom:var(--s2);font-size:var(--t-md)}
 .sh-row{font-size:var(--t-md);margin:var(--s1) 0}
 .sh-k{color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
