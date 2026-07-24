@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-24T21:52:03Z` · freshest event **18s** old at that moment (`2026-07-24T21:51:45Z`) · day `2026-07-24`
+🟢 **FRESH at build** · generated `2026-07-24T23:25:12Z` · freshest event **18s** old at that moment (`2026-07-24T23:24:54Z`) · day `2026-07-24`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-24T21:52:03Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-24T23:25:12Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-24T22:21:45Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-25T00:51:45Z`**
+> - 🟡 **STALE if you are reading this after `2026-07-24T23:54:54Z`**
+> - 🔴 **DEAD if you are reading this after `2026-07-25T02:24:54Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -35,23 +35,23 @@
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 125 |
-| Orchestrator | ok · context 77% |
+| Cycle | 134 |
+| Orchestrator | ok · context 88% |
 
 ## 3. Delivery
 
-Branch `GSL-243-audit-publish` @ `8cc92ab` · 17 dirty path(s)
+Branch `GSL-177-web-quality` @ `a2a1915` · 5 dirty path(s)
 
-Shipped 2026-07-24 (11):
+Shipped 2026-07-24 (18):
+- `a2a1915` GSL-209 [UI] Переключатель темы и сквозной поиск
+- `0528478` GSL-206 [UI] Плитка супервизора и полоса гейтов с датой прогона
+- `b7be6a4` GSL-207 [UI] Overview и Fleet: гигиена под details, флот таблицей
+- `a256bb0` GSL-208 [UI] Timeline и Tasks: нормализованные пути, содержательные события, честные колонки
+- `a113f7f` GSL-205 [UI] Одна функция «идентификатор → ссылка» на всех семи экранах
+- `250b207` Merge pull request #248 from ainstance-labs/GSL-243-audit-publish
+- `b4178d9` GSL-247 [Docs][Tooling] Пересборка сайта лаборатории последним коммитом ветки
 - `8cc92ab` GSL-246 [Repo] Служебные каталоги инструментария .playwright-cli и .gstack в .gitignore
-- `8077082` GSL-245 [Docs][Process] Синхронизация доказательной базы с финальными материалами
-- `38a98c1` GSL-244 [Docs] Публикация HTML-дашборда аудита 2026-07-24 (EN + RU)
-- `79acebc` Merge pull request #173 from ainstance-labs/GSL-169-audit-preserve
-- `ff95502` GSL-173 [Docs][Process] Догоняющий снимок: redteam-web-verdicts и SYNTHESIS в доказательную базу
-- `d525148` GSL-172 [Docs][Process] Архив очереди вопросов и дайджест 2026-07-23 в контроль версий
-- `d88d181` GSL-171 [Docs][Process] Доказательная база аудита 2026-07-24 в docs/reports/ рядом с будущим отчётом
-- `091518e` GSL-170 [Docs][Process] Мандат владельца 2-deep-orchestrating-research.md в контроль версий
-- …and 3 more
+- …and 10 more
 
 ## 4. Tasks
 
@@ -61,19 +61,19 @@ Shipped 2026-07-24 (11):
 | To Do | 3 |
 | Done | 5 |
 
-233 more carry no status here — the tracker was last polled **12d 0h** ago, so this is what the poll missed, not 233 idle tasks.
+235 more carry no status here — the tracker was last polled **12d 1h** ago, so this is what the poll missed, not 235 idle tasks.
 
 ## 5. Cost & runway
 
-Cumulative **18,622,000** tokens over 139 cycle(s).
+Cumulative **18,698,000** tokens over 140 cycle(s).
 
 **No ceiling is set**, so there is no percentage to be at — manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)
 
-Next runway event: **orchestrator context** — degrades at **`2026-07-24T21:52:03Z`**.
+Next runway event: **orchestrator context** — degrades at **`2026-07-24T23:25:12Z`**.
 
 ## 6. Activity
 
-**259** events today of **2116** total · 95% mechanical.
+**290** events today of **2147** total · 95% mechanical.
 
 Latest decisions (21 total, newest first):
 - **Цикл ран-фикс-ран закрыт по схождению (run 04: 0C/0M, 92/100); 5 MINOR GSL-164..168 бэклогом** `GSL-138` — 2026-07-24 07:34
