@@ -1,0 +1,49 @@
+{
+  "findings[92].title": { "src": "d36b5702d4", "en": "This entire audit sits outside git and will vanish on the first cleanup of the tree" },
+  "findings[92].evidence": { "src": "a078c59451", "en": "docs/reviews/ is in .gitignore (line 10); git ls-files docs/reviews/ returns 0 files. The skills auditor noticed this about its own file; in aggregate it applies to all seven reports, including the synthesis." },
+  "findings[92].means": { "src": "9bab2182ee", "en": "A week of work by seven agents physically exists only in the working tree. One git clean -fdx erases it entirely." },
+  "findings[92].recommendation": { "src": "6c28051718", "en": "git add -f docs/reviews/system-audit-2026-07-24/, or move the conclusions into docs/reports/ and the PRD. The first task of epic 1." },
+  "findings[92].calibration": { "src": "4d4c875c5a", "en": "A synthesiser finding." },
+
+  "findings[93].title": { "src": "f22593b6b6", "en": "A fan-out audit with no standard deduplication phase triples its own priorities" },
+  "findings[93].evidence": { "src": "591db1d3fc", "en": "One problem (the watchdog is not armed) received labels in five reports, three of them CRITICAL. One case of a number being substituted into the wrong place (context_pct 178). Two of the seven reports landed after the red team had finished, and remained adversarially unchecked." },
+  "findings[93].means": { "src": "c1cce3f0d9", "en": "Had the backlog been built straight from the reports, one problem would have become three top-priority tasks. This is a systemic risk of fan-out auditing: the zones overlap, and nobody deduplicates by default." },
+  "findings[93].recommendation": { "src": "4a62d3514f", "en": "Deduplication and adversarial review must be standard phases of a fan-out audit, launched AFTER the last report rather than in parallel with it." },
+  "findings[93].calibration": { "src": "365ed36f77", "en": "A synthesiser finding about its own process." },
+
+  "findings[94].title": { "src": "0f616041cc", "en": "The Reviews shelf hides this entire system audit" },
+  "findings[94].evidence": { "src": "8358da79a1", "en": "The Reviews shelf searches docs/reviews/REVIEW-*.md — one level, prefixed files only. EIGHT files fall outside it: all seven files in docs/reviews/system-audit-2026-07-24/ (including both red teams' files) and docs/reviews/verifier-2026-07-20/jira-scope.md." },
+  "findings[94].means": { "src": "856de2c84e", "en": "The global audit you commissioned is invisible from “the single place where you can check everything”. It is the same glob-depth defect as on the Reports shelf, but it stings more." },
+  "findings[94].recommendation": { "src": "b369bb3093", "en": "Fix it in one edit together with the Reports shelf." },
+  "findings[94].calibration": { "src": "005aecfa83", "en": "Found by the web red team; the original auditor checked one shelf and never looked at its neighbours." },
+
+  "findings[95].title": { "src": "5a02594721", "en": "Not one of the product's eight interactive elements was ever exercised" },
+  "findings[95].evidence": { "src": "5f25fa70cd", "en": "The auditor COUNTED the elements (4 selects plus a button on Timeline, a select plus search plus a button in the Library) and issued a verdict on the basis of the count. Whether they work was checked by nobody: not by them, not by either red team. All that was verified is that the client script starts and the filter counter initialises." },
+  "findings[95].means": { "src": "fda59c2b41", "en": "Under your directive about “all features”, the only features the product actually has went untested." },
+  "findings[95].recommendation": { "src": "8928495b6c", "en": "Exercise all eight before any new web work — this is the first thing to check under an “all features” directive." },
+  "findings[95].calibration": { "src": "8bbce3bd3c", "en": "A blind spot named by the web red team." },
+
+  "findings[96].title": { "src": "4b801255f7", "en": "The blocker indicator has never executed against real data" },
+  "findings[96].evidence": { "src": "89a197c4ca", "en": "open_blockers = 0 for the whole history, meaning the BLOCKER render branch has never run. Its neighbouring clocks are honest about themselves: the quota clock prints “this clear rests on an untested mechanism”." },
+  "findings[96].means": { "src": "da3a9bba56", "en": "Pillar 6 asked for a blocker indicator. “Untested” is a more accurate description than “working”, which is what the auditor wrote." },
+  "findings[96].recommendation": { "src": "bd67fad37c", "en": "Exercise the branch with a synthetic BLOCKER." },
+  "findings[96].calibration": { "src": "a96fc164a3", "en": "A blind spot named by the web red team." },
+
+  "findings[97].title": { "src": "3b4615b103", "en": "The mixture of languages was never checked against the owner's manifest" },
+  "findings[97].evidence": { "src": "5b70a687d5", "en": "The manifest, section 6.language: “to the owner (digest, reports, dev_history Part 1) — in Russian; skill/code/diagrams — EN”. The body of index.html holds 43,611 Latin characters against 1,207 Cyrillic ones." },
+  "findings[97].means": { "src": "85cd7e95cd", "en": "The auditor filed this as cosmetics. But whether a dashboard counts as a “report to the owner” is a decidable question with two defensible answers, and it deserved a queue entry rather than a line in a list of matters of taste." },
+  "findings[97].recommendation": { "src": "634b229cf5", "en": "Raise it in the question queue as a DECISION with a default." },
+  "findings[97].calibration": { "src": "a96fc164a3", "en": "A blind spot named by the web red team." },
+
+  "findings[98].title": { "src": "fa2d33ee9f", "en": "An internal contradiction in the skill is the real root of the invented telemetry numbers" },
+  "findings[98].evidence": { "src": "4174bb5f68", "en": "SKILL.md:965 permits “Write the line … even if token counts are approximate”; SKILL.md:771 forbids “NEVER fabricate an aggregate”. It is this pair, not the ban on reading transcripts, that produces the ~14000-style estimates in the project's TELEMETRY blocks." },
+  "findings[98].means": { "src": "a5432f14e9", "en": "The auditor looked for the cause in the wrong place. The skill simultaneously permits and forbids the same action, and the agent picks the permitting wording." },
+  "findings[98].recommendation": { "src": "eee821ab70", "en": "Remove the contradiction and document the method that works: the orchestrator reads usage from the worker's transcript, located by the brief's code phrase." },
+  "findings[98].calibration": { "src": "a40ffc01a9", "en": "Found by the skills red team; the original auditor never noticed this pair." },
+
+  "findings[99].title": { "src": "038bd0b49c", "en": "Systematic severity inflation is the week's most reproducible finding" },
+  "findings[99].evidence": { "src": "a5fbb4d3af", "en": "Three independent calibrations: thirteen CRITICAL labels, NOT ONE of which survived; roughly thirty downgrades against two upgrades. The mechanism is identical and recognisable each time: a single measurement passed off as the operating regime (21 hours → “it will not happen at night”, when the median is 45 minutes); something deferred presented as missing; a caveat two lines from the quotation left unquoted; absence from one document treated as absence altogether; the word “guaranteed” with not one observation behind it." },
+  "findings[99].means": { "src": "f96ec1a740", "en": "The facts on the dashboard are reliable; the judgements about their consequences are not. The cause: the framing “the owner doubts the readiness claims” was read as “hunt for the worst case” rather than “check harder in both directions”. The synthesiser inherited the same bias and withdrew four of its own conclusions." },
+  "findings[99].recommendation": { "src": "8a7f4b2d79", "en": "Deduplication and adversarial review as standard phases of a fan-out audit, launched AFTER the last report. The brief should read “check harder in both directions”." },
+  "findings[99].calibration": { "src": "55936d2412", "en": "A synthesiser finding about its own process, confirmed by three independent calibrations." }
+}

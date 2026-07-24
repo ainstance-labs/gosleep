@@ -1,0 +1,101 @@
+{
+  "findings[58].title": { "src": "11d84e4e5d", "en": "There is no token ceiling, so BUDGET_EXCEEDED can never fire" },
+  "findings[58].evidence": { "src": "24b1163925", "en": "manifest section 5 phase-ceiling delegates the ceiling to the epic brief, and no brief names a number; runway reads unknown on the budget axis. Spend telemetry is self-declared by agents from their own transcripts — there is no independent counter. Meanwhile the platform has a first-class --max-budget-usd for -p, and it is used nowhere." },
+  "findings[58].means": { "src": "43136c8027", "en": "The rule meant to stop spending from running away cannot be wrong only because it cannot fire." },
+  "findings[58].recommendation": { "src": "bc826d7adb", "en": "Set one number in GOSLEEP_TOKEN_CEILING (the builder already reads it) — a fork for the owner." },
+  "findings[58].calibration": { "src": "147e7b2425", "en": "A blind spot named by the red team; none of the six auditors examined it as a finding." },
+
+  "findings[59].title": { "src": "96ba5c15da", "en": "What a worker does when the quota runs out mid-task: there is no experience at all" },
+  "findings[59].evidence": { "src": "518100e0bf", "en": "api.failure fired exactly once in 1,933 events. The reports analysed what the ORCHESTRATOR does at a limit (quota-wait, never executed); what happens to a WORKER — whether its output is lost, whether the Jira task is left half-transitioned, whether the PR stays open, who would notice — nobody asked." },
+  "findings[59].means": { "src": "5d6cc266bf", "en": "A whole class of night-time failures is neither described nor observed." },
+  "findings[59].recommendation": { "src": "d48bd61b29", "en": "Test the StopFailure and TeammateIdle hooks with a real run — of 12+ wires only 4 have been checked, and these two are not among them." },
+  "findings[59].calibration": { "src": "3a39882791", "en": "A blind spot named by the red team." },
+
+  "findings[60].title": { "src": "58e3e79c1c", "en": "The entire supervision trail lies outside git and truncates itself" },
+  "findings[60].evidence": { "src": "2b5125e1e2", "en": "The heartbeat (200 lines, self-truncating), .artifacts/, and the watchdog ledger are all under .gitignore. Every statistic in this audit, including the 60.8-hour finding, covers only 2026-07-20 → 2026-07-24, because nothing earlier survived on disk." },
+  "findings[60].means": { "src": "7919c88267", "en": "The mandate asks for a trend (“questions per night trending to zero”), and the system stores no data for a trend. One git clean -fdx, or a lost disk, erases the entire observational evidence base." },
+  "findings[60].recommendation": { "src": "f4d03583d3", "en": "Archive the heartbeat before it truncates itself; lift the supervision trail out of .gitignore, or archive it separately." },
+  "findings[60].calibration": { "src": "3a39882791", "en": "A blind spot named by the red team." },
+
+  "findings[61].title": { "src": "3f5d1c4888", "en": "Data integrity while four processes work in one tree in parallel" },
+  "findings[61].evidence": { "src": "49a49883d2", "en": "Four Claude processes write into one working tree on one branch. The question queue has an mkdir lock, and events have an atomic append. The git tree and the large derived files (ORCHESTRATION-STATE.md, render_bundle.json, the heartbeat) have no mechanical protection: it rests on prose in CLAUDE.md and on the agents' memory. The project's memory records a real incident of this class (git stash = reset --hard, 2026-07-13)." },
+  "findings[61].means": { "src": "0f7bd73100", "en": "A class of incident that has already cost live queue data once is not closed mechanically." },
+  "findings[61].recommendation": { "src": "ea90d42279", "en": "Put the rule “no git stash/reset in the shared tree” into the skills (today it is in none of the five) and consider mechanical protection for the large derived files." },
+  "findings[61].calibration": { "src": "0429207f71", "en": "A blind spot named by the red team; corroborated by skills finding F25." },
+
+  "findings[62].title": { "src": "b3899ab5ba", "en": "The CLI version is recorded nowhere; a breaking update at 03:00 is unhandled" },
+  "findings[62].evidence": { "src": "fdeedca0f9", "en": "A version divergence is observable on this machine: CLI 2.1.219 against 2.1.218 embedded in Cursor. The hidden claude respawn command exists precisely because a session is bound to a specific binary. The project records the CLI version nowhere — not in STATE, not in the heartbeat; a re-wake would start whatever happens to be on PATH." },
+  "findings[62].means": { "src": "448b4ac1a3", "en": "A platform update in the middle of the night can change the behaviour of a restarted orchestrator, and nobody would notice." },
+  "findings[62].recommendation": { "src": "9eabcab37f", "en": "Record the CLI version in STATE and in the heartbeat." },
+  "findings[62].calibration": { "src": "3a39882791", "en": "A blind spot named by the red team." },
+
+  "findings[63].title": { "src": "ecc5e85d5d", "en": "Handoff cadence has dropped threefold across the last four epics" },
+  "findings[63].evidence": { "src": "4f9d43641d", "en": "48 files, numbered 01…48 with no gaps or duplicates, all committed. But: 2026-07-13 → 7 handoffs; 2026-07-20…24 → 3, one of which is an audit brief — while telemetry for the same period records cycles 75→107 (about 32 cycles) and four closed epics." },
+  "findings[63].means": { "src": "17b8caaba7", "en": "A handoff is what context is rebuilt from after an orchestrator dies. The rarer they are written, the more is lost on restart — at exactly the moment a restart happens." },
+  "findings[63].recommendation": { "src": "e830a87594", "en": "Tie the handoff to a worker boundary; check for its presence with the same integrity gate as dev_history." },
+  "findings[63].calibration": { "src": "9e6b9b3b48", "en": "Not examined in detail by a red team." },
+
+  "findings[64].title": { "src": "f198151cc3", "en": "The cycle table on Cost is unsorted — 17 order violations" },
+  "findings[64].evidence": { "src": "e85c05a3fa", "en": "cost.tsx:36 — reverse() with the comment “Newest first”. The actual sequence: 81, 83, 84, …, 89, 91, 90, 92, …, 96, 95, 97, 98, 80, 79, 78 — 17 violations of descending order. The array is in the order the rows appear in ORCHESTRATION-STATE.md, not by cycle number." },
+  "findings[64].means": { "src": "7bf02e4b1f", "en": "The spend feed cannot be read by eye: the reader cannot rely on the ordering and would not notice a missing cycle." },
+  "findings[64].recommendation": { "src": "08ed1e9abf", "en": "Sort by cycle explicitly; show numbering gaps in a separate column." },
+  "findings[64].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[65].title": { "src": "c91743b7f3", "en": "Fleet: cards instead of a table, 8 of 9 workers 11 days old, 88 names unmatched" },
+  "findings[65].evidence": { "src": "8cb71b296a", "en": "fleet.workers = 9, all in state ended; 8 of the cards are 11 days old or more. fleet.ledger_only = 88 names in the registry with no matching card; unnamed_sessions = 56. The pane field is unknown on every card. Nine cards at about 180 px each occupy 1600 px where a table would fit in 300." },
+  "findings[65].means": { "src": "a687b4015f", "en": "The “fleet” screen shows a museum, not a fleet. Joining names from the registry to those in the log does not work — which the screen itself honestly lists among its blind spots." },
+  "findings[65].recommendation": { "src": "ba822620f3", "en": "A table by default, a card on expand; limit the window to a day with an explicit note about what is hidden; finish the name matching." },
+  "findings[65].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[66].title": { "src": "5deb50907f", "en": "Tasks: the summary column is empty in all 161 rows; the key wraps onto two lines at 1280" },
+  "findings[66].evidence": { "src": "5e92acd0d8", "en": "summary is filled from tracker data that was never polled — not one board row in the bundle carries a summary. In the KEY column the value is broken as “GSL-” / “161” (a consequence of .mono{overflow-wrap:anywhere})." },
+  "findings[66].means": { "src": "51152bb057", "en": "An empty column takes roughly 15 percent of the width, and the board's primary identifier breaks in the middle at desktop width." },
+  "findings[66].recommendation": { "src": "86b76ea50e", "en": "Hide the column while it holds no values at all (with a caption explaining why); exclude the key column from the wrapping rule and give it a min-width." },
+  "findings[66].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[67].title": { "src": "d11e03a884", "en": "Basic semantics: no html lang, no thead or th scope, no skip-link" },
+  "findings[67].evidence": { "src": "34fd831cb8", "en": "None of the seven pages contains an html element at all (the file begins with the doctype and goes straight to meta charset), so there is no lang. thead — 0 on every page; th scope — 0 across 8–19 th elements per page. Filed by run 04 as GSL-168 and unfixed at the time of this audit." },
+  "findings[67].means": { "src": "c93fb29c95", "en": "A page with mixed Russian and English content does not declare its language; a 161-row table has no programmatically associated headers." },
+  "findings[67].recommendation": { "src": "3b69255f58", "en": "Add html lang, thead + scope=col, and a skip-link before the navigation." },
+  "findings[67].calibration": { "src": "eec9cdc2e9", "en": "Not reviewed by a red team. Telling: a run 04 finding is still unfixed even though that run declared convergence at 92/100." },
+
+  "findings[68].title": { "src": "a11bc79603", "en": "There is no theme toggle and no cross-cutting search" },
+  "findings[68].evidence": { "src": "56c39756d2", "en": "data-theme occurs 3 times, all inside CSS selectors; there is no control, and the comment at theme.ts:60 says outright that the attribute exists “so that the theme can be photographed”. Search exists only in library.html and only over the index (name + title)." },
+  "findings[68].means": { "src": "8d302889fc", "en": "The theme follows the system with no way to override it; finding an artefact by a word is possible from one screen only, and only by title. Both of the owner's reference products (Mastra Studio, Supabase) have a toggle." },
+  "findings[68].recommendation": { "src": "bb3c05d4a1", "en": "A theme toggle in the header (three positions); cross-cutting search is a natural function of a live server." },
+  "findings[68].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[69].title": { "src": "242a4e7b17", "en": "Raw queue.jsonl reads as “20 open”, while the tool says “0 open”" },
+  "findings[69].evidence": { "src": "363b3f42cd", "en": "queue.jsonl holds 43 lines and 22 unique ids; read naively as “the last record per id wins” it yields 20 open. lab-emit list --status all --json returns 21 records and 0 open, because it applies patch semantics. The builder reads through lab-emit, so the page is right." },
+  "findings[69].means": { "src": "0437706130", "en": "A person or agent who opens the queue file directly — which is the natural thing to do — gets exactly the opposite picture. The auditors themselves tripped over this." },
+  "findings[69].recommendation": { "src": "a511b46146", "en": "The queue README should open with the sentence “this file cannot be read line by line — only through lab-emit list”." },
+  "findings[69].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[70].title": { "src": "256fb883a8", "en": "The CLAUDE.md warning about local/global skill divergence is itself out of date" },
+  "findings[70].evidence": { "src": "d39587b5b1", "en": "CLAUDE.md: “the local skill/ has problems”, “the GLOBAL copy is authoritative”. The fact, from diff -r of each skill: five of six are byte-identical; the single divergence is that the local using-jira is 22 lines BEHIND (the Attachments section, the lesson from the 2026-07-14 incident)." },
+  "findings[70].means": { "src": "1c7cb0e17f", "en": "The rule is still useful as protection against install.sh, but its justification (“the local one is worse”) does not match the disk, and the direction of divergence is the opposite of what is claimed. Agents reading CLAUDE.md draw the wrong conclusion about which copy to trust." },
+  "findings[70].recommendation": { "src": "0d56076b55", "en": "Rewrite the wording to match the actual reason: the copies are in sync, the global one is authoritative, and the guard stays not because the local copy is worse but because an unprotected write path is dangerous in itself." },
+  "findings[70].calibration": { "src": "60511baea5", "en": "Resolved by the synthesiser: the skills audit's version is more precise than the delivery audit's, because it was produced by a diff -r of each skill separately." },
+
+  "findings[71].title": { "src": "5c7a594488", "en": "Status divergence between Jira and GitHub on two tasks" },
+  "findings[71].evidence": { "src": "3dd793e2b9", "en": "GSL-144 — Jira Done, GitHub #146 OPEN. GSL-107 — Jira In Review, GitHub #121 CLOSED, commit 19dfd47 in main." },
+  "findings[71].means": { "src": "58c1c5d234", "en": "Both directions of divergence are present at once. GSL-107 is frozen, but its Jira status creates a false impression of unfinished work; GSL-144 conversely leaves an open issue for closed work." },
+  "findings[71].recommendation": { "src": "364ba1a0cb", "en": "Close #146; GSL-107 is the owner's decision (close as Done, or leave In Review as a freeze marker)." },
+  "findings[71].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[72].title": { "src": "bc12b958ec", "en": "The handoff skill gives two different file paths, and the quick table gives the wrong one" },
+  "findings[72].evidence": { "src": "a3b82461e3", "en": "Line 107 — docs/handoff/<YYYY-MM-DD>-handoff-<topic>.md (no NN); lines 10 and 13 — with a mandatory NN." },
+  "findings[72].means": { "src": "9206661ffe", "en": "Handoff numbering is the anchor of cold-start and re-wake (“read the highest-numbered”). One unnumbered file breaks it, and the error is prompted by the very table an agent turns to in a hurry." },
+  "findings[72].recommendation": { "src": "e3e26db626", "en": "Fix line 107." },
+  "findings[72].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[73].title": { "src": "b517884430", "en": "delivery-workflow unconditionally demands updating a wiki that does not exist" },
+  "findings[73].evidence": { "src": "f4cc4bc1de", "en": "Section 3 — “If the project keeps an LLM wiki (docs/wiki/)…”; section 4 step 6 — “update docs/wiki/status.html” with no condition. ls docs/wiki → No such file." },
+  "findings[73].means": { "src": "905fdb3724", "en": "At the close of every epic an agent runs into a path that does not exist and spends a turn working out why." },
+  "findings[73].recommendation": { "src": "54e1dd4d61", "en": "Add the condition to step 6, or remove the wiki reference from the playbook." },
+  "findings[73].calibration": { "src": "13380aa7aa", "en": "Not reviewed by a red team." },
+
+  "findings[74].title": { "src": "ca379f1704", "en": "The dev_history filename format differs between the skill and CLAUDE.md" },
+  "findings[74].evidence": { "src": "c275356b25", "en": "The skill: <TASK-KEY>-<phase>-<cycle>-<slug>.md; CLAUDE.md: <TASK-KEY>-<phase>-<slug>.md. Both forms live in the tree (37 of 122 files contain a cycle)." },
+  "findings[74].means": { "src": "60cd662954", "en": "The dev_history index has stopped being homogeneous; a grep over the filename pattern returns an incomplete result." }
+}

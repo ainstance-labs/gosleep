@@ -1,0 +1,68 @@
+{
+  "pillars[1].name": { "src": "2a0c003f5b", "en": "Analysing other people's systems, and professional reports" },
+  "pillars[1].verdict": { "src": "71d8e23e5b", "en": "Strongly done, but it lies about today" },
+  "pillars[1].evidence": { "src": "c490b9427a", "en": "Five reports in EN+RU, 0 broken links, self-contained from file://; the research was done against the source code of nine repositories in .research-cache/" },
+  "pillars[1].blocker": { "src": "6d68c6f32c", "en": "The reports still say “Missing — self-pulse, question buffer, night mode” about things built long ago; not one carries a valid-as-of date; the economic premise about claude -p turned out to be wrong and leaked into the PRD as an invariant. No skill contains a method for dissecting a rival system." },
+  "pillars[1].means": { "src": "91b5c90e18", "en": "The research was done deeply and honestly, but two weeks aged it out — and the project has no rule saying that a report goes stale." },
+
+  "pillars[2].name": { "src": "b6db35d177", "en": "Who orchestrates the orchestrator" },
+  "pillars[2].verdict": { "src": "3f20c75ca9", "en": "The engineering is finished; your own step is not" },
+  "pillars[2].evidence": { "src": "90de938992", "en": "launchctl is empty, the plist is absent, there is no cron entry, no live ledger and no state directory; 8 commits in tools/watchdog/, all dated 10 July. Five independent confirmations." },
+  "pillars[2].blocker": { "src": "1568ee2f11", "en": "CALIBRATION CORRECTION: installing it is YOUR action by design — runbook GSL-57 marks the launchctl commands as “performed by the OWNER”. This is not “the skill describes a fiction”; it is an installation step nobody has taken. What remains real: the thresholds disagree with the actual cadence, and the watchdog is blind to “alive but useless” — cycle 81 did not move for 60.8 hours while status read ok." },
+  "pillars[2].means": { "src": "03c97202fc", "en": "The hole your mandate opens with is still open — but the engineering side is finished: code, 75 green tests, a runbook. What is missing is the owner's step." },
+
+  "pillars[3].name": { "src": "b1ad3445a5", "en": "Headless mode and the subscription (claude -p)" },
+  "pillars[3].verdict": { "src": "c7e50c8f9a", "en": "The question closed better than expected" },
+  "pillars[3].evidence": { "src": "eb14482012", "en": "A live run: exit 0, Opus 5, provider firstParty, no API key; reproduced by a second auditor. Anthropic's official page: the credit change is paused, “nothing has changed”." },
+  "pillars[3].blocker": { "src": "c334167d55", "en": "The door is open in our favour and could close. The price is measured: $0.30 for a trivial call with zero cache reuse — an LLM supervisor would cost about $48 a night. The PRD and the reports state the opposite premise; the skills mention headless not once." },
+  "pillars[3].means": { "src": "aa4477b549", "en": "Your worry did not hold up: the subscription works. But the project's own documents do not know that." },
+
+  "pillars[4].name": { "src": "5426840939", "en": "Autonomy and the question buffer" },
+  "pillars[4].verdict": { "src": "0ff24394f0", "en": "The buffer is real; the autonomy rides on the LLM's pulse" },
+  "pillars[4].evidence": { "src": "72511e223f", "en": "Smoke 404/404 run independently; the typology, deduplication, mkdir lock and deadline clamp all work; 21 questions have passed through the queue. The one pillar the skills hold with confidence." },
+  "pillars[4].blocker": { "src": "032a31a6b2", "en": "Nobody applies the default when a deadline passes. 10 of 20 defaults were applied ahead of time. Three decisions cite a manifest clause that does not exist. Learning produced not a single candidate (three confirmations). A real night has never happened." },
+  "pillars[4].means": { "src": "cd50a8215d", "en": "“The system decides for you while you sleep” works exactly as long as the orchestrator stays alive." },
+
+  "pillars[5].name": { "src": "79341c659a", "en": "The laboratory and automatic documentation" },
+  "pillars[5].verdict": { "src": "c3faa9b034", "en": "It captures by itself; it displays only on command" },
+  "pillars[5].evidence": { "src": "25de91a876", "en": "Tier 1 is autonomous: 1,916 events, 13 hook types, 95 % mechanical. The console ties everything together: 927 links, 0 broken local ones, all 182 commit hashes resolve." },
+  "pillars[5].blocker": { "src": "f3232cd1d7", "en": "There is no automatic trigger (four confirmations). CORRECTION: the median rebuild interval within a shift is 45 minutes, not “always a day”; the 160-hour and 74-hour gaps fall BETWEEN shifts. The defect is that freshness is tied to a wave boundary rather than to the clock. 152 tasks have status unknown." },
+  "pillars[5].means": { "src": "2c02aad9be", "en": "The raw log really does write itself; everything you actually look at only comes alive when an agent remembers to run the builder." },
+
+  "pillars[6].name": { "src": "54fc70a184", "en": "A professional UI" },
+  "pillars[6].verdict": { "src": "738eb4a462", "en": "A first version done correctly; the indicators are silent for lack of inputs" },
+  "pillars[6].evidence": { "src": "460e0dec6e", "en": "The design system: 50 tokens, every pair at or above WCAG 4.5, a genuine dark theme. The red team rated the RUNWAY formula “better than most commercial dashboards”. The task board refuses to turn a commit into a status, and explains why 152 times." },
+  "pillars[6].blocker": { "src": "20249474ed", "en": "WITHDRAWN: “the web is read-only” is not a defect but a v2 deliberately deferred in the PRD. What remains: RUNWAY is silent for want of ONE input; 94 % of tasks have no status; outbound links exist on one screen out of seven; the glob depth hides the reports AND this entire audit; eight interactive elements were never exercised; there is no theme toggle and no cross-cutting search; lang/thead." },
+  "pillars[6].means": { "src": "65e694916a", "en": "The “AI slop” label is unfair, and both red teams confirmed that as adversaries. The first version is correct within its own scope; what is missing is the inputs the indicators need, and a quality pass." },
+
+  "pillars[7].name": { "src": "aa10a5ad7c", "en": "Loop engineering" },
+  "pillars[7].verdict": { "src": "e972a29aee", "en": "It works better than it is described; the description is out of date" },
+  "pillars[7].evidence": { "src": "d4792e0605", "en": "Night mode, the morning digest and the question buffer are all shipped. CALIBRATION CORRECTION: the cadence is healthy — the median with a live fleet is 594 seconds, inside your 5–10 minute window; only 16 % of ticks land in the “dead zone”." },
+  "pillars[7].blocker": { "src": "b119167bda", "en": "The circuit breaker is two pages of prose and zero events out of 1,933 (four confirmations). Of eight items: 2 done, 3 partial, 3 not done. The economic case for the cadence rests on a five-minute cache TTL that no longer exists — but the skill AND your own lesson file went stale together, because both stood on the same physics." },
+  "pillars[7].means": { "src": "39662ffbbd", "en": "This is not “the skill versus the owner”, as the first draft had it: both documents aged out together, because the platform changed the physics underneath them." },
+
+  "pillars[8].name": { "src": "d0e99fd457", "en": "The mobile surface" },
+  "pillars[8].verdict": { "src": "00e1700815", "en": "What exists is honest; further work is paused by your directive of 2026-07-24" },
+  "pillars[8].evidence": { "src": "07a641fdef", "en": "docs/lab/mobile/README.md, 7 sections from the same bundle; it prints absolute staleness thresholds because it cannot execute JS." },
+  "pillars[8].blocker": { "src": "186ca80416", "en": "Nothing is required. The only action is to build mobile as a second presentation of the same store, so that it does not have to be paid for twice later." },
+  "pillars[8].means": { "src": "497058afd8", "en": "The phone surface exists and does not lie. Leave it alone." },
+  "pillars[8].readiness_label": { "src": "a1c9520d97", "en": "frozen" },
+
+  "pillars[9].name": { "src": "a1a5cde9ec", "en": "HTML reports" },
+  "pillars[9].verdict": { "src": "358b12007e", "en": "The format is the strongest part of the project" },
+  "pillars[9].evidence": { "src": "4ef6a32ecb", "en": "The standard is documented and observed: four runs, GSL-138/01..04, each with EN + ru/ + design/ + local assets/, frames at exactly 1280x800 and 390x844, no external links." },
+  "pillars[9].blocker": { "src": "61deefb44f", "en": "Only run 01 has design/ru/; the regression/ lane is not described in the standard at all; the LANDED/PARTIAL/NOT-LANDED statuses vanished in runs 02 and 04. CORRECTION: FOUR runs are invisible, not 20 (20 is the file count). And the Reviews shelf hides this entire system audit." },
+  "pillars[9].means": { "src": "29d6dca75c", "en": "The standard exists and works, but practice has already outrun it, and the main acceptance artefacts cannot be reached from any single place." },
+
+  "pillars[10].name": { "src": "e71e65d9c7", "en": "The PRD as a living development plan" },
+  "pillars[10].verdict": { "src": "4696e42577", "en": "The document is alive; the plan is dead" },
+  "pillars[10].evidence": { "src": "28b7b82de2", "en": "One commit, 83f8988 dated 2026-07-08, status Draft; in the meantime ten epics and four verification runs have closed." },
+  "pillars[10].blocker": { "src": "3fb3c532ca", "en": "The ./install.sh gate in all six phases has been physically unexecutable since 20 July. Three cross-cutting constraints contradict directives now in force. Four pillars of the mandate are not covered. Nowhere does it record “phase N is closed”." },
+  "pillars[10].means": { "src": "c179776494", "en": "The orchestrator is told to pick up the next phase by itself at a phase boundary — and it picks it from a document that does not know what has already been done." },
+
+  "pillars[extra].name": { "src": "1c7e49df29", "en": "The skills as the mandate's “intelligent orchestrator” (not one of the ten pillars, but demanded by the mandate in so many words)" },
+  "pillars[extra].verdict": { "src": "dbabfdccf4", "en": "Strong text; the problem is the process, not the content" },
+  "pillars[extra].evidence": { "src": "8c02197eeb", "en": "The honest count after calibration: SEVEN lessons are fixed in the skills themselves; FOUR or FIVE sit deliberately outside them and in the right place (repository policy in CLAUDE.md, a machine fact in STATE, design in the spec, report format in a dedicated skill), two of those backed by a MECHANISM. Three or four out of sixteen are left homeless." },
+  "pillars[extra].blocker": { "src": "64a1a71538", "en": "Genuine contradictions with your orders number TWO, not five (the roll trigger; the Workflow tool without an “ask the owner” gate), and each is fixed by editing a single paragraph. The real problem is procedural: nobody is obliged to edit the authoritative copy, and it sits outside git, outside review and outside Jira." },
+  "pillars[extra].means": { "src": "08b8de5d42", "en": "You asked for an orchestrator “that knows every nuance of orchestrating”. It exists, and it is well written. What is missing is not the content but the duty to keep it current." }
+}
