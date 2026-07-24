@@ -275,6 +275,14 @@ tr:hover td{background:var(--sunken)}
    compared by size. Keys and identifiers are mono too but stay LEFT: nobody compares a sha by
    magnitude, they scan for it down the first characters. */
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+/* GSL-208. An identifier column is the one column that may not wrap. td above sets
+   overflow-wrap:break-word, which is right for a long prose value and wrong for a key: at 1280px
+   the Tasks board sized this column by its narrowest content and broke GSL-1234 across two lines
+   mid-token, in the column the reader scans down. min-width, not width — it asks for room for the
+   widest key and lets the table give the rest away; nowrap holds the token together if it does not
+   get it. Not applied at 26rem: on a phone the wrap is the lesser evil, and .wrap scrolls. */
+td.key-col,th.key-col{min-width:9ch;white-space:nowrap}
+@media (max-width:26rem){td.key-col,th.key-col{min-width:0;white-space:normal}}
 /* A table wider than the phone scrolls, and the scrollbar is left VISIBLE on purpose: an edge that
    silently hides a column is the same defect class as a card that silently clips a token. */
 .wrap{overflow-x:auto;scrollbar-width:thin;border-radius:var(--r2)}

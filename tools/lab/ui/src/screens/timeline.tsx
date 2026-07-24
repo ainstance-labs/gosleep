@@ -2,7 +2,7 @@ import type { VNode } from "preact";
 import type { LabEvent, RenderBundle } from "../types.js";
 import { BlindSpots, Empty, EventDetail, FilterBar, FilterCount, srcClass } from "../components.js";
 import { facetValues, type FilterIndex, type FilterRow } from "../filter.js";
-import { SEVERITIES, severityOf } from "../severity.js";
+import { SEVERITIES, SIGNAL_MODES, severityOf, signalOf } from "../severity.js";
 
 /** The island the client reads back, and the table's row ids. Wired in render.tsx; asserted in smoke.sh. */
 export const TIMELINE_ISLAND = "timeline-index";
@@ -35,11 +35,16 @@ export function timelineIndex(b: RenderBundle): FilterIndex {
     type: String(e.type ?? ""),
     severity: severityOf(e.type),
     src: String(e.src ?? ""),
+    signal: signalOf(e.type),
   }));
 
   return {
     rows,
     facets: [
+      // GSL-208, and FIRST because it is the control the owner reaches for at 07:00: "what happened
+      // last night" is a different question from "what did the panes do". Intersected with what is
+      // actually here, like severity below, so the box never offers a mode that matches nothing.
+      { key: "signal", label: "view", values: SIGNAL_MODES.filter((s) => rows.some((r) => r.signal === s)) },
       { key: "actor", label: "actor", values: facetValues(rows, "actor") },
       { key: "type", label: "type", values: facetValues(rows, "type") },
       // Worst-first, not alphabetical: at 03:00 the owner opens `incident`, not `agent.turn_ended`.

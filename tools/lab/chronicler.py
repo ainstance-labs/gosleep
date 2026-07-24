@@ -2098,11 +2098,43 @@ EVENT_VIEW_KEYS = ("ts", "seq", "actor", "type", "src")
 EVENT_DATA_KEYS = ("sha", "path", "key", "question", "error_type", "decision", "cmd")
 
 
+HOME = os.path.expanduser("~")
+
+
+def unhome(v):
+    """GSL-208: a value the owner reads must not carry the owner's home directory.
+
+    Two rewrites, in this order, and NOTHING else is touched:
+
+      <repo>/docs/lab/x.md   ->  docs/lab/x.md      a location in THIS repository, said as one
+      ~/anything/else        ->  ~/anything/else    still a path, minus the account name
+
+    Why both. Only the first would leave every sibling worktree (`gosleep-audit-preserve`, where the
+    audit ran) printing /Users/<name>/... in full, which is the leak, and the leak is not this one
+    repository -- it is the account name and the machine layout, in a file that is COMMITTED and read
+    on a phone. Only the second would keep this repository shouting an absolute prefix at itself on
+    every row, which is noise, not information.
+
+    NOT A TRUNCATION. GSL-124 is the standing rule here: values travel whole. Nothing is cut, nothing
+    is elided, no ellipsis is added -- a prefix is rewritten to a shorter spelling of the SAME place,
+    and the remainder of the string is byte-for-byte what the emitter wrote. Applied to every string
+    in the projected payload rather than to `path` alone, because the raw-output fields (`cmd`) carry
+    the same prefix and are read by the same eyes.
+    """
+    if not isinstance(v, str) or "/" not in v:
+        return v
+    if REPO and REPO != "/":
+        v = v.replace(REPO.rstrip("/") + "/", "")
+    if HOME and HOME != "/":
+        v = v.replace(HOME.rstrip("/") + "/", "~/")
+    return v
+
+
 def project_event(e):
     d = e.get("data") or {}
     return dict(
         {k: e[k] for k in EVENT_VIEW_KEYS if k in e},
-        data={k: d[k] for k in EVENT_DATA_KEYS if k in d},
+        data={k: unhome(d[k]) for k in EVENT_DATA_KEYS if k in d},
     )
 
 

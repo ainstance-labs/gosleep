@@ -105,10 +105,24 @@ const STATUS_TONE: Record<string, string> = {
   "In Progress": "info",
 };
 
-function Row({ r, built, gh }: { r: TaskRow; built: number; gh: boolean }): VNode {
+function Row({
+  r,
+  built,
+  gh,
+  summaries,
+}: {
+  r: TaskRow;
+  built: number;
+  gh: boolean;
+  /** Whether ANY row on the board has a summary — see the header comment on the board table. */
+  summaries: boolean;
+}): VNode {
   return (
     <tr id={"task-" + r.key}>
-      <td class="mono">
+      {/* GSL-208: `key-col` is a min-width, nothing else. At 1280px the key column was sized by the
+          narrowest content and GSL-205 wrapped onto two lines mid-identifier — the one cell on this
+          board that must stay one token, because it is what the reader scans down. */}
+      <td class="mono key-col">
         <a href={r.jira_url}>{r.key}</a>
       </td>
       <td class="mono">
@@ -136,7 +150,7 @@ function Row({ r, built, gh }: { r: TaskRow; built: number; gh: boolean }): VNod
         )}{" "}
         {r.status_ts ? <Age ts={r.status_ts} built={built} /> : null}
       </td>
-      <td>{r.summary ?? ""}</td>
+      {summaries ? <td>{r.summary ?? ""}</td> : null}
       <td class="mono">
         {r.commits.map((c, i) => (
           <span key={c.sha} title={c.subject}>
@@ -175,6 +189,19 @@ export function Tasks({ b }: { b: RenderBundle }): VNode {
   const t = b.tasks;
   const built = Date.parse(b.generated_at);
   const known = new Set(t.rows.map((r) => r.key));
+  /**
+   * GSL-208: does ANY row have a summary?
+   *
+   * All 161 cells were empty, which is not a rendering bug — a summary arrives with a tracker poll,
+   * and the laboratory holds no Jira credentials (C1). But an empty column is not a neutral one: it
+   * takes width from the six columns that DO carry evidence, and it reads as a renderer that broke
+   * rather than as a poll that never ran. So the column is drawn when there is something in it and is
+   * replaced by a sentence when there is not.
+   *
+   * Computed over the rows, never hard-coded off today. The morning the tracker is polled the column
+   * comes back on its own, with no edit here.
+   */
+  const summaries = t.rows.some((r) => (r.summary ?? "") !== "");
 
   return (
     <>
@@ -229,22 +256,32 @@ export function Tasks({ b }: { b: RenderBundle }): VNode {
           the tracker.
         </Empty>
       ) : (
-        <div class="wrap">
-          <table>
-            <tr>
-              <th>key</th>
-              <th>gh</th>
-              <th>status</th>
-              <th>summary</th>
-              <th>commits</th>
-              <th>dev_history</th>
-              <th>pr</th>
-            </tr>
-            {t.rows.map((r) => (
-              <Row key={r.key} r={r} built={built} gh={t.gh_issue_links} />
-            ))}
-          </table>
-        </div>
+        <>
+          {summaries ? null : (
+            <div class="scope-note" data-summary-column="dropped">
+              The <b>summary</b> column is not drawn: no row has one. A summary arrives with a tracker
+              poll, and the laboratory holds no Jira credentials (C1) — the column is missing because
+              the poll never ran, not because the board lost it. It returns by itself on the first
+              poll that carries one.
+            </div>
+          )}
+          <div class="wrap">
+            <table>
+              <tr>
+                <th class="key-col">key</th>
+                <th>gh</th>
+                <th>status</th>
+                {summaries ? <th>summary</th> : null}
+                <th>commits</th>
+                <th>dev_history</th>
+                <th>pr</th>
+              </tr>
+              {t.rows.map((r) => (
+                <Row key={r.key} r={r} built={built} gh={t.gh_issue_links} summaries={summaries} />
+              ))}
+            </table>
+          </div>
+        </>
       )}
 
       {t.gh_issue_links ? null : <BlindSpots items={[t.gh_why]} />}

@@ -95,6 +95,37 @@ const INFO: ReadonlySet<string> = new Set([
   "breaker.closed",
 ]);
 
+/* ─────────────── GSL-208: the second axis — is this row about the WORK? ───────────────
+ *
+ * Severity grades how bad a row is. It cannot answer the other question the owner asks of a night:
+ * "show me what happened, not the fleet breathing." Four types account for well over a third of every
+ * feed — a pane opening, a pane closing, a turn ending, an agent speaking — and none of them names a
+ * commit, a ticket, a decision or a question. They are how the machine sounds, not what it did.
+ *
+ * Two properties, and both are the same lesson severityOf teaches one file up:
+ *
+ *   · a type this list does not know is MEANINGFUL, never routine. Add `breaker.tripped` to the
+ *     emitters tomorrow and a default-to-routine version would file it under the rows the owner just
+ *     hid. Unclassified must fall on the side that stays visible.
+ *   · this hides nothing on its own. It is a facet like any other, so the count sentence names every
+ *     row it takes away (filter.ts) — the one rule that makes a filter safe on this dashboard.
+ */
+export type SignalMode = "meaningful" | "routine";
+
+/** Filter order: the reason someone reaches for this control comes first. */
+export const SIGNAL_MODES: readonly SignalMode[] = ["meaningful", "routine"] as const;
+
+const ROUTINE: ReadonlySet<string> = new Set([
+  "pane.started",
+  "pane.ended",
+  "agent.turn_ended",
+  "agent.message",
+]);
+
+export function signalOf(type: string | null | undefined): SignalMode {
+  return ROUTINE.has(String(type ?? "")) ? "routine" : "meaningful";
+}
+
 export function severityOf(type: string | null | undefined): Severity {
   const t = String(type ?? "");
   if (INCIDENT.has(t)) return "incident";

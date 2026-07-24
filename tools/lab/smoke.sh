@@ -1666,8 +1666,12 @@ print("ROWS=%d|DOM=%d|FACETS=%s|TOTAL=%d" % (
     len(idx["rows"]), dom, ",".join(f["key"] for f in idx["facets"]), idx["total"]))
 PY
 )"
-grep -q 'ROWS=5|DOM=5' <<<"$ISL" && grep -q 'FACETS=actor,type,severity,src' <<<"$ISL" \
-  && ok "GSL-97: the inlined island describes exactly the rows the page rendered (actor/type/severity/src)" \
+# GSL-208 added `signal` (the meaningful/routine view mode) at the FRONT of the facet list — first
+# because it is the control the owner reaches for at 07:00. The expected list is spelled out in full
+# rather than loosened to a substring: the point of this assertion is that the island offers exactly
+# the facets the page was built with, and a wildcard here would let a facet go missing unnoticed.
+grep -q 'ROWS=5|DOM=5' <<<"$ISL" && grep -q 'FACETS=signal,actor,type,severity,src' <<<"$ISL" \
+  && ok "GSL-97: the inlined island describes exactly the rows the page rendered (signal/actor/type/severity/src)" \
   || bad "GSL-97: the island and the rendered table disagree, or a facet is missing ($ISL)"
 
 # 2. ⭐ AN INCIDENT IS MARKED IN THE MARKUP, NOT BY A SCRIPT. The owner reads this page from GitHub's
@@ -3570,6 +3574,13 @@ lk_repo() {  # <dir> <remote-url>
   LK_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
   { printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"tracker.issue.updated","src":"emit","data":{"key":"GSL-205"}}\n' "$LK_TS" "$TODAY"
     printf '{"ts":"%s","run_id":"%s","seq":2,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"dec0de5"}}\n' "$LK_TS" "$TODAY"
+    # GSL-208: one path INSIDE this fixture repo (must come out repo-relative) and one outside it but
+    # under $HOME (must come out as ~/…). Two rewrites, because only the first would leave every
+    # sibling worktree printing the account name in full.
+    printf '{"ts":"%s","run_id":"%s","seq":3,"actor":"w1","type":"dev_history.written","src":"hook:PostToolUse","data":{"path":"%s/docs/lab/README.md"}}\n' "$LK_TS" "$TODAY" "$1"
+    printf '{"ts":"%s","run_id":"%s","seq":4,"actor":"w1","type":"dev_history.written","src":"hook:PostToolUse","data":{"path":"%s/elsewhere/notes.md"}}\n' "$LK_TS" "$TODAY" "$HOME"
+    # …and one ROUTINE row, so the "view" facet has both of its modes to offer.
+    printf '{"ts":"%s","run_id":"%s","seq":5,"actor":"w1","type":"agent.turn_ended","src":"hook:Stop","data":{}}\n' "$LK_TS" "$TODAY"
   } > "$1/docs/lab/events/$TODAY.jsonl"
   GOSLEEP_LAB_DIR="$1/docs/lab" "$LE" question --type DECISION --from smoke-links --task GSL-205 \
     --question "does the timeline linkify GSL-205 too?" --default "yes" --reversibility high >/dev/null 2>&1
@@ -3612,6 +3623,51 @@ grep -q 'data-idlink="dec0de5"' "$LK0/docs/lab/site/timeline.html" \
 grep -q 'href="https://ainstance-labs.atlassian.net/browse/GSL-205"' "$LK0/docs/lab/site/questions.html" \
   && ok "GSL-205 control: the Jira half is independent — a missing GitHub base does not silence it" \
   || bad "GSL-205 control: the Jira link vanished because the GitHub base was absent"
+
+echo "== GSL-208: normalised paths, a view mode, and honest columns =="
+# The leak is not this repository — it is the ACCOUNT NAME and the machine layout, in a file that is
+# committed and read on a phone. Asserted on the built page, not on the projection, because the page
+# is what the owner opens.
+grep -q '/Users/' "$LK/docs/lab/site/timeline.html" \
+  && bad "GSL-208: timeline.html still prints an absolute home path ($(grep -o '/Users/[^"<]*' "$LK/docs/lab/site/timeline.html" | head -1))" \
+  || ok "GSL-208: not one absolute /Users/ path survives into timeline.html"
+grep -q '>docs/lab/README.md<' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-208: a path inside the repo is said as a repo-relative location, whole and uncut" \
+  || bad "GSL-208: the in-repo path was not rewritten to a repo-relative one"
+grep -q '>~/elsewhere/notes.md<' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-208: a path outside the repo keeps its shape and loses only the account name" \
+  || bad "GSL-208: a path under HOME but outside the repo was not shortened to ~/"
+# The mode is a FACET, which is what makes it safe: the count sentence names every row it removes.
+grep -q 'data-facet="signal"' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-208: Timeline offers the meaningful/routine view mode" \
+  || bad "GSL-208: no view-mode control on Timeline"
+python3 - "$LK/docs/lab/render_bundle.json" "$LK/docs/lab/site/timeline.html" <<'PY'
+import json, re, sys
+h = open(sys.argv[2], encoding="utf-8").read()
+isl = re.search(r'<script id="timeline-index" type="application/json">(.*?)</script>', h, re.S)
+idx = json.loads(isl.group(1)) if isl else {"rows": [], "facets": []}
+modes = {r.get("signal") for r in idx["rows"]}
+facet = [f for f in idx["facets"] if f["key"] == "signal"]
+# Every row must be classified, both modes must be present in this fixture, and an unclassified type
+# must fall on the side that STAYS VISIBLE — the severityOf lesson, one axis over.
+sys.exit(0 if modes == {"meaningful", "routine"} and facet and facet[0]["values"][0] == "meaningful" else 1)
+PY
+[[ $? -eq 0 ]] \
+  && ok "GSL-208: every feed row carries a view mode, and meaningful is offered first" \
+  || bad "GSL-208: the view-mode index is incomplete or ordered by appearance"
+# The empty column. 161 of 161 cells were blank — a poll that never ran, reading as a broken renderer.
+grep -q 'data-summary-column="dropped"' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-208: with no summary anywhere the column is replaced by the reason it is missing" \
+  || bad "GSL-208: the always-empty summary column is still drawn with no explanation"
+grep -q '<th>summary</th>' "$LK/docs/lab/site/tasks.html" \
+  && bad "GSL-208: the summary column header survives on a board where no row has one" \
+  || ok "GSL-208: the summary header is gone with its column, not left hanging over nothing"
+grep -q 'class="key-col"' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-208: the key column asks for its own width, so a key never wraps mid-token at 1280px" \
+  || bad "GSL-208: the key column lost its min-width class"
+grep -q 'td\.key-col,th\.key-col{min-width:9ch' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-208 control: the stylesheet actually defines .key-col — the class has a customer" \
+  || bad "GSL-208 control: .key-col is marked up but never painted"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
