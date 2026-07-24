@@ -1,0 +1,295 @@
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Интерактив дашборда — приёмочный ран 01</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script>
+    /* Тема выставляется до первой отрисовки, затем вешается обработчик переключателя. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">Интерактив дашборда — приёмочный ран 01</span>
+        <span class="subtitle">main @ f0d1f58 · эпик GSL-177 · 14 интерактивных элементов, прогнанных вживую</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">GSL-177</span>
+        <span class="hbtn" aria-label="Дата">2026-07-25</span>
+        <!-- Переключение языка: русская версия -> английский корень -->
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Сводка</h2>
+      <div class="card hero">
+        <div class="score-ring" style="--score: 100" data-band="good">
+          <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"></circle><circle class="value" cx="60" cy="60" r="52"></circle></svg>
+          <div class="num"><b>14</b><span>/ 14</span></div>
+        </div>
+        <div>
+          <h1>Интерактив дашборда — приёмочный ран 01</h1>
+          <p class="lead">Восемь интерактивных элементов продукта аудит <b>посчитал</b> и ни разу не <b>нажал</b> — ни аудитор, ни обе красные команды. Под директивой владельца «все функции и все сервисы» единственные функции, которые в продукте есть, оставались непроверенными. Этот ран нажал каждую: восемь исходных плюс шесть, приехавших этим же эпиком. Все четырнадцать работают; ни одного дефекта не заведено.</p>
+          <div class="verdict-row">
+            <span class="level-pill">ALL WORKS</span>
+            <div class="counts">
+              <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+              <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+              <div class="count-tile"><span class="n">0</span><span class="k">MINOR</span></div>
+              <div class="count-tile"><span class="n">14</span><span class="k">Проверено</span></div>
+            </div>
+          </div>
+          <div class="dist" role="img" aria-label="Severity distribution">
+            <span class="seg-critical" style="width:0%"></span>
+            <span class="seg-major" style="width:0%"></span>
+            <span class="seg-minor" style="width:100%"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Элементы — по одному пункту на каждый</h2>
+      <div class="findings">
+<article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Timeline</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline — фасет <code>actor</code> сужает ленту, и счётчик это называет</h3>
+  <div class="finding-body"><p>выбрано <code>general-purpose</code> из 4 вариантов — осталось 157 строк из 200, счётчик перешёл с <code>all 200 shown</code> на <code>157 of 200 shown — 43 hidden by the filter</code>; сброс вернул все 200</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Timeline</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline — фасет <code>type</code> сужает ленту, и счётчик это называет</h3>
+  <div class="finding-body"><p>выбрано <code>tracker.issue.created</code> из 14 вариантов — осталось 81 строк из 200, счётчик перешёл с <code>all 200 shown</code> на <code>81 of 200 shown — 119 hidden by the filter</code>; сброс вернул все 200</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Timeline</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline — фасет <code>severity</code> сужает ленту, и счётчик это называет</h3>
+  <div class="finding-body"><p>выбрано <code>warn</code> из 3 вариантов — осталось 17 строк из 200, счётчик перешёл с <code>all 200 shown</code> на <code>17 of 200 shown — 183 hidden by the filter</code>; сброс вернул все 200</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Timeline</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline — фасет <code>src</code> сужает ленту, и счётчик это называет</h3>
+  <div class="finding-body"><p>выбрано <code>hook:PostToolUse</code> из 7 вариантов — осталось 124 строк из 200, счётчик перешёл с <code>all 200 shown</code> на <code>124 of 200 shown — 76 hidden by the filter</code>; сброс вернул все 200</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Timeline</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline — кнопка <code>clear</code> отпускает все фасеты разом</h3>
+  <div class="finding-body"><p>пять фасетов, выставленных одновременно, оставили <b>0</b> видимых строк; один клик вернул <b>200 из 200</b>, каждый &lt;select&gt; сброшен в пустое значение, счётчик снова <code>all 200 shown</code></p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-6">
+  <div class="finding-head">
+    <span class="finding-index">6</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Library</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Library — фасет <code>kind</code> сужает сквозной индекс</h3>
+  <div class="finding-body"><p>выбрано <code>Handoffs</code> из 9 вариантов — осталось 50 строк из 218; счётчик <code>50 of 218 shown — 168 hidden by the filter</code>; сброс вернул все 218</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="../assets/library-1280-light.png" alt="library-1280-light.png" data-lightbox-group="finding-6" data-caption="library-1280-light.png"><figcaption class="shot-cap">library-1280-light.png</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/library-1280-dark.png" alt="library-1280-dark.png" data-lightbox-group="finding-6" data-caption="library-1280-dark.png"><figcaption class="shot-cap">library-1280-dark.png</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-7">
+  <div class="finding-head">
+    <span class="finding-index">7</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Library</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Library — текстовый поиск ищет по тому индексу, который напечатан</h3>
+  <div class="finding-body"><p>ввод <code>handoff</code> оставил 61 строк из 218; счётчик <code>61 of 218 shown — 157 hidden by the filter</code>; очистка вернула все 218</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-8">
+  <div class="finding-head">
+    <span class="finding-index">8</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Library</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Library — <code>clear</code> отпускает и фасет, и текстовое поле</h3>
+  <div class="finding-body"><p>фасет и текст вместе оставили <b>0</b> строк; один клик вернул <b>218 из 218</b>, и select, и поле очищены, счётчик <code>all 218 shown</code></p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-9">
+  <div class="finding-head">
+    <span class="finding-index">9</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Timeline</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Timeline — новый фасет <code>view</code> (meaningful / routine) — GSL-208</h3>
+  <div class="finding-body"><p>выбрано <code>meaningful</code> из 3 вариантов — осталось 141 строк из 200, счётчик перешёл с <code>all 200 shown</code> на <code>141 of 200 shown — 59 hidden by the filter</code>; сброс вернул все 200</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="../assets/timeline-1280-light.png" alt="timeline-1280-light.png" data-lightbox-group="finding-9" data-caption="timeline-1280-light.png"><figcaption class="shot-cap">timeline-1280-light.png</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/timeline-1280-dark.png" alt="timeline-1280-dark.png" data-lightbox-group="finding-9" data-caption="timeline-1280-dark.png"><figcaption class="shot-cap">timeline-1280-dark.png</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/timeline-390-light.png" alt="timeline-390-light.png" data-lightbox-group="finding-9" data-caption="timeline-390-light.png"><figcaption class="shot-cap">timeline-390-light.png</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-10">
+  <div class="finding-head">
+    <span class="finding-index">10</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">all seven screens</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Сквозной поиск находит строку на каждом из семи экранов — GSL-209</h3>
+  <div class="finding-body"><ul><li><code>index</code> — запрос <code>GSL</code>: осталось 32 единиц из 59, счётчик <code>32 of 59 shown — 27 hidden by the filter</code>, Escape очистил и вернул все 59</li><li><code>timeline</code> — запрос <code>GSL</code>: осталось 25 единиц из 239, счётчик <code>25 of 239 shown — 214 hidden by the filter</code>, Escape очистил и вернул все 239</li><li><code>tasks</code> — запрос <code>GSL</code>: осталось 266 единиц из 268, счётчик <code>266 of 268 shown — 2 hidden by the filter</code>, Escape очистил и вернул все 268</li><li><code>questions</code> — запрос <code>GSL</code>: осталось 22 единиц из 28, счётчик <code>22 of 28 shown — 6 hidden by the filter</code>, Escape очистил и вернул все 28</li><li><code>fleet</code> — запрос <code>worker</code>: осталось 8 единиц из 32, счётчик <code>8 of 32 shown — 24 hidden by the filter</code>, Escape очистил и вернул все 32</li><li><code>cost</code> — запрос <code>cycle</code>: осталось 4 единиц из 116, счётчик <code>4 of 116 shown — 112 hidden by the filter</code>, Escape очистил и вернул все 116</li><li><code>library</code> — запрос <code>GSL</code>: осталось 185 единиц из 248, счётчик <code>185 of 248 shown — 63 hidden by the filter</code>, Escape очистил и вернул все 248</li></ul></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-11">
+  <div class="finding-head">
+    <span class="finding-index">11</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">all seven screens</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Переключатель темы меняет страницу и переживает перезагрузку — GSL-209</h3>
+  <div class="finding-body"><p>фон перешёл с <code>rgb(245, 247, 249)</code> на <code>rgb(13, 14, 16)</code>, <code>data-theme</code> стал <code>dark</code>, надпись — <code>light theme</code>, <code>aria-pressed</code> — <code>true</code>; после полной перезагрузки фон остался <code>rgb(13, 14, 16)</code></p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="../assets/index-1280-light.png" alt="index-1280-light.png" data-lightbox-group="finding-11" data-caption="index-1280-light.png"><figcaption class="shot-cap">index-1280-light.png</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/index-1280-dark.png" alt="index-1280-dark.png" data-lightbox-group="finding-11" data-caption="index-1280-dark.png"><figcaption class="shot-cap">index-1280-dark.png</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/index-390-dark.png" alt="index-390-dark.png" data-lightbox-group="finding-11" data-caption="index-390-dark.png"><figcaption class="shot-cap">index-390-dark.png</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-12">
+  <div class="finding-head">
+    <span class="finding-index">12</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Overview</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Свёртка самочувствия открывается и закрывается, а вердикт не прячется — GSL-207</h3>
+  <div class="finding-body"><p>при загрузке закрыта (<code>open=false</code>), высота 59 px; принудительно открытая — 1370 px; три чипа вердикта (freshness fresh, dev_history gaps, handoffs debt) видны в любом случае</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+<article class="card finding" id="finding-13">
+  <div class="finding-head">
+    <span class="finding-index">13</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Tasks</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Причина за словом <code>unknown</code> достижима с клавиатуры — GSL-209</h3>
+  <div class="finding-body"><p>элемент принял фокус, причина перешла с <code>display:none</code> в покое на <code>display:block</code> при фокусе, а текст (&laquo;no tracker.issue.updated event has ever carried a status for…&raquo;) лежит в DOM, а не только в атрибуте <code>title</code></p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  <div class="shots"><figure class="shot"><img class="shot-img" src="../assets/tasks-1280-light.png" alt="tasks-1280-light.png" data-lightbox-group="finding-13" data-caption="tasks-1280-light.png"><figcaption class="shot-cap">tasks-1280-light.png</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/tasks-1280-dark.png" alt="tasks-1280-dark.png" data-lightbox-group="finding-13" data-caption="tasks-1280-dark.png"><figcaption class="shot-cap">tasks-1280-dark.png</figcaption></figure></div>
+</article>
+<article class="card finding" id="finding-14">
+  <div class="finding-head">
+    <span class="finding-index">14</span>
+    <span class="jira-chip">GSL-210</span>
+    <span class="badge" data-severity="MINOR">WORKS</span>
+    <span class="area-tag">Tasks</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Свёртка эпика открывается и закрывается</h3>
+  <div class="finding-body"><p>при загрузке закрыта, 39 px; в открытом виде 153 px</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Доказательство</span><span class="ref-v">isolated headless Chrome over CDP, build <code>f0d1f58</code></span></div></div>
+  
+</article>
+      </div>
+    </section>
+
+    <section aria-labelledby="note-h">
+      <h2 class="section-title" id="note-h">На что обратить внимание</h2>
+      <article class="card arch-note"><h3>На что смотреть в первую очередь</h3><div class="arch-body"><p>Откройте <code>docs/lab/site/timeline.html</code> и переведите поле <b>view</b> в <code>meaningful</code>: 59 строк из 200 — это дыхание флота (открылась панель, закончился ход), и они уходят. Потом наберите что-нибудь в поле <b>search</b> в шапке — оно теперь на всех семи экранах и ищет по напечатанному, а не по проиндексированному. Обе ширины (1280 и 390) и обе темы — в галерее ниже.</p></div></article><article class="card arch-note"><h3>Развилки, которые ран решил сам</h3><div class="arch-body"><ul><li><b>Объём вырос с восьми элементов до четырнадцати.</b> В тикете названы восемь, которые посчитал аудит. Ещё пять приехали этим же эпиком (фасет view, сквозной поиск, переключатель темы, свёртка, достижимая с клавиатуры причина), а один не считал никто (свёртка эпика). Проверить восемь и оставить соседей непроверенными означало бы воспроизвести ровно ту дыру, ради которой тикет и заведён.</li><li><b>Каталога <code>design/</code> нет.</b> Стандарт рана просит снапшот дизайн-системы рядом с дашбордом. Этот ран — функциональная проверка интерактива, а не дизайн-ревью; дизайн-полосу два дня назад закрыл ран 04 эпика GSL-138. Скриншоты ниже — viewport-кадры на обеих требуемых ширинах и в обеих темах; обзор дизайн-системы не дублируется.</li><li><b>Управление через CDP, а не через MCP-браузер.</b> Владелец работает в своём Chrome. Поднят изолированный headless-экземпляр с собственным профилем, ни одна живая вкладка не тронута. Драйвер лежит во временном каталоге <code>docs/lab/scratch/</code> и в продукт не входит.</li><li><b>События диспатчились, а не синтезировались как доверенные клики.</b> Селекты двигались настоящим событием <code>change</code>, кнопки — через <code>.click()</code>. Инъекция ввода средствами CDP была бы ближе к живому пальцу; поведения, доступного только указателю, у этих элементов нет, поэтому на вердикты разница не влияет — но разница реальна и названа.</li></ul></div></article><article class="card arch-note"><h3>Чего этот ран НЕ проверял</h3><div class="arch-body"><ul><li>Скринридеры. <code>aria-label</code> и порядок фокуса проверены по DOM; вспомогательные технологии не запускались.</li><li>Настоящий тач. Раскрытие по фокусу проверено с клавиатуры; касания стекла не было.</li><li>Мобильную проекцию (<code>docs/lab/mobile/</code>) — эта полоса поставлена владельцем на паузу.</li><li>Lighthouse и производительность. Вне области проверки интерактива.</li></ul></div></article>
+    </section>
+
+    <section aria-labelledby="gate-h">
+      <h2 class="section-title" id="gate-h">Гейты</h2>
+      <article class="card arch-note"><div class="arch-body"><table class="gates"><tr><th>гейт</th><th>команда</th><th>до эпика</th><th>после</th></tr><tr><td><b>smoke</b></td><td><code>tools/lab/smoke.sh</code></td><td>404 / 404, FAIL=0</td><td>452 / 452, FAIL=0</td></tr><tr><td><b>hooks-verify</b></td><td><code>tools/lab/hooks-verify.sh</code></td><td>14 / 14</td><td>14 / 14</td></tr><tr><td><b>tsc</b></td><td><code>cd tools/lab/ui &amp;&amp; npx tsc --noEmit</code></td><td>0 errors</td><td>0 errors</td></tr><tr><td><b>chronicler</b></td><td><code>tools/lab/chronicler.sh --no-poll</code></td><td>7 pages</td><td>7 pages</td></tr></table></div></article>
+    </section>
+
+    <section aria-labelledby="gal-h">
+      <h2 class="section-title" id="gal-h">Галерея — 1280 и 390, обе темы</h2>
+      <article class="card arch-note"><h3>index</h3><div class="shots"><figure class="shot"><img class="shot-img" src="../assets/index-1280-light.png" alt="index 1280-light" data-lightbox-group="gal-index" data-caption="index 1280-light"><figcaption class="shot-cap">1280-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/index-1280-dark.png" alt="index 1280-dark" data-lightbox-group="gal-index" data-caption="index 1280-dark"><figcaption class="shot-cap">1280-dark</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/index-390-light.png" alt="index 390-light" data-lightbox-group="gal-index" data-caption="index 390-light"><figcaption class="shot-cap">390-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/index-390-dark.png" alt="index 390-dark" data-lightbox-group="gal-index" data-caption="index 390-dark"><figcaption class="shot-cap">390-dark</figcaption></figure></div></article><article class="card arch-note"><h3>timeline</h3><div class="shots"><figure class="shot"><img class="shot-img" src="../assets/timeline-1280-light.png" alt="timeline 1280-light" data-lightbox-group="gal-timeline" data-caption="timeline 1280-light"><figcaption class="shot-cap">1280-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/timeline-1280-dark.png" alt="timeline 1280-dark" data-lightbox-group="gal-timeline" data-caption="timeline 1280-dark"><figcaption class="shot-cap">1280-dark</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/timeline-390-light.png" alt="timeline 390-light" data-lightbox-group="gal-timeline" data-caption="timeline 390-light"><figcaption class="shot-cap">390-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/timeline-390-dark.png" alt="timeline 390-dark" data-lightbox-group="gal-timeline" data-caption="timeline 390-dark"><figcaption class="shot-cap">390-dark</figcaption></figure></div></article><article class="card arch-note"><h3>tasks</h3><div class="shots"><figure class="shot"><img class="shot-img" src="../assets/tasks-1280-light.png" alt="tasks 1280-light" data-lightbox-group="gal-tasks" data-caption="tasks 1280-light"><figcaption class="shot-cap">1280-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/tasks-1280-dark.png" alt="tasks 1280-dark" data-lightbox-group="gal-tasks" data-caption="tasks 1280-dark"><figcaption class="shot-cap">1280-dark</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/tasks-390-light.png" alt="tasks 390-light" data-lightbox-group="gal-tasks" data-caption="tasks 390-light"><figcaption class="shot-cap">390-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/tasks-390-dark.png" alt="tasks 390-dark" data-lightbox-group="gal-tasks" data-caption="tasks 390-dark"><figcaption class="shot-cap">390-dark</figcaption></figure></div></article><article class="card arch-note"><h3>library</h3><div class="shots"><figure class="shot"><img class="shot-img" src="../assets/library-1280-light.png" alt="library 1280-light" data-lightbox-group="gal-library" data-caption="library 1280-light"><figcaption class="shot-cap">1280-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/library-1280-dark.png" alt="library 1280-dark" data-lightbox-group="gal-library" data-caption="library 1280-dark"><figcaption class="shot-cap">1280-dark</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/library-390-light.png" alt="library 390-light" data-lightbox-group="gal-library" data-caption="library 390-light"><figcaption class="shot-cap">390-light</figcaption></figure><figure class="shot"><img class="shot-img" src="../assets/library-390-dark.png" alt="library 390-dark" data-lightbox-group="gal-library" data-caption="library 390-dark"><figcaption class="shot-cap">390-dark</figcaption></figure></div></article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Собрано исполнителем эпика GSL-177 · 2026-07-25</span>
+      <span>Проверенная сборка <code>f0d1f58</code></span>
+    </div>
+  </footer>
+
+  <script src="../assets/lightbox.js" defer></script>
+</body>
+</html>

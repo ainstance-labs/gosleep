@@ -1,6 +1,6 @@
 import type { VNode } from "preact";
 import type { LibraryEntry, RenderBundle } from "../types.js";
-import { Empty, FilterBar, FilterCount, Unknown } from "../components.js";
+import { Empty, FilterBar, FilterCount, Ids, Unknown } from "../components.js";
 import { facetValues, type FilterIndex, type FilterRow } from "../filter.js";
 
 /** The absence glyph, muted (spec 6.5) so an empty cell does not read as a datum. */
@@ -83,7 +83,10 @@ export function Library({ b }: { b: RenderBundle }): VNode {
                     document with no first heading has no title to read, and that absence is a fact —
                     shown as `unknown` with its reason, the way every other missing value on these
                     screens is (GSL-94/98/99), not as a blank. */}
-                <td>{r.title ? r.title : <Unknown why="the document has no first heading to read a title from" />}</td>
+                {/* GSL-205: the shelf is one file per Jira task, and the task key is right there in
+                    the title. The file link answers "what did we write"; the key link answers "what
+                    was it for" — the second half of the promise that everything is checkable here. */}
+                <td>{r.title ? <Ids text={r.title} links={b.links} /> : <Unknown why="the document has no first heading to read a title from" />}</td>
               </tr>
             ))}
           </table>
@@ -131,7 +134,9 @@ export function Library({ b }: { b: RenderBundle }): VNode {
             {[...dec.recent].reverse().map((d, i) => (
               <tr key={`${d.ts ?? ""}-${i}`}>
                 <td class="mono">{String(d.ts ?? "").slice(0, 16)}</td>
-                <td>{d.decision}</td>
+                <td>
+                  <Ids text={d.decision ?? ""} links={b.links} />
+                </td>
                 <td class="mono">{d.rule ?? dash}</td>
               </tr>
             ))}

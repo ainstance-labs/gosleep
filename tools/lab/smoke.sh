@@ -1666,8 +1666,12 @@ print("ROWS=%d|DOM=%d|FACETS=%s|TOTAL=%d" % (
     len(idx["rows"]), dom, ",".join(f["key"] for f in idx["facets"]), idx["total"]))
 PY
 )"
-grep -q 'ROWS=5|DOM=5' <<<"$ISL" && grep -q 'FACETS=actor,type,severity,src' <<<"$ISL" \
-  && ok "GSL-97: the inlined island describes exactly the rows the page rendered (actor/type/severity/src)" \
+# GSL-208 added `signal` (the meaningful/routine view mode) at the FRONT of the facet list — first
+# because it is the control the owner reaches for at 07:00. The expected list is spelled out in full
+# rather than loosened to a substring: the point of this assertion is that the island offers exactly
+# the facets the page was built with, and a wildcard here would let a facet go missing unnoticed.
+grep -q 'ROWS=5|DOM=5' <<<"$ISL" && grep -q 'FACETS=signal,actor,type,severity,src' <<<"$ISL" \
+  && ok "GSL-97: the inlined island describes exactly the rows the page rendered (signal/actor/type/severity/src)" \
   || bad "GSL-97: the island and the rendered table disagree, or a facet is missing ($ISL)"
 
 # 2. ⭐ AN INCIDENT IS MARKED IN THE MARKUP, NOT BY A SCRIPT. The owner reads this page from GitHub's
@@ -1892,7 +1896,17 @@ import os, re, sys
 h = open(sys.argv[1], encoding="utf-8").read()
 site = sys.argv[2]
 rows = re.search(r'<table id="library-rows">(.*?)</table>', h, re.S)
-hrefs = re.findall(r'<a href="([^"]+)"', rows.group(1)) if rows else []
+# GSL-205 put a SECOND kind of anchor in these rows: the Jira key inside a document title, which
+# resolves at the tracker and has no file behind it by construction. This assertion is about the
+# ARTIFACT links — the memory that survives retention still opens — so identifier links are excluded
+# by the mark they all carry, and are asserted separately under GSL-205. Excluding them by "looks
+# absolute" would have been the loose version: an artifact href is always repo-relative, so the
+# tighter test is the one that names what it is skipping.
+# (NO APOSTROPHES IN THIS BLOCK: bash 3.2 counts quotes inside a quoted heredoc that sits in $( ),
+#  and one stray one turns this assignment into a parse error — the chronicler.sh header lesson.)
+tags = re.findall(r'<a\s([^>]*?)>', rows.group(1), re.S) if rows else []
+hrefs = [m.group(1) for t in tags if "data-idlink" not in t
+         for m in [re.search(r'href="([^"]+)"', t)] if m]
 dead = [x for x in hrefs if not os.path.isfile(os.path.join(site, x))]
 print("LINKS=%d|DEAD=%s" % (len(hrefs), ",".join(dead) or "none"))
 PY
@@ -3314,9 +3328,20 @@ FW2H="$CR/docs/lab/site/fleet.html"
 grep -q '\.kpi span:not(\.unknown)' "$FW2H" \
   && ok "GSL-146: the KPI label selector excludes span.unknown — the value is not a caption" \
   || bad "GSL-146: .kpi span swallows span.unknown — an unknown KPI renders as two captions"
-grep -q '\.wk-f span:not(\.unknown)' "$FW2H" \
-  && ok "GSL-146: the worker-field label selector excludes span.unknown" \
-  || bad "GSL-146: .wk-f span swallows span.unknown — the absence marker loses --unk"
+# GSL-207 retired the worker CARD and with it the `.wk-f` field grid, so the selector this half
+# guarded no longer exists. The guard is not deleted — it is made conditional, because the defect is
+# a property of ANY generic descendant-span label rule, and the day someone reintroduces one on this
+# screen it must still be caught. Silently dropping the assertion would trade a real check for a
+# green count, which is the failure mode this file exists to refuse.
+if grep -q '\.wk-f span' "$FW2H"; then
+  grep -q '\.wk-f span:not(\.unknown)' "$FW2H" \
+    && ok "GSL-146: the worker-field label selector excludes span.unknown" \
+    || bad "GSL-146: .wk-f span swallows span.unknown — the absence marker loses --unk"
+else
+  grep -q '\.wk-f' "$FW2H" \
+    && bad "GSL-146: a .wk-f rule is back on Fleet without the :not(.unknown) label guard" \
+    || ok "GSL-146: the worker-field grid retired with the card (GSL-207) — no generic label selector is left on Fleet to swallow span.unknown"
+fi
 grep -q 'class="unknown"' "$FW2H" \
   && ok "GSL-146 control: the fixture Fleet page really renders span.unknown (the greps above bite)" \
   || bad "GSL-146 control: no span.unknown on the fixture Fleet page — the checks above are vacuous"
@@ -3534,6 +3559,270 @@ grep -q '\.filter-count{' "$CRI" \
   && ok "GSL-160 control: the live filter counter keeps its own rule — the rename took nothing from it" \
   || bad "GSL-160 control: the .filter-count rule vanished — the rename broke the live counter"
 
+echo "== GSL-205: one identifier -> link, on every screen =="
+# The defect was not "a screen forgot a link" — it was that ONE screen (Tasks, 796 links) knew how to
+# resolve an identifier and the other six printed the same identifiers as dead text (Questions: 7).
+# So this fixture asserts the RULE, not a screen: a key in a queue item and a key in a timeline detail
+# must both come out as anchors, from the same base, and a sha must resolve to a commit.
+#
+# It also asserts the REFUSAL, on a twin fixture whose only difference is a remote that is not
+# GitHub: with no GitHub base on disk the pages must print the identifier as text rather than invent
+# an org. A link that resolves on somebody else's repository is worse than no link, which is the
+# whole reason the base is produced in Python and travels in the bundle instead of being spelled in
+# seven screens.
+#
+# Both fixtures are REAL git repositories with ONE empty commit. That is not ceremony: load_git()
+# reads the remote only after `rev-parse HEAD` succeeds, so a repo with no commit degrades whole and
+# the remote is never read — and a fixture that is no repository at all is worse still, because git
+# walks UP out of .artifacts/ and answers with THIS repository's remote (which is exactly what the
+# $CR fixture unknowingly does).
+lk_repo() {  # <dir> <remote-url>
+  mkdir -p "$1/docs/lab/events" "$1/docs/lab/questions" "$1/docs/lab/decisions"
+  : > "$1/docs/lab/questions/queue.jsonl"; : > "$1/docs/lab/decisions/log.jsonl"
+  git -C "$1" init -q >/dev/null 2>&1
+  git -C "$1" remote add origin "$2" >/dev/null 2>&1
+  git -C "$1" -c user.name=smoke -c user.email=smoke@local commit -q --allow-empty -m "GSL-205 fixture" >/dev/null 2>&1
+  LK_TS="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+  { printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w1","type":"tracker.issue.updated","src":"emit","data":{"key":"GSL-205"}}\n' "$LK_TS" "$TODAY"
+    printf '{"ts":"%s","run_id":"%s","seq":2,"actor":"w1","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"dec0de5"}}\n' "$LK_TS" "$TODAY"
+    # GSL-208: one path INSIDE this fixture repo (must come out repo-relative) and one outside it but
+    # under $HOME (must come out as ~/…). Two rewrites, because only the first would leave every
+    # sibling worktree printing the account name in full.
+    printf '{"ts":"%s","run_id":"%s","seq":3,"actor":"w1","type":"dev_history.written","src":"hook:PostToolUse","data":{"path":"%s/docs/lab/README.md"}}\n' "$LK_TS" "$TODAY" "$1"
+    printf '{"ts":"%s","run_id":"%s","seq":4,"actor":"w1","type":"dev_history.written","src":"hook:PostToolUse","data":{"path":"%s/elsewhere/notes.md"}}\n' "$LK_TS" "$TODAY" "$HOME"
+    # …and one ROUTINE row, so the "view" facet has both of its modes to offer.
+    printf '{"ts":"%s","run_id":"%s","seq":5,"actor":"w1","type":"agent.turn_ended","src":"hook:Stop","data":{}}\n' "$LK_TS" "$TODAY"
+  } > "$1/docs/lab/events/$TODAY.jsonl"
+  GOSLEEP_LAB_DIR="$1/docs/lab" "$LE" question --type DECISION --from smoke-links --task GSL-205 \
+    --question "does the timeline linkify GSL-205 too?" --default "yes" --reversibility high >/dev/null 2>&1
+  bash "$CH" --repo "$1" --no-poll --quiet --json >/dev/null 2>&1
+}
+LK="$WORK/gsl205-links";   lk_repo "$LK"  https://github.com/ainstance-labs/gosleep.git
+LK0="$WORK/gsl205-nogh";   lk_repo "$LK0" git@gitlab.example.com:someone/else.git
+
+LKB="$LK/docs/lab/render_bundle.json"
+[[ -n "$(jq -r '.links.jira_base // empty' "$LKB")" ]] \
+  && ok "GSL-205: the bundle carries a jira_base — the view never spells the tracker's host itself" \
+  || bad "GSL-205: no links.jira_base in the bundle (every key on six screens goes back to dead text)"
+[[ "$(jq -r '.links.gh_base' "$LKB")" == "https://github.com/ainstance-labs/gosleep" ]] \
+  && ok "GSL-205: gh_base is read off the git remote, normalised (no .git suffix)" \
+  || bad "GSL-205: gh_base wrong -> $(jq -r '.links.gh_base' "$LKB")"
+LK_TL="$(grep -c 'data-idlink' "$LK/docs/lab/site/timeline.html" || true)"
+LK_QS="$(grep -c 'data-idlink' "$LK/docs/lab/site/questions.html" || true)"
+[[ "$LK_TL" -gt 0 ]] \
+  && ok "GSL-205: Timeline prints $LK_TL linked identifier(s) — it printed 114 unlinked ones before" \
+  || bad "GSL-205: Timeline has no data-idlink anchor (its detail column went back to dead text)"
+[[ "$LK_QS" -gt 0 ]] \
+  && ok "GSL-205: Questions prints $LK_QS linked identifier(s) — it had 7 links against Tasks' 796" \
+  || bad "GSL-205: Questions has no data-idlink anchor (every queue item carries a key)"
+grep -q 'href="https://ainstance-labs.atlassian.net/browse/GSL-205"' "$LK/docs/lab/site/questions.html" \
+  && ok "GSL-205: the queue item's key resolves at the tracker, not at a plausible-looking guess" \
+  || bad "GSL-205: the queue item's key is not an anchor to its Jira issue"
+grep -q 'href="https://github.com/ainstance-labs/gosleep/commit/dec0de5"' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-205: a detail whose FIELD is sha becomes a commit link (never a bare 7-hex lookalike)" \
+  || bad "GSL-205: the sha detail on Timeline is not linked to its commit"
+# The refusal, on the twin whose remote is not GitHub: unknown base -> plain text, never a guess.
+[[ "$(jq -r '.links.gh_base' "$LK0/docs/lab/render_bundle.json")" == "null" ]] \
+  && ok "GSL-205 control: a non-GitHub remote -> gh_base is null, not a guessed org" \
+  || bad "GSL-205 control: gh_base invented off a remote that is not github.com"
+[[ -n "$(jq -r '.links.gh_base_why // empty' "$LK0/docs/lab/render_bundle.json")" ]] \
+  && ok "GSL-205 control: the absent base says WHY, the way every other absence on these screens does" \
+  || bad "GSL-205 control: gh_base is null with no reason attached"
+grep -q 'data-idlink="dec0de5"' "$LK0/docs/lab/site/timeline.html" \
+  && bad "GSL-205 control: a sha was linked with no GitHub base on disk — the link resolves nowhere" \
+  || ok "GSL-205 control: with no GitHub base the sha stays text (a wrong link is worse than none)"
+grep -q 'href="https://ainstance-labs.atlassian.net/browse/GSL-205"' "$LK0/docs/lab/site/questions.html" \
+  && ok "GSL-205 control: the Jira half is independent — a missing GitHub base does not silence it" \
+  || bad "GSL-205 control: the Jira link vanished because the GitHub base was absent"
+
+echo "== GSL-208: normalised paths, a view mode, and honest columns =="
+# The leak is not this repository — it is the ACCOUNT NAME and the machine layout, in a file that is
+# committed and read on a phone. Asserted on the built page, not on the projection, because the page
+# is what the owner opens.
+grep -q '/Users/' "$LK/docs/lab/site/timeline.html" \
+  && bad "GSL-208: timeline.html still prints an absolute home path ($(grep -o '/Users/[^"<]*' "$LK/docs/lab/site/timeline.html" | head -1))" \
+  || ok "GSL-208: not one absolute /Users/ path survives into timeline.html"
+grep -q '>docs/lab/README.md<' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-208: a path inside the repo is said as a repo-relative location, whole and uncut" \
+  || bad "GSL-208: the in-repo path was not rewritten to a repo-relative one"
+grep -q '>~/elsewhere/notes.md<' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-208: a path outside the repo keeps its shape and loses only the account name" \
+  || bad "GSL-208: a path under HOME but outside the repo was not shortened to ~/"
+# The mode is a FACET, which is what makes it safe: the count sentence names every row it removes.
+grep -q 'data-facet="signal"' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-208: Timeline offers the meaningful/routine view mode" \
+  || bad "GSL-208: no view-mode control on Timeline"
+python3 - "$LK/docs/lab/render_bundle.json" "$LK/docs/lab/site/timeline.html" <<'PY'
+import json, re, sys
+h = open(sys.argv[2], encoding="utf-8").read()
+isl = re.search(r'<script id="timeline-index" type="application/json">(.*?)</script>', h, re.S)
+idx = json.loads(isl.group(1)) if isl else {"rows": [], "facets": []}
+modes = {r.get("signal") for r in idx["rows"]}
+facet = [f for f in idx["facets"] if f["key"] == "signal"]
+# Every row must be classified, both modes must be present in this fixture, and an unclassified type
+# must fall on the side that STAYS VISIBLE — the severityOf lesson, one axis over.
+sys.exit(0 if modes == {"meaningful", "routine"} and facet and facet[0]["values"][0] == "meaningful" else 1)
+PY
+[[ $? -eq 0 ]] \
+  && ok "GSL-208: every feed row carries a view mode, and meaningful is offered first" \
+  || bad "GSL-208: the view-mode index is incomplete or ordered by appearance"
+# The empty column. 161 of 161 cells were blank — a poll that never ran, reading as a broken renderer.
+grep -q 'data-summary-column="dropped"' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-208: with no summary anywhere the column is replaced by the reason it is missing" \
+  || bad "GSL-208: the always-empty summary column is still drawn with no explanation"
+grep -q '<th>summary</th>' "$LK/docs/lab/site/tasks.html" \
+  && bad "GSL-208: the summary column header survives on a board where no row has one" \
+  || ok "GSL-208: the summary header is gone with its column, not left hanging over nothing"
+grep -q 'class="key-col"' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-208: the key column asks for its own width, so a key never wraps mid-token at 1280px" \
+  || bad "GSL-208: the key column lost its min-width class"
+grep -q 'td\.key-col,th\.key-col{min-width:9ch' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-208 control: the stylesheet actually defines .key-col — the class has a customer" \
+  || bad "GSL-208 control: .key-col is marked up but never painted"
+
+echo "== GSL-207: the hygiene fold, and the fleet as a table =="
+# Measured before this: the KPI tiles began at 2010px and "Waiting for you" at 2114px, behind ~1200px
+# of self-health meters. The DETAIL folds; the VERDICT does not — three chips carry all three meter
+# states in the summary line whether the fold is open or shut. Nothing is hidden except evidence.
+grep -q '<details class="sh-fold"' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-207: the self-health detail is folded, not deleted and not left 1200px tall" \
+  || bad "GSL-207: no fold on the self-health panel"
+SH_CHIPS="$(grep -o 'class="sh-chip[^"]*"' "$LK/docs/lab/site/index.html" | wc -l | tr -d ' ')"
+[[ "$SH_CHIPS" -eq 3 ]] \
+  && ok "GSL-207: all three meter verdicts stay on screen as chips — the fold costs no information" \
+  || bad "GSL-207: expected 3 verdict chips in the fold summary, found $SH_CHIPS"
+# The fold is CLOSED on a fresh page (this fixture) and OPEN on a dead one ($FW3, the GSL-157
+# fixture, whose whole purpose is to grade itself dead). That is the entire policy: it opens when the
+# meters are about the correctness of what is on screen, and on nothing else.
+grep -q '<details class="sh-fold" open' "$LK/docs/lab/site/index.html" \
+  && bad "GSL-207: the fold is open on a FRESH page — it would be open on most days, which is no fold" \
+  || ok "GSL-207: on a fresh page the fold stays shut and the KPI tiles come up the screen"
+grep -q '<details class="sh-fold" open' "$CRI" \
+  && ok "GSL-207 ⭐ on a DEAD page the fold opens itself — the evidence is in the way, before the numbers" \
+  || bad "GSL-207 ⭐ a dead page folded its own rot report away. That is the defect this panel exists to prevent."
+grep -q '\.sh-fold>summary{cursor:pointer' "$CRI" \
+  && ok "GSL-207 control: the stylesheet paints the fold summary — the class has a customer" \
+  || bad "GSL-207 control: .sh-fold has no rule"
+# Fleet: nine cards of eight fields each, for eight workers eleven days old, is a table.
+grep -q '<table id="fleet-rows">' "$FLH" \
+  && ok "GSL-207: Fleet renders its workers as one table, not as a card per worker" \
+  || bad "GSL-207: Fleet is still a stack of cards"
+FL_ROWS="$(grep -o '<tr class="wk [a-z]*"' "$FLH" | wc -l | tr -d ' ')"
+[[ "$FL_ROWS" -eq 3 ]] \
+  && ok "GSL-207: three named workers -> three table rows, each still carrying its state class" \
+  || bad "GSL-207: expected 3 worker rows on the fixture Fleet, found $FL_ROWS"
+grep -q '\.wk\.silent \.wk-age{color:var(--warn)}' "$FLH" \
+  && ok "GSL-207: silent is still AMBER on the row — the table did not earn the right to say dead" \
+  || bad "GSL-207: the silent worker lost its amber when the card became a row"
+
+echo "== GSL-206: the supervisor tile and the gates strip =="
+# The mandate opens on "the orchestrator has nobody to orchestrate it from above". The mechanism
+# exists; until now the web could not say whether it was RUNNING, and the gates were a sentence typed
+# by hand into a text file. Both now travel in the bundle, under the rule the rest of this dashboard
+# lives by: a value with no source is `unknown` WITH ITS REASON, never a comfortable zero.
+[[ "$(jq -r '.supervision.armed' "$LKB")" == "false" ]] \
+  && ok "GSL-206: with no launchd agent installed the supervisor reads NOT ARMED — a fact, not a shrug" \
+  || bad "GSL-206: supervision.armed is $(jq -r '.supervision.armed' "$LKB") on a machine with no agent"
+[[ -n "$(jq -r '.supervision.last_tick_why // empty' "$LKB")" ]] \
+  && ok "GSL-206: a supervisor that never woke says so, with the file it looked for" \
+  || bad "GSL-206: last_tick is absent with no reason attached"
+[[ -n "$(jq -r '.supervision.loaded_why // empty' "$LKB")" ]] \
+  && ok "GSL-206: the half that was NOT measured (launchctl) is stated out loud, not implied by silence" \
+  || bad "GSL-206: the tile claims 'armed' without saying that loaded-ness was never checked"
+[[ "$(jq -r '.gates.runs | length' "$LKB")" == "3" ]] \
+  && ok "GSL-206: all three declared gates get a tile — a gate that stopped writing cannot vanish" \
+  || bad "GSL-206: the gates strip is built from whatever files exist, so a broken gate disappears"
+[[ "$(jq -r '[.gates.runs[] | select(.state=="unknown") | select(.cmd != null and .cmd != "")] | length' "$LKB")" == "3" ]] \
+  && ok "GSL-206: with no receipts every gate reads unknown AND names the command that fills it" \
+  || bad "GSL-206: an unknown gate is not actionable (no cmd) or was graded without a receipt"
+grep -q 'id="supervisor" data-armed="false"' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-206: Overview renders the supervisor tile with its state on the element" \
+  || bad "GSL-206: no supervisor tile on Overview"
+GT_UNK="$(grep -o 'data-state="unknown"' "$LK/docs/lab/site/index.html" | wc -l | tr -d ' ')"
+[[ "$GT_UNK" -ge 3 ]] \
+  && ok "GSL-206: three gate tiles render unknown rather than a plausible green" \
+  || bad "GSL-206: expected 3 unknown gate tiles on the fixture Overview, found $GT_UNK"
+
+# ⭐ The receipts are read, and a FAILING one keeps saying so. Without this the pass/fail branches
+# would never execute and the strip would be asserted only in the state it happens to start in.
+mkdir -p "$LK/.artifacts/lab/gates"
+printf '{"gate":"smoke","ts":"%s","pass":404,"fail":0,"runner":"tools/lab/smoke.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$LK/.artifacts/lab/gates/smoke.json"
+printf '{"gate":"hooks-verify","ts":"%s","pass":12,"fail":2,"runner":"tools/lab/hooks-verify.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$LK/.artifacts/lab/gates/hooks-verify.json"
+bash "$CH" --repo "$LK" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(jq -r '.gates.runs[] | select(.name=="smoke") | .state' "$LKB")" == "pass" ]] \
+  && ok "GSL-206 ⭐ a green receipt reads pass, with the run's own timestamp" \
+  || bad "GSL-206 ⭐ a green smoke receipt did not read pass ($(jq -r '.gates.runs[] | select(.name=="smoke") | .state' "$LKB"))"
+[[ "$(jq -r '.gates.runs[] | select(.name=="hooks-verify") | .state' "$LKB")" == "fail" ]] \
+  && ok "GSL-206 ⭐ a receipt recording a failure keeps saying fail until a passing run replaces it" \
+  || bad "GSL-206 ⭐ a failing receipt was not reported as a failure"
+[[ "$(jq -r '.gates.runs[] | select(.name=="tsc") | .state' "$LKB")" == "unknown" ]] \
+  && ok "GSL-206 ⭐ the gate with no receipt stays unknown while its neighbours are graded" \
+  || bad "GSL-206 ⭐ tsc was graded without a receipt"
+grep -q 'data-gate="smoke" data-state="pass"' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-206: the built page paints the passing gate on the element, not only in the bundle" \
+  || bad "GSL-206: the gate state did not reach the rendered tile"
+grep -q '\.kpi\.gate\.unknown{border-left-color:var(--unk)}' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-206 control: unknown keeps its own hue off the green-amber-red axis — the rule exists" \
+  || bad "GSL-206 control: .kpi.gate.unknown has no rule, so 'never ran' would paint like 'failed'"
+# The runners really write these receipts — otherwise the strip above is a reader with no writer.
+grep -q 'gates/smoke.json' "$REPO_ROOT/tools/lab/smoke.sh" \
+  && grep -q 'gates/hooks-verify.json' "$REPO_ROOT/tools/lab/hooks-verify.sh" \
+  && ok "GSL-206 control: both gate runners write their own receipt (the reader has a writer)" \
+  || bad "GSL-206 control: a gate runner writes no receipt — its tile can only ever read unknown"
+
+echo "== GSL-209: a theme switch, one search, and a reason you can reach without a mouse =="
+# Two controls the dashboard shipped without at all, and one explanation that could only be read with
+# a pointer. Both controls ship `hidden` and are revealed by the client — the FilterBar doctrine: a
+# control the reader can operate that changes nothing is worse than no control.
+S209=0
+for P in index timeline tasks questions fleet cost library; do
+  grep -q 'id="page-controls"' "$LK/docs/lab/site/$P.html" || S209=1
+  grep -q 'id="page-search"' "$LK/docs/lab/site/$P.html" || S209=1
+  grep -q 'id="theme-toggle"' "$LK/docs/lab/site/$P.html" || S209=1
+done
+[[ "$S209" -eq 0 ]] \
+  && ok "GSL-209: all seven screens carry the search box and the theme switch" \
+  || bad "GSL-209: a screen is missing one of the two page controls"
+grep -q '<div class="chrome-controls" id="page-controls" hidden>' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-209: the controls ship hidden — with JS off the reader never sees a dead control" \
+  || bad "GSL-209: the control band is visible before anything has wired it"
+# The theme has to actually survive a reload, which means it has to be written down somewhere.
+grep -q 'gosleep-theme' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-209: the chosen theme is persisted, so it survives the reload" \
+  || bad "GSL-209: nothing persists the theme — every open would revert to the OS setting"
+grep -q 'data-theme' "$LK/docs/lab/site/index.html" \
+  && ok "GSL-209 control: the stylesheet honours an explicit data-theme in BOTH directions" \
+  || bad "GSL-209 control: no data-theme rules — the toggle would move an attribute nothing reads"
+# The reason behind `unknown` — reachable from a keyboard and present as TEXT, not only in title=.
+grep -q 'class="unknown" tabindex="0"' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-209: an unknown value is focusable, so its reason is reachable by Tab and by tap" \
+  || bad "GSL-209: the unknown marker is still pointer-only"
+grep -q '<span class="unk-why">no tracker.issue.updated event has ever carried a status' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-209 ⭐ the reason is IN THE DOM as text — page search finds it, a screen reader reads it" \
+  || bad "GSL-209 ⭐ the reason still lives only in a title attribute"
+grep -q 'span\.unknown:focus \.unk-why' "$LK/docs/lab/site/tasks.html" \
+  && ok "GSL-209 control: the stylesheet reveals the reason on FOCUS, not only on hover" \
+  || bad "GSL-209 control: .unk-why is revealed on hover alone — a pointer feature again"
+# One visibility rule. Two mechanisms now hide rows, and the filter's count sentence must stay true
+# about the DOM rather than about its own verdict — the rail is the whole safety story of filter.ts.
+grep -q 'fHidden' "$LK/docs/lab/site/timeline.html" && grep -q 'sHidden' "$LK/docs/lab/site/timeline.html" \
+  && ok "GSL-209: the island filter and the page search AND their two verdicts through one function" \
+  || bad "GSL-209: search and filter each set hidden directly — one will silently undo the other"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
+
+# GSL-206: leave a receipt. Until now a green gate left NOTHING on disk (this script deletes its own
+# work dir when it passes), so the only record that the gates ran was a sentence typed by hand into
+# ORCHESTRATION-STATE.md — which is exactly the "take it on faith" the owner said he was done with.
+# One line of JSON, in a gitignored directory, is what lets the dashboard print WHEN this last ran
+# and what it said. A FAILING run writes one too: a receipt that only ever records success is a
+# green light wired to nothing.
+mkdir -p "$REPO_ROOT/.artifacts/lab/gates" 2>/dev/null
+printf '{"gate":"smoke","ts":"%s","pass":%d,"fail":%d,"runner":"tools/lab/smoke.sh"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PASS" "$FAIL" \
+  > "$REPO_ROOT/.artifacts/lab/gates/smoke.json" 2>/dev/null || true
+
 if [[ "$FAIL" -eq 0 ]]; then rm -rf "$WORK"; exit 0; else echo "(artifacts kept at $WORK)"; exit 1; fi

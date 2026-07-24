@@ -62,8 +62,42 @@ def log(msg):
 # status.json, and on the page — because "the digest is missing section 5" and "there was nothing in
 # section 5" look identical to a sleeping owner, and they are not the same thing at all.
 DEGRADED = []
+HOME = os.path.expanduser("~")
+
+
+def unhome(v):
+    """GSL-208: a value the owner reads must not carry the owner's home directory.
+
+    Two rewrites, in this order, and NOTHING else is touched:
+
+      <repo>/docs/lab/x.md   ->  docs/lab/x.md      a location in THIS repository, said as one
+      ~/anything/else        ->  ~/anything/else    still a path, minus the account name
+
+    Why both. Only the first would leave every sibling worktree (`gosleep-audit-preserve`, where the
+    audit ran) printing /Users/<name>/... in full, which is the leak, and the leak is not this one
+    repository -- it is the account name and the machine layout, in a file that is COMMITTED and read
+    on a phone. Only the second would keep this repository shouting an absolute prefix at itself on
+    every row, which is noise, not information.
+
+    NOT A TRUNCATION. GSL-124 is the standing rule here: values travel whole. Nothing is cut, nothing
+    is elided, no ellipsis is added -- a prefix is rewritten to a shorter spelling of the SAME place,
+    and the remainder of the string is byte-for-byte what the emitter wrote. Applied to every string
+    in the projected payload rather than to `path` alone, because the raw-output fields (`cmd`) carry
+    the same prefix and are read by the same eyes.
+    """
+    if not isinstance(v, str) or "/" not in v:
+        return v
+    if REPO and REPO != "/":
+        v = v.replace(REPO.rstrip("/") + "/", "")
+    if HOME and HOME != "/":
+        v = v.replace(HOME.rstrip("/") + "/", "~/")
+    return v
+
+
 def degrade(source, why):
-    DEGRADED.append({"source": source, "why": str(why)[:200]})
+    # GSL-208: a degradation message names the path it could not read, and that path is usually an
+    # absolute one under the home directory. Same leak, different door.
+    DEGRADED.append({"source": source, "why": unhome(str(why))[:200]})
     log("degraded: %s — %s" % (source, str(why)[:120]))
 
 # lab-emit resolves the lab through GOSLEEP_LAB_DIR, so a chronicler pointed at --repo <throwaway>
@@ -2098,11 +2132,177 @@ EVENT_VIEW_KEYS = ("ts", "seq", "actor", "type", "src")
 EVENT_DATA_KEYS = ("sha", "path", "key", "question", "error_type", "decision", "cmd")
 
 
+# ══════════════ GSL-206: the supervisor and the gates, as the web can see them ══════════════
+#
+# The mandate opens on one hole: "the orchestrator has nobody to orchestrate it from above". The
+# mechanism that closes it — tools/watchdog — has been built, smoke-tested and written up in a
+# runbook, and until now the web could not tell you whether it was RUNNING. Same for the gates: the
+# owner reads "smoke 404/404" out of a hand-written text file and is asked to take it on faith, which
+# is precisely the faith he said he no longer wanted to extend.
+#
+# THE RULE THIS BLOCK IS WRITTEN UNDER is the one the rest of this file already lives by: `unknown`
+# with a reason, never a comfortable zero. "The supervisor is not armed" and "I cannot tell whether
+# the supervisor is armed" are different sentences and must never render alike — the first is a fact
+# about the machine, the second is a fact about us.
+#
+# WHAT IS DELIBERATELY NOT HERE. GSL-211 will add `armed-check`, a mechanical gate that also answers
+# "is the configured session actually there, is the cadence inside its thresholds" (the word for the
+# multiplexer is deliberately not written in this file -- C5 denies the whole vocabulary, and a
+# comment is not worth weakening a capability check for). Until it
+# exists this reads the evidence that IS on disk and says so; when it exists, its receipt lands in
+# the same gates directory and shows up with no change here. Digests are not here either, and that
+# is not an oversight: their Markdown form is a decision explained in this very file (they must keep
+# building when node does not exist at all, and they are read on a phone at 07:00).
+
+GATES_DIR = os.path.join(".artifacts", "lab", "gates")
+# Declared, not discovered. A gate whose receipt is missing must render as `unknown` — a strip built
+# only from the files that happen to exist would show three green tiles the day the fourth gate broke
+# and stopped writing.
+EXPECTED_GATES = [
+    ("smoke", "bash tools/lab/smoke.sh"),
+    ("hooks-verify", "bash tools/lab/hooks-verify.sh"),
+    ("tsc", "cd tools/lab/ui && npx tsc --noEmit"),
+]
+
+
+def _read_json(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def collect_gates():
+    """Every gate this project runs, with WHEN it last ran and what it said.
+
+    The receipts live under .artifacts/, which is gitignored -- so a fresh clone has none and every
+    tile reads `unknown` with the command that would fill it. That is the correct answer there: the
+    gates have genuinely never run on that machine.
+    """
+    out = []
+    for name, cmd in EXPECTED_GATES:
+        r = _read_json(os.path.join(REPO, GATES_DIR, name + ".json"))
+        if not r:
+            out.append({
+                "name": name, "state": "unknown", "ts": None, "age_human": None,
+                "passed": None, "failed": None, "cmd": cmd,
+                "why": "no receipt at %s/%s.json -- this gate has not been run on this machine since "
+                       "the receipt was introduced, or it was run some other way. Run: %s"
+                       % (GATES_DIR, name, cmd),
+            })
+            continue
+        ts = r.get("ts")
+        age = (NOW - parse_ts(ts)) if ts and parse_ts(ts) else None
+        failed = r.get("fail")
+        out.append({
+            "name": name,
+            # A receipt that recorded a failure keeps saying so until a passing run replaces it.
+            "state": "unknown" if failed is None else ("pass" if int(failed) == 0 else "fail"),
+            "ts": ts, "age_human": human_age(age),
+            "passed": r.get("pass"), "failed": failed, "cmd": cmd,
+            "why": None,
+        })
+    return {"runs": out, "searched": GATES_DIR + "/<gate>.json (gitignored -- a fresh clone has none)"}
+
+
+def collect_supervision():
+    """Is anything watching the orchestrator, and when did it last wake up?
+
+    Four independent files, because they answer four different questions and any of them can be
+    absent on its own:
+
+      the LaunchAgent plist  -> is it SCHEDULED. Its absence is knowledge, not ignorance: launchd
+                                cannot run an agent it has never been given. (It does not rule out a
+                                hand-run tick, which is why the wording says what was checked.)
+      watchdog.log           -> did it ever WAKE, and when was the last time
+      the ledger             -> what it DECIDED, line by line -- the observational-run evidence
+      watchdog.conf          -> is it configured at all, or would it die on its first tick
+
+    launchctl is NOT consulted. It would answer a fifth question (is the agent LOADED right now) at
+    the cost of a subprocess whose output differs across macOS versions, and the honest gap is named
+    below instead of papered over with a guess.
+    """
+    agent = os.path.join(HOME, "Library", "LaunchAgents", "com.gosleep.watchdog.plist")
+    state_dir = os.path.join(REPO, ".artifacts", "watchdog")
+    log_path = os.path.join(state_dir, "watchdog.log")
+    ledger = os.path.join(REPO, "docs", "handoff", ".watchdog-ledger.jsonl")
+    conf = os.path.join(REPO, "tools", "watchdog", "watchdog.conf")
+    restarts = os.path.join(state_dir, "restarts.history")
+
+    installed = os.path.exists(agent)
+    last_tick, ticks = None, None
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, encoding="utf-8", errors="replace") as f:
+                lines = [l for l in f.read().splitlines() if l.strip()]
+            ticks = len(lines)
+            if lines:
+                last_tick = lines[-1].split(" ", 1)[0]
+        except OSError as exc:
+            degrade("watchdog-log", exc)
+
+    ledger_lines = None
+    if os.path.exists(ledger):
+        try:
+            with open(ledger, encoding="utf-8", errors="replace") as f:
+                ledger_lines = sum(1 for l in f if l.strip())
+        except OSError as exc:
+            degrade("watchdog-ledger", exc)
+
+    restart_count = None
+    if os.path.exists(restarts):
+        try:
+            with open(restarts, encoding="utf-8", errors="replace") as f:
+                restart_count = sum(1 for l in f if l.strip())
+        except OSError as exc:
+            degrade("watchdog-restarts", exc)
+
+    age = (NOW - parse_ts(last_tick)) if last_tick and parse_ts(last_tick) else None
+    return {
+        "armed": installed,
+        "armed_why": (
+            "a launchd agent is installed at ~/Library/LaunchAgents/com.gosleep.watchdog.plist"
+            if installed else
+            "no launchd agent at ~/Library/LaunchAgents/com.gosleep.watchdog.plist -- launchd is not "
+            "scheduling the watchdog. By the runbook (GSL-57) the launchctl step is the OWNER's, and "
+            "it has not been taken. This does not rule out a tick run by hand; it rules out a "
+            "SCHEDULED one."),
+        # The half we cannot see, stated rather than implied. A tile that quietly means "installed"
+        # while printing "armed" is the class of lie this dashboard exists to refuse.
+        "loaded_why": "whether launchd has LOADED that agent right now is not read here -- it needs "
+                      "launchctl, and GSL-211's armed-check is the mechanical gate that will answer "
+                      "it (and the session/cadence checks) properly",
+        "last_tick_ts": last_tick,
+        "last_tick_age_human": human_age(age),
+        "last_tick_why": None if last_tick else (
+            "no %s -- the watchdog has never written a tick in this working tree"
+            % os.path.relpath(log_path, REPO)),
+        "ticks": ticks,
+        "ledger_lines": ledger_lines,
+        "ledger_why": None if ledger_lines is not None else (
+            "no docs/handoff/.watchdog-ledger.jsonl -- the supervisor has never recorded a decision, "
+            "so the observational run GSL-220 asks for has not happened"),
+        "restarts": restart_count,
+        "restarts_why": None if restart_count is not None else (
+            "no restart history file -- nothing has ever been restarted, or nothing has ever run"),
+        "configured": os.path.exists(conf),
+        "configured_why": None if os.path.exists(conf) else (
+            "tools/watchdog/watchdog.conf is absent (only watchdog.conf.example is committed), so a "
+            "tick would fall back to defaults -- and the default configuration is the one that would "
+            "raise a SECOND orchestrator beside a live one"),
+        "searched": "~/Library/LaunchAgents/com.gosleep.watchdog.plist, .artifacts/watchdog/"
+                    "{watchdog.log,restarts.history}, docs/handoff/.watchdog-ledger.jsonl, "
+                    "tools/watchdog/watchdog.conf",
+        "runbook": "docs/runbooks/watchdog.md",
+    }
+
+
 def project_event(e):
     d = e.get("data") or {}
     return dict(
         {k: e[k] for k in EVENT_VIEW_KEYS if k in e},
-        data={k: d[k] for k in EVENT_DATA_KEYS if k in d},
+        data={k: unhome(d[k]) for k in EVENT_DATA_KEYS if k in d},
     )
 
 
@@ -2152,6 +2352,32 @@ def build_render_bundle(ctx, status):
         "library": library_index(),
         "degraded": DEGRADED,
         "narrative": ctx.get("narrative"),
+        # GSL-205: the two prefixes the view layer needs to turn a printed identifier into a link,
+        # produced HERE so that a key linked from the Timeline and the same key linked from the Tasks
+        # board cannot resolve to two different trackers -- they are built from the same constants
+        # (JIRA_BASE, gh_base) that already build every per-row jira_url/gh_url below.
+        #
+        # ADDITIVE, and the view treats it as optional. An older bundle carries no `links` block and
+        # the screens then print identifiers as the plain text they always were -- never a guessed
+        # org. That is why this did not need a schema bump: nothing that reads /7 today can break on
+        # a key it does not look at, and nothing that reads /7 tomorrow may INVENT this one.
+        "links": link_bases(ctx),
+        # GSL-206: the two services the mandate names and the web could not see. Additive and
+        # optional, exactly like `links` above — an older bundle simply has no strip.
+        "supervision": collect_supervision(),
+        "gates": collect_gates(),
+    }
+
+
+def link_bases(ctx):
+    """Where an identifier resolves. `gh_base` is None off a non-GitHub remote, and says why."""
+    gh = gh_base(ctx["git"].get("remote"))
+    return {
+        "jira_base": JIRA_BASE,
+        "gh_base": gh,
+        "gh_base_why": None if gh else
+        "git remote 'origin' is absent or is not a github.com URL, so no issue, PR or commit on "
+        "these screens can be linked -- an invented org would resolve on somebody else's repository",
     }
 
 

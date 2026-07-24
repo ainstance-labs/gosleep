@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-24T21:52:03Z",
+  "generated_at": "2026-07-24T23:25:12Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-24",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
     "max_event_age_s": 18,
     "max_event_age_human": "18s",
-    "latest_event_ts": "2026-07-24T21:51:45Z",
-    "heartbeat_age_s": 176,
+    "latest_event_ts": "2026-07-24T23:24:54Z",
+    "heartbeat_age_s": 364,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2116,
-    "today": 259,
+    "total": 2147,
+    "today": 290,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -28,18 +28,18 @@
       "2026-07-24"
     ],
     "by_type": {
-      "agent.turn_ended": 546,
-      "agent.idle": 238,
+      "agent.turn_ended": 557,
+      "agent.idle": 239,
       "agent.terminated": 176,
-      "tracker.issue.created": 167,
-      "tracker.issue.transitioned": 167,
+      "tracker.issue.transitioned": 172,
+      "tracker.issue.created": 169,
       "tracker.issue.updated": 150,
       "dev_history.written": 124,
-      "handoff.written": 111,
-      "pane.ended": 80,
-      "pane.started": 77,
-      "vcs.commit": 74,
-      "vcs.push": 39,
+      "handoff.written": 112,
+      "pane.ended": 81,
+      "vcs.commit": 80,
+      "pane.started": 78,
+      "vcs.push": 41,
       "task.completed": 35,
       "question.posed": 29,
       "decision.made": 21,
@@ -47,19 +47,19 @@
       "question.auto_resolved": 20,
       "task.created": 15,
       "agent.spawned": 13,
-      "vcs.pr.merged": 7,
+      "vcs.pr.merged": 8,
       "vcs.pr.opened": 4,
       "question.answered": 2,
       "api.failure": 1
     },
     "by_src": {
-      "hook:PostToolUse": 806,
-      "hook:Stop": 546,
-      "hook:TeammateIdle": 238,
+      "hook:PostToolUse": 823,
+      "hook:Stop": 557,
+      "hook:TeammateIdle": 239,
       "hook:SubagentStop": 176,
       "emit": 89,
-      "hook:SessionEnd": 80,
-      "hook:SessionStart": 77,
+      "hook:SessionEnd": 81,
+      "hook:SessionStart": 78,
       "hook:TaskCompleted": 35,
       "hook:Notification": 20,
       "poll-fill": 20,
@@ -69,14 +69,14 @@
     },
     "by_actor": {
       "claude": 1045,
+      "general-purpose": 182,
       "742d1b58": 174,
-      "general-purpose": 162,
       "f97ce3bc": 141,
       "ef6c3777": 85,
       "ecab62c2": 84,
       "dd3edd33": 63,
       "orchestrator": 56,
-      "6650a7a0": 35,
+      "6650a7a0": 46,
       "poll-fill": 20,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
@@ -281,7 +281,7 @@
       "impl-ui-7": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.948
+    "mechanical_share": 0.949
   },
   "questions": {
     "open": 8,
@@ -382,10 +382,52 @@
     "manifest_candidates": []
   },
   "delivery": {
-    "branch": "GSL-243-audit-publish",
-    "head": "8cc92ab",
-    "dirty_paths": 17,
+    "branch": "GSL-177-web-quality",
+    "head": "a2a1915",
+    "dirty_paths": 5,
     "commits_on_date": [
+      {
+        "sha": "a2a1915",
+        "author": "R",
+        "ts": "2026-07-25T01:23:46+02:00",
+        "subject": "GSL-209 [UI] Переключатель темы и сквозной поиск"
+      },
+      {
+        "sha": "0528478",
+        "author": "R",
+        "ts": "2026-07-25T01:12:18+02:00",
+        "subject": "GSL-206 [UI] Плитка супервизора и полоса гейтов с датой прогона"
+      },
+      {
+        "sha": "b7be6a4",
+        "author": "R",
+        "ts": "2026-07-25T00:51:01+02:00",
+        "subject": "GSL-207 [UI] Overview и Fleet: гигиена под details, флот таблицей"
+      },
+      {
+        "sha": "a256bb0",
+        "author": "R",
+        "ts": "2026-07-25T00:30:31+02:00",
+        "subject": "GSL-208 [UI] Timeline и Tasks: нормализованные пути, содержательные события, честные колонки"
+      },
+      {
+        "sha": "a113f7f",
+        "author": "R",
+        "ts": "2026-07-25T00:20:05+02:00",
+        "subject": "GSL-205 [UI] Одна функция «идентификатор → ссылка» на всех семи экранах"
+      },
+      {
+        "sha": "250b207",
+        "author": "rommxx",
+        "ts": "2026-07-24T23:54:09+02:00",
+        "subject": "Merge pull request #248 from ainstance-labs/GSL-243-audit-publish"
+      },
+      {
+        "sha": "b4178d9",
+        "author": "R",
+        "ts": "2026-07-24T23:53:09+02:00",
+        "subject": "GSL-247 [Docs][Tooling] Пересборка сайта лаборатории последним коммитом ветки"
+      },
       {
         "sha": "8cc92ab",
         "author": "R",
@@ -454,6 +496,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 248,
+        "state": "MERGED",
+        "title": "GSL-243 [Docs][Process] Аудит системы 2026-07-24: публикация отчёта и закрытие хвостов",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/248",
+        "mergedAt": "2026-07-24T21:54:09Z"
+      },
       {
         "number": 173,
         "state": "MERGED",
@@ -586,28 +635,21 @@
         "title": "GSL-15 Vendor all delivery skills — gosleep as source of truth for the full methodology",
         "url": "https://github.com/ainstance-labs/gosleep/pull/21",
         "mergedAt": "2026-06-28T17:59:19Z"
-      },
-      {
-        "number": 16,
-        "state": "MERGED",
-        "title": "GSL-7 Harness hardening — close skill-gaps & extend eval coverage",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/16",
-        "mergedAt": "2026-06-28T17:43:38Z"
       }
     ]
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-24T21:49:07Z",
-      "cycle": 125,
-      "context_pct": 77,
+      "ts": "2026-07-24T23:19:08Z",
+      "cycle": 134,
+      "context_pct": 88,
       "open_workers": 1,
       "status": "ok",
       "pane": "%193",
-      "note": "pulse: fix-publish finalizing publication"
+      "note": "pulse: impl-web-177 on GSL-177"
     },
-    "live_status": "SHIFT 73 2026-07-24 19:11Z→ | cycle 104 | orchestrator=Opus 5 pane=%193 | МАНДАТ: глобальный аудит системы оркестрации против docs/prompts/2-deep-orchestrating-research.md + план улучшений + развитие циклом. Волна 1 (19:15Z): audit-supervision / audit-autonomy / audit-rivals, все Opus 5, read-only, findings → docs/reviews/system-audit-2026-07-24/. ДИРЕКТИВА ВЛАДЕЛЬЦА 19:15Z: мобильная версия и push-уведомления НА ПАУЗЕ; приоритет — профессиональная веб-версия со всеми функциями и всеми сервисами. Ранняя находка оркестратора (до аудита): механический watchdog GSL-53 есть как код в tools/watchdog/, но в launchctl записи com.gosleep.watchdog НЕТ и живого процесса нет — супервизор оркестратора не запущен; проверяет audit-supervision. main @ 5f252c7 | открытых PR нет | latest handoff=docs/handoff/48-2026-07-24-briefing-orchestration-system-audit.md | questions: open=0 (0B/0D/0C/0F) lines=43 | open_workers=3 | status=audit-wave-1-running`\n\n`(Прошлые LIVE-STATUS: смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=116 worker=backlog-builder model=claude-opus-5 tokens_out=118220 tokens_in=134 cache_read=17518950 | running: cycles=139 total≈18622000 (+исторические гэпы) [БЭКЛОГ ПЛАНА АУДИТА: 8 эпиков GSL-174..181 в приоритетном порядке (174 = эпик 1 «час работы», 181 = эпик 8 «приёмка») + 61 задача GSL-182..242, все To Do, все назначены на владельца. GitHub: 69 зеркал #174..242 с метками epic/task, нумерация совпала 1:1 с ключами Jira, ссылки в обе стороны. Очередь вопросов: 8 записей q-2026-07-24-001"
+    "live_status": "SHIFT 73 2026-07-24 19:11Z→ | cycle 126 | orchestrator=Opus 5 pane=%193 | АУДИТ ЗАВЕРШЁН И ОПУБЛИКОВАН: main @ 250b207, PR #173 (GSL-169 сохранение мандата и доказательной базы) и #248 (GSL-243 публикация отчёта, догон evidence, .gitignore, пересборка сайта) СЛИТЫ обычным слиянием. Дашборд: docs/reports/system-audit-2026-07-24/index.html + ru/index.html (22 файла, 461 якорь резолвится, 0 обращений в сеть, обе темы, 1280/390). Сайт лаборатории пересобран: было dead / 1345 событий / слитая ветка GSL-161 → стало fresh / 2116 событий / цикл 125. ГЛАВНЫЕ ВЫВОДЫ: (1) три корня — у описанных механизмов НЕТ ИСПОЛНИТЕЛЯ, у утверждений нет владельца обновления, единственный источник правды о жизни системы = самоотчёт LLM; (2) watchdog GSL-53 никогда не работал в бою и при включении с дефолтами раздвоил бы флот; (3) claude -p РАБОТАЕТ по подписке — прежний вывод устарел; (4) платформа Claude Code закрывает часть проблемы ШТАТНО (claude agents --json даёт машинный статус), но демон не ставится сервисом → внешний тик всё равно нужен, самоделку можно сжать в разы; (5) блока permissions в .claude/settings.json НЕТ, оркестратор идёт с --dangerously-skip-permissions, и ЭТОГО НИКТО НЕ ВЫБИРАЛ; (6) ночь (00:00-08:30) не отработана НИ РАЗУ, рекорд автономии 6ч47м; (7) панель аудиторов систематически завышает severity — факты точны, оценки последствий нет. ДИРЕКТИВА ВЛАДЕЛЬЦА 19:15Z: мобильное и push на паузе, приоритет — профессиональная веб-версия со всеми функциями и сервисами. | latest handoff=docs/handoff/48-2026-07-24-briefing-orchestration-system-audit.md | questions: open=8 (2B/6D/0C/0F) lines=51 | open_workers=1 | status=executing-GSL-177`\n\n`(Прошлые LIVE-STATUS: смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR ",
+    "telemetry_last": "cycle=117 worker=fix-publish model=claude-opus-5 tokens_out=76414 tokens_in=141 cache_read=10871617 | running: cycles=140 total≈18698000 (+исторические гэпы) [ПУБЛИКАЦИЯ И ЗАКРЫТИЕ ХВОСТОВ: эпик GSL-243 (In Review) + задачи GSL-244/245/246/247 все Done, зеркала #243-#247 закрыты. PR #173 (GSL-169) MERGED обычным слиянием @ 79acebc, worktree снят, ветка удалена локально и на remote, эпик GSL-169 → Done. PR #248 (GSL-243) MERGED @ 250b207 — ФИНАЛЬНЫЙ main. Доказательная база: 13 файлов = 12 зеркал"
   },
   "degraded": [],
   "narrative": null,
@@ -624,6 +666,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-24T21:52:03Z"
+    "last_success_at": "2026-07-24T23:25:12Z"
   }
 }

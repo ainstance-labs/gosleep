@@ -3,7 +3,7 @@ import { render } from "preact-render-to-string";
 import type { RenderBundle } from "./types.js";
 import { CSS } from "./theme.js";
 import { VERDICTS } from "./verdicts.js";
-import { Footer, Nav, StaleBanner, type ScreenId } from "./components.js";
+import { Footer, Nav, PageControls, StaleBanner, type ScreenId } from "./components.js";
 
 /**
  * Where Python injects the "UI build unavailable" banner when it could not run this renderer at all
@@ -45,6 +45,10 @@ export function renderPage(o: PageOpts): string {
       <header class="masthead">
         <h1>{o.title}</h1>
         <Nav current={o.screen} />
+        {/* GSL-209: the controls belong in the chrome band, with the nav — they act on the whole
+            screen, not on any one section of it, and grouping them here is the same GSL-109 rule
+            that put the title and the nav together: the eye crosses the band once. */}
+        <PageControls />
       </header>
       <StaleBanner b={o.bundle} />
       <main>{o.body}</main>

@@ -275,6 +275,14 @@ tr:hover td{background:var(--sunken)}
    compared by size. Keys and identifiers are mono too but stay LEFT: nobody compares a sha by
    magnitude, they scan for it down the first characters. */
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+/* GSL-208. An identifier column is the one column that may not wrap. td above sets
+   overflow-wrap:break-word, which is right for a long prose value and wrong for a key: at 1280px
+   the Tasks board sized this column by its narrowest content and broke GSL-1234 across two lines
+   mid-token, in the column the reader scans down. min-width, not width — it asks for room for the
+   widest key and lets the table give the rest away; nowrap holds the token together if it does not
+   get it. Not applied at 26rem: on a phone the wrap is the lesser evil, and .wrap scrolls. */
+td.key-col,th.key-col{min-width:9ch;white-space:nowrap}
+@media (max-width:26rem){td.key-col,th.key-col{min-width:0;white-space:normal}}
 /* A table wider than the phone scrolls, and the scrollbar is left VISIBLE on purpose: an edge that
    silently hides a column is the same defect class as a card that silently clips a token. */
 .wrap{overflow-x:auto;scrollbar-width:thin;border-radius:var(--r2)}
@@ -370,8 +378,39 @@ span.dead{color:var(--dead)}
    broken by the absence marker itself. Only the span that SAYS "unknown" is the marker; a
    container takes its state on the left edge (.sh-m.unknown) or on the value ink
    (.clock.unknown .clock-val), never in the ink of its prose. */
-span.unknown{color:var(--unk);font-style:normal;cursor:help;
+span.unknown{color:var(--unk);font-style:normal;cursor:help;position:relative;
       text-decoration:underline dotted;text-underline-offset:2px}
+/* GSL-209: the reason, reachable without a mouse. It was delivered by title= alone — a POINTER
+   feature: no keyboard, no touch, and this dashboard is explicitly meant to be read on a phone.
+   The text now lives in the DOM (so page search finds it and a screen reader reads it) and is
+   revealed on hover AND on focus, which is what makes Tab and a tap work. Absolutely positioned so
+   revealing it never reflows the table underneath — a tooltip that moves the row the reader is
+   pointing at is worse than none. */
+span.unknown .unk-why{display:none}
+span.unknown:hover .unk-why,span.unknown:focus .unk-why,span.unknown:focus-within .unk-why{
+      display:block;position:absolute;z-index:5;left:0;top:calc(100% + 4px);width:max-content;
+      max-width:46ch;padding:var(--s2) var(--s3);border-radius:var(--r2);
+      background:var(--card);border:1px solid var(--unk-border);color:var(--fg);
+      font:400 var(--t-base)/1.5 var(--sans);text-decoration:none;
+      box-shadow:0 2px 8px rgba(0,0,0,.18)}
+span.unknown:focus{outline:2px solid var(--unk);outline-offset:2px}
+
+/* GSL-209: the two controls the dashboard shipped without. Chrome, therefore quieter than data
+   (rule 1) — a bordered input and a bordered button, no fill, no colour. Both ship hidden and are
+   revealed by client.ts once wired; with scripting off neither is ever seen. */
+.chrome-controls{display:flex;align-items:center;gap:var(--s2) var(--s3);flex-wrap:wrap;
+      margin-top:var(--s3)}
+.ctl-search{display:flex;align-items:center;gap:var(--s2)}
+.ctl-search>span{color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
+      text-transform:uppercase;letter-spacing:.06em}
+#page-search{min-width:22ch;padding:4px var(--s2);border-radius:var(--r1);
+      border:1px solid var(--line);background:var(--card);color:var(--fg);
+      font:400 var(--t-md)/1.5 var(--sans)}
+#theme-toggle{margin-left:auto;padding:4px var(--s3);border-radius:var(--r1);
+      border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;
+      font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;letter-spacing:.06em}
+#theme-toggle:hover{color:var(--fg);border-color:var(--line-strong,var(--line))}
+#page-search-count{margin:0}
 /* A caveat is not an alarm: what this screen cannot see is stated quietly, on the inset surface,
    without borrowing amber from the states that earned it. */
 .card.blind{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
@@ -497,35 +536,30 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .ui-degraded code{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);
       padding:0 var(--s1)}
 
-/* GSL-98: the worker card. THE AGE IS THE HEADLINE and the CSS is where that stops being an
-   opinion — it is set in the largest type on the card, above the name, because a worker nobody has
-   heard from in an hour is not working, it is silent.
+/* GSL-98/GSL-207: the worker ROW. THE AGE IS STILL THE HEADLINE and the CSS is where that stops
+   being an opinion — it is the only value in the row set in mono display type, because a worker
+   nobody has heard from in an hour is not working, it is silent.
+   GSL-207 retired the card: eight of nine workers eleven days old is a list, and a list of one
+   question ("who is quiet, and for how long") is a column, not 2.5 screens of equal-weight cards.
+   The type scale drops from hero to lg accordingly — in a row, hero is shouting; the ink and the
+   position carry the emphasis instead.
    Three states, three inks. SILENT IS AMBER, never red: red would read as dead, and dead is the
    one claim this screen is not entitled to make — a worker thinking inside a long tool call and a
    worker whose process is gone look identical from here. ENDED is muted grey; a finished worker is
    not a problem.
-   ⚠️ NOTHING MAY BE NESTED INSIDE .wk-age beyond what is already there: smoke.sh:645 captures its
+   ⚠️ NOTHING MAY BE NESTED INSIDE .wk-age beyond what is already there: smoke.sh captures its
    contents non-greedily, and client.ts repaints it by textContent. */
-.wk{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);
-      padding:var(--s3) var(--s4);margin:var(--s2) 0}
-.wk-top{display:flex;align-items:baseline;gap:var(--s2) var(--s3);flex-wrap:wrap}
-.wk-age{font:500 var(--t-hero)/1.15 var(--mono);font-variant-numeric:tabular-nums}
+.wk-age{font:500 var(--t-lg)/1.2 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .wk-age small{display:block;font:400 var(--t-xs)/1.5 var(--sans);color:var(--muted);
       text-transform:uppercase;letter-spacing:.06em}
 .wk-name{font:400 var(--t-md)/1.5 var(--mono);color:var(--fg)}
 .wk.active .wk-age{color:var(--ok)}
 .wk.silent .wk-age{color:var(--warn)}
 .wk.ended  .wk-age{color:var(--muted)}
-.wk.silent{border-color:var(--warn-border)}
-.wk-why{color:var(--dim);font:400 var(--t-base)/1.5 var(--sans);margin:var(--s2) 0;max-width:68ch}
-.wk-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s2) var(--s3);
-      border-top:1px solid var(--line-subtle);padding-top:var(--s2);font-size:var(--t-md)}
-/* :not(.unknown) for the same cascade reason as ".kpi span": a field whose value is unknown puts
-   span.unknown NEXT TO the label span, and the label rule must not caption-ify the value. */
-.wk-f span:not(.unknown){display:block;color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);
-      text-transform:uppercase;letter-spacing:.06em}
-.wk-task{margin-top:var(--s2);font-size:var(--t-md)}
-.wk-models{color:var(--warn)}
+/* Amber on the left edge of the row, since a tr cannot carry a border the way the card did. */
+.wk.silent td:first-child{box-shadow:inset 2px 0 0 var(--warn)}
+.wk-why{color:var(--dim);font:400 var(--t-base)/1.4 var(--sans);margin:var(--s1) 0 0;max-width:44ch}
+.wk-models{color:var(--warn);font-size:var(--t-xs)}
 
 /* GSL-99: the self-health meters — the page reporting its own rot. The state lives on the LEFT
    EDGE of the card, not in the ink of its prose: the card is full of sentences, and tinting all of
@@ -539,6 +573,30 @@ tr.sev-incident td:first-child{box-shadow:inset 2px 0 0 var(--dead)}
 .sh-m.dead{border-left-color:var(--dead);background:var(--dead-soft)}
 .sh-m.dim{border-left-color:var(--line)}
 .sh-m.unknown{border-left-color:var(--unk)}
+/* GSL-207: the fold and its always-visible verdict chips. The triangle is the browser default and
+   is left alone — a <details> that hides its own affordance is a control nobody finds. The chips
+   carry the three meter states in ONE line so the folding costs the reader no information, only
+   1200px; they take their own name (never .sh-m, which is the meter CARD rule) and each prints its
+   state as a WORD beside its colour, because hue is a second channel here and never the only one. */
+.sh-fold>summary{cursor:pointer;padding:var(--s2) 0;list-style-position:outside}
+.sh-fold-title{font:500 var(--t-lg)/1.3 var(--sans);color:var(--fg)}
+.sh-chip{display:inline-block;font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
+      letter-spacing:.06em;padding:1px var(--s2);border-radius:var(--r1);
+      background:var(--sunken);color:var(--muted);border-left:2px solid var(--line)}
+.sh-chip.ok{border-left-color:var(--ok)}
+.sh-chip.warn{border-left-color:var(--warn)}
+.sh-chip.dead{border-left-color:var(--dead);background:var(--dead-soft)}
+.sh-chip.dim{border-left-color:var(--line)}
+.sh-chip.unknown{border-left-color:var(--unk)}
+.sh-alarm{color:var(--warn);font:400 var(--t-base)/1.5 var(--sans)}
+/* GSL-206: the gate tiles. They are KPI tiles with one addition — a left edge that grades, because
+   pass / fail / unknown is a judgement and judgement is what earns colour here. UNKNOWN keeps its
+   own hue off the green-amber-red axis: "the gate failed" and "the gate never ran" are different
+   sentences and painting them alike is the defect this palette was rebuilt to remove. */
+.kpi.gate{border-left:2px solid var(--line)}
+.kpi.gate.pass{border-left-color:var(--ok)}
+.kpi.gate.fail{border-left-color:var(--dead);background:var(--dead-soft)}
+.kpi.gate.unknown{border-left-color:var(--unk)}
 .sh-h{font-weight:500;margin-bottom:var(--s2);font-size:var(--t-md)}
 .sh-row{font-size:var(--t-md);margin:var(--s1) 0}
 .sh-k{color:var(--muted);font:500 var(--t-xs)/1.5 var(--sans);text-transform:uppercase;
@@ -559,7 +617,9 @@ footer{color:var(--muted);font-size:var(--t-sm);margin-top:var(--s7);
   body{padding:var(--s3) var(--s3) var(--s6)}
   h1{font-size:var(--t-lg)}
   .runway{padding:var(--s3)}
-  .runway-big,.kpi b,.clock-val,.wk-age{font-size:var(--t-xl)}
+  /* .wk-age left out since GSL-207: it is a table cell now, at --t-lg, and this rule would make it
+     BIGGER on a phone than on the desktop it was tuned for. */
+  .runway-big,.kpi b,.clock-val{font-size:var(--t-xl)}
   .sh-k{min-width:auto;display:block}
   td{padding:6px 8px}
   th{padding:4px 8px}
