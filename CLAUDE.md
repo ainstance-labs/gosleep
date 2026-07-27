@@ -24,7 +24,8 @@
   GitHub numbering is shared between issues and PRs — trust in-body links, not numbers.
 - **Dev history:** one file per Task at `docs/dev_history/<TASK-KEY>-<phase>-<slug>.md`
   (key UPPERCASE first), written right after the task lands. Index: `docs/dev_history/README.md`.
-  Legacy pre-GSL history (TLM era) lives untouched in `docs/dev-history/`.
+  (Legacy pre-GSL history, the TLM-era `docs/dev-history/` folder, was deleted by the owner on
+  2026-07-26 as no longer relevant — do not recreate it.)
 
 ## Gates
 
