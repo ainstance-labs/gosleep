@@ -100,13 +100,16 @@
         "$comment": "ONE hook, no `if`. The `if` field exists (v2.1.85+) and would pre-filter before spawning the process — but a real run on 2.1.207 showed two `if` rules under one matcher BOTH firing on the same call (one action -> two events), and `Bash(git *)` matching a command that only MENTIONED git inside a quoted string. Routing by sub-command prefix inside lab-log.sh is the version we can prove correct; the cost is one process spawn per Bash call.",
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/chronicler-debounce-hook.sh", "timeout": 5 }
         ]
       },
       {
+        "$comment": "Second command = GSL-198: the debounce trigger from the ORIGINAL design (05-lab-ui-mobile-autonomy.md:184 — 'a PostToolUse async hook debounced on writes to docs/lab/') that fell out at implementation. The shim arms a background waiter and exits instantly; the chronicler runs once per quiet window. Kill switch: GOSLEEP_DEBOUNCE_DISABLE=1. Runbook: docs/runbooks/tick-engine.md.",
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/chronicler-debounce-hook.sh", "timeout": 5 }
         ]
       },
       {

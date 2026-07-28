@@ -54,6 +54,35 @@ grep -qE 'claude( -p|\b--print)' tools/lab/lab-log.sh && bad "lab-log.sh must ma
   || ok "lab-log.sh makes 0 LLM calls (C1)"
 say ""
 
+# ── 0b. the debounce trigger (GSL-198) ──────────────────────────────────────
+# The returned element from the original design: PostToolUse, debounced, on writes to docs/lab/.
+# Synthetic payloads go through the REAL shim (the exact file settings.json names) into a sandbox
+# state dir — proving shim -> engine -> waiter -> run -> ledger without touching the live lab.
+# What this cannot prove (Claude Code actually dispatching PostToolUse) the real-run leg below
+# already proves for the sibling hook on the same matchers.
+say "== debounce trigger (GSL-198) =="
+bash -n tools/lab/chronicler-debounce.sh && ok "chronicler-debounce.sh syntax" || bad "chronicler-debounce.sh syntax"
+bash -n tools/hooks/chronicler-debounce-hook.sh && ok "debounce shim syntax" || bad "debounce shim syntax"
+[ "$(jq '[.hooks.PostToolUse[].hooks[].command] | map(select(test("chronicler-debounce"))) | length' .claude/settings.json 2>/dev/null)" = "2" ] \
+  && ok "settings.json arms the debounce shim on both write-capable PostToolUse matchers" \
+  || bad "debounce shim not wired on Bash + Write|Edit|MultiEdit — the trigger fell out AGAIN"
+DBW="$WORK/debounce"
+mkdir -p "$DBW"
+printf '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"docs/lab/questions/queue.jsonl","content":"x"}}' \
+  | GOSLEEP_DEBOUNCE_DIR="$DBW/state" GOSLEEP_DEBOUNCE_QUIET=1 GOSLEEP_DEBOUNCE_CMD="touch $DBW/ran" \
+    GOSLEEP_TICK_LEDGER="$DBW/ledger.jsonl" bash tools/hooks/chronicler-debounce-hook.sh
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do [ -f "$DBW/ran" ] && break; sleep 1; done
+[ -f "$DBW/ran" ] && grep -q '"mode":"debounce"' "$DBW/ledger.jsonl" 2>/dev/null \
+  && ok "a docs/lab write through the shim -> one debounced run + one ledger line" \
+  || bad "docs/lab write did NOT produce a debounced run (stamp=$([ -f "$DBW/state/last-write" ] && echo yes || echo no))"
+printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"git status"},"tool_response":"M docs/lab/events/x.jsonl"}' \
+  | GOSLEEP_DEBOUNCE_DIR="$DBW/neg" GOSLEEP_DEBOUNCE_QUIET=1 GOSLEEP_DEBOUNCE_CMD="touch $DBW/neg-ran" \
+    bash tools/hooks/chronicler-debounce-hook.sh
+[ ! -f "$DBW/neg/last-write" ] \
+  && ok "tool_response mentioning docs/lab/ does NOT arm it — reads of the world are not writes to the lab" \
+  || bad "phantom trigger: a mere MENTION of docs/lab/ in output armed the debounce"
+say ""
+
 # ── 1. routing: the adversarial cases that actually bit ─────────────────────
 # Every NONE case below was, at some point on 2026-07-12, a REAL phantom event in the log — a commit
 # or a PR the timeline claimed happened and that never did. They are the regression suite: a lying

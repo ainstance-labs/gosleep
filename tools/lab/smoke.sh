@@ -4190,6 +4190,47 @@ grep -q 'fHidden' "$LK/docs/lab/site/timeline.html" && grep -q 'sHidden' "$LK/do
   && ok "GSL-209: the island filter and the page search AND their two verdicts through one function" \
   || bad "GSL-209: search and filter each set hidden directly — one will silently undo the other"
 
+echo "== GSL-198: chronicler-debounce — the returned PostToolUse trigger =="
+# The element from the original design that fell out at implementation (audit findings 1, 11):
+# writes to docs/lab/ arm ONE background waiter; a quiet window later the chronicler runs ONCE.
+# Hermetic: sandbox state dir, a `touch` stands in for the chronicler (GOSLEEP_DEBOUNCE_CMD seam).
+DB="$WORK/debounce"; DBS="$SCRIPT_DIR/chronicler-debounce.sh"
+mkdir -p "$DB"
+bash -n "$DBS" && ok "debounce: bash -n (syntax)" || bad "debounce: bash -n (syntax)"
+grep -qE 'claude( -p|\b--print)' "$DBS" && bad "debounce: 0-LLM (C1)" || ok "debounce: 0-LLM (C1)"
+dbtrig() {  # dbtrig <state-subdir> <payload-json>
+  printf '%s' "$2" | GOSLEEP_DEBOUNCE_DIR="$DB/$1" GOSLEEP_DEBOUNCE_QUIET=1 GOSLEEP_DEBOUNCE_MAX_WAIT=30 \
+    GOSLEEP_DEBOUNCE_CMD="echo run >> $DB/$1-runs" GOSLEEP_TICK_LEDGER="$DB/$1-ledger.jsonl" bash "$DBS"
+}
+# 1. an irrelevant write never arms it
+dbtrig n1 '{"tool_name":"Write","tool_input":{"file_path":"src/app.ts","content":"x"}}'
+[ ! -f "$DB/n1/last-write" ] && ok "debounce: non-lab write refused (no stamp)" || bad "debounce: non-lab write armed it"
+# 2. a mention in tool_response is a READ of the world, not a write to the lab (the git-status trap:
+#    docs/lab/events/ is permanently dirty in this repo, so `git status` OUTPUT names it constantly)
+dbtrig n2 '{"tool_name":"Bash","tool_input":{"command":"git status"},"tool_response":"M docs/lab/events/x.jsonl"}'
+[ ! -f "$DB/n2/last-write" ] && ok "debounce: tool_response mention refused (no phantom trigger)" \
+  || bad "debounce: tool_response mention armed it"
+# 3. the kill switch
+printf '{"tool_input":{"file_path":"docs/lab/x"}}' | GOSLEEP_DEBOUNCE_DISABLE=1 GOSLEEP_DEBOUNCE_DIR="$DB/n3" \
+  GOSLEEP_DEBOUNCE_CMD="echo run >> $DB/n3-runs" bash "$DBS"
+[ ! -d "$DB/n3" ] && ok "debounce: GOSLEEP_DEBOUNCE_DISABLE=1 is a true kill switch" \
+  || bad "debounce: disabled hook still created state"
+# 4. three rapid lab writes -> exactly ONE run, one ledger line, lock released (the debounce IS the point)
+dbtrig p1 '{"tool_name":"Write","tool_input":{"file_path":"docs/lab/questions/queue.jsonl","content":"a"}}'
+dbtrig p1 '{"tool_name":"Bash","tool_input":{"command":"tools/lab/lab-emit.sh question --type FYI"}}'
+dbtrig p1 '{"tool_name":"Edit","tool_input":{"file_path":"docs/lab/README.md"}}'
+[ -f "$DB/p1/last-write" ] && ok "debounce: lab write arms the stamp" || bad "debounce: lab write left no stamp"
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do [ -f "$DB/p1-runs" ] && break; sleep 1; done
+sleep 2
+P1RUNS="$(wc -l < "$DB/p1-runs" 2>/dev/null | tr -d ' ')"
+[ "$P1RUNS" = "1" ] && ok "debounce: three writes collapse into ONE chronicler run" \
+  || bad "debounce: expected exactly 1 run, got '${P1RUNS:-none}'"
+grep -q '"mode":"debounce"' "$DB/p1-ledger.jsonl" 2>/dev/null \
+  && ok "debounce: the run left its one ledger line (mode=debounce)" \
+  || bad "debounce: no ledger line — a rebuild nobody can prove happened"
+[ ! -d "$DB/p1/waiter.lock" ] && ok "debounce: waiter lock released after the run" \
+  || bad "debounce: waiter lock still held — the next quiet window would be missed"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
