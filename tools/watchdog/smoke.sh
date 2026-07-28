@@ -617,6 +617,78 @@ else
   bad "invalid WD_MODE: expected exit 78, got rc=$rc"
 fi
 
+echo "== GSL-213: frozen-progress detector (cycle+context_pct immobile) =="
+# Seed: 19 qualifying ticks with the SAME (cycle=12, ctx=41) as HB_OK, spanning
+# >1h. The 20th (this run) crosses WD_FROZEN_TICKS=20 -> progress_frozen fires.
+seed_frozen_19() {
+  mkdir -p "$1/state/observe"
+  local i=0
+  while [ "$i" -lt 19 ]; do
+    echo "$((NOW - 4000 + i * 200)) 12 41" >> "$1/state/observe/progress.history"
+    i=$((i+1))
+  done
+}
+CASE_ENV="WD_MODE=observe"
+run_case  frozen-fires              ok                 1     %42   fresh    "$HB_OK"      seed_frozen_19
+L="$WORK/frozen-fires/ledger.jsonl"
+if grep -q '"event":"progress_frozen"' "$L" \
+   && grep '"event":"progress_frozen"' "$L" | grep -q '"ticks":20' \
+   && grep '"event":"tick"' "$L" | grep -q '"frozen":1' \
+   && [ -f "$WORK/frozen-fires/state/observe/frozen-episode.marker" ]; then
+  ok "frozen: 20 immobile ticks over >1h -> progress_frozen + frozen=1 on the tick line"
+else
+  bad "frozen detector did not fire (see $L)"
+fi
+# DECISION stays ok — the signal is record-only (it feeds GSL-215, it never acts).
+if grep '"event":"tick"' "$L" | grep -q '"decision":"ok"'; then
+  ok "frozen: record-only — the decision is still ok, nothing acted"
+else
+  bad "frozen: the signal acted by itself"
+fi
+
+# Movement (a different cycle in the heartbeat) breaks the run and closes an
+# open episode with progress_resumed.
+seed_frozen_19_and_episode() { seed_frozen_19 "$1"; echo "$NOW" > "$1/state/observe/frozen-episode.marker"; }
+HB_MOVED='{"ts":"2026-07-10T03:00:00Z","cycle":13,"context_pct":44,"open_workers":2,"status":"ok","pane":"%42"}'
+CASE_ENV="WD_MODE=observe"
+run_case  frozen-resumes            ok                 1     %42   fresh    "$HB_MOVED"   seed_frozen_19_and_episode
+if grep -q '"event":"progress_resumed"' "$WORK/frozen-resumes/ledger.jsonl" \
+   && [ ! -f "$WORK/frozen-resumes/state/observe/frozen-episode.marker" ]; then
+  ok "frozen: cycle moved -> progress_resumed, episode marker cleared"
+else
+  bad "frozen: resume edge broken"
+fi
+
+# Span guard: 19 immobile ticks crammed into ~10 min do NOT fire (rapid manual
+# ticks cannot fake an hour of standstill).
+seed_frozen_19_fast() {
+  mkdir -p "$1/state/observe"
+  local i=0
+  while [ "$i" -lt 19 ]; do
+    echo "$((NOW - 600 + i * 30)) 12 41" >> "$1/state/observe/progress.history"
+    i=$((i+1))
+  done
+}
+CASE_ENV="WD_MODE=observe"
+run_case  frozen-span-guard         ok                 1     %42   fresh    "$HB_OK"      seed_frozen_19_fast
+if ! grep -q '"event":"progress_frozen"' "$WORK/frozen-span-guard/ledger.jsonl"; then
+  ok "frozen: run without the wall-clock span does not fire (span guard)"
+else
+  bad "frozen: span guard failed"
+fi
+
+# A quiesced tick is a declared stand-down: it must not feed the history, and
+# it closes an open episode as run_broken (not as frozen).
+seed_frozen_19_and_episode_q() { seed_frozen_19_and_episode "$1"; }
+CASE_ENV="WD_MODE=observe"
+run_case  frozen-quiesced-breaks    ok_quiesced        0     ""    fresh    "$HB_QUIESCED" seed_frozen_19_and_episode_q
+if [ ! -f "$WORK/frozen-quiesced-breaks/state/observe/progress.history" ] \
+   && grep '"event":"progress_resumed"' "$WORK/frozen-quiesced-breaks/ledger.jsonl" | grep -q 'run_broken_by_status_quiesced'; then
+  ok "frozen: quiesced breaks the run (history reset, episode closed as run_broken)"
+else
+  bad "frozen: quiesced handling wrong"
+fi
+
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
 HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
 if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi

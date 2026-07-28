@@ -95,6 +95,17 @@
 # (ntfy / Claude-app) extension point. Must be executable; validated at start.
 #WD_ESCALATE_HOOK=""
 
+# --- frozen-progress detector (GSL-213; audit findings 5, 88) -------------------
+# The audit's number-one failure: 60.8 hours of an immobile cycle under a healthy
+# pulse. The detector calls it for zero tokens: WD_FROZEN_TICKS consecutive ticks
+# in which BOTH `cycle` and `context_pct` are immobile (fresh heartbeat, status
+# "ok" only), spanning at least WD_FROZEN_MIN_SPAN_SECS of wall clock ->
+# progress_frozen in the ledger. RECORD-ONLY: it never acts by itself. Note for
+# the observational run: legitimate owner standby also freezes the cycle — read
+# the observe ledger's false-positive rate before tightening these.
+#WD_FROZEN_TICKS=20
+#WD_FROZEN_MIN_SPAN_SECS=3600
+
 # --- Gastown debounce rails (PRD R1.4) -----------------------------------------
 # Warm-up exemption from staleness for a freshly started session (Gastown #567:
 # heartbeat checks killed sessions before they could write their first line).

@@ -48,6 +48,8 @@ Event types and their extra fields:
 | `would_kill` | `target`, `reason` | observe mode: the pane would have been force-killed (post-reap, safety gates already passed) |
 | `would_rewake` | `reason`, `hb_age`, `open_workers`, `cycle`, `prompt` | observe mode: a replacement orchestrator would have been spawned; `prompt` points at the exact brief it would have received |
 | `platform_unavailable` | `tmux_alive` | the roster (`claude agents --json`) could not be read — fail safe, no action taken (GSL-212) |
+| `progress_frozen` | `cycle`, `context_pct`, `ticks`, `span_secs`, `threshold_ticks`, `threshold_span` | GSL-213: `cycle` AND `context_pct` immobile for ≥ `WD_FROZEN_TICKS` consecutive fresh-ok ticks spanning ≥ `WD_FROZEN_MIN_SPAN_SECS` — "alive but useless" observed. RECORD-ONLY (feeds classification); emitted once per episode; the per-tick `tick` line carries `frozen=1` while it lasts |
+| `progress_resumed` | `cycle`, `context_pct` (or `reason=run_broken_by_*`) | the frozen episode ended: counters moved, or the run was broken by staleness / a declared stand-down |
 | `session_mismatch` | `hb_session`, `hb_session_id`, `repo_sessions`, `tmux_alive` | the heartbeat's declared session is absent from the roster while live session(s) run in this repo — every action refused, escalation follows (audit F2 cure) |
 
 Example (a stale-after-nudge kill cycle, then recovery):

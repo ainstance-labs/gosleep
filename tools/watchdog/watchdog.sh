@@ -101,7 +101,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.6.0 (GSL-212: platform life-source claude agents --json + observe mode)"
+WD_VERSION="0.6.1 (GSL-213: frozen-progress detector — cycle+context_pct immobile across ticks)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -176,6 +176,22 @@ fi
 : "${WD_ESCALATE_HOOK:=}"           # optional executable: called with the escalation
                                     # message (phase-6 push / ntfy extension point)
 
+# Frozen-progress detector (GSL-213; audit findings 5, 88 — the number-one
+# failure of the whole audit: 60.8h of an immobile cycle under a healthy pulse).
+# "Alive but useless" is observable for zero tokens because context_pct is not
+# invented on a frozen orchestrator — it is frozen too. A run of consecutive
+# ticks in which BOTH `cycle` and `context_pct` are immobile, judged only on a
+# FRESH heartbeat with status "ok" (staleness has its own branch; quiesced /
+# rolling are declared stand-downs), spanning at least the minimum window =
+# progress_frozen. RECORD-ONLY signal: it feeds classification (GSL-215),
+# it never acts by itself. Caveat named for the observational run: legit owner
+# standby also freezes the cycle — that is exactly what the observe ledger is
+# for (measure the false-positive rate before anything is armed).
+: "${WD_FROZEN_TICKS:=20}"          # consecutive immobile ticks before the signal
+                                    # (launchd tick is 180s -> 20 ticks ~= 1 hour)
+: "${WD_FROZEN_MIN_SPAN_SECS:=3600}" # the run must also SPAN this much wall clock
+                                    # (rapid manual ticks can't fake an hour)
+
 # Gastown debounce rails (PRD R1.4) — each threshold config-overridable
 : "${WD_STARTUP_GRACE_SECS:=120}"   # warm-up exemption from staleness (Gastown #567)
 : "${WD_ZOMBIE_CYCLES:=3}"          # consecutive pane-alive/process-dead ticks before zombie
@@ -214,7 +230,7 @@ is_uint() { [[ "${1:-}" =~ ^[0-9]+$ ]]; }
 validate_config() {
   local k
   for k in WD_HB_STALE_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
-           WD_QUOTA_GRACE_SECS \
+           WD_QUOTA_GRACE_SECS WD_FROZEN_TICKS WD_FROZEN_MIN_SPAN_SECS \
            WD_RESTART_BUDGET WD_RESTART_WINDOW_SECS WD_BACKOFF_BASE_SECS WD_BACKOFF_CAP_SECS \
            WD_ESCALATE_REPEAT_SECS WD_STARTUP_GRACE_SECS WD_ZOMBIE_CYCLES WD_KILL_COOLDOWN_SECS \
            WD_MASS_DEATH_WORKERS WD_MIN_TICK_INTERVAL_SECS WD_LOCK_STALE_SECS; do
@@ -222,6 +238,7 @@ validate_config() {
   done
   case "$WD_MODE" in observe|armed) : ;; *) die_config "WD_MODE must be 'observe' or 'armed', got: '$WD_MODE'" ;; esac
   [ "$WD_ZOMBIE_CYCLES" -ge 1 ] || die_config "WD_ZOMBIE_CYCLES must be >= 1"
+  [ "$WD_FROZEN_TICKS" -ge 2 ] || die_config "WD_FROZEN_TICKS must be >= 2"
   [ -n "$WD_AGENT_PROC_REGEX" ] || die_config "WD_AGENT_PROC_REGEX must not be empty"
   [ "$WD_CONTEXT_CEILING_PCT" -le 100 ] || die_config "WD_CONTEXT_CEILING_PCT must be <= 100"
   [ "$WD_RESTART_BUDGET" -ge 1 ] || die_config "WD_RESTART_BUDGET must be >= 1"
@@ -403,6 +420,75 @@ else:
   set -- $out
   PLATFORM_STATE="${1:-unavailable}"; PLATFORM_MATCH="${2:-none}"
   PLATFORM_STATUS="${3:--}"; PLATFORM_SESSIONS="${4:-0}"; PLATFORM_REPO_N="${5:-0}"
+}
+
+# --- frozen-progress detector (GSL-213) --------------------------------------
+# History: one "epoch cycle context_pct" line per QUALIFYING tick (fresh
+# heartbeat, status ok, parseable counters) in the MODE state dir, capped.
+# FROZEN fires when the run of trailing entries whose (cycle, context_pct)
+# equal the newest one reaches WD_FROZEN_TICKS ticks AND spans
+# WD_FROZEN_MIN_SPAN_SECS of wall clock. Episode-edged: progress_frozen once
+# on entering, progress_resumed once on leaving — the per-tick `tick` line
+# carries frozen=0/1 in between (no ledger spam, no lost signal).
+FROZEN=0 FROZEN_TICKS=0 FROZEN_SPAN=0
+progress_history_path() { echo "$WD_STATE_DIR/$WD_MODE/progress.history"; }
+
+track_progress() {
+  FROZEN=0; FROZEN_TICKS=0; FROZEN_SPAN=0
+  local hist; hist="$(progress_history_path)"
+  # Qualify: a frozen VERDICT is only meaningful on a beating heart doing
+  # nothing. Stale heartbeats have their own branch; quiesced/rolling are
+  # declared stand-downs; unparseable counters cannot be compared. A
+  # non-qualifying tick BREAKS the run (episode over, if one was open).
+  if ! hb_is_fresh || { [ -n "$HB_STATUS" ] && [ "$HB_STATUS" != "ok" ]; } \
+     || ! is_uint "$HB_CYCLE" || ! is_uint "$HB_CTX"; then
+    local breach="counters_unparseable"
+    if ! hb_is_fresh; then
+      breach="hb_stale_or_missing"
+    elif [ -n "$HB_STATUS" ] && [ "$HB_STATUS" != "ok" ]; then
+      breach="status_${HB_STATUS}"
+    fi
+    if [ -n "$(marker_read frozen-episode)" ]; then
+      marker_clear "frozen-episode"
+      ledger_emit "progress_resumed" "reason=run_broken_by_${breach}"
+    fi
+    rm -f "$hist"
+    return 0
+  fi
+  echo "$(now_epoch) $HB_CYCLE $HB_CTX" >> "$hist"
+  # cap the file (same discipline as the heartbeat: bounded forever)
+  if [ "$(wc -l < "$hist" | tr -d ' ')" -gt 500 ]; then
+    tail -n 400 "$hist" > "$hist.tmp" && mv "$hist.tmp" "$hist"
+  fi
+  # trailing run of entries equal to the newest (cycle, ctx)
+  local run_len=0 run_first="" run_last="" e c x
+  while read -r e c x; do
+    if [ "$c" = "$HB_CYCLE" ] && [ "$x" = "$HB_CTX" ]; then
+      run_len=$(( run_len + 1 ))
+      [ -z "$run_first" ] && run_first="$e"
+      run_last="$e"
+    else
+      run_len=0; run_first=""; run_last=""
+    fi
+  done < "$hist"
+  FROZEN_TICKS="$run_len"
+  if is_uint "$run_first" && is_uint "$run_last"; then
+    FROZEN_SPAN=$(( run_last - run_first ))
+  fi
+  if [ "$run_len" -ge "$WD_FROZEN_TICKS" ] && [ "$FROZEN_SPAN" -ge "$WD_FROZEN_MIN_SPAN_SECS" ]; then
+    FROZEN=1
+    if [ -z "$(marker_read frozen-episode)" ]; then
+      marker_write "frozen-episode"
+      ledger_emit "progress_frozen" "cycle=${HB_CYCLE}" "context_pct=${HB_CTX}" \
+        "ticks=$run_len" "span_secs=$FROZEN_SPAN" \
+        "threshold_ticks=$WD_FROZEN_TICKS" "threshold_span=$WD_FROZEN_MIN_SPAN_SECS"
+    fi
+  else
+    if [ -n "$(marker_read frozen-episode)" ]; then
+      marker_clear "frozen-episode"
+      ledger_emit "progress_resumed" "cycle=${HB_CYCLE}" "context_pct=${HB_CTX}"
+    fi
+  fi
 }
 
 # --- tmux probes (injectable in test mode) ---------------------------------
@@ -804,6 +890,8 @@ decide_and_act() {
   # rolling ticks — carries real platform + tmux corroboration data.
   probe_platform
   TMUX_ALIVE=0; probe_session_alive && TMUX_ALIVE=1
+  # Frozen-progress bookkeeping (GSL-213): record-only, feeds GSL-215 classes.
+  track_progress
 
   # 1. Deliberate end states first. Chain-done quiesced NEVER restarts, whatever
   #    tmux says — but the quota-wait form is ETA-BOUNDED (GSL-65 review M1):
@@ -1028,7 +1116,8 @@ main() {
     "context_pct=${HB_CTX:-none}" "open_workers=${HB_WORKERS:-none}" \
     "platform=$PLATFORM_STATE" "platform_status=$PLATFORM_STATUS" \
     "platform_match=$PLATFORM_MATCH" "sessions=$PLATFORM_SESSIONS" \
-    "repo_sessions=$PLATFORM_REPO_N" "tmux_alive=$TMUX_ALIVE"
+    "repo_sessions=$PLATFORM_REPO_N" "tmux_alive=$TMUX_ALIVE" \
+    "frozen=$FROZEN" "frozen_ticks=$FROZEN_TICKS" "frozen_span=$FROZEN_SPAN"
   log "DECISION=$DECISION reason=$DECISION_REASON mode=$WD_MODE hb_age=${HB_AGE:-none} hb_status=${HB_STATUS:-none} ctx=${HB_CTX:-none} workers=${HB_WORKERS:-none} platform=$PLATFORM_STATE/$PLATFORM_STATUS tmux=$TMUX_ALIVE dry_run=$DRY_RUN"
 }
 
