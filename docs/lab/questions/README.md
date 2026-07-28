@@ -42,6 +42,15 @@ every status change is a new patch record appended after the original.
 
 ## Reading
 
+**НЕЛЬЗЯ читать `queue.jsonl` построчно — только через `lab-emit.sh list`.** Файл append-only:
+запись никогда не переписывается, каждый смен статуса — НОВЫЙ patch-запись ниже по файлу, и
+текущий статус вопроса — это свёртка исходной записи со ВСЕМИ последующими патчами (`re:` по id,
+последний побеждает). Наивное построчное чтение видит исходные записи со `status: "open"` и не
+видит закрывших их патчей: на живых данных сырой файл читался как «20 открытых» при фактических
+0 открытых (находка 69 аудита 2026-07-24 — на этом споткнулись сами аудиторы). Это относится к
+любому читателю: человеку с `cat`/`grep`, агенту, скрипту. Единственный корректный читатель —
+`lab-emit.sh list`, он применяет patch-семантику; летописец читает очередь только через него.
+
 `lab-emit.sh list` (open) · `list --due` (DECISIONs past deadline — the pulse acts on these) ·
 `list --count` (`open=N (xB/yD/zC/wF) lines=L` — the LIVE-STATUS `questions:` line; `lines=` is the
 raw append-only line count HEARTBEAT_OK check 5 compares against) · `list --status all --json` (everything,

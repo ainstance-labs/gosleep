@@ -523,10 +523,24 @@ def load_cost(state, events=(), days=()):
             cost["unparsed"] += 1        # not a telemetry bullet at all, or one we cannot key
             continue
         cost["cycles"].append(row)
+        # GSL-192 (audit finding 47): the headline is the MAX of the ledger's own running totals,
+        # never "whichever line came last in the file". The TELEMETRY ledger is hand-appended prose
+        # and its lines are NOT in cycle order — on live data the last line trailed the true maximum
+        # by 1,672,000 tokens (10.5%), so the KPI tile was refuted by the table printed under it.
+        # Same rule for the running cycle counter. max() errs, if at all, toward "more spent" —
+        # the one direction this screen is allowed to err in.
         if row["running_total"] is not None:
-            cost["cumulative_total"] = row["running_total"]
+            cost["cumulative_total"] = max(cost["cumulative_total"] or 0, row["running_total"])
         if row["running_cycles"] is not None:
-            cost["cumulative_cycles"] = row["running_cycles"]
+            cost["cumulative_cycles"] = max(cost["cumulative_cycles"] or 0, row["running_cycles"])
+
+    # GSL-192 (audit finding 64): rows are sorted by cycle IN THE DATA, not just in the view. The
+    # ledger arrives in file order (17 order inversions on live data), the reader cannot lean on the
+    # column to spot a missing cycle, and clock_budget() derives the burn rate from CONSECUTIVE
+    # deltas of running_total — on an unsorted ledger those deltas compare non-adjacent cycles.
+    # The sort is stable: several workers can share one cycle, and their relative order stays the
+    # ledger's own.
+    cost["cycles"].sort(key=lambda r: r["cycle"])
 
     if cost["ceiling"] and cost["cumulative_total"]:
         cost["used_pct"] = round(100.0 * cost["cumulative_total"] / cost["ceiling"], 1)
@@ -1701,16 +1715,26 @@ def prev_ui_last_success():
 # under docs/reports/ and they are named for what they are -- so the section finds them by that name,
 # and the page prints the glob it used. An empty section that names where it looked has proven
 # something. An empty section that names nothing has merely failed to look, and looks identical.
+# GSL-193 (audit findings 18 + 94): Reports and Reviews glob RECURSIVELY. Both shelves used to stop
+# one level down — `*/index.html` could not see a verification run at
+# docs/reports/verifications/<KEY>/runs/NN/index.html (the main acceptance artifact of four straight
+# shifts), and `REVIEW-*.md` hid every file of docs/reviews/system-audit-2026-07-24/ — the owner's
+# own commissioned audit, invisible from "the one place where everything can be checked". A shelf's
+# depth must never encode an assumption about how artifacts nest; the printed glob still reproduces
+# the printed count. The `skills` shelf is new (same finding): skill/ is the source of truth for the
+# product's own five skills, and a cross-index of everything the project produces was skipping the
+# core product itself.
 LIBRARY_SECTIONS = (
-    # key           label              dir                 glob             recursive
-    ("handoffs",    "Handoffs",        "docs/handoff",     "*.md",          False),
-    ("dev_history", "Dev history",     "docs/dev_history", "GSL-*.md",      False),
-    ("reviews",     "Reviews",         "docs/reviews",     "REVIEW-*.md",   False),
-    ("rca",         "Incidents / RCA", "docs/reports",     "**/*incident*", True),
-    ("reports",     "Reports",         "docs/reports",     "*/index.html",  False),
-    ("research",    "Research",        "docs/research",    "*/*.md",        False),
-    ("digests",     "Morning digests", "docs/lab/digest",  "*-morning.md",  False),
-    ("prd",         "PRD",             "docs/prd",         "*.md",          False),
+    # key           label              dir                 glob              recursive
+    ("handoffs",    "Handoffs",        "docs/handoff",     "*.md",           False),
+    ("dev_history", "Dev history",     "docs/dev_history", "GSL-*.md",       False),
+    ("reviews",     "Reviews",         "docs/reviews",     "**/*.md",        True),
+    ("rca",         "Incidents / RCA", "docs/reports",     "**/*incident*",  True),
+    ("reports",     "Reports",         "docs/reports",     "**/index.html",  True),
+    ("research",    "Research",        "docs/research",    "*/*.md",         False),
+    ("digests",     "Morning digests", "docs/lab/digest",  "*-morning.md",   False),
+    ("prd",         "PRD",             "docs/prd",         "*.md",           False),
+    ("skills",      "Skills",          "skill",            "**/*.md",        True),
 )
 
 
@@ -2815,8 +2839,14 @@ def apply_retention(ctx):
 
     # Answered/expired questions → archive.jsonl. The archive is a WHOLE file (rebuilt each pass,
     # atomically), so it is idempotent by construction: no dedup bookkeeping to get wrong.
-    closed = [q for q in ctx["questions"] if q.get("status") in ("answered", "resolved", "expired",
-                                                                 "auto_resolved", "deduped")]
+    #
+    # GSL-191: "closed" is defined NEGATIVELY — any status that is not "open" — never as a list of
+    # closed statuses. The old list here spelled auto_resolved with an underscore while lab-emit
+    # writes hyphens (auto-resolved, answered-by-default; STATUSES in lab-emit.sh), so the archive
+    # silently kept 2 of 21 closed questions (audit finding 54). A vocabulary the writer owns must
+    # not be transcribed by a reader: the one stable fact is that "open" means open, and closed_items
+    # at build_questions() already relies on exactly that.
+    closed = [q for q in ctx["questions"] if q.get("status") and q.get("status") != "open"]
     if closed:
         content = "".join(json.dumps(q, ensure_ascii=False) + "\n" for q in closed)
         try:

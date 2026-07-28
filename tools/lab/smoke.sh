@@ -833,6 +833,47 @@ TZROW="$(jq -c '.tasks.rows[] | select(.key=="GSL-777")' "$TZR/docs/lab/render_b
   && ok "GSL-93: the Tasks board knows the AGE of its statuses (a board is only as true as its last poll)" \
   || bad "GSL-93: the board has a status but no idea when it learned it — it reports the age as 'never'"
 
+# ════════ GSL-192: the cost headline is the MAX of the ledger, and the table is SORTED ════════
+# (audit findings 47 + 64). The TELEMETRY ledger is hand-appended prose in FILE order: on live data
+# the last line trailed the true running-total maximum by 1,672,000 tokens (10.5%), so the KPI tile
+# was refuted by the table printed directly under it — and the cycle column carried 17 order
+# inversions, so a reader could not spot a missing cycle by eye. The fixture is the defect in
+# miniature: three rows out of order with the maximum in the MIDDLE, so last-line-wins and
+# unsorted-passthrough each fail a different assert below.
+CO="$WORK/cost-order"; mkdir -p "$CO/docs/lab/events" "$CO/docs/handoff"
+: > "$CO/docs/lab/events/$TODAY.jsonl"
+cat > "$CO/docs/handoff/ORCHESTRATION-STATE.md" <<'STATE'
+## TELEMETRY
+
+- `cycle=7 worker=w model=claude-opus-4-8 tokens_out=1000 tokens_in=100 cache_read=10 | running: cycles=7 total≈7000`
+- `cycle=9 worker=w model=claude-opus-4-8 tokens_out=1000 tokens_in=100 cache_read=10 | running: cycles=9 total≈9000`
+- `cycle=8 worker=w model=claude-opus-4-8 tokens_out=1000 tokens_in=100 cache_read=10 | running: cycles=8 total≈8000`
+
+## NEXT
+STATE
+bash "$CH" --repo "$CO" --no-poll --quiet --json >/dev/null 2>&1
+COB="$CO/docs/lab/render_bundle.json"
+[[ "$(jq -r '.cost.cumulative_total' "$COB")" == "9000" && "$(jq -r '.cost.cumulative_cycles' "$COB")" == "9" ]] \
+  && ok "GSL-192: the tile is max(running_total), never the file's last line (9000, not 8000)" \
+  || bad "GSL-192: cumulative tile reads $(jq -r '.cost.cumulative_total' "$COB")/$(jq -r '.cost.cumulative_cycles' "$COB") — last-line-wins is back (want 9000/9)"
+jq -e '.cost.cycles | map(.cycle) == [7,8,9]' "$COB" >/dev/null \
+  && ok "GSL-192: the bundle's rows are sorted by cycle (7,8,9 out of a 7,9,8 ledger)" \
+  || bad "GSL-192: the bundle keeps the ledger's file order ($(jq -c '.cost.cycles | map(.cycle)' "$COB" 2>/dev/null))"
+CO_ORDER="$(python3 - "$CO/docs/lab/site/cost.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+seg = re.search(r"Per cycle(.*?)Per model", h, re.S)
+print(",".join(re.findall(r'<tr><td class="mono">(\d+)</td>', seg.group(1) if seg else "")))
+PY
+)"
+[[ "$CO_ORDER" == "9,8,7" ]] \
+  && ok "GSL-192: the RENDERED per-cycle table is newest-first by cycle (9,8,7) — sorted, not reverse(file order)" \
+  || bad "GSL-192: the rendered per-cycle table is out of cycle order (got: ${CO_ORDER:-nothing})"
+# The invariant the audit stated verbatim: the headline can never be refuted by its own table.
+jq -e '.cost.cumulative_total >= ([.cost.cycles[].running_total | select(. != null)] | max)' "$COB" >/dev/null \
+  && ok "GSL-192: tile >= max running_total of its own table — the headline cannot be refuted by the rows under it" \
+  || bad "GSL-192: the cumulative tile is BELOW its own table's maximum"
+
 # ════════════ GSL-94 / F5-S1: the autonomy runway = min() over six exhaustion clocks ════════════
 #
 # The acceptance criterion of PRD Phase 5: given a state, the runway is computed correctly AND the
@@ -1053,6 +1094,36 @@ grep -q 'chronicler smoke' "$CR/docs/lab/site/index.html" \
   && ok "the open question is shown in 'Waiting for you'" || bad "the dashboard swallowed the question"
 grep -A2 '^## 1\. Waiting for you' "$CR/docs/lab/digest/$TODAY-morning.md" | grep -q 'chronicler smoke' \
   && ok "the open question leads section 1 of the digest" || bad "digest section 1 lost the question"
+
+# GSL-191 (audit finding 54): THE ARCHIVE MUST EQUAL THE CLOSED SET. The retention filter used to
+# name the closed statuses itself, with an underscore (auto_resolved), while lab-emit — the one
+# writer — spells them with hyphens (auto-resolved, answered-by-default; STATUSES in lab-emit.sh).
+# The archive silently kept 2 of 21 closed questions, and nothing counted the loss. Closed is now
+# defined negatively ("status != open"), and this check pins it: one question per closing PATH
+# (CLARIFY -> answered-by-default, resolve -> auto-resolved, answer -> answered), then archived
+# must equal closed, counted through the same tool the chronicler itself reads.
+Q_ARC_RES="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
+  --question "archive smoke: does an auto-resolved DECISION reach the archive?" \
+  --default "yes" --default-rationale "smoke" --reversibility high)"
+Q_ARC_ANS="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
+  --question "archive smoke: does an answered DECISION reach the archive?" \
+  --default "yes" --default-rationale "smoke" --reversibility high)"
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type CLARIFY --from smoke-chron --task GSL-191 \
+  --question "archive smoke: does an answered-by-default CLARIFY reach the archive?" \
+  --default "proceed" --default-rationale "smoke" --reversibility high >/dev/null
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" resolve --re "$Q_ARC_RES" --applied "smoke default" >/dev/null
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" answer  --re "$Q_ARC_ANS" --answer "yes" --by smoke >/dev/null
+bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1
+ARC_CLOSED="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" list --status all --json 2>/dev/null \
+  | jq -s '[.[] | select(.status != "open")] | length')"
+ARC_KEPT="$(wc -l < "$CR/docs/lab/questions/archive.jsonl" 2>/dev/null | tr -d ' ')"
+[[ -n "$ARC_CLOSED" && "$ARC_CLOSED" != "0" && "$ARC_KEPT" == "$ARC_CLOSED" ]] \
+  && ok "GSL-191: archived == closed ($ARC_KEPT of $ARC_CLOSED) — the archive keeps every closed question" \
+  || bad "GSL-191: archive.jsonl holds ${ARC_KEPT:-0} of ${ARC_CLOSED:-?} closed questions — the closed-status filter drifted from lab-emit again"
+jq -s -e 'map(.status) | (index("auto-resolved") != null) and (index("answered-by-default") != null) and (index("answered") != null)' \
+  "$CR/docs/lab/questions/archive.jsonl" >/dev/null 2>&1 \
+  && ok "GSL-191: all three closing paths (answered / auto-resolved / answered-by-default) are IN the archive" \
+  || bad "GSL-191: a closing path is missing from the archive — a reader is transcribing the writer's vocabulary again"
 
 # An empty day gets no digest — an empty digest teaches the owner to stop opening them.
 EMPTY="$WORK/chron-empty"; mkdir -p "$EMPTY/docs/lab/events"
@@ -1918,9 +1989,41 @@ grep -q 'DEAD=none' <<<"$LINKS" && ! grep -q 'LINKS=0' <<<"$LINKS" \
 # 14. AN EMPTY SHELF MUST PROVE IT LOOKED. Each section prints the glob it ran, on the page. "There are
 #     no incidents" and "I was pointed at the wrong directory" are opposite facts that render identically
 #     unless the glob comes along — and the owner can paste it into a shell and check the page's homework.
-grep -q 'docs/reviews/REVIEW-\*.md' "$LP" && grep -q 'docs/reports/\*\*/\*incident\*' "$LP" \
+#     (GSL-193 deepened Reviews and Reports to `**` and added the Skills shelf — the greps assert the
+#     DEEP globs, so a silent retreat to one-level masks fails here, not in the owner's morning.)
+grep -q 'docs/reviews/\*\*/\*.md' "$LP" && grep -q 'docs/reports/\*\*/\*incident\*' "$LP" \
+  && grep -q 'docs/reports/\*\*/index.html' "$LP" && grep -q 'skill/\*\*/\*.md' "$LP" \
   && ok "GSL-97: every shelf prints the glob it was built from — an empty shelf proves it looked" \
   || bad "GSL-97: a Library section does not say where it looked, so an empty one proves nothing"
+
+# 14b. GSL-193 (audit findings 18 + 94): THE SHELVES REACH ALL THE WAY DOWN. Reports used to glob
+#      `*/index.html` — one level — while the main acceptance artifact of four straight shifts lives
+#      at docs/reports/verifications/<KEY>/runs/NN/index.html; Reviews globbed `REVIEW-*.md` and hid
+#      every file of the owner's own commissioned system audit in docs/reviews/<audit-dir>/. And the
+#      cross-index of everything the project produces had no shelf for the product itself — skill/.
+#      A dedicated fixture, because the depth is the thing under test: one artifact per shelf, each
+#      nested where the one-level glob was blind.
+LD="$WORK/lib-depth"
+mkdir -p "$LD/docs/lab/events" "$LD/docs/reports/verifications/GSL-1/runs/01" \
+         "$LD/docs/reviews/system-audit-2026-01-01" "$LD/skill/demo-skill"
+: > "$LD/docs/lab/events/$TODAY.jsonl"
+printf '<title>Verification run 01</title>\n' > "$LD/docs/reports/verifications/GSL-1/runs/01/index.html"
+printf '# Audit synthesis\n' > "$LD/docs/reviews/system-audit-2026-01-01/SYNTHESIS.md"
+printf '# Demo skill\n' > "$LD/skill/demo-skill/SKILL.md"
+bash "$CH" --repo "$LD" --no-poll --quiet --json >/dev/null 2>&1
+LDB="$LD/docs/lab/render_bundle.json"
+jq -e '.library.sections[] | select(.key=="reports") | .items | map(.href) | any(endswith("verifications/GSL-1/runs/01/index.html"))' "$LDB" >/dev/null \
+  && ok "GSL-193: a verification run nested three levels down IS on the Reports shelf" \
+  || bad "GSL-193: the Reports shelf still stops one level down — the nested run is invisible"
+jq -e '.library.sections[] | select(.key=="reviews") | .items | map(.href) | any(endswith("system-audit-2026-01-01/SYNTHESIS.md"))' "$LDB" >/dev/null \
+  && ok "GSL-193: an audit file inside a docs/reviews subdirectory IS on the Reviews shelf" \
+  || bad "GSL-193: the Reviews shelf still sees only REVIEW-*.md — the system audit is invisible"
+jq -e '.library.sections[] | select(.key=="skills") | (.dir_exists == true) and (.items | map(.href) | any(endswith("demo-skill/SKILL.md")))' "$LDB" >/dev/null \
+  && ok "GSL-193: the Skills shelf exists and lists the project's own skill/" \
+  || bad "GSL-193: skill/ has no shelf — the cross-index skips the core product"
+jq -e '[.library.sections[] | .count == (.items | length)] | all' "$LDB" >/dev/null \
+  && ok "GSL-193: every shelf's printed count equals what its printed glob found" \
+  || bad "GSL-193: a shelf's count and its glob disagree — the page's homework does not check out"
 
 # 15. ⭐ THE LIBRARY FILTER. Same engine, same rail: narrowing to one shelf must still say what it hides.
 #     SHOWN is asserted alongside the sentence, and that is not belt-and-braces: an earlier draft of this
