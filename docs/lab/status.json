@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-28T08:05:49Z",
+  "generated_at": "2026-07-28T10:54:55Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-28",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 13,
-    "max_event_age_human": "13s",
-    "latest_event_ts": "2026-07-28T08:05:36Z",
-    "heartbeat_age_s": 220,
+    "max_event_age_s": 27,
+    "max_event_age_human": "27s",
+    "latest_event_ts": "2026-07-28T10:54:28Z",
+    "heartbeat_age_s": 167,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2277,
-    "today": 88,
+    "total": 2674,
+    "today": 169,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -31,57 +31,57 @@
       "2026-07-28"
     ],
     "by_type": {
-      "agent.turn_ended": 582,
-      "agent.idle": 242,
-      "tracker.issue.transitioned": 198,
+      "agent.turn_ended": 597,
+      "tracker.issue.updated": 397,
+      "agent.idle": 244,
+      "tracker.issue.transitioned": 205,
       "agent.terminated": 178,
       "tracker.issue.created": 169,
-      "tracker.issue.updated": 151,
-      "dev_history.written": 138,
-      "handoff.written": 121,
-      "vcs.commit": 86,
-      "pane.ended": 85,
-      "pane.started": 81,
+      "dev_history.written": 144,
+      "vcs.commit": 142,
+      "handoff.written": 124,
+      "pane.ended": 86,
+      "pane.started": 82,
       "vcs.push": 44,
       "task.completed": 42,
-      "question.posed": 30,
-      "decision.made": 28,
-      "question.auto_resolved": 26,
-      "notification.raised": 23,
+      "question.posed": 33,
+      "vcs.pr.merged": 32,
+      "decision.made": 31,
+      "question.auto_resolved": 29,
+      "vcs.pr.opened": 26,
+      "notification.raised": 24,
       "task.created": 22,
       "agent.spawned": 13,
-      "vcs.pr.merged": 10,
-      "vcs.pr.opened": 4,
-      "question.answered": 3,
-      "api.failure": 1
+      "api.failure": 7,
+      "question.answered": 3
     },
     "by_src": {
-      "hook:PostToolUse": 884,
-      "hook:Stop": 582,
-      "hook:TeammateIdle": 242,
+      "hook:PostToolUse": 908,
+      "hook:Stop": 597,
+      "poll-fill": 358,
+      "hook:TeammateIdle": 244,
       "hook:SubagentStop": 178,
-      "emit": 104,
-      "hook:SessionEnd": 85,
-      "hook:SessionStart": 81,
+      "emit": 113,
+      "hook:SessionEnd": 86,
+      "hook:SessionStart": 82,
       "hook:TaskCompleted": 42,
-      "hook:Notification": 23,
+      "hook:Notification": 24,
       "hook:TaskCreated": 22,
-      "poll-fill": 20,
       "hook:SubagentStart": 13,
-      "hook:StopFailure": 1
+      "hook:StopFailure": 7
     },
     "by_actor": {
       "claude": 1045,
-      "general-purpose": 255,
+      "poll-fill": 358,
+      "general-purpose": 284,
       "742d1b58": 174,
       "f97ce3bc": 141,
       "ef6c3777": 85,
       "ecab62c2": 84,
-      "orchestrator": 68,
+      "orchestrator": 75,
       "6650a7a0": 63,
       "dd3edd33": 63,
-      "a716426f": 22,
-      "poll-fill": 20,
+      "a716426f": 43,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
       "worker-backlog-builder": 8,
@@ -101,6 +101,7 @@
       "af5fa81cc1c57c23f": 2,
       "d0a843b9": 2,
       "gsl90-setup": 2,
+      "impl-179": 2,
       "impl-mob-1": 2,
       "impl-mob-4": 2,
       "00962264": 1,
@@ -288,7 +289,7 @@
       "impl-ui-7": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.946
+    "mechanical_share": 0.824
   },
   "questions": {
     "open": 3,
@@ -316,38 +317,108 @@
         "high_impact": true
       },
       {
-        "id": "q-2026-07-28-001",
+        "id": "q-2026-07-28-004",
         "type": "DECISION",
-        "question": "Полка Reports с глобом docs/reports/**/index.html показывает и под-страницы ранов (ru/, design/, regression/) как отдельные строки — 34 элемента вместо ~17. Оставить полноту или сузить маску до топ-страниц ранов (verifications/*/runs/*/index.html отдельной полкой)?",
-        "default": "Оставить docs/reports/**/index.html — дословная рекомендация аудита (находка 18); полнота с печатаемым глобом дороже краткости, у каждой строки свой title",
-        "auto_apply_at": "2026-07-28T09:37:40Z",
-        "task": "GSL-193",
+        "question": "Вывод следа супервизии из-под .gitignore: трекаемый АРХИВ (хроникёр дописывает невиданные строки heartbeat и watchdog-леджера в docs/lab/supervision/*.jsonl, живые runtime-файлы остаются ignored по контракту суверенного скилла) или снятие ignore с самих живых файлов?",
+        "default": "трекаемый архив, живые файлы остаются ignored",
+        "auto_apply_at": "2026-07-28T12:41:59Z",
+        "task": "GSL-225",
         "high_impact": null
       }
     ]
   },
   "decisions": {
-    "total": 28,
+    "total": 31,
     "last": {
-      "id": "d-2026-07-28-007",
-      "ts": "2026-07-28T07:23:59Z",
-      "re": "q-2026-07-24-004",
-      "task": "GSL-179",
+      "id": "d-2026-07-28-010",
+      "ts": "2026-07-28T10:42:15Z",
+      "re": "q-2026-07-28-003",
+      "task": "GSL-221",
       "type": "DECISION",
-      "question": "Какое число поставить потолком токенов в GOSLEEP_TOKEN_CEILING? Это ЕДИНСТВЕННЫЙ недостающий вход главного индикатора автономности: RUNWAY не выдал ни одного числа ни в одной из 17 сборок за 11 дней, а переменную сборщик уже читает. Калибровка показала, что второй предполагаемый вход (опрос трекера) на ответ не влияет по конструкции. Отсутствие потолка — состояние, прямо предусмотренное вашим манифестом, раздел 5.",
-      "qshape": "caa3e68097",
-      "decision": "Потолок токенов = настраиваемая величина с переопределяемым дефолтом (16M остаётся лишь дефолтом) + обязательный режим unlimited; supersedes d-2026-07-28-002",
-      "made_by": "owner",
-      "rule": "",
-      "channel": "chat"
+      "question": "Семантика GOSLEEP_TOKEN_CEILING: за ночь (окно = сутки UTC, якорь = кумулятив леджера на первой сборке дня) или кумулятивно за всю историю? Кумулятив уже 19M > дефолта 16M — кумулятивная семантика дала бы мгновенный вечный ложный BUDGET_EXCEEDED.",
+      "qshape": "3a7b3d8a78",
+      "decision": "потолок считается за ночь (сутки UTC), не кумулятивно",
+      "made_by": "orchestrator",
+      "rule": "manifest раздел 2 (decide-by-default, дедлайн истёк)",
+      "channel": ""
     },
     "manifest_candidates": []
   },
+  "autonomy": {
+    "value": 0.816,
+    "asks": 14,
+    "shipped": 76,
+    "window": {
+      "start": "2026-07-22",
+      "end": "2026-07-28",
+      "days": 7
+    },
+    "formula": "1 - asks/shipped, rolling 7d (5dive borrowing; audit finding 91)",
+    "ask_types": [
+      "BLOCKER",
+      "DECISION",
+      "CLARIFY"
+    ],
+    "why_unknown": null,
+    "not_claimed": [
+      "it does not claim the work was CORRECT — only that it did not require a human",
+      "it does not claim real nights happened (finding 78): the window may hold only daytime work",
+      "asks counts only questions that reached the queue; a question asked in chat past the queue is invisible to it",
+      "shipped counts only tasks visible to tracker events; work without a tracker key is invisible, and a stale tracker feed under-counts it",
+      "it is not comparable across weeks of different workload, and a negative value (asks > shipped) is printed raw, never clamped"
+    ],
+    "sources": [
+      "docs/lab/questions/queue.jsonl (via lab-emit fold) + archive.jsonl",
+      "docs/lab/events/*.jsonl (tracker.issue.updated, status=Done)"
+    ]
+  },
   "delivery": {
-    "branch": "main",
-    "head": "679bf53",
-    "dirty_paths": 5,
+    "branch": "GSL-179-token-ceiling",
+    "head": "23514ee",
+    "dirty_paths": 18,
     "commits_on_date": [
+      {
+        "sha": "23514ee",
+        "author": "R",
+        "ts": "2026-07-28T12:54:12+02:00",
+        "subject": "GSL-226 [Tooling] Ветка рендера BLOCKER испытана на реальных данных: 5 ассертов от записи до пикселей (questions/overview/дайджест, семантический цвет); smoke 492→497"
+      },
+      {
+        "sha": "e3ba732",
+        "author": "R",
+        "ts": "2026-07-28T12:47:53+02:00",
+        "subject": "GSL-225 [Tooling] Архив следа супервизии: хроникёр дописывает heartbeat/леджер в трекаемые docs/lab/supervision/*.jsonl до самоусечения; первичный захват 200 пульсов; smoke 488→492"
+      },
+      {
+        "sha": "42dc5d1",
+        "author": "R",
+        "ts": "2026-07-28T12:40:28+02:00",
+        "subject": "GSL-224 [Tooling] Ось runway «просроченные DECISION без живого пульса» + правило «незапущенный механизм → unknown с причиной» для оси контекста; 7 часов, находка 9 закрыта; smoke 482→488"
+      },
+      {
+        "sha": "8989128",
+        "author": "R",
+        "ts": "2026-07-28T12:30:03+02:00",
+        "subject": "GSL-223 [Tooling] poll-fill автоподхватывает JQL-дамп оркестратора (scratch/jira-poll.json, громко, с возрастом); первый прогон: 249 задач, 338 событий, Tasks unknown 0 из 249, автономность 0.829; smoke 478→482"
+      },
+      {
+        "sha": "e7d31e5",
+        "author": "R",
+        "ts": "2026-07-28T12:19:51+02:00",
+        "subject": "GSL-222 [Tooling] Метрика автономности 1 − asks/shipped за 7 дней: status.json + дайджест, всегда с рамкой «чего не утверждает»; ноль shipped = unmeasured; smoke 474→478"
+      },
+      {
+        "sha": "f6ee225",
+        "author": "R",
+        "ts": "2026-07-28T10:41:36+02:00",
+        "subject": "GSL-221 [Docs][Tooling] Потолок токенов: настраиваемый дефолт 16M/ночь, режим unlimited первоклассный, ночная семантика с якорем (d-2026-07-28-007); smoke 462→474, гейты зелёные, бандл в дереве fresh"
+      },
+      {
+        "sha": "a114c8a",
+        "author": "R",
+        "ts": "2026-07-28T10:06:06+02:00",
+        "subject": "GSL-138 [Docs][Process] Ledger смены 74: эпик GSL-175 слит (#252), эррата STATE (GSL-195), handoff 50, решения по умолчаниям d-001..007"
+      },
       {
         "sha": "679bf53",
         "author": "rommxx",
@@ -542,16 +613,15 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-28T08:02:09Z",
-      "cycle": 142,
-      "context_pct": 48,
+      "ts": "2026-07-28T10:52:08Z",
+      "cycle": 144,
+      "context_pct": 80,
       "open_workers": 1,
       "status": "ok",
-      "pane": "%10",
-      "note": "impl-175 COMPLETE; merge chain starting"
+      "pane": "%10"
     },
-    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 142 | orchestrator=Fable 5 pane=%10 | ЭПИК GSL-175 ИСПОЛНЕН impl-175: 7/7 задач (191 a7d0e1c, 192 f4ba846, 193 20ec411, 196 456c36a, 195 71fb0b6, 197 c308eba, 194 376fe74 — бандл fresh последним), PR #252 OPEN/CLEAN, Jira 7 задач Done + эпик In Review, smoke 450/452 → 460/462 (те же 2 pre-existing про дайджест). Воркер терминирован (kill-pane %11 подтверждён), телеметрия записана (модель ФАКТИЧЕСКИ Fable 5 — model:opus не применился, унаследована модель оркестратора). Эррата GSL-195 применена к этому файлу (2 замены cycle=105 + правило grade!=fresh в Standing rules). finalizer-175 спавнится: мерж #252 regular, зеркала, Jira Done, chronicler на main, ledger-коммит (handoff 50 + события 27-28.07 + STATE + log.jsonl). Утро: 6 просроченных DECISION применены умолчаниями (d-2026-07-28-001…006); owner-ответ на q-004 = d-007 (лимиты настраиваемые + unlimited, в бриф GSL-179). | latest handoff=docs/handoff/50-2026-07-28-handoff-impl-175-evening-hygiene.md | questions: open=3 (2B/1D/0C/0F) lines=59 (новая q-2026-07-28-001 полка Reports, due 09:37Z) | open_workers=1 | status=merging-GSL-175`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=142 worker=impl-175 model=claude-fable-5 (транскрипт ce2de7ba: единственная модель; параметр model:opus при спавне НЕ применился — teammate унаследовал модель оркестратора, harness-факт для владельца; работа прошла все гейты) tokens_out=~78000 tokens_in=~2000 cache_read=~9500000 | running: cycles=142 total≈18978000 (+исторические гэпы, см. выше)"
+    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 143 | orchestrator=Fable 5 pane=%10 | ЭПИК GSL-175 ЗАКРЫТ ПОЛНОСТЬЮ: PR #252 MERGED regular @ 679bf53 (08:05Z), все 8 зеркал закрылись авто, Jira эпик+7 задач Done, chronicler на main FRESH 7 страниц, ledger a114c8a запушен (handoff 50, STATE с эрратой GSL-195, decisions/log.jsonl, события 27-28.07, производные вкл. дайджест 07-28-morning). Оба воркера терминированы (kill-pane %11, %15 подтверждены). МОДЕЛЬ-ФАКТ (2 замера): teammate наследует модель оркестратора, model:opus игнорируется → флот де-факто на Fable 5; DECISION в очереди, дефолт «продолжать». Следующий: impl-179 (эпик GSL-179 потолок токенов, директива владельца d-2026-07-28-007: настраиваемый лимит + переопределяемый дефолт + режим unlimited). Клок: q-2026-07-28-001 due 09:37Z (дефолт «полнота» уже в коде). | latest handoff=docs/handoff/50-2026-07-28-handoff-impl-175-evening-hygiene.md | questions: open=3 (2B/1D/0C/0F) lines=63 | open_workers=1 (impl-179 pane=%16; GSL-221 f6ee225, GSL-222 e7d31e5 Done, идёт GSL-223) | status=executing-GSL-179`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=143 worker=finalizer-175 model=claude-fable-5 (транскрипт d8ba6e68 — единственная модель; наследование модели оркестратора подтверждено ВТОРЫМ замером, model:opus игнорируется на этой поверхности) tokens_out=~6000 tokens_in=~120000 cache_read=~500000 (self-est, счётчики harness не видны) | running: cycles=143 total≈18984000 (+исторические гэпы)"
   },
   "degraded": [],
   "narrative": null,
@@ -568,6 +638,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-28T08:05:49Z"
+    "last_success_at": "2026-07-28T10:54:55Z"
   }
 }

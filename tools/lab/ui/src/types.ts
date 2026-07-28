@@ -432,10 +432,25 @@ export interface Cost {
   unparsed: number;
   cumulative_total: number | null;
   cumulative_cycles: number | null;
-  /** NULL TODAY, and not an oversight: no token ceiling exists anywhere on disk. See `ceiling_why`. */
+  /** Per-NIGHT ceiling (GSL-221, d-2026-07-28-007). NULL means exactly one thing now: unlimited,
+   *  by the owner's explicit choice — see `ceiling_mode`. Never "nobody chose": the default chooses. */
   ceiling: number | null;
+  /** "default" (16M/night, overridable) | "env" (GOSLEEP_TOKEN_CEILING=<int>) | "unlimited"
+   *  (=unlimited/none/off — a first-class state every reader renders as itself, never as a hole). */
+  ceiling_mode: "default" | "env" | "unlimited" | string | null;
   ceiling_source: string | null;
   ceiling_why: string | null;
+  /** Tokens spent since the first build of the target UTC day — the numerator the per-night
+   *  ceiling is measured against. Cumulative-vs-night was the false-alarm pairing; see chronicler. */
+  night_spend: number | null;
+  night_anchor: {
+    date: string;
+    base_total: number | null;
+    anchored_at?: string | null;
+    why?: string | null;
+  } | null;
+  /** Percent of TONIGHT's ceiling used (night_spend / ceiling). Null in unlimited mode — there is
+   *  no percentage of a ceiling that does not exist, and that is a choice, not an absence. */
   used_pct: number | null;
 }
 
@@ -461,7 +476,8 @@ export type ClockState =
   | "unknown";
 
 export interface RunwayClock {
-  axis: "context" | "budget" | "quota" | "slots" | "blockers" | "work" | string;
+  /** "decisions" (GSL-224): overdue DECISIONs with no live pulse — a stopper wearing a timer's clothes. */
+  axis: "context" | "budget" | "quota" | "slots" | "blockers" | "decisions" | "work" | string;
   label: string;
   on_exhaustion: OnExhaustion;
   state: ClockState;
@@ -491,7 +507,7 @@ export interface Runway {
   unknown_axes_all: string[];
   known: number;
   total: number;
-  /** The nearest of ALL six, whatever its zero means — so a 2h context roll is never hidden by a 6h runway. */
+  /** The nearest of ALL clocks, whatever its zero means — so a 2h context roll is never hidden by a 6h runway. */
   next_event: {
     axis: string;
     label: string;

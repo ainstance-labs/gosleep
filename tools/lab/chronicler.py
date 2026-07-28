@@ -484,31 +484,99 @@ COST_FIELDS = {
     "running_cycles": re.compile(r"cycles=(\d+)"),
 }
 
+# ── the token ceiling (GSL-221; owner directive d-2026-07-28-007 supersedes d-2026-07-28-002) ──
+#
+# THREE FIRST-CLASS STATES, and none of them is an error:
+#
+#   default    GOSLEEP_TOKEN_CEILING is unset -> 16,000,000 tokens per night. The number is the
+#              working default from d-2026-07-28-002; d-2026-07-28-007 demotes it to "only a
+#              default": it must be overridable, and it is -- by the same variable.
+#   env        GOSLEEP_TOKEN_CEILING=<positive integer> -> that ceiling, per night.
+#   unlimited  GOSLEEP_TOKEN_CEILING=unlimited (or none / off) -> NO ceiling, by the owner's
+#              explicit choice. This is a first-class state of the system, not a hole in it: every
+#              reader (budget clock, Cost screen, digest) says "unlimited", never "unknown", never
+#              an error, never a standing warning. "The owner chose no limit" is knowledge.
+#
+# A MISCONFIGURED value falls back to the DEFAULT, loudly -- never to unlimited. A typo must not
+# silently remove the limit; removing the limit takes the explicit word.
+#
+# PER NIGHT, NOT PER PROJECT. The decided unit is tokens per night (d-2026-07-28-002 says so in as
+# many words), but the telemetry ledger's running total spans the whole project -- it stood above
+# 16M cumulative on the day the default landed, and a ceiling compared against ALL HISTORY would
+# scream BUDGET_EXCEEDED forever on day one: a false alarm wearing an indicator's clothes. So the
+# ceiling is measured against NIGHT SPEND: cumulative_total minus an anchor taken at the first
+# build of the target day (UTC -- the digest's own day boundary), carried across passes in
+# render_bundle.json exactly the way prev_ui_last_success() carries the UI timestamp.
+DEFAULT_TOKEN_CEILING = 16_000_000
+UNLIMITED_WORDS = ("unlimited", "none", "off")
+
+
+def night_anchor(cumulative_total):
+    """Where tonight's spend starts counting from. Read back from the bundle this pass is about to
+    overwrite (the previous build is the one place the first-build-of-the-day total survives);
+    re-anchored at the first build of a new UTC day, or when the ledger's total moved backwards
+    (a rewritten ledger invalidates any anchor taken against the old one)."""
+    prev = None
+    try:
+        with open(os.path.join(LAB, "render_bundle.json"), encoding="utf-8") as f:
+            prev = (json.load(f).get("cost") or {}).get("night_anchor")
+    except Exception:
+        prev = None
+    if (isinstance(prev, dict) and prev.get("date") == ARGS["date"]
+            and isinstance(prev.get("base_total"), int)
+            and isinstance(cumulative_total, int)
+            and prev["base_total"] <= cumulative_total):
+        return prev
+    return {"date": ARGS["date"],
+            "base_total": cumulative_total if isinstance(cumulative_total, int) else None,
+            "anchored_at": now_iso(),
+            "why": "first build of %s (UTC): night spend counts from the ledger total seen here"
+                   % ARGS["date"]}
+
 
 def load_cost(state, events=(), days=()):
     """The Cost screen's data (PRD R5.2, screen 6) and the token axis of the runway (GSL-94).
 
-    THE CEILING DOES NOT EXIST. manifest.md §5.phase-ceiling delegates it to "the epic brief", and no
-    epic brief on disk names a number. So this returns a numerator with no denominator, and says so:
-    `ceiling: null`. It must NOT be papered over with a plausible default -- a made-up ceiling makes
-    the budget clock finite, which lengthens nothing but shortens the owner's trust the first time it
-    is wrong in either direction."""
+    The ceiling exists in one of three configured states (see the block above DEFAULT_TOKEN_CEILING);
+    `ceiling_mode` names which. `ceiling: null` now means exactly one thing -- unlimited by the
+    owner's choice -- and every consumer treats it as knowledge, not as a missing input."""
     cost = {"cycles": [], "unparsed": 0, "cumulative_total": None, "cumulative_cycles": None,
-            "ceiling": None, "ceiling_source": None,
-            # GSL-132: the lead used to repeat the sentence its consumers already print ("There is no
-            # token ceiling on disk." on cost.html, "No ceiling is set" on mobile), so the reader saw
-            # the same claim twice. The why now carries only what the lead does NOT — the reason.
-            "ceiling_why": "manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief "
-                           "names a number (override with GOSLEEP_TOKEN_CEILING)"}
+            "ceiling": None, "ceiling_mode": None, "ceiling_source": None, "ceiling_why": None,
+            "night_anchor": None, "night_spend": None}
 
     env_ceiling = os.environ.get("GOSLEEP_TOKEN_CEILING")
-    if env_ceiling:
+    env_word = (env_ceiling or "").strip().lower()
+    if not env_word:
+        cost["ceiling"] = DEFAULT_TOKEN_CEILING
+        cost["ceiling_mode"] = "default"
+        cost["ceiling_source"] = ("default %s tokens/night (d-2026-07-28-002; override with "
+                                  "GOSLEEP_TOKEN_CEILING=<int>, disable with =unlimited)"
+                                  % f"{DEFAULT_TOKEN_CEILING:,}")
+    elif env_word in UNLIMITED_WORDS:
+        cost["ceiling_mode"] = "unlimited"
+        cost["ceiling_source"] = "env GOSLEEP_TOKEN_CEILING=%s" % env_word
+        cost["ceiling_why"] = ("unlimited mode -- the owner chose to run without a token ceiling "
+                               "(d-2026-07-28-007). A first-class state, not a missing input: "
+                               "manifest section 5.warn-80 and section 3.budget are OFF by choice, "
+                               "and the budget axis of the runway is provably not a constraint.")
+    else:
         try:
-            cost["ceiling"] = int(env_ceiling)
+            val = int(env_ceiling)
+            if val <= 0:
+                raise ValueError(val)
+            cost["ceiling"] = val
+            cost["ceiling_mode"] = "env"
             cost["ceiling_source"] = "env GOSLEEP_TOKEN_CEILING"
-            cost["ceiling_why"] = None
         except ValueError:
-            degrade("cost", "GOSLEEP_TOKEN_CEILING=%r is not an integer" % env_ceiling)
+            degrade("cost", "GOSLEEP_TOKEN_CEILING=%r is neither a positive integer nor an "
+                            "unlimited word (%s) -- falling back to the default ceiling, NOT to "
+                            "unlimited: a typo must never silently remove the limit"
+                            % (env_ceiling, "/".join(UNLIMITED_WORDS)))
+            cost["ceiling"] = DEFAULT_TOKEN_CEILING
+            cost["ceiling_mode"] = "default"
+            cost["ceiling_source"] = ("default %s tokens/night (after a misconfigured "
+                                      "GOSLEEP_TOKEN_CEILING=%r)" % (f"{DEFAULT_TOKEN_CEILING:,}",
+                                                                     env_ceiling))
 
     for line in state.get("telemetry_lines") or []:
         row, got = {"raw": line[:300]}, 0
@@ -542,8 +610,15 @@ def load_cost(state, events=(), days=()):
     # ledger's own.
     cost["cycles"].sort(key=lambda r: r["cycle"])
 
-    if cost["ceiling"] and cost["cumulative_total"]:
-        cost["used_pct"] = round(100.0 * cost["cumulative_total"] / cost["ceiling"], 1)
+    # Night spend: the ledger total minus the first-build-of-the-day anchor. The percentage is OF
+    # TONIGHT against a per-night ceiling -- never cumulative-vs-night, which compares two different
+    # units and fired the false alarm the block above DEFAULT_TOKEN_CEILING describes.
+    cost["night_anchor"] = night_anchor(cost["cumulative_total"])
+    base = cost["night_anchor"].get("base_total")
+    if isinstance(cost["cumulative_total"], int) and isinstance(base, int):
+        cost["night_spend"] = max(0, cost["cumulative_total"] - base)
+    if cost["ceiling"] and cost["night_spend"] is not None:
+        cost["used_pct"] = round(100.0 * cost["night_spend"] / cost["ceiling"], 1)
     else:
         cost["used_pct"] = None
     cost["by_model"] = cost_by_model(cost["cycles"])
@@ -1209,6 +1284,106 @@ def lab_write(target_rel, content, as_json=False):
         raise RuntimeError("lab-write %s: %s" % (target_rel, (p.stderr or p.stdout).strip()))
     return target_rel
 
+# ═════════ GSL-222: the autonomy metric — 1 − asks/shipped over a rolling 7 days ═════════
+#
+# Finding 91: RUNWAY needs six inputs and answered nothing in 17 builds, while 5dive's
+# 1 − asks/shipped needs only data already on disk. So this second metric stands NEXT TO the runway,
+# never instead of it — and it never travels without its honest frame (`not_claimed`), because a
+# single number about autonomy is exactly the kind of number that gets quoted without its caveats.
+
+AUTONOMY_WINDOW_DAYS = 7
+ASK_TYPES = ("BLOCKER", "DECISION", "CLARIFY")   # FYI informs; it asks nothing of the owner
+
+
+def load_question_archive():
+    """archive.jsonl is a WHOLE-file artifact rebuilt atomically each pass from already-FOLDED
+    records (apply_retention), so reading it raw is safe — unlike queue.jsonl, which is append-only
+    patches and must only ever be read through lab-emit (docs/lab/questions/README.md). Records here
+    may have been compacted OUT of the queue, which is why the queue alone under-counts asks."""
+    out = []
+    path = os.path.join(LAB, "questions", "archive.jsonl")
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        out.append(json.loads(line))
+                    except ValueError:
+                        pass
+    except FileNotFoundError:
+        pass                                     # no archive yet: nothing has ever been archived
+    except OSError as exc:
+        degrade("question-archive", exc)
+    return out
+
+
+def compute_autonomy(ctx):
+    """1 − asks/shipped over the rolling window ending on the target date.
+
+    asks    = questions the fleet put to the owner (BLOCKER/DECISION/CLARIFY), queue ∪ archive,
+              deduped by id (the queue's folded record wins — it is fresher).
+    shipped = distinct task keys observed standing in Done inside the window, from
+              tracker.issue.updated events (src=poll-fill; GSL-223 is what feeds them).
+
+    shipped == 0 does NOT make the metric 1.0 or 0.0 — it makes it UNMEASURED, and the block says
+    so with the reason. A ratio with a zero denominator quoted as a score is the exact class of lie
+    this laboratory exists to refuse. The value is NOT clamped either: asks > shipped goes negative
+    and is printed raw — a clamp would hide precisely the week that went wrong."""
+    end = ARGS["date"]
+    start = (datetime.datetime.strptime(end, "%Y-%m-%d")
+             - datetime.timedelta(days=AUTONOMY_WINDOW_DAYS - 1)).strftime("%Y-%m-%d")
+
+    seen = {}
+    for q in load_question_archive():
+        if q.get("id"):
+            seen[q["id"]] = q
+    for q in ctx["questions"]:
+        if q.get("id"):
+            seen[q["id"]] = q
+    asks = [q for q in seen.values()
+            if q.get("type") in ASK_TYPES and start <= (q.get("ts") or "")[:10] <= end]
+
+    shipped = set()
+    for e in ctx["events"]:
+        if e.get("type") != "tracker.issue.updated":
+            continue
+        d = e.get("data") or {}
+        if str(d.get("status") or "").strip().lower() != "done" or not d.get("key"):
+            continue
+        day = str(d.get("occurred_at") or "")[:10] or (e.get("ts") or "")[:10]
+        if start <= day <= end:
+            shipped.add(d["key"])
+
+    n_asks, n_shipped = len(asks), len(shipped)
+    value = round(1.0 - (float(n_asks) / n_shipped), 3) if n_shipped > 0 else None
+    return {
+        "value": value,
+        "asks": n_asks,
+        "shipped": n_shipped,
+        "window": {"start": start, "end": end, "days": AUTONOMY_WINDOW_DAYS},
+        "formula": "1 - asks/shipped, rolling %dd (5dive borrowing; audit finding 91)" % AUTONOMY_WINDOW_DAYS,
+        "ask_types": list(ASK_TYPES),
+        "why_unknown": None if value is not None else (
+            "no task was observed reaching Done inside the window (source: tracker.issue.updated "
+            "events, src=poll-fill) — a ratio with a zero denominator is unmeasured, not 1.0 and "
+            "not 0.0. Feed the tracker (poll-fill --jira-json, GSL-223) and this fills in."),
+        # The honest frame, printed WHEREVER the value is printed. Not a footnote.
+        "not_claimed": [
+            "it does not claim the work was CORRECT — only that it did not require a human",
+            "it does not claim real nights happened (finding 78): the window may hold only daytime work",
+            "asks counts only questions that reached the queue; a question asked in chat past the "
+            "queue is invisible to it",
+            "shipped counts only tasks visible to tracker events; work without a tracker key is "
+            "invisible, and a stale tracker feed under-counts it",
+            "it is not comparable across weeks of different workload, and a negative value (asks > "
+            "shipped) is printed raw, never clamped",
+        ],
+        "sources": ["docs/lab/questions/queue.jsonl (via lab-emit fold) + archive.jsonl",
+                    "docs/lab/events/*.jsonl (tracker.issue.updated, status=Done)"],
+    }
+
+
 def build_status(ctx):
     ev, day_ev = ctx["events"], ctx["day_events"]
     last_ts = max([e.get("ts", "") for e in ev], default="") or None
@@ -1264,6 +1439,8 @@ def build_status(ctx):
             "last": ctx["decisions"][-1] if ctx["decisions"] else None,
             "manifest_candidates": ctx["candidates"],
         },
+        # GSL-222: the metric never travels without its frame — the whole block or nothing.
+        "autonomy": ctx["autonomy"],
         "delivery": {
             "branch": ctx["git"]["branch"],
             "head": ctx["git"]["head"],
@@ -1282,8 +1459,8 @@ def build_status(ctx):
 # ═════════════════════ the autonomy runway (GSL-94, PRD R5.1 / F5-S1) ═════════════════════
 #
 # ONE headline answers the only question the owner actually asks at midnight -- "can I go to sleep?"
-# -- and it answers it with evidence, not vibes. It is the nearest of SIX independent exhaustion
-# clocks, with the binding one named.
+# -- and it answers it with evidence, not vibes. It is the nearest of SEVEN independent exhaustion
+# clocks (six of GSL-94 plus the overdue-decisions clock of GSL-224), with the binding one named.
 #
 # THREE RULES THIS THING LIVES BY. Each was paid for.
 #
@@ -1299,22 +1476,28 @@ def build_status(ctx):
 #    other is a hole in the evidence, and a dashboard that draws them alike has learned nothing from
 #    Phase 4.
 #
-# 3. EXHAUSTION DOES NOT MEAN THE SAME THING ON EVERY AXIS, so min() over the raw six is a lie by
-#    arithmetic. Hitting the context ceiling forces a ROLL, which the watchdog performs by itself and
-#    the night survives. Filling all three panes makes the fourth worker QUEUE. Running out of To Do
-#    is the job being FINISHED. None of those are a reason to wake anybody, and a naive
+# 3. EXHAUSTION DOES NOT MEAN THE SAME THING ON EVERY AXIS, so min() over the raw seven is a lie by
+#    arithmetic. Hitting the context ceiling forces a ROLL, which an ARMED watchdog performs by
+#    itself and the night survives (and when none is armed, that axis says `unknown`, not the
+#    comfortable story -- GSL-224). Filling all three panes makes the fourth worker QUEUE. Running
+#    out of To Do is the job being FINISHED. None of those are a reason to wake anybody, and a naive
 #    min(0h, 4h, 8h) would scream "RUNWAY 0h" because a pane is busy. So every clock declares what its
 #    own zero MEANS:
-#         stops     -> the night ends here without you   (budget exceeded, quota window, open BLOCKER)
+#         stops     -> the night ends here without you   (budget exceeded, quota window, open
+#                                                         BLOCKER, overdue DECISION with a dead pulse)
 #         degrades  -> the night continues, worse        (context roll, full pane queue)
 #         completes -> the night ends here, happily      (no work left)
-#    RUNWAY is the nearest `stops`. `next_event` is the nearest of ALL six, so nothing is hidden --
+#    RUNWAY is the nearest `stops`. `next_event` is the nearest of ALL seven, so nothing is hidden --
 #    the page shows both, and says which is which.
 
 CONTEXT_CEILING_PCT = int(os.environ.get("GOSLEEP_CONTEXT_CEILING_PCT", 80))   # watchdog.sh:133
 ROLL_CYCLES_LOW  = int(os.environ.get("GOSLEEP_ROLL_CYCLES_LOW", 8))           # PRD R5.1: the 8-15
 ROLL_CYCLES_HIGH = int(os.environ.get("GOSLEEP_ROLL_CYCLES_HIGH", 15))         # cycle roll heuristic
 QUOTA_NOTE_RE = re.compile(r"quota-wait until\s+(\d{4}-\d{2}-\d{2}T[\d:]+Z?)")  # watchdog.sh:287
+# GSL-224: how old a heartbeat may be and still count as "somebody alive is applying defaults".
+# Aligned with the pulse rule's own cadence (self-check every 5-10 min): 30 minutes of silence is
+# three missed pulses, and three missed pulses is not a live orchestrator.
+PULSE_FRESH_SECS = int(os.environ.get("GOSLEEP_PULSE_FRESH_SECS", 1800))
 
 
 def clock(axis, label, on_exhaustion, state, hours=None, eta=None, gauge=None, why="", sources=()):
@@ -1357,13 +1540,23 @@ def _pulse_rate(pulses):
     return ctx_rate, cyc_rate, len(seg)
 
 
-def clock_context(hb, pulses):
+def clock_context(hb, pulses, supervision=None):
     """Orchestrator context vs the ceiling -- CROSS-CHECKED, because PRD R5.1 says in so many words:
     do not trust the number alone. A model reporting its own context is the "fabricated 80% vs real
     63%" failure; the independent check is the roll heuristic (an orchestrator rolls every 8-15
     cycles), and where the two disagree we take the SHORTER. An optimistic clock is the only kind
-    that can hurt you here."""
+    that can hurt you here.
+
+    GSL-224 (finding 9): this clock's benign story -- "hitting the ceiling merely degrades the
+    night, the watchdog forces a handoff" -- LEANS ON THE WATCHDOG, and for eleven audited days the
+    watchdog was built and not armed. An axis whose mechanism is not running must say `unknown`
+    with the reason, never assert a degradation it cannot deliver: so at/over the ceiling with no
+    armed watchdog this clock refuses the comfortable "exhausted, planned, not fatal" and says what
+    it actually knows."""
     src = ["docs/handoff/.orchestrator-heartbeat (gitignored)", "watchdog.sh WD_CONTEXT_CEILING_PCT=%d" % CONTEXT_CEILING_PCT]
+    armed = bool((supervision or {}).get("armed"))
+    if not armed:
+        src = src + ["supervision.armed=false (no scheduled watchdog)"]
     pct = hb.get("context_pct") if isinstance(hb, dict) else None
     if not isinstance(pct, int):
         return clock("context", "orchestrator context", "degrades", "unknown",
@@ -1375,6 +1568,14 @@ def clock_context(hb, pulses):
     # the fact — the level, and the ceiling it rolls at. Two percentages need the relation spelled out.
     gauge = "%d%% (rolls at %d%%)" % (pct, CONTEXT_CEILING_PCT)
     if pct >= CONTEXT_CEILING_PCT:
+        if not armed:
+            return clock("context", "orchestrator context", "degrades", "unknown", gauge=gauge,
+                         why="at/over the ceiling — and the mechanism the benign story leans on is "
+                             "NOT running: no watchdog is armed to force the handoff, so whether "
+                             "the night merely degrades here rests on the orchestrator rolling "
+                             "itself, which this build cannot verify. Unknown with a reason, never "
+                             "a degradation asserted on data that does not exist (GSL-224, finding 9).",
+                         sources=src)
         return clock("context", "orchestrator context", "degrades", "exhausted", hours=0.0, gauge=gauge,
                      why="at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — "
                          "the night continues on the other side of a roll.", sources=src)
@@ -1417,33 +1618,56 @@ def clock_context(hb, pulses):
             else:
                 why += " — taking the shorter"
 
+    if not armed:
+        # Counting is real data (the level and the rate are measured) — but the benign meaning of
+        # this clock's zero is not, so the sentence carries the caveat instead of the comfort.
+        why += (". NOTE: no watchdog is armed — whether reaching the ceiling merely degrades the "
+                "night rests on the orchestrator rolling itself (GSL-224)")
     return clock("context", "orchestrator context", "degrades", "counting", hours=hours, gauge=gauge,
                  why=why, sources=src)
 
 
 def clock_budget(cost, cyc_rate):
-    """Token ceiling. TODAY THIS IS `unknown`, AND THAT IS THE FINDING, not a bug.
+    """Token ceiling, per night (GSL-221; d-2026-07-28-007).
 
-    manifest §5.phase-ceiling delegates the ceiling to "the epic brief"; no brief on disk names a
-    number. So §5.warn-80 and §3.budget (BUDGET_EXCEEDED = BLOCKER) are rules that cannot fire, and
-    this clock has a numerator with no denominator. Inventing one would make the whole runway finite
-    on a fabricated basis -- exactly the failure this indicator exists to prevent."""
-    src = ["docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY", "manifest.md §5.phase-ceiling"]
-    used, ceiling = cost.get("cumulative_total"), cost.get("ceiling")
+    Three configured states, three honest readings. `default` and `env` give the clock a real
+    denominator: tonight's spend against a per-night ceiling. `unlimited` is the owner's explicit
+    choice to run without one -- and that is CLEAR, not unknown: "the owner chose no limit" is
+    evidence that this axis cannot stop the night, exactly like "0 blockers" is. The one thing this
+    clock must never do again is read `unknown` because nobody had chosen -- the default chooses."""
+    src = ["docs/handoff/ORCHESTRATION-STATE.md TELEMETRY section",
+           "GOSLEEP_TOKEN_CEILING (int per night; unlimited/none/off; default %s -- "
+           "d-2026-07-28-007)" % f"{DEFAULT_TOKEN_CEILING:,}"]
+    used, ceiling = cost.get("night_spend"), cost.get("ceiling")
+
+    if cost.get("ceiling_mode") == "unlimited":
+        return clock("budget", "token budget", "stops", "clear",
+                     gauge=("unlimited (%s spent tonight)" % f"{used:,}") if isinstance(used, int)
+                           else "unlimited",
+                     why="unlimited mode: GOSLEEP_TOKEN_CEILING=%s -- the owner chose no ceiling "
+                         "(d-2026-07-28-007), so this axis is provably not a constraint tonight. "
+                         "A choice, not a blind spot." % (os.environ.get("GOSLEEP_TOKEN_CEILING")
+                                                          or "unlimited").strip().lower(),
+                     sources=src)
     if ceiling is None:
+        # Unreachable while the default stands; kept so a future regression degrades honestly
+        # instead of crashing the one indicator the owner asked for.
         return clock("budget", "token budget", "stops", "unknown",
-                     gauge=("%s used, no ceiling" % f"{used:,}") if used else None,
-                     why=cost.get("ceiling_why") or "no ceiling on disk", sources=src)
+                     why=cost.get("ceiling_why") or "no ceiling configured and no default applied",
+                     sources=src)
     if used is None:
         return clock("budget", "token budget", "stops", "unknown",
-                     why="a ceiling exists but the telemetry ledger has no cumulative total to "
-                         "measure against", sources=src)
+                     why="a ceiling exists (%s/night, %s) but the telemetry ledger has no cumulative "
+                         "total to measure tonight's spend against"
+                         % (f"{ceiling:,}", cost.get("ceiling_mode")), sources=src)
 
-    gauge = "%s of %s (%s%%)" % (f"{used:,}", f"{ceiling:,}", cost.get("used_pct"))
+    anchor = cost.get("night_anchor") or {}
+    gauge = "%s of %s tonight (%s%%)" % (f"{used:,}", f"{ceiling:,}", cost.get("used_pct"))
     if used >= ceiling:
         return clock("budget", "token budget", "stops", "exhausted", hours=0.0, gauge=gauge,
-                     why="cumulative spend is at or over the ceiling — manifest §3.budget makes this "
-                         "a BLOCKER, not a warning", sources=src)
+                     why="tonight's spend (since the %s anchor) is at or over the %s ceiling — "
+                         "manifest section 3.budget makes this a BLOCKER (BUDGET_EXCEEDED), not a "
+                         "warning" % (anchor.get("date"), cost.get("ceiling_mode")), sources=src)
 
     # Per-cycle burn from the ledger's own running total; cycles/hour from the heartbeat. Both are
     # needed: the ledger has cycle NUMBERS but no timestamps, so it cannot tell time by itself.
@@ -1544,9 +1768,11 @@ def clock_slots(fleet):
 
 
 def clock_blockers(queue):
-    """Open BLOCKERs. The ONLY question type that can stop a night: manifest §3 gives a BLOCKER no
-    default, ever, so it has no timer and cannot resolve itself. A DECISION auto-applies at its
-    deadline and the night keeps moving; a BLOCKER waits for a human.
+    """Open BLOCKERs. A question type that stops a night by construction: manifest §3 gives a
+    BLOCKER no default, ever, so it has no timer and cannot resolve itself. A DECISION carries a
+    default a LIVE ORCHESTRATOR applies at its deadline — nothing applies it mechanically (finding
+    7), which is why overdue DECISIONs have their own stopping clock (GSL-224) instead of the old
+    comfortable "they resolve themselves"; a BLOCKER waits for a human either way.
 
     A BLOCKER open at midnight means the runway is already zero for the work it names. This clock is
     deliberately CONSERVATIVE -- it reports zero even though other tasks may still advance -- because
@@ -1560,6 +1786,59 @@ def clock_blockers(queue):
     return clock("blockers", "open blockers", "stops", "exhausted", hours=0.0, gauge=str(len(b)),
                  why="%d open BLOCKER(s) (%s) — a BLOCKER takes no default and has no timer; the work "
                      "it names is parked until you answer it" % (len(b), ids), sources=src)
+
+
+def clock_decisions(queue, hb):
+    """Overdue DECISIONs with no live pulse (GSL-224; finding 9 — the runway's optimism bias).
+
+    The old premise, written straight into this file, was "a DECISION auto-applies at its deadline
+    and the night keeps moving". Nothing applies it mechanically (finding 7): a default is applied
+    by a LIVE orchestrator, and with the pulse dead an overdue DECISION parks its work exactly like
+    a BLOCKER — a stopper wearing a timer's clothes. So:
+
+        no overdue DECISION                  -> clear   (evidence, not comfort)
+        overdue + pulse fresh                -> clear, with the caveat printed: a live orchestrator
+                                                can still apply the defaults THIS pulse; if the
+                                                pulse dies, this axis is the stopper
+        overdue + pulse stale                -> exhausted, 0h: nothing alive is applying defaults
+        overdue + no readable pulse          -> unknown: cannot rule the stop out, so it bounds
+                                                the answer (never drops out silently)
+    """
+    src = ["docs/lab/questions/queue.jsonl (type=DECISION, status=open, auto_apply_at)",
+           "docs/handoff/.orchestrator-heartbeat age vs GOSLEEP_PULSE_FRESH_SECS=%d" % PULSE_FRESH_SECS]
+    overdue = []
+    for q in queue.get("open_items") or []:
+        if q.get("type") != "DECISION":
+            continue
+        t = parse_ts(q.get("auto_apply_at"))
+        if t is not None and t <= NOW:
+            overdue.append(q)
+    if not overdue:
+        return clock("decisions", "overdue decisions", "stops", "clear", gauge="0 overdue",
+                     why="no open DECISION is past its deadline", sources=src)
+
+    ids = ", ".join(str(x.get("id")) for x in overdue[:3])
+    hb_ts = parse_ts((hb or {}).get("ts"))
+    if hb_ts is None:
+        return clock("decisions", "overdue decisions", "stops", "unknown",
+                     gauge="%d overdue, no pulse" % len(overdue),
+                     why="%d overdue DECISION(s) (%s) and NO readable pulse: nothing observable is "
+                         "alive to apply their defaults, and an unreadable pulse cannot rule the "
+                         "stop out" % (len(overdue), ids), sources=src)
+    age = NOW - hb_ts
+    if age <= PULSE_FRESH_SECS:
+        return clock("decisions", "overdue decisions", "stops", "clear",
+                     gauge="%d overdue, pulse %s old" % (len(overdue), human_age(age)),
+                     why="%d overdue DECISION(s) (%s), but the pulse is live (%s old, threshold "
+                         "%ds): a live orchestrator can still apply the defaults this pulse. If "
+                         "the pulse dies, this axis becomes the stopper."
+                         % (len(overdue), ids, human_age(age), PULSE_FRESH_SECS), sources=src)
+    return clock("decisions", "overdue decisions", "stops", "exhausted", hours=0.0,
+                 gauge="%d overdue, pulse %s old" % (len(overdue), human_age(age)),
+                 why="%d overdue DECISION(s) (%s) and the pulse is stale (%s old > %ds): nothing "
+                     "alive is applying defaults, so the work they park is stopped — a BLOCKER "
+                     "wearing a timer's clothes" % (len(overdue), ids, human_age(age),
+                                                    PULSE_FRESH_SECS), sources=src)
 
 
 def clock_work(tasks, cyc_rate):
@@ -1595,18 +1874,19 @@ def clock_work(tasks, cyc_rate):
 
 
 def compute_runway(ctx):
-    """RUNWAY = the nearest clock whose exhaustion STOPS the night. `next_event` = the nearest of all
-    six, whatever it means. Both are reported, and every clock says which it is."""
+    """RUNWAY = the nearest clock whose exhaustion STOPS the night. `next_event` = the nearest of
+    all seven, whatever it means. Both are reported, and every clock says which it is."""
     pulses = ctx["pulses"]
     hb = ctx["heartbeat"] or {}
     _, cyc_rate, _ = _pulse_rate(pulses)
 
     clocks = [
-        clock_context(hb, pulses),
+        clock_context(hb, pulses, ctx.get("supervision")),
         clock_budget(ctx["cost"], cyc_rate),
         clock_quota(ctx["events"], hb),
         clock_slots(ctx["fleet"]),
         clock_blockers(ctx["queue"]),
+        clock_decisions(ctx["queue"], hb),       # GSL-224: the optimism-bias fix of finding 9
         clock_work(ctx["tasks"], cyc_rate),
     ]
 
@@ -2133,8 +2413,9 @@ def build_queue(questions):
         "closed_items": sorted([q for q in items if q.get("status") != "open"],
                                key=lambda q: q.get("ts") or "", reverse=True)[:20],
         # BLOCKERs take no default, ever (manifest §3) -- so they have no auto_apply_at and no timer.
-        # They are the only question type that STOPS the night, which is why GSL-94's runway keys on
-        # them and not on the DECISIONs, which resolve themselves.
+        # They stop the night by construction. DECISIONs do NOT "resolve themselves" (finding 7 --
+        # nothing applies a default mechanically; a live orchestrator does): the runway keys on
+        # blockers here AND on overdue DECISIONs with a dead pulse via clock_decisions (GSL-224).
         "open_blockers": [q for q in open_items if q.get("type") == "BLOCKER"],
     }
 
@@ -2247,7 +2528,10 @@ def collect_supervision():
     the cost of a subprocess whose output differs across macOS versions, and the honest gap is named
     below instead of papered over with a guess.
     """
-    agent = os.path.join(HOME, "Library", "LaunchAgents", "com.gosleep.watchdog.plist")
+    # GSL-224: the path is overridable so a TEST can drive both worlds (armed / not armed) without
+    # touching the real ~/Library. Production never sets the variable.
+    agent = (os.environ.get("GOSLEEP_WATCHDOG_PLIST")
+             or os.path.join(HOME, "Library", "LaunchAgents", "com.gosleep.watchdog.plist"))
     state_dir = os.path.join(REPO, ".artifacts", "watchdog")
     log_path = os.path.join(state_dir, "watchdog.log")
     ledger = os.path.join(REPO, "docs", "handoff", ".watchdog-ledger.jsonl")
@@ -2388,7 +2672,8 @@ def build_render_bundle(ctx, status):
         "links": link_bases(ctx),
         # GSL-206: the two services the mandate names and the web could not see. Additive and
         # optional, exactly like `links` above — an older bundle simply has no strip.
-        "supervision": collect_supervision(),
+        # (GSL-224: computed once in main(), before the runway — the context clock reads it too.)
+        "supervision": ctx["supervision"],
         "gates": collect_gates(),
     }
 
@@ -2720,6 +3005,35 @@ def build_digest(ctx, status):
         L.append("- heartbeat: cycle %s · context %s%% · open_workers %s · status %s (%s ago)" % (
             hb.get("cycle"), hb.get("context_pct"), hb.get("open_workers"), hb.get("status"),
             human_age(st["heartbeat_age_s"])))
+    # GSL-221: the ceiling and the runway headline, in the one section the owner reads about money.
+    # All three ceiling states print as themselves — unlimited is a choice, never a warning.
+    co, rw = ctx["cost"], ctx["runway"]
+    if co.get("ceiling_mode") == "unlimited":
+        L.append("- budget: **unlimited** — no token ceiling, by choice (%s)" % co.get("ceiling_source"))
+    elif co.get("ceiling") and co.get("night_spend") is not None:
+        L.append("- budget: %s of %s tonight (%s%%) — ceiling %s" % (
+            "{:,}".format(co["night_spend"]), "{:,}".format(co["ceiling"]), co.get("used_pct"),
+            co.get("ceiling_mode")))
+    elif co.get("ceiling"):
+        L.append("- budget: ceiling %s/night (%s), but no telemetry total to measure tonight against"
+                 % ("{:,}".format(co["ceiling"]), co.get("ceiling_mode")))
+    if rw.get("hours") is not None:
+        L.append("- runway: **%s %.1fh** — binding: %s" % (
+            "≈" if rw.get("bound") == "exact" else "≤", rw["hours"], rw.get("binding_label")))
+    else:
+        L.append("- runway: %s (%s/%s axes readable)" % (rw.get("bound"), rw.get("known"),
+                                                         rw.get("total")))
+    # GSL-222: the second autonomy number, always WITH its frame. The frame is not a footnote — a
+    # number quoted without it claims more than the data does.
+    au = ctx["autonomy"]
+    if au.get("value") is not None:
+        L.append("- autonomy (rolling %dd, %s → %s): **%s** = 1 − asks/shipped (asks %d, shipped %d)"
+                 % (au["window"]["days"], au["window"]["start"], au["window"]["end"],
+                    au["value"], au["asks"], au["shipped"]))
+    else:
+        L.append("- autonomy (rolling %dd): **unmeasured** — %s"
+                 % (au["window"]["days"], au.get("why_unknown")))
+    L.append("  - what this number does NOT claim: %s." % "; ".join(au["not_claimed"]))
     L.append("")
 
     # 6 — Manifest candidates: verbatim from `lab-emit candidates`.
@@ -3259,6 +3573,64 @@ def build_mobile(bundle, ui=None):
                                                 _ml(bundle.get("schema"), 40)))
     return "\n".join(L) + "\n"
 
+# ═════════ GSL-225: the supervision trace survives its own truncation (finding 60) ═════════
+#
+# The heartbeat self-truncates to 200 lines by its WRITER'S contract (the orchestrator skill's
+# atomic-append snippet — sovereign, not changeable from here), the watchdog ledger lives beside
+# it, and both are gitignored as live runtime state. The price the audit paid for that: its entire
+# empirical base covered FOUR DAYS, because nothing older survived anywhere on disk — and the
+# mandate asks for a trend, which needs history. One `git clean -fdx` erases the whole record.
+#
+# So the chronicler — which reads these files every pass anyway — archives every line it has not
+# seen before into TRACKED files under docs/lab/supervision/. The live files stay gitignored
+# (their writers' contract stands); the trace enters git through the archive. Dedup is by exact
+# line: a pulse is one JSON line with a second-resolution ts and a cycle, so the same line twice
+# is the same pulse. Order: the old archive first, then the new lines in the live file's order —
+# append-only in effect, atomic in mechanism (lab_write), idempotent by construction.
+
+SUPERVISION_SOURCES = (
+    ("docs/handoff/.orchestrator-heartbeat", "docs/lab/supervision/heartbeat.jsonl"),
+    ("docs/handoff/.watchdog-ledger.jsonl",  "docs/lab/supervision/watchdog-ledger.jsonl"),
+)
+
+
+def archive_supervision():
+    out = {}
+    for src_rel, dst_rel in SUPERVISION_SOURCES:
+        src, dst = os.path.join(REPO, src_rel), os.path.join(REPO, dst_rel)
+        try:
+            with open(src, encoding="utf-8") as f:
+                live = [l.rstrip("\n") for l in f if l.strip()]
+        except FileNotFoundError:
+            out[dst_rel] = {"archived": 0, "why": "no %s on this machine — nothing to archive "
+                                                  "(a fresh clone has none; not an error)" % src_rel}
+            continue
+        except OSError as exc:
+            degrade("supervision-archive", exc)
+            continue
+        old = []
+        try:
+            with open(dst, encoding="utf-8") as f:
+                old = [l.rstrip("\n") for l in f if l.strip()]
+        except FileNotFoundError:
+            pass                                  # first archive on this clone
+        except OSError as exc:
+            degrade("supervision-archive", exc)
+            continue
+        seen = set(old)
+        fresh = [l for l in live if l not in seen]
+        if fresh:
+            try:
+                if not ARGS["dry_run"]:
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                lab_write(dst_rel, "\n".join(old + fresh) + "\n")
+            except Exception as exc:
+                degrade("supervision-archive", exc)
+                continue
+        out[dst_rel] = {"archived": len(fresh), "total": len(old) + len(fresh)}
+    return out
+
+
 # ───────────────────────────── poll-fill hook (GSL-87) ────────────────────────
 
 def poll_fill():
@@ -3286,6 +3658,9 @@ def main():
     t0 = time.time()
 
     poll = poll_fill() if ARGS["poll"] else {"ran": False, "why": "--no-poll"}
+    # GSL-225: archive the supervision trace BEFORE anything else can fail — the one job that must
+    # not wait for a healthy pass, because the live files truncate themselves on the writer's clock.
+    sup_archive = archive_supervision()
 
     events_all, event_days = load_events()
     events_all = fold_superseded(events_all)
@@ -3315,6 +3690,10 @@ def main():
     ctx["fleet"]  = fleet_census(events_all, ctx["heartbeat"] or {}, ctx["cost"])
     ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"], ctx["gh_issues"])
     ctx["queue"]  = build_queue(questions)
+    ctx["autonomy"] = compute_autonomy(ctx)          # GSL-222: needs questions + events, nothing later
+    # GSL-224: supervision BEFORE the runway — the context clock's benign story leans on the
+    # watchdog, and whether one is armed is supervision's fact to state, computed exactly once.
+    ctx["supervision"] = collect_supervision()
     ctx["runway"] = compute_runway(ctx)
 
     status = build_status(ctx)
@@ -3396,8 +3775,18 @@ def main():
         "staleness": status["staleness"]["grade"],
         "max_event_age_human": status["staleness"]["max_event_age_human"],
         "questions_open": status["questions"]["open"],
+        # GSL-221: the two answers the epic exists for, surfaced in the run report so a gate (or a
+        # smoke assert) can read them without parsing the bundle — and so a --dry-run, which writes
+        # no bundle at all, can still prove what the runway and the ceiling would have said.
+        "runway": {"bound": ctx["runway"]["bound"], "hours": ctx["runway"]["hours"],
+                   "binding": ctx["runway"]["binding"]},
+        "ceiling": {"mode": ctx["cost"].get("ceiling_mode"), "value": ctx["cost"].get("ceiling"),
+                    "night_spend": ctx["cost"].get("night_spend"),
+                    "budget_state": next((c["state"] for c in ctx["runway"]["clocks"]
+                                          if c["axis"] == "budget"), None)},
         "ui": ui,
         "poll_fill": poll,
+        "supervision_archive": sup_archive,      # GSL-225: what survived truncation this pass
         "retention": retention,
         "narrative": (ctx["narrative"] or {}).get("error") or
                      ("ok" if ctx.get("narrative") else "not requested"),

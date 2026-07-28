@@ -9,7 +9,11 @@
 .artifacts/
 docs/reviews/
 
-# Orchestrator heartbeat — runtime liveness signal + its atomic temp (GSL-51), never committed
+# Orchestrator heartbeat — runtime liveness signal + its atomic temp (GSL-51), never committed.
+# GSL-225 (audit finding 60): the LIVE file stays ignored (its writer's sovereign contract), but its
+# every line now survives in a TRACKED archive — docs/lab/supervision/heartbeat.jsonl, appended by
+# each chronicler pass before the 200-line self-truncation can eat history. Same for the ledger below
+# (docs/lab/supervision/watchdog-ledger.jsonl). The supervision trace is in git; the runtime is not.
 docs/handoff/.orchestrator-heartbeat*
 
 # Watchdog ledger — runtime record beside the heartbeat (GSL-55, format: tools/watchdog/LEDGER.md)

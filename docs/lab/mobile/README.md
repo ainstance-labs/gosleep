@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-28T08:05:49Z` · freshest event **13s** old at that moment (`2026-07-28T08:05:36Z`) · day `2026-07-28`
+🟢 **FRESH at build** · generated `2026-07-28T10:54:55Z` · freshest event **27s** old at that moment (`2026-07-28T10:54:28Z`) · day `2026-07-28`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T08:05:49Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T10:54:55Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-28T08:35:36Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-28T11:05:36Z`**
+> - 🟡 **STALE if you are reading this after `2026-07-28T11:24:28Z`**
+> - 🔴 **DEAD if you are reading this after `2026-07-28T13:54:28Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -17,62 +17,60 @@
 
 - 🛑 **BLOCKER** `q-2026-07-24-002` — Кто и как правит скиллы теперь? Контур «урок → правка скилла» работал 30 дней и остановился 10 июля; guard на install.sh от 20 июля закрепил остановку, убрав единственный описанный путь синхронизации. Формально авторитетна глобальная копия ~/.claude/skills/, но она вне git, вне ревью, вне Jira, и п…
 - 🛑 **BLOCKER** `q-2026-07-24-003` — Разрешения агентов: оставить снятыми, перечислить явно или пустить relay через Channels? Как есть: в .claude/settings.json НЕТ блока permissions вообще, а оркестратор запущен как claude --dangerously-skip-permissions. Проблема «запрос разрешения останавливает ночь» уже решена — тем, что разрешений …
-- **DECISION** `q-2026-07-28-001` — Полка Reports с глобом docs/reports/**/index.html показывает и под-страницы ранов (ru/, design/, regression/) как отдельные строки — 34 элемента вместо ~17. Оставить полноту или сузить маску до топ-страниц ранов (verifications/*/runs/*/index.html отдельной полкой)?
-  <br>default if unanswered: Оставить docs/reports/**/index.html — дословная рекомендация аудита (находка 18); полнота с печатаемым глобом дороже краткости, у каждой строки свой title
+- **DECISION** `q-2026-07-28-004` — Вывод следа супервизии из-под .gitignore: трекаемый АРХИВ (хроникёр дописывает невиданные строки heartbeat и watchdog-леджера в docs/lab/supervision/*.jsonl, живые runtime-файлы остаются ignored по контракту суверенного скилла) или снятие ignore с самих живых файлов?
+  <br>default if unanswered: трекаемый архив, живые файлы остаются ignored
 
 ## 2. Fleet
 
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 142 |
-| Orchestrator | ok · context 48% |
+| Cycle | 144 |
+| Orchestrator | ok · context 80% |
 
 ## 3. Delivery
 
-Branch `main` @ `679bf53` · 5 dirty path(s)
+Branch `GSL-179-token-ceiling` @ `23514ee` · 18 dirty path(s)
 
-Shipped 2026-07-28 (8):
+Shipped 2026-07-28 (15):
+- `23514ee` GSL-226 [Tooling] Ветка рендера BLOCKER испытана на реальных данных: 5 ассертов от записи до пикселей (questions/overvi…
+- `e3ba732` GSL-225 [Tooling] Архив следа супервизии: хроникёр дописывает heartbeat/леджер в трекаемые docs/lab/supervision/*.jsonl…
+- `42dc5d1` GSL-224 [Tooling] Ось runway «просроченные DECISION без живого пульса» + правило «незапущенный механизм → unknown с при…
+- `8989128` GSL-223 [Tooling] poll-fill автоподхватывает JQL-дамп оркестратора (scratch/jira-poll.json, громко, с возрастом); первы…
+- `e7d31e5` GSL-222 [Tooling] Метрика автономности 1 − asks/shipped за 7 дней: status.json + дайджест, всегда с рамкой «чего не утв…
+- `f6ee225` GSL-221 [Docs][Tooling] Потолок токенов: настраиваемый дефолт 16M/ночь, режим unlimited первоклассный, ночная семантика…
+- `a114c8a` GSL-138 [Docs][Process] Ledger смены 74: эпик GSL-175 слит (#252), эррата STATE (GSL-195), handoff 50, решения по умолч…
 - `679bf53` Merge pull request #252 from ainstance-labs/GSL-175-evening-hygiene
-- `376fe74` GSL-194 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика
-- `c308eba` GSL-197 Рассинхрон Jira↔GitHub: #146 закрыт, GSL-107/#121 исключён как замороженный
-- `71fb0b6` GSL-195 Эррата красных команд для ORCHESTRATION-STATE.md (файл суверенный, не тронут)
-- `456c36a` GSL-196 README очереди: прямой запрет построчного чтения queue.jsonl
-- `20ec411` GSL-193 Библиотека: Reports и Reviews рекурсивно (**), новая полка Skills
-- `f4ba846` GSL-192 Cost: плитка = max(running_total), таблица циклов отсортирована по cycle
-- `a7d0e1c` GSL-191 Архив вопросов: closed = status != open (дефис против подчёркивания), ассерт archived == closed
+- …and 7 more
 
 ## 4. Tasks
 
 | Status | Tasks |
 |---|--:|
 | In Progress | 1 |
-| To Do | 3 |
-| Done | 5 |
-
-235 more carry no status here — the tracker was last polled **15d 10h** ago, so this is what the poll missed, not 235 idle tasks.
+| In Review | 4 |
+| To Do | 58 |
+| Done | 186 |
 
 ## 5. Cost & runway
 
-Cumulative **18,978,000** tokens over 142 cycle(s).
+Cumulative **18,984,000** tokens over 143 cycle(s).
 
-**No ceiling is set**, so there is no percentage to be at — manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)
-
-Next runway event: **open blockers** — stops at **`2026-07-28T08:05:49Z`**.
+Next runway event: **open blockers** — stops at **`2026-07-28T10:54:55Z`**.
 
 ## 6. Activity
 
-**88** events today of **2277** total · 95% mechanical.
+**169** events today of **2674** total · 82% mechanical.
 
-Latest decisions (28 total, newest first):
+Latest decisions (31 total, newest first):
+- **потолок считается за ночь (сутки UTC), не кумулятивно** `GSL-221` — 2026-07-28 10:42
+  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк)
+- **флот на унаследованной Fable 5 до иного решения владельца** `GSL-138` — 2026-07-28 10:20
+  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк)
+- **полка Reports остаётся полной (глоб печатается)** `GSL-193` — 2026-07-28 10:20
+  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк)
 - **Потолок токенов = настраиваемая величина с переопределяемым дефолтом (16M остаётся лишь дефолтом) + обязательный режим unlimited; supersedes d-2026-07-28-002** `GSL-179` — 2026-07-28 07:23
-- **дашборд инструмент; русский только для адресованного владельцу** `GSL-177` — 2026-07-28 06:52
-  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн 2026-07-25T08:00Z истёк)
-- **первый ночной прогон после GSL-176, дата за владельцем** `GSL-176` — 2026-07-28 06:52
-  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн 2026-07-25T08:00Z истёк)
-- **v2 веба не раскрывается, v1 доведена до профессионального уровня** `GSL-177` — 2026-07-28 06:52
-  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн 2026-07-25T08:00Z истёк)
-- …and 24 more
+- …and 27 more
 
 ## 7. The rest of the dashboard
 

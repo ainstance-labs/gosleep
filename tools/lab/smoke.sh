@@ -22,6 +22,9 @@ export GOSLEEP_LAB_DIR="$WORK/lab"
 QUEUE="$GOSLEEP_LAB_DIR/questions/queue.jsonl"
 
 rm -rf "$WORK"; mkdir -p "$WORK"
+# GSL-221: the ceiling tests assert all three configured states (default / env / unlimited); a value
+# inherited from the caller's shell would silently flip every unset-env case. Hermetic by construction.
+unset GOSLEEP_TOKEN_CEILING
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
@@ -542,20 +545,23 @@ grep -q 'cannot see' "$CR/docs/lab/site/fleet.html" \
   && ok "GSL-93: the Fleet screen names its own blind spots (no pane id, no model in the log)" \
   || bad "GSL-93: the Fleet screen hides what it cannot see"
 
-# The token ceiling does not exist on disk (manifest §5.phase-ceiling delegates it to an epic brief,
-# and no brief names a number). The Cost screen must SAY that, not pick a plausible cap — a made-up
-# ceiling makes the budget clock finite, and a finite lie is worse than an honest unknown.
-[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "null" ]] \
-  && ok "GSL-93: no ceiling on disk -> cost.ceiling is null, not a guess" \
-  || bad "GSL-93: a token ceiling was invented"
-grep -q 'no token ceiling on disk' "$CR/docs/lab/site/cost.html" \
-  && ok "GSL-93: the Cost screen says the ceiling is missing, in words" \
-  || bad "GSL-93: the Cost screen hides that it has a numerator and no denominator"
+# GSL-221 (owner directive d-2026-07-28-007; supersedes the GSL-93 "no ceiling on disk" premise):
+# the ceiling now exists in one of three FIRST-CLASS states. Unset -> the 16,000,000/night default,
+# so the budget clock has a denominator out of the box; an integer overrides it; the explicit word
+# `unlimited` disables it by choice. The old null-because-nobody-chose state is gone: the default chooses.
+[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "16000000" \
+   && "$(jq -r '.cost.ceiling_mode' "$CR/docs/lab/render_bundle.json")" == "default" ]] \
+  && ok "GSL-221: unset env -> the 16,000,000/night default (mode=default), never a null nobody chose" \
+  || bad "GSL-221: the default ceiling did not apply (ceiling=$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json") mode=$(jq -r '.cost.ceiling_mode' "$CR/docs/lab/render_bundle.json"))"
+grep -q 'tokens per night' "$CR/docs/lab/site/cost.html" \
+  && ok "GSL-221: the Cost screen names the per-night unit, in words" \
+  || bad "GSL-221: the Cost screen does not say what the ceiling is per"
 GOSLEEP_TOKEN_CEILING=1000000 bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1
-[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "1000000" ]] \
-  && ok "GSL-93: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING)" \
-  || bad "GSL-93: the ceiling override is ignored"
-bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1     # back to the honest default
+[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "1000000" \
+   && "$(jq -r '.cost.ceiling_mode' "$CR/docs/lab/render_bundle.json")" == "env" ]] \
+  && ok "GSL-93/221: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING, mode=env)" \
+  || bad "GSL-93/221: the ceiling override is ignored"
+bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1     # back to the default mode
 
 # ───────────────── GSL-98: the worker cards, and the model that cannot lie ─────────────────
 #
@@ -922,6 +928,33 @@ rw '.runway.binding_why' "$RWB" | grep -q 'no default' \
   && ok "F5-S1: the trace explains WHY a BLOCKER stops the night (no default, no timer)" \
   || bad "F5-S1: the binding axis is named but not explained"
 
+# ═════════ GSL-226: the BLOCKER render branch, finally EXECUTED on a real dataset (finding 96) ═════════
+#
+# open_blockers had been 0 for the repository's whole history, so the code paths that draw a BLOCKER
+# had never run against real data — "untested" wearing "working"'s clothes. The RWB fixture above is
+# exactly the prescribed rig (a real `lab-emit question --type BLOCKER` in a COPY of the data, never
+# the live queue, through the real chronicler and the real renderer) — these asserts walk the whole
+# path from the queue record to the pixels: semantic colour, the Waiting-for-you block, the digest.
+echo "== GSL-226: the BLOCKER render branch on real data =="
+grep -q '<h2>Blocking you (1)</h2>' "$RWB/docs/lab/site/questions.html" \
+  && ! grep -q 'No blockers. Nothing the fleet is doing is waiting on a human' "$RWB/docs/lab/site/questions.html" \
+  && ok "GSL-226 ⭐ the Questions screen takes the BLOCKER branch: 'Blocking you (1)', empty-branch text absent" \
+  || bad "GSL-226 ⭐ the BLOCKER did not reach the Blocking-you section of questions.html"
+grep -q 'class="tag BLOCKER"' "$RWB/docs/lab/site/questions.html" \
+  && grep -q 'No default, and there never will be' "$RWB/docs/lab/site/questions.html" \
+  && ok "GSL-226: the BLOCKER card carries its semantic tag class AND the no-default sentence" \
+  || bad "GSL-226: the BLOCKER card is missing its tag class or its no-default explanation"
+grep -q '\.tag\.BLOCKER{background:var(--dead-soft)' "$RWB/docs/lab/site/questions.html" \
+  && ok "GSL-226 ⭐ the semantic colour RULE ships on the page — BLOCKER paints dead-red, not FYI-grey (GSL-116)" \
+  || bad "GSL-226 ⭐ .tag.BLOCKER has no colour rule on the rendered page"
+grep -A8 'id="waiting-for-you"' "$RWB/docs/lab/site/index.html" | grep -q 'Waiting for you (1)' \
+  && grep -q 'class="tag BLOCKER"' "$RWB/docs/lab/site/index.html" \
+  && ok "GSL-226: the Overview's Waiting-for-you block carries the BLOCKER, semantically tagged" \
+  || bad "GSL-226: the BLOCKER never reached the Overview's Waiting-for-you block"
+grep -A3 '^## 1\. Waiting for you' "$RWB/docs/lab/digest/$TODAY-morning.md" | grep -q '! BLOCKER' \
+  && ok "GSL-226: the morning digest lists the BLOCKER first, with the '!' mark (section 1)" \
+  || bad "GSL-226: the digest's Waiting-for-you section does not carry the BLOCKER"
+
 # ── F5-S1 b. A quota window is limiting. Armed by quota.wait_started carrying a reset ETA; the fleet
 #    quiesces until it resets, so this one really does stop the night (temporarily).
 RWQ="$WORK/rw-quota"
@@ -941,10 +974,13 @@ python3 -c "import sys;sys.exit(0 if 3.8 <= float('$QH') <= 4.05 else 1)" 2>/dev
   && ok "F5-S1: the runway carries the reset ETA itself, not just the hours" \
   || bad "F5-S1: the ETA was lost"
 
-# ── F5-S1 c. The token budget is limiting. 1,000,000 spent of 1,100,000; 100k/cycle at 1 cycle/h ->
-#    1h. The ledger has cycle NUMBERS and no timestamps, so the burn rate needs the heartbeat to tell
-#    time: this test proves the two sources are actually joined.
+# ── F5-S1 c. The token budget is limiting. 1,000,000 spent TONIGHT of 1,100,000; 100k/cycle at
+#    1 cycle/h -> 1h. The ledger has cycle NUMBERS and no timestamps, so the burn rate needs the
+#    heartbeat to tell time: this test proves the two sources are actually joined.
+#    GSL-221 made the ceiling per-NIGHT, so tonight's spend is anchored: a seeded previous bundle
+#    puts the day's anchor at 0, making the full ledger total tonight's.
 RWC="$WORK/rw-cost"; rw_fixture "$RWC" 50 1
+printf '{"cost":{"night_anchor":{"date":"%s","base_total":0}}}\n' "$TODAY" > "$RWC/docs/lab/render_bundle.json"
 GOSLEEP_TOKEN_CEILING=1100000 bash "$CH" --repo "$RWC" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.binding' "$RWC")" == "budget" ]] \
   && ok "F5-S1: the token budget binds when a ceiling exists and the burn rate is measurable" \
@@ -960,8 +996,11 @@ python3 -c "import sys;sys.exit(0 if 0.9 <= float('$BH') <= 1.1 else 1)" 2>/dev/
 #    min(0h, 4h) would scream "RUNWAY 0h" and wake the owner for a non-event.
 #    The runway must therefore read 4h (the quota — the nearest clock that actually STOPS the night),
 #    and must still SHOW the roll as the next thing that happens, so nothing is hidden.
+#    GSL-224: "exhausted-but-benign" is only true when the watchdog is ARMED — so this fixture arms
+#    one explicitly (an existing plist path). The unarmed world is its own test below.
 RWD="$WORK/rw-degrade"; rw_fixture "$RWD" 85 1 "$QEV"       # 85% >= the 80% ceiling -> exhausted
-GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWD" --no-poll --quiet --json >/dev/null 2>&1
+touch "$RWD/wd.plist"
+GOSLEEP_WATCHDOG_PLIST="$RWD/wd.plist" GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWD" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWD")" == "exhausted" ]] \
   && ok "F5-S1: context at/over the ceiling reads as EXHAUSTED" \
   || bad "F5-S1: an over-ceiling context did not register"
@@ -980,7 +1019,7 @@ RWU="$WORK/rw-unknown"; rw_fixture "$RWU" 50 1
 rm -f "$RWU/docs/handoff/.orchestrator-heartbeat"
 bash "$CH" --repo "$RWU" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.bound' "$RWU")" == "unknown" ]] \
-  && ok "F5-S1: no heartbeat + no ceiling -> the runway says 'unknown', not a comfortable number" \
+  && ok "F5-S1: no heartbeat (so no burn rate) -> the runway says 'unknown', not a comfortable number" \
   || bad "F5-S1: the runway answered with a number it could not know (bound=$(rw '.runway.bound' "$RWU"))"
 [[ "$(rw '.runway.unknown_axes | index("budget")' "$RWU")" != "null" ]] \
   && ok "F5-S1: the unreadable stopping clocks are NAMED, not silently dropped" \
@@ -1002,8 +1041,11 @@ grep -q 'class="runway unk"' "$RWU/docs/lab/site/index.html" \
 # ── F5-S1 f. An unreadable clock turns an estimate into an UPPER BOUND. The quota says 4h; the budget
 #    cannot be read. The true runway is AT MOST 4h — it can only be shorter, never longer, so "≈ 4h"
 #    would be a lie in the one direction that costs the owner a night.
+#    GSL-221: a ceiling now always exists unless the owner disables it, so an unreadable BUDGET takes
+#    an unreadable LEDGER — blank the telemetry bullets and the clock has a denominator, no numerator.
 RWUP="$WORK/rw-upper"; rw_fixture "$RWUP" 50 1 "$QEV"
-bash "$CH" --repo "$RWUP" --no-poll --quiet --json >/dev/null 2>&1      # no ceiling -> budget unknown
+sed -i.bak 's/^- .*$//' "$RWUP/docs/handoff/ORCHESTRATION-STATE.md"
+bash "$CH" --repo "$RWUP" --no-poll --quiet --json >/dev/null 2>&1      # unreadable ledger -> budget unknown
 [[ "$(rw '.runway.bound' "$RWUP")" == "upper" && "$(rw '.runway.binding' "$RWUP")" == "quota" ]] \
   && ok "F5-S1: a counting clock + an unreadable one = an UPPER bound (≤), never an estimate (≈)" \
   || bad "F5-S1: an unreadable clock did not weaken the claim (bound=$(rw '.runway.bound' "$RWUP"))"
@@ -1026,21 +1068,220 @@ GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWCL" --no-poll --quiet --jso
   && ok "F5-S1: a ledger that is not growing is 'clear' (not spending), never 'unknown' (cannot read)" \
   || bad "F5-S1: a flat telemetry ledger was mistaken for an unreadable one"
 
-# ── F5-S1 g2. ...and a real ceiling that is simply FAR AWAY gives a number, not a shrug. 98M left at
-#    ~100k/cycle at 1 cycle/h is ~980h: silly-looking, correct, and rendered as days.
+# ── F5-S1 g2. ...and a real ceiling that is simply FAR AWAY gives a number, not a shrug. ~99M of
+#    tonight's ceiling left at ~100k/cycle at 1 cycle/h is ~990h: silly-looking, correct, rendered as days.
 RWFAR="$WORK/rw-far"; rw_fixture "$RWFAR" 50 1
 GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWFAR" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.bound' "$RWFAR")" == "exact" && "$(rw '.runway.binding' "$RWFAR")" == "budget" ]] \
   && ok "F5-S1: a distant-but-real ceiling gives an EXACT runway, not a shrug" \
   || bad "F5-S1: a readable, distant budget did not produce an exact answer (bound=$(rw '.runway.bound' "$RWFAR"))"
 
-# ── F5-S1 h. Six clocks, always. Not five when a source is missing.
-[[ "$(rw '.runway.clocks | length' "$RWCL")" == "6" && "$(rw '.runway.clocks | length' "$RWU")" == "6" ]] \
-  && ok "F5-S1: all six clocks are always reported — a missing source produces 'unknown', not a gap" \
-  || bad "F5-S1: a clock disappeared when its source was missing"
-[[ "$(rw '.runway.trace | length' "$RWU")" == "6" ]] \
+# ── F5-S1 h. Seven clocks, always (six of GSL-94 + decisions of GSL-224). Not fewer when a source
+#    is missing.
+[[ "$(rw '.runway.clocks | length' "$RWCL")" == "7" && "$(rw '.runway.clocks | length' "$RWU")" == "7" ]] \
+  && ok "F5-S1: all seven clocks are always reported — a missing source produces 'unknown', not a gap" \
+  || bad "F5-S1: a clock disappeared when its source was missing (got $(rw '.runway.clocks | length' "$RWCL")/$(rw '.runway.clocks | length' "$RWU"))"
+[[ "$(rw '.runway.trace | length' "$RWU")" == "7" ]] \
   && ok "F5-S1: the reasoning trace carries one line per axis (evidence, not vibes — R5.1)" \
   || bad "F5-S1: the runway shows a number with no reasoning"
+
+# ═════════ GSL-224: the overdue-decisions clock + the mechanism-not-armed rule (finding 9) ═════════
+#
+# The runway's optimism bias, cured twice. (1) "A DECISION auto-applies at its deadline" was FALSE —
+# nothing applies a default mechanically; a live orchestrator does. So an overdue DECISION with a
+# dead pulse parks its work exactly like a BLOCKER, and now there is a stopping clock that says so.
+# (2) The context clock's benign story ("the watchdog forces a handoff") leaned on a watchdog that
+# was never armed: an axis whose mechanism is not running must answer `unknown` with the reason,
+# never assert a degradation it cannot deliver.
+echo "== GSL-224: overdue DECISIONs + unarmed mechanisms =="
+RW_PAST="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=20)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+rw_overdue() {  # $1 = fixture dir: drop one hand-written OVERDUE open DECISION into its queue
+  printf '{"id":"q-2026-07-27-001","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-901","question":"overdue decision fixture?","options":[],"default":"yes","default_rationale":"smoke","reversibility":"high","impact_if_wrong":"","auto_apply_at":"%s","status":"open","seen_by":["smoke"],"qhash":"deadbeef00","links":{}}\n' \
+    "$RW_PAST" "$RW_PAST" > "$1/docs/lab/questions/queue.jsonl"
+}
+
+# (a) overdue + LIVE pulse -> clear, with the caveat printed. A live orchestrator can still apply
+#     the default this pulse — but the sentence must say what happens if the pulse dies.
+RWO="$WORK/rw-overdue-live"; rw_fixture "$RWO" 50 1; rw_overdue "$RWO"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWO" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWO")" == "clear" ]] \
+  && rw '.runway.clocks[] | select(.axis=="decisions") | .why' "$RWO" | grep -q 'pulse is live' \
+  && ok "GSL-224: overdue DECISION + live pulse -> clear WITH the caveat (the orchestrator can still act)" \
+  || bad "GSL-224: the live-pulse case is wrong (state=$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWO"))"
+[[ "$(rw '.runway.binding' "$RWO")" != "decisions" ]] \
+  && ok "GSL-224: a live pulse keeps the decisions clock off the headline" \
+  || bad "GSL-224: the runway stopped on a decision the orchestrator can still apply"
+
+# (b) overdue + STALE pulse -> exhausted 0h, and it BINDS: nothing alive is applying defaults.
+RWS="$WORK/rw-overdue-stale"; rw_fixture "$RWS" 50 1; rw_overdue "$RWS"
+ST0="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=4)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+ST1="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","cycle":10,"context_pct":40,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$ST0"
+  printf '{"ts":"%s","cycle":12,"context_pct":50,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$ST1"
+} > "$RWS/docs/handoff/.orchestrator-heartbeat"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWS" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RWS")" == "decisions" ]] \
+  && jq -e '.runway.hours == 0' "$RWS/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-224 ⭐ overdue DECISION + stale pulse -> 0h and BINDS: a stopper wearing a timer's clothes" \
+  || bad "GSL-224 ⭐ the stale-pulse case did not bind (binding=$(rw '.runway.binding' "$RWS"))"
+rw '.runway.clocks[] | select(.axis=="decisions") | .why' "$RWS" | grep -q 'pulse is stale' \
+  && ok "GSL-224: the trace names the reason — the pulse is stale, nothing alive applies defaults" \
+  || bad "GSL-224: the exhausted decisions clock does not explain itself"
+
+# (c) overdue + NO pulse at all -> unknown, and it bounds the answer instead of dropping out.
+RWNP="$WORK/rw-overdue-nopulse"; rw_fixture "$RWNP" 50 1; rw_overdue "$RWNP"
+rm -f "$RWNP/docs/handoff/.orchestrator-heartbeat"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWNP" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWNP")" == "unknown" ]] \
+  && [[ "$(rw '.runway.unknown_axes | index("decisions")' "$RWNP")" != "null" ]] \
+  && ok "GSL-224: overdue DECISION + unreadable pulse -> unknown, NAMED in unknown_axes (bounds the answer)" \
+  || bad "GSL-224: an unreadable pulse did not bound the answer (state=$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWNP"))"
+
+# (d) THE GENERAL RULE: an axis whose mechanism is not armed answers `unknown` with the reason.
+#     Context at 85% with NO watchdog must refuse the comfortable "exhausted, planned, not fatal"
+#     (that sentence was the false premise finding 9 caught in the code). RWD above is the armed
+#     control: same 85%, watchdog armed -> exhausted, benign, excluded from the headline.
+RWW="$WORK/rw-ctx-unarmed"; rw_fixture "$RWW" 85 1
+GOSLEEP_WATCHDOG_PLIST="$RWW/definitely-missing.plist" GOSLEEP_TOKEN_CEILING=99000000 \
+  bash "$CH" --repo "$RWW" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWW")" == "unknown" ]] \
+  && rw '.runway.clocks[] | select(.axis=="context") | .why' "$RWW" | grep -q 'NOT running' \
+  && ok "GSL-224 ⭐ over the ceiling with NO armed watchdog -> unknown WITH the reason, never a promised roll" \
+  || bad "GSL-224 ⭐ an unarmed mechanism still asserts benign degradation (state=$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWW"))"
+
+# ═════════ GSL-225: the supervision trace survives its own truncation (finding 60) ═════════
+#
+# The heartbeat self-truncates to 200 lines by its writer's sovereign contract, and the whole
+# supervision record used to live outside git — which is why the audit's entire empirical base
+# covered four days. The chronicler now archives every unseen line into TRACKED files under
+# docs/lab/supervision/ on every pass. The live files stay ignored; the HISTORY does not.
+echo "== GSL-225: supervision trace archived before truncation =="
+SA="$WORK/rw-supervision"; rw_fixture "$SA" 50 1     # fixture ships a 2-pulse heartbeat
+SA_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","event":"tick","decision":"none"}\n' "$SA_TS" > "$SA/docs/handoff/.watchdog-ledger.jsonl"
+bash "$CH" --repo "$SA" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" 2>/dev/null | tr -d ' ')" == "2" \
+   && "$(wc -l < "$SA/docs/lab/supervision/watchdog-ledger.jsonl" 2>/dev/null | tr -d ' ')" == "1" ]] \
+  && ok "GSL-225: first pass archives every live line (2 pulses + 1 ledger line) into docs/lab/supervision/" \
+  || bad "GSL-225: the archive is missing or short (hb=$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" 2>/dev/null); wd=$(wc -l < "$SA/docs/lab/supervision/watchdog-ledger.jsonl" 2>/dev/null))"
+# Simulate the writer's own self-truncation: the oldest pulse falls off the live file, a new one lands.
+tail -n 1 "$SA/docs/handoff/.orchestrator-heartbeat" > "$SA/docs/handoff/.orchestrator-heartbeat.new"
+printf '{"ts":"%s","cycle":13,"context_pct":55,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$SA_TS" \
+  >> "$SA/docs/handoff/.orchestrator-heartbeat.new"
+mv "$SA/docs/handoff/.orchestrator-heartbeat.new" "$SA/docs/handoff/.orchestrator-heartbeat"
+bash "$CH" --repo "$SA" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" | tr -d ' ')" == "3" ]] \
+  && head -1 "$SA/docs/lab/supervision/heartbeat.jsonl" | grep -q '"cycle":10' \
+  && ok "GSL-225 ⭐ after the live file truncated, the dropped pulse SURVIVES in the archive (3 lines, oldest first)" \
+  || bad "GSL-225 ⭐ truncation ate history the archive was built to keep ($(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" 2>/dev/null) lines)"
+bash "$CH" --repo "$SA" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" | tr -d ' ')" == "3" ]] \
+  && ok "GSL-225: a third pass adds nothing — the archive is idempotent (dedup by exact line)" \
+  || bad "GSL-225: the archive duplicated lines on an unchanged heartbeat"
+# The point of the whole task: the archive path is TRACKED, not swallowed by an ignore pattern.
+git -C "$REPO_ROOT" check-ignore -q docs/lab/supervision/heartbeat.jsonl 2>/dev/null \
+  && bad "GSL-225: docs/lab/supervision/ is gitignored — the trace still cannot enter git" \
+  || ok "GSL-225: docs/lab/supervision/ is tracked by git — the supervision trace finally has history"
+
+# ═══════════ GSL-221: the token ceiling — default / override / unlimited (d-2026-07-28-007) ═══════════
+#
+# The owner's directive, verbatim in spirit: a limit MAY exist, but it MUST be configurable; the
+# default (16M/night) is only a default; and "no limits anywhere, run at maximum" is a FIRST-CLASS
+# state of the system — RUNWAY and every reader of the ceiling must honestly say "unlimited", never
+# an error, a zero, or a standing warning. Each case below drives the real chronicler.
+echo "== GSL-221: token ceiling — default / override / unlimited (d-2026-07-28-007) =="
+
+# (a) Per-NIGHT semantics: the first build of a day anchors night spend at the ledger's total, and
+#     the anchor SURVIVES later passes of the same day. Compared against ALL history, the 16M default
+#     would have screamed BUDGET_EXCEEDED forever on day one (the live ledger already stood above it).
+RCD="$WORK/rw-ceiling-night"; rw_fixture "$RCD" 50 1
+bash "$CH" --repo "$RCD" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.night_spend' "$RCD")" == "0" && "$(rw '.cost.night_anchor.base_total' "$RCD")" == "1000000" ]] \
+  && ok "GSL-221: first build of the day anchors night spend at the ledger total (spend 0, base 1,000,000)" \
+  || bad "GSL-221: night anchoring is wrong (spend=$(rw '.cost.night_spend' "$RCD") base=$(rw '.cost.night_anchor.base_total' "$RCD"))"
+sed -i.bak 's/total≈1000000/total≈1250000/' "$RCD/docs/handoff/ORCHESTRATION-STATE.md"
+bash "$CH" --repo "$RCD" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.night_spend' "$RCD")" == "250000" ]] \
+  && ok "GSL-221: the second pass keeps the day's anchor — night spend 250,000, not re-zeroed" \
+  || bad "GSL-221: the anchor re-zeroed mid-day (spend=$(rw '.cost.night_spend' "$RCD"))"
+
+# (b) UNLIMITED IS FIRST-CLASS. The budget clock reads CLEAR — "the owner chose no limit" is
+#     knowledge, exactly like "0 blockers" — and a night with no other stopper reads RUNWAY clear.
+RCU="$WORK/rw-ceiling-unlimited"; rw_fixture "$RCU" 50 1
+GOSLEEP_TOKEN_CEILING=unlimited bash "$CH" --repo "$RCU" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.ceiling_mode' "$RCU")" == "unlimited" && "$(rw '.cost.ceiling' "$RCU")" == "null" ]] \
+  && ok "GSL-221 ⭐ GOSLEEP_TOKEN_CEILING=unlimited -> mode=unlimited, ceiling null by CHOICE, not by absence" \
+  || bad "GSL-221 ⭐ unlimited mode did not register (mode=$(rw '.cost.ceiling_mode' "$RCU"))"
+[[ "$(rw '.runway.clocks[] | select(.axis=="budget") | .state' "$RCU")" == "clear" ]] \
+  && ok "GSL-221 ⭐ the budget clock reads CLEAR in unlimited mode — never unknown, never an alarm" \
+  || bad "GSL-221 ⭐ unlimited rendered as $(rw '.runway.clocks[] | select(.axis=="budget") | .state' "$RCU") on the budget clock"
+[[ "$(rw '.runway.bound' "$RCU")" == "clear" ]] \
+  && ok "GSL-221 ⭐ an unlimited night with no blocker reads RUNWAY clear — the mode is first-class end to end" \
+  || bad "GSL-221 ⭐ unlimited poisoned the runway (bound=$(rw '.runway.bound' "$RCU"))"
+grep -q 'Unlimited mode' "$RCU/docs/lab/site/cost.html" \
+  && ok "GSL-221: the Cost screen renders unlimited as a plain fact ('Unlimited mode.')" \
+  || bad "GSL-221: the Cost screen hides or alarms on unlimited"
+grep -q 'budget: \*\*unlimited\*\*' "$RCU/docs/lab/digest/$TODAY-morning.md" \
+  && ok "GSL-221: the morning digest says 'unlimited' in the money section, as a choice" \
+  || bad "GSL-221: the digest does not carry the unlimited state"
+
+# (c) Synthetic excess: tonight 1,000,000 against a 500,000 ceiling -> BUDGET_EXCEEDED. The rule
+#     that could never fire (audit finding 58) now can, and the runway names it.
+RCX="$WORK/rw-ceiling-exceeded"; rw_fixture "$RCX" 50 1
+printf '{"cost":{"night_anchor":{"date":"%s","base_total":0}}}\n' "$TODAY" > "$RCX/docs/lab/render_bundle.json"
+GOSLEEP_TOKEN_CEILING=500000 bash "$CH" --repo "$RCX" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RCX")" == "budget" ]] \
+  && jq -e '.runway.hours == 0' "$RCX/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-221 ⭐ a synthetic excess drives the budget clock to 0h and binds the runway (finding 58 armed)" \
+  || bad "GSL-221 ⭐ the exceeded ceiling did not bind (binding=$(rw '.runway.binding' "$RCX") hours=$(rw '.runway.hours' "$RCX"))"
+rw '.runway.clocks[] | select(.axis=="budget") | .why' "$RCX" | grep -q 'BUDGET_EXCEEDED' \
+  && ok "GSL-221: the exhausted clock names BUDGET_EXCEEDED (manifest section 3.budget), not a vague warning" \
+  || bad "GSL-221: the exhausted budget clock does not name the manifest rule"
+jq -e '.cost.used_pct == 200' "$RCX/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-221: used_pct is of TONIGHT's ceiling (200%), not of all history" \
+  || bad "GSL-221: used_pct is wrong (got $(rw '.cost.used_pct' "$RCX")%, expected 200%)"
+
+# (d) A typo falls back to the DEFAULT, loudly — never to unlimited. Removing the limit takes the
+#     explicit word; a misconfiguration must not remove it silently.
+RCM="$WORK/rw-ceiling-typo"; rw_fixture "$RCM" 50 1
+GOSLEEP_TOKEN_CEILING=lots bash "$CH" --repo "$RCM" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.ceiling_mode' "$RCM")" == "default" && "$(rw '.cost.ceiling' "$RCM")" == "16000000" ]] \
+  && ok "GSL-221: a misconfigured value falls back to the default ceiling — never to unlimited" \
+  || bad "GSL-221: GOSLEEP_TOKEN_CEILING=lots produced mode=$(rw '.cost.ceiling_mode' "$RCM") ceiling=$(rw '.cost.ceiling' "$RCM")"
+jq -e '.degraded[] | select(.source=="cost")' "$RCM/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-221: the fallback is LOUD — the misconfiguration lands in degraded[], on the record" \
+  || bad "GSL-221: the misconfiguration was swallowed silently"
+
+# ═════════ GSL-222: autonomy = 1 − asks/shipped over a rolling 7d, WITH its honest frame ═════════
+#
+# Finding 91: the metric that could answer TODAY, from data already on disk. asks = questions the
+# fleet put to the owner (BLOCKER/DECISION/CLARIFY — FYI asks nothing); shipped = distinct task keys
+# observed in Done via tracker events. shipped == 0 -> UNMEASURED, never 1.0 or 0.0. And the number
+# never travels without its "what this does NOT claim" frame — in status.json and in the digest.
+echo "== GSL-222: autonomy metric 1 − asks/shipped (rolling 7d) =="
+AUT="$WORK/rw-autonomy"; rw_fixture "$AUT" 50 1
+AUT_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","run_id":"x","seq":10,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-901","status":"Done","occurred_at":"%s"}}\n' "$AUT_TS" "$AUT_TS"
+  printf '{"ts":"%s","run_id":"x","seq":11,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-902","status":"Done","occurred_at":"%s"}}\n' "$AUT_TS" "$AUT_TS"
+  printf '{"ts":"%s","run_id":"x","seq":12,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-901","status":"Done","occurred_at":"%s"}}\n' "$AUT_TS" "$AUT_TS"
+} >> "$AUT/docs/lab/events/$TODAY.jsonl"
+GOSLEEP_LAB_DIR="$AUT/docs/lab" "$LE" question --type DECISION --from smoke-aut --task GSL-901 \
+  --question "autonomy smoke: merge main or rebase?" --default "merge" --reversibility high >/dev/null 2>&1
+bash "$CH" --repo "$AUT" --no-poll --quiet --json >/dev/null 2>&1
+jq -e '.autonomy.value == 0.5 and .autonomy.asks == 1 and .autonomy.shipped == 2' "$AUT/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "GSL-222 ⭐ 1 ask over 2 shipped (GSL-901 Done twice counts ONCE) -> 0.5 in status.json" \
+  || bad "GSL-222 ⭐ the metric is wrong ($(jq -c '.autonomy | {value,asks,shipped}' "$AUT/docs/lab/status.json" 2>/dev/null))"
+jq -e '.autonomy.not_claimed | length >= 4' "$AUT/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "GSL-222: the honest frame travels with the number in status.json (not_claimed, 4+ items)" \
+  || bad "GSL-222: the frame is missing from status.json"
+grep -q 'autonomy (rolling 7d' "$AUT/docs/lab/digest/$TODAY-morning.md" \
+  && grep -q 'does NOT claim' "$AUT/docs/lab/digest/$TODAY-morning.md" \
+  && ok "GSL-222: the digest prints the metric AND its frame side by side (section 5)" \
+  || bad "GSL-222: the digest lacks the metric or its frame"
+# shipped == 0 -> unmeasured with a reason, never a score. RCD (above) has no tracker event at all.
+jq -e '.autonomy.value == null and (.autonomy.why_unknown | length) > 0' "$RCD/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "GSL-222 ⭐ zero shipped -> value null + why_unknown — unmeasured, not a fake 1.0/0.0" \
+  || bad "GSL-222 ⭐ a zero denominator produced a score ($(jq -c '.autonomy | {value,shipped}' "$RCD/docs/lab/status.json" 2>/dev/null))"
 
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
 # The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.
@@ -1166,6 +1407,39 @@ cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="vcs.pr.merged")) 
 cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.src=="poll-fill")) | all(.data.occurred_at != null)' >/dev/null 2>&1 \
   && ok "each backfilled event carries data.occurred_at (since GSL-89 also its ts; logged_at = when we learned it)" \
   || bad "a backfilled event lost the time it actually happened"
+
+# ═════════ GSL-223: the orchestrator's JQL dump is picked up AUTOMATICALLY, and loudly ═════════
+#
+# The lab holds no Jira credentials (C1) and no Jira CLI exists, so the tracker feed crosses the MCP
+# boundary as a file: the orchestrator saves docs/lab/scratch/jira-poll.json at every cycle
+# boundary, and poll-fill finds it WITHOUT flags — that is what lets a chronicler pass today and the
+# GSL-176 tick tomorrow use it with zero new plumbing. Loudly: the report names the feed + its age.
+echo "== GSL-223: poll-fill auto-detects the cycle-boundary Jira dump =="
+PJ="$WORK/pf-jira-dump"; mkdir -p "$PJ/docs/lab/events" "$PJ/docs/lab/scratch"
+PJ_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"2026-06-01T00:00:00Z","run_id":"x","seq":1,"actor":"a","type":"pane.started","src":"hook:SessionStart","data":{}}\n' \
+  > "$PJ/docs/lab/events/2026-06-01.jsonl"
+printf '[{"key":"GSL-950","status":"Done","updated":"%s","summary":"dump smoke"},{"key":"GSL-951","status":"In Progress","updated":"%s","summary":"dump smoke 2"}]\n' \
+  "$PJ_TS" "$PJ_TS" > "$PJ/docs/lab/scratch/jira-poll.json"
+PJ_OUT="$(bash "$PF" --repo "$PJ" --no-git --no-gh --json --quiet 2>/dev/null)"
+jq -e '.jira_feed | test("scratch dump")' <<<"$PJ_OUT" >/dev/null 2>&1 \
+  && jq -e '.jira_feed | test("age")' <<<"$PJ_OUT" >/dev/null 2>&1 \
+  && ok "GSL-223 ⭐ the dump is found with NO flag, and the report names the feed AND its age" \
+  || bad "GSL-223 ⭐ the dump was not auto-detected or the feed is unnamed (jira_feed=$(jq -r '.jira_feed' <<<"$PJ_OUT"))"
+cat "$PJ/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="tracker.issue.updated")) | (length == 2) and all(.src == "poll-fill")' >/dev/null 2>&1 \
+  && ok "GSL-223: both dumped issues reached the timeline as tracker.issue.updated, src=poll-fill" \
+  || bad "GSL-223: the dumped statuses did not reach the timeline"
+PJ_OUT2="$(bash "$PF" --repo "$PJ" --no-git --no-gh --json --quiet 2>/dev/null)"
+jq -e '.missing | length == 0' <<<"$PJ_OUT2" >/dev/null 2>&1 \
+  && ok "GSL-223: a second pass over the same dump adds zero lines (idempotent — the GSL-87 criterion holds)" \
+  || bad "GSL-223: the second pass found gaps again ($(jq -c '.missing' <<<"$PJ_OUT2"))"
+# Precedence: an EXPLICIT --jira-json always beats the conventional dump — a flag is a decision.
+printf '[{"key":"GSL-960","status":"Done","updated":"%s","summary":"flag wins"}]\n' "$PJ_TS" > "$PJ/flag.json"
+PJ_OUT3="$(bash "$PF" --repo "$PJ" --no-git --no-gh --jira-json "$PJ/flag.json" --json --quiet 2>/dev/null)"
+jq -e '.jira_feed | test("--jira-json")' <<<"$PJ_OUT3" >/dev/null 2>&1 \
+  && cat "$PJ/docs/lab/events/"*.jsonl | jq -se 'map(select(.data.key=="GSL-960")) | length == 1' >/dev/null 2>&1 \
+  && ok "GSL-223: an explicit --jira-json wins over the scratch dump (a flag is a decision)" \
+  || bad "GSL-223: feed precedence is wrong (jira_feed=$(jq -r '.jira_feed' <<<"$PJ_OUT3"))"
 
 # IDEMPOTENCE — the acceptance criterion of GSL-87, stated verbatim: run it twice, the second pass
 # adds zero lines. Keyed on the external identity of the fact, so re-observing it changes nothing.
@@ -3324,8 +3598,10 @@ grep -q '555' <<<"$T4_PRNUM" \
 grep -q 'no token ceiling exists on disk' "$T4C" \
   && bad "GSL-132 ⭐ (Cost) the ceiling note still repeats its lead sentence" \
   || ok "GSL-132 ⭐ (Cost) the ceiling note states its reason once — the echoed lead is gone"
-grep -q 'no token ceiling on disk' "$T4C" \
-  && ok "GSL-132 control: the on-screen ceiling lead is untouched — text preserved, only the echo removed" \
+# (GSL-221 retired the "no token ceiling on disk" lead along with the state it described; the
+# control now checks the NEW lead states its fact once — the per-night ceiling card.)
+grep -q 'tokens per night' "$T4C" \
+  && ok "GSL-132 control: the ceiling card states its per-night fact once (GSL-221 lead)" \
   || bad "GSL-132 control: the ceiling lead itself went missing"
 grep -q 'not one quota event has EVER been logged here' "$T4C" \
   && bad "GSL-132 ⭐ (Cost) the quota note still repeats its lead sentence" \
