@@ -67,6 +67,14 @@ The rule, so nobody rediscovers it per wave:
   the pass never saw, and the Delivery card names the branch it ran on). That residue is healed by
   the next routine chronicler pass on `main` — run one after merging if the Delivery card matters
   right now.
+- **Never commit a bundle whose `grade != fresh` silently (GSL-194; audit finding 23).** The commit
+  that carries `render_bundle.json` is made KNOWING the grade: read it first —
+  `jq -r .staleness.grade docs/lab/render_bundle.json` — and if it is not `fresh`, either re-run
+  the pass (the usual cause is committing yesterday's build instead of rebuilding) or say out
+  loud, in the commit message and the handoff, that a non-fresh bundle is being committed and why.
+  Finding 23 caught `main` carrying a bundle that declared itself DEAD at the instant of its own
+  commit while a fresher build sat uncommitted in the working tree — the exact silent version of
+  this. A non-fresh grade at shift close is a blocker to resolve, not a footnote.
 
 ## Staleness — the contract every derived artifact signs (F4-S3)
 
