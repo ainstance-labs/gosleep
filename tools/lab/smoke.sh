@@ -1279,6 +1279,39 @@ cat "$PL/docs/lab/events/"*.jsonl | jq -se 'map(select(.src=="poll-fill")) | all
   && ok "each backfilled event carries data.occurred_at (since GSL-89 also its ts; logged_at = when we learned it)" \
   || bad "a backfilled event lost the time it actually happened"
 
+# ═════════ GSL-223: the orchestrator's JQL dump is picked up AUTOMATICALLY, and loudly ═════════
+#
+# The lab holds no Jira credentials (C1) and no Jira CLI exists, so the tracker feed crosses the MCP
+# boundary as a file: the orchestrator saves docs/lab/scratch/jira-poll.json at every cycle
+# boundary, and poll-fill finds it WITHOUT flags — that is what lets a chronicler pass today and the
+# GSL-176 tick tomorrow use it with zero new plumbing. Loudly: the report names the feed + its age.
+echo "== GSL-223: poll-fill auto-detects the cycle-boundary Jira dump =="
+PJ="$WORK/pf-jira-dump"; mkdir -p "$PJ/docs/lab/events" "$PJ/docs/lab/scratch"
+PJ_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"2026-06-01T00:00:00Z","run_id":"x","seq":1,"actor":"a","type":"pane.started","src":"hook:SessionStart","data":{}}\n' \
+  > "$PJ/docs/lab/events/2026-06-01.jsonl"
+printf '[{"key":"GSL-950","status":"Done","updated":"%s","summary":"dump smoke"},{"key":"GSL-951","status":"In Progress","updated":"%s","summary":"dump smoke 2"}]\n' \
+  "$PJ_TS" "$PJ_TS" > "$PJ/docs/lab/scratch/jira-poll.json"
+PJ_OUT="$(bash "$PF" --repo "$PJ" --no-git --no-gh --json --quiet 2>/dev/null)"
+jq -e '.jira_feed | test("scratch dump")' <<<"$PJ_OUT" >/dev/null 2>&1 \
+  && jq -e '.jira_feed | test("age")' <<<"$PJ_OUT" >/dev/null 2>&1 \
+  && ok "GSL-223 ⭐ the dump is found with NO flag, and the report names the feed AND its age" \
+  || bad "GSL-223 ⭐ the dump was not auto-detected or the feed is unnamed (jira_feed=$(jq -r '.jira_feed' <<<"$PJ_OUT"))"
+cat "$PJ/docs/lab/events/"*.jsonl | jq -se 'map(select(.type=="tracker.issue.updated")) | (length == 2) and all(.src == "poll-fill")' >/dev/null 2>&1 \
+  && ok "GSL-223: both dumped issues reached the timeline as tracker.issue.updated, src=poll-fill" \
+  || bad "GSL-223: the dumped statuses did not reach the timeline"
+PJ_OUT2="$(bash "$PF" --repo "$PJ" --no-git --no-gh --json --quiet 2>/dev/null)"
+jq -e '.missing | length == 0' <<<"$PJ_OUT2" >/dev/null 2>&1 \
+  && ok "GSL-223: a second pass over the same dump adds zero lines (idempotent — the GSL-87 criterion holds)" \
+  || bad "GSL-223: the second pass found gaps again ($(jq -c '.missing' <<<"$PJ_OUT2"))"
+# Precedence: an EXPLICIT --jira-json always beats the conventional dump — a flag is a decision.
+printf '[{"key":"GSL-960","status":"Done","updated":"%s","summary":"flag wins"}]\n' "$PJ_TS" > "$PJ/flag.json"
+PJ_OUT3="$(bash "$PF" --repo "$PJ" --no-git --no-gh --jira-json "$PJ/flag.json" --json --quiet 2>/dev/null)"
+jq -e '.jira_feed | test("--jira-json")' <<<"$PJ_OUT3" >/dev/null 2>&1 \
+  && cat "$PJ/docs/lab/events/"*.jsonl | jq -se 'map(select(.data.key=="GSL-960")) | length == 1' >/dev/null 2>&1 \
+  && ok "GSL-223: an explicit --jira-json wins over the scratch dump (a flag is a decision)" \
+  || bad "GSL-223: feed precedence is wrong (jira_feed=$(jq -r '.jira_feed' <<<"$PJ_OUT3"))"
+
 # IDEMPOTENCE — the acceptance criterion of GSL-87, stated verbatim: run it twice, the second pass
 # adds zero lines. Keyed on the external identity of the fact, so re-observing it changes nothing.
 N1="$(cat "$PL/docs/lab/events/"*.jsonl | wc -l | tr -d ' ')"

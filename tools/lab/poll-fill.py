@@ -50,6 +50,15 @@ def skip(source, why):
     if not ARGS["quiet"]:
         sys.stderr.write("poll-fill: skipped %s — %s\n" % (source, str(why)[:120]))
 
+# GSL-223: the conventional place the ORCHESTRATOR saves a JQL dump at every cycle boundary. The
+# laboratory holds no Jira credentials (C1) and no Jira CLI exists on this machine, so the tracker
+# feed must be carried across the MCP boundary by whoever has it — and a conventional path is what
+# lets every future caller (a chronicler pass today, the GSL-176 tick tomorrow) pick it up without
+# new plumbing. Lives under scratch/ (gitignored): it is runtime carriage, not history — the history
+# is the events the reconcile writes from it.
+SCRATCH_DUMP = os.path.join(LAB, "scratch", "jira-poll.json")
+FEED = {}     # which feed each source actually used, for the report — a reconcile must show its work
+
 def run(cmd, timeout=25):
     """git/gh run inside GIT_REPO (the repository being reconciled), never inside the lab dir."""
     try:
@@ -184,30 +193,46 @@ def from_gh():
 
 def from_jira():
     """Jira has no CLI on this machine and we hold NO API key (C1) — so the JQL itself must come from
-    the MCP side (an agent or the orchestrator). Two supported feeds, in order:
+    the MCP side (an agent or the orchestrator). Three supported feeds, in order:
 
       1. --jira-json FILE  — a JSON array of issues: [{"key","status","updated","summary"}, …]
       2. acli / jira CLI   — if one is ever installed, we use it
+      3. the conventional dump the orchestrator saves at every cycle boundary (GSL-223):
+         docs/lab/scratch/jira-poll.json — same shapes as (1). Used LOUDLY: the report names the
+         feed AND the dump's age, because "reconciled against last Tuesday's dump" and "reconciled
+         against the tracker" must never look alike.
 
-    Neither present => skipped, LOUDLY: the skip lands in the report, in status.json (degraded[]) and
+    None present => skipped, LOUDLY: the skip lands in the report, in status.json (degraded[]) and
     on the page. An un-run reconcile that looks like a clean one is exactly the failure this whole
     task exists to prevent."""
     issues = None
     if ARGS["jira_json"]:
         with open(ARGS["jira_json"], encoding="utf-8") as f:
             issues = json.load(f)
+        FEED["jira"] = "--jira-json %s" % ARGS["jira_json"]
     else:
         for cli in (["acli", "jira", "issue", "list", "--json"], ["jira", "issue", "list", "--json"]):
             try:
                 rc, txt, _ = run(cli)
                 if rc == 0 and txt:
                     issues = json.loads(txt)
+                    FEED["jira"] = "cli: %s" % cli[0]
                     break
             except RuntimeError:
                 continue
+    if issues is None and os.path.exists(SCRATCH_DUMP):
+        try:
+            age_h = (datetime.datetime.now(datetime.timezone.utc).timestamp()
+                     - os.path.getmtime(SCRATCH_DUMP)) / 3600.0
+            with open(SCRATCH_DUMP, encoding="utf-8") as f:
+                issues = json.load(f)
+            FEED["jira"] = "scratch dump docs/lab/scratch/jira-poll.json (age %.1fh)" % age_h
+        except Exception as exc:
+            raise RuntimeError("scratch dump exists but is unreadable: %s" % str(exc)[:120])
     if issues is None:
-        raise RuntimeError("no Jira feed: install acli/jira, or pass --jira-json "
-                           "(the orchestrator can dump a JQL result from the Atlassian MCP)")
+        raise RuntimeError("no Jira feed: pass --jira-json, install acli/jira, or have the "
+                           "orchestrator save a JQL dump at docs/lab/scratch/jira-poll.json "
+                           "(the cycle-boundary step, GSL-223)")
     out = []
     for it in issues:
         # Accept both a flat shape and the raw Jira REST shape, so an MCP dump can be piped in as-is.
@@ -318,6 +343,7 @@ def main():
         "log_floor": floor,
         "prehistory_skipped": len(prehistory),   # counted, never silent: a dropped fact must be visible
         "known_facts": len(known),
+        "jira_feed": FEED.get("jira"),           # GSL-223: WHICH feed — a dump's age is data
         "candidates": len(candidates),
         "missing": [{"type": m["type"], "key": m["key"]} for m in missing],
         "written": written if not ARGS["dry_run"] else [],

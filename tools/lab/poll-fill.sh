@@ -27,11 +27,15 @@
 # collapses onto one key, and poll-fill never duplicates the fleet's own work.
 #
 # JIRA NEEDS A FEED. There is no Jira CLI on this machine and we hold no API key (C1 forbids one), so
-# the JQL must come from the MCP side:
-#     --jira-json FILE   # [{"key","status","updated","summary"}, …]  (raw Jira REST shape also ok)
-# If neither that nor an acli/jira CLI is present, the Jira source is SKIPPED LOUDLY -- the skip lands
-# in the report, in status.json (degraded[]) and on the page. A reconcile that quietly did not run,
-# yet looks like a clean one, is the exact failure this task exists to prevent.
+# the JQL must come from the MCP side. Three feeds, in order:
+#     --jira-json FILE                    # [{"key","status","updated","summary"}, …]  (raw Jira REST shape also ok)
+#     acli/jira CLI                       # if one is ever installed
+#     docs/lab/scratch/jira-poll.json     # GSL-223: the conventional dump the ORCHESTRATOR saves at
+#                                         # every cycle boundary (same shapes). Picked up automatically
+#                                         # and LOUDLY: the report names the feed and the dump's age.
+# If none is present, the Jira source is SKIPPED LOUDLY -- the skip lands in the report, in
+# status.json (degraded[]) and on the page. A reconcile that quietly did not run, yet looks like a
+# clean one, is the exact failure this task exists to prevent.
 #
 # TIMESTAMPS. lab-log stamps ts = now (it has no --ts). For a backfilled event that is the honest
 # reading: `ts` = when we LEARNED it, `data.occurred_at` = when it HAPPENED. They differ precisely
