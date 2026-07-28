@@ -1122,6 +1122,40 @@ GOSLEEP_WATCHDOG_PLIST="$RWW/definitely-missing.plist" GOSLEEP_TOKEN_CEILING=990
   && ok "GSL-224 ⭐ over the ceiling with NO armed watchdog -> unknown WITH the reason, never a promised roll" \
   || bad "GSL-224 ⭐ an unarmed mechanism still asserts benign degradation (state=$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWW"))"
 
+# ═════════ GSL-225: the supervision trace survives its own truncation (finding 60) ═════════
+#
+# The heartbeat self-truncates to 200 lines by its writer's sovereign contract, and the whole
+# supervision record used to live outside git — which is why the audit's entire empirical base
+# covered four days. The chronicler now archives every unseen line into TRACKED files under
+# docs/lab/supervision/ on every pass. The live files stay ignored; the HISTORY does not.
+echo "== GSL-225: supervision trace archived before truncation =="
+SA="$WORK/rw-supervision"; rw_fixture "$SA" 50 1     # fixture ships a 2-pulse heartbeat
+SA_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+printf '{"ts":"%s","event":"tick","decision":"none"}\n' "$SA_TS" > "$SA/docs/handoff/.watchdog-ledger.jsonl"
+bash "$CH" --repo "$SA" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" 2>/dev/null | tr -d ' ')" == "2" \
+   && "$(wc -l < "$SA/docs/lab/supervision/watchdog-ledger.jsonl" 2>/dev/null | tr -d ' ')" == "1" ]] \
+  && ok "GSL-225: first pass archives every live line (2 pulses + 1 ledger line) into docs/lab/supervision/" \
+  || bad "GSL-225: the archive is missing or short (hb=$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" 2>/dev/null); wd=$(wc -l < "$SA/docs/lab/supervision/watchdog-ledger.jsonl" 2>/dev/null))"
+# Simulate the writer's own self-truncation: the oldest pulse falls off the live file, a new one lands.
+tail -n 1 "$SA/docs/handoff/.orchestrator-heartbeat" > "$SA/docs/handoff/.orchestrator-heartbeat.new"
+printf '{"ts":"%s","cycle":13,"context_pct":55,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$SA_TS" \
+  >> "$SA/docs/handoff/.orchestrator-heartbeat.new"
+mv "$SA/docs/handoff/.orchestrator-heartbeat.new" "$SA/docs/handoff/.orchestrator-heartbeat"
+bash "$CH" --repo "$SA" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" | tr -d ' ')" == "3" ]] \
+  && head -1 "$SA/docs/lab/supervision/heartbeat.jsonl" | grep -q '"cycle":10' \
+  && ok "GSL-225 ⭐ after the live file truncated, the dropped pulse SURVIVES in the archive (3 lines, oldest first)" \
+  || bad "GSL-225 ⭐ truncation ate history the archive was built to keep ($(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" 2>/dev/null) lines)"
+bash "$CH" --repo "$SA" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(wc -l < "$SA/docs/lab/supervision/heartbeat.jsonl" | tr -d ' ')" == "3" ]] \
+  && ok "GSL-225: a third pass adds nothing — the archive is idempotent (dedup by exact line)" \
+  || bad "GSL-225: the archive duplicated lines on an unchanged heartbeat"
+# The point of the whole task: the archive path is TRACKED, not swallowed by an ignore pattern.
+git -C "$REPO_ROOT" check-ignore -q docs/lab/supervision/heartbeat.jsonl 2>/dev/null \
+  && bad "GSL-225: docs/lab/supervision/ is gitignored — the trace still cannot enter git" \
+  || ok "GSL-225: docs/lab/supervision/ is tracked by git — the supervision trace finally has history"
+
 # ═══════════ GSL-221: the token ceiling — default / override / unlimited (d-2026-07-28-007) ═══════════
 #
 # The owner's directive, verbatim in spirit: a limit MAY exist, but it MUST be configurable; the

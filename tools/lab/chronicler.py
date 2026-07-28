@@ -3573,6 +3573,64 @@ def build_mobile(bundle, ui=None):
                                                 _ml(bundle.get("schema"), 40)))
     return "\n".join(L) + "\n"
 
+# ═════════ GSL-225: the supervision trace survives its own truncation (finding 60) ═════════
+#
+# The heartbeat self-truncates to 200 lines by its WRITER'S contract (the orchestrator skill's
+# atomic-append snippet — sovereign, not changeable from here), the watchdog ledger lives beside
+# it, and both are gitignored as live runtime state. The price the audit paid for that: its entire
+# empirical base covered FOUR DAYS, because nothing older survived anywhere on disk — and the
+# mandate asks for a trend, which needs history. One `git clean -fdx` erases the whole record.
+#
+# So the chronicler — which reads these files every pass anyway — archives every line it has not
+# seen before into TRACKED files under docs/lab/supervision/. The live files stay gitignored
+# (their writers' contract stands); the trace enters git through the archive. Dedup is by exact
+# line: a pulse is one JSON line with a second-resolution ts and a cycle, so the same line twice
+# is the same pulse. Order: the old archive first, then the new lines in the live file's order —
+# append-only in effect, atomic in mechanism (lab_write), idempotent by construction.
+
+SUPERVISION_SOURCES = (
+    ("docs/handoff/.orchestrator-heartbeat", "docs/lab/supervision/heartbeat.jsonl"),
+    ("docs/handoff/.watchdog-ledger.jsonl",  "docs/lab/supervision/watchdog-ledger.jsonl"),
+)
+
+
+def archive_supervision():
+    out = {}
+    for src_rel, dst_rel in SUPERVISION_SOURCES:
+        src, dst = os.path.join(REPO, src_rel), os.path.join(REPO, dst_rel)
+        try:
+            with open(src, encoding="utf-8") as f:
+                live = [l.rstrip("\n") for l in f if l.strip()]
+        except FileNotFoundError:
+            out[dst_rel] = {"archived": 0, "why": "no %s on this machine — nothing to archive "
+                                                  "(a fresh clone has none; not an error)" % src_rel}
+            continue
+        except OSError as exc:
+            degrade("supervision-archive", exc)
+            continue
+        old = []
+        try:
+            with open(dst, encoding="utf-8") as f:
+                old = [l.rstrip("\n") for l in f if l.strip()]
+        except FileNotFoundError:
+            pass                                  # first archive on this clone
+        except OSError as exc:
+            degrade("supervision-archive", exc)
+            continue
+        seen = set(old)
+        fresh = [l for l in live if l not in seen]
+        if fresh:
+            try:
+                if not ARGS["dry_run"]:
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                lab_write(dst_rel, "\n".join(old + fresh) + "\n")
+            except Exception as exc:
+                degrade("supervision-archive", exc)
+                continue
+        out[dst_rel] = {"archived": len(fresh), "total": len(old) + len(fresh)}
+    return out
+
+
 # ───────────────────────────── poll-fill hook (GSL-87) ────────────────────────
 
 def poll_fill():
@@ -3600,6 +3658,9 @@ def main():
     t0 = time.time()
 
     poll = poll_fill() if ARGS["poll"] else {"ran": False, "why": "--no-poll"}
+    # GSL-225: archive the supervision trace BEFORE anything else can fail — the one job that must
+    # not wait for a healthy pass, because the live files truncate themselves on the writer's clock.
+    sup_archive = archive_supervision()
 
     events_all, event_days = load_events()
     events_all = fold_superseded(events_all)
@@ -3725,6 +3786,7 @@ def main():
                                           if c["axis"] == "budget"), None)},
         "ui": ui,
         "poll_fill": poll,
+        "supervision_archive": sup_archive,      # GSL-225: what survived truncation this pass
         "retention": retention,
         "narrative": (ctx["narrative"] or {}).get("error") or
                      ("ok" if ctx.get("narrative") else "not requested"),

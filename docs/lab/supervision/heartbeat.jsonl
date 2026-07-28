@@ -1,0 +1,200 @@
+{"ts":"2026-07-21T18:13:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T18:39:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T19:05:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T19:33:36Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T19:59:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T20:30:49Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T22:37:58Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-21T23:09:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T02:35:32Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T06:30:49Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T07:07:31Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T08:32:51Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T09:33:45Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T10:34:44Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T11:35:44Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T12:01:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T12:27:13Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T12:53:13Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T13:19:13Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T13:45:15Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T14:11:13Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T14:37:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T15:12:34Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T16:46:06Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T17:22:24Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T18:50:05Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T19:16:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T19:42:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T20:08:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T20:34:14Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T20:59:35Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-22T21:25:12Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-23T02:59:24Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-23T05:26:50Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: PR #135 awaiting owner verdict"}
+{"ts":"2026-07-23T12:13:28Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"owner asked for open questions; composing package"}
+{"ts":"2026-07-23T12:39:17Z","cycle":81,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"standby: handoff 46 committed 8c83174; successor prompt delivered to owner"}
+{"ts":"2026-07-23T13:04:13Z","cycle":82,"context_pct":35,"open_workers":0,"status":"ok","pane":"%193","note":"shift-72 cold-start clean; awaiting owner verdict PR #135"}
+{"ts":"2026-07-23T13:35:10Z","cycle":82,"context_pct":38,"open_workers":0,"status":"ok","pane":"%193","note":"standby pulse; awaiting owner verdict PR #135"}
+{"ts":"2026-07-23T13:43:06Z","cycle":83,"context_pct":42,"open_workers":1,"status":"ok","pane":"%193","note":"verdict=MERGE; finalizer-135 merging PR #135"}
+{"ts":"2026-07-23T13:52:07Z","cycle":83,"context_pct":45,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: checking finalizer-135 merge progress"}
+{"ts":"2026-07-23T14:04:08Z","cycle":84,"context_pct":50,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: report-138 building dashboard runs/01"}
+{"ts":"2026-07-23T14:42:09Z","cycle":84,"context_pct":55,"open_workers":0,"status":"ok","pane":"%193","note":"standby: run 01 delivered, awaiting owner review"}
+{"ts":"2026-07-23T15:13:11Z","cycle":84,"context_pct":56,"open_workers":0,"status":"ok","pane":"%193","note":"standby: run 01 delivered, awaiting owner review"}
+{"ts":"2026-07-23T15:44:08Z","cycle":84,"context_pct":57,"open_workers":0,"status":"ok","pane":"%193","note":"standby: run 01 delivered, awaiting owner review"}
+{"ts":"2026-07-23T16:15:08Z","cycle":84,"context_pct":58,"open_workers":0,"status":"ok","pane":"%193","note":"standby: run 01 delivered, awaiting owner review"}
+{"ts":"2026-07-23T16:27:35Z","cycle":85,"context_pct":62,"open_workers":1,"status":"ok","pane":"%193","note":"owner feedback on run 01; design-01 building design showcase"}
+{"ts":"2026-07-23T16:37:06Z","cycle":85,"context_pct":64,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: design-01 building design showcase"}
+{"ts":"2026-07-23T16:47:07Z","cycle":85,"context_pct":66,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: design-01 mid-cycle"}
+{"ts":"2026-07-23T17:21:08Z","cycle":85,"context_pct":70,"open_workers":0,"status":"ok","pane":"%193","note":"standby: awaiting owner answers on fix-wave plan"}
+{"ts":"2026-07-23T17:29:06Z","cycle":86,"context_pct":74,"open_workers":1,"status":"ok","pane":"%193","note":"fix-wave 1 approved; fixwave-setup creating epic"}
+{"ts":"2026-07-23T17:34:21Z","cycle":87,"context_pct":78,"open_workers":1,"status":"ok","pane":"%193","note":"epic GSL-141 set up; spawning fixwave-impl"}
+{"ts":"2026-07-23T17:45:06Z","cycle":87,"context_pct":80,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave-impl mid-cycle on GSL-141"}
+{"ts":"2026-07-23T17:55:08Z","cycle":87,"context_pct":82,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave-impl implementing (PROGRESS received)"}
+{"ts":"2026-07-23T18:05:06Z","cycle":87,"context_pct":83,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave-impl coding GSL-141 tasks"}
+{"ts":"2026-07-23T18:15:08Z","cycle":87,"context_pct":84,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave-impl commits in progress"}
+{"ts":"2026-07-23T18:25:05Z","cycle":87,"context_pct":85,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave-impl 3+/6 commits"}
+{"ts":"2026-07-23T18:31:13Z","cycle":88,"context_pct":87,"open_workers":0,"status":"ok","pane":"%193","note":"fixwave-impl done, PR #145 open; spawning reviewer"}
+{"ts":"2026-07-23T18:41:07Z","cycle":88,"context_pct":88,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: reviewer-141 reviewing PR #145"}
+{"ts":"2026-07-23T18:49:41Z","cycle":89,"context_pct":89,"open_workers":0,"status":"ok","pane":"%193","note":"review CLEAN; spawning finalizer-141 to merge PR #145"}
+{"ts":"2026-07-23T18:59:14Z","cycle":89,"context_pct":91,"open_workers":0,"status":"ok","pane":"%193","note":"fix wave 1 fully closed @ 54fe290; awaiting owner on run-02 reference"}
+{"ts":"2026-07-23T19:27:09Z","cycle":90,"context_pct":92,"open_workers":0,"status":"ok","pane":"%193","note":"owner delegated; starting run 02 (verifier+regression)"}
+{"ts":"2026-07-23T19:38:07Z","cycle":90,"context_pct":93,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: run 02 two lanes in progress"}
+{"ts":"2026-07-23T19:48:15Z","cycle":91,"context_pct":94,"open_workers":1,"status":"ok","pane":"%193","note":"regression lane done 22/22 HOLDS; verifier-02 continues"}
+{"ts":"2026-07-23T19:58:05Z","cycle":90,"context_pct":95,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: verifier-02 browser lane in progress"}
+{"ts":"2026-07-23T20:02:57Z","cycle":92,"context_pct":96,"open_workers":0,"status":"ok","pane":"%193","note":"run 02 complete 0C/2M/5m; starting fix wave 2"}
+{"ts":"2026-07-23T20:13:07Z","cycle":92,"context_pct":97,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave2 implementing (setup done, epic GSL-153)"}
+{"ts":"2026-07-23T20:23:05Z","cycle":92,"context_pct":97,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave2 on MAJOR fixes"}
+{"ts":"2026-07-23T20:33:05Z","cycle":92,"context_pct":97,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave2 2/7 done (both MAJOR), on MINORs"}
+{"ts":"2026-07-23T20:41:10Z","cycle":93,"context_pct":97,"open_workers":0,"status":"ok","pane":"%193","note":"fixwave2 done PR #156; spawning reviewer"}
+{"ts":"2026-07-23T20:51:06Z","cycle":93,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: reviewer-153 reviewing PR #156"}
+{"ts":"2026-07-23T20:54:15Z","cycle":94,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"review CLEAN; spawning finalizer-153"}
+{"ts":"2026-07-23T21:03:15Z","cycle":95,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"fix wave 2 closed @ d632e31; starting run 03"}
+{"ts":"2026-07-23T21:14:07Z","cycle":95,"context_pct":98,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: run 03 lanes in progress"}
+{"ts":"2026-07-23T21:24:08Z","cycle":95,"context_pct":98,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: verifier-03 filing Jira+report (2M/3m); regression-03 running"}
+{"ts":"2026-07-23T21:28:24Z","cycle":96,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"regression-03 done 29/29 HOLDS; verifier-03 finishing"}
+{"ts":"2026-07-23T21:32:07Z","cycle":97,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"run 03 complete 0C/2M/3m; starting fix wave 3"}
+{"ts":"2026-07-23T21:42:08Z","cycle":97,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave3 implementing (epic GSL-161)"}
+{"ts":"2026-07-23T21:52:07Z","cycle":97,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave3 2/5 done (both MAJOR), on MINORs"}
+{"ts":"2026-07-23T22:02:05Z","cycle":97,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fixwave3 3/5 done, MINORs + rebuild remaining"}
+{"ts":"2026-07-23T22:11:09Z","cycle":98,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"fixwave3 done PR #165; spawning reviewer"}
+{"ts":"2026-07-23T22:21:06Z","cycle":98,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: reviewer-161 reviewing PR #165"}
+{"ts":"2026-07-23T22:22:05Z","cycle":99,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"review CLEAN; spawning finalizer-161"}
+{"ts":"2026-07-23T22:29:33Z","cycle":100,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"fix wave 3 closed @ 1f1899f; starting run 04"}
+{"ts":"2026-07-23T22:40:07Z","cycle":100,"context_pct":98,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: run 04 lanes in progress"}
+{"ts":"2026-07-23T22:50:06Z","cycle":100,"context_pct":98,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: run 04 verdict 0C/0M/5m; lanes finishing reports"}
+{"ts":"2026-07-23T22:54:38Z","cycle":101,"context_pct":98,"open_workers":1,"status":"ok","pane":"%193","note":"regression-04 done 34/34 HOLDS; verifier-04 finishing"}
+{"ts":"2026-07-23T23:01:52Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"run 04 complete 0C/0M/5m 92/100 - cycle converged; DECISION queued"}
+{"ts":"2026-07-23T23:33:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"standby: cycle converged, DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T00:04:53Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T00:35:35Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T01:06:10Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T01:37:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T02:08:10Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T02:39:10Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T03:10:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T03:41:13Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T04:12:10Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T04:43:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T05:14:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T05:45:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T06:16:11Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T06:47:30Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","mode":"night","pane":"%193","note":"night standby: DECISION q-002 pending (07:30Z)"}
+{"ts":"2026-07-24T07:18:13Z","cycle":102,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"morning pulse: checking DECISION q-002 deadline"}
+{"ts":"2026-07-24T07:34:17Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"deadline hit: applying q-002 default, finalizing shift"}
+{"ts":"2026-07-24T07:36:37Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"shift 72 finalized: ledger 3b476fc, handoff 47, digest; day standby"}
+{"ts":"2026-07-24T08:07:11Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: shift finalized, awaiting owner review"}
+{"ts":"2026-07-24T08:38:15Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T09:09:11Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T09:40:12Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T10:11:10Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T10:42:11Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T11:13:11Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T11:44:11Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T12:15:11Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T12:46:13Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T13:17:14Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T13:48:12Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T14:19:12Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T14:50:13Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T15:21:10Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T15:52:10Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T16:23:14Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T16:54:10Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T17:25:12Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T17:56:10Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T18:27:14Z","cycle":103,"context_pct":98,"open_workers":0,"status":"ok","pane":"%193","note":"day standby: awaiting owner review"}
+{"ts":"2026-07-24T18:54:30Z","cycle":103,"context_pct":80,"open_workers":0,"status":"ok","pane":"%193","note":"briefing 48 written for new orchestrator: global system audit vs source mandate"}
+{"ts":"2026-07-24T18:58:12Z","cycle":103,"context_pct":80,"open_workers":0,"status":"ok","pane":"%193","note":"awaiting owner A/B launch decision on system-audit (briefing 48)"}
+{"ts":"2026-07-24T19:05:05Z","cycle":103,"context_pct":80,"open_workers":0,"status":"rolling","pane":"%193","note":"shift-72 session closed; successor expected on Opus 5 per briefing 48; no wakeup armed"}
+{"ts":"2026-07-24T19:11:41Z","cycle":104,"context_pct":10,"open_workers":0,"status":"ok","pane":"%193","note":"shift-73 cold-start: 5 skills up, sources read, Opus 5"}
+{"ts":"2026-07-24T19:25:26Z","cycle":105,"context_pct":14,"open_workers":2,"status":"ok","pane":"%193","note":"wave1: supervision COMPLETE (2 CRITICAL); autonomy+rivals running"}
+{"ts":"2026-07-24T19:28:40Z","cycle":105,"context_pct":15,"open_workers":3,"status":"ok","pane":"%193","note":"late idle-notif from killed audit-supervision = noise; wave1+web running"}
+{"ts":"2026-07-24T19:32:01Z","cycle":106,"context_pct":18,"open_workers":2,"status":"ok","pane":"%193","note":"wave1: autonomy COMPLETE (2 CRITICAL); rivals+web running"}
+{"ts":"2026-07-24T19:34:43Z","cycle":106,"context_pct":19,"open_workers":3,"status":"ok","pane":"%193","note":"late idle-notif from killed audit-autonomy = noise; 3 workers healthy"}
+{"ts":"2026-07-24T19:35:28Z","cycle":107,"context_pct":22,"open_workers":2,"status":"ok","pane":"%193","note":"wave1 CLOSED (rivals done); web+delivery running; spawning redteam"}
+{"ts":"2026-07-24T19:47:11Z","cycle":107,"context_pct":24,"open_workers":3,"status":"ok","pane":"%193","note":"pulse: web+delivery+redteam running; wave1 findings on disk"}
+{"ts":"2026-07-24T19:53:10Z","cycle":108,"context_pct":26,"open_workers":2,"status":"ok","pane":"%193","note":"delivery COMPLETE (2C: watchdog confirmed x3, PRD dead as a plan)"}
+{"ts":"2026-07-24T19:55:11Z","cycle":108,"context_pct":27,"open_workers":3,"status":"ok","pane":"%193","note":"late idle-notif from killed audit-delivery = noise; web/redteam/skills running"}
+{"ts":"2026-07-24T19:56:56Z","cycle":109,"context_pct":30,"open_workers":2,"status":"ok","pane":"%193","note":"web COMPLETE (4 CRITICAL: site stale 21h and lies); spawning synthesis"}
+{"ts":"2026-07-24T19:59:49Z","cycle":110,"context_pct":33,"open_workers":2,"status":"ok","pane":"%193","note":"redteam COMPLETE: all 4 CRITICAL downgraded to MAJOR, 6 numbers corrected"}
+{"ts":"2026-07-24T20:07:57Z","cycle":111,"context_pct":37,"open_workers":2,"status":"ok","pane":"%193","note":"skills COMPLETE: skill contradicts owner rules in 5 places; findings at risk (gitignored)"}
+{"ts":"2026-07-24T20:10:50Z","cycle":111,"context_pct":39,"open_workers":3,"status":"ok","pane":"%193","note":"late idle-notif from killed audit-skills = noise; synth+redteam-web+fix-preserve running"}
+{"ts":"2026-07-24T20:19:07Z","cycle":112,"context_pct":42,"open_workers":2,"status":"ok","pane":"%193","note":"redteam-web COMPLETE: 4 CRITICAL downgraded, 3rd file with systematic overrating"}
+{"ts":"2026-07-24T20:20:41Z","cycle":112,"context_pct":44,"open_workers":2,"status":"ok","pane":"%193","note":"late idle-notif from killed redteam-web = noise; synth+fix-preserve running"}
+{"ts":"2026-07-24T20:24:53Z","cycle":113,"context_pct":46,"open_workers":1,"status":"ok","pane":"%193","note":"fix-preserve COMPLETE: GSL-169 epic, PR #173 open, 9 evidence files in git"}
+{"ts":"2026-07-24T20:27:02Z","cycle":113,"context_pct":48,"open_workers":2,"status":"ok","pane":"%193","note":"late idle-notif from killed fix-preserve = noise; synth+redteam-skills running"}
+{"ts":"2026-07-24T20:37:08Z","cycle":114,"context_pct":49,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: synth finalizing payload+PRD delta; redteam-skills calibrating"}
+{"ts":"2026-07-24T20:41:27Z","cycle":115,"context_pct":51,"open_workers":1,"status":"ok","pane":"%193","note":"redteam-skills COMPLETE: 13 CRITICAL across 3 calibrations, none survived"}
+{"ts":"2026-07-24T20:43:01Z","cycle":115,"context_pct":53,"open_workers":1,"status":"ok","pane":"%193","note":"late idle-notif from killed redteam-skills = noise; synth finalizing"}
+{"ts":"2026-07-24T20:44:53Z","cycle":116,"context_pct":56,"open_workers":1,"status":"ok","pane":"%193","note":"synth delivered 3 files; sent back to integrate 2 missed redteam files"}
+{"ts":"2026-07-24T20:46:08Z","cycle":116,"context_pct":57,"open_workers":1,"status":"ok","pane":"%193","note":"idle-notif from LIVE synth pane — checking whether rework message landed"}
+{"ts":"2026-07-24T20:51:08Z","cycle":117,"context_pct":58,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: synth reworking with 2 calibration files"}
+{"ts":"2026-07-24T20:57:06Z","cycle":118,"context_pct":60,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: synth reworking, report-writer preparing"}
+{"ts":"2026-07-24T21:02:09Z","cycle":119,"context_pct":62,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: awaiting synth rework delivery; report-writer prepared"}
+{"ts":"2026-07-24T21:06:25Z","cycle":120,"context_pct":64,"open_workers":2,"status":"ok","pane":"%193","note":"synth FINAL: 45%, 0 CRITICAL, 8 epics; report-writer building"}
+{"ts":"2026-07-24T21:08:45Z","cycle":120,"context_pct":66,"open_workers":2,"status":"ok","pane":"%193","note":"late idle-notif from killed synth = noise; report-writer + backlog-builder running"}
+{"ts":"2026-07-24T21:19:08Z","cycle":121,"context_pct":67,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: report+backlog building"}
+{"ts":"2026-07-24T21:29:09Z","cycle":122,"context_pct":69,"open_workers":2,"status":"ok","pane":"%193","note":"pulse: report+backlog still building"}
+{"ts":"2026-07-24T21:33:44Z","cycle":123,"context_pct":71,"open_workers":1,"status":"ok","pane":"%193","note":"report-writer COMPLETE: EN+RU dashboard, all checks pass"}
+{"ts":"2026-07-24T21:36:19Z","cycle":123,"context_pct":73,"open_workers":2,"status":"ok","pane":"%193","note":"late idle-notif from killed report-writer = noise; backlog+publish running"}
+{"ts":"2026-07-24T21:37:28Z","cycle":124,"context_pct":75,"open_workers":1,"status":"ok","pane":"%193","note":"backlog COMPLETE: 8 epics GSL-174..181, 61 tasks, 69 GH mirrors"}
+{"ts":"2026-07-24T21:38:47Z","cycle":124,"context_pct":76,"open_workers":1,"status":"ok","pane":"%193","note":"late idle-notif from killed backlog-builder = noise; fix-publish running"}
+{"ts":"2026-07-24T21:49:07Z","cycle":125,"context_pct":77,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: fix-publish finalizing publication"}
+{"ts":"2026-07-24T21:55:54Z","cycle":126,"context_pct":78,"open_workers":0,"status":"ok","pane":"%193","note":"fix-publish COMPLETE: both PRs merged, main 250b207, site fresh"}
+{"ts":"2026-07-24T21:58:34Z","cycle":126,"context_pct":79,"open_workers":1,"status":"ok","pane":"%193","note":"late idle-notif = noise; updating STATE for ledger commit"}
+{"ts":"2026-07-24T22:10:08Z","cycle":127,"context_pct":81,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 working; handoff 49 written, ledger commit pending"}
+{"ts":"2026-07-24T22:20:06Z","cycle":128,"context_pct":82,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177"}
+{"ts":"2026-07-24T22:29:30Z","cycle":129,"context_pct":83,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 committing GSL-177 tasks"}
+{"ts":"2026-07-24T22:39:07Z","cycle":130,"context_pct":84,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177 tasks"}
+{"ts":"2026-07-24T22:49:08Z","cycle":131,"context_pct":85,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177"}
+{"ts":"2026-07-24T22:59:10Z","cycle":132,"context_pct":86,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177"}
+{"ts":"2026-07-24T23:09:09Z","cycle":133,"context_pct":87,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177"}
+{"ts":"2026-07-24T23:19:08Z","cycle":134,"context_pct":88,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177"}
+{"ts":"2026-07-24T23:29:06Z","cycle":135,"context_pct":89,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 on GSL-177"}
+{"ts":"2026-07-24T23:34:07Z","cycle":136,"context_pct":90,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 finalizing GSL-177"}
+{"ts":"2026-07-24T23:39:08Z","cycle":137,"context_pct":91,"open_workers":1,"status":"ok","pane":"%193","note":"pulse: impl-web-177 writing dev_history before PR"}
+{"ts":"2026-07-24T23:43:19Z","cycle":138,"context_pct":91,"open_workers":1,"status":"ok","pane":"%193","note":"impl-web-177 COMPLETE: GSL-177 done, PR #251, smoke 404->452"}
+{"ts":"2026-07-24T23:45:14Z","cycle":139,"context_pct":93,"open_workers":0,"status":"rolling","pane":"%193","note":"shift-73 closed clean: audit done, GSL-177 merged, handoff 49; successor expected"}
+{"ts":"2026-07-24T23:46:09Z","cycle":139,"context_pct":93,"open_workers":0,"status":"rolling","pane":"%193","note":"stale wakeup fired; shift-73 already closed clean, no action needed"}
+{"ts":"2026-07-28T06:51:26Z","cycle":142,"context_pct":25,"open_workers":0,"status":"ok","pane":"%10","note":"shift74 cold-start done"}
+{"ts":"2026-07-28T07:06:25Z","cycle":142,"context_pct":30,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T07:16:06Z","cycle":142,"context_pct":32,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T07:23:59Z","cycle":142,"context_pct":34,"open_workers":1,"status":"ok","pane":"%10","note":"owner answer on q-004 processing"}
+{"ts":"2026-07-28T07:34:06Z","cycle":142,"context_pct":36,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T07:46:19Z","cycle":142,"context_pct":40,"open_workers":1,"status":"ok","pane":"%10","note":"identifying turn-order directive for owner"}
+{"ts":"2026-07-28T07:49:07Z","cycle":142,"context_pct":42,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T07:59:37Z","cycle":142,"context_pct":44,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T08:02:09Z","cycle":142,"context_pct":48,"open_workers":1,"status":"ok","pane":"%10","note":"impl-175 COMPLETE; merge chain starting"}
+{"ts":"2026-07-28T08:07:01Z","cycle":143,"context_pct":55,"open_workers":1,"status":"ok","pane":"%10","note":"finalizer COMPLETE; verifying + closing cycle"}
+{"ts":"2026-07-28T08:15:23Z","cycle":144,"context_pct":58,"open_workers":1,"status":"ok","pane":"%10","note":"impl-179 PROGRESS: branch created, baseline gates"}
+{"ts":"2026-07-28T08:19:08Z","cycle":144,"context_pct":60,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T08:29:09Z","cycle":144,"context_pct":62,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T08:38:17Z","cycle":144,"context_pct":63,"open_workers":1,"status":"quiesced","pane":"%10","note":"quota-wait until 2026-07-28T13:00:00Z (owner pause, ETA est)"}
+{"ts":"2026-07-28T08:43:30Z","cycle":144,"context_pct":65,"open_workers":1,"status":"quiesced","pane":"%10","note":"quota-wait; impl-179 paused clean at 1/6 (f6ee225)"}
+{"ts":"2026-07-28T10:12:19Z","cycle":144,"context_pct":68,"open_workers":1,"status":"ok","pane":"%10","note":"resume by owner signal; un-holding impl-179"}
+{"ts":"2026-07-28T10:20:13Z","cycle":144,"context_pct":70,"open_workers":1,"status":"ok","pane":"%10","note":"impl-179: GSL-222 done, on 223"}
+{"ts":"2026-07-28T10:22:06Z","cycle":144,"context_pct":72,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T10:32:05Z","cycle":144,"context_pct":74,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T10:40:45Z","cycle":144,"context_pct":76,"open_workers":1,"status":"ok","pane":"%10","note":"impl-179 4/6 (223+224 done), on 225"}
+{"ts":"2026-07-28T10:42:06Z","cycle":144,"context_pct":78,"open_workers":1,"status":"ok","pane":"%10"}
