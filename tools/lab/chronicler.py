@@ -1284,6 +1284,106 @@ def lab_write(target_rel, content, as_json=False):
         raise RuntimeError("lab-write %s: %s" % (target_rel, (p.stderr or p.stdout).strip()))
     return target_rel
 
+# ═════════ GSL-222: the autonomy metric — 1 − asks/shipped over a rolling 7 days ═════════
+#
+# Finding 91: RUNWAY needs six inputs and answered nothing in 17 builds, while 5dive's
+# 1 − asks/shipped needs only data already on disk. So this second metric stands NEXT TO the runway,
+# never instead of it — and it never travels without its honest frame (`not_claimed`), because a
+# single number about autonomy is exactly the kind of number that gets quoted without its caveats.
+
+AUTONOMY_WINDOW_DAYS = 7
+ASK_TYPES = ("BLOCKER", "DECISION", "CLARIFY")   # FYI informs; it asks nothing of the owner
+
+
+def load_question_archive():
+    """archive.jsonl is a WHOLE-file artifact rebuilt atomically each pass from already-FOLDED
+    records (apply_retention), so reading it raw is safe — unlike queue.jsonl, which is append-only
+    patches and must only ever be read through lab-emit (docs/lab/questions/README.md). Records here
+    may have been compacted OUT of the queue, which is why the queue alone under-counts asks."""
+    out = []
+    path = os.path.join(LAB, "questions", "archive.jsonl")
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        out.append(json.loads(line))
+                    except ValueError:
+                        pass
+    except FileNotFoundError:
+        pass                                     # no archive yet: nothing has ever been archived
+    except OSError as exc:
+        degrade("question-archive", exc)
+    return out
+
+
+def compute_autonomy(ctx):
+    """1 − asks/shipped over the rolling window ending on the target date.
+
+    asks    = questions the fleet put to the owner (BLOCKER/DECISION/CLARIFY), queue ∪ archive,
+              deduped by id (the queue's folded record wins — it is fresher).
+    shipped = distinct task keys observed standing in Done inside the window, from
+              tracker.issue.updated events (src=poll-fill; GSL-223 is what feeds them).
+
+    shipped == 0 does NOT make the metric 1.0 or 0.0 — it makes it UNMEASURED, and the block says
+    so with the reason. A ratio with a zero denominator quoted as a score is the exact class of lie
+    this laboratory exists to refuse. The value is NOT clamped either: asks > shipped goes negative
+    and is printed raw — a clamp would hide precisely the week that went wrong."""
+    end = ARGS["date"]
+    start = (datetime.datetime.strptime(end, "%Y-%m-%d")
+             - datetime.timedelta(days=AUTONOMY_WINDOW_DAYS - 1)).strftime("%Y-%m-%d")
+
+    seen = {}
+    for q in load_question_archive():
+        if q.get("id"):
+            seen[q["id"]] = q
+    for q in ctx["questions"]:
+        if q.get("id"):
+            seen[q["id"]] = q
+    asks = [q for q in seen.values()
+            if q.get("type") in ASK_TYPES and start <= (q.get("ts") or "")[:10] <= end]
+
+    shipped = set()
+    for e in ctx["events"]:
+        if e.get("type") != "tracker.issue.updated":
+            continue
+        d = e.get("data") or {}
+        if str(d.get("status") or "").strip().lower() != "done" or not d.get("key"):
+            continue
+        day = str(d.get("occurred_at") or "")[:10] or (e.get("ts") or "")[:10]
+        if start <= day <= end:
+            shipped.add(d["key"])
+
+    n_asks, n_shipped = len(asks), len(shipped)
+    value = round(1.0 - (float(n_asks) / n_shipped), 3) if n_shipped > 0 else None
+    return {
+        "value": value,
+        "asks": n_asks,
+        "shipped": n_shipped,
+        "window": {"start": start, "end": end, "days": AUTONOMY_WINDOW_DAYS},
+        "formula": "1 - asks/shipped, rolling %dd (5dive borrowing; audit finding 91)" % AUTONOMY_WINDOW_DAYS,
+        "ask_types": list(ASK_TYPES),
+        "why_unknown": None if value is not None else (
+            "no task was observed reaching Done inside the window (source: tracker.issue.updated "
+            "events, src=poll-fill) — a ratio with a zero denominator is unmeasured, not 1.0 and "
+            "not 0.0. Feed the tracker (poll-fill --jira-json, GSL-223) and this fills in."),
+        # The honest frame, printed WHEREVER the value is printed. Not a footnote.
+        "not_claimed": [
+            "it does not claim the work was CORRECT — only that it did not require a human",
+            "it does not claim real nights happened (finding 78): the window may hold only daytime work",
+            "asks counts only questions that reached the queue; a question asked in chat past the "
+            "queue is invisible to it",
+            "shipped counts only tasks visible to tracker events; work without a tracker key is "
+            "invisible, and a stale tracker feed under-counts it",
+            "it is not comparable across weeks of different workload, and a negative value (asks > "
+            "shipped) is printed raw, never clamped",
+        ],
+        "sources": ["docs/lab/questions/queue.jsonl (via lab-emit fold) + archive.jsonl",
+                    "docs/lab/events/*.jsonl (tracker.issue.updated, status=Done)"],
+    }
+
+
 def build_status(ctx):
     ev, day_ev = ctx["events"], ctx["day_events"]
     last_ts = max([e.get("ts", "") for e in ev], default="") or None
@@ -1339,6 +1439,8 @@ def build_status(ctx):
             "last": ctx["decisions"][-1] if ctx["decisions"] else None,
             "manifest_candidates": ctx["candidates"],
         },
+        # GSL-222: the metric never travels without its frame — the whole block or nothing.
+        "autonomy": ctx["autonomy"],
         "delivery": {
             "branch": ctx["git"]["branch"],
             "head": ctx["git"]["head"],
@@ -2831,6 +2933,17 @@ def build_digest(ctx, status):
     else:
         L.append("- runway: %s (%s/%s axes readable)" % (rw.get("bound"), rw.get("known"),
                                                          rw.get("total")))
+    # GSL-222: the second autonomy number, always WITH its frame. The frame is not a footnote — a
+    # number quoted without it claims more than the data does.
+    au = ctx["autonomy"]
+    if au.get("value") is not None:
+        L.append("- autonomy (rolling %dd, %s → %s): **%s** = 1 − asks/shipped (asks %d, shipped %d)"
+                 % (au["window"]["days"], au["window"]["start"], au["window"]["end"],
+                    au["value"], au["asks"], au["shipped"]))
+    else:
+        L.append("- autonomy (rolling %dd): **unmeasured** — %s"
+                 % (au["window"]["days"], au.get("why_unknown")))
+    L.append("  - what this number does NOT claim: %s." % "; ".join(au["not_claimed"]))
     L.append("")
 
     # 6 — Manifest candidates: verbatim from `lab-emit candidates`.
@@ -3426,6 +3539,7 @@ def main():
     ctx["fleet"]  = fleet_census(events_all, ctx["heartbeat"] or {}, ctx["cost"])
     ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"], ctx["gh_issues"])
     ctx["queue"]  = build_queue(questions)
+    ctx["autonomy"] = compute_autonomy(ctx)          # GSL-222: needs questions + events, nothing later
     ctx["runway"] = compute_runway(ctx)
 
     status = build_status(ctx)

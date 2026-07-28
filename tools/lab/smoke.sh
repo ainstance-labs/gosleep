@@ -1123,6 +1123,37 @@ jq -e '.degraded[] | select(.source=="cost")' "$RCM/docs/lab/render_bundle.json"
   && ok "GSL-221: the fallback is LOUD — the misconfiguration lands in degraded[], on the record" \
   || bad "GSL-221: the misconfiguration was swallowed silently"
 
+# ═════════ GSL-222: autonomy = 1 − asks/shipped over a rolling 7d, WITH its honest frame ═════════
+#
+# Finding 91: the metric that could answer TODAY, from data already on disk. asks = questions the
+# fleet put to the owner (BLOCKER/DECISION/CLARIFY — FYI asks nothing); shipped = distinct task keys
+# observed in Done via tracker events. shipped == 0 -> UNMEASURED, never 1.0 or 0.0. And the number
+# never travels without its "what this does NOT claim" frame — in status.json and in the digest.
+echo "== GSL-222: autonomy metric 1 − asks/shipped (rolling 7d) =="
+AUT="$WORK/rw-autonomy"; rw_fixture "$AUT" 50 1
+AUT_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","run_id":"x","seq":10,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-901","status":"Done","occurred_at":"%s"}}\n' "$AUT_TS" "$AUT_TS"
+  printf '{"ts":"%s","run_id":"x","seq":11,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-902","status":"Done","occurred_at":"%s"}}\n' "$AUT_TS" "$AUT_TS"
+  printf '{"ts":"%s","run_id":"x","seq":12,"actor":"poll-fill","type":"tracker.issue.updated","src":"poll-fill","data":{"key":"GSL-901","status":"Done","occurred_at":"%s"}}\n' "$AUT_TS" "$AUT_TS"
+} >> "$AUT/docs/lab/events/$TODAY.jsonl"
+GOSLEEP_LAB_DIR="$AUT/docs/lab" "$LE" question --type DECISION --from smoke-aut --task GSL-901 \
+  --question "autonomy smoke: merge main or rebase?" --default "merge" --reversibility high >/dev/null 2>&1
+bash "$CH" --repo "$AUT" --no-poll --quiet --json >/dev/null 2>&1
+jq -e '.autonomy.value == 0.5 and .autonomy.asks == 1 and .autonomy.shipped == 2' "$AUT/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "GSL-222 ⭐ 1 ask over 2 shipped (GSL-901 Done twice counts ONCE) -> 0.5 in status.json" \
+  || bad "GSL-222 ⭐ the metric is wrong ($(jq -c '.autonomy | {value,asks,shipped}' "$AUT/docs/lab/status.json" 2>/dev/null))"
+jq -e '.autonomy.not_claimed | length >= 4' "$AUT/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "GSL-222: the honest frame travels with the number in status.json (not_claimed, 4+ items)" \
+  || bad "GSL-222: the frame is missing from status.json"
+grep -q 'autonomy (rolling 7d' "$AUT/docs/lab/digest/$TODAY-morning.md" \
+  && grep -q 'does NOT claim' "$AUT/docs/lab/digest/$TODAY-morning.md" \
+  && ok "GSL-222: the digest prints the metric AND its frame side by side (section 5)" \
+  || bad "GSL-222: the digest lacks the metric or its frame"
+# shipped == 0 -> unmeasured with a reason, never a score. RCD (above) has no tracker event at all.
+jq -e '.autonomy.value == null and (.autonomy.why_unknown | length) > 0' "$RCD/docs/lab/status.json" >/dev/null 2>&1 \
+  && ok "GSL-222 ⭐ zero shipped -> value null + why_unknown — unmeasured, not a fake 1.0/0.0" \
+  || bad "GSL-222 ⭐ a zero denominator produced a score ($(jq -c '.autonomy | {value,shipped}' "$RCD/docs/lab/status.json" 2>/dev/null))"
+
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
 # The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.
 # (Counted by TYPE, not by day: these events are 20h old, so since GSL-89 — where a day is keyed on
