@@ -92,6 +92,20 @@ watchdog refuses to act on a live session and escalates to the owner instead) ·
   tools/lab/heartbeat.sh --cycle 12 --context-pct 41 --open-workers 2 --status ok
 ```
 
+## Замена 5 — пункт HEARTBEAT_OK, читающий строку breaker= (GSL-214)
+
+Старый фрагмент (таблица «Pulse / wake-up tick begins», строка ~946; `grep -cF` = 1):
+
+```
+inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / clocks — all green
+```
+
+Новый:
+
+```
+inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / breaker (`tools/lab/breaker-check.sh` — the STATE `breaker=` line exists, parses, and is not OPEN; rc 2 = deliberate STOP, rc 1 = the line is missing/malformed/tripped-but-closed — fix the line, not the checklist) / clocks — all green
+```
+
 ---
 
 Дельта GSL-219 (поле `cli`) уже включена в замены 2 и 3 выше. Оставшаяся дельта эпика —

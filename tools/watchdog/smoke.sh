@@ -944,6 +944,59 @@ else
   bad "armed-check armed verdict wrong (rc=$rc)"
 fi
 
+echo "== GSL-214: breaker-check — the circuit breaker's mechanical half =="
+BC="$REPO_ROOT/tools/lab/breaker-check.sh"
+if bash -n "$BC"; then ok "breaker-check bash -n (syntax)"; else bad "breaker-check syntax"; fi
+BW="$WORK/breaker"; mkdir -p "$BW/lab/events" "$BW/lab/questions" "$BW/lab/decisions"
+BLINE_CLOSED='breaker=CLOSED since=2026-07-28T10:00:00Z counters: next_same=0/2 no_pr=0/3 err_same=0/3 decline=0/2 cooldown=30m next_probe=none'
+BLINE_OPEN='breaker=OPEN since=2026-07-28T11:00:00Z counters: next_same=2/2 no_pr=1/3 err_same=0/3 decline=0/2 cooldown=30m next_probe=2026-07-28T11:30:00Z'
+BLINE_TRIPPED='breaker=CLOSED since=2026-07-28T10:00:00Z counters: next_same=2/2 no_pr=0/3 err_same=0/3 decline=0/2'
+BLINE_BAD='breaker=CLOSED counters next_same=2'
+bc_run() { # $1=state-file  -> rc
+  GOSLEEP_STATE_FILE="$1" GOSLEEP_BREAKER_MEMO="$BW/memo" GOSLEEP_LAB_DIR="$BW/lab" \
+    bash "$BC" --quiet >/dev/null 2>&1; echo $?
+}
+echo "no breaker line here" > "$BW/state-none.md"
+[ "$(bc_run "$BW/state-none.md")" = "1" ] \
+  && ok "breaker: missing line -> rc 1 (today's honest F11 state, red until the errata lands)" \
+  || bad "breaker: missing line not red"
+echo "$BLINE_CLOSED" > "$BW/state-closed.md"
+[ "$(bc_run "$BW/state-closed.md")" = "0" ] && [ "$(cat "$BW/memo")" = "CLOSED" ] \
+  && ok "breaker: valid CLOSED line -> rc 0, memo remembers the state" \
+  || bad "breaker: CLOSED path wrong"
+# THE ACCEPTANCE: a synthetic OPEN run produces breaker.opened, visible in the
+# (fixture) docs/lab/events/ — same code path as production, q-2026-07-28-005
+# keeps test emissions out of the live log.
+echo "$BLINE_OPEN" > "$BW/state-open.md"
+[ "$(bc_run "$BW/state-open.md")" = "2" ] \
+  && ok "breaker: OPEN -> rc 2 (a deliberate STOP, distinct from a format error)" \
+  || bad "breaker: OPEN rc wrong"
+bev_count() { # $1=type  (lab-emit writes spaced JSON: "type": "...")
+  cat "$BW"/lab/events/*.jsonl 2>/dev/null | { grep -c "\"$1\"" || true; } | tr -d ' '
+}
+[ "$(bev_count breaker.opened)" = "1" ] \
+  && ok "breaker: breaker.opened emitted into docs/lab/events/ (fixture) on the transition" \
+  || bad "breaker: breaker.opened not in events (count=$(bev_count breaker.opened))"
+[ "$(bc_run "$BW/state-open.md")" = "2" ] && [ "$(bev_count breaker.opened)" = "1" ] \
+  && ok "breaker: rerun on the same OPEN does not duplicate the event (edge-triggered)" \
+  || bad "breaker: duplicate breaker.opened on rerun"
+[ "$(bc_run "$BW/state-closed.md")" = "0" ] && [ "$(bev_count breaker.closed)" = "1" ] \
+  && ok "breaker: OPEN -> CLOSED transition emits breaker.closed once" \
+  || bad "breaker: breaker.closed missing after recovery"
+echo "$BLINE_TRIPPED" > "$BW/state-tripped.md"
+[ "$(bc_run "$BW/state-tripped.md")" = "1" ] \
+  && ok "breaker: counter at threshold while CLOSED -> rc 1 (discipline violated, said out loud)" \
+  || bad "breaker: tripped-but-closed not flagged"
+echo "$BLINE_BAD" > "$BW/state-bad.md"
+[ "$(bc_run "$BW/state-bad.md")" = "1" ] \
+  && ok "breaker: malformed line -> rc 1 (loud, never a shrug)" \
+  || bad "breaker: malformed line accepted"
+if grep -qE 'claude (-p|--print)|api\.anthropic|ANTHROPIC_API_KEY=' "$BC"; then
+  bad "breaker-check 0-LLM check failed"
+else
+  ok "breaker-check 0-LLM check"
+fi
+
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
 HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
 if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi
