@@ -4437,6 +4437,23 @@ assert r["launchd"]["idle_runs"] == 5 and r["launchd"]["max_gap_min"] == 5.0, r[
 grep -qE 'claude( -p|\b--print)' "$SCRIPT_DIR/tick-preflight-report.sh" \
   && bad "GSL-201: report 0-LLM (C1)" || ok "GSL-201: the report is 0-LLM and read-only (C1)"
 
+echo "== GSL-203: the shift gate is code, and its standard path POLLS =="
+# Finding 12 (MAJOR): the gate lived as prose in briefs, the prose said --no-poll, the tracker
+# went unpolled for 11 days behind green gates. Now the gate is tools/lab/gate.sh — and these
+# checks pin its contract: offline is DECLARED, never inherited. (Static: running gate.sh here
+# would recurse into this very smoke.)
+GS="$SCRIPT_DIR/gate.sh"
+bash -n "$GS" && ok "GSL-203: gate.sh parses" || bad "GSL-203: gate.sh syntax"
+[ "$(grep -c 'chronicler.sh" --no-poll' "$GS")" = "1" ] \
+  && ok "GSL-203: exactly ONE --no-poll in the gate — inside the declared-offline branch" \
+  || bad "GSL-203: --no-poll count in gate.sh is not 1 — the offline flag is leaking into the standard path"
+grep -q 'chronicler.sh" --quiet' "$GS" \
+  && ok "GSL-203: the standard path runs the chronicler WITH the poll-fill reconcile" \
+  || bad "GSL-203: no polling chronicler call in the standard path"
+grep -q -- '--offline' "$GS" && grep -q 'gates/gate.json' "$GS" \
+  && ok "GSL-203: offline is an explicit flag, and the gate leaves its own receipt" \
+  || bad "GSL-203: missing --offline flag or gate.json receipt"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
