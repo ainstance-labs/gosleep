@@ -876,6 +876,74 @@ else
   bad "cli change detection wrong"
 fi
 
+echo "== GSL-211: armed-check — the supervisor reality gate =="
+AC="$REPO_ROOT/tools/lab/armed-check.sh"
+if bash -n "$AC"; then ok "armed-check bash -n (syntax)"; else bad "armed-check syntax"; fi
+if grep -qE 'claude (-p|--print)|api\.anthropic|ANTHROPIC_API_KEY=' "$AC"; then
+  bad "armed-check 0-LLM check: found a headless/API call"
+else
+  ok "armed-check 0-LLM check (roster read only)"
+fi
+ACW="$WORK/armed-check"; mkdir -p "$ACW"
+# A healthy fixture world: heartbeat whose identity IS in the roster, sane
+# cadence (3 lines ~600s apart, fresh), no conf, no plist -> green, "unarmed".
+cat > "$ACW/roster.json" <<EOF
+[{"pid":1,"cwd":"$REPO_ROOT","kind":"interactive","startedAt":1,"sessionId":"sid-live","name":"gosleep-live","status":"busy"}]
+EOF
+hb_iso() { date -u -r "$1" +%Y-%m-%dT%H:%M:%SZ; }
+{ printf '{"ts":"%s","cycle":1,"context_pct":10,"open_workers":0,"status":"ok","pane":"%%1","session":"gosleep-live","session_id":"sid-live"}\n' "$(hb_iso $((NOW-1200)))"
+  printf '{"ts":"%s","cycle":2,"context_pct":11,"open_workers":0,"status":"ok","pane":"%%1","session":"gosleep-live","session_id":"sid-live"}\n' "$(hb_iso $((NOW-600)))"
+  printf '{"ts":"%s","cycle":3,"context_pct":12,"open_workers":0,"status":"ok","pane":"%%1","session":"gosleep-live","session_id":"sid-live"}\n' "$(hb_iso "$NOW")"
+} > "$ACW/hb-good"
+rc=0
+GOSLEEP_HB_FILE="$ACW/hb-good" GOSLEEP_AGENTS_JSON="$ACW/roster.json" \
+  GOSLEEP_WATCHDOG_PLIST="$ACW/no-plist" GOSLEEP_GATES_DIR="$ACW/gates-good" \
+  bash "$AC" >/dev/null 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] \
+   && python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["verdict"]=="unarmed" and r["fail"]==0 and r["gate"]=="armed-check" and any(c["name"]=="session" and c["state"]=="pass" for c in r["checks"])' "$ACW/gates-good/armed-check.json" 2>/dev/null; then
+  ok "armed-check green on a consistent world: verdict=unarmed (a fact, not a failure), receipt in gates shape"
+else
+  bad "armed-check green path wrong (rc=$rc, see $ACW/gates-good)"
+fi
+# THE ACCEPTANCE RED: the same world but the heartbeat declares an ALIEN session
+# -> session check fails, exit 1, verdict misconfigured. This is F2 caught in
+# seconds instead of at 03:00.
+sed 's/gosleep-live/gosleep-alien/; s/sid-live/sid-alien/' "$ACW/hb-good" > "$ACW/hb-alien"
+rc=0
+GOSLEEP_HB_FILE="$ACW/hb-alien" GOSLEEP_AGENTS_JSON="$ACW/roster.json" \
+  GOSLEEP_WATCHDOG_PLIST="$ACW/no-plist" GOSLEEP_GATES_DIR="$ACW/gates-alien" \
+  bash "$AC" >/dev/null 2>&1 || rc=$?
+if [ "$rc" -eq 1 ] \
+   && python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["verdict"]=="misconfigured" and any(c["name"]=="session" and c["state"]=="fail" for c in r["checks"])' "$ACW/gates-alien/armed-check.json" 2>/dev/null; then
+  ok "armed-check RED on an alien session name: exit 1, verdict=misconfigured (F2 caught in seconds)"
+else
+  bad "armed-check alien-session path wrong (rc=$rc)"
+fi
+# Cadence guard: a threshold below the real cadence is refused (the F3 shape).
+echo 'WD_HB_STALE_SECS=300' > "$ACW/conf-tight"
+rc=0
+GOSLEEP_HB_FILE="$ACW/hb-good" GOSLEEP_AGENTS_JSON="$ACW/roster.json" \
+  GOSLEEP_WATCHDOG_PLIST="$ACW/no-plist" GOSLEEP_GATES_DIR="$ACW/gates-cad" \
+  WD_CONFIG="$ACW/conf-tight" bash "$AC" >/dev/null 2>&1 || rc=$?
+if [ "$rc" -eq 1 ] \
+   && python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert any(c["name"]=="cadence" and c["state"]=="fail" for c in r["checks"])' "$ACW/gates-cad/armed-check.json" 2>/dev/null; then
+  ok "armed-check RED on a threshold below the measured cadence (F3 caught before arming)"
+else
+  bad "armed-check cadence guard wrong (rc=$rc)"
+fi
+# Armed conf + plist present -> verdict "armed" (the tile's green word).
+echo 'WD_MODE=armed' > "$ACW/conf-armed"; : > "$ACW/plist-present"
+rc=0
+GOSLEEP_HB_FILE="$ACW/hb-good" GOSLEEP_AGENTS_JSON="$ACW/roster.json" \
+  GOSLEEP_WATCHDOG_PLIST="$ACW/plist-present" GOSLEEP_GATES_DIR="$ACW/gates-armed" \
+  WD_CONFIG="$ACW/conf-armed" bash "$AC" >/dev/null 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] \
+   && python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["verdict"]=="armed" and r["mode"]=="armed" and r["scheduled"] is True' "$ACW/gates-armed/armed-check.json" 2>/dev/null; then
+  ok "armed-check: armed conf + scheduled plist -> verdict=armed"
+else
+  bad "armed-check armed verdict wrong (rc=$rc)"
+fi
+
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
 HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
 if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi

@@ -4109,10 +4109,10 @@ echo "== GSL-206: the supervisor tile and the gates strip =="
 [[ -n "$(jq -r '.supervision.loaded_why // empty' "$LKB")" ]] \
   && ok "GSL-206: the half that was NOT measured (launchctl) is stated out loud, not implied by silence" \
   || bad "GSL-206: the tile claims 'armed' without saying that loaded-ness was never checked"
-[[ "$(jq -r '.gates.runs | length' "$LKB")" == "3" ]] \
-  && ok "GSL-206: all three declared gates get a tile — a gate that stopped writing cannot vanish" \
+[[ "$(jq -r '.gates.runs | length' "$LKB")" == "4" ]] \
+  && ok "GSL-206: all four declared gates get a tile (armed-check joined in GSL-211) — a gate that stopped writing cannot vanish" \
   || bad "GSL-206: the gates strip is built from whatever files exist, so a broken gate disappears"
-[[ "$(jq -r '[.gates.runs[] | select(.state=="unknown") | select(.cmd != null and .cmd != "")] | length' "$LKB")" == "3" ]] \
+[[ "$(jq -r '[.gates.runs[] | select(.state=="unknown") | select(.cmd != null and .cmd != "")] | length' "$LKB")" == "4" ]] \
   && ok "GSL-206: with no receipts every gate reads unknown AND names the command that fills it" \
   || bad "GSL-206: an unknown gate is not actionable (no cmd) or was graded without a receipt"
 grep -q 'id="supervisor" data-armed="false"' "$LK/docs/lab/site/index.html" \
@@ -4322,8 +4322,8 @@ TK_RC1=$?
   || bad "GSL-199: first tick exited $TK_RC1"
 [ "$(wc -l < "$TKLED" | tr -d ' ')" = "1" ] \
   && ok "GSL-199: exactly ONE ledger line per run" || bad "GSL-199: ledger lines after run 1: $(wc -l < "$TKLED" 2>/dev/null)"
-python3 -c 'import json,sys; m=json.loads(open(sys.argv[1]).readline()); assert m["mode"]=="tick" and m["carrier"]=="smoke" and m["result"]=="ok" and m["applied"]==1 and m["chronicler"]=="ran" and m["armed_check"]=="absent"' "$TKLED" \
-  && ok "GSL-199: ledger line carries carrier/applied=1/chronicler=ran/armed_check=absent honestly" \
+python3 -c 'import json,sys; m=json.loads(open(sys.argv[1]).readline()); assert m["mode"]=="tick" and m["carrier"]=="smoke" and m["result"]=="ok" and m["applied"]==1 and m["chronicler"]=="ran" and m["armed_check"].startswith("rc=")' "$TKLED" \
+  && ok "GSL-199: ledger line carries carrier/applied=1/chronicler=ran + armed_check rc (GSL-211 ended the absent era)" \
   || bad "GSL-199: ledger line fields wrong: $(head -1 "$TKLED" 2>/dev/null)"
 GOSLEEP_LAB_DIR="$TKL" "$LE" list --status auto-resolved --json | grep -q "tick fixture" \
   && ok "GSL-199 ⭐ a synthetic overdue DECISION was applied with ZERO agent sessions (the epic's done-criterion)" \

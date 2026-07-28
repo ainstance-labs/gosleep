@@ -184,11 +184,18 @@ else
 fi
 
 # ── 4. armed-check: report armedness, never fake it ──────────────────────────
+# GSL-211 shipped it. Everything it reads and writes follows the repo being
+# ticked (fixture ticks must never grade — or overwrite the receipt of — the
+# real machine); explicit env still wins, same rule as the lab dir above.
 if [ -x "$SCRIPT_DIR/armed-check.sh" ]; then
-  bash "$SCRIPT_DIR/armed-check.sh" >/dev/null 2>&1
+  GOSLEEP_HB_FILE="${GOSLEEP_HB_FILE:-$REPO/docs/handoff/.orchestrator-heartbeat}" \
+  GOSLEEP_WD_LEDGER="${GOSLEEP_WD_LEDGER:-$REPO/docs/handoff/.watchdog-ledger.jsonl}" \
+  GOSLEEP_GATES_DIR="${GOSLEEP_GATES_DIR:-$REPO/.artifacts/lab/gates}" \
+  WD_CONFIG="${WD_CONFIG:-$REPO/tools/watchdog/watchdog.conf}" \
+    bash "$SCRIPT_DIR/armed-check.sh" >/dev/null 2>&1
   ARMED="rc=$?"
 else
-  ARMED="absent"   # GSL-211 (watchdog epic) will ship it; until then the ledger tells the truth
+  ARMED="absent"   # the ledger tells the truth if it ever goes missing again
 fi
 
 # ── 5. the one ledger line ───────────────────────────────────────────────────
