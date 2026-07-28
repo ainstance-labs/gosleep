@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-28T11:02:08Z",
+  "generated_at": "2026-07-28T12:00:39Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-28",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 11,
-    "max_event_age_human": "11s",
-    "latest_event_ts": "2026-07-28T11:01:57Z",
-    "heartbeat_age_s": 259,
+    "max_event_age_s": 33,
+    "max_event_age_human": "33s",
+    "latest_event_ts": "2026-07-28T12:00:06Z",
+    "heartbeat_age_s": 392,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2706,
-    "today": 201,
+    "total": 2761,
+    "today": 256,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -31,21 +31,21 @@
       "2026-07-28"
     ],
     "by_type": {
-      "agent.turn_ended": 603,
+      "agent.turn_ended": 613,
       "tracker.issue.updated": 403,
-      "agent.idle": 250,
-      "tracker.issue.transitioned": 207,
+      "agent.idle": 251,
+      "tracker.issue.transitioned": 215,
       "agent.terminated": 181,
       "tracker.issue.created": 169,
-      "dev_history.written": 144,
-      "vcs.commit": 144,
-      "handoff.written": 124,
-      "pane.ended": 87,
-      "pane.started": 83,
-      "vcs.push": 45,
+      "dev_history.written": 163,
+      "vcs.commit": 154,
+      "handoff.written": 126,
+      "pane.ended": 88,
+      "pane.started": 84,
+      "vcs.push": 46,
       "task.completed": 42,
+      "question.posed": 34,
       "vcs.pr.merged": 34,
-      "question.posed": 33,
       "decision.made": 31,
       "question.auto_resolved": 29,
       "vcs.pr.opened": 27,
@@ -53,17 +53,17 @@
       "task.created": 22,
       "agent.spawned": 14,
       "api.failure": 7,
-      "question.answered": 3
+      "question.answered": 4
     },
     "by_src": {
-      "hook:PostToolUse": 913,
-      "hook:Stop": 603,
-      "poll-fill": 367,
-      "hook:TeammateIdle": 250,
+      "hook:PostToolUse": 945,
+      "hook:Stop": 613,
+      "poll-fill": 375,
+      "hook:TeammateIdle": 251,
       "hook:SubagentStop": 181,
-      "emit": 113,
-      "hook:SessionEnd": 87,
-      "hook:SessionStart": 83,
+      "emit": 115,
+      "hook:SessionEnd": 88,
+      "hook:SessionStart": 84,
       "hook:TaskCompleted": 42,
       "hook:Notification": 24,
       "hook:TaskCreated": 22,
@@ -72,8 +72,8 @@
     },
     "by_actor": {
       "claude": 1045,
-      "poll-fill": 367,
-      "general-purpose": 300,
+      "poll-fill": 375,
+      "general-purpose": 336,
       "742d1b58": 174,
       "f97ce3bc": 141,
       "ef6c3777": 85,
@@ -81,7 +81,7 @@
       "orchestrator": 75,
       "6650a7a0": 63,
       "dd3edd33": 63,
-      "a716426f": 46,
+      "a716426f": 55,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
       "worker-backlog-builder": 8,
@@ -279,6 +279,7 @@
       "fix-113": 1,
       "fixer-lab": 1,
       "impl-175": 1,
+      "impl-176": 1,
       "impl-lab-2": 1,
       "impl-mob-2": 1,
       "impl-mob-3": 1,
@@ -290,6 +291,7 @@
       "impl-ui-4": 1,
       "impl-ui-5": 1,
       "impl-ui-7": 1,
+      "t": 1,
       "ui-tasks-setup": 1
     },
     "mechanical_share": 0.823
@@ -348,8 +350,8 @@
     "manifest_candidates": []
   },
   "autonomy": {
-    "value": 0.827,
-    "asks": 14,
+    "value": 0.815,
+    "asks": 15,
     "shipped": 81,
     "window": {
       "start": "2026-07-22",
@@ -376,10 +378,58 @@
     ]
   },
   "delivery": {
-    "branch": "main",
-    "head": "38f3c93",
-    "dirty_paths": 6,
+    "branch": "GSL-176-tick-engine",
+    "head": "0fb475f",
+    "dirty_paths": 17,
     "commits_on_date": [
+      {
+        "sha": "0fb475f",
+        "author": "R",
+        "ts": "2026-07-28T14:00:04+02:00",
+        "subject": "GSL-204 Рунбук мотора docs/runbooks/tick-engine.md: двухслойная модель дебаунс+тик, частоты, чтение леджера, вооружённость/выключение/обратное вооружение без чтения кода, preflight-ночь одним действием, диагностика, границы; dev_history эпика (7 файлов) в индексе"
+      },
+      {
+        "sha": "44882b3",
+        "author": "R",
+        "ts": "2026-07-28T13:59:03+02:00",
+        "subject": "GSL-203 Штатный гейт смены стал кодом без --no-poll: tools/lab/gate.sh (smoke+hooks-verify+tsc+летописец С опросом; оффлайн только явным --offline, --fast для midtask, квитанция gate.json) + эррата для суверенных брифов/STATE; smoke 541→545"
+      },
+      {
+        "sha": "1e945e1",
+        "author": "R",
+        "ts": "2026-07-28T13:53:09+02:00",
+        "subject": "GSL-201 Преflight носителей тика подготовлен: шаблон LaunchAgent (300с, RunAtLoad), preflight-arm/disarm — руки владельца (рендер __REPO__ + plutil + launchctl load -w + дословная инструкция Desktop-задачи), tick-preflight-report.sh — утренняя таблица на носитель (ночь 03–06 локального, паузы, после пробуждения, --json); launchctl агентом не вызывался; smoke 535→541"
+      },
+      {
+        "sha": "803704d",
+        "author": "R",
+        "ts": "2026-07-28T13:47:07+02:00",
+        "subject": "GSL-202 Idle-гейт тика: свежий бандл + пустой list --due → result=idle и выход до poll/летописца/armed-check (ноль сети, пересборок, токенов и окон квоты; холостой прогон виден в леджере); --force обходит; smoke 530→535"
+      },
+      {
+        "sha": "3e0a20a",
+        "author": "R",
+        "ts": "2026-07-28T13:40:13+02:00",
+        "subject": "GSL-199 tools/lab/tick.sh — идемпотентный страховочный тик: poll-fill → apply-due → летописец (только если дебаунс не держит свежесть, 240с<интервала) → armed-check честно absent → одна строка mode=tick в леджер; лок «один тик за раз», --repo для фикстур, 0 LLM; smoke 518→530"
+      },
+      {
+        "sha": "9df9f86",
+        "author": "R",
+        "ts": "2026-07-28T13:26:14+02:00",
+        "subject": "GSL-200 lab-emit apply-due (идемпотентный исполнитель просроченных DECISION, applied_by=apply-due, зеркало в таймлайн) + гварды resolve: отказ до дедлайна (ранний выбор — resolve --early → answered-by-default), отказ двойного закрытия, отказ BLOCKER; smoke 506→518"
+      },
+      {
+        "sha": "ffa5f32",
+        "author": "R",
+        "ts": "2026-07-28T13:18:31+02:00",
+        "subject": "GSL-198 Возвращён дебаунс-хук PostToolUse на записи в docs/lab/: движок chronicler-debounce.sh (двухступенчатый матч tool_input, waiter под локом с heartbeat, quiet 90с/потолок 600с, леджер mode=debounce), fail-open шим, 2 записи в settings.json; smoke 497→506, hooks-verify 14→19"
+      },
+      {
+        "sha": "746e98c",
+        "author": "R",
+        "ts": "2026-07-28T13:02:36+02:00",
+        "subject": "GSL-138 [Docs][Process] Ledger смены 74 (часть 2): эпик GSL-179 слит (#253), handoff 51, решения d-008..010, граница цикла по GSL-223"
+      },
       {
         "sha": "38f3c93",
         "author": "rommxx",
@@ -628,16 +678,15 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-28T10:57:49Z",
-      "cycle": 145,
-      "context_pct": 82,
+      "ts": "2026-07-28T11:54:07Z",
+      "cycle": 146,
+      "context_pct": 91,
       "open_workers": 1,
       "status": "ok",
-      "pane": "%10",
-      "note": "impl-179 COMPLETE; closing cycle"
+      "pane": "%10"
     },
-    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 145 | orchestrator=Fable 5 pane=%10 | ЭПИК GSL-179 ИСПОЛНЕН impl-179: 6/6 (f6ee225/e7d31e5/8989128/42dc5d1/e3ba732/23514ee + e5d0af4 пересборка), PR #253 OPEN/CLEAN @ e5d0af4, Jira задачи Done + эпик In Review, smoke 462→497 FAIL=0, RUNWAY впервые exact. Воркер терминирован (kill-pane %16 подтверждён), телеметрия записана (Fable 5 per d-009). finalizer-179 спавнится: мерж #253 regular, зеркала, Jira Done, граница цикла по GSL-223-чек-листу (JQL-дамп + chronicler БЕЗ --no-poll), ledger-коммит. Умолчания за смену: d-001…010. Клок: q-2026-07-28-004 (архив супервизии) due 12:41:59Z — дефолт уже в коде. | latest handoff=docs/handoff/51-2026-07-28-handoff-impl-179-gsl179-complete.md | questions: open=3 (2B/1D/0C/0F) lines=65 | open_workers=1 | status=merging-GSL-179`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=144 worker=impl-179 model=claude-fable-5 (транскрипт 69044452, 484 записи + <synthetic> retry-маркеры; наследование модели per d-2026-07-28-009) tokens_out=~75000 tokens_in=~310000 cache_read=~7800000 (self-est) | running: cycles=144 total≈19059000 (+исторические гэпы) [эпик GSL-179 6/6: потолок настраиваемый+unlimited (директива владельца d-007 исполнена), метрика автономности 0.816, JQL-автоподхват (Tasks unknown 94%→0), 7-я ось runway, архив супервизии, BLOCKER-рендер; smoke 462→497 FAI"
+    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 146 | orchestrator=Fable 5 pane=%10 | ДВА ЭПИКА ЗАКРЫТЫ ЗА СМЕНУ: GSL-175 (PR #252 @ 679bf53) и GSL-179 (PR #253 @ 38f3c93) — оба слиты regular, зеркала авто, Jira Done, ledger-коммиты a114c8a + 746e98c. Граница цикла по GSL-223-чек-листу отработана впервые: JQL-дамп 249 задач, chronicler без --no-poll, 2706 событий, grade=fresh. Все воркеры терминированы (%11/%15/%16/%18). impl-176 спавнится на эпик GSL-176 (носитель внешнего тика: мотор tick.sh + preflight обоих носителей per d-003; контрольная ночь после эпика per d-005, дату назначает владелец). Клок: q-2026-07-28-004 due 12:41:59Z (дефолт в коде). | latest handoff=docs/handoff/51-2026-07-28-handoff-impl-179-gsl179-complete.md | questions: open=3 (2B/1D/0C/0F) lines=65 | open_workers=1 | status=executing-GSL-176`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=145 worker=finalizer-179 model=claude-fable-5 (транскрипт 70825bfa; наследование per d-009) tokens_out=~9000 (+субагент дампа ~42000) tokens_in=~160000 cache_read=~140000 (self-est) | running: cycles=145 total≈19110000 (+исторические гэпы) [PR #253 MERGED regular 38f3c93, 7/7 зеркал авто, Jira эпик+задачи Done, граница цикла GSL-223: JQL-дамп 249 задач, chronicler 2706 событий FRESH, ledger 746e98c 17 файлов]"
   },
   "degraded": [],
   "narrative": null,
@@ -654,6 +703,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-28T11:02:08Z"
+    "last_success_at": "2026-07-28T12:00:39Z"
   }
 }

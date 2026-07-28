@@ -1345,7 +1345,8 @@ grep -A2 '^## 1\. Waiting for you' "$CR/docs/lab/digest/$TODAY-morning.md" | gre
 # must equal closed, counted through the same tool the chronicler itself reads.
 Q_ARC_RES="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
   --question "archive smoke: does an auto-resolved DECISION reach the archive?" \
-  --default "yes" --default-rationale "smoke" --reversibility high)"
+  --default "yes" --default-rationale "smoke" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z)"
 Q_ARC_ANS="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
   --question "archive smoke: does an answered DECISION reach the archive?" \
   --default "yes" --default-rationale "smoke" --reversibility high)"
@@ -4189,6 +4190,269 @@ grep -q 'span\.unknown:focus \.unk-why' "$LK/docs/lab/site/tasks.html" \
 grep -q 'fHidden' "$LK/docs/lab/site/timeline.html" && grep -q 'sHidden' "$LK/docs/lab/site/timeline.html" \
   && ok "GSL-209: the island filter and the page search AND their two verdicts through one function" \
   || bad "GSL-209: search and filter each set hidden directly — one will silently undo the other"
+
+echo "== GSL-198: chronicler-debounce — the returned PostToolUse trigger =="
+# The element from the original design that fell out at implementation (audit findings 1, 11):
+# writes to docs/lab/ arm ONE background waiter; a quiet window later the chronicler runs ONCE.
+# Hermetic: sandbox state dir, a `touch` stands in for the chronicler (GOSLEEP_DEBOUNCE_CMD seam).
+DB="$WORK/debounce"; DBS="$SCRIPT_DIR/chronicler-debounce.sh"
+mkdir -p "$DB"
+bash -n "$DBS" && ok "debounce: bash -n (syntax)" || bad "debounce: bash -n (syntax)"
+grep -qE 'claude( -p|\b--print)' "$DBS" && bad "debounce: 0-LLM (C1)" || ok "debounce: 0-LLM (C1)"
+dbtrig() {  # dbtrig <state-subdir> <payload-json>
+  printf '%s' "$2" | GOSLEEP_DEBOUNCE_DIR="$DB/$1" GOSLEEP_DEBOUNCE_QUIET=1 GOSLEEP_DEBOUNCE_MAX_WAIT=30 \
+    GOSLEEP_DEBOUNCE_CMD="echo run >> $DB/$1-runs" GOSLEEP_TICK_LEDGER="$DB/$1-ledger.jsonl" bash "$DBS"
+}
+# 1. an irrelevant write never arms it
+dbtrig n1 '{"tool_name":"Write","tool_input":{"file_path":"src/app.ts","content":"x"}}'
+[ ! -f "$DB/n1/last-write" ] && ok "debounce: non-lab write refused (no stamp)" || bad "debounce: non-lab write armed it"
+# 2. a mention in tool_response is a READ of the world, not a write to the lab (the git-status trap:
+#    docs/lab/events/ is permanently dirty in this repo, so `git status` OUTPUT names it constantly)
+dbtrig n2 '{"tool_name":"Bash","tool_input":{"command":"git status"},"tool_response":"M docs/lab/events/x.jsonl"}'
+[ ! -f "$DB/n2/last-write" ] && ok "debounce: tool_response mention refused (no phantom trigger)" \
+  || bad "debounce: tool_response mention armed it"
+# 3. the kill switch
+printf '{"tool_input":{"file_path":"docs/lab/x"}}' | GOSLEEP_DEBOUNCE_DISABLE=1 GOSLEEP_DEBOUNCE_DIR="$DB/n3" \
+  GOSLEEP_DEBOUNCE_CMD="echo run >> $DB/n3-runs" bash "$DBS"
+[ ! -d "$DB/n3" ] && ok "debounce: GOSLEEP_DEBOUNCE_DISABLE=1 is a true kill switch" \
+  || bad "debounce: disabled hook still created state"
+# 4. three rapid lab writes -> exactly ONE run, one ledger line, lock released (the debounce IS the point)
+dbtrig p1 '{"tool_name":"Write","tool_input":{"file_path":"docs/lab/questions/queue.jsonl","content":"a"}}'
+dbtrig p1 '{"tool_name":"Bash","tool_input":{"command":"tools/lab/lab-emit.sh question --type FYI"}}'
+dbtrig p1 '{"tool_name":"Edit","tool_input":{"file_path":"docs/lab/README.md"}}'
+[ -f "$DB/p1/last-write" ] && ok "debounce: lab write arms the stamp" || bad "debounce: lab write left no stamp"
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do [ -f "$DB/p1-runs" ] && break; sleep 1; done
+sleep 2
+P1RUNS="$(wc -l < "$DB/p1-runs" 2>/dev/null | tr -d ' ')"
+[ "$P1RUNS" = "1" ] && ok "debounce: three writes collapse into ONE chronicler run" \
+  || bad "debounce: expected exactly 1 run, got '${P1RUNS:-none}'"
+grep -q '"mode":"debounce"' "$DB/p1-ledger.jsonl" 2>/dev/null \
+  && ok "debounce: the run left its one ledger line (mode=debounce)" \
+  || bad "debounce: no ledger line — a rebuild nobody can prove happened"
+[ ! -d "$DB/p1/waiter.lock" ] && ok "debounce: waiter lock released after the run" \
+  || bad "debounce: waiter lock still held — the next quiet window would be missed"
+
+echo "== GSL-200: apply-due + resolve refuses early and double closes =="
+# Audit finding 7 (MAJOR): 10 of 20 defaults were applied BEFORE their deadline yet recorded as
+# auto-resolved — a status that lies about whether the owner ever had a veto window. Finding 49:
+# nothing ever applied the defaults whose deadline DID pass. apply-due is that executor; resolve
+# now tells the two acts apart. Fresh sandbox lab: this section owns its own queue.
+AD="$WORK/apply-due-lab"
+ADQ="$AD/questions/queue.jsonl"
+AD_OVER="$(GOSLEEP_LAB_DIR="$AD" "$LE" question --type DECISION --from smoke-ad --task GSL-200 \
+  --question "overdue: apply me?" --default "apply the default" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z)"
+AD_FUT="$(GOSLEEP_LAB_DIR="$AD" "$LE" question --type DECISION --from smoke-ad --task GSL-200 \
+  --question "future: leave me open?" --default "wait" --reversibility high \
+  --auto-apply-at 2999-01-01T00:00:00Z)"
+AD_BLK="$(GOSLEEP_LAB_DIR="$AD" "$LE" question --type BLOCKER --from smoke-ad --task GSL-200 \
+  --question "blocker: nobody defaults me")"
+# 1. resolve refuses a record whose deadline has not fired — and the record stays open
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_FUT" --applied "wait" >/dev/null 2>&1 \
+  && bad "GSL-200: resolve closed a record BEFORE its deadline" \
+  || ok "GSL-200: resolve refuses to close before auto_apply_at"
+GOSLEEP_LAB_DIR="$AD" "$LE" list --status open --json | grep -q "$AD_FUT" \
+  && ok "GSL-200: the refused record is still open (refusal wrote nothing)" \
+  || bad "GSL-200: refusal mutated the record anyway"
+# 2. resolve refuses a BLOCKER — no default exists to apply
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_BLK" --applied "x" >/dev/null 2>&1 \
+  && bad "GSL-200: resolve auto-closed a BLOCKER" \
+  || ok "GSL-200: resolve refuses a BLOCKER (owner-only closure)"
+# 3. apply-due --dry-run names the one overdue candidate and appends nothing
+AD_LINES0="$(wc -l < "$ADQ" | tr -d ' ')"
+AD_DRY="$(GOSLEEP_LAB_DIR="$AD" "$LE" apply-due --dry-run)"
+echo "$AD_DRY" | grep -q "WOULD-APPLY $AD_OVER" && echo "$AD_DRY" | grep -q "applied=1" \
+  && ok "GSL-200: apply-due --dry-run names exactly the overdue DECISION" \
+  || bad "GSL-200: dry-run candidate list wrong: $AD_DRY"
+[ "$(wc -l < "$ADQ" | tr -d ' ')" = "$AD_LINES0" ] \
+  && ok "GSL-200: dry-run wrote nothing" || bad "GSL-200: dry-run appended to the queue"
+# 4. the real pass applies the overdue default, tags provenance, spares future + BLOCKER
+AD_RUN="$(GOSLEEP_LAB_DIR="$AD" "$LE" apply-due)"
+echo "$AD_RUN" | grep -q "applied=1" \
+  && ok "GSL-200: apply-due applied the one overdue default" \
+  || bad "GSL-200: apply-due run wrong: $AD_RUN"
+GOSLEEP_LAB_DIR="$AD" "$LE" list --status auto-resolved --json \
+  | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline()); assert m["applied"]=="apply the default" and m.get("applied_by")=="apply-due"' \
+  && ok "GSL-200: the closure carries applied= the default text and applied_by=apply-due" \
+  || bad "GSL-200: applied/applied_by provenance missing"
+GOSLEEP_LAB_DIR="$AD" "$LE" list --status open --json | grep -c . | grep -q "^2$" \
+  && ok "GSL-200: future DECISION and BLOCKER are untouched (still the 2 open)" \
+  || bad "GSL-200: apply-due touched a record it had no business closing"
+# 5. idempotence — the acceptance criterion: the second run applies 0 and appends 0 lines
+AD_LINES1="$(wc -l < "$ADQ" | tr -d ' ')"
+GOSLEEP_LAB_DIR="$AD" "$LE" apply-due | grep -q "applied=0" \
+  && [ "$(wc -l < "$ADQ" | tr -d ' ')" = "$AD_LINES1" ] \
+  && ok "GSL-200: apply-due is idempotent — second run applies 0, appends 0" \
+  || bad "GSL-200: second apply-due run was not a no-op"
+# 6. a closed record is never closed again
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_OVER" --applied "again" >/dev/null 2>&1 \
+  && bad "GSL-200: resolve closed an already-closed record" \
+  || ok "GSL-200: resolve refuses a double close"
+# 7. the early pick is honest: --early => answered-by-default, never auto-resolved
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_FUT" --early --applied "wait" >/dev/null \
+  && GOSLEEP_LAB_DIR="$AD" "$LE" list --status answered-by-default --json | grep -q "$AD_FUT" \
+  && ok "GSL-200: resolve --early records answered-by-default (the veto window is not faked)" \
+  || bad "GSL-200: --early path broken"
+# 8. the timeline heard it: apply-due mirrors question.auto_resolved with its own actor
+jq -s '[.[] | select(.type=="question.auto_resolved" and .actor=="apply-due")] | length' \
+  "$AD/events/"*.jsonl 2>/dev/null | grep -q "^1$" \
+  && ok "GSL-200: apply-due mirrored question.auto_resolved (actor=apply-due) into the timeline" \
+  || bad "GSL-200: no timeline mirror from apply-due"
+
+echo "== GSL-199: tick.sh — the idempotent safety tick =="
+# The insurance for hours with no agents alive (audit findings 11, 89): one run does everything
+# the system owes the clock — poll-fill, apply-due, a chronicler rebuild if the debounce did not
+# keep the surfaces fresh, an armedness report — and leaves exactly ONE ledger line. Hermetic:
+# a throwaway git repo with its own lab dir; GOSLEEP_LAB_DIR is pinned per call because smoke's
+# global sandbox would otherwise leak into the fixture.
+TK="$SCRIPT_DIR/tick.sh"; TKF="$WORK/tick-fixture"
+TKL="$TKF/docs/lab"; TKQ="$TKL/questions/queue.jsonl"; TKLED="$TKL/supervision/tick-ledger.jsonl"
+bash -n "$TK" && ok "tick: bash -n (syntax)" || bad "tick: bash -n (syntax)"
+grep -qE 'claude( -p|\b--print)' "$TK" && bad "tick: 0-LLM (C1)" \
+  || ok "tick: 0-LLM (C1) — a tick spends no tokens and opens no quota window"
+mkdir -p "$TKL/questions"
+git init -q "$TKF" && git -C "$TKF" commit -q --allow-empty -m init
+GOSLEEP_LAB_DIR="$TKL" "$LE" question --type DECISION --from smoke-tick --task GSL-199 \
+  --question "tick fixture: overdue default to apply" --default "apply me" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z >/dev/null
+# 1. the first tick: applies the overdue default, rebuilds the (absent) surfaces, reports armedness
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+TK_RC1=$?
+[ "$TK_RC1" -eq 0 ] && ok "GSL-199: first tick exits 0 (degraded sources are data, not failure)" \
+  || bad "GSL-199: first tick exited $TK_RC1"
+[ "$(wc -l < "$TKLED" | tr -d ' ')" = "1" ] \
+  && ok "GSL-199: exactly ONE ledger line per run" || bad "GSL-199: ledger lines after run 1: $(wc -l < "$TKLED" 2>/dev/null)"
+python3 -c 'import json,sys; m=json.loads(open(sys.argv[1]).readline()); assert m["mode"]=="tick" and m["carrier"]=="smoke" and m["result"]=="ok" and m["applied"]==1 and m["chronicler"]=="ran" and m["armed_check"]=="absent"' "$TKLED" \
+  && ok "GSL-199: ledger line carries carrier/applied=1/chronicler=ran/armed_check=absent honestly" \
+  || bad "GSL-199: ledger line fields wrong: $(head -1 "$TKLED" 2>/dev/null)"
+GOSLEEP_LAB_DIR="$TKL" "$LE" list --status auto-resolved --json | grep -q "tick fixture" \
+  && ok "GSL-199 ⭐ a synthetic overdue DECISION was applied with ZERO agent sessions (the epic's done-criterion)" \
+  || bad "GSL-199 ⭐ the overdue DECISION was NOT applied by the tick"
+[ -f "$TKL/render_bundle.json" ] \
+  && ok "GSL-199: the tick rebuilt the derived surfaces (bundle exists in the fixture)" \
+  || bad "GSL-199: no bundle after a tick on a stale fixture"
+# 2. idempotence: the second tick changes nothing beyond its own ledger line
+TKQ_L1="$(wc -l < "$TKQ" | tr -d ' ')"
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+[ $? -eq 0 ] && ok "GSL-199: second tick exits 0" || bad "GSL-199: second tick failed"
+[ "$(wc -l < "$TKQ" | tr -d ' ')" = "$TKQ_L1" ] \
+  && ok "GSL-199: second tick appended NOTHING to the queue (idempotent)" \
+  || bad "GSL-199: second tick mutated the queue"
+[ "$(wc -l < "$TKLED" | tr -d ' ')" = "2" ] \
+  && python3 -c 'import json,sys; m=json.loads(open(sys.argv[1]).readlines()[1]); assert m["applied"]==0 and m["chronicler"]=="skipped-fresh"' "$TKLED" \
+  && ok "GSL-199: second tick: applied=0, chronicler skipped-fresh (the debounce window is honoured)" \
+  || bad "GSL-199: second tick was not the no-op it must be"
+# 3. one tick at a time: a held lock is a skip, not a pile-up and not an error
+mkdir -p "$TKF/.artifacts/lab/tick.lock"
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+[ $? -eq 0 ] && tail -1 "$TKLED" | grep -q '"result":"skipped-lock-held"' \
+  && ok "GSL-199: a concurrent tick skips with a ledger line, exit 0" \
+  || bad "GSL-199: lock contention path broken"
+rmdir "$TKF/.artifacts/lab/tick.lock"
+# 4. an unknown flag is a loud usage error, not a silent no-op
+bash "$TK" --no-such-flag >/dev/null 2>&1
+[ $? -eq 2 ] && ok "GSL-199: unknown flag exits 2 (a misconfigured carrier is heard, not swallowed)" \
+  || bad "GSL-199: unknown flag did not exit 2"
+
+echo "== GSL-202: the idle gate — don't wake anything when there is no work =="
+# Finding 89 (5dive borrow): the no-work tick must cost nothing beyond its own ledger line —
+# no poll, no rebuild, no agent session, no quota window — and the quiet run must be VISIBLE.
+# The fixture arrives here fresh from the GSL-199 runs: bundle seconds old, nothing due.
+TKEV="$TKL/events"
+EV_L0="$(cat "$TKEV"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')"
+BND_M0="$(stat -f %m "$TKL/render_bundle.json")"
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+[ $? -eq 0 ] && tail -1 "$TKLED" | grep -q '"result":"idle"' \
+  && ok "GSL-202: fresh bundle + nothing due -> result=idle, exit 0 (the quiet run is on the record)" \
+  || bad "GSL-202: idle path did not fire: $(tail -1 "$TKLED")"
+[ "$(cat "$TKEV"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')" = "$EV_L0" ] \
+  && ok "GSL-202: the idle tick polled NOTHING (event count unchanged)" \
+  || bad "GSL-202: the idle tick still ran poll-fill"
+[ "$(stat -f %m "$TKL/render_bundle.json")" = "$BND_M0" ] \
+  && ok "GSL-202: the idle tick rebuilt NOTHING (bundle untouched)" \
+  || bad "GSL-202: the idle tick still ran the chronicler"
+# a deadline coming due breaks the idle: work exists, the tick must wake and do it
+GOSLEEP_LAB_DIR="$TKL" "$LE" question --type DECISION --from smoke-tick --task GSL-202 \
+  --question "idle gate: a second overdue default" --default "wake up" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z >/dev/null
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+tail -1 "$TKLED" | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline()); assert m["result"]=="ok" and m["applied"]==1 and m["chronicler"]=="ran"' \
+  && ok "GSL-202: an overdue deadline defeats the idle gate — the tick woke and applied it" \
+  || bad "GSL-202: the idle gate slept through a due deadline: $(tail -1 "$TKLED")"
+# --force is the owner's "run it NOW": full pass even when everything is fresh
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet --force
+tail -1 "$TKLED" | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline()); assert m["result"]=="ok" and m["chronicler"]=="ran"' \
+  && ok "GSL-202: --force overrides the idle gate (full pass on a fresh system)" \
+  || bad "GSL-202: --force did not force the full pass"
+
+echo "== GSL-201: carrier preflight — launchd vs Claude Desktop, prepared for the owner =="
+# The carrier fork is the OWNER'S (question 5; d-2026-07-28-003: preflight BOTH on one real
+# night, the primary is whichever actually ticked). Agents prepare; launchctl stays in the
+# owner's hands — so what smoke can honestly prove is: the artifacts are valid, the arm path
+# renders them correctly, and the morning report reads a night's ledger into the right verdict.
+PFD="$SCRIPT_DIR/preflight"
+plutil -lint "$PFD/com.gosleep.tick.plist" >/dev/null 2>&1 \
+  && ok "GSL-201: the launchd plist template parses (plutil -lint)" \
+  || bad "GSL-201: plist template does not lint"
+grep -q "__REPO__/tools/lab/tick.sh" "$PFD/com.gosleep.tick.plist" \
+  && grep -q "<string>launchd</string>" "$PFD/com.gosleep.tick.plist" \
+  && ok "GSL-201: the plist fires tick.sh with carrier=launchd (the ledger can tell carriers apart)" \
+  || bad "GSL-201: plist does not run the tick with the launchd carrier stamp"
+bash -n "$PFD/preflight-arm.sh" && bash -n "$PFD/preflight-disarm.sh" \
+  && ok "GSL-201: arm/disarm scripts parse (owner-run, agent-prepared)" \
+  || bad "GSL-201: arm/disarm syntax error"
+# the arm path is a render: __REPO__ must substitute cleanly into a lintable plist
+PFR="$WORK/preflight-rendered.plist"
+sed "s|__REPO__|$REPO_ROOT|g" "$PFD/com.gosleep.tick.plist" > "$PFR"
+plutil -lint "$PFR" >/dev/null 2>&1 && ! grep -q "__REPO__" "$PFR" \
+  && ok "GSL-201: __REPO__ renders into a lintable, placeholder-free plist (what arm installs)" \
+  || bad "GSL-201: rendered plist broken or placeholder left behind"
+# the morning report: a synthetic preflight night — launchd ticked through 03:00-06:00 local,
+# desktop only at noon — must read into exactly that verdict, per carrier
+PFL="$WORK/preflight-ledger.jsonl"
+python3 - "$PFL" <<'PY'
+import json, sys
+from datetime import datetime, timedelta, timezone
+y = (datetime.now().astimezone() - timedelta(days=1))
+rows = []
+a = y.replace(hour=3, minute=30, second=0, microsecond=0)
+for m in range(0, 30, 5):
+    rows.append({"ts": (a + timedelta(minutes=m)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                 "mode": "tick", "carrier": "launchd", "result": "idle" if m else "ok"})
+n = y.replace(hour=12, minute=0, second=0, microsecond=0)
+for m in (0, 5):
+    rows.append({"ts": (n + timedelta(minutes=m)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                 "mode": "tick", "carrier": "desktop", "result": "ok"})
+open(sys.argv[1], "w").write("\n".join(json.dumps(r) for r in rows) + "\n")
+PY
+bash "$SCRIPT_DIR/tick-preflight-report.sh" --hours 48 --ledger "$PFL" --json \
+  | python3 -c '
+import json, sys
+r = {c["carrier"]: c for c in json.load(sys.stdin)["carriers"]}
+assert r["launchd"]["ticked_at_night"] and r["launchd"]["night_ticks"] == 6, r["launchd"]
+assert not r["desktop"]["ticked_at_night"], r["desktop"]
+assert r["launchd"]["idle_runs"] == 5 and r["launchd"]["max_gap_min"] == 5.0, r["launchd"]
+' && ok "GSL-201: the report reads a synthetic night into the right per-carrier verdict (night YES/NO, gaps, idle)" \
+  || bad "GSL-201: the morning report misreads the night"
+grep -qE 'claude( -p|\b--print)' "$SCRIPT_DIR/tick-preflight-report.sh" \
+  && bad "GSL-201: report 0-LLM (C1)" || ok "GSL-201: the report is 0-LLM and read-only (C1)"
+
+echo "== GSL-203: the shift gate is code, and its standard path POLLS =="
+# Finding 12 (MAJOR): the gate lived as prose in briefs, the prose said --no-poll, the tracker
+# went unpolled for 11 days behind green gates. Now the gate is tools/lab/gate.sh — and these
+# checks pin its contract: offline is DECLARED, never inherited. (Static: running gate.sh here
+# would recurse into this very smoke.)
+GS="$SCRIPT_DIR/gate.sh"
+bash -n "$GS" && ok "GSL-203: gate.sh parses" || bad "GSL-203: gate.sh syntax"
+[ "$(grep -c 'chronicler.sh" --no-poll' "$GS")" = "1" ] \
+  && ok "GSL-203: exactly ONE --no-poll in the gate — inside the declared-offline branch" \
+  || bad "GSL-203: --no-poll count in gate.sh is not 1 — the offline flag is leaking into the standard path"
+grep -q 'chronicler.sh" --quiet' "$GS" \
+  && ok "GSL-203: the standard path runs the chronicler WITH the poll-fill reconcile" \
+  || bad "GSL-203: no polling chronicler call in the standard path"
+grep -q -- '--offline' "$GS" && grep -q 'gates/gate.json' "$GS" \
+  && ok "GSL-203: offline is an explicit flag, and the gate leaves its own receipt" \
+  || bad "GSL-203: missing --offline flag or gate.json receipt"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
