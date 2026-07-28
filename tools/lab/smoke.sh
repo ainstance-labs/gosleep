@@ -4385,6 +4385,58 @@ tail -1 "$TKLED" | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline(
   && ok "GSL-202: --force overrides the idle gate (full pass on a fresh system)" \
   || bad "GSL-202: --force did not force the full pass"
 
+echo "== GSL-201: carrier preflight — launchd vs Claude Desktop, prepared for the owner =="
+# The carrier fork is the OWNER'S (question 5; d-2026-07-28-003: preflight BOTH on one real
+# night, the primary is whichever actually ticked). Agents prepare; launchctl stays in the
+# owner's hands — so what smoke can honestly prove is: the artifacts are valid, the arm path
+# renders them correctly, and the morning report reads a night's ledger into the right verdict.
+PFD="$SCRIPT_DIR/preflight"
+plutil -lint "$PFD/com.gosleep.tick.plist" >/dev/null 2>&1 \
+  && ok "GSL-201: the launchd plist template parses (plutil -lint)" \
+  || bad "GSL-201: plist template does not lint"
+grep -q "__REPO__/tools/lab/tick.sh" "$PFD/com.gosleep.tick.plist" \
+  && grep -q "<string>launchd</string>" "$PFD/com.gosleep.tick.plist" \
+  && ok "GSL-201: the plist fires tick.sh with carrier=launchd (the ledger can tell carriers apart)" \
+  || bad "GSL-201: plist does not run the tick with the launchd carrier stamp"
+bash -n "$PFD/preflight-arm.sh" && bash -n "$PFD/preflight-disarm.sh" \
+  && ok "GSL-201: arm/disarm scripts parse (owner-run, agent-prepared)" \
+  || bad "GSL-201: arm/disarm syntax error"
+# the arm path is a render: __REPO__ must substitute cleanly into a lintable plist
+PFR="$WORK/preflight-rendered.plist"
+sed "s|__REPO__|$REPO_ROOT|g" "$PFD/com.gosleep.tick.plist" > "$PFR"
+plutil -lint "$PFR" >/dev/null 2>&1 && ! grep -q "__REPO__" "$PFR" \
+  && ok "GSL-201: __REPO__ renders into a lintable, placeholder-free plist (what arm installs)" \
+  || bad "GSL-201: rendered plist broken or placeholder left behind"
+# the morning report: a synthetic preflight night — launchd ticked through 03:00-06:00 local,
+# desktop only at noon — must read into exactly that verdict, per carrier
+PFL="$WORK/preflight-ledger.jsonl"
+python3 - "$PFL" <<'PY'
+import json, sys
+from datetime import datetime, timedelta, timezone
+y = (datetime.now().astimezone() - timedelta(days=1))
+rows = []
+a = y.replace(hour=3, minute=30, second=0, microsecond=0)
+for m in range(0, 30, 5):
+    rows.append({"ts": (a + timedelta(minutes=m)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                 "mode": "tick", "carrier": "launchd", "result": "idle" if m else "ok"})
+n = y.replace(hour=12, minute=0, second=0, microsecond=0)
+for m in (0, 5):
+    rows.append({"ts": (n + timedelta(minutes=m)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                 "mode": "tick", "carrier": "desktop", "result": "ok"})
+open(sys.argv[1], "w").write("\n".join(json.dumps(r) for r in rows) + "\n")
+PY
+bash "$SCRIPT_DIR/tick-preflight-report.sh" --hours 48 --ledger "$PFL" --json \
+  | python3 -c '
+import json, sys
+r = {c["carrier"]: c for c in json.load(sys.stdin)["carriers"]}
+assert r["launchd"]["ticked_at_night"] and r["launchd"]["night_ticks"] == 6, r["launchd"]
+assert not r["desktop"]["ticked_at_night"], r["desktop"]
+assert r["launchd"]["idle_runs"] == 5 and r["launchd"]["max_gap_min"] == 5.0, r["launchd"]
+' && ok "GSL-201: the report reads a synthetic night into the right per-carrier verdict (night YES/NO, gaps, idle)" \
+  || bad "GSL-201: the morning report misreads the night"
+grep -qE 'claude( -p|\b--print)' "$SCRIPT_DIR/tick-preflight-report.sh" \
+  && bad "GSL-201: report 0-LLM (C1)" || ok "GSL-201: the report is 0-LLM and read-only (C1)"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
