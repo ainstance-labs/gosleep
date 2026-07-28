@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-28T11:02:08Z` · freshest event **11s** old at that moment (`2026-07-28T11:01:57Z`) · day `2026-07-28`
+🟢 **FRESH at build** · generated `2026-07-28T12:00:39Z` · freshest event **33s** old at that moment (`2026-07-28T12:00:06Z`) · day `2026-07-28`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T11:02:08Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T12:00:39Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-28T11:31:57Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-28T14:01:57Z`**
+> - 🟡 **STALE if you are reading this after `2026-07-28T12:30:06Z`**
+> - 🔴 **DEAD if you are reading this after `2026-07-28T15:00:06Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -25,23 +25,23 @@
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 145 |
-| Orchestrator | ok · context 82% |
+| Cycle | 146 |
+| Orchestrator | ok · context 91% |
 
 ## 3. Delivery
 
-Branch `main` @ `38f3c93` · 6 dirty path(s)
+Branch `GSL-176-tick-engine` @ `0fb475f` · 17 dirty path(s)
 
-Shipped 2026-07-28 (17):
-- `38f3c93` Merge pull request #253 from ainstance-labs/GSL-179-token-ceiling
-- `e5d0af4` GSL-179 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика
-- `23514ee` GSL-226 [Tooling] Ветка рендера BLOCKER испытана на реальных данных: 5 ассертов от записи до пикселей (questions/overvi…
-- `e3ba732` GSL-225 [Tooling] Архив следа супервизии: хроникёр дописывает heartbeat/леджер в трекаемые docs/lab/supervision/*.jsonl…
-- `42dc5d1` GSL-224 [Tooling] Ось runway «просроченные DECISION без живого пульса» + правило «незапущенный механизм → unknown с при…
-- `8989128` GSL-223 [Tooling] poll-fill автоподхватывает JQL-дамп оркестратора (scratch/jira-poll.json, громко, с возрастом); первы…
-- `e7d31e5` GSL-222 [Tooling] Метрика автономности 1 − asks/shipped за 7 дней: status.json + дайджест, всегда с рамкой «чего не утв…
-- `f6ee225` GSL-221 [Docs][Tooling] Потолок токенов: настраиваемый дефолт 16M/ночь, режим unlimited первоклассный, ночная семантика…
-- …and 9 more
+Shipped 2026-07-28 (25):
+- `0fb475f` GSL-204 Рунбук мотора docs/runbooks/tick-engine.md: двухслойная модель дебаунс+тик, частоты, чтение леджера, вооружённо…
+- `44882b3` GSL-203 Штатный гейт смены стал кодом без --no-poll: tools/lab/gate.sh (smoke+hooks-verify+tsc+летописец С опросом; офф…
+- `1e945e1` GSL-201 Преflight носителей тика подготовлен: шаблон LaunchAgent (300с, RunAtLoad), preflight-arm/disarm — руки владель…
+- `803704d` GSL-202 Idle-гейт тика: свежий бандл + пустой list --due → result=idle и выход до poll/летописца/armed-check (ноль сети…
+- `3e0a20a` GSL-199 tools/lab/tick.sh — идемпотентный страховочный тик: poll-fill → apply-due → летописец (только если дебаунс не д…
+- `9df9f86` GSL-200 lab-emit apply-due (идемпотентный исполнитель просроченных DECISION, applied_by=apply-due, зеркало в таймлайн) …
+- `ffa5f32` GSL-198 Возвращён дебаунс-хук PostToolUse на записи в docs/lab/: движок chronicler-debounce.sh (двухступенчатый матч to…
+- `746e98c` GSL-138 [Docs][Process] Ledger смены 74 (часть 2): эпик GSL-179 слит (#253), handoff 51, решения d-008..010, граница ци…
+- …and 17 more
 
 ## 4. Tasks
 
@@ -53,13 +53,13 @@ Shipped 2026-07-28 (17):
 
 ## 5. Cost & runway
 
-Cumulative **19,059,000** tokens over 144 cycle(s).
+Cumulative **19,110,000** tokens over 145 cycle(s).
 
-Next runway event: **open blockers** — stops at **`2026-07-28T11:02:08Z`**.
+Next runway event: **open blockers** — stops at **`2026-07-28T12:00:39Z`**.
 
 ## 6. Activity
 
-**201** events today of **2706** total · 82% mechanical.
+**256** events today of **2761** total · 82% mechanical.
 
 Latest decisions (31 total, newest first):
 - **потолок считается за ночь (сутки UTC), не кумулятивно** `GSL-221` — 2026-07-28 10:42
