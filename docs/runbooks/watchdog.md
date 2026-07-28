@@ -130,7 +130,8 @@ tail -5 /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/watchdog/
 | `ok` | пульс свежий, сессия жива — ничего не делал |
 | `ok_grace` | сессия только что стартовала, стаж пульса не судится (warm-up ~120 с) |
 | `ok_quiesced` | оркестратор сам завершил цепочку (`status:"quiesced"`) — рестартов не будет |
-| `nudged` / `waiting_nudge` | пульс протух → отправил напоминание, ждёт реакции |
+| `nudged` / `waiting_nudge` | пульс протух → отправил напоминание, ждёт реакции (лестница GSL-216, ступень 1) |
+| `kill_resume` / `waiting_resume` / `resume` | ступень 2 лестницы (v0.6.3): та же сессия оживляется на месте через `claude --resume <session_id>` — контекст цел; существует только когда пульс назвал свой `session_id` (GSL-212); `resume` — оживление мёртвой сессии без kill. Тратит общий бюджет рестартов |
 | `zombie_watch` | панель жива, а процесса агента под ней нет — считает циклы (kill после 3 подряд) |
 | `handoff_requested` / `waiting_handoff` | контекст ≥ потолка → велел писать handoff |
 | `kill_rewake` | убил зависшего (по явному id панели) и поднял свежего через cold-start |

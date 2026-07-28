@@ -574,15 +574,25 @@ else
   bad "session mismatch handling wrong (see $L)"
 fi
 
-# (g) Roster empty (no session anywhere, none in this repo) -> genuinely dead ->
-# rewake path; in observe it is would_rewake.
+# (g) Roster empty (no session anywhere, none in this repo) -> genuinely dead.
+# Since GSL-216 a session_id-bearing heartbeat is revived in place first
+# (rung 2, would_resume); the LEGACY heartbeat (no session_id) goes straight to
+# the cold-start rung — both directions observed, nothing spawned.
 CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-empty.json WD_MODE=observe"
-run_case  roster-dead-observe       rewake             1     %42   fresh    "$HB_SESSION_OK"
-if grep -q '"event":"would_rewake"' "$WORK/roster-dead-observe/ledger.jsonl" \
-   && ! grep -q '"event":"orchestrator_restarted"' "$WORK/roster-dead-observe/ledger.jsonl"; then
-  ok "roster empty -> dead -> would_rewake (observe records, spawns nothing)"
+run_case  roster-dead-observe       resume             1     %42   fresh    "$HB_SESSION_OK"
+if grep -q '"event":"would_resume"' "$WORK/roster-dead-observe/ledger.jsonl" \
+   && ! grep -q '"event":"orchestrator_restarted"' "$WORK/roster-dead-observe/ledger.jsonl" \
+   && ! grep -q '"event":"orchestrator_resumed"' "$WORK/roster-dead-observe/ledger.jsonl"; then
+  ok "roster empty + session_id -> would_resume (observe records, spawns nothing)"
 else
   bad "roster-dead observe path wrong"
+fi
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-empty.json WD_MODE=observe"
+run_case  roster-dead-legacy-hb     rewake             1     %42   fresh    "$HB_SOLO"
+if grep -q '"event":"would_rewake"' "$WORK/roster-dead-legacy-hb/ledger.jsonl"; then
+  ok "roster empty + legacy heartbeat (no session_id) -> would_rewake (old two-rung path)"
+else
+  bad "roster-dead legacy path wrong"
 fi
 
 # (h) Roster unreadable -> fail SAFE: platform_unknown, no action at all.
@@ -753,6 +763,71 @@ if [ "$rc" -eq 78 ] && echo "$out" | grep -q "record-only"; then
   ok "class: WD_HB_SLOW_SECS >= stale refused at startup (exit 78)"
 else
   bad "class: slow>=stale config accepted (rc=$rc)"
+fi
+
+echo "== GSL-216: the ladder nudge -> resume -> restart (shared budget, attempt audit) =="
+seed_resume_old_observe()   { mkdir -p "$1/state/observe"; echo $((NOW - 400)) > "$1/state/observe/resume-attempt.marker"; }
+seed_resume_fresh_observe() { mkdir -p "$1/state/observe"; echo $((NOW - 60)) > "$1/state/observe/resume-attempt.marker"; }
+seed_3_recent_restarts_observe() { mkdir -p "$1/state/observe"; { echo $((NOW-300)); echo $((NOW-600)); echo $((NOW-900)); } > "$1/state/observe/restarts.history"; }
+seed_ladder_budget() { seed_old_nudge_observe "$1"; seed_3_recent_restarts_observe "$1"; }
+
+# Rung 2: nudge grace expired + the heartbeat NAMED its session_id -> the same
+# session is revived in place (claude --resume), not replaced.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-ok.json WD_MODE=observe"
+run_case  ladder-rung2-resume       kill_resume        1     %42   stale    "$HB_SESSION_OK" seed_old_nudge_observe
+L="$WORK/ladder-rung2-resume/ledger.jsonl"
+if grep -q '"event":"would_resume"' "$L" \
+   && grep '"event":"would_resume"' "$L" | grep -q '"session_id":"sid-orch"' \
+   && grep '"event":"would_resume"' "$L" | grep -q '"attempt":1' \
+   && ! grep -q '"event":"would_rewake"' "$L" \
+   && [ -f "$WORK/ladder-rung2-resume/state/observe/resume-attempt.marker" ] \
+   && [ "$(wc -l < "$WORK/ladder-rung2-resume/state/observe/restarts.history" | tr -d ' ')" = "1" ]; then
+  ok "ladder rung 2: stale-after-nudge + session_id -> would_resume (same brain), budget spent, attempt journaled"
+else
+  bad "ladder rung 2 wrong (see $L)"
+fi
+
+# Rung 3: the resume grace expired too -> cold-start restart from the handoff.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-ok.json WD_MODE=observe"
+run_case  ladder-rung3-restart      kill_rewake        1     %42   stale    "$HB_SESSION_OK" seed_resume_old_observe
+if grep -q '"event":"would_rewake"' "$WORK/ladder-rung3-restart/ledger.jsonl" \
+   && grep '"event":"tick"' "$WORK/ladder-rung3-restart/ledger.jsonl" | grep -q '"reason":"stale_after_resume"' \
+   && [ ! -f "$WORK/ladder-rung3-restart/state/observe/resume-attempt.marker" ]; then
+  ok "ladder rung 3: stale-after-resume -> would_rewake (fresh brain), episode marker cleared"
+else
+  bad "ladder rung 3 wrong"
+fi
+
+# Between rungs: a fresh resume attempt is WAITED on, not piled on.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-ok.json WD_MODE=observe"
+run_case  ladder-waiting-resume     waiting_resume     1     %42   stale    "$HB_SESSION_OK" seed_resume_fresh_observe
+if ! grep -qE '"event":"(would_kill|would_resume|would_rewake)"' "$WORK/ladder-waiting-resume/ledger.jsonl"; then
+  ok "ladder: inside the resume grace -> waiting, no new attempt"
+else
+  bad "ladder: piled a new attempt inside the resume grace"
+fi
+
+# Dead session + session_id: revive the same session first (no kill — there is
+# nothing to kill), cold-start only if the resume attempt did not take.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-empty.json WD_MODE=observe"
+run_case  ladder-dead-resume        resume             1     %42   fresh    "$HB_SESSION_OK"
+L="$WORK/ladder-dead-resume/ledger.jsonl"
+if grep -q '"event":"would_resume"' "$L" && ! grep -q '"event":"would_kill"' "$L" \
+   && ! grep -q '"event":"would_rewake"' "$L"; then
+  ok "ladder: dead session + session_id -> would_resume first (no kill, no cold-start yet)"
+else
+  bad "ladder dead-resume wrong (see $L)"
+fi
+
+# The RestartBudget is SHARED across rungs: an exhausted budget blocks a resume
+# exactly like a restart — a resume loop is as much a masked bug.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-ok.json WD_MODE=observe"
+run_case  ladder-budget-shared      escalated          1     %42   stale    "$HB_SESSION_OK" seed_ladder_budget
+if ! grep -qE '"event":"(would_resume|would_rewake)"' "$WORK/ladder-budget-shared/ledger.jsonl" \
+   && grep -q '"event":"escalation"' "$WORK/ladder-budget-shared/ledger.jsonl"; then
+  ok "ladder: exhausted budget blocks the resume rung too (escalate, no attempt)"
+else
+  bad "ladder: budget not shared with the resume rung"
 fi
 
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="

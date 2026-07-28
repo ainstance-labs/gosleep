@@ -63,9 +63,15 @@
 # WD_HB_STALE_SECS (validated, exit 78) — that inequality is what makes "slow
 # never acts" true by construction. 0 = derive WD_HB_STALE_SECS / 2.
 #WD_HB_SLOW_SECS=0
-# After a nudge, how long the orchestrator gets to refresh the heartbeat
-# before kill + re-wake.
+# The ladder (GSL-216): nudge -> resume -> restart. After a nudge, how long the
+# orchestrator gets to refresh the heartbeat before the next rung fires.
 #WD_NUDGE_GRACE_SECS=240
+# Rung 2 (only when the heartbeat carries session_id, GSL-212): kill + revive
+# the SAME session via `claude --resume` — context intact. How long that revival
+# gets before rung 3 (cold-start restart from the handoff). A legacy heartbeat
+# without session_id skips rung 2 by construction. Rungs 2 and 3 spend the SAME
+# RestartBudget with the same backoff — a resume loop is as much a masked bug.
+#WD_RESUME_GRACE_SECS=240
 # context_pct at/above this -> "write handoff now". The orchestrator self-rolls
 # at ~70%; the watchdog ceiling sits above that as the enforcement backstop.
 #WD_CONTEXT_CEILING_PCT=80

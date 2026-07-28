@@ -101,7 +101,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.6.2 (GSL-215: healthy/slow/stuck classes, false-negative bias, ZFC matrix)"
+WD_VERSION="0.6.3 (GSL-216: nudge -> resume -> restart ladder, shared RestartBudget, attempt audit)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -161,7 +161,13 @@ fi
 : "${WD_HB_SLOW_SECS:=0}"           # GSL-215: the "slow" zone starts here — INSIDE fresh,
                                     # strictly below stale, so by construction no action can
                                     # attach to it (record-only class). 0 = derive stale/2.
-: "${WD_NUDGE_GRACE_SECS:=240}"     # after a nudge, how long before kill+re-wake
+: "${WD_NUDGE_GRACE_SECS:=240}"     # after a nudge, how long before the next rung
+: "${WD_RESUME_GRACE_SECS:=240}"    # GSL-216 rung 2: after a resume attempt (claude --resume,
+                                    # same session, context intact), how long before rung 3
+                                    # (cold-start restart from the handoff). The resume rung
+                                    # only exists when the heartbeat carries session_id
+                                    # (GSL-212) — a legacy heartbeat degrades to the old
+                                    # two-rung ladder by construction.
 : "${WD_CONTEXT_CEILING_PCT:=80}"   # orchestrator self-rolls at ~70%; watchdog forces above that
 : "${WD_HANDOFF_WAIT_SECS:=600}"    # after "write handoff now", how long before kill+re-wake
 : "${WD_QUOTA_GRACE_SECS:=900}"     # quota-wait quiesce: how far past the note's reset ETA the
@@ -232,7 +238,7 @@ is_uint() { [[ "${1:-}" =~ ^[0-9]+$ ]]; }
 
 validate_config() {
   local k
-  for k in WD_HB_STALE_SECS WD_HB_SLOW_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
+  for k in WD_HB_STALE_SECS WD_HB_SLOW_SECS WD_NUDGE_GRACE_SECS WD_RESUME_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
            WD_QUOTA_GRACE_SECS WD_FROZEN_TICKS WD_FROZEN_MIN_SPAN_SECS \
            WD_RESTART_BUDGET WD_RESTART_WINDOW_SECS WD_BACKOFF_BASE_SECS WD_BACKOFF_CAP_SECS \
            WD_ESCALATE_REPEAT_SECS WD_STARTUP_GRACE_SECS WD_ZOMBIE_CYCLES WD_KILL_COOLDOWN_SECS \
@@ -784,6 +790,45 @@ EOF
   echo "$prompt_file"
 }
 
+# GSL-216 rung 2: revive the SAME session — `claude --resume <session_id>`
+# relaunches the exact session the heartbeat named, context intact. Softer than
+# a cold-start replacement (rung 3): the brain survives, only the process is
+# new. Exists ONLY when the heartbeat carries session_id (GSL-212) — identity
+# for the resume is the same construction-derived fact life is judged by.
+act_resume() {
+  local n; n="$(restarts_in_window)"
+  if [ "$WD_MODE" = "observe" ]; then
+    log "[observe] would resume session ${HB_SESSION_ID} in-place (claude --resume, context intact) — nothing spawned"
+    marker_write "resume-attempt"
+    ledger_emit "would_resume" "session_id=${HB_SESSION_ID}" \
+      "reason=${DECISION_REASON:-unspecified}" "attempt=$n"
+    return 0
+  fi
+  local launcher="$WD_STATE_DIR/resume-launch.sh"
+  cat > "$launcher" <<EOF
+#!/usr/bin/env bash
+cd "$WD_REPO_ROOT" || exit 1
+exec "$WD_CLAUDE_BIN" --resume "$HB_SESSION_ID"
+EOF
+  chmod +x "$launcher"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "[dry-run] would resume session ${HB_SESSION_ID} (launcher=$launcher)"
+  else
+    if probe_session_alive; then
+      "$WD_TMUX_BIN" new-window -t "$WD_TMUX_SESSION" -n "$WD_ORCH_WINDOW_NAME" \
+        -c "$WD_REPO_ROOT" "$launcher"
+    else
+      "$WD_TMUX_BIN" new-session -d -s "$WD_TMUX_SESSION" -n "$WD_ORCH_WINDOW_NAME" \
+        -c "$WD_REPO_ROOT" "$launcher"
+    fi
+  fi
+  marker_write "last-started"
+  marker_write "resume-attempt"
+  ledger_emit "orchestrator_resumed" "session_id=${HB_SESSION_ID}" \
+    "reason=${DECISION_REASON:-unspecified}" "attempt=$n" \
+    "hb_age=${HB_AGE:-0}" "open_workers=${HB_WORKERS:-0}" "cycle=${HB_CYCLE:-0}"
+}
+
 act_rewake() {
   local prompt_file launcher
   prompt_file="$(build_rewake_prompt)"
@@ -797,7 +842,7 @@ act_rewake() {
     marker_clear "handoff-request"
     ledger_emit "would_rewake" "reason=${DECISION_REASON:-unspecified}" \
       "hb_age=${HB_AGE:-0}" "open_workers=${HB_WORKERS:-0}" "cycle=${HB_CYCLE:-0}" \
-      "prompt=$prompt_file"
+      "attempt=$(restarts_in_window)" "prompt=$prompt_file"
     return 0
   fi
   # A generated launcher avoids fragile nested quoting through tmux's sh -c.
@@ -823,7 +868,8 @@ EOF
   marker_clear "nudge"
   marker_clear "handoff-request"
   ledger_emit "orchestrator_restarted" "reason=${DECISION_REASON:-unspecified}" \
-    "hb_age=${HB_AGE:-0}" "open_workers=${HB_WORKERS:-0}" "cycle=${HB_CYCLE:-0}"
+    "hb_age=${HB_AGE:-0}" "open_workers=${HB_WORKERS:-0}" "cycle=${HB_CYCLE:-0}" \
+    "attempt=$(restarts_in_window)"
 }
 
 # --- restart budget + backoff + escalation (PRD R1.3) ------------------------
@@ -884,10 +930,13 @@ escalate() {
   marker_write "escalated"
 }
 
-# The ONLY gate through which any kill/restart may pass.
-# $1 = pane to kill first ("" = none). Sets DECISION on refusal/escalation.
+# The ONLY gate through which any kill/resume/restart may pass.
+# $1 = pane to kill first ("" = none); $2 = rung: "resume" (claude --resume,
+# GSL-216 rung 2) or "restart" (cold-start re-wake, rung 3; default). BOTH
+# rungs spend the SAME RestartBudget and share the backoff — a resume loop is
+# as much a masked bug as a restart loop. Sets DECISION on refusal/escalation.
 do_restart() {
-  local pane="${1:-}" n delay
+  local pane="${1:-}" rung="${2:-restart}" n delay
   n="$(restarts_in_window)"
   if [ "$n" -ge "$WD_RESTART_BUDGET" ]; then
     DECISION="escalated"
@@ -935,7 +984,7 @@ do_restart() {
     sleep "$delay"
   fi
   record_restart
-  act_rewake
+  if [ "$rung" = "resume" ]; then act_resume; else act_rewake; fi
 }
 
 # --- decision --------------------------------------------------------------
@@ -1032,8 +1081,17 @@ decide_and_act() {
       ledger_emit "worker_died" "count=$HB_WORKERS" "reason=session_gone" \
         "observed=heartbeat_recorded"
     fi
-    DECISION="rewake"; DECISION_REASON="dead_session"
-    do_restart ""
+    # Rung choice for a dead session (GSL-216): a heartbeat that named its
+    # session_id lets us revive the SAME brain (claude --resume) instead of
+    # cold-starting a replacement; a legacy heartbeat goes straight to rung 3.
+    if [ -n "$HB_SESSION_ID" ] && [ -z "$(marker_read resume-attempt)" ]; then
+      DECISION="resume"; DECISION_REASON="dead_session_resume"
+      do_restart "" resume
+    else
+      DECISION="rewake"; DECISION_REASON="dead_session"
+      marker_clear "resume-attempt"
+      do_restart "" restart
+    fi
     return 0
   fi
 
@@ -1065,6 +1123,7 @@ decide_and_act() {
   # 4. Live session + fresh heartbeat (verified pane).
   if hb_is_fresh; then
     marker_clear "nudge"
+    marker_clear "resume-attempt"   # the ladder episode is over: the heart beats
     counter_clear "zombie"
     if is_uint "$HB_CTX" && [ "$HB_CTX" -ge "$WD_CONTEXT_CEILING_PCT" ]; then
       local hage; hage="$(marker_age handoff-request)"
@@ -1115,16 +1174,38 @@ decide_and_act() {
   counter_clear "zombie"
 
   # 5c. Write-divergence: process alive but heartbeat stale.
-  #     One nudge first; still stale after the grace -> kill + re-wake.
-  local nage; nage="$(marker_age nudge)"
-  if [ -z "$nage" ]; then
+  #     THE LADDER (GSL-216): nudge -> resume -> restart, each rung with its own
+  #     grace, rungs 2-3 through the shared RestartBudget + backoff gate.
+  #     Rung 2 (kill + claude --resume: same session, context intact) exists
+  #     only when the heartbeat named its session_id — a legacy heartbeat
+  #     degrades to the historical two-rung nudge -> restart by construction.
+  local nage rage
+  nage="$(marker_age nudge)"
+  rage="$(marker_age resume-attempt)"
+  if [ -n "$rage" ]; then
+    # A resume was already attempted this episode.
+    if [ "$rage" -ge "$WD_RESUME_GRACE_SECS" ]; then
+      DECISION="kill_rewake"; DECISION_REASON="stale_after_resume"
+      marker_clear "resume-attempt"
+      marker_clear "nudge"
+      do_restart "$pane" restart
+    else
+      DECISION="waiting_resume"; DECISION_REASON="resumed_${rage}s_ago"
+    fi
+  elif [ -z "$nage" ]; then
     DECISION="nudged"; DECISION_REASON="stale_heartbeat"
     act_nudge "$pane"
     marker_write "nudge"
   elif [ "$nage" -ge "$WD_NUDGE_GRACE_SECS" ]; then
-    DECISION="kill_rewake"; DECISION_REASON="stale_after_nudge"
-    marker_clear "nudge"
-    do_restart "$pane"
+    if [ -n "$HB_SESSION_ID" ]; then
+      DECISION="kill_resume"; DECISION_REASON="stale_after_nudge"
+      marker_clear "nudge"
+      do_restart "$pane" resume
+    else
+      DECISION="kill_rewake"; DECISION_REASON="stale_after_nudge"
+      marker_clear "nudge"
+      do_restart "$pane" restart
+    fi
   else
     DECISION="waiting_nudge"; DECISION_REASON="nudged_${nage}s_ago"
   fi

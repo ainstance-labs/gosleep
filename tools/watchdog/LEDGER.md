@@ -37,7 +37,9 @@ Event types and their extra fields:
 | `kill` | `target` (explicit pane id), `reason` | force-kill of the orchestrator pane (post-reap, existence-verified afterwards) |
 | `kill_refused` | `target`, `reason` (`not_explicit_pane_id` \| `identity_unverified`), `identity` (on identity refusals: `no_field` \| `invalid_field` \| `not_found`) | kill/nudge target failed a safety check: not an explicit `%N` id, OR the live session's heartbeat does not positively name an existing orchestrator pane (review C1) — no action taken, escalation follows |
 | `kill_failed` | `target`, `reason` (`kill_pane_rc_<n>` \| `pane_survived_kill` \| `test_injected_failure`) | kill-pane failed or the pane survived it (review M2) — NO re-wake (a surviving pane + a fresh orchestrator = double dispatch); escalation follows |
-| `orchestrator_restarted` | `reason`, `hb_age`, `open_workers`, `cycle` | re-wake spawned via the cold-start protocol |
+| `orchestrator_restarted` | `reason`, `hb_age`, `open_workers`, `cycle`, `attempt` | re-wake spawned via the cold-start protocol (ladder rung 3; `attempt` = position in the shared RestartBudget window) |
+| `orchestrator_resumed` | `session_id`, `reason`, `attempt`, `hb_age`, `open_workers`, `cycle` | GSL-216 rung 2: the SAME session revived in place via `claude --resume` (context intact). Exists only when the heartbeat named its `session_id`; spends the same RestartBudget as a restart |
+| `would_resume` | `session_id`, `reason`, `attempt` | observe mode: rung 2 would have fired (nothing spawned) |
 | `rewake_brief_missing` | `path`, `fallback` | warning: the re-wake brief template was missing/markerless; the inline fallback prompt was used |
 | `worker_died` | `count`, `reason` (`whole_session_gone`\|`session_gone`), `observed` | recorded workers lost with the session (observed from heartbeat vs tmux — the watchdog kills only the orchestrator, never workers) |
 | `mass_death` | `open_workers`, `reason` | whole session gone with ≥ `WD_MASS_DEATH_WORKERS` recorded workers → escalation instead of blind restart |
