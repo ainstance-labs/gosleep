@@ -17,17 +17,25 @@ function numCell(x: number | null): VNode {
 /**
  * Screen 6 of PRD R5.2. GSL-98 finishes the cards; this is the ledger they read.
  *
- * THE HEADLINE FINDING OF THIS SCREEN IS THAT THE CEILING DOES NOT EXIST. `manifest.md`
- * §5.phase-ceiling delegates the token ceiling to "the epic brief", and no epic brief on disk names a
- * number — so §5.warn-80 ("80% of the ceiling → FYI") and §3.budget ("BUDGET_EXCEEDED = BLOCKER") are
- * rules that can never fire. This screen has a numerator and no denominator, and it says so in the
- * largest type on the page rather than inventing a plausible cap.
+ * THE CEILING NOW EXISTS IN ONE OF THREE CONFIGURED STATES (GSL-221; owner directive
+ * d-2026-07-28-007), and this screen renders each as itself:
  *
- * That matters beyond this screen: it is why GSL-94's budget clock is `unknown`, and an unknown clock
- * makes the whole autonomy runway an UPPER bound rather than an estimate.
+ *   default    16,000,000 tokens per night — the working default from d-2026-07-28-002, demoted by
+ *              d-2026-07-28-007 to "only a default": overridable by GOSLEEP_TOKEN_CEILING.
+ *   env        GOSLEEP_TOKEN_CEILING=<int> — the owner's own number, per night.
+ *   unlimited  GOSLEEP_TOKEN_CEILING=unlimited — NO ceiling, by explicit choice. A first-class
+ *              state: it prints as "unlimited", never as a hole, an error, or a standing warning.
+ *              (The pre-GSL-221 headline of this screen — "the ceiling does not exist, so the
+ *              budget clock is unknown and the runway an upper bound" — is history, not status.)
+ *
+ * The percentage is of TONIGHT (`night_spend`, counted from the first build of the UTC day) against
+ * the per-night ceiling — the ledger's cumulative total spans the whole project and comparing IT to
+ * a nightly cap fired a permanent false BUDGET_EXCEEDED. The cumulative figure stays on the page as
+ * what it is: total project spend, not tonight's.
  */
 export function Cost({ b }: { b: RenderBundle }): VNode {
   const c = b.cost;
+  const unlimited = c.ceiling_mode === "unlimited";
   const noCeiling = c.ceiling_why ?? undefined;
   // GSL-120: no slice. The heading prints c.cycles.length (67); slicing to 40 hid 27 cycles that HAD
   // a telemetry row, and nothing on the page named them — a second, silent truncation on top of the
@@ -51,25 +59,55 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
             over two different numbers (83 and 54). Both were right; one word made them look like one
             fact, and nothing on the page named the 29 cycles between them. */}
         <Kpi value={c.cumulative_cycles} label="cycles run (ledger running total)" />
-        <Kpi value={c.ceiling === null ? null : n(c.ceiling)} label="ceiling" why={noCeiling} />
-        <Kpi value={c.used_pct === null ? null : `${c.used_pct}%`} label="of ceiling used" why={noCeiling} />
+        {/* `?? null`: an OLDER committed bundle predates GSL-221 and carries no night fields at all.
+            The bundle contract is additive — a missing key renders as unknown, never as a crash. */}
+        <Kpi value={(c.night_spend ?? null) === null ? null : n(c.night_spend)} label="tokens tonight (since 00:00 UTC)" />
+        <Kpi
+          value={unlimited ? "unlimited" : c.ceiling === null ? null : n(c.ceiling)}
+          label="ceiling (per night)"
+          why={unlimited ? undefined : noCeiling}
+        />
+        <Kpi
+          value={unlimited ? "n/a" : (c.used_pct ?? null) === null ? null : `${c.used_pct}%`}
+          label="of tonight's ceiling used"
+          why={unlimited ? undefined : noCeiling}
+        />
       </div>
 
-      {c.ceiling === null ? (
+      {unlimited ? (
+        /* First-class, by directive d-2026-07-28-007: the owner's choice renders as a plain fact —
+           no warning class, no stale-note, no standing alarm. */
         <div class="card">
-          <span class="stale-note">There is no token ceiling on disk.</span> {c.ceiling_why}
+          <b>Unlimited mode.</b> {c.ceiling_why}
           <br />
           <small>
-            Two manifest rules depend on a number that does not exist: <b>§5.warn-80</b> (80% of the
-            ceiling → an FYI in the queue) and <b>§3.budget</b> (100% → <code>BUDGET_EXCEEDED</code>,
-            a BLOCKER). Neither can ever fire. Until the owner names a ceiling, the budget axis of the
-            autonomy runway reads <i>unknown</i> — and one unknown clock turns the whole runway from
-            an estimate into an upper bound.
+            Source: <code>{c.ceiling_source}</code>. To restore a limit, set{" "}
+            <code>GOSLEEP_TOKEN_CEILING=&lt;tokens per night&gt;</code> or unset it for the default.
           </small>
+        </div>
+      ) : c.ceiling === null ? (
+        /* Unreachable while the default stands — kept so a data-layer regression degrades into an
+           honest sentence instead of a blank. */
+        <div class="card">
+          <span class="stale-note">No token ceiling reached this build.</span> {c.ceiling_why}
         </div>
       ) : (
         <div class="card">
-          Ceiling <b>{n(c.ceiling)}</b> tokens (source: <code>{c.ceiling_source}</code>).
+          Ceiling <b>{n(c.ceiling)}</b> tokens per night (source: <code>{c.ceiling_source}</code>).{" "}
+          {(c.night_spend ?? null) === null ? (
+            <>The telemetry ledger offers no cumulative total, so tonight&apos;s spend against it is unknown.</>
+          ) : (
+            <>
+              Tonight: <b>{n(c.night_spend)}</b> ({c.used_pct}%), counted from the first build of{" "}
+              <code>{c.night_anchor?.date}</code> (UTC).
+            </>
+          )}
+          <br />
+          <small>
+            At 80% manifest section 5.warn-80 wants an FYI in the queue; at 100% section 3.budget
+            makes it <code>BUDGET_EXCEEDED</code>, a BLOCKER. Both rules now have the number they
+            were waiting for.
+          </small>
         </div>
       )}
 

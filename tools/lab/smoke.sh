@@ -22,6 +22,9 @@ export GOSLEEP_LAB_DIR="$WORK/lab"
 QUEUE="$GOSLEEP_LAB_DIR/questions/queue.jsonl"
 
 rm -rf "$WORK"; mkdir -p "$WORK"
+# GSL-221: the ceiling tests assert all three configured states (default / env / unlimited); a value
+# inherited from the caller's shell would silently flip every unset-env case. Hermetic by construction.
+unset GOSLEEP_TOKEN_CEILING
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
@@ -542,20 +545,23 @@ grep -q 'cannot see' "$CR/docs/lab/site/fleet.html" \
   && ok "GSL-93: the Fleet screen names its own blind spots (no pane id, no model in the log)" \
   || bad "GSL-93: the Fleet screen hides what it cannot see"
 
-# The token ceiling does not exist on disk (manifest §5.phase-ceiling delegates it to an epic brief,
-# and no brief names a number). The Cost screen must SAY that, not pick a plausible cap — a made-up
-# ceiling makes the budget clock finite, and a finite lie is worse than an honest unknown.
-[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "null" ]] \
-  && ok "GSL-93: no ceiling on disk -> cost.ceiling is null, not a guess" \
-  || bad "GSL-93: a token ceiling was invented"
-grep -q 'no token ceiling on disk' "$CR/docs/lab/site/cost.html" \
-  && ok "GSL-93: the Cost screen says the ceiling is missing, in words" \
-  || bad "GSL-93: the Cost screen hides that it has a numerator and no denominator"
+# GSL-221 (owner directive d-2026-07-28-007; supersedes the GSL-93 "no ceiling on disk" premise):
+# the ceiling now exists in one of three FIRST-CLASS states. Unset -> the 16,000,000/night default,
+# so the budget clock has a denominator out of the box; an integer overrides it; the explicit word
+# `unlimited` disables it by choice. The old null-because-nobody-chose state is gone: the default chooses.
+[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "16000000" \
+   && "$(jq -r '.cost.ceiling_mode' "$CR/docs/lab/render_bundle.json")" == "default" ]] \
+  && ok "GSL-221: unset env -> the 16,000,000/night default (mode=default), never a null nobody chose" \
+  || bad "GSL-221: the default ceiling did not apply (ceiling=$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json") mode=$(jq -r '.cost.ceiling_mode' "$CR/docs/lab/render_bundle.json"))"
+grep -q 'tokens per night' "$CR/docs/lab/site/cost.html" \
+  && ok "GSL-221: the Cost screen names the per-night unit, in words" \
+  || bad "GSL-221: the Cost screen does not say what the ceiling is per"
 GOSLEEP_TOKEN_CEILING=1000000 bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1
-[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "1000000" ]] \
-  && ok "GSL-93: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING)" \
-  || bad "GSL-93: the ceiling override is ignored"
-bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1     # back to the honest default
+[[ "$(jq -r '.cost.ceiling' "$CR/docs/lab/render_bundle.json")" == "1000000" \
+   && "$(jq -r '.cost.ceiling_mode' "$CR/docs/lab/render_bundle.json")" == "env" ]] \
+  && ok "GSL-93/221: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING, mode=env)" \
+  || bad "GSL-93/221: the ceiling override is ignored"
+bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1     # back to the default mode
 
 # ───────────────── GSL-98: the worker cards, and the model that cannot lie ─────────────────
 #
@@ -941,10 +947,13 @@ python3 -c "import sys;sys.exit(0 if 3.8 <= float('$QH') <= 4.05 else 1)" 2>/dev
   && ok "F5-S1: the runway carries the reset ETA itself, not just the hours" \
   || bad "F5-S1: the ETA was lost"
 
-# ── F5-S1 c. The token budget is limiting. 1,000,000 spent of 1,100,000; 100k/cycle at 1 cycle/h ->
-#    1h. The ledger has cycle NUMBERS and no timestamps, so the burn rate needs the heartbeat to tell
-#    time: this test proves the two sources are actually joined.
+# ── F5-S1 c. The token budget is limiting. 1,000,000 spent TONIGHT of 1,100,000; 100k/cycle at
+#    1 cycle/h -> 1h. The ledger has cycle NUMBERS and no timestamps, so the burn rate needs the
+#    heartbeat to tell time: this test proves the two sources are actually joined.
+#    GSL-221 made the ceiling per-NIGHT, so tonight's spend is anchored: a seeded previous bundle
+#    puts the day's anchor at 0, making the full ledger total tonight's.
 RWC="$WORK/rw-cost"; rw_fixture "$RWC" 50 1
+printf '{"cost":{"night_anchor":{"date":"%s","base_total":0}}}\n' "$TODAY" > "$RWC/docs/lab/render_bundle.json"
 GOSLEEP_TOKEN_CEILING=1100000 bash "$CH" --repo "$RWC" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.binding' "$RWC")" == "budget" ]] \
   && ok "F5-S1: the token budget binds when a ceiling exists and the burn rate is measurable" \
@@ -980,7 +989,7 @@ RWU="$WORK/rw-unknown"; rw_fixture "$RWU" 50 1
 rm -f "$RWU/docs/handoff/.orchestrator-heartbeat"
 bash "$CH" --repo "$RWU" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.bound' "$RWU")" == "unknown" ]] \
-  && ok "F5-S1: no heartbeat + no ceiling -> the runway says 'unknown', not a comfortable number" \
+  && ok "F5-S1: no heartbeat (so no burn rate) -> the runway says 'unknown', not a comfortable number" \
   || bad "F5-S1: the runway answered with a number it could not know (bound=$(rw '.runway.bound' "$RWU"))"
 [[ "$(rw '.runway.unknown_axes | index("budget")' "$RWU")" != "null" ]] \
   && ok "F5-S1: the unreadable stopping clocks are NAMED, not silently dropped" \
@@ -1002,8 +1011,11 @@ grep -q 'class="runway unk"' "$RWU/docs/lab/site/index.html" \
 # ── F5-S1 f. An unreadable clock turns an estimate into an UPPER BOUND. The quota says 4h; the budget
 #    cannot be read. The true runway is AT MOST 4h — it can only be shorter, never longer, so "≈ 4h"
 #    would be a lie in the one direction that costs the owner a night.
+#    GSL-221: a ceiling now always exists unless the owner disables it, so an unreadable BUDGET takes
+#    an unreadable LEDGER — blank the telemetry bullets and the clock has a denominator, no numerator.
 RWUP="$WORK/rw-upper"; rw_fixture "$RWUP" 50 1 "$QEV"
-bash "$CH" --repo "$RWUP" --no-poll --quiet --json >/dev/null 2>&1      # no ceiling -> budget unknown
+sed -i.bak 's/^- .*$//' "$RWUP/docs/handoff/ORCHESTRATION-STATE.md"
+bash "$CH" --repo "$RWUP" --no-poll --quiet --json >/dev/null 2>&1      # unreadable ledger -> budget unknown
 [[ "$(rw '.runway.bound' "$RWUP")" == "upper" && "$(rw '.runway.binding' "$RWUP")" == "quota" ]] \
   && ok "F5-S1: a counting clock + an unreadable one = an UPPER bound (≤), never an estimate (≈)" \
   || bad "F5-S1: an unreadable clock did not weaken the claim (bound=$(rw '.runway.bound' "$RWUP"))"
@@ -1026,8 +1038,8 @@ GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWCL" --no-poll --quiet --jso
   && ok "F5-S1: a ledger that is not growing is 'clear' (not spending), never 'unknown' (cannot read)" \
   || bad "F5-S1: a flat telemetry ledger was mistaken for an unreadable one"
 
-# ── F5-S1 g2. ...and a real ceiling that is simply FAR AWAY gives a number, not a shrug. 98M left at
-#    ~100k/cycle at 1 cycle/h is ~980h: silly-looking, correct, and rendered as days.
+# ── F5-S1 g2. ...and a real ceiling that is simply FAR AWAY gives a number, not a shrug. ~99M of
+#    tonight's ceiling left at ~100k/cycle at 1 cycle/h is ~990h: silly-looking, correct, rendered as days.
 RWFAR="$WORK/rw-far"; rw_fixture "$RWFAR" 50 1
 GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWFAR" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.bound' "$RWFAR")" == "exact" && "$(rw '.runway.binding' "$RWFAR")" == "budget" ]] \
@@ -1041,6 +1053,75 @@ GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWFAR" --no-poll --quiet --js
 [[ "$(rw '.runway.trace | length' "$RWU")" == "6" ]] \
   && ok "F5-S1: the reasoning trace carries one line per axis (evidence, not vibes — R5.1)" \
   || bad "F5-S1: the runway shows a number with no reasoning"
+
+# ═══════════ GSL-221: the token ceiling — default / override / unlimited (d-2026-07-28-007) ═══════════
+#
+# The owner's directive, verbatim in spirit: a limit MAY exist, but it MUST be configurable; the
+# default (16M/night) is only a default; and "no limits anywhere, run at maximum" is a FIRST-CLASS
+# state of the system — RUNWAY and every reader of the ceiling must honestly say "unlimited", never
+# an error, a zero, or a standing warning. Each case below drives the real chronicler.
+echo "== GSL-221: token ceiling — default / override / unlimited (d-2026-07-28-007) =="
+
+# (a) Per-NIGHT semantics: the first build of a day anchors night spend at the ledger's total, and
+#     the anchor SURVIVES later passes of the same day. Compared against ALL history, the 16M default
+#     would have screamed BUDGET_EXCEEDED forever on day one (the live ledger already stood above it).
+RCD="$WORK/rw-ceiling-night"; rw_fixture "$RCD" 50 1
+bash "$CH" --repo "$RCD" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.night_spend' "$RCD")" == "0" && "$(rw '.cost.night_anchor.base_total' "$RCD")" == "1000000" ]] \
+  && ok "GSL-221: first build of the day anchors night spend at the ledger total (spend 0, base 1,000,000)" \
+  || bad "GSL-221: night anchoring is wrong (spend=$(rw '.cost.night_spend' "$RCD") base=$(rw '.cost.night_anchor.base_total' "$RCD"))"
+sed -i.bak 's/total≈1000000/total≈1250000/' "$RCD/docs/handoff/ORCHESTRATION-STATE.md"
+bash "$CH" --repo "$RCD" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.night_spend' "$RCD")" == "250000" ]] \
+  && ok "GSL-221: the second pass keeps the day's anchor — night spend 250,000, not re-zeroed" \
+  || bad "GSL-221: the anchor re-zeroed mid-day (spend=$(rw '.cost.night_spend' "$RCD"))"
+
+# (b) UNLIMITED IS FIRST-CLASS. The budget clock reads CLEAR — "the owner chose no limit" is
+#     knowledge, exactly like "0 blockers" — and a night with no other stopper reads RUNWAY clear.
+RCU="$WORK/rw-ceiling-unlimited"; rw_fixture "$RCU" 50 1
+GOSLEEP_TOKEN_CEILING=unlimited bash "$CH" --repo "$RCU" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.ceiling_mode' "$RCU")" == "unlimited" && "$(rw '.cost.ceiling' "$RCU")" == "null" ]] \
+  && ok "GSL-221 ⭐ GOSLEEP_TOKEN_CEILING=unlimited -> mode=unlimited, ceiling null by CHOICE, not by absence" \
+  || bad "GSL-221 ⭐ unlimited mode did not register (mode=$(rw '.cost.ceiling_mode' "$RCU"))"
+[[ "$(rw '.runway.clocks[] | select(.axis=="budget") | .state' "$RCU")" == "clear" ]] \
+  && ok "GSL-221 ⭐ the budget clock reads CLEAR in unlimited mode — never unknown, never an alarm" \
+  || bad "GSL-221 ⭐ unlimited rendered as $(rw '.runway.clocks[] | select(.axis=="budget") | .state' "$RCU") on the budget clock"
+[[ "$(rw '.runway.bound' "$RCU")" == "clear" ]] \
+  && ok "GSL-221 ⭐ an unlimited night with no blocker reads RUNWAY clear — the mode is first-class end to end" \
+  || bad "GSL-221 ⭐ unlimited poisoned the runway (bound=$(rw '.runway.bound' "$RCU"))"
+grep -q 'Unlimited mode' "$RCU/docs/lab/site/cost.html" \
+  && ok "GSL-221: the Cost screen renders unlimited as a plain fact ('Unlimited mode.')" \
+  || bad "GSL-221: the Cost screen hides or alarms on unlimited"
+grep -q 'budget: \*\*unlimited\*\*' "$RCU/docs/lab/digest/$TODAY-morning.md" \
+  && ok "GSL-221: the morning digest says 'unlimited' in the money section, as a choice" \
+  || bad "GSL-221: the digest does not carry the unlimited state"
+
+# (c) Synthetic excess: tonight 1,000,000 against a 500,000 ceiling -> BUDGET_EXCEEDED. The rule
+#     that could never fire (audit finding 58) now can, and the runway names it.
+RCX="$WORK/rw-ceiling-exceeded"; rw_fixture "$RCX" 50 1
+printf '{"cost":{"night_anchor":{"date":"%s","base_total":0}}}\n' "$TODAY" > "$RCX/docs/lab/render_bundle.json"
+GOSLEEP_TOKEN_CEILING=500000 bash "$CH" --repo "$RCX" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RCX")" == "budget" ]] \
+  && jq -e '.runway.hours == 0' "$RCX/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-221 ⭐ a synthetic excess drives the budget clock to 0h and binds the runway (finding 58 armed)" \
+  || bad "GSL-221 ⭐ the exceeded ceiling did not bind (binding=$(rw '.runway.binding' "$RCX") hours=$(rw '.runway.hours' "$RCX"))"
+rw '.runway.clocks[] | select(.axis=="budget") | .why' "$RCX" | grep -q 'BUDGET_EXCEEDED' \
+  && ok "GSL-221: the exhausted clock names BUDGET_EXCEEDED (manifest section 3.budget), not a vague warning" \
+  || bad "GSL-221: the exhausted budget clock does not name the manifest rule"
+jq -e '.cost.used_pct == 200' "$RCX/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-221: used_pct is of TONIGHT's ceiling (200%), not of all history" \
+  || bad "GSL-221: used_pct is wrong (got $(rw '.cost.used_pct' "$RCX")%, expected 200%)"
+
+# (d) A typo falls back to the DEFAULT, loudly — never to unlimited. Removing the limit takes the
+#     explicit word; a misconfiguration must not remove it silently.
+RCM="$WORK/rw-ceiling-typo"; rw_fixture "$RCM" 50 1
+GOSLEEP_TOKEN_CEILING=lots bash "$CH" --repo "$RCM" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.cost.ceiling_mode' "$RCM")" == "default" && "$(rw '.cost.ceiling' "$RCM")" == "16000000" ]] \
+  && ok "GSL-221: a misconfigured value falls back to the default ceiling — never to unlimited" \
+  || bad "GSL-221: GOSLEEP_TOKEN_CEILING=lots produced mode=$(rw '.cost.ceiling_mode' "$RCM") ceiling=$(rw '.cost.ceiling' "$RCM")"
+jq -e '.degraded[] | select(.source=="cost")' "$RCM/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-221: the fallback is LOUD — the misconfiguration lands in degraded[], on the record" \
+  || bad "GSL-221: the misconfiguration was swallowed silently"
 
 # C8: a correction supersedes, it never rewrites. Fold before you count, or the log lies twice.
 # The file holds 3 commit lines, one of which supersedes another -> a correct fold counts 2.
@@ -3324,8 +3405,10 @@ grep -q '555' <<<"$T4_PRNUM" \
 grep -q 'no token ceiling exists on disk' "$T4C" \
   && bad "GSL-132 ⭐ (Cost) the ceiling note still repeats its lead sentence" \
   || ok "GSL-132 ⭐ (Cost) the ceiling note states its reason once — the echoed lead is gone"
-grep -q 'no token ceiling on disk' "$T4C" \
-  && ok "GSL-132 control: the on-screen ceiling lead is untouched — text preserved, only the echo removed" \
+# (GSL-221 retired the "no token ceiling on disk" lead along with the state it described; the
+# control now checks the NEW lead states its fact once — the per-night ceiling card.)
+grep -q 'tokens per night' "$T4C" \
+  && ok "GSL-132 control: the ceiling card states its per-night fact once (GSL-221 lead)" \
   || bad "GSL-132 control: the ceiling lead itself went missing"
 grep -q 'not one quota event has EVER been logged here' "$T4C" \
   && bad "GSL-132 ⭐ (Cost) the quota note still repeats its lead sentence" \

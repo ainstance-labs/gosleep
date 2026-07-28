@@ -484,31 +484,99 @@ COST_FIELDS = {
     "running_cycles": re.compile(r"cycles=(\d+)"),
 }
 
+# ── the token ceiling (GSL-221; owner directive d-2026-07-28-007 supersedes d-2026-07-28-002) ──
+#
+# THREE FIRST-CLASS STATES, and none of them is an error:
+#
+#   default    GOSLEEP_TOKEN_CEILING is unset -> 16,000,000 tokens per night. The number is the
+#              working default from d-2026-07-28-002; d-2026-07-28-007 demotes it to "only a
+#              default": it must be overridable, and it is -- by the same variable.
+#   env        GOSLEEP_TOKEN_CEILING=<positive integer> -> that ceiling, per night.
+#   unlimited  GOSLEEP_TOKEN_CEILING=unlimited (or none / off) -> NO ceiling, by the owner's
+#              explicit choice. This is a first-class state of the system, not a hole in it: every
+#              reader (budget clock, Cost screen, digest) says "unlimited", never "unknown", never
+#              an error, never a standing warning. "The owner chose no limit" is knowledge.
+#
+# A MISCONFIGURED value falls back to the DEFAULT, loudly -- never to unlimited. A typo must not
+# silently remove the limit; removing the limit takes the explicit word.
+#
+# PER NIGHT, NOT PER PROJECT. The decided unit is tokens per night (d-2026-07-28-002 says so in as
+# many words), but the telemetry ledger's running total spans the whole project -- it stood above
+# 16M cumulative on the day the default landed, and a ceiling compared against ALL HISTORY would
+# scream BUDGET_EXCEEDED forever on day one: a false alarm wearing an indicator's clothes. So the
+# ceiling is measured against NIGHT SPEND: cumulative_total minus an anchor taken at the first
+# build of the target day (UTC -- the digest's own day boundary), carried across passes in
+# render_bundle.json exactly the way prev_ui_last_success() carries the UI timestamp.
+DEFAULT_TOKEN_CEILING = 16_000_000
+UNLIMITED_WORDS = ("unlimited", "none", "off")
+
+
+def night_anchor(cumulative_total):
+    """Where tonight's spend starts counting from. Read back from the bundle this pass is about to
+    overwrite (the previous build is the one place the first-build-of-the-day total survives);
+    re-anchored at the first build of a new UTC day, or when the ledger's total moved backwards
+    (a rewritten ledger invalidates any anchor taken against the old one)."""
+    prev = None
+    try:
+        with open(os.path.join(LAB, "render_bundle.json"), encoding="utf-8") as f:
+            prev = (json.load(f).get("cost") or {}).get("night_anchor")
+    except Exception:
+        prev = None
+    if (isinstance(prev, dict) and prev.get("date") == ARGS["date"]
+            and isinstance(prev.get("base_total"), int)
+            and isinstance(cumulative_total, int)
+            and prev["base_total"] <= cumulative_total):
+        return prev
+    return {"date": ARGS["date"],
+            "base_total": cumulative_total if isinstance(cumulative_total, int) else None,
+            "anchored_at": now_iso(),
+            "why": "first build of %s (UTC): night spend counts from the ledger total seen here"
+                   % ARGS["date"]}
+
 
 def load_cost(state, events=(), days=()):
     """The Cost screen's data (PRD R5.2, screen 6) and the token axis of the runway (GSL-94).
 
-    THE CEILING DOES NOT EXIST. manifest.md §5.phase-ceiling delegates it to "the epic brief", and no
-    epic brief on disk names a number. So this returns a numerator with no denominator, and says so:
-    `ceiling: null`. It must NOT be papered over with a plausible default -- a made-up ceiling makes
-    the budget clock finite, which lengthens nothing but shortens the owner's trust the first time it
-    is wrong in either direction."""
+    The ceiling exists in one of three configured states (see the block above DEFAULT_TOKEN_CEILING);
+    `ceiling_mode` names which. `ceiling: null` now means exactly one thing -- unlimited by the
+    owner's choice -- and every consumer treats it as knowledge, not as a missing input."""
     cost = {"cycles": [], "unparsed": 0, "cumulative_total": None, "cumulative_cycles": None,
-            "ceiling": None, "ceiling_source": None,
-            # GSL-132: the lead used to repeat the sentence its consumers already print ("There is no
-            # token ceiling on disk." on cost.html, "No ceiling is set" on mobile), so the reader saw
-            # the same claim twice. The why now carries only what the lead does NOT — the reason.
-            "ceiling_why": "manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief "
-                           "names a number (override with GOSLEEP_TOKEN_CEILING)"}
+            "ceiling": None, "ceiling_mode": None, "ceiling_source": None, "ceiling_why": None,
+            "night_anchor": None, "night_spend": None}
 
     env_ceiling = os.environ.get("GOSLEEP_TOKEN_CEILING")
-    if env_ceiling:
+    env_word = (env_ceiling or "").strip().lower()
+    if not env_word:
+        cost["ceiling"] = DEFAULT_TOKEN_CEILING
+        cost["ceiling_mode"] = "default"
+        cost["ceiling_source"] = ("default %s tokens/night (d-2026-07-28-002; override with "
+                                  "GOSLEEP_TOKEN_CEILING=<int>, disable with =unlimited)"
+                                  % f"{DEFAULT_TOKEN_CEILING:,}")
+    elif env_word in UNLIMITED_WORDS:
+        cost["ceiling_mode"] = "unlimited"
+        cost["ceiling_source"] = "env GOSLEEP_TOKEN_CEILING=%s" % env_word
+        cost["ceiling_why"] = ("unlimited mode -- the owner chose to run without a token ceiling "
+                               "(d-2026-07-28-007). A first-class state, not a missing input: "
+                               "manifest section 5.warn-80 and section 3.budget are OFF by choice, "
+                               "and the budget axis of the runway is provably not a constraint.")
+    else:
         try:
-            cost["ceiling"] = int(env_ceiling)
+            val = int(env_ceiling)
+            if val <= 0:
+                raise ValueError(val)
+            cost["ceiling"] = val
+            cost["ceiling_mode"] = "env"
             cost["ceiling_source"] = "env GOSLEEP_TOKEN_CEILING"
-            cost["ceiling_why"] = None
         except ValueError:
-            degrade("cost", "GOSLEEP_TOKEN_CEILING=%r is not an integer" % env_ceiling)
+            degrade("cost", "GOSLEEP_TOKEN_CEILING=%r is neither a positive integer nor an "
+                            "unlimited word (%s) -- falling back to the default ceiling, NOT to "
+                            "unlimited: a typo must never silently remove the limit"
+                            % (env_ceiling, "/".join(UNLIMITED_WORDS)))
+            cost["ceiling"] = DEFAULT_TOKEN_CEILING
+            cost["ceiling_mode"] = "default"
+            cost["ceiling_source"] = ("default %s tokens/night (after a misconfigured "
+                                      "GOSLEEP_TOKEN_CEILING=%r)" % (f"{DEFAULT_TOKEN_CEILING:,}",
+                                                                     env_ceiling))
 
     for line in state.get("telemetry_lines") or []:
         row, got = {"raw": line[:300]}, 0
@@ -542,8 +610,15 @@ def load_cost(state, events=(), days=()):
     # ledger's own.
     cost["cycles"].sort(key=lambda r: r["cycle"])
 
-    if cost["ceiling"] and cost["cumulative_total"]:
-        cost["used_pct"] = round(100.0 * cost["cumulative_total"] / cost["ceiling"], 1)
+    # Night spend: the ledger total minus the first-build-of-the-day anchor. The percentage is OF
+    # TONIGHT against a per-night ceiling -- never cumulative-vs-night, which compares two different
+    # units and fired the false alarm the block above DEFAULT_TOKEN_CEILING describes.
+    cost["night_anchor"] = night_anchor(cost["cumulative_total"])
+    base = cost["night_anchor"].get("base_total")
+    if isinstance(cost["cumulative_total"], int) and isinstance(base, int):
+        cost["night_spend"] = max(0, cost["cumulative_total"] - base)
+    if cost["ceiling"] and cost["night_spend"] is not None:
+        cost["used_pct"] = round(100.0 * cost["night_spend"] / cost["ceiling"], 1)
     else:
         cost["used_pct"] = None
     cost["by_model"] = cost_by_model(cost["cycles"])
@@ -1422,28 +1497,46 @@ def clock_context(hb, pulses):
 
 
 def clock_budget(cost, cyc_rate):
-    """Token ceiling. TODAY THIS IS `unknown`, AND THAT IS THE FINDING, not a bug.
+    """Token ceiling, per night (GSL-221; d-2026-07-28-007).
 
-    manifest §5.phase-ceiling delegates the ceiling to "the epic brief"; no brief on disk names a
-    number. So §5.warn-80 and §3.budget (BUDGET_EXCEEDED = BLOCKER) are rules that cannot fire, and
-    this clock has a numerator with no denominator. Inventing one would make the whole runway finite
-    on a fabricated basis -- exactly the failure this indicator exists to prevent."""
-    src = ["docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY", "manifest.md §5.phase-ceiling"]
-    used, ceiling = cost.get("cumulative_total"), cost.get("ceiling")
+    Three configured states, three honest readings. `default` and `env` give the clock a real
+    denominator: tonight's spend against a per-night ceiling. `unlimited` is the owner's explicit
+    choice to run without one -- and that is CLEAR, not unknown: "the owner chose no limit" is
+    evidence that this axis cannot stop the night, exactly like "0 blockers" is. The one thing this
+    clock must never do again is read `unknown` because nobody had chosen -- the default chooses."""
+    src = ["docs/handoff/ORCHESTRATION-STATE.md TELEMETRY section",
+           "GOSLEEP_TOKEN_CEILING (int per night; unlimited/none/off; default %s -- "
+           "d-2026-07-28-007)" % f"{DEFAULT_TOKEN_CEILING:,}"]
+    used, ceiling = cost.get("night_spend"), cost.get("ceiling")
+
+    if cost.get("ceiling_mode") == "unlimited":
+        return clock("budget", "token budget", "stops", "clear",
+                     gauge=("unlimited (%s spent tonight)" % f"{used:,}") if isinstance(used, int)
+                           else "unlimited",
+                     why="unlimited mode: GOSLEEP_TOKEN_CEILING=%s -- the owner chose no ceiling "
+                         "(d-2026-07-28-007), so this axis is provably not a constraint tonight. "
+                         "A choice, not a blind spot." % (os.environ.get("GOSLEEP_TOKEN_CEILING")
+                                                          or "unlimited").strip().lower(),
+                     sources=src)
     if ceiling is None:
+        # Unreachable while the default stands; kept so a future regression degrades honestly
+        # instead of crashing the one indicator the owner asked for.
         return clock("budget", "token budget", "stops", "unknown",
-                     gauge=("%s used, no ceiling" % f"{used:,}") if used else None,
-                     why=cost.get("ceiling_why") or "no ceiling on disk", sources=src)
+                     why=cost.get("ceiling_why") or "no ceiling configured and no default applied",
+                     sources=src)
     if used is None:
         return clock("budget", "token budget", "stops", "unknown",
-                     why="a ceiling exists but the telemetry ledger has no cumulative total to "
-                         "measure against", sources=src)
+                     why="a ceiling exists (%s/night, %s) but the telemetry ledger has no cumulative "
+                         "total to measure tonight's spend against"
+                         % (f"{ceiling:,}", cost.get("ceiling_mode")), sources=src)
 
-    gauge = "%s of %s (%s%%)" % (f"{used:,}", f"{ceiling:,}", cost.get("used_pct"))
+    anchor = cost.get("night_anchor") or {}
+    gauge = "%s of %s tonight (%s%%)" % (f"{used:,}", f"{ceiling:,}", cost.get("used_pct"))
     if used >= ceiling:
         return clock("budget", "token budget", "stops", "exhausted", hours=0.0, gauge=gauge,
-                     why="cumulative spend is at or over the ceiling — manifest §3.budget makes this "
-                         "a BLOCKER, not a warning", sources=src)
+                     why="tonight's spend (since the %s anchor) is at or over the %s ceiling — "
+                         "manifest section 3.budget makes this a BLOCKER (BUDGET_EXCEEDED), not a "
+                         "warning" % (anchor.get("date"), cost.get("ceiling_mode")), sources=src)
 
     # Per-cycle burn from the ledger's own running total; cycles/hour from the heartbeat. Both are
     # needed: the ledger has cycle NUMBERS but no timestamps, so it cannot tell time by itself.
@@ -2720,6 +2813,24 @@ def build_digest(ctx, status):
         L.append("- heartbeat: cycle %s · context %s%% · open_workers %s · status %s (%s ago)" % (
             hb.get("cycle"), hb.get("context_pct"), hb.get("open_workers"), hb.get("status"),
             human_age(st["heartbeat_age_s"])))
+    # GSL-221: the ceiling and the runway headline, in the one section the owner reads about money.
+    # All three ceiling states print as themselves — unlimited is a choice, never a warning.
+    co, rw = ctx["cost"], ctx["runway"]
+    if co.get("ceiling_mode") == "unlimited":
+        L.append("- budget: **unlimited** — no token ceiling, by choice (%s)" % co.get("ceiling_source"))
+    elif co.get("ceiling") and co.get("night_spend") is not None:
+        L.append("- budget: %s of %s tonight (%s%%) — ceiling %s" % (
+            "{:,}".format(co["night_spend"]), "{:,}".format(co["ceiling"]), co.get("used_pct"),
+            co.get("ceiling_mode")))
+    elif co.get("ceiling"):
+        L.append("- budget: ceiling %s/night (%s), but no telemetry total to measure tonight against"
+                 % ("{:,}".format(co["ceiling"]), co.get("ceiling_mode")))
+    if rw.get("hours") is not None:
+        L.append("- runway: **%s %.1fh** — binding: %s" % (
+            "≈" if rw.get("bound") == "exact" else "≤", rw["hours"], rw.get("binding_label")))
+    else:
+        L.append("- runway: %s (%s/%s axes readable)" % (rw.get("bound"), rw.get("known"),
+                                                         rw.get("total")))
     L.append("")
 
     # 6 — Manifest candidates: verbatim from `lab-emit candidates`.
@@ -3396,6 +3507,15 @@ def main():
         "staleness": status["staleness"]["grade"],
         "max_event_age_human": status["staleness"]["max_event_age_human"],
         "questions_open": status["questions"]["open"],
+        # GSL-221: the two answers the epic exists for, surfaced in the run report so a gate (or a
+        # smoke assert) can read them without parsing the bundle — and so a --dry-run, which writes
+        # no bundle at all, can still prove what the runway and the ceiling would have said.
+        "runway": {"bound": ctx["runway"]["bound"], "hours": ctx["runway"]["hours"],
+                   "binding": ctx["runway"]["binding"]},
+        "ceiling": {"mode": ctx["cost"].get("ceiling_mode"), "value": ctx["cost"].get("ceiling"),
+                    "night_spend": ctx["cost"].get("night_spend"),
+                    "budget_state": next((c["state"] for c in ctx["runway"]["clocks"]
+                                          if c["axis"] == "budget"), None)},
         "ui": ui,
         "poll_fill": poll,
         "retention": retention,
