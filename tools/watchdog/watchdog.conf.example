@@ -5,7 +5,22 @@
 # Every value is validated at startup; invalid config fails LOUDLY (exit 78) —
 # a silently mis-armed watchdog is worse than none (warren invariant).
 
+# --- mode (GSL-212/220, d-2026-07-28-001) -------------------------------------
+# observe (the DEFAULT): the full decision tree runs on every tick and the ledger
+# records what WOULD have happened (would_nudge / would_kill / would_rewake …) —
+# nothing is nudged, killed, spawned or notified. This is the observational-run
+# setting: several days of ledger first, arming after reading it.
+# armed: actions are live. Arming is THIS explicit line — never a default, never
+# an agent's edit; the owner uncomments it after the observational run (GSL-220)
+# and a green armed-check (GSL-211).
+#WD_MODE="observe"
+
 # --- topology ---------------------------------------------------------------
+# LIFE is judged from the platform roster (`claude agents --json` — one entry per
+# live top-level Claude Code session), matched against the heartbeat's own
+# "session"/"session_id" fields (written by tools/lab/heartbeat.sh). tmux below
+# is only the ACTION address space (where an armed watchdog nudges/kills and
+# where a re-woken orchestrator spawns) plus a corroboration bit in the ledger.
 # tmux session the orchestrator + worker panes live in (Agent Teams = split panes).
 #WD_TMUX_SESSION="gosleep"
 

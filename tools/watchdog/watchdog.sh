@@ -7,9 +7,33 @@
 # skill/orchestrating-delivery-agents/SKILL.md ("Heartbeat protocol").
 #
 # Contract (must match the skill text — the orchestrator knows these rules):
-#   * Liveness is judged from DURABLE ON-DISK STATE ONLY (heartbeat file mtime
-#     + last parseable line), cross-checked against tmux session liveness.
-#     Never from pane-content scraping, never from a single store. (C7)
+#   * MODES (GSL-212/220, d-2026-07-28-001): WD_MODE=observe (the DEFAULT) —
+#     the full decision tree runs and every action is LOGGED to the ledger as
+#     would_* (would_nudge / would_kill / would_rewake …); nothing is nudged,
+#     killed, spawned, slept-for or notified. WD_MODE=armed — actions are live;
+#     armable ONLY by an explicit line in the owner's watchdog.conf. The
+#     observational run (GSL-220) is observe mode on a schedule; arming is the
+#     OWNER's step. Tick-to-tick memory (markers/counters/restart history) is
+#     MODE-SCOPED ($WD_STATE_DIR/<mode>/) so an observational simulation can
+#     never pre-spend the armed budget or vice versa.
+#   * Liveness is judged from DURABLE ON-DISK STATE (heartbeat file mtime
+#     + last parseable line), cross-checked against the PLATFORM ROSTER —
+#     `claude agents --json`, Claude Code's own machine status: one entry per
+#     live top-level CLI session ({pid,cwd,sessionId,name,status}); teammate
+#     subagents do not appear, which is what makes it a clean liveness oracle
+#     (GSL-212, d-2026-07-28-001). Never from pane-content scraping, never
+#     from a single store. (C7) tmux degrades to the ACTION address space
+#     (which pane an armed watchdog may nudge/kill) plus a corroboration bit
+#     in the ledger — it is no longer the life oracle.
+#   * SESSION IDENTITY (GSL-212, audit F2 cure): the heartbeat carries
+#     "session"/"session_id", written by tools/lab/heartbeat.sh FROM the
+#     roster itself — the orchestrator cannot mistype what it never types.
+#     A declared identity absent from the roster while other live session(s)
+#     exist in this repo = session_mismatch -> refuse every action + escalate:
+#     a re-wake beside a possibly-live orchestrator is the double dispatch
+#     the audit proved the old default config would have caused.
+#   * A roster the watchdog cannot read (CLI missing/erroring) = fail SAFE:
+#     platform_unknown, no action ever — never kill on a guess.
 #   * POSITIVE IDENTITY (review C1): the orchestrator pane is identified ONLY
 #     from the heartbeat's own "pane" field ($TMUX_PANE, GSL-51). Positional
 #     guessing (first pane of a window, session:0.0) is FORBIDDEN — after the
@@ -77,7 +101,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.5.1 (GSL-65 review M1: quota-wait ETA alarm-clock backstop)"
+WD_VERSION="0.6.0 (GSL-212: platform life-source claude agents --json + observe mode)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -120,6 +144,11 @@ fi
 : "${WD_TMUX_BIN:="tmux"}"
 : "${WD_CLAUDE_BIN:="claude"}"
 
+# Mode (GSL-212/220): observe = decide + ledger only, every action suppressed
+# into a would_* event; armed = actions live. The DEFAULT is observe — arming
+# is the owner's explicit `WD_MODE=armed` line in watchdog.conf, never a default.
+: "${WD_MODE:=observe}"
+
 # Re-wake brief template (GSL-56 contract, review M1): extracted between the
 # BRIEF-START/END markers with {{...}} placeholders substituted. If the file
 # is missing the watchdog falls back to a minimal inline prompt (ledger-warned).
@@ -159,6 +188,8 @@ fi
 # Test-mode probe injection (smoke tests only; forces dry-run for safety)
 : "${WD_TEST_MODE:=0}"
 : "${WD_TEST_SESSION_ALIVE:=0}"
+: "${WD_TEST_AGENTS_JSON:=}"        # roster fixture FILE for probe_platform (GSL-212);
+                                    # empty in test mode = mirror WD_TEST_SESSION_ALIVE
 : "${WD_TEST_ORCH_PANE:=}"
 : "${WD_TEST_SESSION_CREATED:=}"    # epoch of session start (grace tests)
 : "${WD_TEST_PROC_ALIVE:=1}"        # agent process detected under the pane (zombie tests)
@@ -189,6 +220,7 @@ validate_config() {
            WD_MASS_DEATH_WORKERS WD_MIN_TICK_INTERVAL_SECS WD_LOCK_STALE_SECS; do
     is_uint "${!k}" || die_config "$k must be a non-negative integer, got: '${!k}'"
   done
+  case "$WD_MODE" in observe|armed) : ;; *) die_config "WD_MODE must be 'observe' or 'armed', got: '$WD_MODE'" ;; esac
   [ "$WD_ZOMBIE_CYCLES" -ge 1 ] || die_config "WD_ZOMBIE_CYCLES must be >= 1"
   [ -n "$WD_AGENT_PROC_REGEX" ] || die_config "WD_AGENT_PROC_REGEX must not be empty"
   [ "$WD_CONTEXT_CEILING_PCT" -le 100 ] || die_config "WD_CONTEXT_CEILING_PCT must be <= 100"
@@ -230,12 +262,15 @@ ledger_emit() {
       json="$json,\"$k\":\"$(json_escape "$v")\""
     fi
   done
-  json="$json,\"dry_run\":$DRY_RUN}"
+  json="$json,\"mode\":\"$WD_MODE\",\"dry_run\":$DRY_RUN}"
   printf '%s\n' "$json" >> "$WD_LEDGER_FILE"
 }
 
 # --- markers (tick-to-tick memory in state dir) ----------------------------
-marker_path()  { echo "$WD_STATE_DIR/$1.marker"; }
+# MODE-SCOPED (GSL-212): observe and armed keep separate memory. An observational
+# simulation that "spent" nudge markers, kill cooldowns or the restart budget
+# must never gate the real thing when the owner arms — and vice versa.
+marker_path()  { echo "$WD_STATE_DIR/$WD_MODE/$1.marker"; }
 marker_read()  { cat "$(marker_path "$1")" 2>/dev/null || echo ""; }
 marker_write() { echo "$(now_epoch)" > "$(marker_path "$1")"; }
 marker_clear() { rm -f "$(marker_path "$1")"; }
@@ -246,6 +281,7 @@ marker_age() {
 
 # --- heartbeat reading -----------------------------------------------------
 HB_EXISTS=0 HB_AGE="" HB_LAST="" HB_STATUS="" HB_CTX="" HB_WORKERS="" HB_CYCLE="" HB_PANE="" HB_NOTE=""
+HB_SESSION="" HB_SESSION_ID="" HB_MODE=""
 
 hb_field_int() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p"; }
 hb_field_str() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p"; }
@@ -266,6 +302,9 @@ read_heartbeat() {
     HB_CYCLE="$(hb_field_int cycle)"
     HB_PANE="$(hb_field_str pane)"
     HB_NOTE="$(hb_field_str note)"
+    HB_SESSION="$(hb_field_str session)"
+    HB_SESSION_ID="$(hb_field_str session_id)"
+    HB_MODE="$(hb_field_str mode)"
   fi
 }
 
@@ -299,16 +338,86 @@ quota_eta_check() {
   fi
 }
 
+# --- platform probe (GSL-212): the life oracle is the harness itself --------
+# `claude agents --json` — Claude Code's own roster of live top-level CLI
+# sessions. Match precedence: heartbeat session_id (exact) -> session name ->
+# for a LEGACY heartbeat with neither field, "exactly one roster entry whose
+# cwd is this repo" (ambiguity = no match; never guessed). Sets:
+#   PLATFORM_STATE    found | not_found | unavailable (fail SAFE: no action ever)
+#   PLATFORM_MATCH    session_id | name | cwd_single | mirror (test) | none
+#   PLATFORM_STATUS   the harness's own status word for the matched session
+#   PLATFORM_SESSIONS how many live sessions the roster listed in total
+#   PLATFORM_REPO_N   how many of them run in THIS repo (the double-dispatch guard)
+PLATFORM_STATE="unavailable" PLATFORM_MATCH="none" PLATFORM_STATUS="-"
+PLATFORM_SESSIONS=0 PLATFORM_REPO_N=0 TMUX_ALIVE=0
+probe_platform() {
+  PLATFORM_STATE="unavailable"; PLATFORM_MATCH="none"; PLATFORM_STATUS="-"
+  PLATFORM_SESSIONS=0; PLATFORM_REPO_N=0
+  local json="" out
+  if [ "$WD_TEST_MODE" = "1" ] && [ -z "$WD_TEST_AGENTS_JSON" ]; then
+    # Legacy-scenario compatibility: without a roster fixture the platform
+    # mirrors the injected tmux liveness, matching whatever identity the
+    # heartbeat declares — pre-GSL-212 scenarios keep their exact meaning.
+    if [ "$WD_TEST_SESSION_ALIVE" = "1" ]; then
+      PLATFORM_STATE="found"; PLATFORM_MATCH="mirror"; PLATFORM_STATUS="busy"
+      PLATFORM_SESSIONS=1; PLATFORM_REPO_N=1
+    else
+      PLATFORM_STATE="not_found"
+    fi
+    return 0
+  fi
+  if [ "$WD_TEST_MODE" = "1" ]; then
+    json="$(cat "$WD_TEST_AGENTS_JSON" 2>/dev/null || true)"
+  else
+    json="$("$WD_CLAUDE_BIN" agents --json 2>/dev/null || true)"
+  fi
+  [ -z "$json" ] && return 0   # unavailable — fail safe (never act on a guess)
+  out="$(printf '%s' "$json" | python3 -c '
+import json, sys
+try:
+    rows = json.load(sys.stdin)
+    assert isinstance(rows, list)
+except Exception:
+    print("unavailable none - 0 0"); raise SystemExit
+repo, sid, name = sys.argv[1], sys.argv[2], sys.argv[3]
+repo_n = sum(1 for r in rows if r.get("cwd") == repo)
+hit, match = None, "none"
+if sid:
+    hit = next((r for r in rows if r.get("sessionId") == sid), None)
+    if hit is not None:
+        match = "session_id"
+if hit is None and name:
+    hit = next((r for r in rows if r.get("name") == name), None)
+    if hit is not None:
+        match = "name"
+if hit is None and not sid and not name:
+    cands = [r for r in rows if r.get("cwd") == repo]
+    if len(cands) == 1:
+        hit, match = cands[0], "cwd_single"
+if hit is not None:
+    print("found %s %s %d %d" % (match, (hit.get("status") or "-"), len(rows), repo_n))
+else:
+    print("not_found none - %d %d" % (len(rows), repo_n))
+' "$WD_REPO_ROOT" "$HB_SESSION_ID" "$HB_SESSION" 2>/dev/null || echo "unavailable none - 0 0")"
+  # shellcheck disable=SC2086
+  set -- $out
+  PLATFORM_STATE="${1:-unavailable}"; PLATFORM_MATCH="${2:-none}"
+  PLATFORM_STATUS="${3:--}"; PLATFORM_SESSIONS="${4:-0}"; PLATFORM_REPO_N="${5:-0}"
+}
+
 # --- tmux probes (injectable in test mode) ---------------------------------
 probe_session_alive() {
   if [ "$WD_TEST_MODE" = "1" ]; then [ "$WD_TEST_SESSION_ALIVE" = "1" ]; return; fi
   "$WD_TMUX_BIN" has-session -t "$WD_TMUX_SESSION" 2>/dev/null
 }
 
-# Does an explicit pane id currently exist inside the watched session?
+# Does an explicit pane id currently exist AT ALL? Searched server-wide (-a),
+# not inside the configured session (GSL-212): pane ids (%N) are globally
+# unique, and scoping the search to WD_TMUX_SESSION would re-import the exact
+# F2 failure (a mis-configured session name making a live pane invisible).
 probe_pane_exists() { # $1 = pane id (%N)
   if [ "$WD_TEST_MODE" = "1" ]; then [ -n "$1" ] && [ "$1" = "$WD_TEST_ORCH_PANE" ]; return; fi
-  "$WD_TMUX_BIN" list-panes -s -t "$WD_TMUX_SESSION" -F '#{pane_id}' 2>/dev/null | grep -qx -- "$1"
+  "$WD_TMUX_BIN" list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx -- "$1"
 }
 
 # POSITIVE identification of the orchestrator pane (review C1). The ONLY source
@@ -355,7 +464,9 @@ probe_agent_process_alive() { # $1 = pane id
 }
 
 # --- counters (consecutive-cycle debounce, e.g. zombie) ----------------------
-counter_path()  { echo "$WD_STATE_DIR/$1.count"; }
+# Mode-scoped like the markers (GSL-212): observe's consecutive-cycle chains
+# must never pre-confirm (or reset) the armed watchdog's, and vice versa.
+counter_path()  { echo "$WD_STATE_DIR/$WD_MODE/$1.count"; }
 counter_read()  { local v; v="$(cat "$(counter_path "$1")" 2>/dev/null || echo 0)"; is_uint "$v" && echo "$v" || echo 0; }
 counter_incr()  { local v; v="$(( $(counter_read "$1") + 1 ))"; echo "$v" > "$(counter_path "$1")"; echo "$v"; }
 counter_clear() { rm -f "$(counter_path "$1")"; }
@@ -384,12 +495,22 @@ act_send_text() { # $1=pane $2=text
 }
 
 act_nudge() { # $1=pane
+  if [ "$WD_MODE" = "observe" ]; then
+    log "[observe] would nudge $1 (stale heartbeat, age=${HB_AGE:-none}s > ${WD_HB_STALE_SECS}s) — nothing sent"
+    ledger_emit "would_nudge" "target=$1" "reason=stale_heartbeat" "hb_age=${HB_AGE:-0}"
+    return 0
+  fi
   local msg="[watchdog $(iso_ts)] heartbeat is stale (age=${HB_AGE:-none}s > ${WD_HB_STALE_SECS}s). Append a heartbeat line NOW (Heartbeat protocol) and re-arm your pulse. Next stale tick = kill + re-wake."
   act_send_text "$1" "$msg"
   ledger_emit "nudge" "target=$1" "reason=stale_heartbeat" "hb_age=${HB_AGE:-0}"
 }
 
 act_request_handoff() { # $1=pane
+  if [ "$WD_MODE" = "observe" ]; then
+    log "[observe] would request handoff from $1 (context_pct=${HB_CTX}% >= ${WD_CONTEXT_CEILING_PCT}%) — nothing sent"
+    ledger_emit "would_request_handoff" "target=$1" "context_pct=${HB_CTX}" "ceiling=$WD_CONTEXT_CEILING_PCT"
+    return 0
+  fi
   local msg="[watchdog $(iso_ts)] context_pct=${HB_CTX}% >= ceiling ${WD_CONTEXT_CEILING_PCT}%. Follow the roll protocol NOW: update STATE, write a dated handoff, append a status:\"rolling\" heartbeat, start your successor, exit. Overdue in ${WD_HANDOFF_WAIT_SECS}s = kill + re-wake from the handoff."
   act_send_text "$1" "$msg"
   ledger_emit "handoff_requested" "target=$1" "context_pct=${HB_CTX}" "ceiling=$WD_CONTEXT_CEILING_PCT"
@@ -405,6 +526,15 @@ act_kill() { # $1=pane — EXPLICIT id only; refuses anything else. NEVER -a.
     log "REFUSING kill: '$pane' is not an explicit pane id (%N). kill-pane -a is forbidden."
     ledger_emit "kill_refused" "target=$pane" "reason=not_explicit_pane_id"
     return 1
+  fi
+  # Observe (GSL-212): the safety gates above still ran; the kill itself is
+  # only recorded. KILL_OUTCOME=killed lets the caller continue into the
+  # would_rewake record — the ledger shows the WHOLE chain that would fire.
+  if [ "$WD_MODE" = "observe" ]; then
+    KILL_OUTCOME="killed"
+    log "[observe] would kill-pane -t $pane (explicit id) — nothing killed"
+    ledger_emit "would_kill" "target=$pane" "reason=${DECISION_REASON:-unspecified}"
+    return 0
   fi
   if [ "$DRY_RUN" = "1" ]; then
     if [ "$WD_TEST_MODE" = "1" ] && [ "$WD_TEST_KILL_FAILS" = "1" ]; then
@@ -513,6 +643,19 @@ EOF
 act_rewake() {
   local prompt_file launcher
   prompt_file="$(build_rewake_prompt)"
+  # Observe (GSL-212): the re-wake brief IS built (evidence of exactly what a
+  # replacement would have been told — that is observational data), but nothing
+  # is spawned and no last-started marker is written: no start happened, so no
+  # startup grace may be granted for it.
+  if [ "$WD_MODE" = "observe" ]; then
+    log "[observe] would re-wake orchestrator via cold-start (session=$WD_TMUX_SESSION, window=$WD_ORCH_WINDOW_NAME, prompt=$prompt_file) — nothing spawned"
+    marker_clear "nudge"
+    marker_clear "handoff-request"
+    ledger_emit "would_rewake" "reason=${DECISION_REASON:-unspecified}" \
+      "hb_age=${HB_AGE:-0}" "open_workers=${HB_WORKERS:-0}" "cycle=${HB_CYCLE:-0}" \
+      "prompt=$prompt_file"
+    return 0
+  fi
   # A generated launcher avoids fragile nested quoting through tmux's sh -c.
   launcher="$WD_STATE_DIR/rewake-launch.sh"
   cat > "$launcher" <<EOF
@@ -542,7 +685,7 @@ EOF
 # --- restart budget + backoff + escalation (PRD R1.3) ------------------------
 # Persistent history: one epoch per line; pruned to the sliding window on read.
 restarts_in_window() {
-  local hist="$WD_STATE_DIR/restarts.history" cutoff
+  local hist="$WD_STATE_DIR/$WD_MODE/restarts.history" cutoff
   if [ ! -f "$hist" ]; then echo 0; return 0; fi
   cutoff=$(( $(now_epoch) - WD_RESTART_WINDOW_SECS ))
   awk -v c="$cutoff" '$1 >= c' "$hist" > "$hist.tmp" && mv "$hist.tmp" "$hist"
@@ -550,7 +693,7 @@ restarts_in_window() {
 }
 
 record_restart() {
-  echo "$(now_epoch)" >> "$WD_STATE_DIR/restarts.history"
+  echo "$(now_epoch)" >> "$WD_STATE_DIR/$WD_MODE/restarts.history"
 }
 
 # delay = min(cap, base * 2^n), n = restarts already spent in the window
@@ -579,7 +722,12 @@ escalate() {
   log "ESCALATION: $msg"
   ledger_emit "escalation" "reason=$reason" "restarts_in_window=$n" \
     "budget=$WD_RESTART_BUDGET" "window_secs=$WD_RESTART_WINDOW_SECS"
-  if [ "$DRY_RUN" = "1" ]; then
+  if [ "$WD_MODE" = "observe" ]; then
+    # Observe is externally SILENT (GSL-220): the escalation is on the record
+    # (ledger + log) for the morning read, but the owner is not pinged — a
+    # miscalibrated threshold must cost a ledger line, not a night's sleep.
+    log "[observe] escalation recorded, owner NOT notified"
+  elif [ "$DRY_RUN" = "1" ]; then
     log "[dry-run] would notify owner (osascript notification + hook)"
   else
     if command -v osascript >/dev/null 2>&1; then
@@ -634,7 +782,9 @@ do_restart() {
     reap "" "orchestrator"
   fi
   delay="$(backoff_secs)"
-  if [ "$DRY_RUN" = "1" ]; then
+  if [ "$WD_MODE" = "observe" ] && [ "$DRY_RUN" != "1" ]; then
+    log "[observe] would backoff ${delay}s before re-wake (restart $((n+1))/$WD_RESTART_BUDGET in window) — not sleeping"
+  elif [ "$DRY_RUN" = "1" ]; then
     log "[dry-run] would backoff ${delay}s before re-wake (restart $((n+1))/$WD_RESTART_BUDGET in window)"
   else
     log "backoff ${delay}s before re-wake (restart $((n+1))/$WD_RESTART_BUDGET in window)"
@@ -650,6 +800,10 @@ DECISION="" DECISION_REASON=""
 decide_and_act() {
   local pane session_alive=0
   read_heartbeat
+  # Probes first (GSL-212) so EVERY tick line — including shielded quiesced/
+  # rolling ticks — carries real platform + tmux corroboration data.
+  probe_platform
+  TMUX_ALIVE=0; probe_session_alive && TMUX_ALIVE=1
 
   # 1. Deliberate end states first. Chain-done quiesced NEVER restarts, whatever
   #    tmux says — but the quota-wait form is ETA-BOUNDED (GSL-65 review M1):
@@ -677,9 +831,38 @@ decide_and_act() {
     return 0
   fi
 
-  if probe_session_alive; then session_alive=1; fi
+  # 1b. Life oracle (GSL-212): the platform roster, with tmux demoted to a
+  #     corroboration bit that travels in the ledger but decides nothing.
+  #     Roster unreadable = fail SAFE: no decision tree at all — a watchdog
+  #     that cannot see may not act (never kill on a guess).
+  if [ "$PLATFORM_STATE" = "unavailable" ]; then
+    DECISION="platform_unknown"; DECISION_REASON="agents_roster_unavailable"
+    ledger_emit "platform_unavailable" "tmux_alive=$TMUX_ALIVE"
+    if [ "$WD_MODE" = "armed" ]; then
+      escalate "platform roster (claude agents --json) unavailable — supervising blind is forbidden, no action taken until it reads again"
+    fi
+    return 0
+  fi
 
-  # 2. Dead session — cross-check rule: fresh heartbeat + dead session = dead.
+  #     Declared identity absent from the roster while live session(s) still
+  #     run in THIS repo = session_mismatch (audit F2 cure): the heartbeat's
+  #     author may be one of them under a different identity, or a live
+  #     orchestrator may simply not be the one the heartbeat named. Every
+  #     action is refused — a re-wake beside a possibly-live orchestrator is
+  #     the double dispatch this epic exists to make impossible.
+  if [ "$PLATFORM_STATE" = "not_found" ] && [ "$PLATFORM_REPO_N" -ge 1 ]; then
+    DECISION="session_mismatch"; DECISION_REASON="hb_session_not_in_roster"
+    ledger_emit "session_mismatch" "hb_session=${HB_SESSION:-none}" \
+      "hb_session_id=${HB_SESSION_ID:-none}" "repo_sessions=$PLATFORM_REPO_N" \
+      "tmux_alive=$TMUX_ALIVE"
+    escalate "heartbeat declares session '${HB_SESSION:-none}' but the platform roster does not list it, while $PLATFORM_REPO_N live session(s) run in this repo — refusing every action (re-wake here risks two live orchestrators, audit F2)"
+    return 0
+  fi
+
+  [ "$PLATFORM_STATE" = "found" ] && session_alive=1
+
+  # 2. Dead session — cross-check rule: fresh heartbeat + dead PLATFORM = dead
+  #    (the roster lists no session of ours anywhere, and none in this repo).
   #    Re-wake via cold-start (no kill: there is nothing left to kill).
   if [ "$session_alive" = "0" ]; then
     # Mass-death detection (Gastown): the WHOLE session gone while the last
@@ -834,11 +1017,19 @@ acquire_lock() {
 # --- main --------------------------------------------------------------------
 main() {
   validate_config
-  mkdir -p "$WD_STATE_DIR"
+  mkdir -p "$WD_STATE_DIR" "$WD_STATE_DIR/$WD_MODE"
   mkdir -p "$(dirname "$WD_LEDGER_FILE")"
   acquire_lock
   decide_and_act
-  log "DECISION=$DECISION reason=$DECISION_REASON hb_age=${HB_AGE:-none} hb_status=${HB_STATUS:-none} ctx=${HB_CTX:-none} workers=${HB_WORKERS:-none} dry_run=$DRY_RUN"
+  # GSL-220 acceptance: EVERY tick leaves one ledger line carrying the decision
+  # AND its basis — the observational run is readable from the ledger alone.
+  ledger_emit "tick" "decision=${DECISION:-none}" "reason=${DECISION_REASON:-none}" \
+    "hb_age=${HB_AGE:-none}" "hb_status=${HB_STATUS:-none}" "cycle=${HB_CYCLE:-none}" \
+    "context_pct=${HB_CTX:-none}" "open_workers=${HB_WORKERS:-none}" \
+    "platform=$PLATFORM_STATE" "platform_status=$PLATFORM_STATUS" \
+    "platform_match=$PLATFORM_MATCH" "sessions=$PLATFORM_SESSIONS" \
+    "repo_sessions=$PLATFORM_REPO_N" "tmux_alive=$TMUX_ALIVE"
+  log "DECISION=$DECISION reason=$DECISION_REASON mode=$WD_MODE hb_age=${HB_AGE:-none} hb_status=${HB_STATUS:-none} ctx=${HB_CTX:-none} workers=${HB_WORKERS:-none} platform=$PLATFORM_STATE/$PLATFORM_STATUS tmux=$TMUX_ALIVE dry_run=$DRY_RUN"
 }
 
 main

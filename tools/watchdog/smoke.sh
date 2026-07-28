@@ -92,6 +92,8 @@ HB_BADPANE='{"ts":"2026-07-10T03:00:00Z","cycle":12,"context_pct":41,"open_worke
 
 # run_case NAME EXPECTED_DECISION SESSION_ALIVE PANE HB_KIND HB_JSON [setup-fn]
 # Extra per-case env (e.g. WD_TEST_PROC_ALIVE=0) via global CASE_ENV, cleared after.
+# Legacy scenarios run WD_MODE=armed (they exercise the ARMED decision tree in
+# dry-run — GSL-212 made observe the production default); CASE_ENV overrides.
 CASE_ENV=""
 run_case() {
   local name="$1" expected="$2" alive="$3" pane="$4" hb_kind="$5" hb_json="$6" setup="${7:-}"
@@ -108,6 +110,7 @@ run_case() {
   out="$(
     env WD_CONFIG=/dev/null \
     WD_TEST_MODE=1 \
+    WD_MODE=armed \
     WD_TEST_SESSION_ALIVE="$alive" \
     WD_TEST_ORCH_PANE="$pane" \
     WD_STATE_DIR="$dir/state" \
@@ -129,15 +132,17 @@ run_case() {
   fi
 }
 
-seed_old_nudge()   { echo $((NOW - 400)) > "$1/state/nudge.marker"; }
-seed_old_handoff() { echo $((NOW - 700)) > "$1/state/handoff-request.marker"; }
+# Tick-to-tick memory is MODE-SCOPED since GSL-212 ($WD_STATE_DIR/<mode>/);
+# legacy seeds target the armed dir the legacy scenarios run in.
+seed_old_nudge()   { mkdir -p "$1/state/armed"; echo $((NOW - 400)) > "$1/state/armed/nudge.marker"; }
+seed_old_handoff() { mkdir -p "$1/state/armed"; echo $((NOW - 700)) > "$1/state/armed/handoff-request.marker"; }
 
 # GSL-53 seeds: restart-budget history + escalation marker
-seed_3_recent_restarts() { { echo $((NOW-300)); echo $((NOW-600)); echo $((NOW-900)); } > "$1/state/restarts.history"; }
-seed_2_recent_restarts() { { echo $((NOW-300)); echo $((NOW-600)); } > "$1/state/restarts.history"; }
-seed_3_old_restarts()    { { echo $((NOW-7200)); echo $((NOW-7300)); echo $((NOW-7400)); } > "$1/state/restarts.history"; }
-seed_exhausted_and_escalated() { seed_3_recent_restarts "$1"; echo $((NOW-60)) > "$1/state/escalated.marker"; }
-seed_escalated_only()    { echo $((NOW-60)) > "$1/state/escalated.marker"; }
+seed_3_recent_restarts() { mkdir -p "$1/state/armed"; { echo $((NOW-300)); echo $((NOW-600)); echo $((NOW-900)); } > "$1/state/armed/restarts.history"; }
+seed_2_recent_restarts() { mkdir -p "$1/state/armed"; { echo $((NOW-300)); echo $((NOW-600)); } > "$1/state/armed/restarts.history"; }
+seed_3_old_restarts()    { mkdir -p "$1/state/armed"; { echo $((NOW-7200)); echo $((NOW-7300)); echo $((NOW-7400)); } > "$1/state/armed/restarts.history"; }
+seed_exhausted_and_escalated() { seed_3_recent_restarts "$1"; echo $((NOW-60)) > "$1/state/armed/escalated.marker"; }
+seed_escalated_only()    { mkdir -p "$1/state/armed"; echo $((NOW-60)) > "$1/state/armed/escalated.marker"; }
 
 echo "== decision scenarios (dry-run, injected probes) =="
 #         name                      expected            alive pane  hb       json
@@ -197,14 +202,14 @@ run_case  ok-clears-escalated       ok                  1     %42   fresh    "$H
 # Budget exhausted: escalation in ledger, NO restart, marker written.
 if grep -q '"event":"escalation"' "$WORK/budget-exhausted/ledger.jsonl" \
    && ! grep -q '"event":"orchestrator_restarted"' "$WORK/budget-exhausted/ledger.jsonl" \
-   && [ -f "$WORK/budget-exhausted/state/escalated.marker" ]; then
+   && [ -f "$WORK/budget-exhausted/state/armed/escalated.marker" ]; then
   ok "exhausted budget -> escalation, no restart, marker set (F1-S4)"
 else
   bad "exhausted budget: expected escalation + no restart + marker"
 fi
 # Budget available: restart happened, recorded (3 lines now), backoff 4s (n=2).
 if grep -q '"event":"orchestrator_restarted"' "$WORK/budget-available/ledger.jsonl" \
-   && [ "$(wc -l < "$WORK/budget-available/state/restarts.history" | tr -d ' ')" = "3" ] \
+   && [ "$(wc -l < "$WORK/budget-available/state/armed/restarts.history" | tr -d ' ')" = "3" ] \
    && grep -q 'would backoff 4s' "$WORK/budget-available/output.txt"; then
   ok "budget available -> backoff 4s (n=2), restart recorded (2->3 in window)"
 else
@@ -223,17 +228,17 @@ else
   bad "duplicate escalation despite fresh marker"
 fi
 # Healthy tick clears the escalation marker (new episode can re-escalate).
-if [ ! -f "$WORK/ok-clears-escalated/state/escalated.marker" ]; then
+if [ ! -f "$WORK/ok-clears-escalated/state/armed/escalated.marker" ]; then
   ok "healthy tick clears escalated marker"
 else
   bad "escalated marker not cleared on healthy tick"
 fi
 
 echo "== Gastown debounce scenarios (GSL-54) =="
-seed_last_started()      { echo $((NOW - 30)) > "$1/state/last-started.marker"; }
-seed_zombie_2()          { echo 2 > "$1/state/zombie.count"; }
-seed_zombie_2_recover()  { echo 2 > "$1/state/zombie.count"; }
-seed_nudged_and_cooldown() { echo $((NOW - 400)) > "$1/state/nudge.marker"; echo $((NOW - 60)) > "$1/state/last-kill.marker"; }
+seed_last_started()      { mkdir -p "$1/state/armed"; echo $((NOW - 30)) > "$1/state/armed/last-started.marker"; }
+seed_zombie_2()          { mkdir -p "$1/state/armed"; echo 2 > "$1/state/armed/zombie.count"; }
+seed_zombie_2_recover()  { mkdir -p "$1/state/armed"; echo 2 > "$1/state/armed/zombie.count"; }
+seed_nudged_and_cooldown() { mkdir -p "$1/state/armed"; echo $((NOW - 400)) > "$1/state/armed/nudge.marker"; echo $((NOW - 60)) > "$1/state/armed/last-kill.marker"; }
 
 # (a) startup grace — Gastown #567 / F1-S2
 CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 30))"
@@ -255,7 +260,7 @@ run_case  zombie-recovers           nudged              1     %42   stale    "$H
 run_case  kill-cooldown-defers      kill_deferred       1     %42   stale    "$HB_OK"       seed_nudged_and_cooldown
 run_case  mass-death                mass_death          0     ""    fresh    "$HB_OK"
 
-if [ "$(cat "$WORK/zombie-first-cycle/state/zombie.count" 2>/dev/null)" = "1" ]; then
+if [ "$(cat "$WORK/zombie-first-cycle/state/armed/zombie.count" 2>/dev/null)" = "1" ]; then
   ok "zombie counter incremented to 1 (no kill on first divergence)"
 else
   bad "zombie counter wrong after first cycle"
@@ -266,7 +271,7 @@ if grep -qE 'zombie_confirmed_3_cycles' "$WORK/zombie-third-cycle/output.txt" \
 else
   bad "zombie 3-cycle confirmation failed"
 fi
-if [ ! -f "$WORK/zombie-recovers/state/zombie.count" ]; then
+if [ ! -f "$WORK/zombie-recovers/state/armed/zombie.count" ]; then
   ok "process reappears -> zombie counter reset (consecutive, not cumulative)"
 else
   bad "zombie counter not reset on recovery"
@@ -432,7 +437,7 @@ if grep -q '"event":"kill_failed"' "$L" \
    && ! grep -q '"event":"orchestrator_restarted"' "$L" \
    && grep -q '"event":"escalation"' "$L" \
    && grep -q '"event":"reap"' "$L" \
-   && [ ! -f "$WORK/m2-kill-fails-no-rewake/state/last-kill.marker" ]; then
+   && [ ! -f "$WORK/m2-kill-fails-no-rewake/state/armed/last-kill.marker" ]; then
   ok "M2: failed kill -> kill_failed + escalate; reap kept, NO re-wake, no last-kill marker"
 else
   bad "M2: kill-failure handling wrong (re-wake after failed kill?)"
@@ -451,7 +456,7 @@ if grep -q '"event":"nudge"' "$WORK/stale-first-tick/ledger.jsonl"; then
 else
   bad "ledger missing nudge event"
 fi
-if [ -f "$WORK/dead-session-fresh-hb/state/last-started.marker" ]; then
+if [ -f "$WORK/dead-session-fresh-hb/state/armed/last-started.marker" ]; then
   ok "rewake writes last-started marker (startup-grace input)"
 else
   bad "rewake did not write last-started marker"
@@ -479,6 +484,192 @@ if [ "$rc" -eq 78 ] && echo "$out" | grep -q "FATAL CONFIG ERROR"; then
   ok "invalid config -> loud failure (exit 78)"
 else
   bad "invalid config: expected exit 78 + FATAL CONFIG ERROR, got rc=$rc"
+fi
+
+echo "== GSL-212: platform life-source (claude agents --json) + observe mode =="
+# Roster fixtures. cwd must be THIS repo — PLATFORM_REPO_N is the double-dispatch guard.
+FIX="$WORK/fixtures"; mkdir -p "$FIX"
+cat > "$FIX/agents-ok.json" <<EOF
+[{"pid":111,"cwd":"$REPO_ROOT","kind":"interactive","startedAt":1,"sessionId":"sid-orch","name":"gosleep-aa","status":"busy"}]
+EOF
+cat > "$FIX/agents-other.json" <<EOF
+[{"pid":222,"cwd":"$REPO_ROOT","kind":"interactive","startedAt":1,"sessionId":"sid-other","name":"gosleep-bb","status":"busy"}]
+EOF
+echo "[]" > "$FIX/agents-empty.json"
+HB_SESSION_OK='{"ts":"2026-07-10T03:00:00Z","cycle":20,"context_pct":50,"open_workers":1,"status":"ok","pane":"%42","session":"gosleep-aa","session_id":"sid-orch"}'
+
+# (a) Observe is the DEFAULT mode: no WD_MODE anywhere -> mode=observe in the log line.
+dir="$WORK/observe-default"; mkdir -p "$dir/state"; fresh_hb "$dir/hb" "$HB_OK"
+out="$(env WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_TEST_SESSION_ALIVE=1 WD_TEST_ORCH_PANE=%42 \
+      WD_STATE_DIR="$dir/state" WD_HEARTBEAT_FILE="$dir/hb" WD_LEDGER_FILE="$dir/ledger.jsonl" \
+      bash "$WD" --dry-run 2>&1)" || true
+if echo "$out" | grep -q "DECISION=ok" && echo "$out" | grep -q "mode=observe" \
+   && grep -q '"mode":"observe"' "$dir/ledger.jsonl"; then
+  ok "observe is the default mode (no config -> mode=observe, ledger stamped)"
+else
+  bad "observe default broken (out: $(echo "$out" | tail -1))"
+fi
+
+# (b) Observe ladder: stale-after-nudge runs the FULL chain but only records it —
+# would_kill + would_rewake, no kill/orchestrator_restarted, no last-started marker,
+# and the would-restart still burns the OBSERVE budget history (mode-scoped).
+seed_old_nudge_observe() { mkdir -p "$1/state/observe"; echo $((NOW - 400)) > "$1/state/observe/nudge.marker"; }
+CASE_ENV="WD_MODE=observe"
+run_case  observe-stale-after-nudge kill_rewake        1     %42   stale    "$HB_OK"      seed_old_nudge_observe
+L="$WORK/observe-stale-after-nudge/ledger.jsonl"
+if grep -q '"event":"would_kill"' "$L" && grep -q '"event":"would_rewake"' "$L" \
+   && ! grep -q '"event":"kill"' "$L" && ! grep -q '"event":"orchestrator_restarted"' "$L" \
+   && [ ! -f "$WORK/observe-stale-after-nudge/state/observe/last-started.marker" ] \
+   && [ "$(wc -l < "$WORK/observe-stale-after-nudge/state/observe/restarts.history" | tr -d ' ')" = "1" ]; then
+  ok "observe: full kill chain recorded as would_* only; observe budget burned, nothing started"
+else
+  bad "observe kill chain wrong (see $L)"
+fi
+if grep -q '"event":"reap"' "$L" && grep -q '"event":"tick"' "$L" \
+   && grep '"event":"tick"' "$L" | grep -q '"decision":"kill_rewake"'; then
+  ok "observe: reap evidence still collected + per-tick decision line (GSL-220)"
+else
+  bad "observe: reap/tick line missing"
+fi
+
+# (c) Observe first stale tick: would_nudge, nothing sent.
+CASE_ENV="WD_MODE=observe"
+run_case  observe-stale-first-tick  nudged             1     %42   stale    "$HB_OK"
+if grep -q '"event":"would_nudge"' "$WORK/observe-stale-first-tick/ledger.jsonl" \
+   && ! grep -q '"event":"nudge"' "$WORK/observe-stale-first-tick/ledger.jsonl"; then
+  ok "observe: stale heartbeat -> would_nudge (no send-keys event)"
+else
+  bad "observe: would_nudge missing"
+fi
+
+# (d) Observe context ceiling: would_request_handoff.
+CASE_ENV="WD_MODE=observe"
+run_case  observe-ctx-ceiling       handoff_requested  1     %42   fresh    "$HB_HIGH_CTX"
+if grep -q '"event":"would_request_handoff"' "$WORK/observe-ctx-ceiling/ledger.jsonl"; then
+  ok "observe: context ceiling -> would_request_handoff"
+else
+  bad "observe: would_request_handoff missing"
+fi
+
+# (e) Roster match by session_id: the declared identity is alive -> ok.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-ok.json"
+run_case  roster-session-match      ok                 1     %42   fresh    "$HB_SESSION_OK"
+if grep '"event":"tick"' "$WORK/roster-session-match/ledger.jsonl" | grep -q '"platform_match":"session_id"'; then
+  ok "roster: heartbeat session_id matched against claude agents --json"
+else
+  bad "roster: session_id match not recorded"
+fi
+
+# (f) SESSION MISMATCH (audit F2 cure): declared identity absent from the roster
+# while a live session runs in this repo -> refuse everything + escalate; no
+# nudge/kill/rewake, would_* included.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-other.json WD_MODE=armed"
+run_case  roster-session-mismatch   session_mismatch   1     %42   fresh    "$HB_SESSION_OK"
+L="$WORK/roster-session-mismatch/ledger.jsonl"
+if grep -q '"event":"session_mismatch"' "$L" \
+   && ! grep -qE '"event":"(nudge|kill|orchestrator_restarted|would_nudge|would_kill|would_rewake)"' "$L" \
+   && grep -q '"event":"escalation"' "$L"; then
+  ok "F2 cure: session mismatch -> refuse every action + escalate (no re-wake beside a live session)"
+else
+  bad "session mismatch handling wrong (see $L)"
+fi
+
+# (g) Roster empty (no session anywhere, none in this repo) -> genuinely dead ->
+# rewake path; in observe it is would_rewake.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-empty.json WD_MODE=observe"
+run_case  roster-dead-observe       rewake             1     %42   fresh    "$HB_SESSION_OK"
+if grep -q '"event":"would_rewake"' "$WORK/roster-dead-observe/ledger.jsonl" \
+   && ! grep -q '"event":"orchestrator_restarted"' "$WORK/roster-dead-observe/ledger.jsonl"; then
+  ok "roster empty -> dead -> would_rewake (observe records, spawns nothing)"
+else
+  bad "roster-dead observe path wrong"
+fi
+
+# (h) Roster unreadable -> fail SAFE: platform_unknown, no action at all.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/nonexistent.json"
+run_case  roster-unavailable        platform_unknown   1     %42   fresh    "$HB_OK"
+L="$WORK/roster-unavailable/ledger.jsonl"
+if grep -q '"event":"platform_unavailable"' "$L" \
+   && ! grep -qE '"event":"(nudge|kill|orchestrator_restarted|would_nudge|would_kill|would_rewake)"' "$L"; then
+  ok "roster unavailable -> platform_unknown, nothing acted (never on a guess)"
+else
+  bad "roster-unavailable path wrong"
+fi
+
+# (i) Legacy heartbeat (no session fields) + exactly one roster entry in this
+# repo -> cwd_single match keeps the old world working.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/agents-ok.json"
+run_case  roster-legacy-cwd-single  ok                 1     %42   fresh    "$HB_OK"
+if grep '"event":"tick"' "$WORK/roster-legacy-cwd-single/ledger.jsonl" | grep -q '"platform_match":"cwd_single"'; then
+  ok "legacy heartbeat (no session field) -> cwd_single roster match"
+else
+  bad "cwd_single match not recorded"
+fi
+
+# (j) Invalid WD_MODE fails loudly (exit 78).
+rc=0
+out="$(WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_MODE=maybe \
+       WD_STATE_DIR="$WORK/badmode" WD_HEARTBEAT_FILE="$WORK/badmode-hb" \
+       WD_LEDGER_FILE="$WORK/badmode-ledger" bash "$WD" --dry-run 2>&1)" || rc=$?
+if [ "$rc" -eq 78 ] && echo "$out" | grep -q "WD_MODE"; then
+  ok "invalid WD_MODE -> loud failure (exit 78)"
+else
+  bad "invalid WD_MODE: expected exit 78, got rc=$rc"
+fi
+
+echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
+HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
+if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi
+HT="$WORK/hb-writer"; mkdir -p "$HT"
+cat > "$HT/roster.json" <<EOF
+[{"pid":1,"cwd":"$REPO_ROOT","kind":"interactive","startedAt":1,"sessionId":"sid-me","name":"gosleep-xx","status":"busy"}]
+EOF
+# session identity derived from the roster by the writer's own session id
+line="$(GOSLEEP_HB_FILE="$HT/hb" GOSLEEP_AGENTS_JSON="$HT/roster.json" CLAUDE_CODE_SESSION_ID=sid-me \
+  bash "$HBW" --cycle 5 --context-pct 42 --open-workers 2 --note "smoke" 2>/dev/null)"
+if printf '%s' "$line" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["session"]=="gosleep-xx" and r["session_id"]=="sid-me" and r["cycle"]==5 and r["context_pct"]==42 and r["status"]=="ok"' 2>/dev/null; then
+  ok "writer derives session/session_id from the roster (never typed by hand)"
+else
+  bad "writer session derivation wrong: $line"
+fi
+# unknown own sid -> cwd_single fallback still resolves the repo's only session
+line="$(GOSLEEP_HB_FILE="$HT/hb" GOSLEEP_AGENTS_JSON="$HT/roster.json" CLAUDE_CODE_SESSION_ID=sid-child \
+  bash "$HBW" --cycle 6 --context-pct 43 --open-workers 2 2>/dev/null)"
+if printf '%s' "$line" | grep -q '"session":"gosleep-xx"'; then
+  ok "writer falls back to cwd_single for a child/unknown session id"
+else
+  bad "cwd_single fallback broken: $line"
+fi
+# empty roster -> fields omitted, line still written (honest degrade, never a refusal to beat)
+line="$(GOSLEEP_HB_FILE="$HT/hb" GOSLEEP_AGENTS_JSON="-" \
+  bash "$HBW" --cycle 7 --context-pct 44 --open-workers 0 --status quiesced --mode night 2>/dev/null)"
+if printf '%s' "$line" | grep -q '"status":"quiesced"' && ! printf '%s' "$line" | grep -q '"session"'; then
+  ok "writer degrades honestly on an empty roster (no session fields, line written)"
+else
+  bad "empty-roster degrade wrong: $line"
+fi
+# atomic self-truncation at 200 lines, no temp leftover
+: > "$HT/hb-trunc"; i=1; while [ "$i" -le 205 ]; do echo "{\"cycle\":$i}" >> "$HT/hb-trunc"; i=$((i+1)); done
+GOSLEEP_HB_FILE="$HT/hb-trunc" GOSLEEP_AGENTS_JSON="-" \
+  bash "$HBW" --cycle 206 --context-pct 1 --open-workers 0 >/dev/null 2>&1
+if [ "$(wc -l < "$HT/hb-trunc" | tr -d ' ')" = "200" ] && [ ! -f "$HT/hb-trunc.tmp" ]; then
+  ok "writer self-truncates to 200 lines, atomic (no .tmp leftover)"
+else
+  bad "self-truncation wrong ($(wc -l < "$HT/hb-trunc") lines)"
+fi
+# validation fails loudly
+if ! bash "$HBW" --cycle x --context-pct 1 --open-workers 0 >/dev/null 2>&1 \
+   && ! bash "$HBW" --cycle 1 --context-pct 101 --open-workers 0 >/dev/null 2>&1 \
+   && ! bash "$HBW" --cycle 1 --context-pct 1 --open-workers 0 --status wat >/dev/null 2>&1; then
+  ok "writer rejects bad cycle/context_pct/status (exit 2)"
+else
+  bad "writer validation too permissive"
+fi
+# 0-LLM: the only claude invocation is the local roster read
+if grep -qE 'claude (-p|--print)|api\.anthropic|ANTHROPIC_API_KEY=' "$HBW"; then
+  bad "heartbeat.sh 0-LLM check: found a headless/API call"
+else
+  ok "heartbeat.sh 0-LLM check (roster read only)"
 fi
 
 echo "== plist render =="

@@ -23,6 +23,7 @@ Common fields on every line:
 |---|---|---|
 | `ts` | string | UTC ISO-8601, when the event was recorded |
 | `event` | string | one of the event types below |
+| `mode` | string | `observe` \| `armed` (GSL-212) — which mode produced the line; observational history is filtered on `mode:"observe"` |
 | `dry_run` | 0/1 | 1 = produced by a `--dry-run`/test tick; ignore for history |
 
 Event types and their extra fields:
@@ -40,7 +41,14 @@ Event types and their extra fields:
 | `rewake_brief_missing` | `path`, `fallback` | warning: the re-wake brief template was missing/markerless; the inline fallback prompt was used |
 | `worker_died` | `count`, `reason` (`whole_session_gone`\|`session_gone`), `observed` | recorded workers lost with the session (observed from heartbeat vs tmux — the watchdog kills only the orchestrator, never workers) |
 | `mass_death` | `open_workers`, `reason` | whole session gone with ≥ `WD_MASS_DEATH_WORKERS` recorded workers → escalation instead of blind restart |
-| `escalation` | `reason`, `restarts_in_window`, `budget`, `window_secs` | restart budget exhausted or mass death — owner must intervene |
+| `escalation` | `reason`, `restarts_in_window`, `budget`, `window_secs` | restart budget exhausted or mass death — owner must intervene (in `observe` mode the escalation is ledger-only: the owner is NOT pinged) |
+| `tick` | `decision`, `reason`, `hb_age`, `hb_status`, `cycle`, `context_pct`, `open_workers`, `platform`, `platform_status`, `platform_match`, `sessions`, `repo_sessions`, `tmux_alive` | EVERY tick, both modes (GSL-212/220): the decision and its full basis — the observational run is readable from these lines alone |
+| `would_nudge` | `target`, `reason`, `hb_age` | observe mode: a nudge would have been sent (nothing was) |
+| `would_request_handoff` | `target`, `context_pct`, `ceiling` | observe mode: "write handoff now" would have been sent |
+| `would_kill` | `target`, `reason` | observe mode: the pane would have been force-killed (post-reap, safety gates already passed) |
+| `would_rewake` | `reason`, `hb_age`, `open_workers`, `cycle`, `prompt` | observe mode: a replacement orchestrator would have been spawned; `prompt` points at the exact brief it would have received |
+| `platform_unavailable` | `tmux_alive` | the roster (`claude agents --json`) could not be read — fail safe, no action taken (GSL-212) |
+| `session_mismatch` | `hb_session`, `hb_session_id`, `repo_sessions`, `tmux_alive` | the heartbeat's declared session is absent from the roster while live session(s) run in this repo — every action refused, escalation follows (audit F2 cure) |
 
 Example (a stale-after-nudge kill cycle, then recovery):
 
