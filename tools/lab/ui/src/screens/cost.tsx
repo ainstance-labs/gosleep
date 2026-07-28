@@ -32,8 +32,14 @@ export function Cost({ b }: { b: RenderBundle }): VNode {
   // GSL-120: no slice. The heading prints c.cycles.length (67); slicing to 40 hid 27 cycles that HAD
   // a telemetry row, and nothing on the page named them — a second, silent truncation on top of the
   // 29 with no row at all (which the note below already accounts for). Heading and table now count
-  // the same rows. Newest first.
-  const ordered = [...c.cycles].reverse();
+  // the same rows.
+  // GSL-192 (audit finding 64): newest first BY CYCLE, explicitly. This used to be reverse(), which
+  // merely mirrors the input — the bundle arrived in the ledger's file order and the column carried
+  // 17 order inversions. The data layer now sorts ascending (chronicler.py does the same), but a
+  // view that trusts its input re-inherits the file order the day the data layer regresses; one
+  // explicit sort makes "newest first" true by construction. Stable, so same-cycle rows keep the
+  // ledger's own order.
+  const ordered = [...c.cycles].sort((a, b) => b.cycle - a.cycle);
   /** Cycles the ledger's running total counts, minus the ones with a per-cycle row to sum. */
   const gap = c.cumulative_cycles === null ? null : c.cumulative_cycles - c.cycles.length;
 

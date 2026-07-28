@@ -833,6 +833,47 @@ TZROW="$(jq -c '.tasks.rows[] | select(.key=="GSL-777")' "$TZR/docs/lab/render_b
   && ok "GSL-93: the Tasks board knows the AGE of its statuses (a board is only as true as its last poll)" \
   || bad "GSL-93: the board has a status but no idea when it learned it — it reports the age as 'never'"
 
+# ════════ GSL-192: the cost headline is the MAX of the ledger, and the table is SORTED ════════
+# (audit findings 47 + 64). The TELEMETRY ledger is hand-appended prose in FILE order: on live data
+# the last line trailed the true running-total maximum by 1,672,000 tokens (10.5%), so the KPI tile
+# was refuted by the table printed directly under it — and the cycle column carried 17 order
+# inversions, so a reader could not spot a missing cycle by eye. The fixture is the defect in
+# miniature: three rows out of order with the maximum in the MIDDLE, so last-line-wins and
+# unsorted-passthrough each fail a different assert below.
+CO="$WORK/cost-order"; mkdir -p "$CO/docs/lab/events" "$CO/docs/handoff"
+: > "$CO/docs/lab/events/$TODAY.jsonl"
+cat > "$CO/docs/handoff/ORCHESTRATION-STATE.md" <<'STATE'
+## TELEMETRY
+
+- `cycle=7 worker=w model=claude-opus-4-8 tokens_out=1000 tokens_in=100 cache_read=10 | running: cycles=7 total≈7000`
+- `cycle=9 worker=w model=claude-opus-4-8 tokens_out=1000 tokens_in=100 cache_read=10 | running: cycles=9 total≈9000`
+- `cycle=8 worker=w model=claude-opus-4-8 tokens_out=1000 tokens_in=100 cache_read=10 | running: cycles=8 total≈8000`
+
+## NEXT
+STATE
+bash "$CH" --repo "$CO" --no-poll --quiet --json >/dev/null 2>&1
+COB="$CO/docs/lab/render_bundle.json"
+[[ "$(jq -r '.cost.cumulative_total' "$COB")" == "9000" && "$(jq -r '.cost.cumulative_cycles' "$COB")" == "9" ]] \
+  && ok "GSL-192: the tile is max(running_total), never the file's last line (9000, not 8000)" \
+  || bad "GSL-192: cumulative tile reads $(jq -r '.cost.cumulative_total' "$COB")/$(jq -r '.cost.cumulative_cycles' "$COB") — last-line-wins is back (want 9000/9)"
+jq -e '.cost.cycles | map(.cycle) == [7,8,9]' "$COB" >/dev/null \
+  && ok "GSL-192: the bundle's rows are sorted by cycle (7,8,9 out of a 7,9,8 ledger)" \
+  || bad "GSL-192: the bundle keeps the ledger's file order ($(jq -c '.cost.cycles | map(.cycle)' "$COB" 2>/dev/null))"
+CO_ORDER="$(python3 - "$CO/docs/lab/site/cost.html" <<'PY'
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+seg = re.search(r"Per cycle(.*?)Per model", h, re.S)
+print(",".join(re.findall(r'<tr><td class="mono">(\d+)</td>', seg.group(1) if seg else "")))
+PY
+)"
+[[ "$CO_ORDER" == "9,8,7" ]] \
+  && ok "GSL-192: the RENDERED per-cycle table is newest-first by cycle (9,8,7) — sorted, not reverse(file order)" \
+  || bad "GSL-192: the rendered per-cycle table is out of cycle order (got: ${CO_ORDER:-nothing})"
+# The invariant the audit stated verbatim: the headline can never be refuted by its own table.
+jq -e '.cost.cumulative_total >= ([.cost.cycles[].running_total | select(. != null)] | max)' "$COB" >/dev/null \
+  && ok "GSL-192: tile >= max running_total of its own table — the headline cannot be refuted by the rows under it" \
+  || bad "GSL-192: the cumulative tile is BELOW its own table's maximum"
+
 # ════════════ GSL-94 / F5-S1: the autonomy runway = min() over six exhaustion clocks ════════════
 #
 # The acceptance criterion of PRD Phase 5: given a state, the runway is computed correctly AND the
