@@ -101,7 +101,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.6.1 (GSL-213: frozen-progress detector — cycle+context_pct immobile across ticks)"
+WD_VERSION="0.6.2 (GSL-215: healthy/slow/stuck classes, false-negative bias, ZFC matrix)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -158,6 +158,9 @@ fi
 : "${WD_HB_STALE_SECS:=900}"        # heartbeat older than this = stale (GSL-67 cadence:
                                     # ~270/~540s ticks; raise to ~2100 for the 1200-1800s
                                     # long-waiting/night tier — see watchdog.conf.example)
+: "${WD_HB_SLOW_SECS:=0}"           # GSL-215: the "slow" zone starts here — INSIDE fresh,
+                                    # strictly below stale, so by construction no action can
+                                    # attach to it (record-only class). 0 = derive stale/2.
 : "${WD_NUDGE_GRACE_SECS:=240}"     # after a nudge, how long before kill+re-wake
 : "${WD_CONTEXT_CEILING_PCT:=80}"   # orchestrator self-rolls at ~70%; watchdog forces above that
 : "${WD_HANDOFF_WAIT_SECS:=600}"    # after "write handoff now", how long before kill+re-wake
@@ -229,7 +232,7 @@ is_uint() { [[ "${1:-}" =~ ^[0-9]+$ ]]; }
 
 validate_config() {
   local k
-  for k in WD_HB_STALE_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
+  for k in WD_HB_STALE_SECS WD_HB_SLOW_SECS WD_NUDGE_GRACE_SECS WD_CONTEXT_CEILING_PCT WD_HANDOFF_WAIT_SECS \
            WD_QUOTA_GRACE_SECS WD_FROZEN_TICKS WD_FROZEN_MIN_SPAN_SECS \
            WD_RESTART_BUDGET WD_RESTART_WINDOW_SECS WD_BACKOFF_BASE_SECS WD_BACKOFF_CAP_SECS \
            WD_ESCALATE_REPEAT_SECS WD_STARTUP_GRACE_SECS WD_ZOMBIE_CYCLES WD_KILL_COOLDOWN_SECS \
@@ -239,6 +242,11 @@ validate_config() {
   case "$WD_MODE" in observe|armed) : ;; *) die_config "WD_MODE must be 'observe' or 'armed', got: '$WD_MODE'" ;; esac
   [ "$WD_ZOMBIE_CYCLES" -ge 1 ] || die_config "WD_ZOMBIE_CYCLES must be >= 1"
   [ "$WD_FROZEN_TICKS" -ge 2 ] || die_config "WD_FROZEN_TICKS must be >= 2"
+  # Derive the slow threshold (GSL-215) and pin the invariant that makes
+  # "slow never acts" TRUE BY CONSTRUCTION: slow lives strictly below stale.
+  [ "$WD_HB_SLOW_SECS" -eq 0 ] && WD_HB_SLOW_SECS=$(( WD_HB_STALE_SECS / 2 ))
+  [ "$WD_HB_SLOW_SECS" -lt "$WD_HB_STALE_SECS" ] \
+    || die_config "WD_HB_SLOW_SECS ($WD_HB_SLOW_SECS) must be < WD_HB_STALE_SECS ($WD_HB_STALE_SECS) — the slow class is record-only and must sit inside the no-action zone"
   [ -n "$WD_AGENT_PROC_REGEX" ] || die_config "WD_AGENT_PROC_REGEX must not be empty"
   [ "$WD_CONTEXT_CEILING_PCT" -le 100 ] || die_config "WD_CONTEXT_CEILING_PCT must be <= 100"
   [ "$WD_RESTART_BUDGET" -ge 1 ] || die_config "WD_RESTART_BUDGET must be >= 1"
@@ -488,6 +496,56 @@ track_progress() {
       marker_clear "frozen-episode"
       ledger_emit "progress_resumed" "cycle=${HB_CYCLE}" "context_pct=${HB_CTX}"
     fi
+  fi
+}
+
+# --- classification (GSL-215): healthy / slow / stuck + dead / shielded / unknown
+# The ZFC matrix (borrowed from overstory: Zombie / Frozen / Crashed) mapped
+# onto this contour — the rule table lives in docs/runbooks/watchdog.md.
+# BIAS IS FALSE-NEGATIVE by design: ambiguity always resolves to the MILDER
+# class — better to miss a stuck orchestrator for one tick than to kill a live
+# one. The class DECIDES NOTHING here; it is recorded on the tick line and the
+# reaction ladder consults it (slow is record-only BY CONSTRUCTION: its zone
+# sits strictly below the stale threshold, where the decision tree already
+# does nothing).
+#   healthy  — platform found, heartbeat fresh and young, counters moving
+#   slow     — platform found, heartbeat fresh but PAST the slow mark
+#              (age >= WD_HB_SLOW_SECS), or fresh-but-frozen (GSL-213 F-signal)
+#   stuck    — platform found, heartbeat stale (the action zone: write-
+#              divergence / zombie live here — overstory Z-signal)
+#   dead     — the roster lists no session of ours anywhere (overstory C-signal)
+#   shielded — declared stand-down (quiesced; rolling with a fresh heartbeat)
+#   unknown  — the watchdog cannot see (roster unreadable / session mismatch);
+#              refuse-and-escalate territory, never action territory
+WD_CLASS="" WD_CLASS_REASON=""
+classify() {
+  if [ "$HB_STATUS" = "quiesced" ] || { [ "$HB_STATUS" = "rolling" ] && hb_is_fresh; }; then
+    WD_CLASS="shielded"; WD_CLASS_REASON="status_${HB_STATUS}"; return 0
+  fi
+  case "$PLATFORM_STATE" in
+    unavailable)
+      WD_CLASS="unknown"; WD_CLASS_REASON="platform_unavailable"; return 0 ;;
+    not_found)
+      if [ "$PLATFORM_REPO_N" -ge 1 ]; then
+        WD_CLASS="unknown"; WD_CLASS_REASON="session_mismatch"
+      else
+        WD_CLASS="dead"; WD_CLASS_REASON="no_live_session_in_roster"
+      fi
+      return 0 ;;
+  esac
+  if in_startup_grace; then
+    WD_CLASS="healthy"; WD_CLASS_REASON="startup_grace"; return 0
+  fi
+  if hb_is_fresh; then
+    if [ "$FROZEN" = "1" ]; then
+      WD_CLASS="slow"; WD_CLASS_REASON="progress_frozen"
+    elif is_uint "$HB_AGE" && [ "$HB_AGE" -ge "$WD_HB_SLOW_SECS" ]; then
+      WD_CLASS="slow"; WD_CLASS_REASON="hb_age_${HB_AGE}s_past_slow_${WD_HB_SLOW_SECS}s"
+    else
+      WD_CLASS="healthy"; WD_CLASS_REASON="fresh_and_moving"
+    fi
+  else
+    WD_CLASS="stuck"; WD_CLASS_REASON="hb_stale_${HB_AGE:-missing}s"
   fi
 }
 
@@ -892,6 +950,9 @@ decide_and_act() {
   TMUX_ALIVE=0; probe_session_alive && TMUX_ALIVE=1
   # Frozen-progress bookkeeping (GSL-213): record-only, feeds GSL-215 classes.
   track_progress
+  # Classification (GSL-215): computed from the signals, recorded on the tick
+  # line, decides nothing here — the reaction ladder consults it.
+  classify
 
   # 1. Deliberate end states first. Chain-done quiesced NEVER restarts, whatever
   #    tmux says — but the quota-wait form is ETA-BOUNDED (GSL-65 review M1):
@@ -1112,13 +1173,14 @@ main() {
   # GSL-220 acceptance: EVERY tick leaves one ledger line carrying the decision
   # AND its basis — the observational run is readable from the ledger alone.
   ledger_emit "tick" "decision=${DECISION:-none}" "reason=${DECISION_REASON:-none}" \
+    "class=${WD_CLASS:-none}" "class_reason=${WD_CLASS_REASON:-none}" \
     "hb_age=${HB_AGE:-none}" "hb_status=${HB_STATUS:-none}" "cycle=${HB_CYCLE:-none}" \
     "context_pct=${HB_CTX:-none}" "open_workers=${HB_WORKERS:-none}" \
     "platform=$PLATFORM_STATE" "platform_status=$PLATFORM_STATUS" \
     "platform_match=$PLATFORM_MATCH" "sessions=$PLATFORM_SESSIONS" \
     "repo_sessions=$PLATFORM_REPO_N" "tmux_alive=$TMUX_ALIVE" \
     "frozen=$FROZEN" "frozen_ticks=$FROZEN_TICKS" "frozen_span=$FROZEN_SPAN"
-  log "DECISION=$DECISION reason=$DECISION_REASON mode=$WD_MODE hb_age=${HB_AGE:-none} hb_status=${HB_STATUS:-none} ctx=${HB_CTX:-none} workers=${HB_WORKERS:-none} platform=$PLATFORM_STATE/$PLATFORM_STATUS tmux=$TMUX_ALIVE dry_run=$DRY_RUN"
+  log "DECISION=$DECISION reason=$DECISION_REASON class=${WD_CLASS:-none} mode=$WD_MODE hb_age=${HB_AGE:-none} hb_status=${HB_STATUS:-none} ctx=${HB_CTX:-none} workers=${HB_WORKERS:-none} platform=$PLATFORM_STATE/$PLATFORM_STATUS tmux=$TMUX_ALIVE dry_run=$DRY_RUN"
 }
 
 main

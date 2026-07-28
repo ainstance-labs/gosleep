@@ -689,6 +689,72 @@ else
   bad "frozen: quiesced handling wrong"
 fi
 
+echo "== GSL-215: classes healthy/slow/stuck (false-negative bias, ZFC matrix) =="
+tick_class() { grep '"event":"tick"' "$WORK/$1/ledger.jsonl" 2>/dev/null | sed -nE 's/.*"class":"([a-z]+)".*/\1/p' | tail -1; }
+age_hb_8m() { touch -t "$(date -v-8M +%Y%m%d%H%M.%S)" "$1/hb"; }
+
+CASE_ENV="WD_MODE=observe"
+run_case  class-healthy             ok                 1     %42   fresh    "$HB_OK"
+[ "$(tick_class class-healthy)" = "healthy" ] \
+  && ok "class: fresh + young + moving -> healthy" || bad "class-healthy: got '$(tick_class class-healthy)'"
+
+# SLOW BY AGE: 8 min old = past the slow mark (450s = stale/2) but still fresh
+# (< 900s). The decision is ok — record-only is true BY CONSTRUCTION.
+CASE_ENV="WD_MODE=observe"
+run_case  class-slow-age            ok                 1     %42   fresh    "$HB_OK"      age_hb_8m
+if [ "$(tick_class class-slow-age)" = "slow" ] \
+   && ! grep -qE '"event":"(nudge|would_nudge|kill|would_kill|orchestrator_restarted|would_rewake)"' "$WORK/class-slow-age/ledger.jsonl"; then
+  ok "class: approaching-stale -> slow, and slow NEVER acts (decision stays ok)"
+else
+  bad "class-slow-age wrong (class=$(tick_class class-slow-age))"
+fi
+
+# SLOW BY FROZEN (the F of ZFC): heart beats, work does not — bias keeps it
+# out of stuck (better to miss for a tick than to kill a live one).
+CASE_ENV="WD_MODE=observe"
+run_case  class-slow-frozen         ok                 1     %42   fresh    "$HB_OK"      seed_frozen_19
+if [ "$(tick_class class-slow-frozen)" = "slow" ] \
+   && grep '"event":"tick"' "$WORK/class-slow-frozen/ledger.jsonl" | grep -q '"class_reason":"progress_frozen"'; then
+  ok "class: fresh-but-frozen -> slow (reason progress_frozen), not stuck"
+else
+  bad "class-slow-frozen wrong (class=$(tick_class class-slow-frozen))"
+fi
+
+# STUCK (the Z territory): stale heartbeat with a live platform session.
+CASE_ENV="WD_MODE=observe"
+run_case  class-stuck               nudged             1     %42   stale    "$HB_OK"
+[ "$(tick_class class-stuck)" = "stuck" ] \
+  && ok "class: stale + live session -> stuck (the only action zone)" || bad "class-stuck: got '$(tick_class class-stuck)'"
+
+# DEAD (the C of ZFC): the roster lists nothing of ours.
+CASE_ENV="WD_MODE=observe"
+run_case  class-dead                rewake             0     ""    fresh    "$HB_SOLO"
+[ "$(tick_class class-dead)" = "dead" ] \
+  && ok "class: no live session in the roster -> dead" || bad "class-dead: got '$(tick_class class-dead)'"
+
+# SHIELDED: a declared stand-down is a class of its own, never a failure.
+CASE_ENV="WD_MODE=observe"
+run_case  class-shielded            ok_quiesced        0     ""    fresh    "$HB_QUIESCED"
+[ "$(tick_class class-shielded)" = "shielded" ] \
+  && ok "class: quiesced -> shielded" || bad "class-shielded: got '$(tick_class class-shielded)'"
+
+# UNKNOWN: the watchdog cannot see -> refuse territory, milder than any verdict.
+CASE_ENV="WD_TEST_AGENTS_JSON=$FIX/nonexistent.json WD_MODE=observe"
+run_case  class-unknown             platform_unknown   1     %42   fresh    "$HB_OK"
+[ "$(tick_class class-unknown)" = "unknown" ] \
+  && ok "class: unreadable roster -> unknown (never a guess)" || bad "class-unknown: got '$(tick_class class-unknown)'"
+
+# The construction invariant fails LOUDLY: slow >= stale is a config error.
+rc=0
+out="$(WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_HB_SLOW_SECS=900 \
+       WD_STATE_DIR="$WORK/badslow" WD_HEARTBEAT_FILE="$WORK/badslow-hb" \
+       WD_LEDGER_FILE="$WORK/badslow-ledger" bash "$WD" --dry-run 2>&1)" || rc=$?
+if [ "$rc" -eq 78 ] && echo "$out" | grep -q "record-only"; then
+  ok "class: WD_HB_SLOW_SECS >= stale refused at startup (exit 78)"
+else
+  bad "class: slow>=stale config accepted (rc=$rc)"
+fi
+
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
 HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
 if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi

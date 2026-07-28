@@ -59,6 +59,10 @@
 # heartbeat's optional "mode" field; the watchdog does not parse it — this
 # threshold is how the owner aligns the two.)
 #WD_HB_STALE_SECS=900
+# GSL-215: where the record-only "slow" class begins. MUST stay strictly below
+# WD_HB_STALE_SECS (validated, exit 78) — that inequality is what makes "slow
+# never acts" true by construction. 0 = derive WD_HB_STALE_SECS / 2.
+#WD_HB_SLOW_SECS=0
 # After a nudge, how long the orchestrator gets to refresh the heartbeat
 # before kill + re-wake.
 #WD_NUDGE_GRACE_SECS=240
