@@ -211,3 +211,9 @@
 {"ts":"2026-07-28T12:02:59Z","cycle":146,"context_pct":92,"open_workers":1,"status":"ok","pane":"%10","note":"impl-176 COMPLETE; closing cycle 146"}
 {"ts":"2026-07-28T12:08:11Z","cycle":147,"context_pct":93,"open_workers":1,"status":"ok","pane":"%10"}
 {"ts":"2026-07-28T12:13:05Z","cycle":147,"context_pct":94,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T12:18:07Z","cycle":147,"context_pct":94,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T12:18:53Z","cycle":147,"context_pct":95,"open_workers":1,"status":"ok","pane":"%10","note":"owner: next workers on Opus"}
+{"ts":"2026-07-28T12:19:30Z","cycle":147,"context_pct":95,"open_workers":1,"status":"ok","pane":"%10","note":"finalizer-176 COMPLETE; closing cycle 147"}
+{"ts":"2026-07-28T12:21:34Z","cycle":148,"context_pct":95,"open_workers":0,"status":"ok","pane":"%10","note":"impl-178 killed early (Fable-5 inherit x3); awaiting owner on restart"}
+{"ts":"2026-07-28T12:33:06Z","cycle":148,"context_pct":96,"open_workers":0,"status":"ok","pane":"%10","note":"awaiting owner model decision"}
+{"ts":"2026-07-28T12:43:08Z","cycle":148,"context_pct":96,"open_workers":0,"status":"ok","pane":"%10","note":"awaiting owner; applying q-004 default"}
