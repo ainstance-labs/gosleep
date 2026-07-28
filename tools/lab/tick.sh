@@ -125,6 +125,27 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
 
+# ── 0. don't wake anything if there is no work (GSL-202; borrowed from 5dive) ─
+# Finding 89 (MAJOR): a scheduler that unconditionally spins up work opens quota windows and burns
+# tokens on nights when nothing changed. This tick spends 0 tokens by construction, but the idle
+# gate makes the no-work case COST ZERO BEYOND ITS OWN LEDGER LINE: no network poll, no rebuild,
+# no agent session — the ledger records result="idle" so the quiet run is visible, not invisible.
+# "No work" is a conjunction the rest of this script enforces piecewise: the surfaces are fresh
+# (the debounce or a recent tick rebuilt within GOSLEEP_TICK_FRESH) AND no open DECISION deadline
+# has passed. A fresh bundle implies a recent poll (every rebuild path polls first), so skipping
+# the reconcile here forgets nothing. --force overrides, for the owner's "run it NOW".
+if [ "$FORCE" != "1" ]; then
+  AGE0="$(bundle_age)"
+  if [ "$AGE0" -le "$FRESH" ]; then
+    DUE_OPEN="$(bash "$SCRIPT_DIR/lab-emit.sh" list --due 2>/dev/null | head -1)"
+    if [ -z "$DUE_OPEN" ]; then
+      say "idle: bundle ${AGE0}s fresh, no deadline due — nothing woken, nothing spent"
+      ledger_line "idle" null 0 "skipped-fresh" null "skipped"
+      exit 0
+    fi
+  fi
+fi
+
 # ── 1. poll-fill: reconcile-don't-trust ──────────────────────────────────────
 say "poll-fill (reconcile external truth)"
 bash "$SCRIPT_DIR/poll-fill.sh" --repo "$REPO" >/dev/null 2>&1

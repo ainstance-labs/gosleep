@@ -4354,6 +4354,37 @@ bash "$TK" --no-such-flag >/dev/null 2>&1
 [ $? -eq 2 ] && ok "GSL-199: unknown flag exits 2 (a misconfigured carrier is heard, not swallowed)" \
   || bad "GSL-199: unknown flag did not exit 2"
 
+echo "== GSL-202: the idle gate — don't wake anything when there is no work =="
+# Finding 89 (5dive borrow): the no-work tick must cost nothing beyond its own ledger line —
+# no poll, no rebuild, no agent session, no quota window — and the quiet run must be VISIBLE.
+# The fixture arrives here fresh from the GSL-199 runs: bundle seconds old, nothing due.
+TKEV="$TKL/events"
+EV_L0="$(cat "$TKEV"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')"
+BND_M0="$(stat -f %m "$TKL/render_bundle.json")"
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+[ $? -eq 0 ] && tail -1 "$TKLED" | grep -q '"result":"idle"' \
+  && ok "GSL-202: fresh bundle + nothing due -> result=idle, exit 0 (the quiet run is on the record)" \
+  || bad "GSL-202: idle path did not fire: $(tail -1 "$TKLED")"
+[ "$(cat "$TKEV"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')" = "$EV_L0" ] \
+  && ok "GSL-202: the idle tick polled NOTHING (event count unchanged)" \
+  || bad "GSL-202: the idle tick still ran poll-fill"
+[ "$(stat -f %m "$TKL/render_bundle.json")" = "$BND_M0" ] \
+  && ok "GSL-202: the idle tick rebuilt NOTHING (bundle untouched)" \
+  || bad "GSL-202: the idle tick still ran the chronicler"
+# a deadline coming due breaks the idle: work exists, the tick must wake and do it
+GOSLEEP_LAB_DIR="$TKL" "$LE" question --type DECISION --from smoke-tick --task GSL-202 \
+  --question "idle gate: a second overdue default" --default "wake up" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z >/dev/null
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+tail -1 "$TKLED" | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline()); assert m["result"]=="ok" and m["applied"]==1 and m["chronicler"]=="ran"' \
+  && ok "GSL-202: an overdue deadline defeats the idle gate — the tick woke and applied it" \
+  || bad "GSL-202: the idle gate slept through a due deadline: $(tail -1 "$TKLED")"
+# --force is the owner's "run it NOW": full pass even when everything is fresh
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet --force
+tail -1 "$TKLED" | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline()); assert m["result"]=="ok" and m["chronicler"]=="ran"' \
+  && ok "GSL-202: --force overrides the idle gate (full pass on a fresh system)" \
+  || bad "GSL-202: --force did not force the full pass"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
