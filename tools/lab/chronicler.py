@@ -2815,8 +2815,14 @@ def apply_retention(ctx):
 
     # Answered/expired questions → archive.jsonl. The archive is a WHOLE file (rebuilt each pass,
     # atomically), so it is idempotent by construction: no dedup bookkeeping to get wrong.
-    closed = [q for q in ctx["questions"] if q.get("status") in ("answered", "resolved", "expired",
-                                                                 "auto_resolved", "deduped")]
+    #
+    # GSL-191: "closed" is defined NEGATIVELY — any status that is not "open" — never as a list of
+    # closed statuses. The old list here spelled auto_resolved with an underscore while lab-emit
+    # writes hyphens (auto-resolved, answered-by-default; STATUSES in lab-emit.sh), so the archive
+    # silently kept 2 of 21 closed questions (audit finding 54). A vocabulary the writer owns must
+    # not be transcribed by a reader: the one stable fact is that "open" means open, and closed_items
+    # at build_questions() already relies on exactly that.
+    closed = [q for q in ctx["questions"] if q.get("status") and q.get("status") != "open"]
     if closed:
         content = "".join(json.dumps(q, ensure_ascii=False) + "\n" for q in closed)
         try:

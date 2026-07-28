@@ -1054,6 +1054,36 @@ grep -q 'chronicler smoke' "$CR/docs/lab/site/index.html" \
 grep -A2 '^## 1\. Waiting for you' "$CR/docs/lab/digest/$TODAY-morning.md" | grep -q 'chronicler smoke' \
   && ok "the open question leads section 1 of the digest" || bad "digest section 1 lost the question"
 
+# GSL-191 (audit finding 54): THE ARCHIVE MUST EQUAL THE CLOSED SET. The retention filter used to
+# name the closed statuses itself, with an underscore (auto_resolved), while lab-emit — the one
+# writer — spells them with hyphens (auto-resolved, answered-by-default; STATUSES in lab-emit.sh).
+# The archive silently kept 2 of 21 closed questions, and nothing counted the loss. Closed is now
+# defined negatively ("status != open"), and this check pins it: one question per closing PATH
+# (CLARIFY -> answered-by-default, resolve -> auto-resolved, answer -> answered), then archived
+# must equal closed, counted through the same tool the chronicler itself reads.
+Q_ARC_RES="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
+  --question "archive smoke: does an auto-resolved DECISION reach the archive?" \
+  --default "yes" --default-rationale "smoke" --reversibility high)"
+Q_ARC_ANS="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
+  --question "archive smoke: does an answered DECISION reach the archive?" \
+  --default "yes" --default-rationale "smoke" --reversibility high)"
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type CLARIFY --from smoke-chron --task GSL-191 \
+  --question "archive smoke: does an answered-by-default CLARIFY reach the archive?" \
+  --default "proceed" --default-rationale "smoke" --reversibility high >/dev/null
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" resolve --re "$Q_ARC_RES" --applied "smoke default" >/dev/null
+GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" answer  --re "$Q_ARC_ANS" --answer "yes" --by smoke >/dev/null
+bash "$CH" --repo "$CR" --no-poll --quiet --json >/dev/null 2>&1
+ARC_CLOSED="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" list --status all --json 2>/dev/null \
+  | jq -s '[.[] | select(.status != "open")] | length')"
+ARC_KEPT="$(wc -l < "$CR/docs/lab/questions/archive.jsonl" 2>/dev/null | tr -d ' ')"
+[[ -n "$ARC_CLOSED" && "$ARC_CLOSED" != "0" && "$ARC_KEPT" == "$ARC_CLOSED" ]] \
+  && ok "GSL-191: archived == closed ($ARC_KEPT of $ARC_CLOSED) — the archive keeps every closed question" \
+  || bad "GSL-191: archive.jsonl holds ${ARC_KEPT:-0} of ${ARC_CLOSED:-?} closed questions — the closed-status filter drifted from lab-emit again"
+jq -s -e 'map(.status) | (index("auto-resolved") != null) and (index("answered-by-default") != null) and (index("answered") != null)' \
+  "$CR/docs/lab/questions/archive.jsonl" >/dev/null 2>&1 \
+  && ok "GSL-191: all three closing paths (answered / auto-resolved / answered-by-default) are IN the archive" \
+  || bad "GSL-191: a closing path is missing from the archive — a reader is transcribing the writer's vocabulary again"
+
 # An empty day gets no digest — an empty digest teaches the owner to stop opening them.
 EMPTY="$WORK/chron-empty"; mkdir -p "$EMPTY/docs/lab/events"
 bash "$CH" --repo "$EMPTY" --date 2020-01-01 --no-poll --quiet --json >/dev/null 2>&1
