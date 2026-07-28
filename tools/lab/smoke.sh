@@ -928,6 +928,33 @@ rw '.runway.binding_why' "$RWB" | grep -q 'no default' \
   && ok "F5-S1: the trace explains WHY a BLOCKER stops the night (no default, no timer)" \
   || bad "F5-S1: the binding axis is named but not explained"
 
+# ═════════ GSL-226: the BLOCKER render branch, finally EXECUTED on a real dataset (finding 96) ═════════
+#
+# open_blockers had been 0 for the repository's whole history, so the code paths that draw a BLOCKER
+# had never run against real data — "untested" wearing "working"'s clothes. The RWB fixture above is
+# exactly the prescribed rig (a real `lab-emit question --type BLOCKER` in a COPY of the data, never
+# the live queue, through the real chronicler and the real renderer) — these asserts walk the whole
+# path from the queue record to the pixels: semantic colour, the Waiting-for-you block, the digest.
+echo "== GSL-226: the BLOCKER render branch on real data =="
+grep -q '<h2>Blocking you (1)</h2>' "$RWB/docs/lab/site/questions.html" \
+  && ! grep -q 'No blockers. Nothing the fleet is doing is waiting on a human' "$RWB/docs/lab/site/questions.html" \
+  && ok "GSL-226 ⭐ the Questions screen takes the BLOCKER branch: 'Blocking you (1)', empty-branch text absent" \
+  || bad "GSL-226 ⭐ the BLOCKER did not reach the Blocking-you section of questions.html"
+grep -q 'class="tag BLOCKER"' "$RWB/docs/lab/site/questions.html" \
+  && grep -q 'No default, and there never will be' "$RWB/docs/lab/site/questions.html" \
+  && ok "GSL-226: the BLOCKER card carries its semantic tag class AND the no-default sentence" \
+  || bad "GSL-226: the BLOCKER card is missing its tag class or its no-default explanation"
+grep -q '\.tag\.BLOCKER{background:var(--dead-soft)' "$RWB/docs/lab/site/questions.html" \
+  && ok "GSL-226 ⭐ the semantic colour RULE ships on the page — BLOCKER paints dead-red, not FYI-grey (GSL-116)" \
+  || bad "GSL-226 ⭐ .tag.BLOCKER has no colour rule on the rendered page"
+grep -A8 'id="waiting-for-you"' "$RWB/docs/lab/site/index.html" | grep -q 'Waiting for you (1)' \
+  && grep -q 'class="tag BLOCKER"' "$RWB/docs/lab/site/index.html" \
+  && ok "GSL-226: the Overview's Waiting-for-you block carries the BLOCKER, semantically tagged" \
+  || bad "GSL-226: the BLOCKER never reached the Overview's Waiting-for-you block"
+grep -A3 '^## 1\. Waiting for you' "$RWB/docs/lab/digest/$TODAY-morning.md" | grep -q '! BLOCKER' \
+  && ok "GSL-226: the morning digest lists the BLOCKER first, with the '!' mark (section 1)" \
+  || bad "GSL-226: the digest's Waiting-for-you section does not carry the BLOCKER"
+
 # ── F5-S1 b. A quota window is limiting. Armed by quota.wait_started carrying a reset ETA; the fleet
 #    quiesces until it resets, so this one really does stop the night (temporarily).
 RWQ="$WORK/rw-quota"
