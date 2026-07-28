@@ -1989,9 +1989,41 @@ grep -q 'DEAD=none' <<<"$LINKS" && ! grep -q 'LINKS=0' <<<"$LINKS" \
 # 14. AN EMPTY SHELF MUST PROVE IT LOOKED. Each section prints the glob it ran, on the page. "There are
 #     no incidents" and "I was pointed at the wrong directory" are opposite facts that render identically
 #     unless the glob comes along — and the owner can paste it into a shell and check the page's homework.
-grep -q 'docs/reviews/REVIEW-\*.md' "$LP" && grep -q 'docs/reports/\*\*/\*incident\*' "$LP" \
+#     (GSL-193 deepened Reviews and Reports to `**` and added the Skills shelf — the greps assert the
+#     DEEP globs, so a silent retreat to one-level masks fails here, not in the owner's morning.)
+grep -q 'docs/reviews/\*\*/\*.md' "$LP" && grep -q 'docs/reports/\*\*/\*incident\*' "$LP" \
+  && grep -q 'docs/reports/\*\*/index.html' "$LP" && grep -q 'skill/\*\*/\*.md' "$LP" \
   && ok "GSL-97: every shelf prints the glob it was built from — an empty shelf proves it looked" \
   || bad "GSL-97: a Library section does not say where it looked, so an empty one proves nothing"
+
+# 14b. GSL-193 (audit findings 18 + 94): THE SHELVES REACH ALL THE WAY DOWN. Reports used to glob
+#      `*/index.html` — one level — while the main acceptance artifact of four straight shifts lives
+#      at docs/reports/verifications/<KEY>/runs/NN/index.html; Reviews globbed `REVIEW-*.md` and hid
+#      every file of the owner's own commissioned system audit in docs/reviews/<audit-dir>/. And the
+#      cross-index of everything the project produces had no shelf for the product itself — skill/.
+#      A dedicated fixture, because the depth is the thing under test: one artifact per shelf, each
+#      nested where the one-level glob was blind.
+LD="$WORK/lib-depth"
+mkdir -p "$LD/docs/lab/events" "$LD/docs/reports/verifications/GSL-1/runs/01" \
+         "$LD/docs/reviews/system-audit-2026-01-01" "$LD/skill/demo-skill"
+: > "$LD/docs/lab/events/$TODAY.jsonl"
+printf '<title>Verification run 01</title>\n' > "$LD/docs/reports/verifications/GSL-1/runs/01/index.html"
+printf '# Audit synthesis\n' > "$LD/docs/reviews/system-audit-2026-01-01/SYNTHESIS.md"
+printf '# Demo skill\n' > "$LD/skill/demo-skill/SKILL.md"
+bash "$CH" --repo "$LD" --no-poll --quiet --json >/dev/null 2>&1
+LDB="$LD/docs/lab/render_bundle.json"
+jq -e '.library.sections[] | select(.key=="reports") | .items | map(.href) | any(endswith("verifications/GSL-1/runs/01/index.html"))' "$LDB" >/dev/null \
+  && ok "GSL-193: a verification run nested three levels down IS on the Reports shelf" \
+  || bad "GSL-193: the Reports shelf still stops one level down — the nested run is invisible"
+jq -e '.library.sections[] | select(.key=="reviews") | .items | map(.href) | any(endswith("system-audit-2026-01-01/SYNTHESIS.md"))' "$LDB" >/dev/null \
+  && ok "GSL-193: an audit file inside a docs/reviews subdirectory IS on the Reviews shelf" \
+  || bad "GSL-193: the Reviews shelf still sees only REVIEW-*.md — the system audit is invisible"
+jq -e '.library.sections[] | select(.key=="skills") | (.dir_exists == true) and (.items | map(.href) | any(endswith("demo-skill/SKILL.md")))' "$LDB" >/dev/null \
+  && ok "GSL-193: the Skills shelf exists and lists the project's own skill/" \
+  || bad "GSL-193: skill/ has no shelf — the cross-index skips the core product"
+jq -e '[.library.sections[] | .count == (.items | length)] | all' "$LDB" >/dev/null \
+  && ok "GSL-193: every shelf's printed count equals what its printed glob found" \
+  || bad "GSL-193: a shelf's count and its glob disagree — the page's homework does not check out"
 
 # 15. ⭐ THE LIBRARY FILTER. Same engine, same rail: narrowing to one shelf must still say what it hides.
 #     SHOWN is asserted alongside the sentence, and that is not belt-and-braces: an earlier draft of this

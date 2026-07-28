@@ -1715,16 +1715,26 @@ def prev_ui_last_success():
 # under docs/reports/ and they are named for what they are -- so the section finds them by that name,
 # and the page prints the glob it used. An empty section that names where it looked has proven
 # something. An empty section that names nothing has merely failed to look, and looks identical.
+# GSL-193 (audit findings 18 + 94): Reports and Reviews glob RECURSIVELY. Both shelves used to stop
+# one level down — `*/index.html` could not see a verification run at
+# docs/reports/verifications/<KEY>/runs/NN/index.html (the main acceptance artifact of four straight
+# shifts), and `REVIEW-*.md` hid every file of docs/reviews/system-audit-2026-07-24/ — the owner's
+# own commissioned audit, invisible from "the one place where everything can be checked". A shelf's
+# depth must never encode an assumption about how artifacts nest; the printed glob still reproduces
+# the printed count. The `skills` shelf is new (same finding): skill/ is the source of truth for the
+# product's own five skills, and a cross-index of everything the project produces was skipping the
+# core product itself.
 LIBRARY_SECTIONS = (
-    # key           label              dir                 glob             recursive
-    ("handoffs",    "Handoffs",        "docs/handoff",     "*.md",          False),
-    ("dev_history", "Dev history",     "docs/dev_history", "GSL-*.md",      False),
-    ("reviews",     "Reviews",         "docs/reviews",     "REVIEW-*.md",   False),
-    ("rca",         "Incidents / RCA", "docs/reports",     "**/*incident*", True),
-    ("reports",     "Reports",         "docs/reports",     "*/index.html",  False),
-    ("research",    "Research",        "docs/research",    "*/*.md",        False),
-    ("digests",     "Morning digests", "docs/lab/digest",  "*-morning.md",  False),
-    ("prd",         "PRD",             "docs/prd",         "*.md",          False),
+    # key           label              dir                 glob              recursive
+    ("handoffs",    "Handoffs",        "docs/handoff",     "*.md",           False),
+    ("dev_history", "Dev history",     "docs/dev_history", "GSL-*.md",       False),
+    ("reviews",     "Reviews",         "docs/reviews",     "**/*.md",        True),
+    ("rca",         "Incidents / RCA", "docs/reports",     "**/*incident*",  True),
+    ("reports",     "Reports",         "docs/reports",     "**/index.html",  True),
+    ("research",    "Research",        "docs/research",    "*/*.md",         False),
+    ("digests",     "Morning digests", "docs/lab/digest",  "*-morning.md",   False),
+    ("prd",         "PRD",             "docs/prd",         "*.md",           False),
+    ("skills",      "Skills",          "skill",            "**/*.md",        True),
 )
 
 
