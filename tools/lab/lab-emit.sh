@@ -12,7 +12,11 @@
 #            DECISION/CLARIFY REQUIRE --default AND --reversibility high|med (low ⇒ BLOCKER,
 #            reclassify); BLOCKER takes NO --default (manifest §3: no default, ever).
 #   answer   --re q-ID --answer "..." [--by owner|orchestrator] [--channel CH]
-#   resolve  --re q-ID --applied "..."          # deadline hit -> default applied
+#   resolve  --re q-ID --applied "..." [--early]   # deadline hit -> default applied (GSL-200:
+#            refuses pre-deadline closes — those are `--early` => answered-by-default — refuses
+#            double-closes, refuses BLOCKERs)
+#   apply-due [--dry-run] [--json]              # GSL-200: apply every overdue open DECISION's
+#            default; idempotent; the tick's executor for deadlines nobody attended
 #   list     [--status open|all|answered|auto-resolved|answered-by-default|noted]
 #            [--type T] [--task KEY] [--due] [--json] [--count]
 #            --count -> "open=N (xB/yD/zC/wF) lines=L" (the LIVE-STATUS questions: field verbatim)
@@ -184,7 +188,7 @@ def fold(records):
                 s["seen_by"].append(r["seen_by"])
             if r.get("status"):
                 s["status"] = r["status"]
-            for k in ("answer", "answered_by", "channel", "applied"):
+            for k in ("answer", "answered_by", "channel", "applied", "applied_by"):
                 if k in r:
                     s[k] = r[k]
     return state
@@ -362,17 +366,100 @@ def cmd_answer(argv):
                 "channel": a.get("channel", "terminal")}, m.get("task", ""))
 
 def cmd_resolve(argv):
-    a, m = _patch(argv,
-                  {"--re": "re", "--applied": "applied"},
-                  ("re", "applied"),
-                  lambda a: {"re": a["re"], "ts": iso_utc(), "status": "auto-resolved",
-                             "applied": a["applied"]},
-                  "auto-resolved")
-    # The deadline passed and the default was applied with nobody watching. If any event belongs on
-    # the morning timeline, it is this one — it is the system having decided FOR the owner.
-    emit_event("question.auto_resolved", "orchestrator",
-               {"id": a["re"], "qtype": m.get("type", ""), "applied": a["applied"],
-                "question": m.get("question", "")}, m.get("task", ""))
+    # GSL-200 (audit finding 7, MAJOR): "auto-resolved" is RESERVED for a deadline nobody attended.
+    # The audit measured 10 of 20 defaults applied BEFORE their deadline yet recorded as if the
+    # timer had fired — a status that lies about whether the owner ever had a chance to veto.
+    # So resolve now refuses two things it used to swallow:
+    #   * closing before auto_apply_at  -> that act is an EARLY pick of the default; it is honest
+    #     as `resolve --early` (status answered-by-default), never as auto-resolved;
+    #   * closing an already-closed record -> a second closure rewrites history; corrections append
+    #     via `answer`, closures happen once.
+    a = parse_flags(argv, {"--re": "re", "--applied": "applied", "--early": "!early"})
+    for r in ("re", "applied"):
+        if not a.get(r):
+            die("--%s is required" % r)
+    now = iso_utc()
+    with QueueLock():
+        state = fold(read_records())
+        qid = a["re"]
+        m = state.get(qid)
+        if not m:
+            die("no record with id %s" % qid)
+        if m.get("status") != "open":
+            die("%s is already closed (status=%s) — a closed record is never closed again "
+                "(append-only, C8); a correction is a new `answer` patch, not a second closure"
+                % (qid, m.get("status")))
+        if m.get("type") == "BLOCKER":
+            die("%s is a BLOCKER — it has no default to apply (manifest section 3) and no timer; "
+                "only the owner closes it, via `answer`" % qid)
+        due = m.get("auto_apply_at") or ""
+        if a.get("early"):
+            if due and due <= now:
+                die("deadline %s has already passed — drop --early and run plain resolve" % due)
+            status = "answered-by-default"
+        else:
+            if due and due > now:
+                die("deadline not reached (auto_apply_at=%s, now=%s) — auto-resolve is reserved "
+                    "for a deadline that fired unattended;\n  an early pick of the default is "
+                    "`resolve --early` (status answered-by-default),\n  the owner's own word is "
+                    "`answer --re %s --answer ...`" % (due, now, qid))
+            status = "auto-resolved"
+        append_record({"re": qid, "ts": now, "status": status, "applied": a["applied"]})
+        print("%s %s" % (status, qid))
+    if status == "auto-resolved":
+        # The deadline passed and the default was applied with nobody watching. If any event belongs
+        # on the morning timeline, it is this one — the system having decided FOR the owner.
+        emit_event("question.auto_resolved", "orchestrator",
+                   {"id": qid, "qtype": m.get("type", ""), "applied": a["applied"],
+                    "question": m.get("question", "")}, m.get("task", ""))
+    else:
+        emit_event("question.answered", "orchestrator",
+                   {"id": qid, "qtype": m.get("type", ""), "answer": a["applied"],
+                    "channel": "early-default"}, m.get("task", ""))
+
+def cmd_apply_due(argv):
+    # GSL-200: the executor of expired deadlines (audit finding 49: nothing ever applied them).
+    # Idempotent by construction: a candidate is an OPEN DECISION whose auto_apply_at has passed;
+    # applying it closes it, so the second run over the same queue finds zero candidates and
+    # appends zero lines. This is the exact subcommand tick.sh (GSL-199) calls every tick — it must
+    # be safe to run any number of times, from any carrier, with nobody watching.
+    a = parse_flags(argv, {"--dry-run": "!dry_run", "--json": "!json"})
+    now = iso_utc()
+    applied = []
+    with QueueLock():
+        state = fold(read_records())
+        for qid in sorted(state):
+            m = state[qid]
+            if m.get("status") != "open" or m.get("type") != "DECISION":
+                continue
+            due = m.get("auto_apply_at") or ""
+            if not due or due > now:
+                continue
+            if not m.get("default"):
+                # A DECISION without a default cannot exist through `question` validation, but the
+                # queue is append-only history — guard against a legacy/hand-written record.
+                print("lab-emit: warn: %s is due but carries no default — skipping" % qid,
+                      file=sys.stderr)
+                continue
+            if not a.get("dry_run"):
+                append_record({"re": qid, "ts": now, "status": "auto-resolved",
+                               "applied": m["default"], "applied_by": "apply-due"})
+            applied.append(m)
+    verb = "WOULD-APPLY" if a.get("dry_run") else "APPLIED"
+    for m in applied:
+        if a.get("json"):
+            print(json.dumps({"id": m["id"], "task": m.get("task", ""),
+                              "default": m.get("default", ""),
+                              "auto_apply_at": m.get("auto_apply_at", "")}, ensure_ascii=False))
+        else:
+            print("%s %s due=%s -> %s" % (verb, m["id"], m.get("auto_apply_at", ""),
+                                          m.get("default", "")))
+    if not a.get("dry_run"):
+        for m in applied:
+            emit_event("question.auto_resolved", "apply-due",
+                       {"id": m["id"], "qtype": "DECISION", "applied": m.get("default", ""),
+                        "question": m.get("question", "")}, m.get("task", ""))
+    print("applied=%d" % len(applied))
 
 def cmd_list(argv):
     a = parse_flags(argv, {"--status": "status", "--type": "type", "--task": "task",
@@ -505,7 +592,11 @@ def cmd_help(argv):
   question   --type BLOCKER|DECISION|CLARIFY|FYI --question "..." [--from A] [--task KEY]
              [--default "..."] [--reversibility high|med] [--option "label|pros|cons"] ...
   answer     --re q-ID --answer "..." [--by owner|orchestrator] [--channel CH]
-  resolve    --re q-ID --applied "..."
+  resolve    --re q-ID --applied "..." [--early]
+             refuses: a record before its deadline (early pick => --early, recorded as
+             answered-by-default), an already-closed record, a BLOCKER (owner-only)
+  apply-due  [--dry-run] [--json]     # apply defaults of every OPEN DECISION past its deadline;
+             idempotent (2nd run applies 0); the tick (GSL-199) calls this every pass
   list       [--status open|all|...] [--type T] [--task KEY] [--due] [--json] [--count]
   decision   --decision "..." (--re q-ID | --question "...") [--rule "manifest §N"] [--by WHO]
   candidates [--min N] [--json]
@@ -521,12 +612,12 @@ question/answer/resolve/decision also MIRROR themselves into docs/lab/events/ au
 
 def main():
     if len(sys.argv) < 2:
-        die("usage: lab-emit.sh question|answer|resolve|list|decision|candidates|event|help ...")
+        die("usage: lab-emit.sh question|answer|resolve|apply-due|list|decision|candidates|event|help ...")
     cmd, argv = sys.argv[1], sys.argv[2:]
     if cmd in ("-h", "--help"):
         cmd = "help"
     fn = {"question": cmd_question, "answer": cmd_answer,
-          "resolve": cmd_resolve, "list": cmd_list,
+          "resolve": cmd_resolve, "apply-due": cmd_apply_due, "list": cmd_list,
           "decision": cmd_decision, "candidates": cmd_candidates,
           "event": cmd_event, "help": cmd_help}.get(cmd)
     if not fn:

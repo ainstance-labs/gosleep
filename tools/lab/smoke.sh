@@ -1345,7 +1345,8 @@ grep -A2 '^## 1\. Waiting for you' "$CR/docs/lab/digest/$TODAY-morning.md" | gre
 # must equal closed, counted through the same tool the chronicler itself reads.
 Q_ARC_RES="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
   --question "archive smoke: does an auto-resolved DECISION reach the archive?" \
-  --default "yes" --default-rationale "smoke" --reversibility high)"
+  --default "yes" --default-rationale "smoke" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z)"
 Q_ARC_ANS="$(GOSLEEP_LAB_DIR="$CR/docs/lab" "$LE" question --type DECISION --from smoke-chron --task GSL-191 \
   --question "archive smoke: does an answered DECISION reach the archive?" \
   --default "yes" --default-rationale "smoke" --reversibility high)"
@@ -4230,6 +4231,73 @@ grep -q '"mode":"debounce"' "$DB/p1-ledger.jsonl" 2>/dev/null \
   || bad "debounce: no ledger line — a rebuild nobody can prove happened"
 [ ! -d "$DB/p1/waiter.lock" ] && ok "debounce: waiter lock released after the run" \
   || bad "debounce: waiter lock still held — the next quiet window would be missed"
+
+echo "== GSL-200: apply-due + resolve refuses early and double closes =="
+# Audit finding 7 (MAJOR): 10 of 20 defaults were applied BEFORE their deadline yet recorded as
+# auto-resolved — a status that lies about whether the owner ever had a veto window. Finding 49:
+# nothing ever applied the defaults whose deadline DID pass. apply-due is that executor; resolve
+# now tells the two acts apart. Fresh sandbox lab: this section owns its own queue.
+AD="$WORK/apply-due-lab"
+ADQ="$AD/questions/queue.jsonl"
+AD_OVER="$(GOSLEEP_LAB_DIR="$AD" "$LE" question --type DECISION --from smoke-ad --task GSL-200 \
+  --question "overdue: apply me?" --default "apply the default" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z)"
+AD_FUT="$(GOSLEEP_LAB_DIR="$AD" "$LE" question --type DECISION --from smoke-ad --task GSL-200 \
+  --question "future: leave me open?" --default "wait" --reversibility high \
+  --auto-apply-at 2999-01-01T00:00:00Z)"
+AD_BLK="$(GOSLEEP_LAB_DIR="$AD" "$LE" question --type BLOCKER --from smoke-ad --task GSL-200 \
+  --question "blocker: nobody defaults me")"
+# 1. resolve refuses a record whose deadline has not fired — and the record stays open
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_FUT" --applied "wait" >/dev/null 2>&1 \
+  && bad "GSL-200: resolve closed a record BEFORE its deadline" \
+  || ok "GSL-200: resolve refuses to close before auto_apply_at"
+GOSLEEP_LAB_DIR="$AD" "$LE" list --status open --json | grep -q "$AD_FUT" \
+  && ok "GSL-200: the refused record is still open (refusal wrote nothing)" \
+  || bad "GSL-200: refusal mutated the record anyway"
+# 2. resolve refuses a BLOCKER — no default exists to apply
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_BLK" --applied "x" >/dev/null 2>&1 \
+  && bad "GSL-200: resolve auto-closed a BLOCKER" \
+  || ok "GSL-200: resolve refuses a BLOCKER (owner-only closure)"
+# 3. apply-due --dry-run names the one overdue candidate and appends nothing
+AD_LINES0="$(wc -l < "$ADQ" | tr -d ' ')"
+AD_DRY="$(GOSLEEP_LAB_DIR="$AD" "$LE" apply-due --dry-run)"
+echo "$AD_DRY" | grep -q "WOULD-APPLY $AD_OVER" && echo "$AD_DRY" | grep -q "applied=1" \
+  && ok "GSL-200: apply-due --dry-run names exactly the overdue DECISION" \
+  || bad "GSL-200: dry-run candidate list wrong: $AD_DRY"
+[ "$(wc -l < "$ADQ" | tr -d ' ')" = "$AD_LINES0" ] \
+  && ok "GSL-200: dry-run wrote nothing" || bad "GSL-200: dry-run appended to the queue"
+# 4. the real pass applies the overdue default, tags provenance, spares future + BLOCKER
+AD_RUN="$(GOSLEEP_LAB_DIR="$AD" "$LE" apply-due)"
+echo "$AD_RUN" | grep -q "applied=1" \
+  && ok "GSL-200: apply-due applied the one overdue default" \
+  || bad "GSL-200: apply-due run wrong: $AD_RUN"
+GOSLEEP_LAB_DIR="$AD" "$LE" list --status auto-resolved --json \
+  | python3 -c 'import json,sys; m=json.loads(sys.stdin.readline()); assert m["applied"]=="apply the default" and m.get("applied_by")=="apply-due"' \
+  && ok "GSL-200: the closure carries applied= the default text and applied_by=apply-due" \
+  || bad "GSL-200: applied/applied_by provenance missing"
+GOSLEEP_LAB_DIR="$AD" "$LE" list --status open --json | grep -c . | grep -q "^2$" \
+  && ok "GSL-200: future DECISION and BLOCKER are untouched (still the 2 open)" \
+  || bad "GSL-200: apply-due touched a record it had no business closing"
+# 5. idempotence — the acceptance criterion: the second run applies 0 and appends 0 lines
+AD_LINES1="$(wc -l < "$ADQ" | tr -d ' ')"
+GOSLEEP_LAB_DIR="$AD" "$LE" apply-due | grep -q "applied=0" \
+  && [ "$(wc -l < "$ADQ" | tr -d ' ')" = "$AD_LINES1" ] \
+  && ok "GSL-200: apply-due is idempotent — second run applies 0, appends 0" \
+  || bad "GSL-200: second apply-due run was not a no-op"
+# 6. a closed record is never closed again
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_OVER" --applied "again" >/dev/null 2>&1 \
+  && bad "GSL-200: resolve closed an already-closed record" \
+  || ok "GSL-200: resolve refuses a double close"
+# 7. the early pick is honest: --early => answered-by-default, never auto-resolved
+GOSLEEP_LAB_DIR="$AD" "$LE" resolve --re "$AD_FUT" --early --applied "wait" >/dev/null \
+  && GOSLEEP_LAB_DIR="$AD" "$LE" list --status answered-by-default --json | grep -q "$AD_FUT" \
+  && ok "GSL-200: resolve --early records answered-by-default (the veto window is not faked)" \
+  || bad "GSL-200: --early path broken"
+# 8. the timeline heard it: apply-due mirrors question.auto_resolved with its own actor
+jq -s '[.[] | select(.type=="question.auto_resolved" and .actor=="apply-due")] | length' \
+  "$AD/events/"*.jsonl 2>/dev/null | grep -q "^1$" \
+  && ok "GSL-200: apply-due mirrored question.auto_resolved (actor=apply-due) into the timeline" \
+  || bad "GSL-200: no timeline mirror from apply-due"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
