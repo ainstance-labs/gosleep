@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-28T10:54:55Z",
+  "generated_at": "2026-07-28T11:02:08Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-28",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 27,
-    "max_event_age_human": "27s",
-    "latest_event_ts": "2026-07-28T10:54:28Z",
-    "heartbeat_age_s": 167,
+    "max_event_age_s": 11,
+    "max_event_age_human": "11s",
+    "latest_event_ts": "2026-07-28T11:01:57Z",
+    "heartbeat_age_s": 259,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2674,
-    "today": 169,
+    "total": 2706,
+    "today": 201,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -31,49 +31,49 @@
       "2026-07-28"
     ],
     "by_type": {
-      "agent.turn_ended": 597,
-      "tracker.issue.updated": 397,
-      "agent.idle": 244,
-      "tracker.issue.transitioned": 205,
-      "agent.terminated": 178,
+      "agent.turn_ended": 603,
+      "tracker.issue.updated": 403,
+      "agent.idle": 250,
+      "tracker.issue.transitioned": 207,
+      "agent.terminated": 181,
       "tracker.issue.created": 169,
       "dev_history.written": 144,
-      "vcs.commit": 142,
+      "vcs.commit": 144,
       "handoff.written": 124,
-      "pane.ended": 86,
-      "pane.started": 82,
-      "vcs.push": 44,
+      "pane.ended": 87,
+      "pane.started": 83,
+      "vcs.push": 45,
       "task.completed": 42,
+      "vcs.pr.merged": 34,
       "question.posed": 33,
-      "vcs.pr.merged": 32,
       "decision.made": 31,
       "question.auto_resolved": 29,
-      "vcs.pr.opened": 26,
+      "vcs.pr.opened": 27,
       "notification.raised": 24,
       "task.created": 22,
-      "agent.spawned": 13,
+      "agent.spawned": 14,
       "api.failure": 7,
       "question.answered": 3
     },
     "by_src": {
-      "hook:PostToolUse": 908,
-      "hook:Stop": 597,
-      "poll-fill": 358,
-      "hook:TeammateIdle": 244,
-      "hook:SubagentStop": 178,
+      "hook:PostToolUse": 913,
+      "hook:Stop": 603,
+      "poll-fill": 367,
+      "hook:TeammateIdle": 250,
+      "hook:SubagentStop": 181,
       "emit": 113,
-      "hook:SessionEnd": 86,
-      "hook:SessionStart": 82,
+      "hook:SessionEnd": 87,
+      "hook:SessionStart": 83,
       "hook:TaskCompleted": 42,
       "hook:Notification": 24,
       "hook:TaskCreated": 22,
-      "hook:SubagentStart": 13,
+      "hook:SubagentStart": 14,
       "hook:StopFailure": 7
     },
     "by_actor": {
       "claude": 1045,
-      "poll-fill": 358,
-      "general-purpose": 284,
+      "poll-fill": 367,
+      "general-purpose": 300,
       "742d1b58": 174,
       "f97ce3bc": 141,
       "ef6c3777": 85,
@@ -81,7 +81,7 @@
       "orchestrator": 75,
       "6650a7a0": 63,
       "dd3edd33": 63,
-      "a716426f": 43,
+      "a716426f": 46,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
       "worker-backlog-builder": 8,
@@ -93,6 +93,7 @@
       "a191a1a6d143e6940": 2,
       "a5b85412f580faeec": 2,
       "a6e197f577a9b8c59": 2,
+      "a9bebb9829854c44c": 2,
       "aa7a28cca3c73abc5": 2,
       "ab3b55ad5cc3bfb36": 2,
       "ac1fc76fcac79402c": 2,
@@ -150,8 +151,10 @@
       "a37c4e4b7f81f3924": 1,
       "a3b5a3102d269d74b": 1,
       "a3bb8fdb27c73e73f": 1,
+      "a3f19300126dde218": 1,
       "a3fb72421f813a7f1": 1,
       "a404e0aa8e403c40b": 1,
+      "a406a3e335f5cfb62": 1,
       "a427309da6b948dfd": 1,
       "a46ac596eb30b6bdf": 1,
       "a47cd548adc137219": 1,
@@ -289,7 +292,7 @@
       "impl-ui-7": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.824
+    "mechanical_share": 0.823
   },
   "questions": {
     "open": 3,
@@ -345,9 +348,9 @@
     "manifest_candidates": []
   },
   "autonomy": {
-    "value": 0.816,
+    "value": 0.827,
     "asks": 14,
-    "shipped": 76,
+    "shipped": 81,
     "window": {
       "start": "2026-07-22",
       "end": "2026-07-28",
@@ -373,10 +376,22 @@
     ]
   },
   "delivery": {
-    "branch": "GSL-179-token-ceiling",
-    "head": "23514ee",
-    "dirty_paths": 18,
+    "branch": "main",
+    "head": "38f3c93",
+    "dirty_paths": 6,
     "commits_on_date": [
+      {
+        "sha": "38f3c93",
+        "author": "rommxx",
+        "ts": "2026-07-28T12:59:02+02:00",
+        "subject": "Merge pull request #253 from ainstance-labs/GSL-179-token-ceiling"
+      },
+      {
+        "sha": "e5d0af4",
+        "author": "R",
+        "ts": "2026-07-28T12:55:13+02:00",
+        "subject": "GSL-179 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика"
+      },
       {
         "sha": "23514ee",
         "author": "R",
@@ -469,6 +484,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 253,
+        "state": "MERGED",
+        "title": "GSL-179 [Tooling] Индикаторы автономности начинают отвечать",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/253",
+        "mergedAt": "2026-07-28T10:59:03Z"
+      },
       {
         "number": 252,
         "state": "MERGED",
@@ -601,27 +623,21 @@
         "title": "GSL-31 Close eval-validated gaps — SC-09 fixed, SC-19 improved (calibration + mechanism-targeted fixes)",
         "url": "https://github.com/ainstance-labs/gosleep/pull/42",
         "mergedAt": "2026-06-29T15:38:15Z"
-      },
-      {
-        "number": 35,
-        "state": "MERGED",
-        "title": "GSL-24 Harness hardening v2 — concrete skill fixes for the 4 eval-failed behaviors",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/35",
-        "mergedAt": "2026-06-29T14:55:53Z"
       }
     ]
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-28T10:52:08Z",
-      "cycle": 144,
-      "context_pct": 80,
+      "ts": "2026-07-28T10:57:49Z",
+      "cycle": 145,
+      "context_pct": 82,
       "open_workers": 1,
       "status": "ok",
-      "pane": "%10"
+      "pane": "%10",
+      "note": "impl-179 COMPLETE; closing cycle"
     },
-    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 143 | orchestrator=Fable 5 pane=%10 | ЭПИК GSL-175 ЗАКРЫТ ПОЛНОСТЬЮ: PR #252 MERGED regular @ 679bf53 (08:05Z), все 8 зеркал закрылись авто, Jira эпик+7 задач Done, chronicler на main FRESH 7 страниц, ledger a114c8a запушен (handoff 50, STATE с эрратой GSL-195, decisions/log.jsonl, события 27-28.07, производные вкл. дайджест 07-28-morning). Оба воркера терминированы (kill-pane %11, %15 подтверждены). МОДЕЛЬ-ФАКТ (2 замера): teammate наследует модель оркестратора, model:opus игнорируется → флот де-факто на Fable 5; DECISION в очереди, дефолт «продолжать». Следующий: impl-179 (эпик GSL-179 потолок токенов, директива владельца d-2026-07-28-007: настраиваемый лимит + переопределяемый дефолт + режим unlimited). Клок: q-2026-07-28-001 due 09:37Z (дефолт «полнота» уже в коде). | latest handoff=docs/handoff/50-2026-07-28-handoff-impl-175-evening-hygiene.md | questions: open=3 (2B/1D/0C/0F) lines=63 | open_workers=1 (impl-179 pane=%16; GSL-221 f6ee225, GSL-222 e7d31e5 Done, идёт GSL-223) | status=executing-GSL-179`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=143 worker=finalizer-175 model=claude-fable-5 (транскрипт d8ba6e68 — единственная модель; наследование модели оркестратора подтверждено ВТОРЫМ замером, model:opus игнорируется на этой поверхности) tokens_out=~6000 tokens_in=~120000 cache_read=~500000 (self-est, счётчики harness не видны) | running: cycles=143 total≈18984000 (+исторические гэпы)"
+    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 145 | orchestrator=Fable 5 pane=%10 | ЭПИК GSL-179 ИСПОЛНЕН impl-179: 6/6 (f6ee225/e7d31e5/8989128/42dc5d1/e3ba732/23514ee + e5d0af4 пересборка), PR #253 OPEN/CLEAN @ e5d0af4, Jira задачи Done + эпик In Review, smoke 462→497 FAIL=0, RUNWAY впервые exact. Воркер терминирован (kill-pane %16 подтверждён), телеметрия записана (Fable 5 per d-009). finalizer-179 спавнится: мерж #253 regular, зеркала, Jira Done, граница цикла по GSL-223-чек-листу (JQL-дамп + chronicler БЕЗ --no-poll), ledger-коммит. Умолчания за смену: d-001…010. Клок: q-2026-07-28-004 (архив супервизии) due 12:41:59Z — дефолт уже в коде. | latest handoff=docs/handoff/51-2026-07-28-handoff-impl-179-gsl179-complete.md | questions: open=3 (2B/1D/0C/0F) lines=65 | open_workers=1 | status=merging-GSL-179`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=144 worker=impl-179 model=claude-fable-5 (транскрипт 69044452, 484 записи + <synthetic> retry-маркеры; наследование модели per d-2026-07-28-009) tokens_out=~75000 tokens_in=~310000 cache_read=~7800000 (self-est) | running: cycles=144 total≈19059000 (+исторические гэпы) [эпик GSL-179 6/6: потолок настраиваемый+unlimited (директива владельца d-007 исполнена), метрика автономности 0.816, JQL-автоподхват (Tasks unknown 94%→0), 7-я ось runway, архив супервизии, BLOCKER-рендер; smoke 462→497 FAI"
   },
   "degraded": [],
   "narrative": null,
@@ -638,6 +654,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-28T10:54:55Z"
+    "last_success_at": "2026-07-28T11:02:08Z"
   }
 }

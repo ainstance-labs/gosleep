@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-28T10:54:55Z` · freshest event **27s** old at that moment (`2026-07-28T10:54:28Z`) · day `2026-07-28`
+🟢 **FRESH at build** · generated `2026-07-28T11:02:08Z` · freshest event **11s** old at that moment (`2026-07-28T11:01:57Z`) · day `2026-07-28`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T10:54:55Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T11:02:08Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-28T11:24:28Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-28T13:54:28Z`**
+> - 🟡 **STALE if you are reading this after `2026-07-28T11:31:57Z`**
+> - 🔴 **DEAD if you are reading this after `2026-07-28T14:01:57Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -25,42 +25,41 @@
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 144 |
-| Orchestrator | ok · context 80% |
+| Cycle | 145 |
+| Orchestrator | ok · context 82% |
 
 ## 3. Delivery
 
-Branch `GSL-179-token-ceiling` @ `23514ee` · 18 dirty path(s)
+Branch `main` @ `38f3c93` · 6 dirty path(s)
 
-Shipped 2026-07-28 (15):
+Shipped 2026-07-28 (17):
+- `38f3c93` Merge pull request #253 from ainstance-labs/GSL-179-token-ceiling
+- `e5d0af4` GSL-179 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика
 - `23514ee` GSL-226 [Tooling] Ветка рендера BLOCKER испытана на реальных данных: 5 ассертов от записи до пикселей (questions/overvi…
 - `e3ba732` GSL-225 [Tooling] Архив следа супервизии: хроникёр дописывает heartbeat/леджер в трекаемые docs/lab/supervision/*.jsonl…
 - `42dc5d1` GSL-224 [Tooling] Ось runway «просроченные DECISION без живого пульса» + правило «незапущенный механизм → unknown с при…
 - `8989128` GSL-223 [Tooling] poll-fill автоподхватывает JQL-дамп оркестратора (scratch/jira-poll.json, громко, с возрастом); первы…
 - `e7d31e5` GSL-222 [Tooling] Метрика автономности 1 − asks/shipped за 7 дней: status.json + дайджест, всегда с рамкой «чего не утв…
 - `f6ee225` GSL-221 [Docs][Tooling] Потолок токенов: настраиваемый дефолт 16M/ночь, режим unlimited первоклассный, ночная семантика…
-- `a114c8a` GSL-138 [Docs][Process] Ledger смены 74: эпик GSL-175 слит (#252), эррата STATE (GSL-195), handoff 50, решения по умолч…
-- `679bf53` Merge pull request #252 from ainstance-labs/GSL-175-evening-hygiene
-- …and 7 more
+- …and 9 more
 
 ## 4. Tasks
 
 | Status | Tasks |
 |---|--:|
-| In Progress | 1 |
 | In Review | 4 |
-| To Do | 58 |
-| Done | 186 |
+| To Do | 54 |
+| Done | 191 |
 
 ## 5. Cost & runway
 
-Cumulative **18,984,000** tokens over 143 cycle(s).
+Cumulative **19,059,000** tokens over 144 cycle(s).
 
-Next runway event: **open blockers** — stops at **`2026-07-28T10:54:55Z`**.
+Next runway event: **open blockers** — stops at **`2026-07-28T11:02:08Z`**.
 
 ## 6. Activity
 
-**169** events today of **2674** total · 82% mechanical.
+**201** events today of **2706** total · 82% mechanical.
 
 Latest decisions (31 total, newest first):
 - **потолок считается за ночь (сутки UTC), не кумулятивно** `GSL-221` — 2026-07-28 10:42
