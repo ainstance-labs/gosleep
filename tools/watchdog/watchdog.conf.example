@@ -50,31 +50,47 @@
 #WD_REWAKE_BRIEF="<repo>/skill/orchestrating-delivery-agents/references/re-wake-brief.md"
 
 # --- thresholds (seconds / percent) -------------------------------------------
-# Heartbeat older than this = stale. The default (900) matches the day-mode
-# pulse cadence (active ~270s / stable ~540s ticks, GSL-67 cadence table).
-# NIGHT MODE (GSL-68): the skill's long-waiting tier deliberately sleeps
-# 1200-1800s between pulses — with the default 900 every such sleep triggers a
-# false-stale nudge. For unattended/night operation raise this ABOVE the
-# longest standing delay, e.g. 2100. (The orchestrator marks night in the
-# heartbeat's optional "mode" field; the watchdog does not parse it — this
-# threshold is how the owner aligns the two.)
-#WD_HB_STALE_SECS=900
+# GSL-217: every number below comes from MEASUREMENT, not from the head.
+# Method (repeatable): merge docs/lab/supervision/heartbeat.jsonl with the live
+# docs/handoff/.orchestrator-heartbeat, dedup by ts, take the gaps between
+# consecutive lines. Measured 2026-07-28 over 222 lines (2026-07-21..28):
+#   busy fleet (open_workers>0):  median 436s, p90 620s
+#   idle       (open_workers==0): median 1856s, p90 5120s
+#   every gap above 3900s was an owner standby / declared pause
+# Acceptance invariant (GSL-217): no staleness threshold below the measured
+# idle median (1856s).
+#
+# Heartbeat older than this = stale. Default 3900 = ~2.1x the idle median;
+# historically ~5% of gaps exceed it and ALL of them were owner standbys
+# written as status "ok". The orchestrator-side cure for that noise is
+# declaring standby as "quiesced" (shielded class), not a higher number here —
+# the observational run (GSL-220) measures exactly this false-positive rate.
+#WD_HB_STALE_SECS=3900
 # GSL-215: where the record-only "slow" class begins. MUST stay strictly below
 # WD_HB_STALE_SECS (validated, exit 78) — that inequality is what makes "slow
 # never acts" true by construction. 0 = derive WD_HB_STALE_SECS / 2.
 #WD_HB_SLOW_SECS=0
 # The ladder (GSL-216): nudge -> resume -> restart. After a nudge, how long the
 # orchestrator gets to refresh the heartbeat before the next rung fires.
-#WD_NUDGE_GRACE_SECS=240
+# 600 >= the busy p90 (620s ~ one long turn): the nudge lands at the next turn
+# boundary, the grace covers it.
+#WD_NUDGE_GRACE_SECS=600
 # Rung 2 (only when the heartbeat carries session_id, GSL-212): kill + revive
 # the SAME session via `claude --resume` — context intact. How long that revival
 # gets before rung 3 (cold-start restart from the handoff). A legacy heartbeat
 # without session_id skips rung 2 by construction. Rungs 2 and 3 spend the SAME
 # RestartBudget with the same backoff — a resume loop is as much a masked bug.
-#WD_RESUME_GRACE_SECS=240
-# context_pct at/above this -> "write handoff now". The orchestrator self-rolls
-# at ~70%; the watchdog ceiling sits above that as the enforcement backstop.
-#WD_CONTEXT_CEILING_PCT=80
+#WD_RESUME_GRACE_SECS=600
+# context_pct semantics (GSL-217, fixed everywhere): the model's HONEST estimate
+# of the share of the context window CONSUMED so far, 0-100 — "how much is
+# spent", never "how much remains"; it freezes when work freezes (that is what
+# powers the frozen-progress detector). Measured reality: median 93, max 98,
+# 150/222 lines at or above the old ceiling of 80 — the harness compacts on its
+# own and the owner's standing rule (2026-07-20) forbids rolling on the model's
+# self-estimate. Therefore the DEFAULT is 100 = enforcement OFF (the branch is
+# skipped at >= 100); the value still travels on every tick line for the
+# record. Re-enable (<= 99) only when GSL-182 lands a real harness signal.
+#WD_CONTEXT_CEILING_PCT=100
 # After a handoff request, how long before kill + re-wake from the handoff.
 #WD_HANDOFF_WAIT_SECS=600
 # Quota-wait alarm-clock backstop (GSL-69 + GSL-65 review M1, contract v0.5.1):

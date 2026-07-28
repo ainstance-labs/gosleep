@@ -101,7 +101,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.6.3 (GSL-216: nudge -> resume -> restart ladder, shared RestartBudget, attempt audit)"
+WD_VERSION="0.6.4 (GSL-217: thresholds from measured cadence; context ceiling off pending GSL-182)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -154,21 +154,37 @@ fi
 # is missing the watchdog falls back to a minimal inline prompt (ledger-warned).
 : "${WD_REWAKE_BRIEF:="$WD_REPO_ROOT/skill/orchestrating-delivery-agents/references/re-wake-brief.md"}"
 
-# Thresholds (seconds / percent) — every one config-overridable
-: "${WD_HB_STALE_SECS:=900}"        # heartbeat older than this = stale (GSL-67 cadence:
-                                    # ~270/~540s ticks; raise to ~2100 for the 1200-1800s
-                                    # long-waiting/night tier — see watchdog.conf.example)
+# Thresholds (seconds / percent) — every one config-overridable.
+# GSL-217: the numbers below come from MEASUREMENT, not from the head — 222
+# heartbeat lines (archive + live, 2026-07-21..28): busy fleet (open_workers>0)
+# median 436s / p90 620s; idle median 1856s / p90 5120s. Every historical gap
+# above 3900s was an owner standby or a declared pause. The acceptance
+# invariant: no staleness threshold below the measured idle median (1856s).
+: "${WD_HB_STALE_SECS:=3900}"       # heartbeat older than this = stale. ~2.1x the idle
+                                    # median; historically ~5% of gaps exceed it and ALL of
+                                    # them were owner standbys written as status "ok" — the
+                                    # observational run measures exactly that noise before
+                                    # anything is armed (the orchestrator-side cure is
+                                    # declaring standby as "quiesced", not a higher number)
 : "${WD_HB_SLOW_SECS:=0}"           # GSL-215: the "slow" zone starts here — INSIDE fresh,
                                     # strictly below stale, so by construction no action can
-                                    # attach to it (record-only class). 0 = derive stale/2.
-: "${WD_NUDGE_GRACE_SECS:=240}"     # after a nudge, how long before the next rung
-: "${WD_RESUME_GRACE_SECS:=240}"    # GSL-216 rung 2: after a resume attempt (claude --resume,
+                                    # attach to it (record-only class). 0 = derive stale/2
+                                    # (1950s — right at the measured idle median)
+: "${WD_NUDGE_GRACE_SECS:=600}"     # after a nudge, how long before the next rung: a busy
+                                    # orchestrator's turn routinely runs minutes (busy p90
+                                    # 620s) — the nudge lands at the NEXT turn boundary
+: "${WD_RESUME_GRACE_SECS:=600}"    # GSL-216 rung 2: after a resume attempt (claude --resume,
                                     # same session, context intact), how long before rung 3
-                                    # (cold-start restart from the handoff). The resume rung
-                                    # only exists when the heartbeat carries session_id
-                                    # (GSL-212) — a legacy heartbeat degrades to the old
-                                    # two-rung ladder by construction.
-: "${WD_CONTEXT_CEILING_PCT:=80}"   # orchestrator self-rolls at ~70%; watchdog forces above that
+                                    # (cold-start restart from the handoff) — a resumed
+                                    # session needs minutes to orient and write its first line
+: "${WD_CONTEXT_CEILING_PCT:=100}"  # GSL-217: 100 = context enforcement OFF (the guard below
+                                    # skips the branch at >= 100). Measured reality: median
+                                    # context_pct 93, max 98, 150/222 lines >= the old 80 —
+                                    # the harness compacts on its own and the owner's standing
+                                    # rule forbids rolling on the model's self-estimate; a
+                                    # ceiling here would "treat" a healthy system (audit F3).
+                                    # Re-enable (<=99) only when GSL-182 lands a real harness
+                                    # signal instead of the self-estimate
 : "${WD_HANDOFF_WAIT_SECS:=600}"    # after "write handoff now", how long before kill+re-wake
 : "${WD_QUOTA_GRACE_SECS:=900}"     # quota-wait quiesce: how far past the note's reset ETA the
                                     # stand-down holds; beyond it the quiesced shield drops
@@ -1125,7 +1141,12 @@ decide_and_act() {
     marker_clear "nudge"
     marker_clear "resume-attempt"   # the ladder episode is over: the heart beats
     counter_clear "zombie"
-    if is_uint "$HB_CTX" && [ "$HB_CTX" -ge "$WD_CONTEXT_CEILING_PCT" ]; then
+    # Context ceiling (GSL-217): ceiling >= 100 means the whole branch is OFF —
+    # context_pct is the model's self-estimate of the share CONSUMED, the
+    # harness compacts on its own, and enforcement waits for GSL-182's real
+    # signal. The value still travels on every tick line for the record.
+    if is_uint "$HB_CTX" && [ "$WD_CONTEXT_CEILING_PCT" -le 99 ] \
+       && [ "$HB_CTX" -ge "$WD_CONTEXT_CEILING_PCT" ]; then
       local hage; hage="$(marker_age handoff-request)"
       if [ -z "$hage" ]; then
         DECISION="handoff_requested"; DECISION_REASON="context_ceiling"

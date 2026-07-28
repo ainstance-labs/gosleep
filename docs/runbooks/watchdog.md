@@ -147,7 +147,8 @@ tail -5 /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/watchdog/
 cd /Users/romanlidovskyi/Documents/dev/harness/gosleep
 tail -1 docs/handoff/.orchestrator-heartbeat        # последняя JSON-строка пульса
 stat -f '%Sm' docs/handoff/.orchestrator-heartbeat  # время последней записи
-# возраст пульса в секундах (протухание = 900 с по умолчанию):
+# возраст пульса в секундах (протухание = 3900 с по умолчанию, v0.6.4 —
+# пороги согласованы с измеренной каденцией, GSL-217):
 echo $(( $(date +%s) - $(stat -f %m docs/handoff/.orchestrator-heartbeat) ))
 ```
 
@@ -392,5 +393,8 @@ tmux-сервера первый тик увидит «сессия пропал
   обращение watchdog к claude; самих LLM-вызовов в скрипте ноль (проверяется smoke-гейтом).
 - `WD_ESCALATE_HOOK` (push на телефон и т.п.) — пока только точка расширения; из коробки
   эскалация = macOS-уведомление + ledger.
-- Порог контекста (`WD_CONTEXT_CEILING_PCT`, 80%) опирается на ЧЕСТНОСТЬ `context_pct` в пульсе —
-  watchdog не умеет мерить контекст сам.
+- Контекстная ветка по умолчанию ВЫКЛЮЧЕНА (`WD_CONTEXT_CEILING_PCT=100`, v0.6.4/GSL-217):
+  `context_pct` — самооценка модели о доле ИЗРАСХОДОВАННОГО окна (медиана на живых данных 93,
+  максимум 98), харнесс сжимает контекст сам, а правило владельца запрещает ролл по самооценке.
+  Значение пишется в каждую tick-строку для истории; включение (≤99) — только когда GSL-182
+  даст реальный сигнал харнесса.

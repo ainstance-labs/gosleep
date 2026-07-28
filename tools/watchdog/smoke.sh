@@ -55,9 +55,10 @@ fi
 fresh_hb() { # $1=file $2=json-line
   printf '%s\n' "$2" > "$1"
 }
-stale_hb() { # $1=file $2=json-line  (mtime pushed 30 min back)
+stale_hb() { # $1=file $2=json-line  (mtime pushed 2h back — past the GSL-217
+             # measured-cadence default WD_HB_STALE_SECS=3900)
   printf '%s\n' "$2" > "$1"
-  touch -t "$(date -v-30M +%Y%m%d%H%M.%S)" "$1"
+  touch -t "$(date -v-120M +%Y%m%d%H%M.%S)" "$1"
 }
 
 # All healthy fixtures carry the C1 identity field: "pane" = the orchestrator's
@@ -134,7 +135,7 @@ run_case() {
 
 # Tick-to-tick memory is MODE-SCOPED since GSL-212 ($WD_STATE_DIR/<mode>/);
 # legacy seeds target the armed dir the legacy scenarios run in.
-seed_old_nudge()   { mkdir -p "$1/state/armed"; echo $((NOW - 400)) > "$1/state/armed/nudge.marker"; }
+seed_old_nudge()   { mkdir -p "$1/state/armed"; echo $((NOW - 700)) > "$1/state/armed/nudge.marker"; }
 seed_old_handoff() { mkdir -p "$1/state/armed"; echo $((NOW - 700)) > "$1/state/armed/handoff-request.marker"; }
 
 # GSL-53 seeds: restart-budget history + escalation marker
@@ -158,7 +159,11 @@ run_case  missing-hb-alive          identity_unverified 1     %42   missing  ""
 run_case  quiesced-dead-session     ok_quiesced         0     ""    fresh    "$HB_QUIESCED"
 run_case  quota-wait-stale-live     ok_quiesced         1     %42   stale    "$HB_QUOTA_WAIT"
 run_case  rolling-fresh             waiting_successor   0     ""    fresh    "$HB_ROLLING"
+# GSL-217: the DEFAULT ceiling is 100 (= off, pending GSL-182's real signal);
+# these cases pin 80 because they test the MECHANISM, not the default.
+CASE_ENV="WD_CONTEXT_CEILING_PCT=80"
 run_case  ctx-ceiling-first-tick    handoff_requested   1     %42   fresh    "$HB_HIGH_CTX"
+CASE_ENV="WD_CONTEXT_CEILING_PCT=80"
 run_case  ctx-ceiling-overdue       kill_rewake         1     %42   fresh    "$HB_HIGH_CTX" seed_old_handoff
 
 echo "== quota-wait ETA backstop (GSL-65 review M1, contract v0.5.1) =="
@@ -238,7 +243,7 @@ echo "== Gastown debounce scenarios (GSL-54) =="
 seed_last_started()      { mkdir -p "$1/state/armed"; echo $((NOW - 30)) > "$1/state/armed/last-started.marker"; }
 seed_zombie_2()          { mkdir -p "$1/state/armed"; echo 2 > "$1/state/armed/zombie.count"; }
 seed_zombie_2_recover()  { mkdir -p "$1/state/armed"; echo 2 > "$1/state/armed/zombie.count"; }
-seed_nudged_and_cooldown() { mkdir -p "$1/state/armed"; echo $((NOW - 400)) > "$1/state/armed/nudge.marker"; echo $((NOW - 60)) > "$1/state/armed/last-kill.marker"; }
+seed_nudged_and_cooldown() { mkdir -p "$1/state/armed"; echo $((NOW - 700)) > "$1/state/armed/nudge.marker"; echo $((NOW - 60)) > "$1/state/armed/last-kill.marker"; }
 
 # (a) startup grace — Gastown #567 / F1-S2
 CASE_ENV="WD_TEST_SESSION_CREATED=$((NOW - 30))"
@@ -513,7 +518,7 @@ fi
 # (b) Observe ladder: stale-after-nudge runs the FULL chain but only records it —
 # would_kill + would_rewake, no kill/orchestrator_restarted, no last-started marker,
 # and the would-restart still burns the OBSERVE budget history (mode-scoped).
-seed_old_nudge_observe() { mkdir -p "$1/state/observe"; echo $((NOW - 400)) > "$1/state/observe/nudge.marker"; }
+seed_old_nudge_observe() { mkdir -p "$1/state/observe"; echo $((NOW - 700)) > "$1/state/observe/nudge.marker"; }
 CASE_ENV="WD_MODE=observe"
 run_case  observe-stale-after-nudge kill_rewake        1     %42   stale    "$HB_OK"      seed_old_nudge_observe
 L="$WORK/observe-stale-after-nudge/ledger.jsonl"
@@ -542,13 +547,26 @@ else
   bad "observe: would_nudge missing"
 fi
 
-# (d) Observe context ceiling: would_request_handoff.
-CASE_ENV="WD_MODE=observe"
+# (d) Observe context ceiling: would_request_handoff (ceiling pinned — the
+# GSL-217 default is 100 = off).
+CASE_ENV="WD_MODE=observe WD_CONTEXT_CEILING_PCT=80"
 run_case  observe-ctx-ceiling       handoff_requested  1     %42   fresh    "$HB_HIGH_CTX"
 if grep -q '"event":"would_request_handoff"' "$WORK/observe-ctx-ceiling/ledger.jsonl"; then
   ok "observe: context ceiling -> would_request_handoff"
 else
   bad "observe: would_request_handoff missing"
+fi
+
+# (d') GSL-217, the F3 cure: at DEFAULT thresholds a heartbeat with ctx=98 —
+# the measured live norm (median 93, max 98) — is healthy and NOTHING fires.
+HB_CTX98='{"ts":"2026-07-10T03:00:00Z","cycle":30,"context_pct":98,"open_workers":1,"status":"ok","pane":"%42"}'
+CASE_ENV="WD_MODE=observe"
+run_case  ctx-default-off           ok                 1     %42   fresh    "$HB_CTX98"
+if ! grep -qE '"event":"(would_request_handoff|handoff_requested)"' "$WORK/ctx-default-off/ledger.jsonl" \
+   && grep '"event":"tick"' "$WORK/ctx-default-off/ledger.jsonl" | grep -q '"class":"healthy"'; then
+  ok "F3 cure: ctx=98 at default config -> healthy, no handoff demand (enforcement waits for GSL-182)"
+else
+  bad "F3 cure failed: default ceiling still treats the healthy system"
 fi
 
 # (e) Roster match by session_id: the declared identity is alive -> ok.
@@ -701,17 +719,18 @@ fi
 
 echo "== GSL-215: classes healthy/slow/stuck (false-negative bias, ZFC matrix) =="
 tick_class() { grep '"event":"tick"' "$WORK/$1/ledger.jsonl" 2>/dev/null | sed -nE 's/.*"class":"([a-z]+)".*/\1/p' | tail -1; }
-age_hb_8m() { touch -t "$(date -v-8M +%Y%m%d%H%M.%S)" "$1/hb"; }
+# 45 min = 2700s: inside the GSL-217 slow zone [1950, 3900) at default thresholds.
+age_hb_45m() { touch -t "$(date -v-45M +%Y%m%d%H%M.%S)" "$1/hb"; }
 
 CASE_ENV="WD_MODE=observe"
 run_case  class-healthy             ok                 1     %42   fresh    "$HB_OK"
 [ "$(tick_class class-healthy)" = "healthy" ] \
   && ok "class: fresh + young + moving -> healthy" || bad "class-healthy: got '$(tick_class class-healthy)'"
 
-# SLOW BY AGE: 8 min old = past the slow mark (450s = stale/2) but still fresh
-# (< 900s). The decision is ok — record-only is true BY CONSTRUCTION.
+# SLOW BY AGE: 45 min old = past the slow mark (1950s = stale/2) but still
+# fresh (< 3900s). The decision is ok — record-only is true BY CONSTRUCTION.
 CASE_ENV="WD_MODE=observe"
-run_case  class-slow-age            ok                 1     %42   fresh    "$HB_OK"      age_hb_8m
+run_case  class-slow-age            ok                 1     %42   fresh    "$HB_OK"      age_hb_45m
 if [ "$(tick_class class-slow-age)" = "slow" ] \
    && ! grep -qE '"event":"(nudge|would_nudge|kill|would_kill|orchestrator_restarted|would_rewake)"' "$WORK/class-slow-age/ledger.jsonl"; then
   ok "class: approaching-stale -> slow, and slow NEVER acts (decision stays ok)"
@@ -756,7 +775,7 @@ run_case  class-unknown             platform_unknown   1     %42   fresh    "$HB
 
 # The construction invariant fails LOUDLY: slow >= stale is a config error.
 rc=0
-out="$(WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_HB_SLOW_SECS=900 \
+out="$(WD_CONFIG=/dev/null WD_TEST_MODE=1 WD_HB_SLOW_SECS=3900 \
        WD_STATE_DIR="$WORK/badslow" WD_HEARTBEAT_FILE="$WORK/badslow-hb" \
        WD_LEDGER_FILE="$WORK/badslow-ledger" bash "$WD" --dry-run 2>&1)" || rc=$?
 if [ "$rc" -eq 78 ] && echo "$out" | grep -q "record-only"; then
@@ -766,7 +785,7 @@ else
 fi
 
 echo "== GSL-216: the ladder nudge -> resume -> restart (shared budget, attempt audit) =="
-seed_resume_old_observe()   { mkdir -p "$1/state/observe"; echo $((NOW - 400)) > "$1/state/observe/resume-attempt.marker"; }
+seed_resume_old_observe()   { mkdir -p "$1/state/observe"; echo $((NOW - 700)) > "$1/state/observe/resume-attempt.marker"; }
 seed_resume_fresh_observe() { mkdir -p "$1/state/observe"; echo $((NOW - 60)) > "$1/state/observe/resume-attempt.marker"; }
 seed_3_recent_restarts_observe() { mkdir -p "$1/state/observe"; { echo $((NOW-300)); echo $((NOW-600)); echo $((NOW-900)); } > "$1/state/observe/restarts.history"; }
 seed_ladder_budget() { seed_old_nudge_observe "$1"; seed_3_recent_restarts_observe "$1"; }
