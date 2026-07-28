@@ -101,7 +101,7 @@
 
 set -euo pipefail
 
-WD_VERSION="0.6.4 (GSL-217: thresholds from measured cadence; context ceiling off pending GSL-182)"
+WD_VERSION="0.6.5 (GSL-219: CLI version tracked per heartbeat line; cli_version_changed event)"
 EX_CONFIG=78
 
 # --- CLI -----------------------------------------------------------------
@@ -328,7 +328,7 @@ marker_age() {
 
 # --- heartbeat reading -----------------------------------------------------
 HB_EXISTS=0 HB_AGE="" HB_LAST="" HB_STATUS="" HB_CTX="" HB_WORKERS="" HB_CYCLE="" HB_PANE="" HB_NOTE=""
-HB_SESSION="" HB_SESSION_ID="" HB_MODE=""
+HB_SESSION="" HB_SESSION_ID="" HB_MODE="" HB_CLI=""
 
 hb_field_int() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p"; }
 hb_field_str() { printf '%s' "$HB_LAST" | sed -nE "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p"; }
@@ -352,7 +352,25 @@ read_heartbeat() {
     HB_SESSION="$(hb_field_str session)"
     HB_SESSION_ID="$(hb_field_str session_id)"
     HB_MODE="$(hb_field_str mode)"
+    HB_CLI="$(hb_field_str cli)"
   fi
+}
+
+# GSL-219: a 03:00 breaking CLI update must not be invisible. The writer stamps
+# every heartbeat line with the running version; the watchdog remembers the
+# last seen one (mode-scoped) and turns a change into a ledger event.
+track_cli() {
+  [ -z "$HB_CLI" ] && return 0
+  local prev
+  prev="$(cat "$WD_STATE_DIR/$WD_MODE/last-cli" 2>/dev/null || echo "")"
+  if [ -n "$prev" ] && [ "$prev" != "$HB_CLI" ]; then
+    log "CLI version changed under the orchestrator: $prev -> $HB_CLI"
+    ledger_emit "cli_version_changed" "old=$prev" "new=$HB_CLI" "cycle=${HB_CYCLE:-0}"
+  fi
+  if [ "$prev" != "$HB_CLI" ]; then
+    echo "$HB_CLI" > "$WD_STATE_DIR/$WD_MODE/last-cli"
+  fi
+  return 0
 }
 
 hb_is_fresh() { [ "$HB_EXISTS" = "1" ] && is_uint "$HB_AGE" && [ "$HB_AGE" -lt "$WD_HB_STALE_SECS" ]; }
@@ -1015,6 +1033,8 @@ decide_and_act() {
   TMUX_ALIVE=0; probe_session_alive && TMUX_ALIVE=1
   # Frozen-progress bookkeeping (GSL-213): record-only, feeds GSL-215 classes.
   track_progress
+  # CLI-version bookkeeping (GSL-219): record-only.
+  track_cli
   # Classification (GSL-215): computed from the signals, recorded on the tick
   # line, decides nothing here — the reaction ladder consults it.
   classify
@@ -1281,7 +1301,8 @@ main() {
     "platform=$PLATFORM_STATE" "platform_status=$PLATFORM_STATUS" \
     "platform_match=$PLATFORM_MATCH" "sessions=$PLATFORM_SESSIONS" \
     "repo_sessions=$PLATFORM_REPO_N" "tmux_alive=$TMUX_ALIVE" \
-    "frozen=$FROZEN" "frozen_ticks=$FROZEN_TICKS" "frozen_span=$FROZEN_SPAN"
+    "frozen=$FROZEN" "frozen_ticks=$FROZEN_TICKS" "frozen_span=$FROZEN_SPAN" \
+    "cli=${HB_CLI:-none}"
   log "DECISION=$DECISION reason=$DECISION_REASON class=${WD_CLASS:-none} mode=$WD_MODE hb_age=${HB_AGE:-none} hb_status=${HB_STATUS:-none} ctx=${HB_CTX:-none} workers=${HB_WORKERS:-none} platform=$PLATFORM_STATE/$PLATFORM_STATUS tmux=$TMUX_ALIVE dry_run=$DRY_RUN"
 }
 

@@ -849,6 +849,33 @@ else
   bad "ladder: budget not shared with the resume rung"
 fi
 
+echo "== GSL-219: CLI version per heartbeat line; change becomes an event =="
+HB_CLI_A='{"ts":"2026-07-10T03:00:00Z","cycle":40,"context_pct":50,"open_workers":1,"status":"ok","pane":"%42","cli":"2.1.219"}'
+seed_old_cli() { mkdir -p "$1/state/observe"; echo "2.1.218" > "$1/state/observe/last-cli"; }
+
+# First sighting: remembered, no event (a change needs a predecessor).
+CASE_ENV="WD_MODE=observe"
+run_case  cli-first-seen            ok                 1     %42   fresh    "$HB_CLI_A"
+if [ "$(cat "$WORK/cli-first-seen/state/observe/last-cli" 2>/dev/null)" = "2.1.219" ] \
+   && ! grep -q '"event":"cli_version_changed"' "$WORK/cli-first-seen/ledger.jsonl" \
+   && grep '"event":"tick"' "$WORK/cli-first-seen/ledger.jsonl" | grep -q '"cli":"2.1.219"'; then
+  ok "cli: first sighting remembered, no event, version on the tick line"
+else
+  bad "cli first-sighting wrong"
+fi
+
+# Version moved between lines -> cli_version_changed(old, new). The audit's
+# live example: the machine moved 2.1.218 -> 2.1.219 -> 2.1.220 unnoticed.
+CASE_ENV="WD_MODE=observe"
+run_case  cli-change                ok                 1     %42   fresh    "$HB_CLI_A"   seed_old_cli
+if grep '"event":"cli_version_changed"' "$WORK/cli-change/ledger.jsonl" | grep -q '"old":"2.1.218"' \
+   && grep '"event":"cli_version_changed"' "$WORK/cli-change/ledger.jsonl" | grep -q '"new":"2.1.219"' \
+   && [ "$(cat "$WORK/cli-change/state/observe/last-cli")" = "2.1.219" ]; then
+  ok "cli: version change between lines -> cli_version_changed event, memory updated"
+else
+  bad "cli change detection wrong"
+fi
+
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
 HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
 if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi
@@ -897,6 +924,22 @@ if ! bash "$HBW" --cycle x --context-pct 1 --open-workers 0 >/dev/null 2>&1 \
 else
   bad "writer validation too permissive"
 fi
+# GSL-219: every line carries the CLI version; override wins, default resolves.
+line="$(GOSLEEP_HB_FILE="$HT/hb" GOSLEEP_AGENTS_JSON="-" GOSLEEP_CLI_VERSION=9.9.9 \
+  bash "$HBW" --cycle 8 --context-pct 1 --open-workers 0 2>/dev/null)"
+if printf '%s' "$line" | grep -q '"cli":"9.9.9"'; then
+  ok "writer stamps the cli field (override honoured)"
+else
+  bad "writer cli override wrong: $line"
+fi
+line="$(GOSLEEP_HB_FILE="$HT/hb" GOSLEEP_AGENTS_JSON="-" \
+  bash "$HBW" --cycle 9 --context-pct 1 --open-workers 0 2>/dev/null)"
+if printf '%s' "$line" | grep -qE '"cli":"[0-9]+\.[0-9]+\.[0-9]+"'; then
+  ok "writer resolves the running CLI version by default (EXECPATH/--version)"
+else
+  bad "writer default cli resolution wrong: $line"
+fi
+
 # 0-LLM: the only claude invocation is the local roster read
 if grep -qE 'claude (-p|--print)|api\.anthropic|ANTHROPIC_API_KEY=' "$HBW"; then
   bad "heartbeat.sh 0-LLM check: found a headless/API call"

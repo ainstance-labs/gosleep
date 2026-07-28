@@ -32,6 +32,11 @@
 #                $CLAUDE_CODE_SESSION_ID against the roster.
 #   session_id   the sessionId UUID of the same roster entry (the exact match key; the name
 #                is for humans, the UUID is for machines).
+#   cli          the Claude Code CLI version this line was written under (GSL-219) — from
+#                $CLAUDE_CODE_EXECPATH's basename (the harness pins the running version
+#                there), falling back to `claude --version`. A 03:00 breaking update stops
+#                being invisible: the watchdog emits cli_version_changed when consecutive
+#                lines disagree.
 #   note         free text ≤ 80 chars (longer input is truncated with a stderr warning).
 #
 # Usage:
@@ -98,11 +103,24 @@ else
   ROSTER_JSON="$("$CLAUDE_BIN" agents --json 2>/dev/null || echo '')"
 fi
 
+# CLI version (GSL-219): the running harness pins its version into
+# CLAUDE_CODE_EXECPATH (.../versions/2.1.220) — free to read; `claude --version`
+# is the fallback; GOSLEEP_CLI_VERSION overrides for tests. Empty = omitted
+# (honest), warned.
+CLI_VERSION="${GOSLEEP_CLI_VERSION:-}"
+if [ -z "$CLI_VERSION" ] && [ -n "${CLAUDE_CODE_EXECPATH:-}" ]; then
+  CLI_VERSION="$(basename "$CLAUDE_CODE_EXECPATH")"
+fi
+if [ -z "$CLI_VERSION" ]; then
+  CLI_VERSION="$("$CLAUDE_BIN" --version 2>/dev/null | awk '{print $1}' || true)"
+fi
+[ -z "$CLI_VERSION" ] && echo "heartbeat: CLI version unresolvable — cli field omitted" >&2
+
 mkdir -p "$(dirname "$HB_FILE")"
 
 HB_ROOT="$ROOT" HB_PATH="$HB_FILE" HB_CYCLE="$CYCLE" HB_CTX="$CTX" HB_WORKERS="$WORKERS" \
 HB_STATUS="$STATUS" HB_MODE="$MODE" HB_NOTE="$NOTE" HB_PANE="${TMUX_PANE:-}" \
-HB_ROSTER="$ROSTER_JSON" HB_SID="${CLAUDE_CODE_SESSION_ID:-}" \
+HB_ROSTER="$ROSTER_JSON" HB_SID="${CLAUDE_CODE_SESSION_ID:-}" HB_CLI="$CLI_VERSION" \
 python3 - <<'PY'
 import json, os, sys, time
 
@@ -155,6 +173,8 @@ if session is not None:
     line["session"] = session
 if session_id is not None:
     line["session_id"] = session_id
+if os.environ.get("HB_CLI"):
+    line["cli"] = os.environ["HB_CLI"]
 if note:
     line["note"] = note
 out = json.dumps(line, ensure_ascii=False, separators=(",", ":"))

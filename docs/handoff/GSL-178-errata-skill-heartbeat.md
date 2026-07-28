@@ -44,10 +44,10 @@
 `{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4"}`
 ```
 
-Новый:
+Новый (включая `cli` из GSL-219):
 
 ```
-`{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4","session":"gosleep-21","session_id":"a716426f-…"}`
+`{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4","session":"gosleep-21","session_id":"a716426f-…","cli":"2.1.220"}`
 ```
 
 ## Замена 3 — session/session_id в списке Required (GSL-212)
@@ -66,7 +66,11 @@ watchdog refuses to act on a live session and escalates to the owner instead) ·
   `claude agents --json` reports them — the watchdog's LIFE identity since GSL-212: life is
   judged against the platform roster, and a declared identity absent from it while other live
   sessions run in this repo freezes every action (session_mismatch). NEVER type these by
-  hand — the writer below derives them). Optional:
+  hand — the writer below derives them) ·
+  `cli` (the Claude Code CLI version this line was written under, GSL-219 — the writer
+  resolves it from the harness itself; the watchdog turns a change between consecutive
+  lines into a cli_version_changed ledger event, so a 03:00 breaking update is on the
+  record instead of invisible). Optional:
 ```
 
 ## Замена 4 — сниппет ручной записи → писатель tools/lab/heartbeat.sh (GSL-212)
@@ -90,6 +94,10 @@ watchdog refuses to act on a live session and escalates to the owner instead) ·
 
 ---
 
-Дальнейшие дельты этого же файла эрраты добавят задачи эпика по мере готовности:
-GSL-219 (поле `cli` в каждой строке пульса) и GSL-214 (пункт HEARTBEAT_OK, читающий строку
-`breaker=` из STATE).
+Дельта GSL-219 (поле `cli`) уже включена в замены 2 и 3 выше. Оставшаяся дельта эпика —
+GSL-214 (пункт HEARTBEAT_OK, читающий строку `breaker=` из STATE) — добавится ниже своей
+задачей.
+
+Сопутствующая эррата для суверенного `docs/handoff/ORCHESTRATION-STATE.md` (строки `cli=` и
+`breaker=`) — отдельным файлом `docs/handoff/GSL-178-errata-orchestration-state.md` по образцу
+GSL-195; вставляет оркестратор.
