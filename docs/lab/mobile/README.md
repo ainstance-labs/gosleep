@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-28T12:00:39Z` · freshest event **33s** old at that moment (`2026-07-28T12:00:06Z`) · day `2026-07-28`
+🟢 **FRESH at build** · generated `2026-07-28T12:14:42Z` · freshest event **1m** old at that moment (`2026-07-28T12:13:19Z`) · day `2026-07-28`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T12:00:39Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T12:14:42Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-28T12:30:06Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-28T15:00:06Z`**
+> - 🟡 **STALE if you are reading this after `2026-07-28T12:43:19Z`**
+> - 🔴 **DEAD if you are reading this after `2026-07-28T15:13:19Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -25,41 +25,41 @@
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 146 |
-| Orchestrator | ok · context 91% |
+| Cycle | 147 |
+| Orchestrator | ok · context 94% |
 
 ## 3. Delivery
 
-Branch `GSL-176-tick-engine` @ `0fb475f` · 17 dirty path(s)
+Branch `main` @ `62a1be0` · 16 dirty path(s)
 
-Shipped 2026-07-28 (25):
+Shipped 2026-07-28 (27):
+- `62a1be0` Merge pull request #254 from ainstance-labs/GSL-176-tick-engine
+- `af65d73` GSL-176 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первый живой tick-ledger: mode=debounce и …
 - `0fb475f` GSL-204 Рунбук мотора docs/runbooks/tick-engine.md: двухслойная модель дебаунс+тик, частоты, чтение леджера, вооружённо…
 - `44882b3` GSL-203 Штатный гейт смены стал кодом без --no-poll: tools/lab/gate.sh (smoke+hooks-verify+tsc+летописец С опросом; офф…
 - `1e945e1` GSL-201 Преflight носителей тика подготовлен: шаблон LaunchAgent (300с, RunAtLoad), preflight-arm/disarm — руки владель…
 - `803704d` GSL-202 Idle-гейт тика: свежий бандл + пустой list --due → result=idle и выход до poll/летописца/armed-check (ноль сети…
 - `3e0a20a` GSL-199 tools/lab/tick.sh — идемпотентный страховочный тик: poll-fill → apply-due → летописец (только если дебаунс не д…
 - `9df9f86` GSL-200 lab-emit apply-due (идемпотентный исполнитель просроченных DECISION, applied_by=apply-due, зеркало в таймлайн) …
-- `ffa5f32` GSL-198 Возвращён дебаунс-хук PostToolUse на записи в docs/lab/: движок chronicler-debounce.sh (двухступенчатый матч to…
-- `746e98c` GSL-138 [Docs][Process] Ledger смены 74 (часть 2): эпик GSL-179 слит (#253), handoff 51, решения d-008..010, граница ци…
-- …and 17 more
+- …and 19 more
 
 ## 4. Tasks
 
 | Status | Tasks |
 |---|--:|
 | In Review | 4 |
-| To Do | 54 |
-| Done | 191 |
+| To Do | 46 |
+| Done | 199 |
 
 ## 5. Cost & runway
 
-Cumulative **19,110,000** tokens over 145 cycle(s).
+Cumulative **19,175,000** tokens over 146 cycle(s).
 
-Next runway event: **open blockers** — stops at **`2026-07-28T12:00:39Z`**.
+Next runway event: **open blockers** — stops at **`2026-07-28T12:14:42Z`**.
 
 ## 6. Activity
 
-**256** events today of **2761** total · 82% mechanical.
+**290** events today of **2795** total · 82% mechanical.
 
 Latest decisions (31 total, newest first):
 - **потолок считается за ночь (сутки UTC), не кумулятивно** `GSL-221` — 2026-07-28 10:42
