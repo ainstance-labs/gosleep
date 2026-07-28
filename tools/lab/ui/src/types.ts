@@ -476,7 +476,8 @@ export type ClockState =
   | "unknown";
 
 export interface RunwayClock {
-  axis: "context" | "budget" | "quota" | "slots" | "blockers" | "work" | string;
+  /** "decisions" (GSL-224): overdue DECISIONs with no live pulse — a stopper wearing a timer's clothes. */
+  axis: "context" | "budget" | "quota" | "slots" | "blockers" | "decisions" | "work" | string;
   label: string;
   on_exhaustion: OnExhaustion;
   state: ClockState;
@@ -506,7 +507,7 @@ export interface Runway {
   unknown_axes_all: string[];
   known: number;
   total: number;
-  /** The nearest of ALL six, whatever its zero means — so a 2h context roll is never hidden by a 6h runway. */
+  /** The nearest of ALL clocks, whatever its zero means — so a 2h context roll is never hidden by a 6h runway. */
   next_event: {
     axis: string;
     label: string;

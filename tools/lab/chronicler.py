@@ -1459,8 +1459,8 @@ def build_status(ctx):
 # ═════════════════════ the autonomy runway (GSL-94, PRD R5.1 / F5-S1) ═════════════════════
 #
 # ONE headline answers the only question the owner actually asks at midnight -- "can I go to sleep?"
-# -- and it answers it with evidence, not vibes. It is the nearest of SIX independent exhaustion
-# clocks, with the binding one named.
+# -- and it answers it with evidence, not vibes. It is the nearest of SEVEN independent exhaustion
+# clocks (six of GSL-94 plus the overdue-decisions clock of GSL-224), with the binding one named.
 #
 # THREE RULES THIS THING LIVES BY. Each was paid for.
 #
@@ -1476,22 +1476,28 @@ def build_status(ctx):
 #    other is a hole in the evidence, and a dashboard that draws them alike has learned nothing from
 #    Phase 4.
 #
-# 3. EXHAUSTION DOES NOT MEAN THE SAME THING ON EVERY AXIS, so min() over the raw six is a lie by
-#    arithmetic. Hitting the context ceiling forces a ROLL, which the watchdog performs by itself and
-#    the night survives. Filling all three panes makes the fourth worker QUEUE. Running out of To Do
-#    is the job being FINISHED. None of those are a reason to wake anybody, and a naive
+# 3. EXHAUSTION DOES NOT MEAN THE SAME THING ON EVERY AXIS, so min() over the raw seven is a lie by
+#    arithmetic. Hitting the context ceiling forces a ROLL, which an ARMED watchdog performs by
+#    itself and the night survives (and when none is armed, that axis says `unknown`, not the
+#    comfortable story -- GSL-224). Filling all three panes makes the fourth worker QUEUE. Running
+#    out of To Do is the job being FINISHED. None of those are a reason to wake anybody, and a naive
 #    min(0h, 4h, 8h) would scream "RUNWAY 0h" because a pane is busy. So every clock declares what its
 #    own zero MEANS:
-#         stops     -> the night ends here without you   (budget exceeded, quota window, open BLOCKER)
+#         stops     -> the night ends here without you   (budget exceeded, quota window, open
+#                                                         BLOCKER, overdue DECISION with a dead pulse)
 #         degrades  -> the night continues, worse        (context roll, full pane queue)
 #         completes -> the night ends here, happily      (no work left)
-#    RUNWAY is the nearest `stops`. `next_event` is the nearest of ALL six, so nothing is hidden --
+#    RUNWAY is the nearest `stops`. `next_event` is the nearest of ALL seven, so nothing is hidden --
 #    the page shows both, and says which is which.
 
 CONTEXT_CEILING_PCT = int(os.environ.get("GOSLEEP_CONTEXT_CEILING_PCT", 80))   # watchdog.sh:133
 ROLL_CYCLES_LOW  = int(os.environ.get("GOSLEEP_ROLL_CYCLES_LOW", 8))           # PRD R5.1: the 8-15
 ROLL_CYCLES_HIGH = int(os.environ.get("GOSLEEP_ROLL_CYCLES_HIGH", 15))         # cycle roll heuristic
 QUOTA_NOTE_RE = re.compile(r"quota-wait until\s+(\d{4}-\d{2}-\d{2}T[\d:]+Z?)")  # watchdog.sh:287
+# GSL-224: how old a heartbeat may be and still count as "somebody alive is applying defaults".
+# Aligned with the pulse rule's own cadence (self-check every 5-10 min): 30 minutes of silence is
+# three missed pulses, and three missed pulses is not a live orchestrator.
+PULSE_FRESH_SECS = int(os.environ.get("GOSLEEP_PULSE_FRESH_SECS", 1800))
 
 
 def clock(axis, label, on_exhaustion, state, hours=None, eta=None, gauge=None, why="", sources=()):
@@ -1534,13 +1540,23 @@ def _pulse_rate(pulses):
     return ctx_rate, cyc_rate, len(seg)
 
 
-def clock_context(hb, pulses):
+def clock_context(hb, pulses, supervision=None):
     """Orchestrator context vs the ceiling -- CROSS-CHECKED, because PRD R5.1 says in so many words:
     do not trust the number alone. A model reporting its own context is the "fabricated 80% vs real
     63%" failure; the independent check is the roll heuristic (an orchestrator rolls every 8-15
     cycles), and where the two disagree we take the SHORTER. An optimistic clock is the only kind
-    that can hurt you here."""
+    that can hurt you here.
+
+    GSL-224 (finding 9): this clock's benign story -- "hitting the ceiling merely degrades the
+    night, the watchdog forces a handoff" -- LEANS ON THE WATCHDOG, and for eleven audited days the
+    watchdog was built and not armed. An axis whose mechanism is not running must say `unknown`
+    with the reason, never assert a degradation it cannot deliver: so at/over the ceiling with no
+    armed watchdog this clock refuses the comfortable "exhausted, planned, not fatal" and says what
+    it actually knows."""
     src = ["docs/handoff/.orchestrator-heartbeat (gitignored)", "watchdog.sh WD_CONTEXT_CEILING_PCT=%d" % CONTEXT_CEILING_PCT]
+    armed = bool((supervision or {}).get("armed"))
+    if not armed:
+        src = src + ["supervision.armed=false (no scheduled watchdog)"]
     pct = hb.get("context_pct") if isinstance(hb, dict) else None
     if not isinstance(pct, int):
         return clock("context", "orchestrator context", "degrades", "unknown",
@@ -1552,6 +1568,14 @@ def clock_context(hb, pulses):
     # the fact — the level, and the ceiling it rolls at. Two percentages need the relation spelled out.
     gauge = "%d%% (rolls at %d%%)" % (pct, CONTEXT_CEILING_PCT)
     if pct >= CONTEXT_CEILING_PCT:
+        if not armed:
+            return clock("context", "orchestrator context", "degrades", "unknown", gauge=gauge,
+                         why="at/over the ceiling — and the mechanism the benign story leans on is "
+                             "NOT running: no watchdog is armed to force the handoff, so whether "
+                             "the night merely degrades here rests on the orchestrator rolling "
+                             "itself, which this build cannot verify. Unknown with a reason, never "
+                             "a degradation asserted on data that does not exist (GSL-224, finding 9).",
+                         sources=src)
         return clock("context", "orchestrator context", "degrades", "exhausted", hours=0.0, gauge=gauge,
                      why="at/over the ceiling: the watchdog forces a handoff. Planned, not fatal — "
                          "the night continues on the other side of a roll.", sources=src)
@@ -1594,6 +1618,11 @@ def clock_context(hb, pulses):
             else:
                 why += " — taking the shorter"
 
+    if not armed:
+        # Counting is real data (the level and the rate are measured) — but the benign meaning of
+        # this clock's zero is not, so the sentence carries the caveat instead of the comfort.
+        why += (". NOTE: no watchdog is armed — whether reaching the ceiling merely degrades the "
+                "night rests on the orchestrator rolling itself (GSL-224)")
     return clock("context", "orchestrator context", "degrades", "counting", hours=hours, gauge=gauge,
                  why=why, sources=src)
 
@@ -1739,9 +1768,11 @@ def clock_slots(fleet):
 
 
 def clock_blockers(queue):
-    """Open BLOCKERs. The ONLY question type that can stop a night: manifest §3 gives a BLOCKER no
-    default, ever, so it has no timer and cannot resolve itself. A DECISION auto-applies at its
-    deadline and the night keeps moving; a BLOCKER waits for a human.
+    """Open BLOCKERs. A question type that stops a night by construction: manifest §3 gives a
+    BLOCKER no default, ever, so it has no timer and cannot resolve itself. A DECISION carries a
+    default a LIVE ORCHESTRATOR applies at its deadline — nothing applies it mechanically (finding
+    7), which is why overdue DECISIONs have their own stopping clock (GSL-224) instead of the old
+    comfortable "they resolve themselves"; a BLOCKER waits for a human either way.
 
     A BLOCKER open at midnight means the runway is already zero for the work it names. This clock is
     deliberately CONSERVATIVE -- it reports zero even though other tasks may still advance -- because
@@ -1755,6 +1786,59 @@ def clock_blockers(queue):
     return clock("blockers", "open blockers", "stops", "exhausted", hours=0.0, gauge=str(len(b)),
                  why="%d open BLOCKER(s) (%s) — a BLOCKER takes no default and has no timer; the work "
                      "it names is parked until you answer it" % (len(b), ids), sources=src)
+
+
+def clock_decisions(queue, hb):
+    """Overdue DECISIONs with no live pulse (GSL-224; finding 9 — the runway's optimism bias).
+
+    The old premise, written straight into this file, was "a DECISION auto-applies at its deadline
+    and the night keeps moving". Nothing applies it mechanically (finding 7): a default is applied
+    by a LIVE orchestrator, and with the pulse dead an overdue DECISION parks its work exactly like
+    a BLOCKER — a stopper wearing a timer's clothes. So:
+
+        no overdue DECISION                  -> clear   (evidence, not comfort)
+        overdue + pulse fresh                -> clear, with the caveat printed: a live orchestrator
+                                                can still apply the defaults THIS pulse; if the
+                                                pulse dies, this axis is the stopper
+        overdue + pulse stale                -> exhausted, 0h: nothing alive is applying defaults
+        overdue + no readable pulse          -> unknown: cannot rule the stop out, so it bounds
+                                                the answer (never drops out silently)
+    """
+    src = ["docs/lab/questions/queue.jsonl (type=DECISION, status=open, auto_apply_at)",
+           "docs/handoff/.orchestrator-heartbeat age vs GOSLEEP_PULSE_FRESH_SECS=%d" % PULSE_FRESH_SECS]
+    overdue = []
+    for q in queue.get("open_items") or []:
+        if q.get("type") != "DECISION":
+            continue
+        t = parse_ts(q.get("auto_apply_at"))
+        if t is not None and t <= NOW:
+            overdue.append(q)
+    if not overdue:
+        return clock("decisions", "overdue decisions", "stops", "clear", gauge="0 overdue",
+                     why="no open DECISION is past its deadline", sources=src)
+
+    ids = ", ".join(str(x.get("id")) for x in overdue[:3])
+    hb_ts = parse_ts((hb or {}).get("ts"))
+    if hb_ts is None:
+        return clock("decisions", "overdue decisions", "stops", "unknown",
+                     gauge="%d overdue, no pulse" % len(overdue),
+                     why="%d overdue DECISION(s) (%s) and NO readable pulse: nothing observable is "
+                         "alive to apply their defaults, and an unreadable pulse cannot rule the "
+                         "stop out" % (len(overdue), ids), sources=src)
+    age = NOW - hb_ts
+    if age <= PULSE_FRESH_SECS:
+        return clock("decisions", "overdue decisions", "stops", "clear",
+                     gauge="%d overdue, pulse %s old" % (len(overdue), human_age(age)),
+                     why="%d overdue DECISION(s) (%s), but the pulse is live (%s old, threshold "
+                         "%ds): a live orchestrator can still apply the defaults this pulse. If "
+                         "the pulse dies, this axis becomes the stopper."
+                         % (len(overdue), ids, human_age(age), PULSE_FRESH_SECS), sources=src)
+    return clock("decisions", "overdue decisions", "stops", "exhausted", hours=0.0,
+                 gauge="%d overdue, pulse %s old" % (len(overdue), human_age(age)),
+                 why="%d overdue DECISION(s) (%s) and the pulse is stale (%s old > %ds): nothing "
+                     "alive is applying defaults, so the work they park is stopped — a BLOCKER "
+                     "wearing a timer's clothes" % (len(overdue), ids, human_age(age),
+                                                    PULSE_FRESH_SECS), sources=src)
 
 
 def clock_work(tasks, cyc_rate):
@@ -1790,18 +1874,19 @@ def clock_work(tasks, cyc_rate):
 
 
 def compute_runway(ctx):
-    """RUNWAY = the nearest clock whose exhaustion STOPS the night. `next_event` = the nearest of all
-    six, whatever it means. Both are reported, and every clock says which it is."""
+    """RUNWAY = the nearest clock whose exhaustion STOPS the night. `next_event` = the nearest of
+    all seven, whatever it means. Both are reported, and every clock says which it is."""
     pulses = ctx["pulses"]
     hb = ctx["heartbeat"] or {}
     _, cyc_rate, _ = _pulse_rate(pulses)
 
     clocks = [
-        clock_context(hb, pulses),
+        clock_context(hb, pulses, ctx.get("supervision")),
         clock_budget(ctx["cost"], cyc_rate),
         clock_quota(ctx["events"], hb),
         clock_slots(ctx["fleet"]),
         clock_blockers(ctx["queue"]),
+        clock_decisions(ctx["queue"], hb),       # GSL-224: the optimism-bias fix of finding 9
         clock_work(ctx["tasks"], cyc_rate),
     ]
 
@@ -2328,8 +2413,9 @@ def build_queue(questions):
         "closed_items": sorted([q for q in items if q.get("status") != "open"],
                                key=lambda q: q.get("ts") or "", reverse=True)[:20],
         # BLOCKERs take no default, ever (manifest §3) -- so they have no auto_apply_at and no timer.
-        # They are the only question type that STOPS the night, which is why GSL-94's runway keys on
-        # them and not on the DECISIONs, which resolve themselves.
+        # They stop the night by construction. DECISIONs do NOT "resolve themselves" (finding 7 --
+        # nothing applies a default mechanically; a live orchestrator does): the runway keys on
+        # blockers here AND on overdue DECISIONs with a dead pulse via clock_decisions (GSL-224).
         "open_blockers": [q for q in open_items if q.get("type") == "BLOCKER"],
     }
 
@@ -2442,7 +2528,10 @@ def collect_supervision():
     the cost of a subprocess whose output differs across macOS versions, and the honest gap is named
     below instead of papered over with a guess.
     """
-    agent = os.path.join(HOME, "Library", "LaunchAgents", "com.gosleep.watchdog.plist")
+    # GSL-224: the path is overridable so a TEST can drive both worlds (armed / not armed) without
+    # touching the real ~/Library. Production never sets the variable.
+    agent = (os.environ.get("GOSLEEP_WATCHDOG_PLIST")
+             or os.path.join(HOME, "Library", "LaunchAgents", "com.gosleep.watchdog.plist"))
     state_dir = os.path.join(REPO, ".artifacts", "watchdog")
     log_path = os.path.join(state_dir, "watchdog.log")
     ledger = os.path.join(REPO, "docs", "handoff", ".watchdog-ledger.jsonl")
@@ -2583,7 +2672,8 @@ def build_render_bundle(ctx, status):
         "links": link_bases(ctx),
         # GSL-206: the two services the mandate names and the web could not see. Additive and
         # optional, exactly like `links` above — an older bundle simply has no strip.
-        "supervision": collect_supervision(),
+        # (GSL-224: computed once in main(), before the runway — the context clock reads it too.)
+        "supervision": ctx["supervision"],
         "gates": collect_gates(),
     }
 
@@ -3540,6 +3630,9 @@ def main():
     ctx["tasks"]  = tasks_board(events_all, ctx["git"], ctx["prs"], ctx["gh_issues"])
     ctx["queue"]  = build_queue(questions)
     ctx["autonomy"] = compute_autonomy(ctx)          # GSL-222: needs questions + events, nothing later
+    # GSL-224: supervision BEFORE the runway — the context clock's benign story leans on the
+    # watchdog, and whether one is armed is supervision's fact to state, computed exactly once.
+    ctx["supervision"] = collect_supervision()
     ctx["runway"] = compute_runway(ctx)
 
     status = build_status(ctx)

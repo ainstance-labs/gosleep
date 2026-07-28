@@ -107,8 +107,8 @@ export function RunwayStrip({ r }: { r: Runway }): VNode {
         ) : null}
       </div>
 
-      {/* The nearest of ALL six, even when it does not stop the night. A 40-minute forced roll must
-          never hide behind a 6-hour runway just because the watchdog handles it. */}
+      {/* The nearest of ALL clocks, even when it does not stop the night. A 40-minute forced roll
+          must never hide behind a 6-hour runway just because the watchdog handles it. */}
       {r.next_event && r.next_event.axis !== r.binding ? (
         <div class="runway-next">
           Next, either way: <b>{r.next_event.label}</b> in <b>{hours(r.next_event.hours)}</b> —{" "}
@@ -130,8 +130,10 @@ export function RunwayStrip({ r }: { r: Runway }): VNode {
       </div>
 
       <details class="runway-trace">
+        {/* The count comes from the data, not from prose: GSL-224 made it seven, and a hardcoded
+            "six" would have been the second renderer disagreeing with the first. */}
         <summary>
-          Why — all six clocks, read from disk ({r.known}/{r.total} readable)
+          Why — all {r.total} clocks, read from disk ({r.known}/{r.total} readable)
         </summary>
         <ul>
           {r.clocks.map((c) => (

@@ -969,8 +969,11 @@ python3 -c "import sys;sys.exit(0 if 0.9 <= float('$BH') <= 1.1 else 1)" 2>/dev/
 #    min(0h, 4h) would scream "RUNWAY 0h" and wake the owner for a non-event.
 #    The runway must therefore read 4h (the quota — the nearest clock that actually STOPS the night),
 #    and must still SHOW the roll as the next thing that happens, so nothing is hidden.
+#    GSL-224: "exhausted-but-benign" is only true when the watchdog is ARMED — so this fixture arms
+#    one explicitly (an existing plist path). The unarmed world is its own test below.
 RWD="$WORK/rw-degrade"; rw_fixture "$RWD" 85 1 "$QEV"       # 85% >= the 80% ceiling -> exhausted
-GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWD" --no-poll --quiet --json >/dev/null 2>&1
+touch "$RWD/wd.plist"
+GOSLEEP_WATCHDOG_PLIST="$RWD/wd.plist" GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWD" --no-poll --quiet --json >/dev/null 2>&1
 [[ "$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWD")" == "exhausted" ]] \
   && ok "F5-S1: context at/over the ceiling reads as EXHAUSTED" \
   || bad "F5-S1: an over-ceiling context did not register"
@@ -1046,13 +1049,78 @@ GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWFAR" --no-poll --quiet --js
   && ok "F5-S1: a distant-but-real ceiling gives an EXACT runway, not a shrug" \
   || bad "F5-S1: a readable, distant budget did not produce an exact answer (bound=$(rw '.runway.bound' "$RWFAR"))"
 
-# ── F5-S1 h. Six clocks, always. Not five when a source is missing.
-[[ "$(rw '.runway.clocks | length' "$RWCL")" == "6" && "$(rw '.runway.clocks | length' "$RWU")" == "6" ]] \
-  && ok "F5-S1: all six clocks are always reported — a missing source produces 'unknown', not a gap" \
-  || bad "F5-S1: a clock disappeared when its source was missing"
-[[ "$(rw '.runway.trace | length' "$RWU")" == "6" ]] \
+# ── F5-S1 h. Seven clocks, always (six of GSL-94 + decisions of GSL-224). Not fewer when a source
+#    is missing.
+[[ "$(rw '.runway.clocks | length' "$RWCL")" == "7" && "$(rw '.runway.clocks | length' "$RWU")" == "7" ]] \
+  && ok "F5-S1: all seven clocks are always reported — a missing source produces 'unknown', not a gap" \
+  || bad "F5-S1: a clock disappeared when its source was missing (got $(rw '.runway.clocks | length' "$RWCL")/$(rw '.runway.clocks | length' "$RWU"))"
+[[ "$(rw '.runway.trace | length' "$RWU")" == "7" ]] \
   && ok "F5-S1: the reasoning trace carries one line per axis (evidence, not vibes — R5.1)" \
   || bad "F5-S1: the runway shows a number with no reasoning"
+
+# ═════════ GSL-224: the overdue-decisions clock + the mechanism-not-armed rule (finding 9) ═════════
+#
+# The runway's optimism bias, cured twice. (1) "A DECISION auto-applies at its deadline" was FALSE —
+# nothing applies a default mechanically; a live orchestrator does. So an overdue DECISION with a
+# dead pulse parks its work exactly like a BLOCKER, and now there is a stopping clock that says so.
+# (2) The context clock's benign story ("the watchdog forces a handoff") leaned on a watchdog that
+# was never armed: an axis whose mechanism is not running must answer `unknown` with the reason,
+# never assert a degradation it cannot deliver.
+echo "== GSL-224: overdue DECISIONs + unarmed mechanisms =="
+RW_PAST="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=20)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+rw_overdue() {  # $1 = fixture dir: drop one hand-written OVERDUE open DECISION into its queue
+  printf '{"id":"q-2026-07-27-001","ts":"%s","type":"DECISION","from":"smoke","task":"GSL-901","question":"overdue decision fixture?","options":[],"default":"yes","default_rationale":"smoke","reversibility":"high","impact_if_wrong":"","auto_apply_at":"%s","status":"open","seen_by":["smoke"],"qhash":"deadbeef00","links":{}}\n' \
+    "$RW_PAST" "$RW_PAST" > "$1/docs/lab/questions/queue.jsonl"
+}
+
+# (a) overdue + LIVE pulse -> clear, with the caveat printed. A live orchestrator can still apply
+#     the default this pulse — but the sentence must say what happens if the pulse dies.
+RWO="$WORK/rw-overdue-live"; rw_fixture "$RWO" 50 1; rw_overdue "$RWO"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWO" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWO")" == "clear" ]] \
+  && rw '.runway.clocks[] | select(.axis=="decisions") | .why' "$RWO" | grep -q 'pulse is live' \
+  && ok "GSL-224: overdue DECISION + live pulse -> clear WITH the caveat (the orchestrator can still act)" \
+  || bad "GSL-224: the live-pulse case is wrong (state=$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWO"))"
+[[ "$(rw '.runway.binding' "$RWO")" != "decisions" ]] \
+  && ok "GSL-224: a live pulse keeps the decisions clock off the headline" \
+  || bad "GSL-224: the runway stopped on a decision the orchestrator can still apply"
+
+# (b) overdue + STALE pulse -> exhausted 0h, and it BINDS: nothing alive is applying defaults.
+RWS="$WORK/rw-overdue-stale"; rw_fixture "$RWS" 50 1; rw_overdue "$RWS"
+ST0="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=4)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+ST1="$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=3)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+{ printf '{"ts":"%s","cycle":10,"context_pct":40,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$ST0"
+  printf '{"ts":"%s","cycle":12,"context_pct":50,"open_workers":1,"status":"ok","pane":"%%1","note":""}\n' "$ST1"
+} > "$RWS/docs/handoff/.orchestrator-heartbeat"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWS" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.binding' "$RWS")" == "decisions" ]] \
+  && jq -e '.runway.hours == 0' "$RWS/docs/lab/render_bundle.json" >/dev/null 2>&1 \
+  && ok "GSL-224 ⭐ overdue DECISION + stale pulse -> 0h and BINDS: a stopper wearing a timer's clothes" \
+  || bad "GSL-224 ⭐ the stale-pulse case did not bind (binding=$(rw '.runway.binding' "$RWS"))"
+rw '.runway.clocks[] | select(.axis=="decisions") | .why' "$RWS" | grep -q 'pulse is stale' \
+  && ok "GSL-224: the trace names the reason — the pulse is stale, nothing alive applies defaults" \
+  || bad "GSL-224: the exhausted decisions clock does not explain itself"
+
+# (c) overdue + NO pulse at all -> unknown, and it bounds the answer instead of dropping out.
+RWNP="$WORK/rw-overdue-nopulse"; rw_fixture "$RWNP" 50 1; rw_overdue "$RWNP"
+rm -f "$RWNP/docs/handoff/.orchestrator-heartbeat"
+GOSLEEP_TOKEN_CEILING=99000000 bash "$CH" --repo "$RWNP" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWNP")" == "unknown" ]] \
+  && [[ "$(rw '.runway.unknown_axes | index("decisions")' "$RWNP")" != "null" ]] \
+  && ok "GSL-224: overdue DECISION + unreadable pulse -> unknown, NAMED in unknown_axes (bounds the answer)" \
+  || bad "GSL-224: an unreadable pulse did not bound the answer (state=$(rw '.runway.clocks[] | select(.axis=="decisions") | .state' "$RWNP"))"
+
+# (d) THE GENERAL RULE: an axis whose mechanism is not armed answers `unknown` with the reason.
+#     Context at 85% with NO watchdog must refuse the comfortable "exhausted, planned, not fatal"
+#     (that sentence was the false premise finding 9 caught in the code). RWD above is the armed
+#     control: same 85%, watchdog armed -> exhausted, benign, excluded from the headline.
+RWW="$WORK/rw-ctx-unarmed"; rw_fixture "$RWW" 85 1
+GOSLEEP_WATCHDOG_PLIST="$RWW/definitely-missing.plist" GOSLEEP_TOKEN_CEILING=99000000 \
+  bash "$CH" --repo "$RWW" --no-poll --quiet --json >/dev/null 2>&1
+[[ "$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWW")" == "unknown" ]] \
+  && rw '.runway.clocks[] | select(.axis=="context") | .why' "$RWW" | grep -q 'NOT running' \
+  && ok "GSL-224 ⭐ over the ceiling with NO armed watchdog -> unknown WITH the reason, never a promised roll" \
+  || bad "GSL-224 ⭐ an unarmed mechanism still asserts benign degradation (state=$(rw '.runway.clocks[] | select(.axis=="context") | .state' "$RWW"))"
 
 # ═══════════ GSL-221: the token ceiling — default / override / unlimited (d-2026-07-28-007) ═══════════
 #
