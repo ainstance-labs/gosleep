@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-28T07:58:06Z",
+  "generated_at": "2026-07-28T08:05:49Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-07-28",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 249,
-    "max_event_age_human": "4m",
-    "latest_event_ts": "2026-07-28T07:53:57Z",
-    "heartbeat_age_s": 539,
+    "max_event_age_s": 13,
+    "max_event_age_human": "13s",
+    "latest_event_ts": "2026-07-28T08:05:36Z",
+    "heartbeat_age_s": 220,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2262,
-    "today": 73,
+    "total": 2277,
+    "today": 88,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -31,39 +31,39 @@
       "2026-07-28"
     ],
     "by_type": {
-      "agent.turn_ended": 577,
-      "agent.idle": 240,
-      "tracker.issue.transitioned": 195,
+      "agent.turn_ended": 582,
+      "agent.idle": 242,
+      "tracker.issue.transitioned": 198,
       "agent.terminated": 178,
       "tracker.issue.created": 169,
       "tracker.issue.updated": 151,
       "dev_history.written": 138,
       "handoff.written": 121,
       "vcs.commit": 86,
-      "pane.ended": 84,
-      "pane.started": 80,
-      "vcs.push": 43,
-      "task.completed": 41,
+      "pane.ended": 85,
+      "pane.started": 81,
+      "vcs.push": 44,
+      "task.completed": 42,
       "question.posed": 30,
       "decision.made": 28,
       "question.auto_resolved": 26,
       "notification.raised": 23,
       "task.created": 22,
       "agent.spawned": 13,
-      "vcs.pr.merged": 9,
+      "vcs.pr.merged": 10,
       "vcs.pr.opened": 4,
       "question.answered": 3,
       "api.failure": 1
     },
     "by_src": {
-      "hook:PostToolUse": 879,
-      "hook:Stop": 577,
-      "hook:TeammateIdle": 240,
+      "hook:PostToolUse": 884,
+      "hook:Stop": 582,
+      "hook:TeammateIdle": 242,
       "hook:SubagentStop": 178,
       "emit": 104,
-      "hook:SessionEnd": 84,
-      "hook:SessionStart": 80,
-      "hook:TaskCompleted": 41,
+      "hook:SessionEnd": 85,
+      "hook:SessionStart": 81,
+      "hook:TaskCompleted": 42,
       "hook:Notification": 23,
       "hook:TaskCreated": 22,
       "poll-fill": 20,
@@ -72,7 +72,7 @@
     },
     "by_actor": {
       "claude": 1045,
-      "general-purpose": 243,
+      "general-purpose": 255,
       "742d1b58": 174,
       "f97ce3bc": 141,
       "ef6c3777": 85,
@@ -80,8 +80,8 @@
       "orchestrator": 68,
       "6650a7a0": 63,
       "dd3edd33": 63,
+      "a716426f": 22,
       "poll-fill": 20,
-      "a716426f": 19,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
       "worker-backlog-builder": 8,
@@ -288,7 +288,7 @@
       "impl-ui-7": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.945
+    "mechanical_share": 0.946
   },
   "questions": {
     "open": 3,
@@ -344,10 +344,22 @@
     "manifest_candidates": []
   },
   "delivery": {
-    "branch": "GSL-175-evening-hygiene",
-    "head": "c308eba",
-    "dirty_paths": 8,
+    "branch": "main",
+    "head": "679bf53",
+    "dirty_paths": 5,
     "commits_on_date": [
+      {
+        "sha": "679bf53",
+        "author": "rommxx",
+        "ts": "2026-07-28T10:05:03+02:00",
+        "subject": "Merge pull request #252 from ainstance-labs/GSL-175-evening-hygiene"
+      },
+      {
+        "sha": "376fe74",
+        "author": "R",
+        "ts": "2026-07-28T09:58:41+02:00",
+        "subject": "GSL-194 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика"
+      },
       {
         "sha": "c308eba",
         "author": "R",
@@ -386,6 +398,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 252,
+        "state": "MERGED",
+        "title": "GSL-175 [Tooling][Docs] Гигиена за вечер: архив, расход, глубина Библиотеки",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/252",
+        "mergedAt": "2026-07-28T08:05:03Z"
+      },
       {
         "number": 251,
         "state": "MERGED",
@@ -518,27 +537,21 @@
         "title": "GSL-24 Harness hardening v2 — concrete skill fixes for the 4 eval-failed behaviors",
         "url": "https://github.com/ainstance-labs/gosleep/pull/35",
         "mergedAt": "2026-06-29T14:55:53Z"
-      },
-      {
-        "number": 27,
-        "state": "MERGED",
-        "title": "GSL-19 Behavioral validation of the hardened skill — efficient run",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/27",
-        "mergedAt": "2026-06-29T12:27:20Z"
       }
     ]
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-28T07:49:07Z",
+      "ts": "2026-07-28T08:02:09Z",
       "cycle": 142,
-      "context_pct": 42,
+      "context_pct": 48,
       "open_workers": 1,
       "status": "ok",
-      "pane": "%10"
+      "pane": "%10",
+      "note": "impl-175 COMPLETE; merge chain starting"
     },
-    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 142 | orchestrator=Fable 5 pane=%10 | Cold-start чистый: main @ 77353f7, открытых PR нет, guard install.sh на месте, флот был пуст. 6 просроченных DECISION (дедлайн 2026-07-25 08:00Z) применены умолчаниями вручную на первом пульсе: q-001 watchdog наблюдательный прогон / q-004 GOSLEEP_TOKEN_CEILING=16M / q-005 preflight обоих носителей тика / q-006 веб остаётся v1 / q-007 контрольная ночь после GSL-176 / q-008 дашборд=инструмент — лог d-2026-07-28-001…006, правило manifest раздел 2. impl-175 (Opus 5, pane %11) исполняет эпик GSL-175 (бриф по образцу GSL-177: Jira+evidence, гейты, dev_history на задачу, PR без мержа). Хвосты: docs/lab/events/2026-07-27.jsonl untracked (5 hook-событий сессий владельца 27.07) — закоммитить на ledger-границе; smoke 450/452 (2 pre-existing падения про утренний дайджест за текущую дату) — кандидат в бэклог. | latest handoff=docs/handoff/49-2026-07-24-handoff-shift73-system-audit-done.md | questions: open=2 (2B/0D/0C/0F) lines=58 | open_workers=1 | status=executing-GSL-175`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=118 worker=impl-web-177 model=claude-opus-5 tokens_out=201635 tokens_in=501 cache_read=75431822 | running: cycles=141 total≈18900000 (+исторические гэпы) [ЭПИК GSL-177 «Веб-версия: свежесть, связность и качество v1» ЗАКРЫТ ПОЛНОСТЬЮ — первый эпик плана аудита, взят в работу как приоритет владельца. 8 задач: GSL-205 (одна функция идентификатор→ссылка на всех 7 экранах), GSL-206 (плитка супервизора + полоса гейтов с датой прогона), GSL-207 (Overview/Fleet: гигиена под details, флот таблицей)"
+    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 142 | orchestrator=Fable 5 pane=%10 | ЭПИК GSL-175 ИСПОЛНЕН impl-175: 7/7 задач (191 a7d0e1c, 192 f4ba846, 193 20ec411, 196 456c36a, 195 71fb0b6, 197 c308eba, 194 376fe74 — бандл fresh последним), PR #252 OPEN/CLEAN, Jira 7 задач Done + эпик In Review, smoke 450/452 → 460/462 (те же 2 pre-existing про дайджест). Воркер терминирован (kill-pane %11 подтверждён), телеметрия записана (модель ФАКТИЧЕСКИ Fable 5 — model:opus не применился, унаследована модель оркестратора). Эррата GSL-195 применена к этому файлу (2 замены cycle=105 + правило grade!=fresh в Standing rules). finalizer-175 спавнится: мерж #252 regular, зеркала, Jira Done, chronicler на main, ledger-коммит (handoff 50 + события 27-28.07 + STATE + log.jsonl). Утро: 6 просроченных DECISION применены умолчаниями (d-2026-07-28-001…006); owner-ответ на q-004 = d-007 (лимиты настраиваемые + unlimited, в бриф GSL-179). | latest handoff=docs/handoff/50-2026-07-28-handoff-impl-175-evening-hygiene.md | questions: open=3 (2B/1D/0C/0F) lines=59 (новая q-2026-07-28-001 полка Reports, due 09:37Z) | open_workers=1 | status=merging-GSL-175`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=142 worker=impl-175 model=claude-fable-5 (транскрипт ce2de7ba: единственная модель; параметр model:opus при спавне НЕ применился — teammate унаследовал модель оркестратора, harness-факт для владельца; работа прошла все гейты) tokens_out=~78000 tokens_in=~2000 cache_read=~9500000 | running: cycles=142 total≈18978000 (+исторические гэпы, см. выше)"
   },
   "degraded": [],
   "narrative": null,
@@ -555,6 +568,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-28T07:58:06Z"
+    "last_success_at": "2026-07-28T08:05:49Z"
   }
 }

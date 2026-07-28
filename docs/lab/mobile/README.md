@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-28T07:58:06Z` · freshest event **4m** old at that moment (`2026-07-28T07:53:57Z`) · day `2026-07-28`
+🟢 **FRESH at build** · generated `2026-07-28T08:05:49Z` · freshest event **13s** old at that moment (`2026-07-28T08:05:36Z`) · day `2026-07-28`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T07:58:06Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T08:05:49Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-28T08:23:57Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-28T10:53:57Z`**
+> - 🟡 **STALE if you are reading this after `2026-07-28T08:35:36Z`**
+> - 🔴 **DEAD if you are reading this after `2026-07-28T11:05:36Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -26,13 +26,15 @@
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
 | Cycle | 142 |
-| Orchestrator | ok · context 42% |
+| Orchestrator | ok · context 48% |
 
 ## 3. Delivery
 
-Branch `GSL-175-evening-hygiene` @ `c308eba` · 8 dirty path(s)
+Branch `main` @ `679bf53` · 5 dirty path(s)
 
-Shipped 2026-07-28 (6):
+Shipped 2026-07-28 (8):
+- `679bf53` Merge pull request #252 from ainstance-labs/GSL-175-evening-hygiene
+- `376fe74` GSL-194 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика
 - `c308eba` GSL-197 Рассинхрон Jira↔GitHub: #146 закрыт, GSL-107/#121 исключён как замороженный
 - `71fb0b6` GSL-195 Эррата красных команд для ORCHESTRATION-STATE.md (файл суверенный, не тронут)
 - `456c36a` GSL-196 README очереди: прямой запрет построчного чтения queue.jsonl
@@ -52,15 +54,15 @@ Shipped 2026-07-28 (6):
 
 ## 5. Cost & runway
 
-Cumulative **18,900,000** tokens over 141 cycle(s).
+Cumulative **18,978,000** tokens over 142 cycle(s).
 
 **No ceiling is set**, so there is no percentage to be at — manifest.md §5.phase-ceiling delegates it to the epic brief, and no brief names a number (override with GOSLEEP_TOKEN_CEILING)
 
-Next runway event: **open blockers** — stops at **`2026-07-28T07:58:06Z`**.
+Next runway event: **open blockers** — stops at **`2026-07-28T08:05:49Z`**.
 
 ## 6. Activity
 
-**73** events today of **2262** total · 94% mechanical.
+**88** events today of **2277** total · 95% mechanical.
 
 Latest decisions (28 total, newest first):
 - **Потолок токенов = настраиваемая величина с переопределяемым дефолтом (16M остаётся лишь дефолтом) + обязательный режим unlimited; supersedes d-2026-07-28-002** `GSL-179` — 2026-07-28 07:23
