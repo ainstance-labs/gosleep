@@ -4299,6 +4299,61 @@ jq -s '[.[] | select(.type=="question.auto_resolved" and .actor=="apply-due")] |
   && ok "GSL-200: apply-due mirrored question.auto_resolved (actor=apply-due) into the timeline" \
   || bad "GSL-200: no timeline mirror from apply-due"
 
+echo "== GSL-199: tick.sh — the idempotent safety tick =="
+# The insurance for hours with no agents alive (audit findings 11, 89): one run does everything
+# the system owes the clock — poll-fill, apply-due, a chronicler rebuild if the debounce did not
+# keep the surfaces fresh, an armedness report — and leaves exactly ONE ledger line. Hermetic:
+# a throwaway git repo with its own lab dir; GOSLEEP_LAB_DIR is pinned per call because smoke's
+# global sandbox would otherwise leak into the fixture.
+TK="$SCRIPT_DIR/tick.sh"; TKF="$WORK/tick-fixture"
+TKL="$TKF/docs/lab"; TKQ="$TKL/questions/queue.jsonl"; TKLED="$TKL/supervision/tick-ledger.jsonl"
+bash -n "$TK" && ok "tick: bash -n (syntax)" || bad "tick: bash -n (syntax)"
+grep -qE 'claude( -p|\b--print)' "$TK" && bad "tick: 0-LLM (C1)" \
+  || ok "tick: 0-LLM (C1) — a tick spends no tokens and opens no quota window"
+mkdir -p "$TKL/questions"
+git init -q "$TKF" && git -C "$TKF" commit -q --allow-empty -m init
+GOSLEEP_LAB_DIR="$TKL" "$LE" question --type DECISION --from smoke-tick --task GSL-199 \
+  --question "tick fixture: overdue default to apply" --default "apply me" --reversibility high \
+  --auto-apply-at 2020-01-01T00:00:00Z >/dev/null
+# 1. the first tick: applies the overdue default, rebuilds the (absent) surfaces, reports armedness
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+TK_RC1=$?
+[ "$TK_RC1" -eq 0 ] && ok "GSL-199: first tick exits 0 (degraded sources are data, not failure)" \
+  || bad "GSL-199: first tick exited $TK_RC1"
+[ "$(wc -l < "$TKLED" | tr -d ' ')" = "1" ] \
+  && ok "GSL-199: exactly ONE ledger line per run" || bad "GSL-199: ledger lines after run 1: $(wc -l < "$TKLED" 2>/dev/null)"
+python3 -c 'import json,sys; m=json.loads(open(sys.argv[1]).readline()); assert m["mode"]=="tick" and m["carrier"]=="smoke" and m["result"]=="ok" and m["applied"]==1 and m["chronicler"]=="ran" and m["armed_check"]=="absent"' "$TKLED" \
+  && ok "GSL-199: ledger line carries carrier/applied=1/chronicler=ran/armed_check=absent honestly" \
+  || bad "GSL-199: ledger line fields wrong: $(head -1 "$TKLED" 2>/dev/null)"
+GOSLEEP_LAB_DIR="$TKL" "$LE" list --status auto-resolved --json | grep -q "tick fixture" \
+  && ok "GSL-199 ⭐ a synthetic overdue DECISION was applied with ZERO agent sessions (the epic's done-criterion)" \
+  || bad "GSL-199 ⭐ the overdue DECISION was NOT applied by the tick"
+[ -f "$TKL/render_bundle.json" ] \
+  && ok "GSL-199: the tick rebuilt the derived surfaces (bundle exists in the fixture)" \
+  || bad "GSL-199: no bundle after a tick on a stale fixture"
+# 2. idempotence: the second tick changes nothing beyond its own ledger line
+TKQ_L1="$(wc -l < "$TKQ" | tr -d ' ')"
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+[ $? -eq 0 ] && ok "GSL-199: second tick exits 0" || bad "GSL-199: second tick failed"
+[ "$(wc -l < "$TKQ" | tr -d ' ')" = "$TKQ_L1" ] \
+  && ok "GSL-199: second tick appended NOTHING to the queue (idempotent)" \
+  || bad "GSL-199: second tick mutated the queue"
+[ "$(wc -l < "$TKLED" | tr -d ' ')" = "2" ] \
+  && python3 -c 'import json,sys; m=json.loads(open(sys.argv[1]).readlines()[1]); assert m["applied"]==0 and m["chronicler"]=="skipped-fresh"' "$TKLED" \
+  && ok "GSL-199: second tick: applied=0, chronicler skipped-fresh (the debounce window is honoured)" \
+  || bad "GSL-199: second tick was not the no-op it must be"
+# 3. one tick at a time: a held lock is a skip, not a pile-up and not an error
+mkdir -p "$TKF/.artifacts/lab/tick.lock"
+env GOSLEEP_LAB_DIR="$TKL" bash "$TK" --repo "$TKF" --carrier smoke --quiet
+[ $? -eq 0 ] && tail -1 "$TKLED" | grep -q '"result":"skipped-lock-held"' \
+  && ok "GSL-199: a concurrent tick skips with a ledger line, exit 0" \
+  || bad "GSL-199: lock contention path broken"
+rmdir "$TKF/.artifacts/lab/tick.lock"
+# 4. an unknown flag is a loud usage error, not a silent no-op
+bash "$TK" --no-such-flag >/dev/null 2>&1
+[ $? -eq 2 ] && ok "GSL-199: unknown flag exits 2 (a misconfigured carrier is heard, not swallowed)" \
+  || bad "GSL-199: unknown flag did not exit 2"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
