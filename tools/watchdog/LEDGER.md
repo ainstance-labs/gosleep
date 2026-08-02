@@ -23,6 +23,7 @@ Common fields on every line:
 |---|---|---|
 | `ts` | string | UTC ISO-8601, when the event was recorded |
 | `event` | string | one of the event types below |
+| `mode` | string | `observe` \| `armed` (GSL-212) — which mode produced the line; observational history is filtered on `mode:"observe"` |
 | `dry_run` | 0/1 | 1 = produced by a `--dry-run`/test tick; ignore for history |
 
 Event types and their extra fields:
@@ -36,11 +37,23 @@ Event types and their extra fields:
 | `kill` | `target` (explicit pane id), `reason` | force-kill of the orchestrator pane (post-reap, existence-verified afterwards) |
 | `kill_refused` | `target`, `reason` (`not_explicit_pane_id` \| `identity_unverified`), `identity` (on identity refusals: `no_field` \| `invalid_field` \| `not_found`) | kill/nudge target failed a safety check: not an explicit `%N` id, OR the live session's heartbeat does not positively name an existing orchestrator pane (review C1) — no action taken, escalation follows |
 | `kill_failed` | `target`, `reason` (`kill_pane_rc_<n>` \| `pane_survived_kill` \| `test_injected_failure`) | kill-pane failed or the pane survived it (review M2) — NO re-wake (a surviving pane + a fresh orchestrator = double dispatch); escalation follows |
-| `orchestrator_restarted` | `reason`, `hb_age`, `open_workers`, `cycle` | re-wake spawned via the cold-start protocol |
+| `orchestrator_restarted` | `reason`, `hb_age`, `open_workers`, `cycle`, `attempt` | re-wake spawned via the cold-start protocol (ladder rung 3; `attempt` = position in the shared RestartBudget window) |
+| `orchestrator_resumed` | `session_id`, `reason`, `attempt`, `hb_age`, `open_workers`, `cycle` | GSL-216 rung 2: the SAME session revived in place via `claude --resume` (context intact). Exists only when the heartbeat named its `session_id`; spends the same RestartBudget as a restart |
+| `would_resume` | `session_id`, `reason`, `attempt` | observe mode: rung 2 would have fired (nothing spawned) |
 | `rewake_brief_missing` | `path`, `fallback` | warning: the re-wake brief template was missing/markerless; the inline fallback prompt was used |
 | `worker_died` | `count`, `reason` (`whole_session_gone`\|`session_gone`), `observed` | recorded workers lost with the session (observed from heartbeat vs tmux — the watchdog kills only the orchestrator, never workers) |
 | `mass_death` | `open_workers`, `reason` | whole session gone with ≥ `WD_MASS_DEATH_WORKERS` recorded workers → escalation instead of blind restart |
-| `escalation` | `reason`, `restarts_in_window`, `budget`, `window_secs` | restart budget exhausted or mass death — owner must intervene |
+| `escalation` | `reason`, `restarts_in_window`, `budget`, `window_secs` | restart budget exhausted or mass death — owner must intervene (in `observe` mode the escalation is ledger-only: the owner is NOT pinged) |
+| `tick` | `decision`, `reason`, `class`, `class_reason`, `hb_age`, `hb_status`, `cycle`, `context_pct`, `open_workers`, `platform`, `platform_status`, `platform_match`, `sessions`, `repo_sessions`, `tmux_alive`, `frozen`, `frozen_ticks`, `frozen_span` | EVERY tick, both modes (GSL-212/220): the decision and its full basis — the observational run is readable from these lines alone. `class` (GSL-215): healthy \| slow \| stuck \| dead \| shielded \| unknown, false-negative bias, matrix in docs/runbooks/watchdog.md |
+| `would_nudge` | `target`, `reason`, `hb_age` | observe mode: a nudge would have been sent (nothing was) |
+| `would_request_handoff` | `target`, `context_pct`, `ceiling` | observe mode: "write handoff now" would have been sent |
+| `would_kill` | `target`, `reason` | observe mode: the pane would have been force-killed (post-reap, safety gates already passed) |
+| `would_rewake` | `reason`, `hb_age`, `open_workers`, `cycle`, `prompt` | observe mode: a replacement orchestrator would have been spawned; `prompt` points at the exact brief it would have received |
+| `platform_unavailable` | `tmux_alive` | the roster (`claude agents --json`) could not be read — fail safe, no action taken (GSL-212) |
+| `progress_frozen` | `cycle`, `context_pct`, `ticks`, `span_secs`, `threshold_ticks`, `threshold_span` | GSL-213: `cycle` AND `context_pct` immobile for ≥ `WD_FROZEN_TICKS` consecutive fresh-ok ticks spanning ≥ `WD_FROZEN_MIN_SPAN_SECS` — "alive but useless" observed. RECORD-ONLY (feeds classification); emitted once per episode; the per-tick `tick` line carries `frozen=1` while it lasts |
+| `progress_resumed` | `cycle`, `context_pct` (or `reason=run_broken_by_*`) | the frozen episode ended: counters moved, or the run was broken by staleness / a declared stand-down |
+| `cli_version_changed` | `old`, `new`, `cycle` | GSL-219: consecutive heartbeat lines disagree on the CLI version — a (possibly breaking) update happened under the orchestrator; the per-line version also travels as `cli` on every `tick` line |
+| `session_mismatch` | `hb_session`, `hb_session_id`, `repo_sessions`, `tmux_alive` | the heartbeat's declared session is absent from the roster while live session(s) run in this repo — every action refused, escalation follows (audit F2 cure) |
 
 Example (a stale-after-nudge kill cycle, then recovery):
 

@@ -91,6 +91,7 @@ SEMANTIC_TYPES = (
     "quota.wait_started", "quota.wait_ended",            # quota auto-wait (Phase 2, GSL-69)
     "breaker.opened", "breaker.closed",                  # circuit breaker (Phase 2, GSL-70)
     "restart.recorded",                                  # watchdog restart (Phase 1)
+    "verifier.stalled",                                  # verifier watch (GSL-218): steps.log silent past threshold
 )
 
 def die(msg):

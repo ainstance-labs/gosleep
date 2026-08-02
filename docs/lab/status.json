@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-07-28T12:14:42Z",
+  "generated_at": "2026-08-02T20:22:10Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
-  "date": "2026-07-28",
+  "date": "2026-08-02",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 83,
-    "max_event_age_human": "1m",
-    "latest_event_ts": "2026-07-28T12:13:19Z",
-    "heartbeat_age_s": 97,
+    "max_event_age_s": 15,
+    "max_event_age_human": "15s",
+    "latest_event_ts": "2026-08-02T20:21:55Z",
+    "heartbeat_age_s": 59,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2795,
-    "today": 290,
+    "total": 2912,
+    "today": 24,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -28,67 +28,70 @@
       "2026-07-24",
       "2026-07-26",
       "2026-07-27",
-      "2026-07-28"
+      "2026-07-28",
+      "2026-08-02"
     ],
     "by_type": {
-      "agent.turn_ended": 620,
+      "agent.turn_ended": 652,
       "tracker.issue.updated": 412,
-      "agent.idle": 255,
-      "tracker.issue.transitioned": 217,
+      "agent.idle": 256,
+      "tracker.issue.transitioned": 228,
+      "dev_history.written": 184,
       "agent.terminated": 183,
       "tracker.issue.created": 169,
-      "dev_history.written": 163,
-      "vcs.commit": 156,
-      "handoff.written": 127,
-      "pane.ended": 89,
-      "pane.started": 85,
+      "vcs.commit": 168,
+      "handoff.written": 137,
+      "pane.ended": 91,
+      "pane.started": 87,
       "vcs.push": 48,
       "task.completed": 42,
+      "decision.made": 41,
+      "question.posed": 37,
       "vcs.pr.merged": 35,
-      "question.posed": 34,
-      "decision.made": 31,
-      "question.auto_resolved": 29,
+      "question.auto_resolved": 33,
       "vcs.pr.opened": 28,
-      "notification.raised": 24,
+      "notification.raised": 27,
       "task.created": 22,
       "agent.spawned": 15,
-      "api.failure": 7,
-      "question.answered": 4
+      "api.failure": 10,
+      "question.answered": 7
     },
     "by_src": {
-      "hook:PostToolUse": 951,
-      "hook:Stop": 620,
-      "poll-fill": 387,
-      "hook:TeammateIdle": 255,
+      "hook:PostToolUse": 992,
+      "hook:Stop": 652,
+      "poll-fill": 399,
+      "hook:TeammateIdle": 256,
       "hook:SubagentStop": 183,
-      "emit": 115,
-      "hook:SessionEnd": 89,
-      "hook:SessionStart": 85,
+      "emit": 136,
+      "hook:SessionEnd": 91,
+      "hook:SessionStart": 87,
       "hook:TaskCompleted": 42,
-      "hook:Notification": 24,
+      "hook:Notification": 27,
       "hook:TaskCreated": 22,
       "hook:SubagentStart": 15,
-      "hook:StopFailure": 7
+      "hook:StopFailure": 10
     },
     "by_actor": {
       "claude": 1045,
-      "poll-fill": 387,
-      "general-purpose": 350,
+      "poll-fill": 399,
+      "general-purpose": 396,
       "742d1b58": 174,
       "f97ce3bc": 141,
+      "a716426f": 98,
       "ef6c3777": 85,
       "ecab62c2": 84,
-      "orchestrator": 75,
+      "orchestrator": 80,
       "6650a7a0": 63,
       "dd3edd33": 63,
-      "a716426f": 60,
+      "owner": 15,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
       "worker-backlog-builder": 8,
-      "owner": 6,
       "ae7c8596f7459d0f2": 4,
+      "apply-due": 4,
       "70cbe176": 3,
       "ca8a1e39": 3,
+      "impl-178": 3,
       "a0909bea46acbb7bf": 2,
       "a191a1a6d143e6940": 2,
       "a5b85412f580faeec": 2,
@@ -296,13 +299,12 @@
       "t": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.82
+    "mechanical_share": 0.816
   },
   "questions": {
-    "open": 3,
+    "open": 2,
     "by_type": {
-      "BLOCKER": 2,
-      "DECISION": 1
+      "BLOCKER": 2
     },
     "items": [
       {
@@ -322,42 +324,33 @@
         "auto_apply_at": "",
         "task": "GSL-180",
         "high_impact": true
-      },
-      {
-        "id": "q-2026-07-28-004",
-        "type": "DECISION",
-        "question": "Вывод следа супервизии из-под .gitignore: трекаемый АРХИВ (хроникёр дописывает невиданные строки heartbeat и watchdog-леджера в docs/lab/supervision/*.jsonl, живые runtime-файлы остаются ignored по контракту суверенного скилла) или снятие ignore с самих живых файлов?",
-        "default": "трекаемый архив, живые файлы остаются ignored",
-        "auto_apply_at": "2026-07-28T12:41:59Z",
-        "task": "GSL-225",
-        "high_impact": null
       }
     ]
   },
   "decisions": {
-    "total": 31,
+    "total": 41,
     "last": {
-      "id": "d-2026-07-28-010",
-      "ts": "2026-07-28T10:42:15Z",
-      "re": "q-2026-07-28-003",
-      "task": "GSL-221",
-      "type": "DECISION",
-      "question": "Семантика GOSLEEP_TOKEN_CEILING: за ночь (окно = сутки UTC, якорь = кумулятив леджера на первой сборке дня) или кумулятивно за всю историю? Кумулятив уже 19M > дефолта 16M — кумулятивная семантика дала бы мгновенный вечный ложный BUDGET_EXCEEDED.",
-      "qshape": "3a7b3d8a78",
-      "decision": "потолок считается за ночь (сутки UTC), не кумулятивно",
-      "made_by": "orchestrator",
-      "rule": "manifest раздел 2 (decide-by-default, дедлайн истёк)",
-      "channel": ""
+      "id": "d-2026-08-02-004",
+      "ts": "2026-08-02T20:07:23Z",
+      "re": "q-2026-07-24-002",
+      "task": "GSL-174",
+      "type": "BLOCKER",
+      "question": "Кто и как правит скиллы теперь? Контур «урок → правка скилла» работал 30 дней и остановился 10 июля; guard на install.sh от 20 июля закрепил остановку, убрав единственный описанный путь синхронизации. Формально авторитетна глобальная копия ~/.claude/skills/, но она вне git, вне ревью, вне Jira, и правит её никто — из-за этого центральный результат мандата перестал развиваться. Внутри того же решения: разрешить ли одноразовый reverse-sync скилла tmux-agents-orchestration в репозиторий — сегодня его нет в git вовсе и он существует в одном экземпляре без бэкапа. Заведено как BLOCKER, а не DECISION: любое умолчание означало бы, что агент сам начинает править авторитетную глобальную копию, а это разворот вашего стоящего приказа от 2026-07-20. Эпик GSL-174 (приоритет 1 плана) без ответа неисполним.",
+      "qshape": "3d9f6074af",
+      "decision": "ПРЕЦЕДЕНТ (не полный ответ, BLOCKER остаётся open): владелец командой в чате велел править глобальный скилл orchestrating-delivery-agents — внесены 4 точечные правки (Turn order: heartbeat→wakeup ВТОРЫМ; HARD COROLLARY «ScheduleWakeup никогда не последний tool-вызов»; fast-path; worked example act-нумерация; Quick reference) + переписана память wakeup-first-text-last. Модель процесса: владелец командует конкретную правку → оркестратор вносит, проверяет, логирует",
+      "made_by": "owner",
+      "rule": "",
+      "channel": "chat"
     },
     "manifest_candidates": []
   },
   "autonomy": {
-    "value": 0.831,
-    "asks": 15,
-    "shipped": 89,
+    "value": 0.652,
+    "asks": 8,
+    "shipped": 23,
     "window": {
-      "start": "2026-07-22",
-      "end": "2026-07-28",
+      "start": "2026-07-27",
+      "end": "2026-08-02",
       "days": 7
     },
     "formula": "1 - asks/shipped, rolling 7d (5dive borrowing; audit finding 91)",
@@ -380,171 +373,21 @@
     ]
   },
   "delivery": {
-    "branch": "main",
-    "head": "62a1be0",
-    "dirty_paths": 16,
+    "branch": "GSL-178-supervisor-observe",
+    "head": "97fec6d",
+    "dirty_paths": 21,
     "commits_on_date": [
       {
-        "sha": "62a1be0",
-        "author": "rommxx",
-        "ts": "2026-07-28T14:04:16+02:00",
-        "subject": "Merge pull request #254 from ainstance-labs/GSL-176-tick-engine"
-      },
-      {
-        "sha": "af65d73",
+        "sha": "97fec6d",
         "author": "R",
-        "ts": "2026-07-28T14:00:41+02:00",
-        "subject": "GSL-176 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первый живой tick-ledger: mode=debounce и mode=tick от собственной работы смены)"
+        "ts": "2026-08-02T22:21:53+02:00",
+        "subject": "GSL-220 Наблюдательный прогон: носитель — мотор тика (шаг 4b, принудительный observe); рунбук v0.6; прогон запущен живым тиком"
       },
       {
-        "sha": "0fb475f",
+        "sha": "347f3d4",
         "author": "R",
-        "ts": "2026-07-28T14:00:04+02:00",
-        "subject": "GSL-204 Рунбук мотора docs/runbooks/tick-engine.md: двухслойная модель дебаунс+тик, частоты, чтение леджера, вооружённость/выключение/обратное вооружение без чтения кода, preflight-ночь одним действием, диагностика, границы; dev_history эпика (7 файлов) в индексе"
-      },
-      {
-        "sha": "44882b3",
-        "author": "R",
-        "ts": "2026-07-28T13:59:03+02:00",
-        "subject": "GSL-203 Штатный гейт смены стал кодом без --no-poll: tools/lab/gate.sh (smoke+hooks-verify+tsc+летописец С опросом; оффлайн только явным --offline, --fast для midtask, квитанция gate.json) + эррата для суверенных брифов/STATE; smoke 541→545"
-      },
-      {
-        "sha": "1e945e1",
-        "author": "R",
-        "ts": "2026-07-28T13:53:09+02:00",
-        "subject": "GSL-201 Преflight носителей тика подготовлен: шаблон LaunchAgent (300с, RunAtLoad), preflight-arm/disarm — руки владельца (рендер __REPO__ + plutil + launchctl load -w + дословная инструкция Desktop-задачи), tick-preflight-report.sh — утренняя таблица на носитель (ночь 03–06 локального, паузы, после пробуждения, --json); launchctl агентом не вызывался; smoke 535→541"
-      },
-      {
-        "sha": "803704d",
-        "author": "R",
-        "ts": "2026-07-28T13:47:07+02:00",
-        "subject": "GSL-202 Idle-гейт тика: свежий бандл + пустой list --due → result=idle и выход до poll/летописца/armed-check (ноль сети, пересборок, токенов и окон квоты; холостой прогон виден в леджере); --force обходит; smoke 530→535"
-      },
-      {
-        "sha": "3e0a20a",
-        "author": "R",
-        "ts": "2026-07-28T13:40:13+02:00",
-        "subject": "GSL-199 tools/lab/tick.sh — идемпотентный страховочный тик: poll-fill → apply-due → летописец (только если дебаунс не держит свежесть, 240с<интервала) → armed-check честно absent → одна строка mode=tick в леджер; лок «один тик за раз», --repo для фикстур, 0 LLM; smoke 518→530"
-      },
-      {
-        "sha": "9df9f86",
-        "author": "R",
-        "ts": "2026-07-28T13:26:14+02:00",
-        "subject": "GSL-200 lab-emit apply-due (идемпотентный исполнитель просроченных DECISION, applied_by=apply-due, зеркало в таймлайн) + гварды resolve: отказ до дедлайна (ранний выбор — resolve --early → answered-by-default), отказ двойного закрытия, отказ BLOCKER; smoke 506→518"
-      },
-      {
-        "sha": "ffa5f32",
-        "author": "R",
-        "ts": "2026-07-28T13:18:31+02:00",
-        "subject": "GSL-198 Возвращён дебаунс-хук PostToolUse на записи в docs/lab/: движок chronicler-debounce.sh (двухступенчатый матч tool_input, waiter под локом с heartbeat, quiet 90с/потолок 600с, леджер mode=debounce), fail-open шим, 2 записи в settings.json; smoke 497→506, hooks-verify 14→19"
-      },
-      {
-        "sha": "746e98c",
-        "author": "R",
-        "ts": "2026-07-28T13:02:36+02:00",
-        "subject": "GSL-138 [Docs][Process] Ledger смены 74 (часть 2): эпик GSL-179 слит (#253), handoff 51, решения d-008..010, граница цикла по GSL-223"
-      },
-      {
-        "sha": "38f3c93",
-        "author": "rommxx",
-        "ts": "2026-07-28T12:59:02+02:00",
-        "subject": "Merge pull request #253 from ainstance-labs/GSL-179-token-ceiling"
-      },
-      {
-        "sha": "e5d0af4",
-        "author": "R",
-        "ts": "2026-07-28T12:55:13+02:00",
-        "subject": "GSL-179 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика"
-      },
-      {
-        "sha": "23514ee",
-        "author": "R",
-        "ts": "2026-07-28T12:54:12+02:00",
-        "subject": "GSL-226 [Tooling] Ветка рендера BLOCKER испытана на реальных данных: 5 ассертов от записи до пикселей (questions/overview/дайджест, семантический цвет); smoke 492→497"
-      },
-      {
-        "sha": "e3ba732",
-        "author": "R",
-        "ts": "2026-07-28T12:47:53+02:00",
-        "subject": "GSL-225 [Tooling] Архив следа супервизии: хроникёр дописывает heartbeat/леджер в трекаемые docs/lab/supervision/*.jsonl до самоусечения; первичный захват 200 пульсов; smoke 488→492"
-      },
-      {
-        "sha": "42dc5d1",
-        "author": "R",
-        "ts": "2026-07-28T12:40:28+02:00",
-        "subject": "GSL-224 [Tooling] Ось runway «просроченные DECISION без живого пульса» + правило «незапущенный механизм → unknown с причиной» для оси контекста; 7 часов, находка 9 закрыта; smoke 482→488"
-      },
-      {
-        "sha": "8989128",
-        "author": "R",
-        "ts": "2026-07-28T12:30:03+02:00",
-        "subject": "GSL-223 [Tooling] poll-fill автоподхватывает JQL-дамп оркестратора (scratch/jira-poll.json, громко, с возрастом); первый прогон: 249 задач, 338 событий, Tasks unknown 0 из 249, автономность 0.829; smoke 478→482"
-      },
-      {
-        "sha": "e7d31e5",
-        "author": "R",
-        "ts": "2026-07-28T12:19:51+02:00",
-        "subject": "GSL-222 [Tooling] Метрика автономности 1 − asks/shipped за 7 дней: status.json + дайджест, всегда с рамкой «чего не утверждает»; ноль shipped = unmeasured; smoke 474→478"
-      },
-      {
-        "sha": "f6ee225",
-        "author": "R",
-        "ts": "2026-07-28T10:41:36+02:00",
-        "subject": "GSL-221 [Docs][Tooling] Потолок токенов: настраиваемый дефолт 16M/ночь, режим unlimited первоклассный, ночная семантика с якорем (d-2026-07-28-007); smoke 462→474, гейты зелёные, бандл в дереве fresh"
-      },
-      {
-        "sha": "a114c8a",
-        "author": "R",
-        "ts": "2026-07-28T10:06:06+02:00",
-        "subject": "GSL-138 [Docs][Process] Ledger смены 74: эпик GSL-175 слит (#252), эррата STATE (GSL-195), handoff 50, решения по умолчаниям d-001..007"
-      },
-      {
-        "sha": "679bf53",
-        "author": "rommxx",
-        "ts": "2026-07-28T10:05:03+02:00",
-        "subject": "Merge pull request #252 from ainstance-labs/GSL-175-evening-hygiene"
-      },
-      {
-        "sha": "376fe74",
-        "author": "R",
-        "ts": "2026-07-28T09:58:41+02:00",
-        "subject": "GSL-194 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика"
-      },
-      {
-        "sha": "c308eba",
-        "author": "R",
-        "ts": "2026-07-28T09:51:08+02:00",
-        "subject": "GSL-197 Рассинхрон Jira↔GitHub: #146 закрыт, GSL-107/#121 исключён как замороженный"
-      },
-      {
-        "sha": "71fb0b6",
-        "author": "R",
-        "ts": "2026-07-28T09:50:14+02:00",
-        "subject": "GSL-195 Эррата красных команд для ORCHESTRATION-STATE.md (файл суверенный, не тронут)"
-      },
-      {
-        "sha": "456c36a",
-        "author": "R",
-        "ts": "2026-07-28T09:43:51+02:00",
-        "subject": "GSL-196 README очереди: прямой запрет построчного чтения queue.jsonl"
-      },
-      {
-        "sha": "20ec411",
-        "author": "R",
-        "ts": "2026-07-28T09:38:30+02:00",
-        "subject": "GSL-193 Библиотека: Reports и Reviews рекурсивно (**), новая полка Skills"
-      },
-      {
-        "sha": "f4ba846",
-        "author": "R",
-        "ts": "2026-07-28T09:28:22+02:00",
-        "subject": "GSL-192 Cost: плитка = max(running_total), таблица циклов отсортирована по cycle"
-      },
-      {
-        "sha": "a7d0e1c",
-        "author": "R",
-        "ts": "2026-07-28T09:18:07+02:00",
-        "subject": "GSL-191 Архив вопросов: closed = status != open (дефис против подчёркивания), ассерт archived == closed"
+        "ts": "2026-08-02T22:13:31+02:00",
+        "subject": "GSL-218 Сторож верификатора: поллер steps.log tools/lab/verifier-watch.sh, событие verifier.stalled, реакция <=3 мин"
       }
     ],
     "prs": [
@@ -692,15 +535,15 @@
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-07-28T12:13:05Z",
-      "cycle": 147,
-      "context_pct": 94,
+      "ts": "2026-08-02T20:21:11Z",
+      "cycle": 150,
+      "context_pct": 99,
       "open_workers": 1,
       "status": "ok",
       "pane": "%10"
     },
-    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 147 | orchestrator=Fable 5 pane=%10 | ТРИ ЭПИКА ЗА СМЕНУ: GSL-175 (#252 merged), GSL-179 (#253 merged), GSL-176 ИСПОЛНЕН (PR #254 OPEN/CLEAN @ af65d73, 7/7 задач Done, эпик In Review; smoke 497→545 FAIL=0, hooks 19; tick.sh + apply-due + дебаунс живой + preflight носителей подготовлен — launchctl за владельцем; вечер=preflight-arm.sh, утро=tick-preflight-report.sh). impl-176 терминирован (%19), эррата GSL-203 применена (штатный гейт = gate.sh, Standing rules). finalizer-176 спавнится: мерж #254, зеркала, Jira Done, граница цикла GSL-223, ledger часть 3 (handoff 52, эрраты, STATE). | latest handoff=docs/handoff/52-2026-07-28-handoff-impl-176-tick-engine-complete.md | questions: open=3 (2B/1D/0C/0F) lines=67 | open_workers=1 | status=merging-GSL-176`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=146 worker=impl-176 model=claude-fable-5 (транскрипт 2ec7dfa9, 435 записей; наследование per d-009) tokens_out=~65000 tokens_in=~300000 cache_read=~9000000 (self-est) | running: cycles=146 total≈19175000 (+исторические гэпы) [эпик GSL-176 7/7: дебаунс-хук живой, apply-due+гварды resolve, tick.sh идемпотентный 0-LLM, idle-гейт, preflight обоих носителей (launchctl НЕ вызывался — руки владельца), gate.sh без --no-poll (находка 12), рунбук; smoke 497→545 FAIL=0, hooks 14→19]"
+    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 149 | orchestrator=Fable 5 pane=%10 | ВОЗОБНОВЛЕНИЕ 13:1xZ (пауза 12:45-13:1x): owner финализировал модельную политику — Fable 5 для ВСЕХ + режим максимума (d-013, extra-usage активен). Итог смены к этому часу: ТРИ эпика слиты (#252/#253/#254), ledger-цепочка до 725fce7, gate.sh зелёный (smoke 545/0, hooks 19), очередь open=2 (только BLOCKER q-002/q-003). impl-178 спавнится на эпик GSL-178 (watchdog наблюдательный, 10 задач GSL-211..220, d-001) — наследование Fable 5 теперь легально. | latest handoff=docs/handoff/53-2026-07-28-handoff-shift74-three-epics-model-policy.md | questions: open=2 (2B/0D/0C/0F) lines=70 | open_workers=1 | status=executing-GSL-178`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=147 worker=finalizer-176 model=claude-fable-5 (транскрипт 7b4f4a08; текущий воркер доделывал per owner d-011) tokens_out=~13000 (+субагент дампа ~41000) tokens_in=~120000 cache_read=~430000 (self-est) | running: cycles=147 total≈19229000 (+исторические гэпы) [PR #254 MERGED regular 62a1be0, 8/8 зеркал авто, Jira эпик+7 задач Done, дамп 249 задач, gate.sh ВЕСЬ зелёный (smoke 545/0, hooks 19, tsc 0, chronicler с опросом), ledger e72d818; отклонение: gh merge локально упал на checkout — merge"
   },
   "degraded": [],
   "narrative": null,
@@ -717,6 +560,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-07-28T12:14:42Z"
+    "last_success_at": "2026-08-02T20:22:10Z"
   }
 }

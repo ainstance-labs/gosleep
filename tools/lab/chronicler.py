@@ -2467,6 +2467,11 @@ EXPECTED_GATES = [
     ("smoke", "bash tools/lab/smoke.sh"),
     ("hooks-verify", "bash tools/lab/hooks-verify.sh"),
     ("tsc", "cd tools/lab/ui && npx tsc --noEmit"),
+    # GSL-211: the supervisor reality gate — config vs the LIVE machine (session
+    # identity in `claude agents --json`, measured cadence vs thresholds, config
+    # validity). Its receipt carries extras (verdict/mode/checks) beyond the
+    # common shape; the tile logic below needs only ts/pass/fail like the rest.
+    ("armed-check", "bash tools/lab/armed-check.sh"),
 ]
 
 
@@ -2579,8 +2584,10 @@ def collect_supervision():
         # The half we cannot see, stated rather than implied. A tile that quietly means "installed"
         # while printing "armed" is the class of lie this dashboard exists to refuse.
         "loaded_why": "whether launchd has LOADED that agent right now is not read here -- it needs "
-                      "launchctl, and GSL-211's armed-check is the mechanical gate that will answer "
-                      "it (and the session/cadence checks) properly",
+                      "launchctl; the armed-check gate (GSL-211, tools/lab/armed-check.sh) is the "
+                      "mechanical reality check for the rest (session identity vs claude agents "
+                      "--json, measured cadence vs thresholds, config validity) -- its receipt "
+                      "renders in the gates strip (armed-check.json: verdict/mode/checks)",
         "last_tick_ts": last_tick,
         "last_tick_age_human": human_age(age),
         "last_tick_why": None if last_tick else (

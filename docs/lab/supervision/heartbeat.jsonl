@@ -217,3 +217,27 @@
 {"ts":"2026-07-28T12:21:34Z","cycle":148,"context_pct":95,"open_workers":0,"status":"ok","pane":"%10","note":"impl-178 killed early (Fable-5 inherit x3); awaiting owner on restart"}
 {"ts":"2026-07-28T12:33:06Z","cycle":148,"context_pct":96,"open_workers":0,"status":"ok","pane":"%10","note":"awaiting owner model decision"}
 {"ts":"2026-07-28T12:43:08Z","cycle":148,"context_pct":96,"open_workers":0,"status":"ok","pane":"%10","note":"awaiting owner; applying q-004 default"}
+{"ts":"2026-07-28T12:59:13Z","cycle":148,"context_pct":96,"open_workers":0,"status":"quiesced","pane":"%10","note":"owner pause: full stand-down, resume by owner signal only"}
+{"ts":"2026-07-28T15:11:06Z","cycle":149,"context_pct":97,"open_workers":0,"status":"ok","pane":"%10","note":"resume: Fable 5 for all + max mode (owner)"}
+{"ts":"2026-07-28T15:13:02Z","cycle":149,"context_pct":97,"open_workers":1,"status":"ok","pane":"%10","note":"impl-178-2 cold start ok, plan verified"}
+{"ts":"2026-07-28T15:22:09Z","cycle":149,"context_pct":97,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T15:22:37Z","cycle":149,"context_pct":97,"open_workers":1,"status":"ok","pane":"%10","note":"impl-178-2 architecture fixed, coding starts"}
+{"ts":"2026-07-28T15:32:08Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T15:42:07Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T15:52:06Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T16:02:07Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T16:12:06Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T16:12:43Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10","note":"impl-178-2 at equator 4/10, wd smoke 137"}
+{"ts":"2026-07-28T16:22:06Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T16:32:07Z","cycle":149,"context_pct":98,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T16:42:08Z","cycle":149,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T16:52:06Z","cycle":149,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T17:02:05Z","cycle":149,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-07-28T17:03:04Z","cycle":149,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10","note":"economy mode d-014; impl-178-2 finishes (owner: no terminations)"}
+{"ts":"2026-07-28T17:11:35Z","cycle":149,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10","note":"CLAUDE_CODE_SUBAGENT_MODEL=opus-4-7 set by owner"}
+{"ts":"2026-08-02T19:57:32Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10","note":"resume after 5-day subscription outage"}
+{"ts":"2026-08-02T20:03:06Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-08-02T20:07:24Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10","note":"skill+memory fixed per owner command, verified"}
+{"ts":"2026-08-02T20:12:05Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-08-02T20:16:11Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-08-02T20:21:11Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
