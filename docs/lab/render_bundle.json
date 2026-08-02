@@ -1,13 +1,13 @@
 {
   "schema": "gosleep.lab.render/7",
-  "generated_at": "2026-08-02T20:22:10Z",
+  "generated_at": "2026-08-02T20:33:32Z",
   "generated_by": "tools/lab/chronicler.sh -> tools/lab/ui (GSL-94)",
   "date": "2026-08-02",
   "staleness": {
-    "max_event_age_s": 15,
-    "max_event_age_human": "15s",
-    "latest_event_ts": "2026-08-02T20:21:55Z",
-    "heartbeat_age_s": 59,
+    "max_event_age_s": 197,
+    "max_event_age_human": "3m",
+    "latest_event_ts": "2026-08-02T20:30:15Z",
+    "heartbeat_age_s": 207,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -15,10 +15,10 @@
     }
   },
   "self_health": {
-    "generated_at": "2026-08-02T20:22:10Z",
-    "data_age_s": 15,
-    "data_age_human": "15s",
-    "latest_event_ts": "2026-08-02T20:21:55Z",
+    "generated_at": "2026-08-02T20:33:32Z",
+    "data_age_s": 197,
+    "data_age_human": "3m",
+    "latest_event_ts": "2026-08-02T20:30:15Z",
     "grade": "fresh",
     "grade_is_about": "the DATA, at build time. Add (now − generated_at) to `data_age_s` before trusting it: there are two ages here, not one",
     "dev_history": {
@@ -26,6 +26,37 @@
       "why": "",
       "searched": "`git ls-files -- docs/dev_history/GSL-*.md` — the git INDEX, which is what `git show :<path>` resolves and what a fresh clone gets. The working tree is deliberately NOT consulted.",
       "epics": [
+        {
+          "key": "GSL-178",
+          "state": "ok",
+          "why": "",
+          "tasks": [
+            "GSL-220",
+            "GSL-218",
+            "GSL-214",
+            "GSL-211",
+            "GSL-219",
+            "GSL-217",
+            "GSL-216",
+            "GSL-215",
+            "GSL-213",
+            "GSL-212"
+          ],
+          "covered": [
+            "GSL-220",
+            "GSL-218",
+            "GSL-214",
+            "GSL-211",
+            "GSL-219",
+            "GSL-217",
+            "GSL-216",
+            "GSL-215",
+            "GSL-213",
+            "GSL-212"
+          ],
+          "missing": [],
+          "task_count": 10
+        },
         {
           "key": "GSL-176",
           "state": "ok",
@@ -621,37 +652,6 @@
           ],
           "missing": [],
           "task_count": 4
-        },
-        {
-          "key": "GSL-178",
-          "state": "ok",
-          "why": "",
-          "tasks": [
-            "GSL-220",
-            "GSL-218",
-            "GSL-214",
-            "GSL-211",
-            "GSL-219",
-            "GSL-217",
-            "GSL-216",
-            "GSL-215",
-            "GSL-213",
-            "GSL-212"
-          ],
-          "covered": [
-            "GSL-220",
-            "GSL-218",
-            "GSL-214",
-            "GSL-211",
-            "GSL-219",
-            "GSL-217",
-            "GSL-216",
-            "GSL-215",
-            "GSL-213",
-            "GSL-212"
-          ],
-          "missing": [],
-          "task_count": 10
         }
       ],
       "tasks": 165,
@@ -665,12 +665,12 @@
       "last": {
         "name": "GSL-178-errata-orchestration-state.md",
         "ts": "2026-07-28T16:32:48Z",
-        "age_s": 445758,
-        "age_human": "5d 3h"
+        "age_s": 446440,
+        "age_human": "5d 4h"
       },
       "boundary": {
         "ts": "2026-07-28T12:21:33Z",
-        "age_s": 460833,
+        "age_s": 461515,
         "age_human": "5d 8h",
         "source": "pane.ended",
         "total": 70
@@ -680,14 +680,16 @@
       "alarm": false,
       "boundaries": 70,
       "committed": 58,
-      "uncommitted": [],
+      "uncommitted": [
+        "54-2026-08-02-handoff-impl-178-supervisor-observe-complete.md"
+      ],
       "undated": [],
       "why": ""
     }
   },
   "events": {
-    "total": 2912,
-    "today": 24,
+    "total": 2946,
+    "today": 50,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -702,52 +704,52 @@
       "2026-08-02"
     ],
     "by_type": {
-      "agent.turn_ended": 652,
-      "tracker.issue.updated": 412,
-      "agent.idle": 256,
-      "tracker.issue.transitioned": 228,
+      "agent.turn_ended": 658,
+      "tracker.issue.updated": 423,
+      "agent.idle": 261,
+      "tracker.issue.transitioned": 230,
+      "agent.terminated": 186,
       "dev_history.written": 184,
-      "agent.terminated": 183,
+      "vcs.commit": 170,
       "tracker.issue.created": 169,
-      "vcs.commit": 168,
-      "handoff.written": 137,
+      "handoff.written": 138,
       "pane.ended": 91,
-      "pane.started": 87,
+      "pane.started": 88,
       "vcs.push": 48,
       "task.completed": 42,
       "decision.made": 41,
       "question.posed": 37,
-      "vcs.pr.merged": 35,
+      "vcs.pr.merged": 36,
       "question.auto_resolved": 33,
-      "vcs.pr.opened": 28,
+      "vcs.pr.opened": 29,
       "notification.raised": 27,
       "task.created": 22,
-      "agent.spawned": 15,
+      "agent.spawned": 16,
       "api.failure": 10,
       "question.answered": 7
     },
     "by_src": {
-      "hook:PostToolUse": 992,
-      "hook:Stop": 652,
-      "poll-fill": 399,
-      "hook:TeammateIdle": 256,
-      "hook:SubagentStop": 183,
+      "hook:PostToolUse": 995,
+      "hook:Stop": 658,
+      "poll-fill": 414,
+      "hook:TeammateIdle": 261,
+      "hook:SubagentStop": 186,
       "emit": 136,
       "hook:SessionEnd": 91,
-      "hook:SessionStart": 87,
+      "hook:SessionStart": 88,
       "hook:TaskCompleted": 42,
       "hook:Notification": 27,
       "hook:TaskCreated": 22,
-      "hook:SubagentStart": 15,
+      "hook:SubagentStart": 16,
       "hook:StopFailure": 10
     },
     "by_actor": {
       "claude": 1045,
-      "poll-fill": 399,
-      "general-purpose": 396,
+      "poll-fill": 414,
+      "general-purpose": 407,
       "742d1b58": 174,
       "f97ce3bc": 141,
-      "a716426f": 98,
+      "a716426f": 102,
       "ef6c3777": 85,
       "ecab62c2": 84,
       "orchestrator": 80,
@@ -764,6 +766,7 @@
       "impl-178": 3,
       "a0909bea46acbb7bf": 2,
       "a191a1a6d143e6940": 2,
+      "a1995aba5520d3d32": 2,
       "a5b85412f580faeec": 2,
       "a6c050dc5f0bf8990": 2,
       "a6e197f577a9b8c59": 2,
@@ -851,6 +854,7 @@
       "a61075657b8f0649b": 1,
       "a62538adb51000720": 1,
       "a65467511fafbfa0c": 1,
+      "a6615fa1bcde4fb1b": 1,
       "a66cff203f32b5147": 1,
       "a68b552e7420cee48": 1,
       "a68f04f9d98ca7789": 1,
@@ -890,6 +894,7 @@
       "a8ee9382096aed20d": 1,
       "a9318f8f64fb046b5": 1,
       "a94f14fbd1ca83d94": 1,
+      "a96327c00ee1982fd": 1,
       "a973440d43af1fd36": 1,
       "a98c9c9844ed93c47": 1,
       "a99e8735a0e008908": 1,
@@ -969,333 +974,9 @@
       "t": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.816
+    "mechanical_share": 0.813
   },
   "recent_events": [
-    {
-      "ts": "2026-07-28T11:04:45Z",
-      "seq": 523,
-      "actor": "general-purpose",
-      "type": "pane.started",
-      "src": "hook:SessionStart",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:04:56Z",
-      "seq": 524,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:08:20Z",
-      "seq": 525,
-      "actor": "general-purpose",
-      "type": "tracker.issue.transitioned",
-      "src": "hook:PostToolUse",
-      "data": {
-        "key": "GSL-176"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:09:45Z",
-      "seq": 526,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:14:18Z",
-      "seq": 528,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:15:19Z",
-      "seq": 529,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-198-audit3-debounce-hook.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:15:47Z",
-      "seq": 530,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/README.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:18:20Z",
-      "seq": 531,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-198-audit3-debounce-hook.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:18:23Z",
-      "seq": 532,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/README.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:18:31Z",
-      "seq": 534,
-      "actor": "poll-fill",
-      "type": "vcs.commit",
-      "src": "poll-fill",
-      "data": {
-        "sha": "ffa5f32"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:18:38Z",
-      "seq": 533,
-      "actor": "general-purpose",
-      "type": "tracker.issue.transitioned",
-      "src": "hook:PostToolUse",
-      "data": {
-        "key": "GSL-198"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:18:38Z",
-      "seq": 598,
-      "actor": "poll-fill",
-      "type": "tracker.issue.updated",
-      "src": "poll-fill",
-      "data": {
-        "key": "GSL-198"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:22:04Z",
-      "seq": 535,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-200-audit3-apply-due-resolve-guard.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:24:30Z",
-      "seq": 536,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:26:07Z",
-      "seq": 537,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/README.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:26:14Z",
-      "seq": 542,
-      "actor": "poll-fill",
-      "type": "vcs.commit",
-      "src": "poll-fill",
-      "data": {
-        "sha": "9df9f86"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:26:16Z",
-      "seq": 600,
-      "actor": "poll-fill",
-      "type": "tracker.issue.updated",
-      "src": "poll-fill",
-      "data": {
-        "key": "GSL-200"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:26:17Z",
-      "seq": 538,
-      "actor": "general-purpose",
-      "type": "tracker.issue.transitioned",
-      "src": "hook:PostToolUse",
-      "data": {
-        "key": "GSL-200"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:28:32Z",
-      "seq": 539,
-      "actor": "t",
-      "type": "question.posed",
-      "src": "emit",
-      "data": {
-        "question": "overdue tick test"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:28:34Z",
-      "seq": 540,
-      "actor": "general-purpose",
-      "type": "vcs.commit",
-      "src": "hook:PostToolUse",
-      "data": {
-        "sha": "",
-        "cmd": "chmod +x tools/lab/tick.sh && bash -n tools/lab/tick.sh && echo SYNTAX-OK F=$(mktemp -d)/fx; mkdir -p \"$F/docs/lab/questions\"; git init -q \"$F\"; (cd \"$F\" && git commit -q --allow-empty -m init) env -u GOSLEEP_LAB_DIR bash tools/lab/lab-emit.sh question --type DECISION --from t --task GSL-9 --question \"overdue tick test\" --default \"do it\" --reversibility high --auto-apply-at 2020-01-01T00:00:00Z >/dev/null 2>&1 || true GOSLEEP_LAB_DIR=\"$F/docs/lab\" bash tools/lab/lab-emit.sh question --type DECIS"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:29:03Z",
-      "seq": 541,
-      "actor": "impl-176",
-      "type": "question.answered",
-      "src": "emit",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:30:57Z",
-      "seq": 543,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-199-audit3-tick-engine.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:31:34Z",
-      "seq": 544,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:34:17Z",
-      "seq": 545,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
-    {
-      "ts": "2026-07-28T11:39:49Z",
-      "seq": 546,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-199-audit3-tick-engine.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:39:51Z",
-      "seq": 547,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-199-audit3-tick-engine.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:39:58Z",
-      "seq": 548,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-199-audit3-tick-engine.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:40:06Z",
-      "seq": 549,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/README.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:40:13Z",
-      "seq": 553,
-      "actor": "poll-fill",
-      "type": "vcs.commit",
-      "src": "poll-fill",
-      "data": {
-        "sha": "3e0a20a"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:40:15Z",
-      "seq": 550,
-      "actor": "general-purpose",
-      "type": "tracker.issue.transitioned",
-      "src": "hook:PostToolUse",
-      "data": {
-        "key": "GSL-199"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:40:15Z",
-      "seq": 599,
-      "actor": "poll-fill",
-      "type": "tracker.issue.updated",
-      "src": "poll-fill",
-      "data": {
-        "key": "GSL-199"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:41:32Z",
-      "seq": 551,
-      "actor": "general-purpose",
-      "type": "vcs.commit",
-      "src": "hook:PostToolUse",
-      "data": {
-        "sha": "",
-        "cmd": "bash -n tools/lab/tick.sh && F=$(mktemp -d)/fx; mkdir -p \"$F/docs/lab/questions\"; git init -q \"$F\"; (cd \"$F\" && git commit -q --allow-empty -m init) env GOSLEEP_LAB_DIR=\"$F/docs/lab\" bash tools/lab/tick.sh --repo \"$F\" --carrier t --quiet # cold: full pass echo \"run1: $(tail -1 \"$F/docs/lab/supervision/tick-ledger.jsonl\")\" env GOSLEEP_LAB_DIR=\"$F/docs/lab\" bash tools/lab/tick.sh --repo \"$F\" --carrier t --quiet # now fresh+nothing due -> idle echo \"run2: $(tail -1 \"$F/docs/lab/supervision/tick-led"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:42:07Z",
-      "seq": 552,
-      "actor": "general-purpose",
-      "type": "dev_history.written",
-      "src": "hook:PostToolUse",
-      "data": {
-        "path": "docs/dev_history/GSL-202-audit3-idle-gate.md"
-      }
-    },
-    {
-      "ts": "2026-07-28T11:44:16Z",
-      "seq": 554,
-      "actor": "a716426f",
-      "type": "agent.turn_ended",
-      "src": "hook:Stop",
-      "data": {}
-    },
     {
       "ts": "2026-07-28T11:47:00Z",
       "seq": 555,
@@ -2088,6 +1769,16 @@
       }
     },
     {
+      "ts": "2026-07-28T15:42:37Z",
+      "seq": 50,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-212"
+      }
+    },
+    {
       "ts": "2026-07-28T15:42:38Z",
       "seq": 644,
       "actor": "general-purpose",
@@ -2125,6 +1816,16 @@
       "src": "poll-fill",
       "data": {
         "sha": "a7885a9"
+      }
+    },
+    {
+      "ts": "2026-07-28T15:51:39Z",
+      "seq": 51,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-213"
       }
     },
     {
@@ -2177,6 +1878,16 @@
     },
     {
       "ts": "2026-07-28T16:01:11Z",
+      "seq": 53,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-215"
+      }
+    },
+    {
+      "ts": "2026-07-28T16:01:11Z",
       "seq": 653,
       "actor": "general-purpose",
       "type": "tracker.issue.transitioned",
@@ -2221,6 +1932,16 @@
       "src": "poll-fill",
       "data": {
         "sha": "ee58fe4"
+      }
+    },
+    {
+      "ts": "2026-07-28T16:11:35Z",
+      "seq": 54,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-216"
       }
     },
     {
@@ -2295,6 +2016,16 @@
       "src": "poll-fill",
       "data": {
         "sha": "a3c011b"
+      }
+    },
+    {
+      "ts": "2026-07-28T16:23:51Z",
+      "seq": 55,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-217"
       }
     },
     {
@@ -2386,6 +2117,16 @@
       }
     },
     {
+      "ts": "2026-07-28T16:32:49Z",
+      "seq": 57,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-219"
+      }
+    },
+    {
       "ts": "2026-07-28T16:32:50Z",
       "seq": 675,
       "actor": "general-purpose",
@@ -2439,6 +2180,16 @@
       "src": "poll-fill",
       "data": {
         "sha": "d36378b"
+      }
+    },
+    {
+      "ts": "2026-07-28T16:54:28Z",
+      "seq": 49,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-211"
       }
     },
     {
@@ -2527,6 +2278,16 @@
       "src": "poll-fill",
       "data": {
         "sha": "189159a"
+      }
+    },
+    {
+      "ts": "2026-07-28T17:04:05Z",
+      "seq": 52,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-214"
       }
     },
     {
@@ -2777,6 +2538,16 @@
       }
     },
     {
+      "ts": "2026-08-02T20:13:32Z",
+      "seq": 56,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-218"
+      }
+    },
+    {
       "ts": "2026-08-02T20:16:19Z",
       "seq": 18,
       "actor": "a716426f",
@@ -2841,6 +2612,220 @@
       "data": {
         "key": "GSL-220"
       }
+    },
+    {
+      "ts": "2026-08-02T20:21:55Z",
+      "seq": 58,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-220"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:22:22Z",
+      "seq": 27,
+      "actor": "poll-fill",
+      "type": "vcs.commit",
+      "src": "poll-fill",
+      "data": {
+        "sha": "171f78d"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:22:42Z",
+      "seq": 28,
+      "actor": "poll-fill",
+      "type": "vcs.pr.opened",
+      "src": "poll-fill",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:22:48Z",
+      "seq": 25,
+      "actor": "general-purpose",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-178"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:23:33Z",
+      "seq": 26,
+      "actor": "general-purpose",
+      "type": "handoff.written",
+      "src": "hook:PostToolUse",
+      "data": {
+        "path": "docs/handoff/54-2026-08-02-handoff-impl-178-supervisor-observe-complete.md"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:24:05Z",
+      "seq": 29,
+      "actor": "general-purpose",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:24:06Z",
+      "seq": 30,
+      "actor": "general-purpose",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:25:14Z",
+      "seq": 31,
+      "actor": "general-purpose",
+      "type": "pane.started",
+      "src": "hook:SessionStart",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:25:32Z",
+      "seq": 46,
+      "actor": "poll-fill",
+      "type": "vcs.commit",
+      "src": "poll-fill",
+      "data": {
+        "sha": "22518d8"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:25:32Z",
+      "seq": 47,
+      "actor": "poll-fill",
+      "type": "vcs.pr.merged",
+      "src": "poll-fill",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:25:37Z",
+      "seq": 32,
+      "actor": "a716426f",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:26:06Z",
+      "seq": 33,
+      "actor": "a716426f",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:26:40Z",
+      "seq": 48,
+      "actor": "poll-fill",
+      "type": "tracker.issue.updated",
+      "src": "poll-fill",
+      "data": {
+        "key": "GSL-178"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:26:41Z",
+      "seq": 34,
+      "actor": "general-purpose",
+      "type": "tracker.issue.transitioned",
+      "src": "hook:PostToolUse",
+      "data": {
+        "key": "GSL-178"
+      }
+    },
+    {
+      "ts": "2026-08-02T20:27:43Z",
+      "seq": 35,
+      "actor": "a1995aba5520d3d32",
+      "type": "agent.spawned",
+      "src": "hook:SubagentStart",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:15Z",
+      "seq": 36,
+      "actor": "a6615fa1bcde4fb1b",
+      "type": "agent.terminated",
+      "src": "hook:SubagentStop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:15Z",
+      "seq": 37,
+      "actor": "general-purpose",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:16Z",
+      "seq": 38,
+      "actor": "general-purpose",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:16Z",
+      "seq": 39,
+      "actor": "general-purpose",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:25Z",
+      "seq": 40,
+      "actor": "a716426f",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:49Z",
+      "seq": 41,
+      "actor": "a96327c00ee1982fd",
+      "type": "agent.terminated",
+      "src": "hook:SubagentStop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:49Z",
+      "seq": 42,
+      "actor": "general-purpose",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:53Z",
+      "seq": 43,
+      "actor": "a1995aba5520d3d32",
+      "type": "agent.terminated",
+      "src": "hook:SubagentStop",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:28:53Z",
+      "seq": 44,
+      "actor": "general-purpose",
+      "type": "agent.idle",
+      "src": "hook:TeammateIdle",
+      "data": {}
+    },
+    {
+      "ts": "2026-08-02T20:30:15Z",
+      "seq": 45,
+      "actor": "a716426f",
+      "type": "agent.turn_ended",
+      "src": "hook:Stop",
+      "data": {}
     }
   ],
   "recent_cap": 200,
@@ -2879,10 +2864,9 @@
     "binding_eta": null,
     "unknown_axes": [],
     "unknown_axes_all": [
-      "context",
-      "work"
+      "context"
     ],
-    "known": 5,
+    "known": 6,
     "total": 7,
     "next_event": {
       "axis": "blockers",
@@ -2912,10 +2896,10 @@
         "label": "token budget",
         "on_exhaustion": "stops",
         "state": "counting",
-        "hours": 3518.84,
+        "hours": 2496.11,
         "eta": null,
-        "gauge": "0 of 16,000,000 tonight (0.0%)",
-        "why": "16,000,000 left; burning ~75,875 tokens/cycle at 0.1 cycles/h",
+        "gauge": "220,000 of 16,000,000 tonight (1.4%)",
+        "why": "15,780,000 left; burning ~93,875 tokens/cycle at 0.1 cycles/h",
         "sources": [
           "docs/handoff/ORCHESTRATION-STATE.md TELEMETRY section",
           "GOSLEEP_TOKEN_CEILING (int per night; unlimited/none/off; default 16,000,000 -- d-2026-07-28-007)"
@@ -2942,8 +2926,8 @@
         "state": "clear",
         "hours": null,
         "eta": null,
-        "gauge": "1/3",
-        "why": "2 free slot(s)",
+        "gauge": "2/3",
+        "why": "1 free slot(s)",
         "sources": [
           "docs/handoff/.orchestrator-heartbeat open_workers",
           "manifest.md §5.slots (max 3)"
@@ -2981,11 +2965,11 @@
         "axis": "work",
         "label": "work remaining",
         "on_exhaustion": "completes",
-        "state": "unknown",
-        "hours": null,
+        "state": "counting",
+        "hours": 519.73,
         "eta": null,
-        "gauge": "46 To Do (stale)",
-        "why": "the task board has not been polled since 2026-07-28T12:05:22Z (5d 8h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it.",
+        "gauge": "35 To Do",
+        "why": "35 task(s) left at 0.1 cycles/h, one task per cycle",
         "sources": [
           "docs/lab/events/*.jsonl (tracker.issue.updated, src=poll-fill)"
         ]
@@ -2993,12 +2977,12 @@
     ],
     "trace": [
       "unknown — orchestrator context: at/over the ceiling — and the mechanism the benign story leans on is NOT running: no watchdog is armed to force the handoff, so whether the night merely degrades here rests on the orchestrator rolling itself, which this build cannot verify. Unknown with a reason, never a degradation asserted on data that does not exist (GSL-224, finding 9).",
-      "3518.8h — token budget: 16,000,000 left; burning ~75,875 tokens/cycle at 0.1 cycles/h",
+      "2496.1h — token budget: 15,780,000 left; burning ~93,875 tokens/cycle at 0.1 cycles/h",
       "clear — quota window: no quota wait is armed (api.failure has never fired in this repo — the StopFailure hook is wired but has never been observed, so this clear rests on an untested mechanism)",
-      "clear — pane slots: 2 free slot(s)",
+      "clear — pane slots: 1 free slot(s)",
       "0.0h — open blockers: 2 open BLOCKER(s) (q-2026-07-24-002, q-2026-07-24-003) — a BLOCKER takes no default and has no timer; the work it names is parked until you answer it",
       "clear — overdue decisions: no open DECISION is past its deadline",
-      "unknown — work remaining: the task board has not been polled since 2026-07-28T12:05:22Z (5d 8h ago). Its To Do count is a number from the past in the present tense, and this clock will not use it."
+      "519.7h — work remaining: 35 task(s) left at 0.1 cycles/h, one task per cycle"
     ]
   },
   "queue": {
@@ -3695,7 +3679,7 @@
         "key": "GSL-249",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:15Z",
-        "status_age_s": 765591,
+        "status_age_s": 766273,
         "summary": "[Docs] История разработки задач эпика GSL-177",
         "commits": [
           {
@@ -3716,7 +3700,7 @@
         "key": "GSL-248",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:14Z",
-        "status_age_s": 765592,
+        "status_age_s": 766274,
         "summary": "[Docs][Tooling] Пересборка сайта лаборатории последним коммитом ветки",
         "commits": [
           {
@@ -3742,7 +3726,7 @@
         "key": "GSL-247",
         "status": "Done",
         "status_ts": "2026-07-24T21:53:53Z",
-        "status_age_s": 772093,
+        "status_age_s": 772775,
         "summary": "[Docs][Tooling] Пересборка сайта лаборатории последним коммитом ветки",
         "commits": [
           {
@@ -3768,7 +3752,7 @@
         "key": "GSL-246",
         "status": "Done",
         "status_ts": "2026-07-24T21:53:52Z",
-        "status_age_s": 772094,
+        "status_age_s": 772776,
         "summary": "[Repo] Служебные каталоги инструментария .playwright-cli и .gstack в .gitignore",
         "commits": [
           {
@@ -3794,7 +3778,7 @@
         "key": "GSL-245",
         "status": "Done",
         "status_ts": "2026-07-24T21:53:48Z",
-        "status_age_s": 772098,
+        "status_age_s": 772780,
         "summary": "[Docs][Process] Синхронизация доказательной базы с финальными материалами аудита",
         "commits": [
           {
@@ -3820,7 +3804,7 @@
         "key": "GSL-244",
         "status": "Done",
         "status_ts": "2026-07-24T21:53:47Z",
-        "status_age_s": 772099,
+        "status_age_s": 772781,
         "summary": "[Docs] Публикация HTML-дашборда аудита 2026-07-24 — английская и русская версии",
         "commits": [
           {
@@ -3846,7 +3830,7 @@
         "key": "GSL-243",
         "status": "In Review",
         "status_ts": "2026-07-24T21:53:57Z",
-        "status_age_s": 772089,
+        "status_age_s": 772771,
         "summary": "[Docs][Process] Аудит системы 2026-07-24: публикация отчёта и закрытие хвостов",
         "commits": [
           {
@@ -3874,7 +3858,7 @@
         "key": "GSL-242",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:35Z",
-        "status_age_s": 773431,
+        "status_age_s": 774113,
         "summary": "[Skill] Разнесение главного скилла на ядро и references",
         "commits": [],
         "dev_history": [],
@@ -3882,13 +3866,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-242",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/242",
         "gh_number": 242,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-241",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:30Z",
-        "status_age_s": 773436,
+        "status_age_s": 774118,
         "summary": "[Docs] Убрать дубли папок docs/report и docs/dev-history",
         "commits": [],
         "dev_history": [],
@@ -3896,13 +3880,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-241",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/241",
         "gh_number": 241,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-240",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:25Z",
-        "status_age_s": 773441,
+        "status_age_s": 774123,
         "summary": "[Docs] Завести lessons-learned/ и adr/ по эталону tasty-lunch",
         "commits": [],
         "dev_history": [],
@@ -3910,13 +3894,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-240",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/240",
         "gh_number": 240,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-239",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:21Z",
-        "status_age_s": 773445,
+        "status_age_s": 774127,
         "summary": "[Docs][Evals] Обновить стандарт приёмочных ранов",
         "commits": [],
         "dev_history": [],
@@ -3924,13 +3908,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-239",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/239",
         "gh_number": 239,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-238",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:17Z",
-        "status_age_s": 773449,
+        "status_age_s": 774131,
         "summary": "[Docs] Дельта PRD — часть закрытия каждого эпика",
         "commits": [],
         "dev_history": [],
@@ -3938,13 +3922,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-238",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/238",
         "gh_number": 238,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-237",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:09Z",
-        "status_age_s": 773457,
+        "status_age_s": 774139,
         "summary": "[Docs] Правило старения: шапка «данные верны на дату» и имя обновляющего",
         "commits": [],
         "dev_history": [],
@@ -3952,13 +3936,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-237",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/237",
         "gh_number": 237,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-236",
         "status": "To Do",
         "status_ts": "2026-07-24T21:31:05Z",
-        "status_age_s": 773461,
+        "status_age_s": 774143,
         "summary": "[Tooling] armed-check как критерий приёмки фазы",
         "commits": [],
         "dev_history": [],
@@ -3966,13 +3950,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-236",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/236",
         "gh_number": 236,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-235",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:59Z",
-        "status_age_s": 773467,
+        "status_age_s": 774149,
         "summary": "[Skill] Создание зеркала GitHub — часть контракта verifier-skeptic",
         "commits": [],
         "dev_history": [],
@@ -3980,13 +3964,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-235",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/235",
         "gh_number": 235,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-234",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:54Z",
-        "status_age_s": 773472,
+        "status_age_s": 774154,
         "summary": "[Tooling][Process] Гейт целостности: нет коммита, истории или зеркала — нет Done",
         "commits": [],
         "dev_history": [],
@@ -3994,13 +3978,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-234",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/234",
         "gh_number": 234,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-233",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:43Z",
-        "status_age_s": 773483,
+        "status_age_s": 774165,
         "summary": "[Tooling] Долг, который метр самоздоровья видит поимённо, становится записью очереди",
         "commits": [],
         "dev_history": [],
@@ -4008,13 +3992,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-233",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/233",
         "gh_number": 233,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-232",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:37Z",
-        "status_age_s": 773489,
+        "status_age_s": 774171,
         "summary": "[Tooling] Проверить непроверенные хуки StopFailure и TeammateIdle",
         "commits": [],
         "dev_history": [],
@@ -4022,13 +4006,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-232",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/232",
         "gh_number": 232,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-231",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:33Z",
-        "status_age_s": 773493,
+        "status_age_s": 774175,
         "summary": "[Docs] Инвентаризация разрешений и предложение permissions.allow",
         "commits": [],
         "dev_history": [],
@@ -4036,13 +4020,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-231",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/231",
         "gh_number": 231,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-230",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:27Z",
-        "status_age_s": 773499,
+        "status_age_s": 774181,
         "summary": "[Tooling] Парковка вопроса с обязательной датой пробуждения",
         "commits": [],
         "dev_history": [],
@@ -4050,13 +4034,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-230",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/230",
         "gh_number": 230,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-229",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:23Z",
-        "status_age_s": 773503,
+        "status_age_s": 774185,
         "summary": "[Tooling] Починить нормализацию формы вопроса, а не порог кандидатов",
         "commits": [],
         "dev_history": [],
@@ -4064,13 +4048,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-229",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/229",
         "gh_number": 229,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-228",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:17Z",
-        "status_age_s": 773509,
+        "status_age_s": 774191,
         "summary": "[Tooling] Риск-тиры 0/1/2 с полом по категориям, заданным кодом",
         "commits": [],
         "dev_history": [],
@@ -4078,13 +4062,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-228",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/228",
         "gh_number": 228,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-227",
         "status": "To Do",
         "status_ts": "2026-07-24T21:30:12Z",
-        "status_age_s": 773514,
+        "status_age_s": 774196,
         "summary": "[Tooling] Валидировать --rule против манифеста и отделить делегации в дайджесте",
         "commits": [],
         "dev_history": [],
@@ -4092,13 +4076,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-227",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/227",
         "gh_number": 227,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-226",
         "status": "Done",
         "status_ts": "2026-07-28T10:54:27Z",
-        "status_age_s": 466059,
+        "status_age_s": 466741,
         "summary": "[Tooling] Испытать ветку рендера BLOCKER на реальных данных",
         "commits": [
           {
@@ -4124,7 +4108,7 @@
         "key": "GSL-225",
         "status": "Done",
         "status_ts": "2026-07-28T10:48:00Z",
-        "status_age_s": 466446,
+        "status_age_s": 467128,
         "summary": "[Tooling] Архивировать heartbeat перед самоусечением и вывести след супервизии из .gitignore",
         "commits": [
           {
@@ -4150,7 +4134,7 @@
         "key": "GSL-224",
         "status": "Done",
         "status_ts": "2026-07-28T10:40:33Z",
-        "status_age_s": 466893,
+        "status_age_s": 467575,
         "summary": "[Tooling] Ось «просроченные DECISION без живого пульса»; незапущенный механизм даёт unknown",
         "commits": [
           {
@@ -4176,7 +4160,7 @@
         "key": "GSL-223",
         "status": "Done",
         "status_ts": "2026-07-28T10:30:16Z",
-        "status_age_s": 467510,
+        "status_age_s": 468192,
         "summary": "[Tooling] JQL-выгрузка оркестратором и poll-fill --jira-json в тике",
         "commits": [
           {
@@ -4202,13 +4186,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-223",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/223",
         "gh_number": 223,
-        "status_age_human": "5d 9h"
+        "status_age_human": "5d 10h"
       },
       {
         "key": "GSL-222",
         "status": "Done",
         "status_ts": "2026-07-28T10:19:58Z",
-        "status_age_s": 468128,
+        "status_age_s": 468810,
         "summary": "[Tooling] Метрика автономности 1 − asks/shipped за скользящие 7 дней",
         "commits": [
           {
@@ -4234,7 +4218,7 @@
         "key": "GSL-221",
         "status": "Done",
         "status_ts": "2026-07-28T08:41:54Z",
-        "status_age_s": 474012,
+        "status_age_s": 474694,
         "summary": "[Docs][Tooling] Назначить потолок токенов GOSLEEP_TOKEN_CEILING",
         "commits": [
           {
@@ -4258,9 +4242,9 @@
       },
       {
         "key": "GSL-220",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:29:29Z",
-        "status_age_s": 773557,
+        "status": "Done",
+        "status_ts": "2026-08-02T20:21:55Z",
+        "status_age_s": 693,
         "summary": "[Docs] Наблюдательный прогон супервизора: тикает, пишет леджер, ничего не убивает",
         "commits": [
           {
@@ -4280,13 +4264,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-220",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/220",
         "gh_number": 220,
-        "status_age_human": "8d 22h"
+        "status_age_human": "11m"
       },
       {
         "key": "GSL-219",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:29:23Z",
-        "status_age_s": 773563,
+        "status": "Done",
+        "status_ts": "2026-07-28T16:32:49Z",
+        "status_age_s": 446439,
         "summary": "[Tooling] Зафиксировать версию CLI в STATE и в heartbeat",
         "commits": [
           {
@@ -4306,13 +4290,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-219",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/219",
         "gh_number": 219,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 4h"
       },
       {
         "key": "GSL-218",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:29:18Z",
-        "status_age_s": 773568,
+        "status": "Done",
+        "status_ts": "2026-08-02T20:13:32Z",
+        "status_age_s": 1196,
         "summary": "[Tooling] Сторож верификатора: поллер steps.log либо обязательный PROGRESS",
         "commits": [
           {
@@ -4332,13 +4316,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-218",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/218",
         "gh_number": 218,
-        "status_age_human": "8d 22h"
+        "status_age_human": "19m"
       },
       {
         "key": "GSL-217",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:29:13Z",
-        "status_age_s": 773573,
+        "status": "Done",
+        "status_ts": "2026-07-28T16:23:51Z",
+        "status_age_s": 446977,
         "summary": "[Tooling] Согласовать пороги watchdog с измеренной каденцией и зафиксировать семантику context_pct",
         "commits": [
           {
@@ -4358,13 +4342,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-217",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/217",
         "gh_number": 217,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 4h"
       },
       {
         "key": "GSL-216",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:29:08Z",
-        "status_age_s": 773578,
+        "status": "Done",
+        "status_ts": "2026-07-28T16:11:35Z",
+        "status_age_s": 447713,
         "summary": "[Tooling] Лестница nudge → resume → restart с backoff, RestartBudget и аудит попыток",
         "commits": [
           {
@@ -4384,13 +4368,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-216",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/216",
         "gh_number": 216,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 4h"
       },
       {
         "key": "GSL-215",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:28:59Z",
-        "status_age_s": 773587,
+        "status": "Done",
+        "status_ts": "2026-07-28T16:01:11Z",
+        "status_age_s": 448337,
         "summary": "[Tooling] Классы healthy / slow / stuck с уклоном в false-negative и матрица ZFC",
         "commits": [
           {
@@ -4410,13 +4394,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-215",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/215",
         "gh_number": 215,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 4h"
       },
       {
         "key": "GSL-214",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:28:55Z",
-        "status_age_s": 773591,
+        "status": "Done",
+        "status_ts": "2026-07-28T17:04:05Z",
+        "status_age_s": 444563,
         "summary": "[Tooling] Минимальный circuit breaker: строка в STATE плюс пункт в HEARTBEAT_OK",
         "commits": [
           {
@@ -4436,13 +4420,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-214",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/214",
         "gh_number": 214,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 3h"
       },
       {
         "key": "GSL-213",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:28:49Z",
-        "status_age_s": 773597,
+        "status": "Done",
+        "status_ts": "2026-07-28T15:51:39Z",
+        "status_age_s": 448909,
         "summary": "[Tooling] Признак прогресса: цикл и context_pct не менялись N тиков",
         "commits": [
           {
@@ -4462,13 +4446,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-213",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/213",
         "gh_number": 213,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 4h"
       },
       {
         "key": "GSL-212",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:28:43Z",
-        "status_age_s": 773603,
+        "status": "Done",
+        "status_ts": "2026-07-28T15:42:37Z",
+        "status_age_s": 449451,
         "summary": "[Tooling] Источник истины о жизни — claude agents --json; поле session в heartbeat",
         "commits": [
           {
@@ -4488,13 +4472,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-212",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/212",
         "gh_number": 212,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 4h"
       },
       {
         "key": "GSL-211",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:28:39Z",
-        "status_age_s": 773607,
+        "status": "Done",
+        "status_ts": "2026-07-28T16:54:28Z",
+        "status_age_s": 445140,
         "summary": "[Tooling] Reality-гейт: ноль LLM, он же источник плитки «вооружено»",
         "commits": [
           {
@@ -4514,13 +4498,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-211",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/211",
         "gh_number": 211,
-        "status_age_human": "8d 22h"
+        "status_age_human": "5d 3h"
       },
       {
         "key": "GSL-210",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:13Z",
-        "status_age_s": 765593,
+        "status_age_s": 766275,
         "summary": "[UI][Evals] Испытать восемь интерактивных элементов продукта",
         "commits": [
           {
@@ -4546,7 +4530,7 @@
         "key": "GSL-209",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:12Z",
-        "status_age_s": 765594,
+        "status_age_s": 766276,
         "summary": "[UI] Переключатель темы и сквозной поиск",
         "commits": [
           {
@@ -4572,7 +4556,7 @@
         "key": "GSL-208",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:08Z",
-        "status_age_s": 765598,
+        "status_age_s": 766280,
         "summary": "[UI] Timeline и Tasks: нормализованные пути, содержательные события, честные колонки",
         "commits": [
           {
@@ -4598,7 +4582,7 @@
         "key": "GSL-207",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:07Z",
-        "status_age_s": 765599,
+        "status_age_s": 766281,
         "summary": "[UI] Overview и Fleet: гигиена под details, флот таблицей",
         "commits": [
           {
@@ -4624,7 +4608,7 @@
         "key": "GSL-206",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:06Z",
-        "status_age_s": 765600,
+        "status_age_s": 766282,
         "summary": "[UI] Плитка супервизора и полоса гейтов с датой прогона",
         "commits": [
           {
@@ -4650,7 +4634,7 @@
         "key": "GSL-205",
         "status": "Done",
         "status_ts": "2026-07-24T23:42:05Z",
-        "status_age_s": 765601,
+        "status_age_s": 766283,
         "summary": "[UI] Одна функция «идентификатор → ссылка» на всех семи экранах",
         "commits": [
           {
@@ -4676,7 +4660,7 @@
         "key": "GSL-204",
         "status": "Done",
         "status_ts": "2026-07-28T12:00:06Z",
-        "status_age_s": 462120,
+        "status_age_s": 462802,
         "summary": "[Docs] Рунбук мотора и dev_history эпика",
         "commits": [
           {
@@ -4702,7 +4686,7 @@
         "key": "GSL-203",
         "status": "Done",
         "status_ts": "2026-07-28T11:59:05Z",
-        "status_age_s": 462181,
+        "status_age_s": 462863,
         "summary": "[Tooling] Убрать --no-poll из штатного гейта смены",
         "commits": [
           {
@@ -4734,7 +4718,7 @@
         "key": "GSL-202",
         "status": "Done",
         "status_ts": "2026-07-28T11:47:08Z",
-        "status_age_s": 462898,
+        "status_age_s": 463580,
         "summary": "[Tooling] Принцип «не будить, если работы нет»",
         "commits": [
           {
@@ -4760,7 +4744,7 @@
         "key": "GSL-201",
         "status": "Done",
         "status_ts": "2026-07-28T11:53:11Z",
-        "status_age_s": 462535,
+        "status_age_s": 463217,
         "summary": "[Tooling] Преflight носителя тика: launchd против Claude Desktop scheduled tasks",
         "commits": [
           {
@@ -4786,7 +4770,7 @@
         "key": "GSL-200",
         "status": "Done",
         "status_ts": "2026-07-28T11:26:16Z",
-        "status_age_s": 464150,
+        "status_age_s": 464832,
         "summary": "[Tooling] lab-emit apply-due и защита resolve от раннего и повторного закрытия",
         "commits": [
           {
@@ -4806,13 +4790,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-200",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/200",
         "gh_number": 200,
-        "status_age_human": "5d 8h"
+        "status_age_human": "5d 9h"
       },
       {
         "key": "GSL-199",
         "status": "Done",
         "status_ts": "2026-07-28T11:40:15Z",
-        "status_age_s": 463311,
+        "status_age_s": 463993,
         "summary": "[Tooling] tools/lab/tick.sh — идемпотентный страховочный тик",
         "commits": [
           {
@@ -4838,7 +4822,7 @@
         "key": "GSL-198",
         "status": "Done",
         "status_ts": "2026-07-28T11:18:38Z",
-        "status_age_s": 464608,
+        "status_age_s": 465290,
         "summary": "[Tooling] Вернуть спроектированный дебаунс-хук на записи в docs/lab/",
         "commits": [
           {
@@ -4864,7 +4848,7 @@
         "key": "GSL-197",
         "status": "Done",
         "status_ts": "2026-07-28T07:51:13Z",
-        "status_age_s": 477053,
+        "status_age_s": 477735,
         "summary": "[Docs] Рассинхрон Jira и GitHub: закрыть issue #146",
         "commits": [
           {
@@ -4890,7 +4874,7 @@
         "key": "GSL-196",
         "status": "Done",
         "status_ts": "2026-07-28T07:43:57Z",
-        "status_age_s": 477489,
+        "status_age_s": 478171,
         "summary": "[Docs] README очереди: queue.jsonl нельзя читать построчно",
         "commits": [
           {
@@ -4916,7 +4900,7 @@
         "key": "GSL-195",
         "status": "Done",
         "status_ts": "2026-07-28T07:50:19Z",
-        "status_age_s": 477107,
+        "status_age_s": 477789,
         "summary": "[Docs] Поправки красных команд в ORCHESTRATION-STATE.md",
         "commits": [
           {
@@ -4948,7 +4932,7 @@
         "key": "GSL-194",
         "status": "Done",
         "status_ts": "2026-07-28T07:58:52Z",
-        "status_age_s": 476594,
+        "status_age_s": 477276,
         "summary": "[Tooling] Пересобрать лабораторию и закоммитить свежий бандл",
         "commits": [
           {
@@ -4974,7 +4958,7 @@
         "key": "GSL-193",
         "status": "Done",
         "status_ts": "2026-07-28T07:38:57Z",
-        "status_age_s": 477789,
+        "status_age_s": 478471,
         "summary": "[Tooling] Глубина глоба обеих полок Библиотеки: Reports и Ревью",
         "commits": [
           {
@@ -5000,7 +4984,7 @@
         "key": "GSL-192",
         "status": "Done",
         "status_ts": "2026-07-28T07:28:27Z",
-        "status_age_s": 478419,
+        "status_age_s": 479101,
         "summary": "[Tooling] Плитка расхода занижена на 1 672 000 токенов; таблица циклов не отсортирована",
         "commits": [
           {
@@ -5020,13 +5004,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-192",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/192",
         "gh_number": 192,
-        "status_age_human": "5d 12h"
+        "status_age_human": "5d 13h"
       },
       {
         "key": "GSL-191",
         "status": "Done",
         "status_ts": "2026-07-28T07:18:12Z",
-        "status_age_s": 479034,
+        "status_age_s": 479716,
         "summary": "[Tooling] Архив вопросов теряет 18 из 21 записи: дефис против подчёркивания",
         "commits": [
           {
@@ -5052,7 +5036,7 @@
         "key": "GSL-190",
         "status": "To Do",
         "status_ts": "2026-07-24T21:26:12Z",
-        "status_age_s": 773754,
+        "status_age_s": 774436,
         "summary": "[Skill] Reverse-sync tmux-agents-orchestration в репозиторий и сверка списка скиллов",
         "commits": [],
         "dev_history": [],
@@ -5060,13 +5044,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-190",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/190",
         "gh_number": 190,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-189",
         "status": "To Do",
         "status_ts": "2026-07-24T21:26:07Z",
-        "status_age_s": 773759,
+        "status_age_s": 774441,
         "summary": "[Docs][Process] Правка скилла — обязательный пункт чек-листа закрытия смены",
         "commits": [],
         "dev_history": [],
@@ -5074,13 +5058,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-189",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/189",
         "gh_number": 189,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-188",
         "status": "To Do",
         "status_ts": "2026-07-24T21:26:01Z",
-        "status_age_s": 773765,
+        "status_age_s": 774447,
         "summary": "[Skill] Снять внутреннее противоречие скилла про телеметрию и описать работающий метод",
         "commits": [],
         "dev_history": [],
@@ -5088,13 +5072,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-188",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/188",
         "gh_number": 188,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-187",
         "status": "To Do",
         "status_ts": "2026-07-24T21:25:55Z",
-        "status_age_s": 773771,
+        "status_age_s": 774453,
         "summary": "[Skill] Модельная политика: принцип в скилле, конкретные модели в манифесте",
         "commits": [],
         "dev_history": [],
@@ -5102,13 +5086,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-187",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/187",
         "gh_number": 187,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-186",
         "status": "To Do",
         "status_ts": "2026-07-24T21:25:50Z",
-        "status_age_s": 773776,
+        "status_age_s": 774458,
         "summary": "[Skill] Путь handoff, несуществующая docs/wiki/ и формат имени dev_history",
         "commits": [],
         "dev_history": [],
@@ -5116,13 +5100,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-186",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/186",
         "gh_number": 186,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-185",
         "status": "To Do",
         "status_ts": "2026-07-24T21:25:43Z",
-        "status_age_s": 773783,
+        "status_age_s": 774465,
         "summary": "[Skill] Запрет git stash в общем рабочем дереве",
         "commits": [],
         "dev_history": [],
@@ -5130,13 +5114,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-185",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/185",
         "gh_number": 185,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-184",
         "status": "To Do",
         "status_ts": "2026-07-24T21:25:38Z",
-        "status_age_s": 773788,
+        "status_age_s": 774470,
         "summary": "[Skill] Механика запуска агентов под текущий harness: TeamCreate не существует",
         "commits": [],
         "dev_history": [],
@@ -5144,13 +5128,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-184",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/184",
         "gh_number": 184,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-183",
         "status": "To Do",
         "status_ts": "2026-07-24T21:25:32Z",
-        "status_age_s": 773794,
+        "status_age_s": 774476,
         "summary": "[Skill] Гейт «спроси владельца» перед вызовом Workflow tool",
         "commits": [],
         "dev_history": [],
@@ -5158,13 +5142,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-183",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/183",
         "gh_number": 183,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-182",
         "status": "To Do",
         "status_ts": "2026-07-24T21:25:27Z",
-        "status_age_s": 773799,
+        "status_age_s": 774481,
         "summary": "[Skill] Триггер ролла: реальный сигнал харнесса вместо самооценки контекста",
         "commits": [
           {
@@ -5179,13 +5163,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-182",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/182",
         "gh_number": 182,
-        "status_age_human": "8d 22h"
+        "status_age_human": "8d 23h"
       },
       {
         "key": "GSL-181",
         "status": "To Do",
         "status_ts": "2026-07-24T21:21:53Z",
-        "status_age_s": 774013,
+        "status_age_s": 774695,
         "summary": "[Process][Docs] Приёмка проверяет продукт; документы стареют официально",
         "commits": [],
         "dev_history": [],
@@ -5199,7 +5183,7 @@
         "key": "GSL-180",
         "status": "To Do",
         "status_ts": "2026-07-24T21:21:45Z",
-        "status_age_s": 774021,
+        "status_age_s": 774703,
         "summary": "[Tooling][Process] Автономность, которая учится и не решает лишнего",
         "commits": [],
         "dev_history": [],
@@ -5213,7 +5197,7 @@
         "key": "GSL-179",
         "status": "Done",
         "status_ts": "2026-07-28T10:59:38Z",
-        "status_age_s": 465748,
+        "status_age_s": 466430,
         "summary": "[Tooling] Индикаторы автономности начинают отвечать",
         "commits": [
           {
@@ -5251,23 +5235,43 @@
       },
       {
         "key": "GSL-178",
-        "status": "To Do",
-        "status_ts": "2026-07-24T21:21:27Z",
-        "status_age_s": 774039,
+        "status": "Done",
+        "status_ts": "2026-08-02T20:26:40Z",
+        "status_age_s": 408,
         "summary": "[Tooling][Process] Супервизия: вооружить и опереть на харнесс",
-        "commits": [],
+        "commits": [
+          {
+            "sha": "22518d8",
+            "subject": "Merge pull request #255 from ainstance-labs/GSL-178-supervisor-observe",
+            "ts": "2026-08-02T22:25:32+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/22518d8"
+          },
+          {
+            "sha": "171f78d",
+            "subject": "GSL-178 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первые строки наблюдательного watchdog-леджера в трекаемом архиве супервизии)",
+            "ts": "2026-08-02T22:22:22+02:00",
+            "url": "https://github.com/ainstance-labs/gosleep/commit/171f78d"
+          }
+        ],
         "dev_history": [],
-        "prs": [],
+        "prs": [
+          {
+            "number": 255,
+            "state": "MERGED",
+            "url": "https://github.com/ainstance-labs/gosleep/pull/255",
+            "title": "GSL-178 Супервизия: наблюдательный режим сторожа — платформенный источник жизни, observe по умолчанию, reality-гейт"
+          }
+        ],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-178",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/178",
         "gh_number": 178,
-        "status_age_human": "8d 23h"
+        "status_age_human": "6m"
       },
       {
         "key": "GSL-177",
         "status": "In Review",
         "status_ts": "2026-07-24T23:42:19Z",
-        "status_age_s": 765587,
+        "status_age_s": 766269,
         "summary": "[UI][Tooling] Веб-версия: свежесть, связность и качество первой версии",
         "commits": [
           {
@@ -5307,7 +5311,7 @@
         "key": "GSL-176",
         "status": "Done",
         "status_ts": "2026-07-28T12:05:22Z",
-        "status_age_s": 461804,
+        "status_age_s": 462486,
         "summary": "[Tooling] Один мотор для всего, что должно происходить регулярно",
         "commits": [
           {
@@ -5347,7 +5351,7 @@
         "key": "GSL-175",
         "status": "Done",
         "status_ts": "2026-07-28T08:05:36Z",
-        "status_age_s": 476190,
+        "status_age_s": 476872,
         "summary": "[Tooling][Docs] Гигиена за вечер: архив, расход, глубина Библиотеки",
         "commits": [
           {
@@ -5381,7 +5385,7 @@
         "key": "GSL-174",
         "status": "To Do",
         "status_ts": "2026-07-24T21:20:29Z",
-        "status_age_s": 774097,
+        "status_age_s": 774779,
         "summary": "[Skill][Process] Час работы: четыре правки инструкции и правило, которое их удержит",
         "commits": [],
         "dev_history": [],
@@ -5395,7 +5399,7 @@
         "key": "GSL-173",
         "status": "Done",
         "status_ts": "2026-07-24T20:23:11Z",
-        "status_age_s": 777535,
+        "status_age_s": 778217,
         "summary": "[Docs][Process] Догоняющий снимок: redteam-web-verdicts и SYNTHESIS в доказательную базу",
         "commits": [
           {
@@ -5415,13 +5419,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-173",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/172",
         "gh_number": 172,
-        "status_age_human": "8d 23h"
+        "status_age_human": "9d 0h"
       },
       {
         "key": "GSL-172",
         "status": "Done",
         "status_ts": "2026-07-24T20:23:10Z",
-        "status_age_s": 777536,
+        "status_age_s": 778218,
         "summary": "[Docs][Process] Архив очереди вопросов и дайджест 2026-07-23 в контроль версий",
         "commits": [
           {
@@ -5441,13 +5445,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-172",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/171",
         "gh_number": 171,
-        "status_age_human": "8d 23h"
+        "status_age_human": "9d 0h"
       },
       {
         "key": "GSL-171",
         "status": "Done",
         "status_ts": "2026-07-24T20:23:09Z",
-        "status_age_s": 777537,
+        "status_age_s": 778219,
         "summary": "[Docs][Process] Доказательная база аудита 2026-07-24 в docs/reports/ рядом с будущим отчётом",
         "commits": [
           {
@@ -5467,13 +5471,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-171",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/170",
         "gh_number": 170,
-        "status_age_human": "8d 23h"
+        "status_age_human": "9d 0h"
       },
       {
         "key": "GSL-170",
         "status": "Done",
         "status_ts": "2026-07-24T20:23:08Z",
-        "status_age_s": 777538,
+        "status_age_s": 778220,
         "summary": "[Docs][Process] Мандат владельца 2-deep-orchestrating-research.md в контроль версий",
         "commits": [
           {
@@ -5493,13 +5497,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-170",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/169",
         "gh_number": 169,
-        "status_age_human": "8d 23h"
+        "status_age_human": "9d 0h"
       },
       {
         "key": "GSL-169",
         "status": "Done",
         "status_ts": "2026-07-24T21:36:56Z",
-        "status_age_s": 773110,
+        "status_age_s": 773792,
         "summary": "[Docs][Process] Аудит системы 2026-07-24: сохранение доказательной базы и мандата",
         "commits": [
           {
@@ -5527,7 +5531,7 @@
         "key": "GSL-168",
         "status": "To Do",
         "status_ts": "2026-07-23T22:49:39Z",
-        "status_age_s": 855147,
+        "status_age_s": 855829,
         "summary": "[UI] INDUSTRY-STANDARD: pages ship no document language (WCAG 3.1.1) and no th scope on 13 data tables (WCAG 1.3.1)",
         "commits": [],
         "dev_history": [],
@@ -5541,7 +5545,7 @@
         "key": "GSL-167",
         "status": "To Do",
         "status_ts": "2026-07-23T22:49:21Z",
-        "status_age_s": 855165,
+        "status_age_s": 855847,
         "summary": "[UI] SPEC-VIOLATION: .grid renders two ~190px columns at 391–416px where spec 9.3 promises one column for the whole ≤416px range",
         "commits": [],
         "dev_history": [],
@@ -5555,7 +5559,7 @@
         "key": "GSL-166",
         "status": "To Do",
         "status_ts": "2026-07-23T22:49:04Z",
-        "status_age_s": 855182,
+        "status_age_s": 855864,
         "summary": "[UI] INDUSTRY-STANDARD: Library file column names six rows «index.html» — the distinguishing slug lives only in the href and outside the search haystack",
         "commits": [],
         "dev_history": [],
@@ -5569,7 +5573,7 @@
         "key": "GSL-165",
         "status": "To Do",
         "status_ts": "2026-07-23T22:48:48Z",
-        "status_age_s": 855198,
+        "status_age_s": 855880,
         "summary": "[UI] INDUSTRY-STANDARD: Library «Where this index looked» counts do not reproduce from the printed glob — reports says 5, its glob matches 6",
         "commits": [],
         "dev_history": [],
@@ -5583,7 +5587,7 @@
         "key": "GSL-164",
         "status": "To Do",
         "status_ts": "2026-07-23T22:48:32Z",
-        "status_age_s": 855214,
+        "status_age_s": 855896,
         "summary": "[Docs] INDUSTRY-STANDARD: docs/lab/README.md drifted from the layer it documents — phantom telemetry.jsonl, «all 3 pages», 3 of 7 site screens",
         "commits": [],
         "dev_history": [],
@@ -5597,7 +5601,7 @@
         "key": "GSL-163",
         "status": "Done",
         "status_ts": "2026-07-23T23:00:29Z",
-        "status_age_s": 854497,
+        "status_age_s": 855179,
         "summary": "[Docs][Evals] Verification run 04: audit dashboard",
         "commits": [
           {
@@ -5623,7 +5627,7 @@
         "key": "GSL-162",
         "status": "Done",
         "status_ts": "2026-07-23T22:53:37Z",
-        "status_age_s": 854909,
+        "status_age_s": 855591,
         "summary": "[Docs][Evals] Verification run 04: regression lane",
         "commits": [
           {
@@ -5649,7 +5653,7 @@
         "key": "GSL-161",
         "status": "Done",
         "status_ts": "2026-07-23T22:28:33Z",
-        "status_age_s": 856413,
+        "status_age_s": 857095,
         "summary": "[UI] Fix wave 3: verification run 03 findings",
         "commits": [
           {
@@ -5677,13 +5681,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-161",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/159",
         "gh_number": 159,
-        "status_age_human": "9d 21h"
+        "status_age_human": "9d 22h"
       },
       {
         "key": "GSL-160",
         "status": "Done",
         "status_ts": "2026-07-23T22:28:32Z",
-        "status_age_s": 856414,
+        "status_age_s": 857096,
         "summary": "[UI] INDUSTRY-STANDARD: role-borrowed class names — .filter-count as a generic caption (Fleet, Cost) and .tag.BLOCKER on the high-impact flag",
         "commits": [
           {
@@ -5703,13 +5707,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-160",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/164",
         "gh_number": 164,
-        "status_age_human": "9d 21h"
+        "status_age_human": "9d 22h"
       },
       {
         "key": "GSL-159",
         "status": "Done",
         "status_ts": "2026-07-23T22:28:32Z",
-        "status_age_s": 856414,
+        "status_age_s": 857096,
         "summary": "[UI] SPEC-VIOLATION: runway-bind badge in the clear state is half-painted — ok ink over a neutral badge shell",
         "commits": [
           {
@@ -5729,13 +5733,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-159",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/163",
         "gh_number": 163,
-        "status_age_human": "9d 21h"
+        "status_age_human": "9d 22h"
       },
       {
         "key": "GSL-158",
         "status": "Done",
         "status_ts": "2026-07-23T22:28:31Z",
-        "status_age_s": 856415,
+        "status_age_s": 857097,
         "summary": "[UI] SPEC-VIOLATION: Tasks gh-column absence dash wears --dim instead of the spec 6.5 --muted",
         "commits": [
           {
@@ -5755,13 +5759,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-158",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/162",
         "gh_number": 162,
-        "status_age_human": "9d 21h"
+        "status_age_human": "9d 22h"
       },
       {
         "key": "GSL-157",
         "status": "Done",
         "status_ts": "2026-07-23T22:28:30Z",
-        "status_age_s": 856416,
+        "status_age_s": 857098,
         "summary": "[UI] SPEC-VIOLATION: Freshness meter encodes grade=dead as the unknown state — dead and unknown rendered alike",
         "commits": [
           {
@@ -5787,13 +5791,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-157",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/161",
         "gh_number": 161,
-        "status_age_human": "9d 21h"
+        "status_age_human": "9d 22h"
       },
       {
         "key": "GSL-156",
         "status": "Done",
         "status_ts": "2026-07-23T22:28:30Z",
-        "status_age_s": 856416,
+        "status_age_s": 857098,
         "summary": "[UI] SPEC-VIOLATION: unscoped .unknown cascade paints whole self-health cards in status magenta",
         "commits": [
           {
@@ -5813,13 +5817,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-156",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/160",
         "gh_number": 160,
-        "status_age_human": "9d 21h"
+        "status_age_human": "9d 22h"
       },
       {
         "key": "GSL-155",
         "status": "Done",
         "status_ts": "2026-07-23T21:31:16Z",
-        "status_age_s": 859850,
+        "status_age_s": 860532,
         "summary": "[Docs][Evals] Verification run 03: audit dashboard",
         "commits": [
           {
@@ -5839,13 +5843,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-155",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/158",
         "gh_number": 158,
-        "status_age_human": "9d 22h"
+        "status_age_human": "9d 23h"
       },
       {
         "key": "GSL-154",
         "status": "Done",
         "status_ts": "2026-07-23T21:27:09Z",
-        "status_age_s": 860097,
+        "status_age_s": 860779,
         "summary": "[Docs][Evals] Verification run 03: regression lane",
         "commits": [
           {
@@ -5865,13 +5869,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-154",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/157",
         "gh_number": 157,
-        "status_age_human": "9d 22h"
+        "status_age_human": "9d 23h"
       },
       {
         "key": "GSL-153",
         "status": "Done",
         "status_ts": "2026-07-23T21:01:58Z",
-        "status_age_s": 861608,
+        "status_age_s": 862290,
         "summary": "[UI] Fix wave 2: verification run 02 findings",
         "commits": [
           {
@@ -5899,7 +5903,7 @@
         "key": "GSL-152",
         "status": "Done",
         "status_ts": "2026-07-23T21:02:10Z",
-        "status_age_s": 861596,
+        "status_age_s": 862278,
         "summary": "[UI] INDUSTRY-STANDARD: runway.tsx comment still describes unk as \"magenta and dashed\" — dashes were removed by the redesign, comment invites their return",
         "commits": [
           {
@@ -5925,7 +5929,7 @@
         "key": "GSL-151",
         "status": "Done",
         "status_ts": "2026-07-23T21:02:09Z",
-        "status_age_s": 861597,
+        "status_age_s": 862279,
         "summary": "[UI] INDUSTRY-STANDARD: Cost per-model table borrows .wk-models (a Fleet worker-card class) as a generic amber — class name no longer means what it says",
         "commits": [
           {
@@ -5951,7 +5955,7 @@
         "key": "GSL-150",
         "status": "Done",
         "status_ts": "2026-07-23T21:02:07Z",
-        "status_age_s": 861599,
+        "status_age_s": 862281,
         "summary": "[Process][Docs] INDUSTRY-STANDARD: main @ 54fe290 ships derived pages generated on the pre-merge branch — Delivery names GSL-141-fix-wave-1 as current, Library undercounts 3 dev_history files",
         "commits": [
           {
@@ -5977,7 +5981,7 @@
         "key": "GSL-149",
         "status": "Done",
         "status_ts": "2026-07-23T21:02:04Z",
-        "status_age_s": 861602,
+        "status_age_s": 862284,
         "summary": "[UI] INDUSTRY-STANDARD: Timeline severity filter options are appearance-ordered (info, warn, incident), not worst-first as the code itself promises",
         "commits": [
           {
@@ -6003,7 +6007,7 @@
         "key": "GSL-148",
         "status": "Done",
         "status_ts": "2026-07-23T21:02:02Z",
-        "status_age_s": 861604,
+        "status_age_s": 862286,
         "summary": "[UI][Tooling] INDUSTRY-STANDARD: Library shows literal «&amp;» in two report titles — chronicler doc_title does not decode HTML entities, preact escapes again",
         "commits": [
           {
@@ -6029,7 +6033,7 @@
         "key": "GSL-147",
         "status": "Done",
         "status_ts": "2026-07-23T21:02:01Z",
-        "status_age_s": 861605,
+        "status_age_s": 862287,
         "summary": "[UI] SPEC-VIOLATION: Jira statuses Done / To Do / In Progress render neutral on the Tasks board — spec 7.2 assigns them ok / warn / info",
         "commits": [
           {
@@ -6055,7 +6059,7 @@
         "key": "GSL-146",
         "status": "Done",
         "status_ts": "2026-07-23T21:01:59Z",
-        "status_age_s": 861607,
+        "status_age_s": 862289,
         "summary": "[UI] SPEC-VIOLATION: unknown values render as 11px muted labels — .kpi span / .wk-f span cascade swallows span.unknown (Fleet, Cost)",
         "commits": [
           {
@@ -6081,7 +6085,7 @@
         "key": "GSL-145",
         "status": "Done",
         "status_ts": "2026-07-23T20:01:52Z",
-        "status_age_s": 865214,
+        "status_age_s": 865896,
         "summary": "[Docs][Evals] Verification run 02: audit dashboard",
         "commits": [
           {
@@ -6107,7 +6111,7 @@
         "key": "GSL-144",
         "status": "Done",
         "status_ts": "2026-07-23T19:47:09Z",
-        "status_age_s": 866097,
+        "status_age_s": 866779,
         "summary": "[Docs][Evals] Verification run 02: regression lane",
         "commits": [
           {
@@ -6133,7 +6137,7 @@
         "key": "GSL-143",
         "status": "Done",
         "status_ts": "2026-07-23T18:58:04Z",
-        "status_age_s": 869042,
+        "status_age_s": 869724,
         "summary": "[Docs][Process] Verification runs standard",
         "commits": [
           {
@@ -6159,7 +6163,7 @@
         "key": "GSL-142",
         "status": "Done",
         "status_ts": "2026-07-23T18:58:03Z",
-        "status_age_s": 869043,
+        "status_age_s": 869725,
         "summary": "[Docs] Screenshot assets convention: per-task folders",
         "commits": [
           {
@@ -6185,7 +6189,7 @@
         "key": "GSL-141",
         "status": "Done",
         "status_ts": "2026-07-23T18:57:57Z",
-        "status_age_s": 869049,
+        "status_age_s": 869731,
         "summary": "[UI][Process] Fix wave 1: verification run 01 findings",
         "commits": [
           {
@@ -6213,7 +6217,7 @@
         "key": "GSL-140",
         "status": "Done",
         "status_ts": "2026-07-23T16:49:33Z",
-        "status_age_s": 876753,
+        "status_age_s": 877435,
         "summary": "[Docs][Design] Design showcase: GSL-138 run 01 (redesign visual overview)",
         "commits": [
           {
@@ -6239,7 +6243,7 @@
         "key": "GSL-139",
         "status": "Done",
         "status_ts": "2026-07-23T14:09:59Z",
-        "status_age_s": 886327,
+        "status_age_s": 887009,
         "summary": "[Docs][Process] Verification dashboard report: GSL-138 run 01",
         "commits": [
           {
@@ -6265,7 +6269,7 @@
         "key": "GSL-138",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:36Z",
-        "status_age_s": 887490,
+        "status_age_s": 888172,
         "summary": "[UI][Evals] Приёмка эпика: скриншоты light/dark на desktop и 390px, сквозной чек-лист 10 MAJOR, полный прогон гейтов",
         "commits": [
           {
@@ -6328,7 +6332,7 @@
         "key": "GSL-137",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:35Z",
-        "status_age_s": 887491,
+        "status_age_s": 888173,
         "summary": "[UI][Docs] Мобильная md-проекция в новом визуальном языке",
         "commits": [
           {
@@ -6349,7 +6353,7 @@
         "key": "GSL-136",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:29Z",
-        "status_age_s": 887497,
+        "status_age_s": 888179,
         "summary": "[UI][Tooling] Перелицовка Library + Cost: честность усечения в data-слое",
         "commits": [
           {
@@ -6370,7 +6374,7 @@
         "key": "GSL-135",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:28Z",
-        "status_age_s": 887498,
+        "status_age_s": 888180,
         "summary": "[UI] Перелицовка Tasks + Timeline + Questions",
         "commits": [
           {
@@ -6391,7 +6395,7 @@
         "key": "GSL-134",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:27Z",
-        "status_age_s": 887499,
+        "status_age_s": 888181,
         "summary": "[UI] Перелицовка Overview + Fleet + Self-health",
         "commits": [
           {
@@ -6412,7 +6416,7 @@
         "key": "GSL-133",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:26Z",
-        "status_age_s": 887500,
+        "status_age_s": 888182,
         "summary": "[UI] Токены и каркас: theme.ts обеих тем, типографика, spacing, навигация-табы",
         "commits": [
           {
@@ -6433,7 +6437,7 @@
         "key": "GSL-132",
         "status": "Done",
         "status_ts": "2026-07-23T18:58:02Z",
-        "status_age_s": 869044,
+        "status_age_s": 869726,
         "summary": "[UI] Проза: тавтологии «X. x…» на Cost, «polled … old» на Tasks и расхождение 7s против 10s на Overview",
         "commits": [
           {
@@ -6459,7 +6463,7 @@
         "key": "GSL-131",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:58Z",
-        "status_age_s": 887468,
+        "status_age_s": 888150,
         "summary": "[Tooling] Заголовки Library режутся на 110 символах в bundle — 11 из 12 обрываются посреди слова",
         "commits": [],
         "dev_history": [],
@@ -6473,7 +6477,7 @@
         "key": "GSL-130",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:57Z",
-        "status_age_s": 887469,
+        "status_age_s": 888151,
         "summary": "[UI] Tasks: ссылка на PR эпика выводится дважды подряд без пробела — «#125#125» в 15 строках",
         "commits": [],
         "dev_history": [],
@@ -6487,7 +6491,7 @@
         "key": "GSL-129",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:56Z",
-        "status_age_s": 887470,
+        "status_age_s": 888152,
         "summary": "[UI] Fleet обещает «2 live workers», а все 8 карточек — ended недельной давности",
         "commits": [],
         "dev_history": [],
@@ -6501,7 +6505,7 @@
         "key": "GSL-128",
         "status": "Done",
         "status_ts": "2026-07-20T22:01:02Z",
-        "status_age_s": 1117264,
+        "status_age_s": 1117946,
         "summary": "[UI] Questions: вопрос, на который ответил владелец, лежит в секции «Decided without you»",
         "commits": [],
         "dev_history": [],
@@ -6515,7 +6519,7 @@
         "key": "GSL-127",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:54Z",
-        "status_age_s": 887472,
+        "status_age_s": 888154,
         "summary": "[UI] Library: колонка «files» печатает 40 и 40 вместо 93 и 46 — это кап, а не число файлов",
         "commits": [],
         "dev_history": [],
@@ -6529,7 +6533,7 @@
         "key": "GSL-126",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:53Z",
-        "status_age_s": 887473,
+        "status_age_s": 888155,
         "summary": "[UI] Баннер не обновляет возраст события внутри окна fresh — через 29 минут всё ещё «last event 7s ago»",
         "commits": [],
         "dev_history": [],
@@ -6543,7 +6547,7 @@
         "key": "GSL-125",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:49Z",
-        "status_age_s": 887477,
+        "status_age_s": 888159,
         "summary": "[UI] Чип покрытия эпика одинаково серый для ok и warn — эпик с пропуском неотличим от полного",
         "commits": [],
         "dev_history": [],
@@ -6557,7 +6561,7 @@
         "key": "GSL-124",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:48Z",
-        "status_age_s": 887478,
+        "status_age_s": 888160,
         "summary": "[UI] Классы .ok/.warn/.dead не объявлены — предупреждение метра печатается цветом обычного текста",
         "commits": [],
         "dev_history": [],
@@ -6571,7 +6575,7 @@
         "key": "GSL-123",
         "status": "Done",
         "status_ts": "2026-07-23T18:58:01Z",
-        "status_age_s": 869045,
+        "status_age_s": 869727,
         "summary": "[UI] Library: две строки кросс-индекса без тайтла и без честной пометки «no title»",
         "commits": [
           {
@@ -6597,7 +6601,7 @@
         "key": "GSL-122",
         "status": "Done",
         "status_ts": "2026-07-23T18:58:00Z",
-        "status_age_s": 869046,
+        "status_age_s": 869728,
         "summary": "[UI] Timeline говорит «that half of the log» о доле, которая фактически 92.8 процента",
         "commits": [
           {
@@ -6623,7 +6627,7 @@
         "key": "GSL-121",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:47Z",
-        "status_age_s": 887479,
+        "status_age_s": 888161,
         "summary": "[UI] Detail-ячейки обрезаются ровно на 90 символах без многоточия — путь обрывается на полуслове",
         "commits": [],
         "dev_history": [],
@@ -6637,7 +6641,7 @@
         "key": "GSL-120",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:45Z",
-        "status_age_s": 887481,
+        "status_age_s": 888163,
         "summary": "[UI] Cost обещает 67 строк per-cycle, показывает 40 — усечение не объявлено ни строкой",
         "commits": [],
         "dev_history": [],
@@ -6651,7 +6655,7 @@
         "key": "GSL-119",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:44Z",
-        "status_age_s": 887482,
+        "status_age_s": 888164,
         "summary": "[UI] Класс .unknown навешен на контейнер часов — курсив протекает на подписи «stops» и «completes»",
         "commits": [],
         "dev_history": [],
@@ -6665,7 +6669,7 @@
         "key": "GSL-118",
         "status": "Done",
         "status_ts": "2026-07-23T18:57:59Z",
-        "status_age_s": 869047,
+        "status_age_s": 869729,
         "summary": "[UI] Подпись часов контекста «50% of 80%» читается как «50 процентов от 80 процентов»",
         "commits": [
           {
@@ -6691,7 +6695,7 @@
         "key": "GSL-117",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:40Z",
-        "status_age_s": 887486,
+        "status_age_s": 888168,
         "summary": "[UI] Границы select/button держат контраст 1.6:1 при пороге WCAG 3:1 — контролы фильтра почти не видны",
         "commits": [],
         "dev_history": [],
@@ -6705,7 +6709,7 @@
         "key": "GSL-116",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:39Z",
-        "status_age_s": 887487,
+        "status_age_s": 888169,
         "summary": "[UI] Overview печатает тип вопроса без семантического цвета — BLOCKER выглядит как FYI на landing-экране",
         "commits": [],
         "dev_history": [],
@@ -6719,7 +6723,7 @@
         "key": "GSL-115",
         "status": "Done",
         "status_ts": "2026-07-23T13:50:38Z",
-        "status_age_s": 887488,
+        "status_age_s": 888170,
         "summary": "[UI] С отключённым JS шапка бессрочно утверждает «FRESH · Live — the laboratory is writing itself right now»",
         "commits": [],
         "dev_history": [],
@@ -6733,7 +6737,7 @@
         "key": "GSL-114",
         "status": "Done",
         "status_ts": "2026-07-20T22:00:59Z",
-        "status_age_s": 1117267,
+        "status_age_s": 1117949,
         "summary": "[UI] Timeline на 390px: колонка значений в двух сводных таблицах невидима — обрезка без индикации и без скролла",
         "commits": [],
         "dev_history": [],
@@ -6747,7 +6751,7 @@
         "key": "GSL-113",
         "status": "Done",
         "status_ts": "2026-07-20T20:05:28Z",
-        "status_age_s": 1124198,
+        "status_age_s": 1124880,
         "summary": "[Tooling][Docs] Мобильная проекция объявляет себя FRESH бессрочно — единственная телефонная поверхность не умеет деградировать",
         "commits": [
           {
@@ -6781,7 +6785,7 @@
         "key": "GSL-112",
         "status": "Done",
         "status_ts": "2026-07-20T19:32:06Z",
-        "status_age_s": 1126200,
+        "status_age_s": 1126882,
         "summary": "[UI][Docs] Дизайн-спека редизайна: типографика, палитра обеих тем, spacing, компоненты (эталоны Mastra Studio + Supabase)",
         "commits": [
           {
@@ -6802,13 +6806,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-112",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/127",
         "gh_number": 127,
-        "status_age_human": "13d 0h"
+        "status_age_human": "13d 1h"
       },
       {
         "key": "GSL-111",
         "status": "Done",
         "status_ts": "2026-07-23T22:50:13Z",
-        "status_age_s": 855113,
+        "status_age_s": 855795,
         "summary": "[UI] Laboratory redesign: professional developer-tool style (Mastra/Supabase)",
         "commits": [
           {
@@ -6859,7 +6863,7 @@
         "key": "GSL-110",
         "status": "Done",
         "status_ts": "2026-07-20T16:05:15Z",
-        "status_age_s": 1138611,
+        "status_age_s": 1139293,
         "summary": "[Docs] dev_history Фазы 6 + приёмка F6-S1..S4",
         "commits": [
           {
@@ -6885,7 +6889,7 @@
         "key": "GSL-109",
         "status": "Done",
         "status_ts": "2026-07-20T14:52:32Z",
-        "status_age_s": 1142974,
+        "status_age_s": 1143656,
         "summary": "[UI][Design] Дизайн-проход 7 экранов Laboratory",
         "commits": [
           {
@@ -6911,7 +6915,7 @@
         "key": "GSL-108",
         "status": "Done",
         "status_ts": "2026-07-20T14:06:12Z",
-        "status_age_s": 1145754,
+        "status_age_s": 1146436,
         "summary": "[Tooling][Docs] Phone-readable доставка дашборда — закрыть опровергнутый F5-S4c",
         "commits": [
           {
@@ -6937,7 +6941,7 @@
         "key": "GSL-107",
         "status": "In Review",
         "status_ts": "2026-07-20T17:24:15Z",
-        "status_age_s": 1133871,
+        "status_age_s": 1134553,
         "summary": "[Docs] Tailscale + Blink/mosh break-glass runbook",
         "commits": [
           {
@@ -6963,13 +6967,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-107",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/121",
         "gh_number": 121,
-        "status_age_human": "13d 2h"
+        "status_age_human": "13d 3h"
       },
       {
         "key": "GSL-106",
         "status": "To Do",
         "status_ts": "2026-07-20T12:43:00Z",
-        "status_age_s": 1150746,
+        "status_age_s": 1151428,
         "summary": "[Tooling] Telegram answer-path → patch-запись в queue.jsonl (answered_by/channel)",
         "commits": [],
         "dev_history": [],
@@ -6983,7 +6987,7 @@
         "key": "GSL-105",
         "status": "To Do",
         "status_ts": "2026-07-20T12:42:59Z",
-        "status_age_s": 1150747,
+        "status_age_s": 1151429,
         "summary": "[Tooling] hook→ntfy: fleet/lab push (Notification/StopFailure/SubagentStop) + ACL/self-host топика",
         "commits": [],
         "dev_history": [],
@@ -7004,7 +7008,7 @@
         "key": "GSL-104",
         "status": "Done",
         "status_ts": "2026-07-20T13:34:24Z",
-        "status_age_s": 1147662,
+        "status_age_s": 1148344,
         "summary": "[Skill][Docs] Remote Control обёртка + runbook пэйринга оркестратора + push-тоггглы",
         "commits": [
           {
@@ -7030,7 +7034,7 @@
         "key": "GSL-103",
         "status": "Done",
         "status_ts": "2026-07-20T12:44:05Z",
-        "status_age_s": 1150681,
+        "status_age_s": 1151363,
         "summary": "[Docs] Ledger: Phase 5 close + orchestration state",
         "commits": [
           {
@@ -7056,7 +7060,7 @@
         "key": "GSL-102",
         "status": "In Review",
         "status_ts": "2026-07-20T18:41:59Z",
-        "status_age_s": 1129207,
+        "status_age_s": 1129889,
         "summary": "[Tooling][Docs] Фаза 6 — Mobile (Remote Control + hook→ntfy + answer-path + break-glass)",
         "commits": [
           {
@@ -7126,7 +7130,7 @@
         "key": "GSL-101",
         "status": "Done",
         "status_ts": "2026-07-13T12:03:14Z",
-        "status_age_s": 1757932,
+        "status_age_s": 1758614,
         "summary": "[Docs] R4.2 → MET: приёмка Фазы 4 закрыта доказательством в логе (seq 156) + счётчики привязаны к sha",
         "commits": [
           {
@@ -7152,7 +7156,7 @@
         "key": "GSL-100",
         "status": "Done",
         "status_ts": "2026-07-20T10:55:12Z",
-        "status_age_s": 1157214,
+        "status_age_s": 1157896,
         "summary": "[Docs] Приёмка Фазы 5: end-check (light/dark, file:// vs GitHub) + сводный dev_history + контракт site/",
         "commits": [
           {
@@ -7184,7 +7188,7 @@
         "key": "GSL-99",
         "status": "Done",
         "status_ts": "2026-07-13T17:49:50Z",
-        "status_age_s": 1737136,
+        "status_age_s": 1737818,
         "summary": "[UI] Laboratory self-health метры: generated-at, dev_history coverage, handoff age (анти-rot алярм)",
         "commits": [
           {
@@ -7228,7 +7232,7 @@
         "key": "GSL-98",
         "status": "Done",
         "status_ts": "2026-07-13T17:18:12Z",
-        "status_age_s": 1739034,
+        "status_age_s": 1739716,
         "summary": "[UI] Fleet + Cost экраны: карточки воркеров + телеметрия (per-cycle, cumulative vs ceiling, per-model)",
         "commits": [
           {
@@ -7272,7 +7276,7 @@
         "key": "GSL-97",
         "status": "Done",
         "status_ts": "2026-07-13T16:19:11Z",
-        "status_age_s": 1742575,
+        "status_age_s": 1743257,
         "summary": "[UI] Timeline + Library на TS + клиентский JS-фильтр по встроенному JSON",
         "commits": [
           {
@@ -7316,7 +7320,7 @@
         "key": "GSL-96",
         "status": "Done",
         "status_ts": "2026-07-13T14:40:57Z",
-        "status_age_s": 1748469,
+        "status_age_s": 1749151,
         "summary": "[UI] Tasks-экран: доска keyed по Jira + epic→PR rollup + ссылки Jira/GH/commit/dev_history",
         "commits": [
           {
@@ -7348,7 +7352,7 @@
         "key": "GSL-95",
         "status": "Done",
         "status_ts": "2026-07-13T13:58:24Z",
-        "status_age_s": 1751022,
+        "status_age_s": 1751704,
         "summary": "[UI] Questions-экран: open по типам + обратный отсчёт DECISION'ов + answered-tonight",
         "commits": [
           {
@@ -7380,7 +7384,7 @@
         "key": "GSL-94",
         "status": "Done",
         "status_ts": "2026-07-13T12:50:56Z",
-        "status_age_s": 1755070,
+        "status_age_s": 1755752,
         "summary": "[UI] Autonomy runway = min(): 6 часов-исчерпания + подсветка связывающего + ETA",
         "commits": [
           {
@@ -7406,7 +7410,7 @@
         "key": "GSL-93",
         "status": "Done",
         "status_ts": "2026-07-13T12:37:05Z",
-        "status_age_s": 1755901,
+        "status_age_s": 1756583,
         "summary": "[UI] build-site: контракт данных из docs/lab/ + общий layout и навигация 7 экранов",
         "commits": [
           {
@@ -7432,7 +7436,7 @@
         "key": "GSL-92",
         "status": "Done",
         "status_ts": "2026-07-13T12:23:32Z",
-        "status_age_s": 1756714,
+        "status_age_s": 1757396,
         "summary": "[Tooling][UI] TypeScript-скаффолд site-рендерера + интеграция в chronicler.sh (degrade без node)",
         "commits": [
           {
@@ -7452,13 +7456,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-92",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/105",
         "gh_number": 105,
-        "status_age_human": "20d 7h"
+        "status_age_human": "20d 8h"
       },
       {
         "key": "GSL-91",
         "status": "Done",
         "status_ts": "2026-07-13T11:52:13Z",
-        "status_age_s": 1758593,
+        "status_age_s": 1759275,
         "summary": "[Docs] Леджер закрытия Фазы 4: STATE + handoff'ы 22..27 + site + events",
         "commits": [
           {
@@ -7484,7 +7488,7 @@
         "key": "GSL-90",
         "status": "Done",
         "status_ts": "2026-07-20T18:41:44Z",
-        "status_age_s": 1129222,
+        "status_age_s": 1129904,
         "summary": "[Repo][Tooling] Фаза 5 — UI оркестрации (static v1)",
         "commits": [
           {
@@ -7530,7 +7534,7 @@
         "key": "GSL-89",
         "status": "Done",
         "status_ts": "2026-07-13T05:53:03Z",
-        "status_age_s": 1780143,
+        "status_age_s": 1780825,
         "summary": "[Docs] dev_history Фазы 4 + контракт generated-at / staleness",
         "commits": [
           {
@@ -7566,7 +7570,7 @@
         "key": "GSL-88",
         "status": "Done",
         "status_ts": "2026-07-13T05:31:24Z",
-        "status_age_s": 1781442,
+        "status_age_s": 1782124,
         "summary": "[Skill] Одна строка lab-emit handoff.written в handoff-конвенцию (T2 без прочих изменений)",
         "commits": [
           {
@@ -7586,13 +7590,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-88",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/100",
         "gh_number": 100,
-        "status_age_human": "20d 14h"
+        "status_age_human": "20d 15h"
       },
       {
         "key": "GSL-87",
         "status": "Done",
         "status_ts": "2026-07-12T21:40:02Z",
-        "status_age_s": 1809724,
+        "status_age_s": 1810406,
         "summary": "[Tooling] poll-fill reconcile (gh/jira/git → пропущенные события)",
         "commits": [
           {
@@ -7618,7 +7622,7 @@
         "key": "GSL-86",
         "status": "Done",
         "status_ts": "2026-07-12T21:26:24Z",
-        "status_age_s": 1810542,
+        "status_age_s": 1811224,
         "summary": "[Tooling] chronicler: build-скрипты (status.json, Library index) + claude -p glue (budget, allowedTools)",
         "commits": [
           {
@@ -7644,13 +7648,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-86",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/98",
         "gh_number": 98,
-        "status_age_human": "20d 22h"
+        "status_age_human": "20d 23h"
       },
       {
         "key": "GSL-85",
         "status": "Done",
         "status_ts": "2026-07-12T20:56:50Z",
-        "status_age_s": 1812316,
+        "status_age_s": 1812998,
         "summary": "[Repo] docs/lab/ layout + .gitignore scratch + atomic-write/append-only дисциплина",
         "commits": [
           {
@@ -7676,7 +7680,7 @@
         "key": "GSL-84",
         "status": "Done",
         "status_ts": "2026-07-12T20:50:59Z",
-        "status_age_s": 1812667,
+        "status_age_s": 1813349,
         "summary": "[Tooling] lab-emit: explicit semantic events (cycle.started, question.posed, decision.made, verify.verdict)",
         "commits": [
           {
@@ -7702,7 +7706,7 @@
         "key": "GSL-83",
         "status": "Done",
         "status_ts": "2026-07-12T20:46:53Z",
-        "status_age_s": 1812913,
+        "status_age_s": 1813595,
         "summary": "[Tooling] T1 event layer: .claude/settings.json hooks + lab-log.sh (envelope-нормализация, дневной jsonl)",
         "commits": [
           {
@@ -7734,7 +7738,7 @@
         "key": "GSL-82",
         "status": "Done",
         "status_ts": "2026-07-12T20:16:09Z",
-        "status_age_s": 1814757,
+        "status_age_s": 1815439,
         "summary": "[Docs] Леджер-коммит — ORCHESTRATION-STATE + handoffs 19/20/21 + Stop-hook + багрепорт + .gitignore/SKILL фиксы",
         "commits": [
           {
@@ -7760,7 +7764,7 @@
         "key": "GSL-81",
         "status": "Done",
         "status_ts": "2026-07-13T11:38:14Z",
-        "status_age_s": 1759432,
+        "status_age_s": 1760114,
         "summary": "[Repo][Tooling] Фаза 4 — Laboratory (auto-doc)",
         "commits": [
           {
@@ -7788,7 +7792,7 @@
         "key": "GSL-80",
         "status": "Done",
         "status_ts": "2026-07-10T10:43:36Z",
-        "status_age_s": 2021910,
+        "status_age_s": 2022592,
         "summary": "[Docs] dev_history",
         "commits": [
           {
@@ -7814,7 +7818,7 @@
         "key": "GSL-79",
         "status": "Done",
         "status_ts": "2026-07-10T10:42:32Z",
-        "status_age_s": 2021974,
+        "status_age_s": 2022656,
         "summary": "[Skill] PULSE-дельты: scan queue, apply-at-deadline, reroute; LIVE-STATUS questions-поле; BLOCKED_ON_HUMAN → queue+reroute",
         "commits": [
           {
@@ -7840,7 +7844,7 @@
         "key": "GSL-78",
         "status": "Done",
         "status_ts": "2026-07-10T10:40:10Z",
-        "status_age_s": 2022116,
+        "status_age_s": 2022798,
         "summary": "[Skill] Morning digest — шаблон + секции + provenance-цитаты",
         "commits": [
           {
@@ -7866,7 +7870,7 @@
         "key": "GSL-77",
         "status": "Done",
         "status_ts": "2026-07-10T10:38:31Z",
-        "status_age_s": 2022215,
+        "status_age_s": 2022897,
         "summary": "[Tooling] decisions/log.jsonl + learning-loop scan (manifest candidates)",
         "commits": [
           {
@@ -7892,7 +7896,7 @@
         "key": "GSL-76",
         "status": "Done",
         "status_ts": "2026-07-10T10:35:06Z",
-        "status_age_s": 2022420,
+        "status_age_s": 2023102,
         "summary": "[Docs] decisions/manifest.md — owner-sovereign шаблон, 6 секций (seed из Standing rules + denylist)",
         "commits": [
           {
@@ -7918,7 +7922,7 @@
         "key": "GSL-75",
         "status": "Done",
         "status_ts": "2026-07-10T10:32:58Z",
-        "status_age_s": 2022548,
+        "status_age_s": 2023230,
         "summary": "[Tooling] lab-emit / queue.jsonl схема + dedup helper (append-only, patch-записи)",
         "commits": [
           {
@@ -7938,13 +7942,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-75",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/86",
         "gh_number": 86,
-        "status_age_human": "23d 9h"
+        "status_age_human": "23d 10h"
       },
       {
         "key": "GSL-74",
         "status": "Done",
         "status_ts": "2026-07-10T10:28:13Z",
-        "status_age_s": 2022833,
+        "status_age_s": 2023515,
         "summary": "[Skill] Типология 4 типов вопросов + поведения (park-per-task, defaults, deadlines) — SKILL.md + worker-template",
         "commits": [
           {
@@ -7964,13 +7968,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-74",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/85",
         "gh_number": 85,
-        "status_age_human": "23d 9h"
+        "status_age_human": "23d 10h"
       },
       {
         "key": "GSL-73",
         "status": "Done",
         "status_ts": "2026-07-10T08:38:51Z",
-        "status_age_s": 2029395,
+        "status_age_s": 2030077,
         "summary": "[Process] Commit orchestration ledger (handoffs 17, 18 + STATE)",
         "commits": [
           {
@@ -7996,7 +8000,7 @@
         "key": "GSL-72",
         "status": "Done",
         "status_ts": "2026-07-12T18:21:22Z",
-        "status_age_s": 1821644,
+        "status_age_s": 1822326,
         "summary": "[Skill][Process] Question buffer + decision manifest — PRD Phase 3",
         "commits": [
           {
@@ -8036,7 +8040,7 @@
         "key": "GSL-71",
         "status": "Done",
         "status_ts": "2026-07-10T08:05:07Z",
-        "status_age_s": 2031419,
+        "status_age_s": 2032101,
         "summary": "[Docs] dev_history + пример пульс-тика (HEARTBEAT_OK fast-path)",
         "commits": [
           {
@@ -8062,7 +8066,7 @@
         "key": "GSL-70",
         "status": "Done",
         "status_ts": "2026-07-10T08:03:11Z",
-        "status_age_s": 2031535,
+        "status_age_s": 2032217,
         "summary": "[Skill] Circuit-breaker: same-error/output-decline + cooldown/HALF_OPEN + human-resettable счётчики",
         "commits": [
           {
@@ -8088,7 +8092,7 @@
         "key": "GSL-69",
         "status": "Done",
         "status_ts": "2026-07-10T08:00:51Z",
-        "status_age_s": 2031675,
+        "status_age_s": 2032357,
         "summary": "[Skill][Tooling] Quota auto-wait: детекция StopFailure + quiesce/resume + ETA",
         "commits": [
           {
@@ -8120,7 +8124,7 @@
         "key": "GSL-68",
         "status": "Done",
         "status_ts": "2026-07-10T07:57:13Z",
-        "status_age_s": 2031893,
+        "status_age_s": 2032575,
         "summary": "[Skill] Night mode / activeHours — определение режима и переключение поведения вопросов",
         "commits": [
           {
@@ -8146,7 +8150,7 @@
         "key": "GSL-67",
         "status": "Done",
         "status_ts": "2026-07-10T07:54:24Z",
-        "status_age_s": 2032062,
+        "status_age_s": 2032744,
         "summary": "[Skill] Таблица каденции пульса (cache-окна) + правило armed-wake-up",
         "commits": [
           {
@@ -8178,7 +8182,7 @@
         "key": "GSL-66",
         "status": "Done",
         "status_ts": "2026-07-10T07:46:24Z",
-        "status_age_s": 2032542,
+        "status_age_s": 2033224,
         "summary": "[Process] Commit orchestration ledger (handoff 16 + STATE)",
         "commits": [
           {
@@ -8204,7 +8208,7 @@
         "key": "GSL-65",
         "status": "Done",
         "status_ts": "2026-07-10T08:30:19Z",
-        "status_age_s": 2029907,
+        "status_age_s": 2030589,
         "summary": "[Skill][Tooling] Self-pulse + night mode — PRD Phase 2",
         "commits": [
           {
@@ -8226,13 +8230,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-65",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/75",
         "gh_number": 75,
-        "status_age_human": "23d 11h"
+        "status_age_human": "23d 12h"
       },
       {
         "key": "GSL-64",
         "status": "Done",
         "status_ts": "2026-07-10T07:25:44Z",
-        "status_age_s": 2033782,
+        "status_age_s": 2034464,
         "summary": "[Docs] Отчёт AutoSK Anatomy — EN+RU dashboard (docs/reports/autosk-anatomy/)",
         "commits": [
           {
@@ -8252,13 +8256,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-64",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/73",
         "gh_number": 73,
-        "status_age_human": "23d 12h"
+        "status_age_human": "23d 13h"
       },
       {
         "key": "GSL-63",
         "status": "Done",
         "status_ts": "2026-07-10T06:44:31Z",
-        "status_age_s": 2036255,
+        "status_age_s": 2036937,
         "summary": "[Research] Re-fetch autosk.app + доклад дельт",
         "commits": [
           {
@@ -8284,7 +8288,7 @@
         "key": "GSL-62",
         "status": "Done",
         "status_ts": "2026-07-10T06:47:44Z",
-        "status_age_s": 2036062,
+        "status_age_s": 2036744,
         "summary": "[Research] Разбор unmerged PRs autosk",
         "commits": [
           {
@@ -8310,7 +8314,7 @@
         "key": "GSL-61",
         "status": "Done",
         "status_ts": "2026-07-10T06:54:56Z",
-        "status_age_s": 2035630,
+        "status_age_s": 2036312,
         "summary": "[Research] Go TUI internals autosk",
         "commits": [
           {
@@ -8336,7 +8340,7 @@
         "key": "GSL-60",
         "status": "Done",
         "status_ts": "2026-07-10T06:54:54Z",
-        "status_age_s": 2035632,
+        "status_age_s": 2036314,
         "summary": "[Research] pi-agent internals — помодульный разбор (клон, только чтение)",
         "commits": [
           {
@@ -8362,7 +8366,7 @@
         "key": "GSL-59",
         "status": "Done",
         "status_ts": "2026-07-10T06:39:00Z",
-        "status_age_s": 2036586,
+        "status_age_s": 2037268,
         "summary": "[Process] Commit orchestration ledger (handoff 15 + STATE)",
         "commits": [
           {
@@ -8388,7 +8392,7 @@
         "key": "GSL-58",
         "status": "Done",
         "status_ts": "2026-07-10T07:39:10Z",
-        "status_age_s": 2032976,
+        "status_age_s": 2033658,
         "summary": "[Research][Docs] AutoSK Anatomy v2 — помодульный код-анализ (CODE-ONLY)",
         "commits": [
           {
@@ -8416,7 +8420,7 @@
         "key": "GSL-57",
         "status": "Done",
         "status_ts": "2026-07-10T06:00:02Z",
-        "status_age_s": 2038924,
+        "status_age_s": 2039606,
         "summary": "[Docs] Runbook установки watchdog + dev_history",
         "commits": [
           {
@@ -8442,7 +8446,7 @@
         "key": "GSL-56",
         "status": "Done",
         "status_ts": "2026-07-10T05:33:10Z",
-        "status_age_s": 2040536,
+        "status_age_s": 2041218,
         "summary": "[Skill] Cold-start как точка re-wake (idempotent re-attach, no double-dispatch)",
         "commits": [
           {
@@ -8462,13 +8466,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-56",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/64",
         "gh_number": 64,
-        "status_age_human": "23d 14h"
+        "status_age_human": "23d 15h"
       },
       {
         "key": "GSL-55",
         "status": "Done",
         "status_ts": "2026-07-10T05:51:42Z",
-        "status_age_s": 2039424,
+        "status_age_s": 2040106,
         "summary": "[Tooling] Route-through-reap на kill + запись orchestrator_restarted/worker_died в ledger",
         "commits": [
           {
@@ -8494,7 +8498,7 @@
         "key": "GSL-54",
         "status": "Done",
         "status_ts": "2026-07-10T05:47:36Z",
-        "status_age_s": 2039670,
+        "status_age_s": 2040352,
         "summary": "[Tooling] Gastown-debounce: startup grace + zombie(3) + kill cooldown + mass-death + single-flight",
         "commits": [
           {
@@ -8520,7 +8524,7 @@
         "key": "GSL-53",
         "status": "Done",
         "status_ts": "2026-07-10T05:41:31Z",
-        "status_age_s": 2040035,
+        "status_age_s": 2040717,
         "summary": "[Tooling] Restart budget + exponential backoff",
         "commits": [
           {
@@ -8546,7 +8550,7 @@
         "key": "GSL-52",
         "status": "Done",
         "status_ts": "2026-07-10T05:37:42Z",
-        "status_age_s": 2040264,
+        "status_age_s": 2040946,
         "summary": "[Tooling] launchd LaunchAgent plist + watchdog.sh (скелет)",
         "commits": [
           {
@@ -8578,7 +8582,7 @@
         "key": "GSL-51",
         "status": "Done",
         "status_ts": "2026-07-10T05:23:07Z",
-        "status_age_s": 2041139,
+        "status_age_s": 2041821,
         "summary": "[Skill] Heartbeat protocol в orchestrating-delivery-agents",
         "commits": [
           {
@@ -8604,13 +8608,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-51",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/59",
         "gh_number": 59,
-        "status_age_human": "23d 14h"
+        "status_age_human": "23d 15h"
       },
       {
         "key": "GSL-50",
         "status": "Done",
         "status_ts": "2026-07-10T05:13:39Z",
-        "status_age_s": 2041707,
+        "status_age_s": 2042389,
         "summary": "[Process] Commit orchestration ledger (handoffs 13, 14 + STATE)",
         "commits": [
           {
@@ -8636,7 +8640,7 @@
         "key": "GSL-49",
         "status": "Done",
         "status_ts": "2026-07-10T06:32:54Z",
-        "status_age_s": 2036952,
+        "status_age_s": 2037634,
         "summary": "[Skill][Tooling] Watchdog над оркестратором — PRD Phase 1 (heartbeat + launchd watchdog + restart budget)",
         "commits": [
           {
@@ -8658,22 +8662,15 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-49",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/57",
         "gh_number": 57,
-        "status_age_human": "23d 13h"
+        "status_age_human": "23d 14h"
       },
       {
         "key": "GSL-48",
         "status": "Done",
         "status_ts": "2026-07-07T23:16:00Z",
-        "status_age_s": 2235966,
+        "status_age_s": 2236648,
         "summary": "[Docs] PRD — GoSleep evolution plan (orchestration v-next)",
-        "commits": [
-          {
-            "sha": "83f8988",
-            "subject": "GSL-48 PRD — GoSleep evolution plan (orchestration v-next)",
-            "ts": "2026-07-08T01:15:17+02:00",
-            "url": "https://github.com/ainstance-labs/gosleep/commit/83f8988"
-          }
-        ],
+        "commits": [],
         "dev_history": [
           {
             "name": "GSL-48-phase-gsl41-cycle1-prd-gosleep-evolution.md",
@@ -8690,16 +8687,9 @@
         "key": "GSL-47",
         "status": "Done",
         "status_ts": "2026-07-07T23:15:59Z",
-        "status_age_s": 2235967,
+        "status_age_s": 2236649,
         "summary": "[Docs][Research] Report: Loop engineering (EN+RU)",
-        "commits": [
-          {
-            "sha": "4258890",
-            "subject": "GSL-47 fix: HTML document shell (doctype + charset) for loop-engineering reports — review finding",
-            "ts": "2026-07-09T23:33:43+02:00",
-            "url": "https://github.com/ainstance-labs/gosleep/commit/4258890"
-          }
-        ],
+        "commits": [],
         "dev_history": [
           {
             "name": "GSL-47-phase-gsl41-cycle1-report-loop-engineering.md",
@@ -8716,7 +8706,7 @@
         "key": "GSL-46",
         "status": "Done",
         "status_ts": "2026-07-07T23:15:58Z",
-        "status_age_s": 2235968,
+        "status_age_s": 2236650,
         "summary": "[Docs][Research] Report: Autonomy — question buffer, decision manifest, Laboratory, UI & mobile (EN+RU)",
         "commits": [],
         "dev_history": [
@@ -8735,7 +8725,7 @@
         "key": "GSL-45",
         "status": "Done",
         "status_ts": "2026-07-07T23:15:57Z",
-        "status_age_s": 2235969,
+        "status_age_s": 2236651,
         "summary": "[Docs][Research] Report: Headless claude -p, subscription compatibility & orchestrator supervision (EN+RU)",
         "commits": [],
         "dev_history": [
@@ -8754,7 +8744,7 @@
         "key": "GSL-44",
         "status": "Done",
         "status_ts": "2026-07-07T23:15:56Z",
-        "status_age_s": 2235970,
+        "status_age_s": 2236652,
         "summary": "[Docs][Research] Report: Orchestrator landscape — autosk/warren/overstory + ecosystem (EN+RU dashboard)",
         "commits": [],
         "dev_history": [
@@ -8773,7 +8763,7 @@
         "key": "GSL-43",
         "status": "Done",
         "status_ts": "2026-07-07T23:15:55Z",
-        "status_age_s": 2235971,
+        "status_age_s": 2236653,
         "summary": "[Research] Deep-dive findings pack — autosk, warren/overstory, headless claude -p, loop engineering, Lab/UI/mobile",
         "commits": [],
         "dev_history": [
@@ -8792,7 +8782,7 @@
         "key": "GSL-42",
         "status": "Done",
         "status_ts": "2026-07-07T20:28:22Z",
-        "status_age_s": 2246024,
+        "status_age_s": 2246706,
         "summary": "[Process] Commit orchestration ledger (handoff 12 + STATE) + branch housekeeping",
         "commits": [],
         "dev_history": [
@@ -8805,13 +8795,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-42",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/49",
         "gh_number": 49,
-        "status_age_human": "25d 23h"
+        "status_age_human": "26d 0h"
       },
       {
         "key": "GSL-41",
         "status": "Done",
         "status_ts": "2026-07-09T21:35:57Z",
-        "status_age_s": 2069169,
+        "status_age_s": 2069851,
         "summary": "[Research][Docs] Orchestration deep-research — autosk/warren/overstory, headless, autonomy, Lab/UI, loop engineering → reports + PRD",
         "commits": [
           {
@@ -8839,7 +8829,7 @@
         "key": "GSL-40",
         "status": "Done",
         "status_ts": "2026-07-01T13:35:43Z",
-        "status_age_s": 2789183,
+        "status_age_s": 2789865,
         "summary": "[Process] Track orchestration ledger — handoffs 09-11 + STATE snapshot",
         "commits": [],
         "dev_history": [
@@ -8858,7 +8848,7 @@
         "key": "GSL-39",
         "status": "Done",
         "status_ts": "2026-07-01T13:38:14Z",
-        "status_age_s": 2789032,
+        "status_age_s": 2789714,
         "summary": "[Evals] Restore SC-09 discrimination — recalibration over-corrected (RED=GREEN=1.0)",
         "commits": [],
         "dev_history": [
@@ -8877,7 +8867,7 @@
         "key": "GSL-38",
         "status": "Done",
         "status_ts": "2026-07-01T13:39:42Z",
-        "status_age_s": 2788944,
+        "status_age_s": 2789626,
         "summary": "[Skill][Evals] SC-12 cost-telemetry stuck at 0.0 — calibration check before any further skill edit",
         "commits": [],
         "dev_history": [
@@ -8896,18 +8886,11 @@
         "key": "GSL-37",
         "status": "Done",
         "status_ts": "2026-07-01T14:00:12Z",
-        "status_age_s": 2787714,
+        "status_age_s": 2788396,
         "summary": "[Skill][Evals] Remaining gaps & eval-quality after v3",
         "commits": [],
         "dev_history": [],
-        "prs": [
-          {
-            "number": 47,
-            "state": "MERGED",
-            "url": "https://github.com/ainstance-labs/gosleep/pull/47",
-            "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)"
-          }
-        ],
+        "prs": [],
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-37",
         "gh_url": null,
         "gh_number": null,
@@ -8917,7 +8900,7 @@
         "key": "GSL-36",
         "status": "Done",
         "status_ts": "2026-06-29T15:30:19Z",
-        "status_age_s": 2955107,
+        "status_age_s": 2955789,
         "summary": "[Evals] v3 re-validation — SC-09 fixed (1.0), SC-19 0.75, SC-11 noise, SC-12 open",
         "commits": [],
         "dev_history": [
@@ -8930,13 +8913,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-36",
         "gh_url": null,
         "gh_number": null,
-        "status_age_human": "34d 4h"
+        "status_age_human": "34d 5h"
       },
       {
         "key": "GSL-35",
         "status": "Done",
         "status_ts": "2026-06-29T15:03:25Z",
-        "status_age_s": 2956721,
+        "status_age_s": 2957403,
         "summary": "[Evals] Investigate SC-09 scenario/rubric calibration — RED 1.0 > GREEN 0.0 inversion",
         "commits": [],
         "dev_history": [
@@ -8955,7 +8938,7 @@
         "key": "GSL-34",
         "status": "Done",
         "status_ts": "2026-06-29T15:12:24Z",
-        "status_age_s": 2956182,
+        "status_age_s": 2956864,
         "summary": "[Skill] SC-12 cost-telemetry — add sanctioned range-read recovery + forward process-fix commitment",
         "commits": [],
         "dev_history": [
@@ -8974,7 +8957,7 @@
         "key": "GSL-33",
         "status": "Done",
         "status_ts": "2026-06-29T15:12:20Z",
-        "status_age_s": 2956186,
+        "status_age_s": 2956868,
         "summary": "[Skill] SC-19 rollover — orchestrator kills a live worker early to force a roll boundary",
         "commits": [],
         "dev_history": [
@@ -8993,7 +8976,7 @@
         "key": "GSL-32",
         "status": "Done",
         "status_ts": "2026-06-29T15:12:25Z",
-        "status_age_s": 2956181,
+        "status_age_s": 2956863,
         "summary": "[Skill] SC-09 patience-vs-nudge — orchestrator still defaults to vague \"keep monitoring\" instead of ONE concrete nudge",
         "commits": [],
         "dev_history": [
@@ -9012,7 +8995,7 @@
         "key": "GSL-31",
         "status": "Done",
         "status_ts": "2026-06-29T15:38:51Z",
-        "status_age_s": 2954595,
+        "status_age_s": 2955277,
         "summary": "[Skill][Evals] Remaining eval-validated gaps after v2 — SC-09, SC-19, SC-12",
         "commits": [],
         "dev_history": [],
@@ -9026,7 +9009,7 @@
         "key": "GSL-30",
         "status": "Done",
         "status_ts": "2026-06-29T13:20:20Z",
-        "status_age_s": 2962906,
+        "status_age_s": 2963588,
         "summary": "[Process] Track v2 orchestration ledger — handoffs 04–07, STATE, incident report",
         "commits": [],
         "dev_history": [],
@@ -9040,7 +9023,7 @@
         "key": "GSL-29",
         "status": "Done",
         "status_ts": "2026-06-29T13:53:07Z",
-        "status_age_s": 2960939,
+        "status_age_s": 2961621,
         "summary": "[Evals] v2 re-validate — re-run SC-09/11/12/19 at N=2 (cached RED)",
         "commits": [],
         "dev_history": [
@@ -9059,7 +9042,7 @@
         "key": "GSL-28",
         "status": "Done",
         "status_ts": "2026-06-29T13:27:32Z",
-        "status_age_s": 2962474,
+        "status_age_s": 2963156,
         "summary": "[Skill] v2 SC-11: concrete state-update mechanics on suspect handoff",
         "commits": [],
         "dev_history": [
@@ -9072,13 +9055,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-28",
         "gh_url": null,
         "gh_number": null,
-        "status_age_human": "34d 6h"
+        "status_age_human": "34d 7h"
       },
       {
         "key": "GSL-27",
         "status": "Done",
         "status_ts": "2026-06-29T13:27:31Z",
-        "status_age_s": 2962475,
+        "status_age_s": 2963157,
         "summary": "[Skill] v2 SC-12: concrete TELEMETRY-in-STATE mechanism",
         "commits": [],
         "dev_history": [
@@ -9091,13 +9074,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-27",
         "gh_url": null,
         "gh_number": null,
-        "status_age_human": "34d 6h"
+        "status_age_human": "34d 7h"
       },
       {
         "key": "GSL-26",
         "status": "Done",
         "status_ts": "2026-06-29T13:27:26Z",
-        "status_age_s": 2962480,
+        "status_age_s": 2963162,
         "summary": "[Skill] v2 SC-19: hard gate — never roll while a worker is alive",
         "commits": [],
         "dev_history": [
@@ -9110,13 +9093,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-26",
         "gh_url": null,
         "gh_number": null,
-        "status_age_human": "34d 6h"
+        "status_age_human": "34d 7h"
       },
       {
         "key": "GSL-25",
         "status": "Done",
         "status_ts": "2026-06-29T13:27:19Z",
-        "status_age_s": 2962487,
+        "status_age_s": 2963169,
         "summary": "[Skill] v2 SC-09: forbid vague 'keep monitoring'; mandate ONE concrete nudge",
         "commits": [],
         "dev_history": [
@@ -9129,13 +9112,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-25",
         "gh_url": null,
         "gh_number": null,
-        "status_age_human": "34d 6h"
+        "status_age_human": "34d 7h"
       },
       {
         "key": "GSL-24",
         "status": "Done",
         "status_ts": "2026-06-29T14:56:02Z",
-        "status_age_s": 2957164,
+        "status_age_s": 2957846,
         "summary": "[Skill] Harness hardening v2 — make the eval-failed fixes actually change behavior",
         "commits": [],
         "dev_history": [],
@@ -9149,7 +9132,7 @@
         "key": "GSL-23",
         "status": "Done",
         "status_ts": "2026-06-28T22:02:52Z",
-        "status_age_s": 3017954,
+        "status_age_s": 3018636,
         "summary": "[Evals] Reliable file-based run-config + hard safety (no silent full-run default)",
         "commits": [],
         "dev_history": [
@@ -9168,7 +9151,7 @@
         "key": "GSL-22",
         "status": "Done",
         "status_ts": "2026-06-28T18:36:04Z",
-        "status_age_s": 3030362,
+        "status_age_s": 3031044,
         "summary": "[Evals] Run eval agents on cost-appropriate models — Sonnet under-test, Haiku judge",
         "commits": [],
         "dev_history": [
@@ -9187,7 +9170,7 @@
         "key": "GSL-21",
         "status": "Done",
         "status_ts": "2026-06-28T22:32:36Z",
-        "status_age_s": 3016170,
+        "status_age_s": 3016852,
         "summary": "[Evals] Run the validation suite + commit scorecard + results analysis",
         "commits": [],
         "dev_history": [
@@ -9200,13 +9183,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-21",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/24",
         "gh_number": 24,
-        "status_age_human": "34d 21h"
+        "status_age_human": "34d 22h"
       },
       {
         "key": "GSL-20",
         "status": "Done",
         "status_ts": "2026-06-28T18:27:57Z",
-        "status_age_s": 3030849,
+        "status_age_s": 3031531,
         "summary": "[Evals] Make eval-runner efficient — batched judge + per-scenario N + RED baseline cache",
         "commits": [],
         "dev_history": [
@@ -9219,13 +9202,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-20",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/23",
         "gh_number": 23,
-        "status_age_human": "35d 1h"
+        "status_age_human": "35d 2h"
       },
       {
         "key": "GSL-19",
         "status": "Done",
         "status_ts": "2026-06-29T12:27:46Z",
-        "status_age_s": 2966060,
+        "status_age_s": 2966742,
         "summary": "[Evals] Behavioral validation of the hardened skill — efficient run",
         "commits": [],
         "dev_history": [],
@@ -9233,13 +9216,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-19",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/22",
         "gh_number": 22,
-        "status_age_human": "34d 7h"
+        "status_age_human": "34d 8h"
       },
       {
         "key": "GSL-18",
         "status": "Done",
         "status_ts": "2026-06-28T17:55:12Z",
-        "status_age_s": 3032814,
+        "status_age_s": 3033496,
         "summary": "[Docs] Update CLAUDE.md + add skill/README.md for the multi-skill layout",
         "commits": [],
         "dev_history": [
@@ -9258,7 +9241,7 @@
         "key": "GSL-17",
         "status": "Done",
         "status_ts": "2026-06-28T17:54:20Z",
-        "status_age_s": 3032866,
+        "status_age_s": 3033548,
         "summary": "[Skill] Vendor the 4 supporting skills (writing-prds, delivery-workflow, handoff, using-jira)",
         "commits": [],
         "dev_history": [
@@ -9277,7 +9260,7 @@
         "key": "GSL-16",
         "status": "Done",
         "status_ts": "2026-06-28T17:53:36Z",
-        "status_age_s": 3032910,
+        "status_age_s": 3033592,
         "summary": "[Tooling] Restructure skill/ into per-skill subfolders + rewrite install.sh for multi-skill install",
         "commits": [],
         "dev_history": [
@@ -9296,7 +9279,7 @@
         "key": "GSL-15",
         "status": "Done",
         "status_ts": "2026-06-28T17:59:47Z",
-        "status_age_s": 3032539,
+        "status_age_s": 3033221,
         "summary": "[Skill][Tooling] Vendor all delivery skills — gosleep as source of truth for the full methodology",
         "commits": [],
         "dev_history": [],
@@ -9310,7 +9293,7 @@
         "key": "GSL-14",
         "status": "Done",
         "status_ts": "2026-06-27T19:42:11Z",
-        "status_age_s": 3112795,
+        "status_age_s": 3113477,
         "summary": "[Process] Track orchestration ledger, handoffs & kickoff prompts in git; gitignore .vscode",
         "commits": [],
         "dev_history": [
@@ -9329,7 +9312,7 @@
         "key": "GSL-13",
         "status": "Done",
         "status_ts": "2026-06-27T20:02:54Z",
-        "status_age_s": 3111552,
+        "status_age_s": 3112234,
         "summary": "[Evals] Author E17 / VERIFY-REQUEST / watchdog eval scenarios",
         "commits": [],
         "dev_history": [
@@ -9348,7 +9331,7 @@
         "key": "GSL-12",
         "status": "Done",
         "status_ts": "2026-06-27T19:53:34Z",
-        "status_age_s": 3112112,
+        "status_age_s": 3112794,
         "summary": "[Skill] Curb transcript-tail read-exception abuse + tighten context discipline",
         "commits": [],
         "dev_history": [
@@ -9367,7 +9350,7 @@
         "key": "GSL-11",
         "status": "Done",
         "status_ts": "2026-06-27T19:53:33Z",
-        "status_age_s": 3112113,
+        "status_age_s": 3112795,
         "summary": "[Skill] Disambiguate patience vs active nudge at a PR/finalize boundary",
         "commits": [],
         "dev_history": [
@@ -9386,7 +9369,7 @@
         "key": "GSL-10",
         "status": "Done",
         "status_ts": "2026-06-27T19:53:32Z",
-        "status_age_s": 3112114,
+        "status_age_s": 3112796,
         "summary": "[Skill] On-disk state durability + telemetry recovery + orchestrator rollover",
         "commits": [],
         "dev_history": [
@@ -9405,7 +9388,7 @@
         "key": "GSL-9",
         "status": "Done",
         "status_ts": "2026-06-27T19:45:43Z",
-        "status_age_s": 3112583,
+        "status_age_s": 3113265,
         "summary": "[Skill] Idempotent find-or-create + reconcile late-arriving IDs",
         "commits": [],
         "dev_history": [
@@ -9424,7 +9407,7 @@
         "key": "GSL-8",
         "status": "Done",
         "status_ts": "2026-06-27T19:44:33Z",
-        "status_age_s": 3112653,
+        "status_age_s": 3113335,
         "summary": "[Skill] Recovery falls back to on-disk handoff FIRST when state file seems missing",
         "commits": [],
         "dev_history": [
@@ -9443,7 +9426,7 @@
         "key": "GSL-7",
         "status": "Done",
         "status_ts": "2026-06-28T17:44:34Z",
-        "status_age_s": 3033452,
+        "status_age_s": 3034134,
         "summary": "[Skill][Process] Harness hardening — close skill-gaps & extend eval coverage",
         "commits": [],
         "dev_history": [],
@@ -9457,7 +9440,7 @@
         "key": "GSL-6",
         "status": "Done",
         "status_ts": "2026-06-27T19:43:39Z",
-        "status_age_s": 3112707,
+        "status_age_s": 3113389,
         "summary": "[Skill] Orchestrator restart can skip the dated handoff — not enforced at session boundaries",
         "commits": [],
         "dev_history": [
@@ -9476,7 +9459,7 @@
         "key": "GSL-5",
         "status": "Done",
         "status_ts": "2026-06-26T19:08:57Z",
-        "status_age_s": 3201189,
+        "status_age_s": 3201871,
         "summary": "[Skill] Sync orchestrating-delivery-agents from global",
         "commits": [],
         "dev_history": [
@@ -9495,7 +9478,7 @@
         "key": "GSL-4",
         "status": "Done",
         "status_ts": "2026-06-26T19:28:36Z",
-        "status_age_s": 3200010,
+        "status_age_s": 3200692,
         "summary": "[Tooling] Fix stale pre-move ROOT paths in report generators and eval runner",
         "commits": [],
         "dev_history": [
@@ -9508,13 +9491,13 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-4",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/4",
         "gh_number": 4,
-        "status_age_human": "37d 0h"
+        "status_age_human": "37d 1h"
       },
       {
         "key": "GSL-3",
         "status": "Done",
         "status_ts": "2026-06-11T11:49:06Z",
-        "status_age_s": 4523580,
+        "status_age_s": 4524262,
         "summary": "[Docs][Process] Project anchors — CLAUDE.md conventions, dev_history index, README refresh",
         "commits": [],
         "dev_history": [
@@ -9533,7 +9516,7 @@
         "key": "GSL-2",
         "status": "Done",
         "status_ts": "2026-06-11T11:49:05Z",
-        "status_age_s": 4523581,
+        "status_age_s": 4524263,
         "summary": "[Repo] Import orchestration harness v0 — skill source, evals, docs, reports",
         "commits": [],
         "dev_history": [
@@ -9552,7 +9535,7 @@
         "key": "GSL-1",
         "status": "Done",
         "status_ts": "2026-06-27T19:27:27Z",
-        "status_age_s": 3113679,
+        "status_age_s": 3114361,
         "summary": "[Repo][Process] Project initialization — import harness v0, wire tracker + GitHub",
         "commits": [],
         "dev_history": [],
@@ -9560,21 +9543,55 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-1",
         "gh_url": "https://github.com/ainstance-labs/gosleep/issues/1",
         "gh_number": 1,
-        "status_age_human": "36d 0h"
+        "status_age_human": "36d 1h"
       }
     ],
     "by_status": {
-      "Done": 199,
-      "To Do": 46,
+      "Done": 210,
+      "To Do": 35,
       "In Review": 4
     },
-    "todo": 46,
-    "tracker_last_polled": "2026-07-28T12:05:22Z",
-    "tracker_age_s": 461804,
-    "tracker_age_human": "5d 8h",
-    "tracker_stale": true,
+    "todo": 35,
+    "tracker_last_polled": "2026-08-02T20:26:40Z",
+    "tracker_age_s": 408,
+    "tracker_age_human": "6m",
+    "tracker_stale": false,
     "gh_base": "https://github.com/ainstance-labs/gosleep",
     "epics": [
+      {
+        "key": "GSL-178",
+        "summary": "[Tooling][Process] Супервизия: вооружить и опереть на харнесс",
+        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-178",
+        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/178",
+        "gh_number": 178,
+        "pr": {
+          "number": 255,
+          "state": "MERGED",
+          "url": "https://github.com/ainstance-labs/gosleep/pull/255",
+          "title": "GSL-178 Супервизия: наблюдательный режим сторожа — платформенный источник жизни, observe по умолчанию, reality-гейт"
+        },
+        "pr_why": null,
+        "tasks": [
+          "GSL-220",
+          "GSL-218",
+          "GSL-214",
+          "GSL-211",
+          "GSL-219",
+          "GSL-217",
+          "GSL-216",
+          "GSL-215",
+          "GSL-213",
+          "GSL-212"
+        ],
+        "task_count": 10,
+        "commits": 10,
+        "by_status": {
+          "Done": 10
+        },
+        "membership": "merge-commit",
+        "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
+        "merged": true
+      },
       {
         "key": "GSL-176",
         "summary": "[Tooling] Один мотор для всего, что должно происходить регулярно",
@@ -10157,13 +10174,8 @@
         "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-37",
         "gh_url": null,
         "gh_number": null,
-        "pr": {
-          "number": 47,
-          "state": "MERGED",
-          "url": "https://github.com/ainstance-labs/gosleep/pull/47",
-          "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)"
-        },
-        "pr_why": null,
+        "pr": null,
+        "pr_why": "no pull request names this epic",
         "tasks": [
           "GSL-38",
           "GSL-39",
@@ -10321,45 +10333,16 @@
         "membership": "merge-commit",
         "membership_why": "read off the epic's merge commit (mc^1..mc^2) — the exact commits it merged",
         "merged": true
-      },
-      {
-        "key": "GSL-178",
-        "summary": "[Tooling][Process] Супервизия: вооружить и опереть на харнесс",
-        "jira_url": "https://ainstance-labs.atlassian.net/browse/GSL-178",
-        "gh_url": "https://github.com/ainstance-labs/gosleep/issues/178",
-        "gh_number": 178,
-        "pr": null,
-        "pr_why": "no pull request names this epic",
-        "tasks": [
-          "GSL-220",
-          "GSL-218",
-          "GSL-214",
-          "GSL-211",
-          "GSL-219",
-          "GSL-217",
-          "GSL-216",
-          "GSL-215",
-          "GSL-213",
-          "GSL-212"
-        ],
-        "task_count": 10,
-        "commits": 10,
-        "by_status": {
-          "To Do": 10
-        },
-        "membership": "branch",
-        "membership_why": "read off the epic's branch, which the trunk does not carry yet",
-        "merged": false
       }
     ],
     "gh_issue_links": true,
     "gh_why": ""
   },
   "fleet": {
-    "open_workers": 1,
+    "open_workers": 2,
     "cap": 3,
-    "free_slots": 2,
-    "cycle": 150,
+    "free_slots": 1,
+    "cycle": 151,
     "orchestrator_status": "ok",
     "orchestrator_context_pct": 99,
     "source": "docs/handoff/.orchestrator-heartbeat (gitignored — absent on a fresh clone)",
@@ -10372,7 +10355,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-28T08:03:23Z — this one is over",
         "last_ts": "2026-07-28T08:03:23Z",
-        "last_age_s": 476323,
+        "last_age_s": 477005,
         "last_age_human": "5d 12h",
         "model": "claude-fable-5",
         "models": [
@@ -10407,8 +10390,8 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-23T18:31:12Z — this one is over",
         "last_ts": "2026-07-23T18:31:12Z",
-        "last_age_s": 870654,
-        "last_age_human": "10d 1h",
+        "last_age_s": 871336,
+        "last_age_human": "10d 2h",
         "model": "claude-fable-5",
         "models": [
           "claude-fable-5"
@@ -10442,7 +10425,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T12:55:28Z — this one is over",
         "last_ts": "2026-07-13T12:55:28Z",
-        "last_age_s": 1754798,
+        "last_age_s": 1755480,
         "last_age_human": "20d 7h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10477,7 +10460,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T12:05:51Z — this one is over",
         "last_ts": "2026-07-13T12:05:51Z",
-        "last_age_s": 1757775,
+        "last_age_s": 1758457,
         "last_age_human": "20d 8h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10512,7 +10495,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T11:40:31Z — this one is over",
         "last_ts": "2026-07-13T11:40:31Z",
-        "last_age_s": 1759295,
+        "last_age_s": 1759977,
         "last_age_human": "20d 8h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10546,7 +10529,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T10:02:29Z — this one is over",
         "last_ts": "2026-07-13T10:02:29Z",
-        "last_age_s": 1765177,
+        "last_age_s": 1765859,
         "last_age_human": "20d 10h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10581,8 +10564,8 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T09:30:15Z — this one is over",
         "last_ts": "2026-07-13T09:30:15Z",
-        "last_age_s": 1767111,
-        "last_age_human": "20d 10h",
+        "last_age_s": 1767793,
+        "last_age_human": "20d 11h",
         "model": "claude-opus-4-8",
         "models": [
           "claude-opus-4-8"
@@ -10616,7 +10599,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T09:10:15Z — this one is over",
         "last_ts": "2026-07-13T09:10:15Z",
-        "last_age_s": 1768311,
+        "last_age_s": 1768993,
         "last_age_human": "20d 11h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10651,7 +10634,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-13T05:56:40Z — this one is over",
         "last_ts": "2026-07-13T05:56:40Z",
-        "last_age_s": 1779926,
+        "last_age_s": 1780608,
         "last_age_human": "20d 14h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10686,7 +10669,7 @@
         "state": "ended",
         "state_why": "the runtime logged pane.ended (SessionEnd) at 2026-07-12T21:04:19Z — this one is over",
         "last_ts": "2026-07-12T21:04:19Z",
-        "last_age_s": 1811867,
+        "last_age_s": 1812549,
         "last_age_human": "20d 23h",
         "model": "claude-opus-4-8",
         "models": [
@@ -10715,7 +10698,7 @@
         "tokens_source": "docs/handoff/ORCHESTRATION-STATE.md §TELEMETRY (worker=impl-lab-1) — hand-written, not an event"
       }
     ],
-    "unnamed_sessions": 83,
+    "unnamed_sessions": 84,
     "ledger_only": [
       "audit-autonomy",
       "audit-delivery",
@@ -10768,6 +10751,7 @@
       "gsl72-setup",
       "gsl81-setup",
       "impl-176",
+      "impl-178-2",
       "impl-179",
       "impl-51",
       "impl-56",
@@ -10833,47 +10817,78 @@
     "workers_searched": "docs/lab/events/*.jsonl — a card per session named by a task.completed event (the only event carrying BOTH a session_id and the worker's name); the model is then read from that session's transcript",
     "roster": [
       {
-        "actor": "general-purpose",
-        "events": 396,
-        "last_ts": "2026-08-02T20:21:55Z",
-        "types": {
-          "tracker.issue.created": 81,
-          "dev_history.written": 72,
-          "tracker.issue.transitioned": 67,
-          "agent.idle": 32,
-          "agent.turn_ended": 27,
-          "vcs.commit": 24
-        },
-        "last_age_s": 11,
-        "last_age_human": "11s"
-      },
-      {
-        "actor": "poll-fill",
-        "events": 399,
-        "last_ts": "2026-08-02T20:21:53Z",
-        "types": {
-          "tracker.issue.updated": 266,
-          "vcs.commit": 81,
-          "vcs.pr.merged": 26,
-          "vcs.pr.opened": 26
-        },
-        "last_age_s": 13,
-        "last_age_human": "13s"
-      },
-      {
         "actor": "a716426f",
-        "events": 98,
-        "last_ts": "2026-08-02T20:21:28Z",
+        "events": 102,
+        "last_ts": "2026-08-02T20:30:15Z",
         "types": {
-          "agent.turn_ended": 75,
+          "agent.turn_ended": 79,
           "handoff.written": 10,
           "api.failure": 7,
           "notification.raised": 4,
           "pane.started": 1,
           "tracker.issue.updated": 1
         },
-        "last_age_s": 38,
-        "last_age_human": "38s"
+        "last_age_s": 193,
+        "last_age_human": "3m"
+      },
+      {
+        "actor": "general-purpose",
+        "events": 407,
+        "last_ts": "2026-08-02T20:28:53Z",
+        "types": {
+          "tracker.issue.created": 81,
+          "dev_history.written": 72,
+          "tracker.issue.transitioned": 69,
+          "agent.idle": 37,
+          "agent.turn_ended": 29,
+          "pane.started": 24
+        },
+        "last_age_s": 275,
+        "last_age_human": "4m"
+      },
+      {
+        "actor": "a1995aba5520d3d32",
+        "events": 2,
+        "last_ts": "2026-08-02T20:28:53Z",
+        "types": {
+          "agent.spawned": 1,
+          "agent.terminated": 1
+        },
+        "last_age_s": 275,
+        "last_age_human": "4m"
+      },
+      {
+        "actor": "a96327c00ee1982fd",
+        "events": 1,
+        "last_ts": "2026-08-02T20:28:49Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 279,
+        "last_age_human": "4m"
+      },
+      {
+        "actor": "a6615fa1bcde4fb1b",
+        "events": 1,
+        "last_ts": "2026-08-02T20:28:15Z",
+        "types": {
+          "agent.terminated": 1
+        },
+        "last_age_s": 313,
+        "last_age_human": "5m"
+      },
+      {
+        "actor": "poll-fill",
+        "events": 414,
+        "last_ts": "2026-08-02T20:26:40Z",
+        "types": {
+          "tracker.issue.updated": 277,
+          "vcs.commit": 83,
+          "vcs.pr.merged": 27,
+          "vcs.pr.opened": 27
+        },
+        "last_age_s": 408,
+        "last_age_human": "6m"
       },
       {
         "actor": "owner",
@@ -10883,8 +10898,8 @@
           "decision.made": 9,
           "question.answered": 6
         },
-        "last_age_s": 882,
-        "last_age_human": "14m"
+        "last_age_s": 1564,
+        "last_age_human": "26m"
       },
       {
         "actor": "orchestrator",
@@ -10896,8 +10911,8 @@
           "handoff.written": 11,
           "question.posed": 8
         },
-        "last_age_s": 1451,
-        "last_age_human": "24m"
+        "last_age_s": 2133,
+        "last_age_human": "35m"
       },
       {
         "actor": "apply-due",
@@ -10906,8 +10921,8 @@
         "types": {
           "question.auto_resolved": 4
         },
-        "last_age_s": 1451,
-        "last_age_human": "24m"
+        "last_age_s": 2133,
+        "last_age_human": "35m"
       },
       {
         "actor": "impl-178",
@@ -10916,8 +10931,8 @@
         "types": {
           "question.posed": 3
         },
-        "last_age_s": 449960,
-        "last_age_human": "5d 4h"
+        "last_age_s": 450642,
+        "last_age_human": "5d 5h"
       },
       {
         "actor": "a6c050dc5f0bf8990",
@@ -10927,7 +10942,7 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 461727,
+        "last_age_s": 462409,
         "last_age_human": "5d 8h"
       },
       {
@@ -10937,7 +10952,7 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 461752,
+        "last_age_s": 462434,
         "last_age_human": "5d 8h"
       },
       {
@@ -10947,8 +10962,8 @@
         "types": {
           "question.answered": 1
         },
-        "last_age_s": 463983,
-        "last_age_human": "5d 8h"
+        "last_age_s": 464665,
+        "last_age_human": "5d 9h"
       },
       {
         "actor": "t",
@@ -10957,8 +10972,8 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 464014,
-        "last_age_human": "5d 8h"
+        "last_age_s": 464696,
+        "last_age_human": "5d 9h"
       },
       {
         "actor": "a9bebb9829854c44c",
@@ -10968,7 +10983,7 @@
           "agent.spawned": 1,
           "agent.terminated": 1
         },
-        "last_age_s": 465609,
+        "last_age_s": 466291,
         "last_age_human": "5d 9h"
       },
       {
@@ -10978,7 +10993,7 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 465613,
+        "last_age_s": 466295,
         "last_age_human": "5d 9h"
       },
       {
@@ -10988,7 +11003,7 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 465645,
+        "last_age_s": 466327,
         "last_age_human": "5d 9h"
       },
       {
@@ -10998,7 +11013,7 @@
         "types": {
           "question.posed": 2
         },
-        "last_age_s": 466807,
+        "last_age_s": 467489,
         "last_age_human": "5d 9h"
       },
       {
@@ -11008,7 +11023,7 @@
         "types": {
           "agent.terminated": 1
         },
-        "last_age_s": 477446,
+        "last_age_s": 478128,
         "last_age_human": "5d 12h"
       },
       {
@@ -11018,50 +11033,14 @@
         "types": {
           "question.posed": 1
         },
-        "last_age_s": 477866,
+        "last_age_s": 478548,
         "last_age_human": "5d 12h"
-      },
-      {
-        "actor": "a264de5167fed9d77",
-        "events": 1,
-        "last_ts": "2026-07-28T07:06:19Z",
-        "types": {
-          "agent.terminated": 1
-        },
-        "last_age_s": 479747,
-        "last_age_human": "5d 13h"
-      },
-      {
-        "actor": "d0a843b9",
-        "events": 2,
-        "last_ts": "2026-07-27T18:49:37Z",
-        "types": {
-          "pane.ended": 1,
-          "pane.started": 1
-        },
-        "last_age_s": 523949,
-        "last_age_human": "6d 1h"
-      },
-      {
-        "actor": "6650a7a0",
-        "events": 63,
-        "last_ts": "2026-07-27T13:52:39Z",
-        "types": {
-          "agent.turn_ended": 52,
-          "notification.raised": 3,
-          "handoff.written": 2,
-          "vcs.commit": 2,
-          "pane.ended": 1,
-          "pane.started": 1
-        },
-        "last_age_s": 541767,
-        "last_age_human": "6d 6h"
       }
     ],
     "blind_spots": [
       "no pane id in the event log — checked: not one event, any day, carries a pane/window/tty field. The cards read `pane: unknown` and no amount of rendering can fix that; the hooks would have to emit it.",
-      "a worker is named only by task.completed — one that never completed a task through the task system gets NO card, however hard it worked. 83 session(s) in the log are nameless for exactly this reason.",
-      "tokens come from the hand-written ORCHESTRATION-STATE ledger, joined by worker NAME — the event log carries no token counts at all. The two name spaces are typed by hand and do not reconcile: 111 ledger name(s) match no card at all (audit-autonomy, audit-delivery, audit-redteam, audit-rivals, audit-skills, audit-supervision, …). A card with no tokens is a failed join, NOT a worker that spent nothing.",
+      "a worker is named only by task.completed — one that never completed a task through the task system gets NO card, however hard it worked. 84 session(s) in the log are nameless for exactly this reason.",
+      "tokens come from the hand-written ORCHESTRATION-STATE ledger, joined by worker NAME — the event log carries no token counts at all. The two name spaces are typed by hand and do not reconcile: 112 ledger name(s) match no card at all (audit-autonomy, audit-delivery, audit-redteam, audit-rivals, audit-skills, audit-supervision, …). A card with no tokens is a failed join, NOT a worker that spent nothing.",
       "hook-written lines all carry actor=\"claude\"; only semantic (src=emit) lines name the worker, and those carry no session_id — so the roster below cannot be joined to the cards"
     ]
   },
@@ -12470,11 +12449,23 @@
         "cache_write": null,
         "running_total": 19229000,
         "running_cycles": 147
+      },
+      {
+        "raw": "cycle=150 worker=impl-178-2 model=claude-fable-5 (транскрипт d3238523; легален d-013 на момент спавна, пережил 5-дневный простой подписки в панели) tokens_out=~220000 tokens_in=~75000 cache_read=~95000000 (self-est) | running: cycles=150 total≈19449000 (+исторические гэпы) [эпик GSL-178 10/10 + банд",
+        "cycle": 150,
+        "worker": "impl-178-2",
+        "model": "claude-fable-5",
+        "tokens_out": 220000,
+        "tokens_in": 75000,
+        "cache_read": 95000000,
+        "cache_write": null,
+        "running_total": 19449000,
+        "running_cycles": 150
       }
     ],
     "unparsed": 2,
-    "cumulative_total": 19229000,
-    "cumulative_cycles": 147,
+    "cumulative_total": 19449000,
+    "cumulative_cycles": 150,
     "ceiling": 16000000,
     "ceiling_mode": "default",
     "ceiling_source": "default 16,000,000 tokens/night (d-2026-07-28-002; override with GOSLEEP_TOKEN_CEILING=<int>, disable with =unlimited)",
@@ -12485,8 +12476,8 @@
       "anchored_at": "2026-08-02T19:59:29Z",
       "why": "first build of 2026-08-02 (UTC): night spend counts from the ledger total seen here"
     },
-    "night_spend": 0,
-    "used_pct": 0.0,
+    "night_spend": 220000,
+    "used_pct": 1.4,
     "by_model": [
       {
         "model": "claude-opus-4-8",
@@ -12499,12 +12490,12 @@
       },
       {
         "model": "claude-fable-5",
-        "cycles": 38,
+        "cycles": 39,
         "partial": 2,
-        "readable": 37,
-        "tokens_out": 3299386,
-        "tokens_in": 5189378,
-        "cache_read": 380493894
+        "readable": 38,
+        "tokens_out": 3519386,
+        "tokens_in": 5264378,
+        "cache_read": 475493894
       },
       {
         "model": "claude-opus-5",
@@ -12600,7 +12591,7 @@
         }
       ],
       "total": 10,
-      "searched": "docs/lab/events/*.jsonl — 2912 event(s) over 11 day file(s) (2026-07-12..2026-08-02), matching type in {api.failure, quota.wait_started, quota.wait_ended}",
+      "searched": "docs/lab/events/*.jsonl — 2946 event(s) over 11 day file(s) (2026-07-12..2026-08-02), matching type in {api.failure, quota.wait_started, quota.wait_ended}",
       "why_empty": null
     }
   },
@@ -13000,10 +12991,22 @@
     ]
   },
   "delivery": {
-    "branch": "GSL-178-supervisor-observe",
-    "head": "97fec6d",
-    "dirty_paths": 21,
+    "branch": "main",
+    "head": "22518d8",
+    "dirty_paths": 16,
     "commits_on_date": [
+      {
+        "sha": "22518d8",
+        "author": "rommxx",
+        "ts": "2026-08-02T22:25:32+02:00",
+        "subject": "Merge pull request #255 from ainstance-labs/GSL-178-supervisor-observe"
+      },
+      {
+        "sha": "171f78d",
+        "author": "R",
+        "ts": "2026-08-02T22:22:22+02:00",
+        "subject": "GSL-178 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первые строки наблюдательного watchdog-леджера в трекаемом архиве супервизии)"
+      },
       {
         "sha": "97fec6d",
         "author": "R",
@@ -13018,6 +13021,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 255,
+        "state": "MERGED",
+        "title": "GSL-178 Супервизия: наблюдательный режим сторожа — платформенный источник жизни, observe по умолчанию, reality-гейт",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/255",
+        "mergedAt": "2026-08-02T20:25:32Z"
+      },
       {
         "number": 254,
         "state": "MERGED",
@@ -13150,27 +13160,20 @@
         "title": "GSL-41 Orchestration deep-research — reports + PRD",
         "url": "https://github.com/ainstance-labs/gosleep/pull/56",
         "mergedAt": "2026-07-09T21:34:58Z"
-      },
-      {
-        "number": 47,
-        "state": "MERGED",
-        "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/47",
-        "mergedAt": "2026-07-01T14:00:01Z"
       }
     ]
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-08-02T20:21:11Z",
-      "cycle": 150,
+      "ts": "2026-08-02T20:30:05Z",
+      "cycle": 151,
       "context_pct": 99,
-      "open_workers": 1,
+      "open_workers": 2,
       "status": "ok",
       "pane": "%10"
     },
     "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 149 | orchestrator=Fable 5 pane=%10 | ВОЗОБНОВЛЕНИЕ 13:1xZ (пауза 12:45-13:1x): owner финализировал модельную политику — Fable 5 для ВСЕХ + режим максимума (d-013, extra-usage активен). Итог смены к этому часу: ТРИ эпика слиты (#252/#253/#254), ledger-цепочка до 725fce7, gate.sh зелёный (smoke 545/0, hooks 19), очередь open=2 (только BLOCKER q-002/q-003). impl-178 спавнится на эпик GSL-178 (watchdog наблюдательный, 10 задач GSL-211..220, d-001) — наследование Fable 5 теперь легально. | latest handoff=docs/handoff/53-2026-07-28-handoff-shift74-three-epics-model-policy.md | questions: open=2 (2B/0D/0C/0F) lines=70 | open_workers=1 | status=executing-GSL-178`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=147 worker=finalizer-176 model=claude-fable-5 (транскрипт 7b4f4a08; текущий воркер доделывал per owner d-011) tokens_out=~13000 (+субагент дампа ~41000) tokens_in=~120000 cache_read=~430000 (self-est) | running: cycles=147 total≈19229000 (+исторические гэпы) [PR #254 MERGED regular 62a1be0, 8/8 зеркал авто, Jira эпик+7 задач Done, дамп 249 задач, gate.sh ВЕСЬ зелёный (smoke 545/0, hooks 19, tsc 0, chronicler с опросом), ledger e72d818; отклонение: gh merge локально упал на checkout — merge"
+    "telemetry_last": "cycle=150 worker=impl-178-2 model=claude-fable-5 (транскрипт d3238523; легален d-013 на момент спавна, пережил 5-дневный простой подписки в панели) tokens_out=~220000 tokens_in=~75000 cache_read=~95000000 (self-est) | running: cycles=150 total≈19449000 (+исторические гэпы) [эпик GSL-178 10/10 + бандл (171f78d), PR #255 OPEN/CLEAN; watchdog smoke 75→168/0; observe-режим по умолчанию, жизнь=claude agents --json, пороги из каденции, наблюдательный прогон ЗАПУЩЕН (первая боевая строка в архиве); 2 э"
   },
   "library": {
     "sections": [
@@ -13209,6 +13212,11 @@
             "href": "../../handoff/GSL-178-errata-orchestration-state.md",
             "name": "GSL-178-errata-orchestration-state.md",
             "title": "Эррата GSL-178 для суверенного docs/handoff/ORCHESTRATION-STATE.md"
+          },
+          {
+            "href": "../../handoff/54-2026-08-02-handoff-impl-178-supervisor-observe-complete.md",
+            "name": "54-2026-08-02-handoff-impl-178-supervisor-observe-complete.md",
+            "title": "Handoff 54 — impl-178: эпик GSL-178 исполнен целиком, PR #255 открыт (2026-08-02)"
           },
           {
             "href": "../../handoff/53-2026-07-28-handoff-shift74-three-epics-model-policy.md",
@@ -13476,7 +13484,7 @@
             "title": "Handoff — Orchestration Harness — 2026-06-09"
           }
         ],
-        "count": 59
+        "count": 60
       },
       {
         "key": "dev_history",
@@ -14717,7 +14725,7 @@
           {
             "href": "../digest/2026-08-02-morning.md",
             "name": "2026-08-02-morning.md",
-            "title": "Morning digest — 2026-08-02 (night run: 19:57 → 20:16)"
+            "title": "Morning digest — 2026-08-02 (night run: 19:57 → 20:30)"
           },
           {
             "href": "../digest/2026-07-28-morning.md",
@@ -14836,7 +14844,7 @@
         "count": 10
       }
     ],
-    "total": 316
+    "total": 317
   },
   "degraded": [],
   "narrative": null,
@@ -14850,7 +14858,7 @@
     "armed_why": "no launchd agent at ~/Library/LaunchAgents/com.gosleep.watchdog.plist -- launchd is not scheduling the watchdog. By the runbook (GSL-57) the launchctl step is the OWNER's, and it has not been taken. This does not rule out a tick run by hand; it rules out a SCHEDULED one.",
     "loaded_why": "whether launchd has LOADED that agent right now is not read here -- it needs launchctl; the armed-check gate (GSL-211, tools/lab/armed-check.sh) is the mechanical reality check for the rest (session identity vs claude agents --json, measured cadence vs thresholds, config validity) -- its receipt renders in the gates strip (armed-check.json: verdict/mode/checks)",
     "last_tick_ts": "2026-08-02T20:15:38Z",
-    "last_tick_age_human": "6m",
+    "last_tick_age_human": "17m",
     "last_tick_why": null,
     "ticks": 1,
     "ledger_lines": 1,
@@ -14867,8 +14875,8 @@
       {
         "name": "smoke",
         "state": "pass",
-        "ts": "2026-08-02T20:20:22Z",
-        "age_human": "1m",
+        "ts": "2026-08-02T20:33:13Z",
+        "age_human": "15s",
         "passed": 545,
         "failed": 0,
         "cmd": "bash tools/lab/smoke.sh",
@@ -14877,8 +14885,8 @@
       {
         "name": "hooks-verify",
         "state": "pass",
-        "ts": "2026-08-02T20:20:36Z",
-        "age_human": "1m",
+        "ts": "2026-08-02T20:33:27Z",
+        "age_human": "1s",
         "passed": 19,
         "failed": 0,
         "cmd": "bash tools/lab/hooks-verify.sh",
@@ -14898,7 +14906,7 @@
         "name": "armed-check",
         "state": "pass",
         "ts": "2026-08-02T20:15:38Z",
-        "age_human": "6m",
+        "age_human": "17m",
         "passed": 3,
         "failed": 0,
         "cmd": "bash tools/lab/armed-check.sh",

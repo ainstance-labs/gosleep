@@ -241,3 +241,6 @@
 {"ts":"2026-08-02T20:12:05Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
 {"ts":"2026-08-02T20:16:11Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
 {"ts":"2026-08-02T20:21:11Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10"}
+{"ts":"2026-08-02T20:24:20Z","cycle":150,"context_pct":99,"open_workers":1,"status":"ok","pane":"%10","note":"impl-178-2 COMPLETE 10/10, PR #255; closing cycle"}
+{"ts":"2026-08-02T20:25:49Z","cycle":151,"context_pct":99,"open_workers":2,"status":"ok","pane":"%10","note":"finalizer-178 on opus-4-7 (transcript); self-report wrong, noted"}
+{"ts":"2026-08-02T20:30:05Z","cycle":151,"context_pct":99,"open_workers":2,"status":"ok","pane":"%10"}

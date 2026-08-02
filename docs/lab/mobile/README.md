@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-08-02T20:22:10Z` · freshest event **15s** old at that moment (`2026-08-02T20:21:55Z`) · day `2026-08-02`
+🟢 **FRESH at build** · generated `2026-08-02T20:33:32Z` · freshest event **3m** old at that moment (`2026-08-02T20:30:15Z`) · day `2026-08-02`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-02T20:22:10Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-02T20:33:32Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-08-02T20:51:55Z`**
-> - 🔴 **DEAD if you are reading this after `2026-08-02T23:21:55Z`**
+> - 🟡 **STALE if you are reading this after `2026-08-02T21:00:15Z`**
+> - 🔴 **DEAD if you are reading this after `2026-08-02T23:30:15Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -22,15 +22,17 @@
 
 | | |
 |---|---|
-| Open workers | **1** of cap 3 (2 free) |
-| Cycle | 150 |
+| Open workers | **2** of cap 3 (1 free) |
+| Cycle | 151 |
 | Orchestrator | ok · context 99% |
 
 ## 3. Delivery
 
-Branch `GSL-178-supervisor-observe` @ `97fec6d` · 21 dirty path(s)
+Branch `main` @ `22518d8` · 16 dirty path(s)
 
-Shipped 2026-08-02 (2):
+Shipped 2026-08-02 (4):
+- `22518d8` Merge pull request #255 from ainstance-labs/GSL-178-supervisor-observe
+- `171f78d` GSL-178 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первые строки наблюдательного watchdog-лед…
 - `97fec6d` GSL-220 Наблюдательный прогон: носитель — мотор тика (шаг 4b, принудительный observe); рунбук v0.6; прогон запущен живы…
 - `347f3d4` GSL-218 Сторож верификатора: поллер steps.log tools/lab/verifier-watch.sh, событие verifier.stalled, реакция <=3 мин
 
@@ -39,18 +41,18 @@ Shipped 2026-08-02 (2):
 | Status | Tasks |
 |---|--:|
 | In Review | 4 |
-| To Do | 46 |
-| Done | 199 |
+| To Do | 35 |
+| Done | 210 |
 
 ## 5. Cost & runway
 
-Cumulative **19,229,000** tokens over 147 cycle(s).
+Cumulative **19,449,000** tokens over 150 cycle(s).
 
-Next runway event: **open blockers** — stops at **`2026-08-02T20:22:10Z`**.
+Next runway event: **open blockers** — stops at **`2026-08-02T20:33:32Z`**.
 
 ## 6. Activity
 
-**24** events today of **2912** total · 82% mechanical.
+**50** events today of **2946** total · 81% mechanical.
 
 Latest decisions (41 total, newest first):
 - **ПРЕЦЕДЕНТ (не полный ответ, BLOCKER остаётся open): владелец командой в чате велел править глобальный скилл orchestrating-delivery-agents — внесены 4 точечные правки (Turn order: …** `GSL-174` — 2026-08-02 20:07

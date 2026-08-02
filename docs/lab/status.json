@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-08-02T20:22:10Z",
+  "generated_at": "2026-08-02T20:33:32Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
   "date": "2026-08-02",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 15,
-    "max_event_age_human": "15s",
-    "latest_event_ts": "2026-08-02T20:21:55Z",
-    "heartbeat_age_s": 59,
+    "max_event_age_s": 197,
+    "max_event_age_human": "3m",
+    "latest_event_ts": "2026-08-02T20:30:15Z",
+    "heartbeat_age_s": 207,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2912,
-    "today": 24,
+    "total": 2946,
+    "today": 50,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -32,52 +32,52 @@
       "2026-08-02"
     ],
     "by_type": {
-      "agent.turn_ended": 652,
-      "tracker.issue.updated": 412,
-      "agent.idle": 256,
-      "tracker.issue.transitioned": 228,
+      "agent.turn_ended": 658,
+      "tracker.issue.updated": 423,
+      "agent.idle": 261,
+      "tracker.issue.transitioned": 230,
+      "agent.terminated": 186,
       "dev_history.written": 184,
-      "agent.terminated": 183,
+      "vcs.commit": 170,
       "tracker.issue.created": 169,
-      "vcs.commit": 168,
-      "handoff.written": 137,
+      "handoff.written": 138,
       "pane.ended": 91,
-      "pane.started": 87,
+      "pane.started": 88,
       "vcs.push": 48,
       "task.completed": 42,
       "decision.made": 41,
       "question.posed": 37,
-      "vcs.pr.merged": 35,
+      "vcs.pr.merged": 36,
       "question.auto_resolved": 33,
-      "vcs.pr.opened": 28,
+      "vcs.pr.opened": 29,
       "notification.raised": 27,
       "task.created": 22,
-      "agent.spawned": 15,
+      "agent.spawned": 16,
       "api.failure": 10,
       "question.answered": 7
     },
     "by_src": {
-      "hook:PostToolUse": 992,
-      "hook:Stop": 652,
-      "poll-fill": 399,
-      "hook:TeammateIdle": 256,
-      "hook:SubagentStop": 183,
+      "hook:PostToolUse": 995,
+      "hook:Stop": 658,
+      "poll-fill": 414,
+      "hook:TeammateIdle": 261,
+      "hook:SubagentStop": 186,
       "emit": 136,
       "hook:SessionEnd": 91,
-      "hook:SessionStart": 87,
+      "hook:SessionStart": 88,
       "hook:TaskCompleted": 42,
       "hook:Notification": 27,
       "hook:TaskCreated": 22,
-      "hook:SubagentStart": 15,
+      "hook:SubagentStart": 16,
       "hook:StopFailure": 10
     },
     "by_actor": {
       "claude": 1045,
-      "poll-fill": 399,
-      "general-purpose": 396,
+      "poll-fill": 414,
+      "general-purpose": 407,
       "742d1b58": 174,
       "f97ce3bc": 141,
-      "a716426f": 98,
+      "a716426f": 102,
       "ef6c3777": 85,
       "ecab62c2": 84,
       "orchestrator": 80,
@@ -94,6 +94,7 @@
       "impl-178": 3,
       "a0909bea46acbb7bf": 2,
       "a191a1a6d143e6940": 2,
+      "a1995aba5520d3d32": 2,
       "a5b85412f580faeec": 2,
       "a6c050dc5f0bf8990": 2,
       "a6e197f577a9b8c59": 2,
@@ -181,6 +182,7 @@
       "a61075657b8f0649b": 1,
       "a62538adb51000720": 1,
       "a65467511fafbfa0c": 1,
+      "a6615fa1bcde4fb1b": 1,
       "a66cff203f32b5147": 1,
       "a68b552e7420cee48": 1,
       "a68f04f9d98ca7789": 1,
@@ -220,6 +222,7 @@
       "a8ee9382096aed20d": 1,
       "a9318f8f64fb046b5": 1,
       "a94f14fbd1ca83d94": 1,
+      "a96327c00ee1982fd": 1,
       "a973440d43af1fd36": 1,
       "a98c9c9844ed93c47": 1,
       "a99e8735a0e008908": 1,
@@ -299,7 +302,7 @@
       "t": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.816
+    "mechanical_share": 0.813
   },
   "questions": {
     "open": 2,
@@ -345,9 +348,9 @@
     "manifest_candidates": []
   },
   "autonomy": {
-    "value": 0.652,
+    "value": 0.765,
     "asks": 8,
-    "shipped": 23,
+    "shipped": 34,
     "window": {
       "start": "2026-07-27",
       "end": "2026-08-02",
@@ -373,10 +376,22 @@
     ]
   },
   "delivery": {
-    "branch": "GSL-178-supervisor-observe",
-    "head": "97fec6d",
-    "dirty_paths": 21,
+    "branch": "main",
+    "head": "22518d8",
+    "dirty_paths": 16,
     "commits_on_date": [
+      {
+        "sha": "22518d8",
+        "author": "rommxx",
+        "ts": "2026-08-02T22:25:32+02:00",
+        "subject": "Merge pull request #255 from ainstance-labs/GSL-178-supervisor-observe"
+      },
+      {
+        "sha": "171f78d",
+        "author": "R",
+        "ts": "2026-08-02T22:22:22+02:00",
+        "subject": "GSL-178 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первые строки наблюдательного watchdog-леджера в трекаемом архиве супервизии)"
+      },
       {
         "sha": "97fec6d",
         "author": "R",
@@ -391,6 +406,13 @@
       }
     ],
     "prs": [
+      {
+        "number": 255,
+        "state": "MERGED",
+        "title": "GSL-178 Супервизия: наблюдательный режим сторожа — платформенный источник жизни, observe по умолчанию, reality-гейт",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/255",
+        "mergedAt": "2026-08-02T20:25:32Z"
+      },
       {
         "number": 254,
         "state": "MERGED",
@@ -523,27 +545,20 @@
         "title": "GSL-41 Orchestration deep-research — reports + PRD",
         "url": "https://github.com/ainstance-labs/gosleep/pull/56",
         "mergedAt": "2026-07-09T21:34:58Z"
-      },
-      {
-        "number": 47,
-        "state": "MERGED",
-        "title": "GSL-37 Eval-quality follow-ups — SC-09 discrimination restored, SC-12 recalibrated (skill validated)",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/47",
-        "mergedAt": "2026-07-01T14:00:01Z"
       }
     ]
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-08-02T20:21:11Z",
-      "cycle": 150,
+      "ts": "2026-08-02T20:30:05Z",
+      "cycle": 151,
       "context_pct": 99,
-      "open_workers": 1,
+      "open_workers": 2,
       "status": "ok",
       "pane": "%10"
     },
     "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 149 | orchestrator=Fable 5 pane=%10 | ВОЗОБНОВЛЕНИЕ 13:1xZ (пауза 12:45-13:1x): owner финализировал модельную политику — Fable 5 для ВСЕХ + режим максимума (d-013, extra-usage активен). Итог смены к этому часу: ТРИ эпика слиты (#252/#253/#254), ledger-цепочка до 725fce7, gate.sh зелёный (smoke 545/0, hooks 19), очередь open=2 (только BLOCKER q-002/q-003). impl-178 спавнится на эпик GSL-178 (watchdog наблюдательный, 10 задач GSL-211..220, d-001) — наследование Fable 5 теперь легально. | latest handoff=docs/handoff/53-2026-07-28-handoff-shift74-three-epics-model-policy.md | questions: open=2 (2B/0D/0C/0F) lines=70 | open_workers=1 | status=executing-GSL-178`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=147 worker=finalizer-176 model=claude-fable-5 (транскрипт 7b4f4a08; текущий воркер доделывал per owner d-011) tokens_out=~13000 (+субагент дампа ~41000) tokens_in=~120000 cache_read=~430000 (self-est) | running: cycles=147 total≈19229000 (+исторические гэпы) [PR #254 MERGED regular 62a1be0, 8/8 зеркал авто, Jira эпик+7 задач Done, дамп 249 задач, gate.sh ВЕСЬ зелёный (smoke 545/0, hooks 19, tsc 0, chronicler с опросом), ledger e72d818; отклонение: gh merge локально упал на checkout — merge"
+    "telemetry_last": "cycle=150 worker=impl-178-2 model=claude-fable-5 (транскрипт d3238523; легален d-013 на момент спавна, пережил 5-дневный простой подписки в панели) tokens_out=~220000 tokens_in=~75000 cache_read=~95000000 (self-est) | running: cycles=150 total≈19449000 (+исторические гэпы) [эпик GSL-178 10/10 + бандл (171f78d), PR #255 OPEN/CLEAN; watchdog smoke 75→168/0; observe-режим по умолчанию, жизнь=claude agents --json, пороги из каденции, наблюдательный прогон ЗАПУЩЕН (первая боевая строка в архиве); 2 э"
   },
   "degraded": [],
   "narrative": null,
@@ -560,6 +575,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-08-02T20:22:10Z"
+    "last_success_at": "2026-08-02T20:33:32Z"
   }
 }

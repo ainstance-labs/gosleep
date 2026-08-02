@@ -43,3 +43,5 @@
 {"ts":"2026-08-02T20:08:59Z","mode":"debounce","carrier":"post-tool-use-hook","rc":0,"duration_s":5,"quiet_s":90}
 {"ts":"2026-08-02T20:15:06Z","mode":"debounce","carrier":"post-tool-use-hook","rc":0,"duration_s":5,"quiet_s":90}
 {"ts":"2026-08-02T20:15:38Z","mode":"tick","carrier":"manual","result":"ok","poll_rc":0,"applied":0,"chronicler":"ran","chronicler_rc":0,"armed_check":"rc=0","duration_s":6}
+{"ts":"2026-08-02T20:24:00Z","mode":"debounce","carrier":"post-tool-use-hook","rc":0,"duration_s":6,"quiet_s":90}
+{"ts":"2026-08-02T20:30:27Z","mode":"debounce","carrier":"post-tool-use-hook","rc":0,"duration_s":6,"quiet_s":90}
