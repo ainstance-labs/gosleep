@@ -1,13 +1,21 @@
 # Runbook — watchdog над оркестратором (операции для владельца)
 
-**Что это.** Механический (без LLM) скрипт `tools/watchdog/watchdog.sh`, который launchd запускает
-каждые ~3 минуты. Он смотрит на два факта на диске — файл-пульс оркестратора
-(`docs/handoff/.orchestrator-heartbeat`) и живость tmux-сессии — и по ним решает: всё хорошо /
-подтолкнуть оркестратора / убить зависшего и поднять свежего / остановиться и позвать вас.
-Все свои действия он записывает в **ledger** (журнал) — ничего не происходит молча.
+**Что это.** Механический (без LLM) скрипт `tools/watchdog/watchdog.sh`. Он смотрит на пульс
+оркестратора (`docs/handoff/.orchestrator-heartbeat`) и на **ростер платформы** — `claude agents
+--json`, штатный машинный список живых сессий Claude Code (с v0.6 именно он источник истины о
+жизни; tmux — только адрес действий и корроборация), — и по ним решает: всё хорошо / подтолкнуть /
+оживить ту же сессию (`claude --resume`) / поднять свежего / остановиться и позвать вас.
 
-Версия, задокументированная здесь: **watchdog.sh v0.5.0 (GSL-49 review fixes C1/M1/M2)**.
-Эпик GSL-49, PRD Phase 1 (`docs/prd/PRD-gosleep-evolution.md`).
+**Два режима (v0.6, d-2026-07-28-001).** `WD_MODE=observe` — ПО УМОЛЧАНИЮ: всё дерево решений
+работает, но каждое действие только ЗАПИСЫВАЕТСЯ в леджер как `would_*`; ничего не убивается,
+не спавнится и не уведомляется. `WD_MODE=armed` — действия живые; включается ТОЛЬКО явной
+строкой в вашем `watchdog.conf` (раздел 1) после наблюдательного прогона (раздел 0) и зелёного
+`armed-check`. Раздвоение флота, найденное аудитом (F2), исключено конструктивно: личность
+сессии едет в самом пульсе (`session`/`session_id`, пишет `tools/lab/heartbeat.sh` из ростера),
+несовпадение = отказ от всех действий.
+
+Версия, задокументированная здесь: **watchdog.sh v0.6.5** (эпик GSL-178; база — GSL-49,
+PRD Phase 1, `docs/prd/PRD-gosleep-evolution.md`).
 
 **Важно с v0.5.0 (review C1):** watchdog находит панель оркестратора ТОЛЬКО по полю
 `"pane":"%N"` в heartbeat-строке (оркестратор сам называет себя через `$TMUX_PANE`).
@@ -23,8 +31,12 @@ watchdog ничего не трогает и эскалирует (см. `identi
 | `tools/watchdog/watchdog.conf.example` | все настройки с пояснениями; копируется в `watchdog.conf` (не коммитится) |
 | `tools/watchdog/install-watchdog.sh` | рендерит launchd-plist и **печатает** команды установки; сам НИЧЕГО не устанавливает |
 | `tools/watchdog/com.gosleep.watchdog.plist.template` | шаблон launchd-агента (заполняется рендером) |
-| `tools/watchdog/smoke.sh` | самопроверка: прогоняет все ветки решений в dry-run (65 сценариев) |
+| `tools/watchdog/smoke.sh` | самопроверка: все ветки решений в dry-run (168 проверок, v0.6.5) |
 | `tools/watchdog/LEDGER.md` | спецификация формата журнала |
+| `tools/lab/heartbeat.sh` | писатель пульса: сам вписывает `session`/`session_id`/`cli` из ростера (GSL-212/219) |
+| `tools/lab/armed-check.sh` | reality-гейт (GSL-211): конфиг против живой машины; источник веб-плитки «вооружено» |
+| `tools/lab/breaker-check.sh` | пункт HEARTBEAT_OK: читает строку `breaker=` из STATE (GSL-214) |
+| `tools/lab/verifier-watch.sh` | поллер steps.log верификатора, реакция ≤3 мин (GSL-218) |
 
 **Файлы, которые появляются в работе (все gitignored, не коммитятся):**
 
@@ -39,7 +51,42 @@ watchdog ничего не трогает и эскалирует (см. `identi
 
 ---
 
-## 1. Установка
+## 0. Наблюдательный прогон (GSL-220) — то, что уже идёт само
+
+Решение d-2026-07-28-001: несколько суток watchdog **тикает и записывает, ЧТО он сделал бы**,
+при выключенных kill и re-wake; потом вы читаете леджер и решаете, вооружать ли по-настоящему.
+
+**Носитель — мотор тика (q-2026-07-28-006):** `tools/lab/tick.sh` на каждом проходе делает один
+watchdog-тик в ПРИНУДИТЕЛЬНОМ observe (шаг 4b) — леджер копится с первого тика любого носителя
+(launchd-плист тика, Desktop-задача, ручной запуск), без единого действия с вашей стороны.
+Тик-носитель наблюдает всегда; действовать может только собственный plist сторожа (раздел 1).
+
+**Читать утром (все команды read-only):**
+
+```bash
+cd /Users/romanlidovskyi/Documents/dev/harness/gosleep
+# решения за ночь одной строкой на тик (decision + class + основание):
+grep '"event":"tick"' docs/handoff/.watchdog-ledger.jsonl | tail -20 | jq -r '[.ts,.class,.decision,.reason]|@tsv'
+# что сторож СДЕЛАЛ БЫ (лестница would_*):
+grep -E '"would_' docs/handoff/.watchdog-ledger.jsonl | jq .
+# сводка классов за всю историю:
+grep '"event":"tick"' docs/handoff/.watchdog-ledger.jsonl | sed -nE 's/.*"class":"([a-z]+)".*/\1/p' | sort | uniq -c
+```
+
+Трекаемая копия для истории — `docs/lab/supervision/watchdog-ledger.jsonl` (архиватор GSL-225).
+
+**Критерий «прогон состоялся» (приёмка эпика):** леджер за трое суток подряд, в каждой
+tick-строке решение и основание, ни одного события `kill` / `orchestrator_restarted` /
+`orchestrator_resumed` с `mode:"observe"` (только `would_*`).
+
+**Что смотреть перед вооружением:** частоту ложных `would_nudge` на owner-standby (лечится
+объявлением standby как `quiesced` в пульсе, не порогами), эпизоды `progress_frozen` против
+реальности, `session_mismatch`/`platform_unknown` (должны быть нулём при живом флоте), сработал
+бы ли RestartBudget. Затем — раздел 1.
+
+---
+
+## 1. Установка (= вооружение; шаги владельца)
 
 ### Шаг 1 — конфиг (делаете один раз)
 
@@ -48,11 +95,18 @@ cd /Users/romanlidovskyi/Documents/dev/harness/gosleep
 cp tools/watchdog/watchdog.conf.example tools/watchdog/watchdog.conf
 ```
 
-Откройте `tools/watchdog/watchdog.conf` и раскомментируйте минимум два значения:
+Откройте `tools/watchdog/watchdog.conf` и раскомментируйте минимум три значения:
 
-- `WD_TMUX_SESSION` — имя tmux-сессии, где живёт оркестратор (по умолчанию `gosleep`);
+- `WD_MODE="armed"` — **сам акт вооружения** (v0.6): без этой строки watchdog в любом запуске
+  только наблюдает. Ставить её — только после прочитанного наблюдательного леджера (раздел 0)
+  и зелёного `bash tools/lab/armed-check.sh`;
+- `WD_TMUX_SESSION` — имя tmux-сессии для окна re-wake (жизнь judged по ростеру, это только
+  адрес спавна);
 - `WD_TMUX_BIN="/opt/homebrew/bin/tmux"` — **абсолютный** путь до tmux: launchd запускает скрипт
   с минимальным PATH и без этого не найдёт tmux (watchdog тогда откажется стартовать — см. §7.4).
+
+Перед вооружением снесите наблюдательную память, чтобы would-история не смешалась с боевой
+(память mode-scoped, это гигиена, не необходимость): `rm -rf .artifacts/watchdog/observe`.
 
 `watchdog.conf` — локальная настройка машины, в git не добавлять.
 

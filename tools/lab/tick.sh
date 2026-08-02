@@ -20,6 +20,12 @@
 #   4. armed-check          — if tools/lab/armed-check.sh exists (GSL-211, watchdog epic), run it
 #                             and record its verdict; absent today, and the ledger SAYS "absent"
 #                             rather than pretending the check passed (R2: no armedness theatre).
+#   4b. watchdog observe    — one supervisor tick in FORCED observe mode (GSL-220, q-2026-07-28-006):
+#                             the tick engine IS the observational run's carrier — the ledger the
+#                             owner reads before arming starts accumulating with the first tick of
+#                             ANY carrier, no launchctl needed. WD_MODE=observe is forced here BY
+#                             DESIGN: the tick carrier observes, only the watchdog's own plist
+#                             (owner-installed) may ever act. Degraded-never-fatal.
 #   5. one ledger line      — docs/lab/supervision/tick-ledger.jsonl (tracked, same doctrine as
 #                             events/: append-only, one writer discipline, survives in git).
 #
@@ -196,6 +202,19 @@ if [ -x "$SCRIPT_DIR/armed-check.sh" ]; then
   ARMED="rc=$?"
 else
   ARMED="absent"   # the ledger tells the truth if it ever goes missing again
+fi
+
+# ── 4b. watchdog observe tick (GSL-220): the observational run rides the tick ─
+# Forced observe REGARDLESS of the owner's conf: this carrier only ever records
+# what the supervisor WOULD do (would_nudge/would_kill/would_rewake + a tick
+# line with the decision and its basis, per docs/handoff/.watchdog-ledger.jsonl
+# -> archived to docs/lab/supervision/ by the chronicler). Acting is reserved
+# for the watchdog's own launchd plist, which the OWNER installs after reading
+# this very ledger. Degraded-never-fatal: a broken supervisor must not break
+# the tick.
+if [ -x "$REPO/tools/watchdog/watchdog.sh" ]; then
+  WD_MODE=observe WD_REPO_ROOT="$REPO" \
+    bash "$REPO/tools/watchdog/watchdog.sh" >/dev/null 2>&1 || true
 fi
 
 # ── 5. the one ledger line ───────────────────────────────────────────────────
