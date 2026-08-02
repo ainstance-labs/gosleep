@@ -59,6 +59,9 @@ const WARN: ReadonlySet<string> = new Set([
   "notification.raised",
   "permission.requested",
   "question.posed",
+  // GSL-218: a wedged verifier is a degradation the orchestrator recovers from
+  // (kill the automation, take the partial report) — not a night-ender.
+  "verifier.stalled",
 ]);
 
 /** Work happening, and work happening normally. The bulk of any healthy night. */

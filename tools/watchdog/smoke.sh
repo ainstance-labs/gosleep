@@ -997,6 +997,48 @@ else
   ok "breaker-check 0-LLM check"
 fi
 
+echo "== GSL-218: verifier-watch — the steps.log poller the contract demanded =="
+VW="$REPO_ROOT/tools/lab/verifier-watch.sh"
+if bash -n "$VW"; then ok "verifier-watch bash -n (syntax)"; else bad "verifier-watch syntax"; fi
+VWD="$WORK/verifier-watch"; mkdir -p "$VWD/lab/events"
+# (a) --once on a fresh steps.log -> rc 0.
+echo "step 1" > "$VWD/steps-fresh.log"
+rc=0; GOSLEEP_LAB_DIR="$VWD/lab" bash "$VW" --file "$VWD/steps-fresh.log" --once >/dev/null 2>&1 || rc=$?
+[ "$rc" = "0" ] && ok "verifier-watch: fresh steps.log -> rc 0" || bad "verifier-watch fresh rc=$rc"
+# (b) --once on a 10-min-silent file at the contract threshold (180s) -> STALL.
+echo "step 1" > "$VWD/steps-old.log"; touch -t "$(date -v-10M +%Y%m%d%H%M.%S)" "$VWD/steps-old.log"
+rc=0; GOSLEEP_LAB_DIR="$VWD/lab" bash "$VW" --file "$VWD/steps-old.log" --once >/dev/null 2>&1 || rc=$?
+if [ "$rc" = "1" ] && cat "$VWD"/lab/events/*.jsonl 2>/dev/null | grep -q '"verifier.stalled"'; then
+  ok "verifier-watch: 10-min silence at the 180s contract threshold -> rc 1 + verifier.stalled event"
+else
+  bad "verifier-watch stall-once wrong (rc=$rc)"
+fi
+# (c) The acceptance, time-scaled: a wedged verifier is DETECTED by the polling
+# loop itself (threshold 2s, interval 1s) — the same arithmetic that gives <=3
+# minutes at the contract numbers (180s threshold / 20s interval).
+echo "step 1" > "$VWD/steps-wedge.log"; touch -t "$(date -v-1M +%Y%m%d%H%M.%S)" "$VWD/steps-wedge.log"
+T0=$(date +%s); rc=0
+GOSLEEP_LAB_DIR="$VWD/lab" bash "$VW" --file "$VWD/steps-wedge.log" --threshold 2 --interval 1 --grace 0 >/dev/null 2>&1 || rc=$?
+ELAPSED=$(( $(date +%s) - T0 ))
+if [ "$rc" = "1" ] && [ "$ELAPSED" -le 10 ]; then
+  ok "verifier-watch: polling loop detects the wedge itself (rc 1 in ${ELAPSED}s at scaled thresholds)"
+else
+  bad "verifier-watch loop detection wrong (rc=$rc elapsed=${ELAPSED}s)"
+fi
+# (d) A verifier that never wrote a single step (the E17 shape): missing file
+# past the boot grace is the stall.
+rc=0; GOSLEEP_LAB_DIR="$VWD/lab" bash "$VW" --file "$VWD/never-written.log" --grace 0 --once >/dev/null 2>&1 || rc=$?
+[ "$rc" = "1" ] && ok "verifier-watch: file never written + grace over -> stall (E17 shape)" \
+  || bad "verifier-watch missing-file rc=$rc"
+# (e) usage errors are loud; 0-LLM.
+rc=0; bash "$VW" --once >/dev/null 2>&1 || rc=$?
+[ "$rc" = "2" ] && ok "verifier-watch: missing --file -> rc 2" || bad "verifier-watch usage rc=$rc"
+if grep -qE 'claude (-p|--print)|api\.anthropic|ANTHROPIC_API_KEY=' "$VW"; then
+  bad "verifier-watch 0-LLM check failed"
+else
+  ok "verifier-watch 0-LLM check"
+fi
+
 echo "== GSL-212: heartbeat writer (tools/lab/heartbeat.sh) =="
 HBW="$REPO_ROOT/tools/lab/heartbeat.sh"
 if bash -n "$HBW"; then ok "heartbeat.sh bash -n (syntax)"; else bad "heartbeat.sh syntax"; fi

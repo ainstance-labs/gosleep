@@ -106,6 +106,23 @@ inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count v
 inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / breaker (`tools/lab/breaker-check.sh` — the STATE `breaker=` line exists, parses, and is not OPEN; rc 2 = deliberate STOP, rc 1 = the line is missing/malformed/tripped-but-closed — fix the line, not the checklist) / clocks — all green
 ```
 
+## Замена 6 — сторож верификатора обрёл исполняемую форму (GSL-218)
+
+Старый фрагмент (раздел «Verification watchdog», строка ~141; `grep -cF` = 1):
+
+```
+So arm an EXTERNAL watchdog: a background watcher polling the verifier's
+```
+
+Новый:
+
+```
+So arm an EXTERNAL watchdog — it exists as `tools/lab/verifier-watch.sh` (start it right
+  after spawning the verifier: `tools/lab/verifier-watch.sh --file <run-dir>/steps.log &`;
+  on a stall it exits loudly and mirrors `verifier.stalled` into docs/lab/events/): a
+  background watcher polling the verifier's
+```
+
 ---
 
 Дельта GSL-219 (поле `cli`) уже включена в замены 2 и 3 выше. Оставшаяся дельта эпика —
