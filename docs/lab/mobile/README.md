@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-07-28T12:44:55Z` · freshest event **1m** old at that moment (`2026-07-28T12:43:38Z`) · day `2026-07-28`
+🟢 **FRESH at build** · generated `2026-08-02T20:22:10Z` · freshest event **15s** old at that moment (`2026-08-02T20:21:55Z`) · day `2026-08-02`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-07-28T12:44:55Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-02T20:22:10Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-07-28T13:13:38Z`**
-> - 🔴 **DEAD if you are reading this after `2026-07-28T15:43:38Z`**
+> - 🟡 **STALE if you are reading this after `2026-08-02T20:51:55Z`**
+> - 🔴 **DEAD if you are reading this after `2026-08-02T23:21:55Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -22,24 +22,17 @@
 
 | | |
 |---|---|
-| Open workers | **0** of cap 3 (3 free) |
-| Cycle | 148 |
-| Orchestrator | ok · context 96% |
+| Open workers | **1** of cap 3 (2 free) |
+| Cycle | 150 |
+| Orchestrator | ok · context 99% |
 
 ## 3. Delivery
 
-Branch `main` @ `e72d818` · 19 dirty path(s)
+Branch `GSL-178-supervisor-observe` @ `97fec6d` · 21 dirty path(s)
 
-Shipped 2026-07-28 (28):
-- `e72d818` GSL-138 [Docs][Process] Ledger смены 74 (часть 3): эпик GSL-176 слит (#254), handoff 52, эррата гейта GSL-203, граница …
-- `62a1be0` Merge pull request #254 from ainstance-labs/GSL-176-tick-engine
-- `af65d73` GSL-176 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первый живой tick-ledger: mode=debounce и …
-- `0fb475f` GSL-204 Рунбук мотора docs/runbooks/tick-engine.md: двухслойная модель дебаунс+тик, частоты, чтение леджера, вооружённо…
-- `44882b3` GSL-203 Штатный гейт смены стал кодом без --no-poll: tools/lab/gate.sh (smoke+hooks-verify+tsc+летописец С опросом; офф…
-- `1e945e1` GSL-201 Преflight носителей тика подготовлен: шаблон LaunchAgent (300с, RunAtLoad), preflight-arm/disarm — руки владель…
-- `803704d` GSL-202 Idle-гейт тика: свежий бандл + пустой list --due → result=idle и выход до poll/летописца/armed-check (ноль сети…
-- `3e0a20a` GSL-199 tools/lab/tick.sh — идемпотентный страховочный тик: poll-fill → apply-due → летописец (только если дебаунс не д…
-- …and 20 more
+Shipped 2026-08-02 (2):
+- `97fec6d` GSL-220 Наблюдательный прогон: носитель — мотор тика (шаг 4b, принудительный observe); рунбук v0.6; прогон запущен живы…
+- `347f3d4` GSL-218 Сторож верификатора: поллер steps.log tools/lab/verifier-watch.sh, событие verifier.stalled, реакция <=3 мин
 
 ## 4. Tasks
 
@@ -53,21 +46,21 @@ Shipped 2026-07-28 (28):
 
 Cumulative **19,229,000** tokens over 147 cycle(s).
 
-Next runway event: **open blockers** — stops at **`2026-07-28T12:44:55Z`**.
+Next runway event: **open blockers** — stops at **`2026-08-02T20:22:10Z`**.
 
 ## 6. Activity
 
-**309** events today of **2814** total · 82% mechanical.
+**24** events today of **2912** total · 82% mechanical.
 
-Latest decisions (33 total, newest first):
-- **архив следа супервизии: трекаемые docs/lab/supervision/*.jsonl (хроникёр дописывает до самоусечения), живые файлы остаются ignored — реализация GSL-225** `GSL-225` — 2026-07-28 12:43
-  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк; применено apply-due)
-- **следующие воркеры — на Opus (Opus 5); текущий финализатор доделывает; при повторном наследовании Fable 5 — ранний kill и эскалация владельцу с вариантом перезапуска сессии оркестр…** `GSL-138` — 2026-07-28 12:18
-- **потолок считается за ночь (сутки UTC), не кумулятивно** `GSL-221` — 2026-07-28 10:42
-  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк)
-- **флот на унаследованной Fable 5 до иного решения владельца** `GSL-138` — 2026-07-28 10:20
-  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк)
-- …and 29 more
+Latest decisions (41 total, newest first):
+- **ПРЕЦЕДЕНТ (не полный ответ, BLOCKER остаётся open): владелец командой в чате велел править глобальный скилл orchestrating-delivery-agents — внесены 4 точечные правки (Turn order: …** `GSL-174` — 2026-08-02 20:07
+- **breaker.opened — синтетика на фикстуре под GOSLEEP_LAB_DIR (урок q-005)** `GSL-214` — 2026-08-02 19:57
+  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк во время 5-дневного простоя подписки; дефолты уже исполнены воркеро…
+- **правки скилла — только отдельной эрратой (глобальный скилл не трогать; q-002 остаётся за владельцем)** `GSL-217` — 2026-08-02 19:57
+  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк во время 5-дневного простоя подписки; дефолты уже исполнены воркеро…
+- **носитель наблюдательного прогона — по дефолту воркера (шаг в tick.sh, отдельного plist не требуется)** `GSL-220` — 2026-08-02 19:57
+  <br>by rule: manifest раздел 2 (decide-by-default, дедлайн истёк во время 5-дневного простоя подписки; дефолты уже исполнены воркеро…
+- …and 37 more
 
 ## 7. The rest of the dashboard
 
