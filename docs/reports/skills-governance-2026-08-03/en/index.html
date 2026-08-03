@@ -26,7 +26,7 @@
     --surface-3:     #f0efec;
     --text:          #0b0b0b;
     --text-2:        #4a4a46;
-    --text-3:        #7a7975;
+    --text-3:        #6a6965;   /* AA-compliant: 5.01:1 on --bg, 5.51:1 on --surface, 4.77:1 on risk-bg */
     --border:        rgba(11,11,11,0.10);
     --border-strong: rgba(11,11,11,0.18);
     --border-hair:   rgba(11,11,11,0.06);
@@ -164,15 +164,13 @@
   a:hover { text-decoration-thickness: 2px; }
 
   code, kbd, samp, pre { font-family: var(--mono); font-size: 0.92em; }
-  code { background: var(--surface-3); padding: 0.08em 0.32em; border-radius: 4px; border: 1px solid var(--border-hair); }
+  code { background: var(--surface-3); padding: 0.08em 0.32em; border-radius: 4px; border: 1px solid var(--border-hair); overflow-wrap: anywhere; word-break: break-word; }
   pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--s-3) var(--s-4); overflow-x: auto; }
   pre code { background: transparent; padding: 0; border: 0; }
 
   .site-head {
     position: sticky; top: 0; z-index: 20;
-    background: color-mix(in oklab, var(--bg) 92%, transparent);
-    backdrop-filter: saturate(140%) blur(8px);
-    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    background: color-mix(in oklab, var(--bg) 94%, transparent);
     border-bottom: 1px solid var(--border);
   }
   .site-head .row {
@@ -542,7 +540,11 @@
     padding: var(--s-5) var(--s-4);
     background: var(--surface);
   }
-  figure.diagram svg { display: block; margin: 0 auto; }
+  figure.diagram svg { display: block; margin: 0 auto; width: 100%; height: auto; }
+  /* Preserve legibility on narrow viewports: force horizontal scroll on the
+     wrap instead of shrinking labels below their readable minimum. */
+  figure.diagram .svg-wrap.w720 svg { min-width: 720px; max-width: 720px; }
+  figure.diagram .svg-wrap.w900 svg { min-width: 900px; max-width: 900px; }
   figure.diagram figcaption {
     padding: var(--s-3) var(--s-4);
     border-top: 1px solid var(--border);
@@ -807,8 +809,8 @@
     </p>
 
     <figure class="diagram" aria-label="Skill divergence map">
-      <div class="svg-wrap">
-        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg3-title" width="100%" style="max-width: 720px;">
+      <div class="svg-wrap w720">
+        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg3-title">
           <title id="svg3-title">Divergence between development and production, per skill</title>
 
           <g class="sv-sans" font-size="11">
@@ -819,7 +821,7 @@
 
           <line x1="12" y1="38" x2="708" y2="38" class="sv-hair" stroke-width="1"/>
 
-          <g class="sv-sans" font-size="10" class="sv-text-3">
+          <g class="sv-sans sv-text-3" font-size="10">
             <text x="222" y="308" class="sv-text-3">0</text>
             <text x="322" y="308" class="sv-text-3">20</text>
             <text x="422" y="308" class="sv-text-3">40</text>
@@ -982,8 +984,8 @@
     </p>
 
     <figure class="diagram" aria-label="Today's state diagram">
-      <div class="svg-wrap">
-        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg1-title" width="100%" style="max-width: 720px;">
+      <div class="svg-wrap w720">
+        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg1-title">
           <title id="svg1-title">Today's state: three stores, broken connections</title>
 
           <defs>
@@ -1026,7 +1028,7 @@
             <rect x="520" y="60" width="180" height="180" rx="10" fill="var(--risk-bg)" stroke="var(--risk-fg)" stroke-width="1.5"/>
             <text x="610" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">PRODUCTION</text>
             <text x="610" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">~/.claude/skills/</text>
-            <text x="610" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">shared machine, all projects</text>
+            <text x="610" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-2)">shared machine, all projects</text>
             <line x1="536" y1="146" x2="684" y2="146" class="sv-hair"/>
             <text x="610" y="168" text-anchor="middle" class="sv-sans sv-text" font-size="11.5" font-weight="600">in use right now</text>
             <text x="610" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">install.sh guarded off</text>
@@ -1069,8 +1071,8 @@
     </p>
 
     <figure class="diagram" aria-label="Target process">
-      <div class="svg-wrap">
-        <svg viewBox="0 0 900 220" role="img" aria-labelledby="svg2-title" width="100%" style="max-width: 900px;">
+      <div class="svg-wrap w900">
+        <svg viewBox="0 0 900 220" role="img" aria-labelledby="svg2-title">
           <title id="svg2-title">Target process from lesson to production, with a single human-only publish step</title>
 
           <defs>
