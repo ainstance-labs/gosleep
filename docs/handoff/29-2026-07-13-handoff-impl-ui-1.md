@@ -1,79 +1,44 @@
-# Handoff — gosleep — 2026-07-13 (цикл 53, impl-ui-1: фундамент Фазы 5 — GSL-92/93/94)
+# Handoff — gosleep — 2026-07-13 (cycle 53, impl-ui-1: Phase 5 foundation — GSL-92/93/94)
 
-> Для СВЕЖЕГО агента. Читай Part 1 → `## ORCHESTRATOR REPORT` → Part 2 → «⭐ RESUME».
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл. Наследует handoff 28 (gsl90-setup).
-> Железные правила handoff'ов 21–28 **не ослаблены**.
+> For a FRESH agent. Read Part 1 → `## ORCHESTRATOR REPORT` → Part 2 → "⭐ RESUME".
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file. Inherits handoff 28 (gsl90-setup).
+> The hard rules of handoffs 21–28 are **not weakened**.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Фундамент Фазы 5 построен. Лаборатория получила **view-слой на TypeScript**, **контракт данных на
-семь экранов** и **autonomy runway** — тот самый главный индикатор, ради которого фаза и затевалась.
-Три коммита, ветка запушена, все три задачи Done.
+The Phase 5 foundation is built. The lab got a **view layer in TypeScript**, a **data contract for seven screens** and the **autonomy runway** — that very main indicator for the sake of which the phase was started. Three commits, branch pushed, all three tasks Done.
 
-Открой `docs/lab/site/index.html` — сверху страницы теперь заголовок, отвечающий на единственный
-вопрос, который у тебя есть в полночь: **можно ли идти спать**.
+Open `docs/lab/site/index.html` — at the top of the page there is now a headline answering the only question you have at midnight: **can I go to sleep**.
 
-## 2. Что уже сделано
+## 2. What has been done
 
-- **GSL-92** `6b4cbed` — TypeScript-скаффолд. View-слой уехал из Python (−290 строк), рендерит
-  Preact + esbuild (SSG, не SPA). **Нет node → не краш**: данные всё равно регенерируются, а страницы
-  остаются на месте под красным баннером с датой последней удачной сборки.
-- **GSL-93** `d2b2a20` — контракт данных (`gosleep.lab.render/3`, семь доменов) + семь экранов PRD.
-- **GSL-94** `9197f88` — **autonomy runway = min() по шести часам-исчерпания** (R5.1), приёмка
-  **F5-S1** закрыта 20 тестами.
+- **GSL-92** `6b4cbed` — the TypeScript scaffold. The view layer moved out of Python (−290 lines), renders Preact + esbuild (SSG, not SPA). **No node → no crash**: data still regenerates, and pages stay in place under a red banner with the date of the last successful build.
+- **GSL-93** `d2b2a20` — data contract (`gosleep.lab.render/3`, seven domains) + seven PRD screens.
+- **GSL-94** `9197f88` — **autonomy runway = min() over six exhaustion clocks** (R5.1), acceptance
+  **F5-S1** closed by 20 tests.
 
-**smoke: 130 → 174/174.** hooks-verify 14/14. 7 страниц well-formed, 0 ошибок.
+**smoke: 130 → 174/174.** hooks-verify 14/14. 7 pages well-formed, 0 errors.
 
-## 3. Что делаем дальше
+## 3. What we do next
 
-**GSL-95** (Questions + обратный отсчёт, F5-S2). Атрибут `data-auto-apply-at` уже проставлен на
-каждом вопросе с дедлайном — счётчику остаётся только его прочитать. Дальше GSL-96 (Tasks, F5-S3),
-GSL-97 (Timeline + Library + фильтр), GSL-98 (Fleet + Cost), GSL-99 (self-health), GSL-100 (приёмка).
+**GSL-95** (Questions + countdown, F5-S2). The attribute `data-auto-apply-at` is already set on every question with a deadline — the counter just needs to read it. Next GSL-96 (Tasks, F5-S3), GSL-97 (Timeline + Library + filter), GSL-98 (Fleet + Cost), GSL-99 (self-health), GSL-100 (acceptance).
 
-## 4. Какие есть проблемы
+## 4. Which problems there are
 
-- **Потолка токенов не существует ни в одном машиночитаемом источнике.** `manifest §5.phase-ceiling`
-  делегирует его «брифу эпика», ни один бриф числа не называет. Значит `§5.warn-80` и `§3.budget`
-  (`BUDGET_EXCEEDED` = BLOCKER) — **правила, которые физически не могут сработать**, а бюджетные часы
-  runway читаются `unknown` и роняют весь ответ до верхней границы (`≤` вместо `≈`).
-  → **DECISION `q-2026-07-13-002`**, дефолт = статус-кво, обратимость high. Работу не держит.
-- **⚠️ Коллизия для GSL-98.** Инвариант C5 грепает `chronicler.py` на `tmux|spawn|Agent tool|teammate`,
-  а **имя воркера** лежит в событиях только под ключом `data.raw.teammate_name` — прочитать его
-  нельзя, не завалив C5. Я **не стал ослаблять safety-check**: Fleet построен на поле `actor`.
-  У GSL-98 два честных пути: (а) уточнить греп до проверки **способности** (C5 про то, что летописец
-  не может занять панель, а не про то, что не может прочитать имя из лога); (б) жить с `actor`.
-  **Чего делать нельзя** — обходить греп трюками вроде `"team" + "mate_name"`. Safety-check, который
-  обходят, — это мёртвый safety-check.
-- **`api.failure` не выстреливал ни разу.** Хук `StopFailure` подключён, тип в словаре, событие никто
-  не наблюдал. «Квота не взведена» опирается на непроверенный механизм — это `clear` **со звёздочкой**,
-  и звёздочка напечатана на странице.
-- **Доска задач протухла (>12ч) и знает об этом.** Ключей Jira у лаборатории нет (C1), poll кормится
-  руками. 92 из 101 строки — со статусом `unknown`. Выводить «Done» из наличия коммита я **отказался**:
-  коммит ≠ Jira сказала Done. Решать GSL-96.
+- **The token ceiling does not exist in any machine-readable source.** `manifest · section 5.phase-ceiling` delegates it to "the epic brief", no brief names the number. So `· section 5.warn-80` and `· section 3.budget` (`BUDGET_EXCEEDED` = BLOCKER) are **rules that physically cannot fire**, and the budget hours of runway read `unknown` and drop the whole answer to the upper bound (`≤` instead of `≈`).
+  → **DECISION `q-2026-07-13-002`**, default = status quo, reversibility high. Does not hold work.
+- **⚠️ A collision for GSL-98.** The C5 invariant greps `chronicler.py` for `tmux|spawn|Agent tool|teammate`, and the **worker name** in events lies only under the key `data.raw.teammate_name` — you cannot read it without breaking C5. I **did not weaken the safety check**: Fleet is built on the `actor` field. GSL-98 has two honest paths: (a) narrow the grep to check **capability** (C5 is about the chronicler not being able to take a pane, not about not being able to read a name from the log); (b) live with `actor`. **What must not be done** is bypassing the grep with tricks like `"team" + "mate_name"`. A safety check being bypassed is a dead safety check.
+- **`api.failure` never fired.** The `StopFailure` hook is wired, the type is in the dictionary, the event has not been observed. "Quota not tripped" leans on an unverified mechanism — this is `clear` **with an asterisk**, and the asterisk is printed on the page.
+- **The task board is stale (>12h) and knows it.** The lab has no Jira keys (C1), poll is fed by hand. 92 out of 101 rows — with status `unknown`. I **refused** to derive "Done" from the presence of a commit: a commit ≠ Jira said Done. Solve in GSL-96.
 
-## 5. Комментарии и свежие решения
+## 5. Comments and fresh decisions
 
-- **`min()` по сырым шести — ложь арифметикой, и я её не написал.** Исчерпание значит разное на разных
-  осях: потолок контекста → форсированный ролл (watchdog делает сам, ночь выживает); три занятые
-  панели → очередь; кончилась работа → job done. Ни одно не повод будить человека, а наивный
-  `min(0h, 4h, 8h)` заорал бы «RUNWAY 0h», потому что занята панель. Поэтому каждые часы объявляют,
-  что значит **их** ноль: `stops` / `degrades` / `completes`. RUNWAY = ближайшие из `stops`;
-  `next_event` = ближайшие из **всех шести**, чтобы ролл не спрятался за шестичасовым runway.
-- **Незнание никогда не должно читаться как больший запас.** Если нечитаемые часы молча выпадают из
-  минимума, `min()` **удлиняется** — дашборд обещает больше сна, потому что знает **меньше**. Поэтому
-  нечитаемые часы понижают ответ до верхней границы, а не исчезают. И `clear` (доказано не ограничение)
-  ≠ `unknown` (не смогли прочитать) — это несущая разница, а не оттенок.
-- **Позитивный контроль вскрыл три холостых теста** — и они были холостыми ещё в Python-рендерере.
-  Фикстура smoke датирует события 20 часами назад (чтобы grade=dead), то есть **вчера**, а Timeline
-  показывал только срез за сегодня → три C8-проверки грепали пустую страницу. Timeline стал сквозной
-  лентой (PRD R5.2 «feed newest-first») — это чинит и тест, и реальный дефект: таймлайн, пустой в
-  00:05, неотличим от мёртвого слоя хуков.
-- **Починен разбор ISO-8601 со смещением.** Jira отдаёт `occurred_at` как `…T23:26:24.969+0200`, а
-  `parse_ts` умел только `…Z`. Доска **знала статус, но не знала его возраст** («never» над статусами,
-  лежащими прямо там). Хуже: строка со смещением сортируется **выше** строки с `Z`, будучи **более
-  ранним** моментом → наивное `>=` выбирало устаревшую запись как свежайшую.
+- **`min()` over the raw six is a lie by arithmetic, and I did not write it.** Exhaustion means different things on different axes: context ceiling → forced roll (the watchdog does it itself, the night survives); three panes busy → a queue; work ran out → job done. None is a reason to wake a human, and a naive `min(0h, 4h, 8h)` would scream "RUNWAY 0h" because a pane is busy. Therefore each clock declares what **its** zero means: `stops` / `degrades` / `completes`. RUNWAY = the nearest of `stops`; `next_event` = the nearest of **all six**, so a roll does not hide behind a six-hour runway.
+- **Not knowing must never read as more slack.** If unreadable clocks silently drop out of the minimum, `min()` **lengthens** — the dashboard promises more sleep because it knows **less**. Therefore unreadable clocks lower the answer to the upper bound, do not disappear. And `clear` (proved not a limit) ≠ `unknown` (could not be read) — this is a load-bearing distinction, not a shade.
+- **A positive control uncovered three idle tests** — and they were idle already in the Python renderer. The smoke fixture dates events 20 hours ago (so that grade=dead), i.e. **yesterday**, and Timeline showed only a slice for today → three C8 checks grepped an empty page. Timeline became a through feed (PRD R5.2 "feed newest-first") — this fixes both the test and the real defect: a timeline empty at 00:05 is indistinguishable from a dead hook layer.
+- **Fixed ISO-8601 parsing with an offset.** Jira returns `occurred_at` as `…T23:26:24.969+0200`, and `parse_ts` could only handle `…Z`. The board **knew the status but not its age** ("never" over statuses lying right there). Worse: a string with an offset sorts **higher** than a string with `Z` while being an **earlier** moment → naive `>=` was picking a stale record as the freshest.
 
 ---
 
@@ -82,108 +47,91 @@ GSL-97 (Timeline + Library + фильтр), GSL-98 (Fleet + Cost), GSL-99 (self-
 ```
 CYCLE_ID: impl-ui-1 #53
 CYCLE_STATUS: COMPLETE
-EPIC: GSL-90 (In Progress) / GH #103 — PRD Phase 5 «UI оркестрации (static v1)»
-BRANCH: GSL-90-ui-orchestration @ 9197f88 — запушена
+EPIC: GSL-90 (In Progress) / GH #103 — PRD Phase 5 "Orchestration UI (static v1)"
+BRANCH: GSL-90-ui-orchestration @ 9197f88 — pushed
 COMMITS: 3
   6b4cbed GSL-92 — TS scaffold + degrade-without-node          (smoke 130 → 142)
   d2b2a20 GSL-93 — data contract render/3 + 7 screens          (smoke 142 → 154)
   9197f88 GSL-94 — autonomy runway = min(6 axes), F5-S1        (smoke 154 → 174)
-JIRA: GSL-92/93/94 → Done. Осталось: GSL-95..GSL-100 (To Do)
-GATES: smoke 174/174 · hooks-verify 14/14 · 7 страниц well-formed (0 ошибок) ·
-       tsc --noEmit чисто · status.json + render_bundle.json валидны ·
-       degrade без node: exit 0, 7 страниц под баннером · C1 ok · C5 ok
-ACCEPTANCE: R5.1 реализовано. F5-S1 ЗАКРЫТО (20 тестов на синтетических состояниях).
-            R5.2 — семь экранов есть, наполнение за GSL-95..99.
-NEW DECISION: q-2026-07-13-002 — потолок токенов не существует на диске; дефолт = статус-кво;
-              обратимость high; НЕ блокирует
-BLOCKED_ON_HUMAN: нет. Очередь: open=3 (0B/3D/0C/0F) — ноль BLOCKER'ов
-NEXT: impl-ui-2 — GSL-95 (Questions + обратный отсчёт, F5-S2)
-MODEL: claude-opus-4-8 (сверено по транскрипту c2e36f08-*.jsonl — по session-id пути, 285 записей)
+JIRA: GSL-92/93/94 → Done. Left: GSL-95..GSL-100 (To Do)
+GATES: smoke 174/174 · hooks-verify 14/14 · 7 pages well-formed (0 errors) ·
+       tsc --noEmit clean · status.json + render_bundle.json valid ·
+       degrade without node: exit 0, 7 pages under the banner · C1 ok · C5 ok
+ACCEPTANCE: R5.1 implemented. F5-S1 CLOSED (20 tests on synthetic states).
+            R5.2 — seven screens exist, filling in GSL-95..99.
+NEW DECISION: q-2026-07-13-002 — token ceiling not on disk; default = status quo;
+              reversibility high; does NOT block
+BLOCKED_ON_HUMAN: none. Queue: open=3 (0B/3D/0C/0F) — zero BLOCKERs
+NEXT: impl-ui-2 — GSL-95 (Questions + countdown, F5-S2)
+MODEL: claude-opus-4-8 (verified from transcript c2e36f08-*.jsonl — by session-id path, 285 records)
 TELEMETRY: tokens_out=~460940 tokens_in=~582 cache_read=~55349599 cache_write=~729352
 ```
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Архитектура, которую унаследует GSL-95+
+## The architecture GSL-95+ inherits
 
 ```
-tools/lab/chronicler.py   (Python, stdlib, без сети) — слой ДАННЫХ: читает тиры, сворачивает,
-        │                                               градуирует, считает КАЖДОЕ число
-        └── docs/lab/render_bundle.json     ← ОДИН контракт (зеркалится в src/types.ts)
+tools/lab/chronicler.py   (Python, stdlib, no network) — the DATA layer: reads tiers, folds,
+        │                                                 grades, computes EVERY number
+        └── docs/lab/render_bundle.json     ← ONE contract (mirrored in src/types.ts)
                 │
                 └── tools/lab/ui/render.sh → build.mjs → src/render.tsx   (TypeScript + Preact, SSG)
                         │
-                        └── {"index.html": "<!doctype html>…", …}  ← печатается в stdout
+                        └── {"index.html": "<!doctype html>…", …}  ← printed to stdout
                                 │
-                                └── Python пишет каждую страницу через lab-write.sh (атомарно)
+                                └── Python writes each page via lab-write.sh (atomic)
 ```
 
-**Правила, которые нельзя нарушать:**
+**Rules that cannot be broken:**
 
-1. **Числа считаются в Python, один раз.** Нужен счётчик на экране — добавь его в bundle, не
-   выводи в TSX. Число, которое рендерер вывел сам, — это второе мнение, которое рано или поздно
-   разойдётся со `status.json`.
-2. **Рендерер не пишет в файловую систему.** `build.mjs` читает stdin, печатает stdout. smoke это
-   ассертит (`writeFile` в build.mjs = FAIL). Node, убитый на пятой странице, не может оставить
-   рваный дашборд — ему нечем.
-3. **Отсутствие рендерится как отсутствие.** `<Unknown why=…>` / `<Kpi>`. Никогда `0`, никогда
-   правдоподобный дефолт, никогда зелёная галочка.
-4. **`docs/lab/site/` — DERIVED.** Не править руками никогда.
+1. **Numbers are computed in Python, once.** Need a counter on a screen — add it to the bundle, do not derive it in TSX. A number the renderer produced itself is a second opinion that will sooner or later diverge from `status.json`.
+2. **The renderer does not write to the file system.** `build.mjs` reads stdin, prints stdout. Smoke asserts this (`writeFile` in build.mjs = FAIL). Node killed on the fifth page cannot leave a torn dashboard — it has nothing to write with.
+3. **Absence is rendered as absence.** `<Unknown why=…>` / `<Kpi>`. Never `0`, never a plausible default, never a green check mark.
+4. **`docs/lab/site/` — DERIVED.** Never edit by hand.
 
-## Bootstrap (один раз на клон)
+## Bootstrap (once per clone)
 
 ```bash
-cd tools/lab/ui && npm install     # НИКОГДА не автоматически: ночная задача,
-                                   # лезущая в сеть, — это ночная задача, которая зависает
+cd tools/lab/ui && npm install     # NEVER automatically: a nightly task
+                                   # reaching for the network is a nightly task that hangs
 ```
 
-Не сделал — не страшно: страницы скажут об этом сами, красным, с этой командой внутри.
+Not done — not scary: the pages will say it themselves, in red, with this command inside.
 
-## Ловушки
+## Traps
 
-- **`chronicler.py` нельзя писать словами `tmux`, `spawn`, `Agent tool`, `teammate`** — smoke грепает
-  (инвариант C5). Ловит и безобидное `spawn_cap` в имени переменной. См. § 4 выше.
-- **`--dry-run` рендерит, но не пишет.** Пропустить рендер в dry-run — соблазн, и он неверен: тогда
-  `--dry-run` отчитается «ok» о проходе, чей рендерер упал бы.
-- **Схема bundle — двусторонний контракт.** Рендерер **бросает** на незнакомой схеме
-  (`render.tsx`), а не рисует пустые карточки. Бампать схему — правка в трёх местах
-  (`chronicler.py`, `render.tsx`, `smoke.sh`), намеренно.
-- **Коммит через heredoc хук не видит** — используй `git commit -F <файл>`.
-- **Дирти дерево между коммитами — норма** (`events/<сегодня>.jsonl` растёт при каждом коммите).
-- **`docs/prompts/` и `ORCHESTRATION-STATE.md` — owner/orchestrator-sovereign**, воркер не трогает.
+- **`chronicler.py` may not contain the words `tmux`, `spawn`, `Agent tool`, `teammate`** — smoke greps (invariant C5). Catches innocent `spawn_cap` in a variable name too. See · section 4 above.
+- **`--dry-run` renders but does not write.** Skipping the render in dry-run is a temptation, and it is wrong: then `--dry-run` reports "ok" about a pass whose renderer would have fallen.
+- **Bundle schema — a two-sided contract.** The renderer **throws** on an unfamiliar schema (`render.tsx`), does not draw empty cards. Bumping the schema — an edit in three places (`chronicler.py`, `render.tsx`, `smoke.sh`), deliberately.
+- **A commit via heredoc the hook does not see** — use `git commit -F <file>`.
+- **Dirty tree between commits — norm** (`events/<today>.jsonl` grows on every commit).
+- **`docs/prompts/` and `ORCHESTRATION-STATE.md` — owner/orchestrator-sovereign**, workers do not touch.
 
 ## ⭐ RESUME POINT — impl-ui-2
 
 ```bash
-git checkout GSL-90-ui-orchestration     # @ 9197f88, запушена
-bash tools/lab/smoke.sh                  # 174/174 — базовая линия ДО правок
-bash tools/lab/chronicler.sh --no-poll   # соберёт 7 страниц
-open docs/lab/site/index.html            # runway сверху
-bash tools/lab/lab-emit.sh list --count  # open=3 (0B/3D/0C/0F) — ноль блокеров
+git checkout GSL-90-ui-orchestration     # @ 9197f88, pushed
+bash tools/lab/smoke.sh                  # 174/174 — baseline BEFORE edits
+bash tools/lab/chronicler.sh --no-poll   # rebuilds 7 pages
+open docs/lab/site/index.html            # runway at the top
+bash tools/lab/lab-emit.sh list --count  # open=3 (0B/3D/0C/0F) — zero blockers
 ```
 
-**Первая задача — GSL-95** (`[UI]` Questions + обратный отсчёт дедлайнов, GH #108, **F5-S2**).
+**First task — GSL-95** (`[UI]` Questions + deadline countdown, GH #108, **F5-S2**).
 
-Что уже готово под неё:
-- Экран `tools/lab/ui/src/screens/questions.tsx` — открытые BLOCKER'ы и самораз­решающиеся вопросы
-  разделены **двумя заголовками**: BLOCKER не имеет дефолта и таймера (manifest §3), DECISION сам
-  себя применяет в `auto_apply_at`. Сваливать их в один список — значит хоронить единственный вопрос,
-  на который владелец обязан ответить, под четырьмя, на которые не обязан.
-- На каждом `auto_apply_at` уже стоит атрибут **`data-auto-apply-at`** — счётчику остаётся прочитать
-  его и тикать. Клиентский бандл (`src/client.ts`) инлайнится в каждую страницу; добавь туда функцию
-  рядом с `regradeStaleness()`.
-- Контракт `queue` в bundle несёт всё: `open_items`, `closed_items`, `open_blockers`, `seen_by`,
-  `reversibility`, `impact_if_wrong`, `default_rationale`.
+What is already ready for it:
+- Screen `tools/lab/ui/src/screens/questions.tsx` — open BLOCKERs and self-resolving questions are split by **two headers**: BLOCKER has no default and no timer (manifest · section 3), DECISION applies itself at `auto_apply_at`. Dumping them into one list buries the only question the owner must answer under four he does not have to.
+- Every `auto_apply_at` already has the attribute **`data-auto-apply-at`** — the counter just needs to read it and tick. The client bundle (`src/client.ts`) inlines into every page; add the function next to `regradeStaleness()`.
+- The `queue` contract in the bundle carries everything: `open_items`, `closed_items`, `open_blockers`, `seen_by`, `reversibility`, `impact_if_wrong`, `default_rationale`.
 
-**Обязательно:** обратный отсчёт обязан **переоценивать себя при открытии страницы** (как баннер
-свежести), а не быть замороженным на build-time. Дедлайн, истёкший три часа назад и всё ещё
-показывающий «auto-applies in 2h», — это ровно та ложь, ради вычистки которой Фаза 4 потратила цикл.
+**Mandatory:** the countdown must **re-evaluate itself on page open** (like the freshness banner), not be frozen at build time. A deadline expired three hours ago and still showing "auto-applies in 2h" is exactly the lie for whose cleanup Phase 4 spent a cycle.
 
 ## Blocked on human
 
-**Нет.** `open=3 (0B/3D/0C/0F)` — ноль BLOCKER'ов, три DECISION с дефолтами:
-- `q-2026-07-12-001` — летописец (детерминированный против LLM), без срока;
-- `q-2026-07-13-001` — фреймворк UI (**дефолт применён: Preact + esbuild**, работает);
-- `q-2026-07-13-002` — **потолок токенов** (новый, см. § 4), дефолт = статус-кво.
+**None.** `open=3 (0B/3D/0C/0F)` — zero BLOCKERs, three DECISIONs with defaults:
+- `q-2026-07-12-001` — chronicler (deterministic vs LLM), no deadline;
+- `q-2026-07-13-001` — UI framework (**default applied: Preact + esbuild**, works);
+- `q-2026-07-13-002` — **token ceiling** (new, see · section 4), default = status quo.

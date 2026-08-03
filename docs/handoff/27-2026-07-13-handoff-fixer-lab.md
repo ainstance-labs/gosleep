@@ -1,75 +1,44 @@
-# Handoff — gosleep — 2026-07-13 (цикл 50, fixer-lab: все находки ревью закрыты, PR #102 готов к мёржу)
+# Handoff — gosleep — 2026-07-13 (cycle 50, fixer-lab: all review findings closed, PR #102 ready to merge)
 
-> Для СВЕЖЕГО агента. Читай Part 1 (простыми словами) → `## ORCHESTRATOR REPORT` → Part 2 → «⭐ RESUME».
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл. Дополняет handoff 26 (impl-lab-3,
-> закрытие имплементации Фазы 4) и **уточняет его § инструкции финализатору**: мёрж PR #102 делается
-> **из веб-интерфейса**, не из CLI. Железные правила handoff'ов 21–26 не ослаблены.
+> For a FRESH agent. Read Part 1 (plain words) → `## ORCHESTRATOR REPORT` → Part 2 → "⭐ RESUME".
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file. Complements handoff 26 (impl-lab-3,
+> closing the Phase 4 implementation) and **clarifies its · finalizer instruction**: PR #102 is merged
+> **from the web interface**, not from CLI. The hard rules of handoffs 21–26 are not weakened.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Фаза 4 («Лаборатория» — ночь документирует себя сама) **дописана, отревьюена и починена**. Ревьюер
-нашёл восемь дефектов, один критический; все восемь закрыты тремя коммитами. PR **#102 открыт, зелёный
-и готов к мёржу** — остался ровно один шаг, и его должен сделать финализатор.
+Phase 4 ("Laboratory" — the night documents itself) is **written, reviewed and fixed**. The reviewer found eight defects, one critical; all eight are closed by three commits. PR **#102 is open, green and ready to merge** — one step remains, and the finalizer must take it.
 
-## 2. Что уже сделано
+## 2. What is already done
 
-Ревью вынесло вердикт **FIX** — и три его главные находки били в одно и то же место: **лаборатория не
-должна врать о себе.**
+The review issued the **FIX** verdict — and its three main findings hit the same point: **the lab must not lie about itself.**
 
-- **Хук записывал коммит, которого не было — и подписывал его настоящим sha.** Когда `git commit`
-  падал (нечего коммитить, отверг хук — во флоте это рутина), функция-подстраховка спрашивала у git,
-  что сейчас на HEAD, и получала **предыдущий** коммит. В лог уезжала строка с валидным, достижимым
-  sha под сообщением, которому не соответствовал ни один коммит. Лог append-only: убрать такую строку
-  уже нельзя. Теперь HEAD обязан доказать, что он **свежий** (сделан секунды назад) и **свой** (его
-  тема совпадает с сообщением `-m` этой команды). Не доказал — sha не пишется вовсе: пробел допишет
-  poll-fill, а ложь не исправит никто.
-- **Страница показывала красный DEAD — и строкой ниже писала «Live».** Переоценка свежести при открытии
-  переписывала баннер, но человеческую фразу под ним оставляла запечённой. Теперь переписывается и она.
-- **Приёмка R4.2 стояла ✅ на доказательстве, которого в репозитории нет.** Единственный критерий Фазы 4,
-  сформулированный одной проверяемой фразой, был закрыт наблюдением, которое нигде не сохранилось.
-  Понижено до ⏳ PENDING — закрывается честно, одним настоящим прогоном (см. § 3).
+- **The hook recorded a commit that did not happen — and signed it with a real sha.** When `git commit` failed (nothing to commit, hook rejection — fleet routine), the backup function asked git what was on HEAD now and got the **previous** commit. Into the log went a line with a valid, reachable sha under a message that matched no commit. The log is append-only: such a line cannot be removed. Now HEAD must prove it is **fresh** (made seconds ago) and **its own** (its subject matches the `-m` message of this command). Not proved — the sha is not written at all: the gap is filled by poll-fill, and the lie is not fixed by anyone.
+- **The page showed a red DEAD — and a line below wrote "Live".** Re-evaluation of freshness on open rewrote the banner but left the human sentence below it baked in. Now the sentence is rewritten too.
+- **The R4.2 acceptance stood ✅ on evidence that is not in the repository.** The only Phase 4 criterion phrased as a single verifiable sentence was closed by an observation preserved nowhere. Downgraded to ⏳ PENDING — closes honestly, in one real run (see · section 3).
 
-Плюс пять мелких: парсер sha, ассерты в smoke, доки, коммит логов, счётчики.
+Plus five minor: the sha parser, asserts in smoke, docs, log commit, counters.
 
-## 3. Что делаем дальше
+## 3. What we do next
 
-**Финализатор мёржит PR #102 — и обязательно из веб-интерфейса GitHub, а не командой `gh pr merge`.**
-Это не каприз: приёмка R4.2 звучит как «PR, смёрженный **вне CLI**, появляется в таймлайне». Мёрж из
-CLI увидел бы хук — и не проверил бы ничего. Мёрж из веба не видит никто, и событие обязано доехать до
-таймлайна **сверкой** (poll-fill). Ради этого механизм и писался; ему остался один настоящий прогон.
+**The finalizer merges PR #102 — and necessarily from the GitHub web interface, not with the command `gh pr merge`.** This is not a whim: the R4.2 acceptance says "a PR merged **outside CLI** appears in the timeline". A merge from CLI would be seen by the hook — and would verify nothing. A merge from the web is seen by no one, and the event must reach the timeline **by cross-check** (poll-fill). The mechanism was written for that; it has one real run left.
 
-После мёржа: `chronicler.sh` → убедиться, что в логе появилась строка `vcs.pr.merged` с `src="poll-fill"`
-и номером 102 → это и закрывает R4.2. Дальше — закрыть GitHub-задачи, Jira → Done, удалить ветку. Потом,
-без остановки, Фаза 5 (UI).
+After the merge: `chronicler.sh` → make sure a `vcs.pr.merged` line appeared in the log with `src="poll-fill"` and the number 102 → this is what closes R4.2. Then — close the GitHub tasks, Jira → Done, delete the branch. Then, without stopping, Phase 5 (UI).
 
-## 4. Какие есть проблемы
+## 4. Which problems there are
 
-- **R4.2 остаётся ⏳ PENDING до мёржа из веба.** Механизм есть и покрыт smoke по живому `gh`, но самой
-  строки в репозитории пока нет.
-- **Компакция так и не наблюдалась** — за всё время лога ноль строк `context.*`. F4-S1 честно стоит
-  3 из 4; форсировать нечем.
-- **Один фантом остаётся в логе — намеренно.** Его оставил сам ревьюер, воспроизводя дефект: строка
-  `seq 48` от 2026-07-13 несёт sha `5be2adc` — коммит, уже записанный тремя часами раньше. Убрать
-  нельзя (лог append-only), заменить нечем (это не «коммит с потерянным sha», это вообще не коммит).
-  Поэтому в `docs/lab/events/README.md` записано правило чтения: у строк старше этого фикса sha сам по
-  себе ничего не доказывает — сверяй сообщение с коммитом. Новых фантомов такой формы больше не будет.
+- **R4.2 stays ⏳ PENDING until the web merge.** The mechanism exists and is covered by smoke on live `gh`, but the line itself is not yet in the repository.
+- **Compaction has still not been observed** — for the whole log's life there is zero `context.*` line. F4-S1 honestly stands 3 of 4; there is nothing to force it with.
+- **One phantom remains in the log — deliberately.** It was left by the reviewer himself, reproducing the defect: line `seq 48` from 2026-07-13 carries sha `5be2adc` — a commit already recorded three hours earlier. Cannot be removed (append-only log), cannot be replaced (this is not a "commit with a lost sha", this is not a commit at all). Therefore in `docs/lab/events/README.md` a reading rule is recorded: for lines older than this fix the sha alone proves nothing — verify the message against the commit. New phantoms in this form will not appear again.
 
-## 5. Комментарии и свежие решения
+## 5. Comments and fresh decisions
 
-- **Первое, что поймал фикс, — собственный тест.** `hooks-verify` проверял quiet-commit так: кормил хук
-  сообщением о команде, **которую не запускал**, и требовал вернуть sha. Это буквально форма C1,
-  записанная как критерий приёмки. После фикса он честно упал (13/13 → 12/13). Теперь тест сначала
-  делает коммит по-настоящему, а рядом стоит обратный: провалившийся коммит **не** получает sha. 14/14.
-- **Ревьюер просил в smoke `grep -q Live` — я сделал иначе, и это осознанно.** Чтобы переоценивать
-  прозу, скрипт обязан нести все три вердикта, поэтому слово «Live» теперь есть в исходнике **любой**
-  страницы, включая мёртвую. Буквальный греп дал бы красный тест на исправленном коде. Проверяется
-  **отрендеренный** вердикт — из спана, а не грепом по файлу.
-- **Догфудинг по дороге:** мой собственный коммит `977a09e` хук **потерял** (сообщение шло heredoc'ом —
-  документированная дыра парсера), и через минуту его подобрал poll-fill. Страховочная сеть отработала
-  ровно как задумано. Остальные коммиты цикла я делал через `git commit -F`, чтобы хук их видел.
-- `docs/prompts/2-deep-orchestrating-research.md` по-прежнему **не коммитить** (owner-sovereign).
+- **The first thing the fix caught was its own test.** `hooks-verify` checked quiet-commit like this: fed the hook a message about a command **it had not run** and required a returned sha. This is literally C1's form written down as an acceptance criterion. After the fix it honestly failed (13/13 → 12/13). Now the test first makes a real commit, and a reverse one stands next to it: a failed commit does **not** get a sha. 14/14.
+- **The reviewer asked for `grep -q Live` in smoke — I did it differently, and this is deliberate.** So that the script can re-evaluate prose, it must carry all three verdicts, therefore the word "Live" is now in the source of **any** page, including the dead one. A literal grep would give a red test on fixed code. Verifies the **rendered** verdict — from a span, not by grepping the file.
+- **Dogfooding along the way:** my own commit `977a09e` the hook **lost** (the message went in a heredoc — a documented parser hole), and a minute later poll-fill picked it up. The safety net worked exactly as intended. The rest of the cycle's commits I made via `git commit -F` so the hook would see them.
+- `docs/prompts/2-deep-orchestrating-research.md` — still **do not commit** (owner-sovereign).
 
 ---
 
@@ -78,45 +47,44 @@ CLI увидел бы хук — и не проверил бы ничего. М�
 ```
 CYCLE_ID: fixer-lab #50
 CYCLE_STATUS: COMPLETE
-EPIC: GSL-81 (In Review) / GH #93 — PRD Phase 4 «Laboratory (auto-doc)»
-TASKS: GSL-82..89 — все Done (Jira сверена live). Фиксы легли под существующие ключи, новых не заводил.
-BRANCH: GSL-81-laboratory-auto-doc @ 63b1c63 — запушена (11 коммитов от main: 9a056bb..63b1c63)
+EPIC: GSL-81 (In Review) / GH #93 — PRD Phase 4 "Laboratory (auto-doc)"
+TASKS: GSL-82..89 — all Done (Jira verified live). Fixes went under existing keys, no new filed.
+BRANCH: GSL-81-laboratory-auto-doc @ 63b1c63 — pushed (11 commits from main: 9a056bb..63b1c63)
 COMMITS: 3 — 977a09e (C1+m1+m3) · b743002 (M1+m2) · 63b1c63 (M2+m4+m5)
-REVIEW: docs/reviews/REVIEW-gsl81.md — FIX (1 CRITICAL, 2 MAJOR, 5 MINOR) → закрыты 8/8
-GATES: smoke 130/130 (было 119) · hooks-verify 14/14 на ЖИВОМ процессе (было 13/13) · status.json валиден
-       · jsonl валиден · skill/ не тронут (install.sh не нужен) · ни одного `git add -A`
+REVIEW: docs/reviews/REVIEW-gsl81.md — FIX (1 CRITICAL, 2 MAJOR, 5 MINOR) → closed 8/8
+GATES: smoke 130/130 (was 119) · hooks-verify 14/14 on a LIVE process (was 13/13) · status.json valid
+       · jsonl valid · skill/ untouched (install.sh not needed) · not a single `git add -A`
 PR: #102 — OPEN / CLEAN / MERGEABLE @ 63b1c63
-TREE: porcelain = леджер (STATE + handoff'ы 22..27 + digest + docs/prompts) + живой events-лог — штатно
-NEXT: finalizer — мёрж #102 **из веб-интерфейса** (regular merge, не squash) → chronicler.sh →
-      проверить строку vcs.pr.merged (src=poll-fill, PR 102) → это закрывает R4.2 → закрыть #94..#101,
-      Jira → Done (41), удалить удалённую ветку, git fetch main:main
-BLOCKED_ON_HUMAN: нет
-MODEL: claude-opus-4-8 (сверено по своему транскрипту 005323db-*.jsonl — по session-id пути, не по имени)
+TREE: porcelain = ledger (STATE + handoffs 22..27 + digest + docs/prompts) + live events log — normal
+NEXT: finalizer — merge #102 **from the web interface** (regular merge, not squash) → chronicler.sh →
+      verify the vcs.pr.merged line (src=poll-fill, PR 102) → this closes R4.2 → close #94..#101,
+      Jira → Done (41), delete remote branch, git fetch main:main
+BLOCKED_ON_HUMAN: none
+MODEL: claude-opus-4-8 (verified from own transcript 005323db-*.jsonl — by session-id path, not by name)
 ```
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## ⚠️ Железные правила (перенесены из handoff'ов 21–26 — не ослаблять)
+## ⚠️ Hard rules (carried from handoffs 21–26 — do not weaken)
 
-1. **Каждый turn заканчивается ТЕКСТОМ владельцу — после ВСЕХ tool calls.**
-2. **Модели: ВСЕ агенты — Opus 4.8**; сверять **по транскрипту** (по session-id пути), self-report врёт.
-3. NO Workflow tool; максимум **3** воркер-панели; kill-pane только по явному id; **no force-push**;
-   **regular merge** (никогда squash); телеметрия в STATE после цикла; **воркеры не трогают леджер**.
-4. **Hook shim обязателен** для новых bash-хуков (`tools/hooks/lab-log-hook.sh`, всегда exit 0).
-   Bare exit 2 в хуке = «заблокировать операцию» (в цикле 45 недописанный скрипт заморозил флот).
-5. **`.claude/settings.json` подхватывается живьём** — правка = эффект без рестарта.
-6. **`status.json` только через `tools/lab/lab-write.sh`** (atomic temp+rename).
-7. **poll-fill — страховочная сетка; НИКОГДА не удалять.**
-8. **НИКОГДА `git add -A`** — только пофайлово.
-9. **Дирти дерево между коммитами — норма** (`events/<сегодня>.jsonl` растёт при каждом коммите).
+1. **Every turn ends with TEXT to the owner — after ALL tool calls.**
+2. **Models: ALL agents on Opus 4.8**; verify **from the transcript** (by session-id path), self-report lies.
+3. NO Workflow tool; at most **3** worker panes; kill-pane only by explicit id; **no force-push**;
+   **regular merge** (never squash); telemetry into STATE after a cycle; **workers do not touch the ledger**.
+4. **Hook shim is mandatory** for new bash hooks (`tools/hooks/lab-log-hook.sh`, always exit 0).
+   Bare exit 2 in a hook = "block the operation" (in cycle 45 an unfinished script froze the fleet).
+5. **`.claude/settings.json` is picked up live** — an edit = effect without a restart.
+6. **`status.json` only via `tools/lab/lab-write.sh`** (atomic temp+rename).
+7. **poll-fill — a safety net; NEVER delete.**
+8. **NEVER `git add -A`** — per file only.
+9. **Dirty tree between commits — norm** (`events/<today>.jsonl` grows on every commit).
 10. `docs/lab/decisions/manifest.md` — **owner-sovereign**.
 
-## Как мы работаем
+## How we work
 
-Скиллы: `delivery-workflow` (эпик+задача, один коммит на задачу, один PR на эпик) + `using-jira` +
-`handoff`. Иерархия Epic+Task, ветка на эпик, dev_history на задачу.
+Skills: `delivery-workflow` (epic+task, one commit per task, one PR per epic) + `using-jira` + `handoff`. Hierarchy Epic+Task, a branch per epic, a dev_history per task.
 
 ## Connections
 
@@ -124,85 +92,79 @@ MODEL: claude-opus-4-8 (сверено по своему транскрипту 
 |---|---|
 | Jira project | **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b` |
 | Jira transitions | To Do=11, In Progress=21, In Review=31, **Done=41** |
-| Jira статусы сейчас | GSL-81 (Epic) — **In Review**; GSL-82..89 — **Done** |
-| GitHub | `ainstance-labs/gosleep` (private). Эпик GSL-81 = **#93**; задачи GSL-82..89 = **#94..#101** |
+| Jira statuses now | GSL-81 (Epic) — **In Review**; GSL-82..89 — **Done** |
+| GitHub | `ainstance-labs/gosleep` (private). Epic GSL-81 = **#93**; tasks GSL-82..89 = **#94..#101** |
 | PR | **#102** — OPEN / CLEAN / MERGEABLE @ `63b1c63` |
 | Owner accountId | `557058:83b04839-8bde-4331-9c2d-24843d0b8e67` |
-| Ветка | `GSL-81-laboratory-auto-doc` @ **`63b1c63`** (запушена) |
+| Branch | `GSL-81-laboratory-auto-doc` @ **`63b1c63`** (pushed) |
 | Local main | @ `4af66d2` |
-| Следующий ключ Jira | **GSL-90+** (Фаза 5 UI) · следующий GH-номер **#103** |
+| Next Jira key | **GSL-90+** (Phase 5 UI) · next GH number **#103** |
 
-## Gates (CI нет — руками)
+## Gates (no CI — by hand)
 
-- Трогал `tools/lab/` → `tools/lab/smoke.sh` — **130/130**, не сломать.
-- Трогал хуки / `lab-log.sh` / `settings.json` → `tools/lab/hooks-verify.sh` — **14/14**, поднимает
-  живой процесс Claude Code. **`lab-log.sh` — цель хуков: синтаксическая ошибка там бьёт по всему флоту.**
-- Трогал `skill/` → `./install.sh`, затем `diff -r skill/<name>/ ~/.claude/skills/<name>/` пуст.
-- Писал jsonl → `jq -c . docs/lab/events/*.jsonl > /dev/null`.
-- Перед push → `git show --stat HEAD`: ровно намеченные файлы.
+- Touched `tools/lab/` → `tools/lab/smoke.sh` — **130/130**, do not break.
+- Touched hooks / `lab-log.sh` / `settings.json` → `tools/lab/hooks-verify.sh` — **14/14**, raises a live Claude Code process. **`lab-log.sh` is the hook target: a syntax error there hits the whole fleet.**
+- Touched `skill/` → `./install.sh`, then `diff -r skill/<name>/ ~/.claude/skills/<name>/` empty.
+- Wrote jsonl → `jq -c . docs/lab/events/*.jsonl > /dev/null`.
+- Before push → `git show --stat HEAD`: exactly the intended files.
 
-## Что появилось в коде за этот цикл
+## What appeared in the code this cycle
 
-| Файл | Что изменилось |
+| File | What changed |
 |---|---|
-| `tools/lab/lab-log.sh` | `git_head()` — гарантии **FRESH** (`%ct` против `GOSLEEP_HEAD_MAX_AGE_S`, по умолчанию 15 с) и **ITS OWN** (`%s` против темы `-m`); `commit_subject()` разбирает `-m`/`-am`/`-mMSG`/`--message=`; `commit_sha()` якорится на скобку git-эха `[<branch> <sha>]`. |
-| `tools/lab/chronicler.py` | `VERDICT` — один словарь на два рендерера (страница + JS); проза свежести живёт в `<span id="stale-verdict">` и переписывается внутри guard'а «только ухудшать». |
-| `tools/lab/smoke.sh` | 119 → **130** (+6 на фантом/парсер, +5 на прозу). |
-| `tools/lab/hooks-verify.sh` | 13 → **14**: quiet-commit тест сначала **делает** коммит; добавлен кейс «провалившийся коммит не получает sha». |
-| `docs/lab/events/README.md` | Фантом описан в той форме, в какой встречается (**валидный** sha, не пустой) + правило чтения для строк старше фикса. |
-| `docs/dev_history/GSL-89-phase4-cycle47-close.md` | R4.2 → ⏳ PENDING; счётчики F4-S1/R4.1 пересчитаны по **закоммиченному** логу; F4-S3 → MET-после-фикса; план закрытия R4.2. |
-| `docs/dev_history/GSL-87-phase4-cycle46-poll-fill.md` | Поправка к acceptance R4.2 — запись исправлена, а не переписана. |
-| `docs/lab/events/2026-07-{12,13}.jsonl` | Закоммичены: теперь арифметику цитат можно проверить на этом sha. |
+| `tools/lab/lab-log.sh` | `git_head()` — guarantees **FRESH** (`%ct` against `GOSLEEP_HEAD_MAX_AGE_S`, default 15 s) and **ITS OWN** (`%s` against the `-m` subject); `commit_subject()` parses `-m`/`-am`/`-mMSG`/`--message=`; `commit_sha()` anchors on the git-echo bracket `[<branch> <sha>]`. |
+| `tools/lab/chronicler.py` | `VERDICT` — one dictionary for two renderers (page + JS); freshness prose lives in `<span id="stale-verdict">` and is rewritten inside the "only worsen" guard. |
+| `tools/lab/smoke.sh` | 119 → **130** (+6 on phantom/parser, +5 on prose). |
+| `tools/lab/hooks-verify.sh` | 13 → **14**: the quiet-commit test first **makes** a commit; a case "a failed commit does not get a sha" added. |
+| `docs/lab/events/README.md` | The phantom described in the form it occurs (**valid** sha, not empty) + reading rule for lines older than the fix. |
+| `docs/dev_history/GSL-89-phase4-cycle47-close.md` | R4.2 → ⏳ PENDING; F4-S1/R4.1 counters recomputed from the **committed** log; F4-S3 → MET-after-fix; R4.2 closing plan. |
+| `docs/dev_history/GSL-87-phase4-cycle46-poll-fill.md` | Correction to R4.2 acceptance — the record is corrected, not rewritten. |
+| `docs/lab/events/2026-07-{12,13}.jsonl` | Committed: now the quote arithmetic can be checked on this sha. |
 
-Подробности цикла — `docs/dev_history/GSL-89-phase4-cycle50-review-fixes.md`.
+Cycle details — `docs/dev_history/GSL-89-phase4-cycle50-review-fixes.md`.
 
-## ⭐ RESUME POINT — финализатор
+## ⭐ RESUME POINT — the finalizer
 
 ```bash
-git checkout GSL-81-laboratory-auto-doc     # @ 63b1c63, запушена
+git checkout GSL-81-laboratory-auto-doc     # @ 63b1c63, pushed
 gh pr view 102 --json state,mergeStateStatus,mergeable   # OPEN / CLEAN / MERGEABLE
-bash tools/lab/smoke.sh                     # 130/130 — до мёржа
+bash tools/lab/smoke.sh                     # 130/130 — before the merge
 ```
 
-**Шаг 1 — мёрж (единственный шаг, который нельзя делать из CLI).**
-Открыть https://github.com/ainstance-labs/gosleep/pull/102 и нажать **Merge pull request** →
-**Create a merge commit** (regular merge; **никогда** squash — история «один коммит на задачу»).
-`gh pr merge` **не использовать**: его увидел бы хук, и приёмка R4.2 не была бы проверена.
+**Step 1 — the merge (the only step that cannot be done from CLI).**
+Open https://github.com/ainstance-labs/gosleep/pull/102 and press **Merge pull request** →
+**Create a merge commit** (regular merge; **never** squash — the "one commit per task" history).
+`gh pr merge` **is not to be used**: the hook would see it, and R4.2 acceptance would not be verified.
 
-**Шаг 2 — приёмка R4.2 (то, ради чего мёрж делается из веба):**
+**Step 2 — R4.2 acceptance (what the merge from the web is done for):**
 
 ```bash
 git fetch origin main:main
-bash tools/lab/chronicler.sh                                   # poll-fill идёт нулевым шагом
-jq -c 'select(.type=="vcs.pr.merged")' docs/lab/events/*.jsonl # ждём строку: src="poll-fill", pr 102
+bash tools/lab/chronicler.sh                                   # poll-fill runs as step zero
+jq -c 'select(.type=="vcs.pr.merged")' docs/lab/events/*.jsonl # waiting for a line: src="poll-fill", pr 102
 ```
 
-Строка появилась → **R4.2 закрыт**: событие, которого не видел ни один хук, доехало до таймлайна сверкой.
-Обновить статус R4.2 в `docs/dev_history/GSL-89-phase4-cycle47-close.md` (сейчас ⏳ PENDING) и зафиксировать.
+The line appeared → **R4.2 closed**: an event no hook saw reached the timeline through the cross-check.
+Update the R4.2 status in `docs/dev_history/GSL-89-phase4-cycle47-close.md` (currently ⏳ PENDING) and pin.
 
-**Шаг 3 — закрытие эпика:** GitHub-задачи #94..#101 + эпик #93 → closed; Jira GSL-81 → **Done (41)**;
-удалить удалённую ветку. Затем — Фаза 5 (UI), первый ключ **GSL-90**.
+**Step 3 — epic closure:** GitHub tasks #94..#101 + epic #93 → closed; Jira GSL-81 → **Done (41)**;
+delete the remote branch. Then — Phase 5 (UI), first key **GSL-90**.
 
 ## Read first
 
-- `docs/reviews/REVIEW-gsl81.md` — ревью, по которому шёл этот цикл (там же — доказательства).
-- `docs/dev_history/GSL-89-phase4-cycle50-review-fixes.md` — что именно починено и чем проверено.
-- `docs/dev_history/GSL-89-phase4-cycle47-close.md` § «Поправки цикла 50» — таблица приёмки Фазы 4 и
-  инструкция по R4.2.
-- `docs/lab/README.md` — контракт свежести (**возрастов два, а не один**).
-- `docs/lab/events/README.md` — провенанс, фантомы, правило чтения.
+- `docs/reviews/REVIEW-gsl81.md` — the review this cycle followed (evidence there too).
+- `docs/dev_history/GSL-89-phase4-cycle50-review-fixes.md` — what exactly is fixed and how verified.
+- `docs/dev_history/GSL-89-phase4-cycle47-close.md` · "Cycle 50 corrections" — the Phase 4 acceptance table and R4.2 instructions.
+- `docs/lab/README.md` — the freshness contract (**there are two ages, not one**).
+- `docs/lab/events/README.md` — provenance, phantoms, reading rule.
 
 ## Gotchas
 
-- **`gh pr merge` для #102 — запрещён.** См. выше; это не стиль, это приёмка.
-- **Возрастов два.** `grade` судит **данные** (`max_event_age_s`), а не **страницу**. Потребитель
-  `status.json` обязан прибавить `now − generated_at` **до** того, как поверить `grade`. Страницы
-  делают это сами при открытии; у `status.json` скрипта нет.
-- **Коммит с сообщением через heredoc хук не видит** (несбалансированные кавычки → парсер молчит).
-  Используй `git commit -F <файл>`, если хочешь, чтобы коммит попал в лог механически.
-- **Цитаты-счётчики считать из индекса** (`git show :path`), а не из рабочего дерева: хук дописывает
-  строку в лог во время самого коммита, поэтому закоммиченный файл — всегда префикс живого.
+- **`gh pr merge` for #102 — forbidden.** See above; this is not style, it is acceptance.
+- **There are two ages.** `grade` judges **data** (`max_event_age_s`), not the **page**. The consumer of `status.json` must add `now − generated_at` **before** trusting `grade`. Pages do this themselves on open; `status.json` has no script.
+- **A commit with a message via heredoc the hook does not see** (unbalanced quotes → the parser is silent). Use `git commit -F <file>` if you want the commit to make it into the log mechanically.
+- **Count quote counters from the index** (`git show :path`), not the working tree: the hook appends a line to the log during the commit itself, so the committed file is always a prefix of the live one.
 
 ## Blocked on human
 
-Нет. Очередь вопросов: `tools/lab/lab-emit.sh list --count` — 0 BLOCKER.
+None. Question queue: `tools/lab/lab-emit.sh list --count` — 0 BLOCKER.

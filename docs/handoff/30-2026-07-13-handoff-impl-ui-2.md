@@ -1,85 +1,51 @@
-# Handoff — gosleep — 2026-07-13 (цикл 54, impl-ui-2: GSL-95 — обратный отсчёт дедлайнов, F5-S2)
+# Handoff — gosleep — 2026-07-13 (cycle 54, impl-ui-2: GSL-95 — deadline countdown, F5-S2)
 
-> Для СВЕЖЕГО агента. Читай Part 1 → `## ORCHESTRATOR REPORT` → Part 2 → «⭐ RESUME».
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл. Наследует handoff 29 (impl-ui-1).
-> Железные правила handoff'ов 21–29 **не ослаблены**.
+> For a FRESH agent. Read Part 1 → `## ORCHESTRATOR REPORT` → Part 2 → "⭐ RESUME".
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file. Inherits handoff 29 (impl-ui-1).
+> The hard rules of handoffs 21–29 are **not weakened**.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Экран Questions ожил. У каждого самораз­решающегося вопроса идёт обратный отсчёт, который **тикает
-раз в секунду** и **пересчитывает себя в тот момент, когда ты открыл страницу**.
+The Questions screen came alive. Every self-resolving question has a countdown that **ticks every second** and **recomputes itself the moment you opened the page**.
 
-Открой `docs/lab/site/questions.html`: `auto-applies in 52m 30s`. Обнови через минуту — станет
-`51m 30s`. Число, которое видимо движется, — самое дешёвое доказательство, что страница живая, а не
-скриншот живой.
+Open `docs/lab/site/questions.html`: `auto-applies in 52m 30s`. Refresh a minute later — it becomes `51m 30s`. A number visibly moving is the cheapest proof that the page is live, not a screenshot of a live one.
 
-**F5-S2 закрыт.** Осталось: GSL-96 (Tasks), GSL-97 (Timeline+Library+фильтр), GSL-98 (Fleet+Cost),
-GSL-99 (self-health), GSL-100 (приёмка).
+**F5-S2 is closed.** Left: GSL-96 (Tasks), GSL-97 (Timeline+Library+filter), GSL-98 (Fleet+Cost),
+GSL-99 (self-health), GSL-100 (acceptance).
 
-## 2. Что сделано
+## 2. What was done
 
 **GSL-95** `164bfa5` — Questions deadline countdown. **smoke 174 → 182/182** (+8), hooks-verify 14/14,
-tsc чисто, 7 страниц well-formed.
+tsc clean, 7 pages well-formed.
 
-Три состояния, и третье — причина, по которой это не тернарник в одну строку:
+Three states, and the third is the reason this is not a one-line ternary:
 
-- **дедлайн впереди** → `auto-applies in 2h 15m`; под час появляются секунды (`52m 30s`);
-- **дедлайн прошёл** → `PAST DUE by 3h 21m — still open, so nobody applied the default`, красным;
-- **дедлайна нет вовсе** → «waits for you… it simply never had a clock». Никогда `0h 0m`, никогда
-  красным.
+- **deadline ahead** → `auto-applies in 2h 15m`; under an hour seconds appear (`52m 30s`);
+- **deadline past** → `PAST DUE by 3h 21m — still open, so nobody applied the default`, in red;
+- **no deadline at all** → "waits for you… it simply never had a clock". Never `0h 0m`, never red.
 
-## 3. Что делаем дальше
+## 3. What we do next
 
-**GSL-96** (Tasks, F5-S3) — доска, keyed по Jira, со ссылками Jira/GH/commit/dev_history. См.
-⭐ RESUME. Там ждёт унаследованная проблема: **92 из 101 строки доски со статусом `unknown`**, потому
-что ключей Jira у лаборатории нет (C1) и poll кормится руками.
+**GSL-96** (Tasks, F5-S3) — the board, keyed by Jira, with Jira/GH/commit/dev_history links. See ⭐ RESUME. There waits an inherited problem: **92 of 101 board rows with status `unknown`**, because the lab has no Jira keys (C1) and poll is fed by hand.
 
-## 4. Какие есть проблемы
+## 4. Which problems there are
 
-- **⚠️ Дефолты по таймеру не применяет НИКТО. Это новое и это важно.** Я пошёл проверять, как честно
-  назвать истёкший дедлайн, и обнаружил: в репозитории нет ни одного механизма, применяющего дефолт по
-  часам. У `lab-emit.sh list --due` **ровно один потребитель — живой оркестратор на своём пульсе**
-  (`skill/orchestrating-delivery-agents/SKILL.md` §516: «DECISION past `auto_apply_at`: apply the
-  default NOW»). Ни cron, ни chronicler этого не делают.
-  → Следствие: **открытый DECISION с истёкшим дедлайном означает, что пульс не пришёл.** Это факт не
-  про вопрос, а **про флот**. Страница так и говорит: `still open, so nobody applied the default`.
-  Написать мягкое «auto-applied» значило бы объявить сделанным то, чего не делает ни одна строка кода.
-  → **Для владельца/оркестратора:** это, возможно, дыра в автономии (ночь без пульса = дефолты не
-  применяются), но чинить её — **не** задача UI, и я её не чинил. Передаю как факт.
-- **Потолка токенов не существует ни в одном машиночитаемом источнике** (DECISION `q-2026-07-13-002`,
-  дефолт = статус-кво, обратимость high). `BUDGET_EXCEEDED` физически не может файриться, runway
-  читает `unknown` по оси бюджета. Не блокирует. *(Наследство GSL-94; сегодня его дедлайн истекает в
-  14:48Z — и теперь это **видно на экране**.)*
-- **`api.failure` не выстреливал ни разу.** Quota-wait clock = `clear` **со звёздочкой**. Норма.
-- **Коллизия GSL-98 (передаю как есть, не моя задача).** Инвариант C5 грепает `chronicler.py` на
-  `tmux|spawn|Agent tool|teammate`, а имя воркера лежит только в `data.raw.teammate_name`. impl-ui-1
-  **не стал ослаблять safety-check**: Fleet построен на поле `actor`. Два честных пути: (а) уточнить
-  греп до проверки **способности** занять панель; (б) жить с `actor`. **Обходить греп трюками вроде
-  `"team" + "mate_name"` нельзя** — safety-check, который обходят, это мёртвый safety-check. Я
-  применил тот же принцип у себя (см. Part 2 § «Чего я не стал делать»).
-- **Доска задач протухла (>12ч) и знает об этом.** 92/101 строки `unknown`. Решать GSL-96.
+- **⚠️ Timer defaults are applied by NO ONE. This is new and it is important.** I went to check how to honestly name an expired deadline and discovered: the repository has no mechanism that applies a default by the clock. `lab-emit.sh list --due` has **exactly one consumer — a live orchestrator on its own pulse** (`skill/orchestrating-delivery-agents/SKILL.md` · section 516: "DECISION past `auto_apply_at`: apply the default NOW"). Neither cron nor chronicler does this.
+  → Consequence: **an open DECISION with an expired deadline means the pulse did not arrive.** This is a fact not about the question but **about the fleet**. The page says exactly that: `still open, so nobody applied the default`. Writing a soft "auto-applied" would mean declaring done what no line of code does.
+  → **For the owner/orchestrator:** this may be an autonomy hole (a night without a pulse = defaults not applied), but fixing it is **not** a UI task, and I did not fix it. I pass it as a fact.
+- **The token ceiling does not exist in any machine-readable source** (DECISION `q-2026-07-13-002`, default = status quo, reversibility high). `BUDGET_EXCEEDED` physically cannot fire, runway reads `unknown` on the budget axis. Not a blocker. *(Heritage GSL-94; today its deadline expires at 14:48Z — and now this is **visible on the screen**.)*
+- **`api.failure` never fired.** Quota-wait clock = `clear` **with an asterisk**. Norm.
+- **GSL-98 collision (passed as is, not my task).** The C5 invariant greps `chronicler.py` for `tmux|spawn|Agent tool|teammate`, and the worker name lies only in `data.raw.teammate_name`. impl-ui-1 **did not weaken the safety-check**: Fleet is built on the `actor` field. Two honest paths: (a) narrow the grep to check **capability** to take a pane; (b) live with `actor`. **Bypassing the grep with tricks like `"team" + "mate_name"` is not allowed** — a safety check being bypassed is a dead safety check. I applied the same principle myself (see Part 2 · "What I did not do").
+- **The task board is stale (>12h) and knows it.** 92/101 rows `unknown`. Solve in GSL-96.
 
-## 5. Комментарии и свежие решения
+## 5. Comments and fresh decisions
 
-- **«Устаревшее число» и «ложь» — разные вещи, и вторая опаснее.** Страница, собранная в 23:00 с
-  надписью `auto-applies in 2h` и открытая в 04:00, не показывает устаревшие данные — она **предлагает
-  тебе два часа, потраченные три часа назад**. Ложь в **успокаивающую** сторону, единственную, которая
-  имеет значение в четыре утра. Ровно тот класс дефекта, на который Фаза 4 потратила цикл (баннер
-  свежести), и поэтому счётчик пересчитывается **при открытии**, а не только тикает.
-- **Одна функция форматирования, двое часов.** `src/countdown.ts` импортируют **обе** стороны: SSR
-  (часы = `generated_at`, это вердикт для читателя **без JS**) и клиент (часы = `Date.now()`). Два
-  форматтера были бы **двумя мнениями об одном дедлайне** и разошлись бы в первый же день, когда один
-  научился бы дням, а второй нет.
-- **Часы не могут идти назад.** `regradeStaleness()` обещает «вердикт можно только ухудшить». Отсчёт
-  даёт то же обещание в другой единице: **он может только укоротиться**. Наивное `deadline - Date.now()`
-  это ломает: у читателя с часами, отставшими на час, каждый дедлайн получил бы лишний час, которого у
-  него нет, — страница выторговывает себе отсрочку. Поэтому `clock = max(now, generated_at)`: сломанные
-  часы могут только **оставить build-time вердикт в силе**. Есть тест.
-- **Отсутствующий дедлайн — не истёкший.** DECISION без `auto_apply_at` рендерится как «ждёт
-  владельца, срока нет», а не как `0h 0m` и не красным. Экран, который рисует отсутствие нулём, — это
-  экран, который подаёт вопрос, на который никто не ставил часы, под рубрикой «ты уже опоздал».
+- **"Stale number" and "lie" are different, and the second is more dangerous.** A page built at 23:00 with a caption `auto-applies in 2h` and opened at 04:00 does not show stale data — it **offers you two hours spent three hours ago**. A lie in the **reassuring** direction, the only one that matters at four in the morning. Exactly the defect class Phase 4 spent a cycle on (the freshness banner), and therefore the counter recomputes **on open**, not just ticks.
+- **One formatting function, two clocks.** `src/countdown.ts` is imported by **both** sides: SSR (clock = `generated_at`, this is the verdict for the reader **without JS**) and the client (clock = `Date.now()`). Two formatters would be **two opinions about one deadline** and would diverge on the first day when one learned days and the other did not.
+- **A clock cannot go backwards.** `regradeStaleness()` promises "the verdict can only worsen". The countdown gives the same promise in another unit: **it can only shorten**. A naive `deadline - Date.now()` breaks this: for a reader whose clock is an hour behind, every deadline would get an extra hour it does not have — the page bargains itself a delay. Therefore `clock = max(now, generated_at)`: a broken clock can only **leave the build-time verdict in force**. There is a test.
+- **A missing deadline is not an expired one.** A DECISION without `auto_apply_at` renders as "waits for the owner, no clock", not as `0h 0m` and not in red. A screen that paints absence as zero is a screen that files a question no one put a clock on under the heading "you are already late".
 
 ---
 
@@ -88,113 +54,93 @@ tsc чисто, 7 страниц well-formed.
 ```
 CYCLE_ID: impl-ui-2 #54
 CYCLE_STATUS: COMPLETE
-EPIC: GSL-90 (In Progress) / GH #103 — PRD Phase 5 «UI оркестрации (static v1)»
-BRANCH: GSL-90-ui-orchestration @ 164bfa5 — запушена
+EPIC: GSL-90 (In Progress) / GH #103 — PRD Phase 5 "Orchestration UI (static v1)"
+BRANCH: GSL-90-ui-orchestration @ 164bfa5 — pushed
 COMMIT: 164bfa5 GSL-95 [UI] Questions deadline countdown (F5-S2)   (smoke 174 → 182)
-JIRA: GSL-95 → Done (verified). Осталось: GSL-96..GSL-100 (To Do)
-GATES: smoke 182/182 · hooks-verify 14/14 · tsc --noEmit чисто · 7 страниц well-formed ·
-       chronicler.py НЕ тронут (C5 ok) · схема render/3 НЕ бампалась
-ACCEPTANCE: F5-S2 ЗАКРЫТО. ⚠️ MUST re-grade on open — проверено СИНТЕТИЧЕСКОЙ ФИКСТУРОЙ:
-            клиентский бандл страницы исполняется в node со стаб-DOM и подменённым Date;
-            дедлайн +2ч30м на сборке, открываем через 5ч → требуем PAST DUE.
-            ПРОВЕРЕНО МУТАЦИЕЙ: заморозил paint() → тест краснеет. Позитивный контроль настоящий.
-NEW FACT: дефолты по таймеру не применяет НИКТО (`list --due` читает только живой оркестратор) —
-          истёкший открытый DECISION = пропущенный пульс. Возможная дыра в автономии; не UI-задача.
-BLOCKED_ON_HUMAN: нет. Очередь: open=2 (0B/2D/0C/0F) — ноль BLOCKER'ов
+JIRA: GSL-95 → Done (verified). Left: GSL-96..GSL-100 (To Do)
+GATES: smoke 182/182 · hooks-verify 14/14 · tsc --noEmit clean · 7 pages well-formed ·
+       chronicler.py NOT touched (C5 ok) · schema render/3 NOT bumped
+ACCEPTANCE: F5-S2 CLOSED. ⚠️ MUST re-grade on open — verified by a SYNTHETIC FIXTURE:
+            the page's client bundle is executed in node with a stub DOM and a substituted Date;
+            deadline +2h30m at build time, opening 5h later → require PAST DUE.
+            MUTATION-VERIFIED: froze paint() → the test reddens. Positive control is real.
+NEW FACT: timer defaults are applied by NO ONE (`list --due` is read only by a live orchestrator) —
+          an expired open DECISION = a missed pulse. Possible autonomy hole; not a UI task.
+BLOCKED_ON_HUMAN: none. Queue: open=2 (0B/2D/0C/0F) — zero BLOCKERs
 NEXT: impl-ui-3 — GSL-96 (Tasks, F5-S3)
-MODEL: claude-opus-4-8 (сверено по транскрипту 2198edb8-*.jsonl — 117 записей, других моделей нет)
+MODEL: claude-opus-4-8 (verified from transcript 2198edb8-*.jsonl — 117 records, no other models)
 TELEMETRY: tokens_out=163066 tokens_in=229 cache_read=11759377 cache_write=413748
 ```
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Что построено
+## What was built
 
-| файл | что |
+| file | what |
 |---|---|
-| `tools/lab/ui/src/countdown.ts` | **новый** — `dur()`, `countdownText()`, `remainingMs()`. ОБЩИЙ для SSR и клиента |
-| `tools/lab/ui/src/client.ts` | `tickCountdowns()` рядом с `regradeStaleness()`: re-grade on open + tick 1s |
-| `tools/lab/ui/src/screens/questions.tsx` | `<Deadline>` (3 состояния), полоска `by_type`, колонка `by` (`answered_by`) |
+| `tools/lab/ui/src/countdown.ts` | **new** — `dur()`, `countdownText()`, `remainingMs()`. SHARED for SSR and client |
+| `tools/lab/ui/src/client.ts` | `tickCountdowns()` next to `regradeStaleness()`: re-grade on open + tick 1s |
+| `tools/lab/ui/src/screens/questions.tsx` | `<Deadline>` (3 states), `by_type` stripe, `by` column (`answered_by`) |
 | `tools/lab/ui/src/theme.ts` | `.countdown` / `.countdown.past-due` / `.dim`; `tabular-nums` |
-| `tools/lab/smoke.sh` | throwaway-репо `f5s2` + 8 проверок |
+| `tools/lab/smoke.sh` | throwaway repo `f5s2` + 8 checks |
 
-`chronicler.py` **не тронут**. `auto_apply_at` уже был в bundle → схема `gosleep.lab.render/3` не
-бампалась. Правило «числа считаются в Python один раз» не нарушено: отсчёт — это не данные, а
-**проекция данных на часы читателя**, и Python не может её посчитать по определению.
+`chronicler.py` **not touched**. `auto_apply_at` was already in the bundle → schema `gosleep.lab.render/3` was not bumped. The rule "numbers are computed in Python once" is not broken: the countdown is not data but **a projection of data onto the reader's clock**, and Python cannot compute it by definition.
 
-## Тест, который нельзя пройти на сломанном коде
+## A test you cannot pass on broken code
 
-Урок REVIEW-gsl81 M1 записан прямо в smoke: «ассертить механизм (id, `<script>`) — это то, что
-позволило 119/119 быть зелёными, пока страница противоречила сама себе». Поэтому ⭐-тест **исполняет
-клиентский бандл страницы** в node со стаб-DOM и подменённым `Date`:
+The REVIEW-gsl81 M1 lesson is written directly into smoke: "assert the mechanism (id, `<script>`) — this is what let 119/119 be green while the page contradicted itself". Therefore the ⭐ test **executes the page's client bundle** in node with a stub DOM and a substituted `Date`:
 
 ```
-дедлайн +2ч30м на момент сборки → открываем с Date.now() = build + 5ч → требуем PAST DUE
+deadline +2h30m at build time → open with Date.now() = build + 5h → require PAST DUE
 ```
 
-Счётчик, испечённый на build-time, проходит **все** остальные проверки (span на месте, атрибут на
-месте, число даже верное для момента сборки) и падает на этой. Мокается только окружение — исполняется
-ровно тот JS, который получит браузер владельца.
+A counter baked at build time passes **all** other checks (span in place, attribute in place, number even correct for the moment of build) and fails this one. Only the environment is mocked — the JS the owner's browser will get is executed as is.
 
-**Проверено мутацией:** заморозил `paint()` → `FAIL … (LATER_TXT=auto-applies in 2h 30m`. Красный.
+**Mutation-verified:** froze `paint()` → `FAIL … (LATER_TXT=auto-applies in 2h 30m`. Red.
 
-Фикстура живёт в **своём** репо (`$WORK/f5s2`), а не в фикстуре chronicler'а: там есть тест, считающий
-открытые вопросы и читающий дайджест, и три моих DECISION молча переписали бы его арифметику. Я это
-сначала и сделал — получил 3 FAIL и откатил. **Тест, который надо держать в синхроне с чужой фикстурой,
-— это тест, который однажды «починят» удалением.**
+The fixture lives in **its own** repo (`$WORK/f5s2`), not in the chronicler's fixture: there is a test counting open questions and reading the digest, and my three DECISIONs would have silently rewritten its arithmetic. I did that first — got 3 FAIL and rolled back. **A test that has to be kept in sync with someone else's fixture is a test that will one day be "fixed" by deletion.**
 
-## Чего я не стал делать
+## What I did not do
 
-- **Не стал добавлять `auto_apply_in_s` в bundle.** Соблазн был: правило «числа считаются в Python».
-  Но тогда прозу форматировали бы **два** форматтера (Python для build-time, TS для клиента) и они
-  разошлись бы. Один форматтер, двое часов — строго честнее.
-- **Не стал строить авто-применение дефолтов** (см. Part 1 § 4). Это не задача UI, и тихо построить
-  недостающий механизм автономии в UI-коммите значило бы спрятать дыру, а не показать её.
-- **Не стал давать BLOCKER'ам таймер** — даже пустой. По манифесту §3 у них его нет **по построению**.
+- **Did not add `auto_apply_in_s` to the bundle.** The temptation was there: the rule "numbers are computed in Python". But then two formatters would format the prose (Python for build-time, TS for the client) and they would diverge. One formatter, two clocks — strictly more honest.
+- **Did not build auto-application of defaults** (see Part 1 · section 4). This is not a UI task, and silently building the missing autonomy mechanism in a UI commit would mean hiding a hole, not showing it.
+- **Did not give BLOCKERs a timer** — not even empty. By the manifest · section 3 they do not have one **by construction**.
 
-## Ловушки (унаследованные, не ослаблены)
+## Traps (inherited, not weakened)
 
-- **`chronicler.py` нельзя писать словами `tmux|spawn|Agent tool|teammate`** (C5). Ловит и `spawn_cap`
-  в имени переменной.
-- **`--dry-run` рендерит, но не пишет.**
-- **Схема bundle — двусторонний контракт.** Рендерер **бросает** на незнакомой схеме. Бампать —
-  правка в трёх местах (`chronicler.py`, `render.tsx`, `smoke.sh`) намеренно.
-- **`theme.ts` — это TS template literal.** Backtick в CSS-комментарии закрывает строку (я на этом
-  споткнулся; `tsc` поймал).
-- **Коммит через heredoc хук не видит** — `git commit -F <файл>`.
-- **Дирти дерево между коммитами — норма** (`events/<сегодня>.jsonl` растёт при каждом хуке).
-- **`docs/lab/site/` — DERIVED.** Не править руками; регенерировать `chronicler.sh --no-poll`.
-- **`docs/prompts/` и `ORCHESTRATION-STATE.md` — owner/orchestrator-sovereign.**
+- **`chronicler.py` may not contain the words `tmux|spawn|Agent tool|teammate`** (C5). Catches `spawn_cap` in a variable name too.
+- **`--dry-run` renders but does not write.**
+- **Bundle schema — a two-sided contract.** The renderer **throws** on an unfamiliar schema. Bump — an edit in three places (`chronicler.py`, `render.tsx`, `smoke.sh`) deliberately.
+- **`theme.ts` is a TS template literal.** A backtick in a CSS comment closes the string (I tripped on this; `tsc` caught it).
+- **A commit via heredoc the hook does not see** — `git commit -F <file>`.
+- **Dirty tree between commits — norm** (`events/<today>.jsonl` grows on every hook).
+- **`docs/lab/site/` — DERIVED.** Do not edit by hand; regenerate `chronicler.sh --no-poll`.
+- **`docs/prompts/` and `ORCHESTRATION-STATE.md` — owner/orchestrator-sovereign.**
 
 ## ⭐ RESUME POINT — impl-ui-3
 
 ```bash
-git checkout GSL-90-ui-orchestration     # @ 164bfa5, запушена
-bash tools/lab/smoke.sh                  # 182/182 — базовая линия ДО правок
-bash tools/lab/chronicler.sh --no-poll   # соберёт 7 страниц
-open docs/lab/site/questions.html        # счётчики тикают; F5 → пересчитываются
-bash tools/lab/lab-emit.sh list --count  # open=2 (0B/2D/0C/0F) — ноль блокеров
+git checkout GSL-90-ui-orchestration     # @ 164bfa5, pushed
+bash tools/lab/smoke.sh                  # 182/182 — baseline BEFORE edits
+bash tools/lab/chronicler.sh --no-poll   # rebuilds 7 pages
+open docs/lab/site/questions.html        # counters tick; F5 → recompute
+bash tools/lab/lab-emit.sh list --count  # open=2 (0B/2D/0C/0F) — zero blockers
 ```
 
-**Первая задача — GSL-96** (`[UI]` Tasks — доска, keyed по Jira, **F5-S3**).
+**First task — GSL-96** (`[UI]` Tasks — the board, keyed by Jira, **F5-S3**).
 
-Что уже готово под неё:
-- Экран `tools/lab/ui/src/screens/tasks.tsx` — скелет есть (GSL-93).
-- Контракт `tasks` в bundle: `TaskRow` несёт `key`, `status`, `status_ts`, `status_age_s`,
-  `status_age_human`, `summary`, `commits[]` (sha/subject/ts/url), `dev_history[]` (name/href).
-- **Живой отсчёт возраста** — если понадобится показать «статус протух N часов назад» **в момент
-  открытия**, паттерн готов: `src/countdown.ts` + `tickCountdowns()`. Не изобретай второй.
+What is already ready for it:
+- Screen `tools/lab/ui/src/screens/tasks.tsx` — a skeleton exists (GSL-93).
+- The `tasks` contract in the bundle: `TaskRow` carries `key`, `status`, `status_ts`, `status_age_s`, `status_age_human`, `summary`, `commits[]` (sha/subject/ts/url), `dev_history[]` (name/href).
+- **Live age counter** — if you need to show "status went stale N hours ago" **at open time**, the pattern is ready: `src/countdown.ts` + `tickCountdowns()`. Do not invent a second one.
 
-**Унаследованная проблема, которую GSL-96 придётся решить честно:** 92 из 101 строки доски со статусом
-`unknown` (ключей Jira у лаборатории нет — C1; poll кормится руками). impl-ui-1 **отказался** выводить
-«Done» из наличия коммита: **коммит ≠ Jira сказала Done**. Не поддавайся соблазну — правдоподобный
-дефолт здесь и есть тот самый tasty-lunch.
+**An inherited problem GSL-96 will have to solve honestly:** 92 out of 101 board rows with status `unknown` (the lab has no Jira keys — C1; poll is fed by hand). impl-ui-1 **refused** to derive "Done" from the presence of a commit: **a commit ≠ Jira said Done**. Do not give in to the temptation — a plausible default here is that very tasty-lunch.
 
 ## Blocked on human
 
-**Нет.** `open=2 (0B/2D/0C/0F)` — ноль BLOCKER'ов:
-- `q-2026-07-13-001` — фреймворк UI (**дефолт применён: Preact + esbuild**, работает);
-- `q-2026-07-13-002` — **потолок токенов**, дефолт = статус-кво, дедлайн **сегодня 14:48Z**
-  (и теперь его видно на экране — первый реальный отсчёт, который истечёт на глазах).
+**None.** `open=2 (0B/2D/0C/0F)` — zero BLOCKERs:
+- `q-2026-07-13-001` — UI framework (**default applied: Preact + esbuild**, works);
+- `q-2026-07-13-002` — **token ceiling**, default = status quo, deadline **today 14:48Z**
+  (and now visible on the screen — the first real countdown that will expire before your eyes).
