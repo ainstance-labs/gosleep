@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-08-03T14:32:58Z` · freshest event **4m** old at that moment (`2026-08-03T14:28:26Z`) · day `2026-08-03`
+🟢 **FRESH at build** · generated `2026-08-03T16:34:52Z` · freshest event **3m** old at that moment (`2026-08-03T16:31:27Z`) · day `2026-08-03`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-03T14:32:58Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-03T16:34:52Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-08-03T14:58:26Z`**
-> - 🔴 **DEAD if you are reading this after `2026-08-03T17:28:26Z`**
+> - 🟡 **STALE if you are reading this after `2026-08-03T17:01:27Z`**
+> - 🔴 **DEAD if you are reading this after `2026-08-03T19:31:27Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -20,23 +20,23 @@ Nothing open. No decision is being held for you.
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 172 |
-| Orchestrator | ok · context 99% |
+| Cycle | 182 |
+| Orchestrator | ok · context 82% |
 
 ## 3. Delivery
 
-Branch `GSL-138-web-research-report` @ `459472c` · 17 dirty path(s)
+Branch `GSL-138-translate-handoffs` @ `591d90f` · 20 dirty path(s)
 
-Shipped 2026-08-03 (13):
-- `459472c` GSL-138 [Docs] Дашборд исследования: интерактивный веб-интерфейс harness (RU+EN)
-- `87fb3e4` GSL-138 [Docs] Инвентарь веб-интерфейса: что построено, где интерактив был отложен умолчанием, что нужно для кнопки
-- `5414354` GSL-138 [Docs] Уточнение механики guard: exit 1 прерывает выполнение до первого rsync
-- `44ddbaf` Merge pull request #258 from ainstance-labs/GSL-138-guard-layer
-- `208af72` GSL-138 [Docs] Guard install.sh как четвёртый слой защиты инварианта публикации
-- `4c9eb75` Merge pull request #257 from ainstance-labs/GSL-138-skills-plan-rework
-- `cd1f937` GSL-138 [Docs] План системы работы со скиллами: фокус на будущем процессе, ручная публикация из админки
-- `3da5a9b` GSL-138 [Docs][Process] Откат привязок к gosleep из production-скилла (по команде владельца); правило: production skill…
-- …and 5 more
+Shipped 2026-08-03 (22):
+- `591d90f` GSL-138 [Docs] Handoffs 13-26 translated to English
+- `7cddb18` GSL-138 [Docs] Handoffs 27-36 translated to English
+- `bbfe029` GSL-138 [Docs] Handoffs 37-46 translated to English
+- `70fec56` GSL-138 [Docs] Handoffs 47-56 translated to English
+- `4c76bbe` GSL-138 [Docs][Process] Handoff 56 дополнен: требования владельца к живому UI, источники событий, новая фаза PRD
+- `136121b` GSL-138 [Docs][Process] Ledger смены 74 (финал): handoff 56, эпики GSL-174/GSL-250 заведены, исследование веб-интерфейс…
+- `f4ef882` GSL-138 [Docs][Process] Пересборка лаборатории и события смены (производные)
+- `b1f0280` Merge pull request #259 from ainstance-labs/GSL-138-web-research-report
+- …and 14 more
 
 ## 4. Tasks
 
@@ -46,22 +46,26 @@ Shipped 2026-08-03 (13):
 | To Do | 35 |
 | Done | 210 |
 
+22 more carry no status here — the tracker was last polled **20h 8m** ago, so this is what the poll missed, not 22 idle tasks.
+
 ## 5. Cost & runway
 
 Cumulative **19,462,000** tokens over 157 cycle(s).
 
-Next runway event: **token budget** — stops at **`2026-09-20T13:34:46Z`**.
+Next runway event: **token budget** — stops at **`2026-08-05T18:03:04Z`**.
 
 ## 6. Activity
 
-**173** events today of **3132** total · 82% mechanical.
+**458** events today of **3417** total · 83% mechanical.
 
-Latest decisions (44 total, newest first):
-- **Система работы со скиллами СОГЛАСОВАНА владельцем (7 этапов, админка встраивается в существующий веб-интерфейс, тесты локально до публикации); BLOCKER закрыт, эпик GSL-174 к завед…** `GSL-174` — 2026-08-03 13:07
-- **Откат по команде владельца 2026-08-03: 6 замен эрраты GSL-178 в production-скилле откачены ДОСЛОВНО к состоянию до 02.08 (источник — копия репозитория); правка про порядок хода (5…** `GSL-174` — 2026-08-03 10:51
-- **GSL-180 (разрешения агентов) ОТЛОЖЕН: статус To Do = бэклог, комментарий в Jira, работы не ведём до команды владельца** `GSL-180` — 2026-08-03 08:45
-- **ПРЕЦЕДЕНТ (не полный ответ, BLOCKER остаётся open): владелец командой в чате велел править глобальный скилл orchestrating-delivery-agents — внесены 4 точечные правки (Turn order: …** `GSL-174` — 2026-08-02 20:07
-- …and 40 more
+Latest decisions (49 total, newest first):
+- **ЯЗЫК ТЕХНИЧЕСКИХ АРТЕФАКТОВ (owner 2026-08-03): handoffs, ORCHESTRATION-STATE, задачи Jira и зеркала GitHub — на АНГЛИЙСКОМ. Уточняет d-2026-07-28-006 (там: дашборд=инструмент, ру…** `GSL-177` — 2026-08-03 15:37
+- **ТРЕБОВАНИЯ ВЛАДЕЛЬЦА К ЖИВОМУ UI (2026-08-03, в эпик GSL-250): (1) окно вопросов от агентов в реальном времени — новый вопрос виден сразу, со статусом (блокирующий/не блокирующий)…** `GSL-177` — 2026-08-03 15:24
+- **ЦЕЛЕВАЯ АРХИТЕКТУРА (редакция 2, по требованию владельца): SQLite(WAL) — ИСТОЧНИК ПРАВДЫ + Drizzle ORM/drizzle-kit (миграции в git, снимки вне git, идемпотентный импорт JSONL); мо…** `GSL-177` — 2026-08-03 15:01
+  <br>by rule: решение владельца d-2026-08-03-004 (Warren-модель, БД источник правды)
+- **ДИЗАЙН-СИСТЕМА (исследование 2026-08-03, к утверждению владельцем): гарнитура Geist Sans + Geist Mono Variable (OFL, дефолт shadcn/ui и Vercel, полная кириллица), встраивание base…** `GSL-177` — 2026-08-03 14:55
+  <br>by rule: исследование по требованию владельца: modern шрифты без засечек, единые везде, мягкий контраст
+- …and 45 more
 
 ## 7. The rest of the dashboard
 
