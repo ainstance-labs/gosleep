@@ -1,14 +1,14 @@
 {
   "schema": "gosleep.lab.status/1",
-  "generated_at": "2026-08-02T20:33:32Z",
+  "generated_at": "2026-08-03T14:32:58Z",
   "generated_by": "tools/lab/chronicler.sh (GSL-86)",
-  "date": "2026-08-02",
+  "date": "2026-08-03",
   "authority": "docs/handoff/ORCHESTRATION-STATE.md + live git win on conflict (C8); this file is derived",
   "staleness": {
-    "max_event_age_s": 197,
-    "max_event_age_human": "3m",
-    "latest_event_ts": "2026-08-02T20:30:15Z",
-    "heartbeat_age_s": 207,
+    "max_event_age_s": 272,
+    "max_event_age_human": "4m",
+    "latest_event_ts": "2026-08-03T14:28:26Z",
+    "heartbeat_age_s": 290,
     "grade": "fresh",
     "thresholds_s": {
       "fresh": 1800,
@@ -16,8 +16,8 @@
     }
   },
   "events": {
-    "total": 2946,
-    "today": 50,
+    "total": 3132,
+    "today": 173,
     "days": [
       "2026-07-12",
       "2026-07-13",
@@ -29,42 +29,43 @@
       "2026-07-26",
       "2026-07-27",
       "2026-07-28",
-      "2026-08-02"
+      "2026-08-02",
+      "2026-08-03"
     ],
     "by_type": {
-      "agent.turn_ended": 658,
-      "tracker.issue.updated": 423,
-      "agent.idle": 261,
+      "agent.turn_ended": 768,
+      "tracker.issue.updated": 424,
+      "agent.idle": 274,
       "tracker.issue.transitioned": 230,
-      "agent.terminated": 186,
+      "agent.terminated": 189,
+      "vcs.commit": 185,
       "dev_history.written": 184,
-      "vcs.commit": 170,
       "tracker.issue.created": 169,
-      "handoff.written": 138,
-      "pane.ended": 91,
-      "pane.started": 88,
-      "vcs.push": 48,
+      "handoff.written": 139,
+      "pane.ended": 104,
+      "pane.started": 100,
+      "vcs.push": 53,
+      "decision.made": 44,
       "task.completed": 42,
-      "decision.made": 41,
+      "vcs.pr.merged": 41,
       "question.posed": 37,
-      "vcs.pr.merged": 36,
       "question.auto_resolved": 33,
-      "vcs.pr.opened": 29,
+      "vcs.pr.opened": 32,
       "notification.raised": 27,
       "task.created": 22,
       "agent.spawned": 16,
       "api.failure": 10,
-      "question.answered": 7
+      "question.answered": 9
     },
     "by_src": {
-      "hook:PostToolUse": 995,
-      "hook:Stop": 658,
-      "poll-fill": 414,
-      "hook:TeammateIdle": 261,
-      "hook:SubagentStop": 186,
-      "emit": 136,
-      "hook:SessionEnd": 91,
-      "hook:SessionStart": 88,
+      "hook:PostToolUse": 1003,
+      "hook:Stop": 768,
+      "poll-fill": 435,
+      "hook:TeammateIdle": 274,
+      "hook:SubagentStop": 189,
+      "emit": 142,
+      "hook:SessionEnd": 104,
+      "hook:SessionStart": 100,
       "hook:TaskCompleted": 42,
       "hook:Notification": 27,
       "hook:TaskCreated": 22,
@@ -73,17 +74,17 @@
     },
     "by_actor": {
       "claude": 1045,
-      "poll-fill": 414,
-      "general-purpose": 407,
+      "general-purpose": 459,
+      "poll-fill": 435,
+      "a716426f": 206,
       "742d1b58": 174,
       "f97ce3bc": 141,
-      "a716426f": 102,
       "ef6c3777": 85,
       "ecab62c2": 84,
-      "orchestrator": 80,
+      "orchestrator": 81,
       "6650a7a0": 63,
       "dd3edd33": 63,
-      "owner": 15,
+      "owner": 20,
       "a690ba064bba794be": 13,
       "f03d552e": 8,
       "worker-backlog-builder": 8,
@@ -154,6 +155,7 @@
       "a32e1a070b23f39b4": 1,
       "a343a285e2060e2e9": 1,
       "a37c4e4b7f81f3924": 1,
+      "a392dc9588cd386f1": 1,
       "a3b5a3102d269d74b": 1,
       "a3bb8fdb27c73e73f": 1,
       "a3f19300126dde218": 1,
@@ -184,11 +186,13 @@
       "a65467511fafbfa0c": 1,
       "a6615fa1bcde4fb1b": 1,
       "a66cff203f32b5147": 1,
+      "a68a2dc4947eb326f": 1,
       "a68b552e7420cee48": 1,
       "a68f04f9d98ca7789": 1,
       "a69913bfc2bc44435": 1,
       "a69938dab9f4a8c1f": 1,
       "a6ae2bddf3d8c3249": 1,
+      "a6d5dcdcaa3518bfb": 1,
       "a6de7071219683e4a": 1,
       "a6deecd2645c93e07": 1,
       "a6f8fc42477388673": 1,
@@ -302,45 +306,24 @@
       "t": 1,
       "ui-tasks-setup": 1
     },
-    "mechanical_share": 0.813
+    "mechanical_share": 0.816
   },
   "questions": {
-    "open": 2,
-    "by_type": {
-      "BLOCKER": 2
-    },
-    "items": [
-      {
-        "id": "q-2026-07-24-002",
-        "type": "BLOCKER",
-        "question": "Кто и как правит скиллы теперь? Контур «урок → правка скилла» работал 30 дней и остановился 10 июля; guard на install.sh от 20 июля закрепил остановку, убрав единственный описанный путь синхронизации. Формально авторитетна глобальная копия ~/.claude/skills/, но она вне git, вне ревью, вне Jira, и правит её никто — из-за этого центральный результат мандата перестал развиваться. Внутри того же решения: разрешить ли одноразовый reverse-sync скилла tmux-agents-orchestration в репозиторий — сегодня его нет в git вовсе и он существует в одном экземпляре без бэкапа. Заведено как BLOCKER, а не DECISION: любое умолчание означало бы, что агент сам начинает править авторитетную глобальную копию, а это разворот вашего стоящего приказа от 2026-07-20. Эпик GSL-174 (приоритет 1 плана) без ответа неисполним.",
-        "default": "",
-        "auto_apply_at": "",
-        "task": "GSL-174",
-        "high_impact": true
-      },
-      {
-        "id": "q-2026-07-24-003",
-        "type": "BLOCKER",
-        "question": "Разрешения агентов: оставить снятыми, перечислить явно или пустить relay через Channels? Как есть: в .claude/settings.json НЕТ блока permissions вообще, а оркестратор запущен как claude --dangerously-skip-permissions. Проблема «запрос разрешения останавливает ночь» уже решена — тем, что разрешений не осталось. Ночью автономный LLM имеет неограниченную оболочку на вашей личной машине вместе с gh, Jira-MCP, ключами подписки в связке ключей и правом писать в общее дерево; при этом агенты ходят в веб и поднимают сторонние MCP-серверы. Ни один отчёт не назвал это решением — оно просто случилось. Честно про Channels: механизм даёт две разные вещи. Пуш событий близок к тому, что вы заморозили. Relay разрешений — не мобильная функция, а механизм автономности: запрос в три ночи перестаёт заканчивать ночь. Цена relay зеркальна нынешнему риску — одобрить сможет любой, у кого доступ к каналу; и события приходят только пока сессия открыта, поэтому relay дополняет супервизор, а не заменяет его. Заведено как BLOCKER, а не DECISION: это решение о безопасности вашей личной машины, и обе стороны развилки необратимы по-своему — оставить снятыми значит допустить необратимое действие агента ночью, снять флаг значит допустить остановленную ночь. Такой выбор агент за вас не делает.",
-        "default": "",
-        "auto_apply_at": "",
-        "task": "GSL-180",
-        "high_impact": true
-      }
-    ]
+    "open": 0,
+    "by_type": {},
+    "items": []
   },
   "decisions": {
-    "total": 41,
+    "total": 44,
     "last": {
-      "id": "d-2026-08-02-004",
-      "ts": "2026-08-02T20:07:23Z",
+      "id": "d-2026-08-03-003",
+      "ts": "2026-08-03T13:07:38Z",
       "re": "q-2026-07-24-002",
       "task": "GSL-174",
       "type": "BLOCKER",
       "question": "Кто и как правит скиллы теперь? Контур «урок → правка скилла» работал 30 дней и остановился 10 июля; guard на install.sh от 20 июля закрепил остановку, убрав единственный описанный путь синхронизации. Формально авторитетна глобальная копия ~/.claude/skills/, но она вне git, вне ревью, вне Jira, и правит её никто — из-за этого центральный результат мандата перестал развиваться. Внутри того же решения: разрешить ли одноразовый reverse-sync скилла tmux-agents-orchestration в репозиторий — сегодня его нет в git вовсе и он существует в одном экземпляре без бэкапа. Заведено как BLOCKER, а не DECISION: любое умолчание означало бы, что агент сам начинает править авторитетную глобальную копию, а это разворот вашего стоящего приказа от 2026-07-20. Эпик GSL-174 (приоритет 1 плана) без ответа неисполним.",
       "qshape": "3d9f6074af",
-      "decision": "ПРЕЦЕДЕНТ (не полный ответ, BLOCKER остаётся open): владелец командой в чате велел править глобальный скилл orchestrating-delivery-agents — внесены 4 точечные правки (Turn order: heartbeat→wakeup ВТОРЫМ; HARD COROLLARY «ScheduleWakeup никогда не последний tool-вызов»; fast-path; worked example act-нумерация; Quick reference) + переписана память wakeup-first-text-last. Модель процесса: владелец командует конкретную правку → оркестратор вносит, проверяет, логирует",
+      "decision": "Система работы со скиллами СОГЛАСОВАНА владельцем (7 этапов, админка встраивается в существующий веб-интерфейс, тесты локально до публикации); BLOCKER закрыт, эпик GSL-174 к заведению для новой смены",
       "made_by": "owner",
       "rule": "",
       "channel": "chat"
@@ -352,8 +335,8 @@
     "asks": 8,
     "shipped": 34,
     "window": {
-      "start": "2026-07-27",
-      "end": "2026-08-02",
+      "start": "2026-07-28",
+      "end": "2026-08-03",
       "days": 7
     },
     "formula": "1 - asks/shipped, rolling 7d (5dive borrowing; audit finding 91)",
@@ -376,36 +359,111 @@
     ]
   },
   "delivery": {
-    "branch": "main",
-    "head": "22518d8",
-    "dirty_paths": 16,
+    "branch": "GSL-138-web-research-report",
+    "head": "459472c",
+    "dirty_paths": 17,
     "commits_on_date": [
       {
-        "sha": "22518d8",
+        "sha": "459472c",
+        "author": "R",
+        "ts": "2026-08-03T16:27:38+02:00",
+        "subject": "GSL-138 [Docs] Дашборд исследования: интерактивный веб-интерфейс harness (RU+EN)"
+      },
+      {
+        "sha": "87fb3e4",
+        "author": "R",
+        "ts": "2026-08-03T15:15:40+02:00",
+        "subject": "GSL-138 [Docs] Инвентарь веб-интерфейса: что построено, где интерактив был отложен умолчанием, что нужно для кнопки"
+      },
+      {
+        "sha": "5414354",
+        "author": "R",
+        "ts": "2026-08-03T14:56:52+02:00",
+        "subject": "GSL-138 [Docs] Уточнение механики guard: exit 1 прерывает выполнение до первого rsync"
+      },
+      {
+        "sha": "44ddbaf",
         "author": "rommxx",
-        "ts": "2026-08-02T22:25:32+02:00",
-        "subject": "Merge pull request #255 from ainstance-labs/GSL-178-supervisor-observe"
+        "ts": "2026-08-03T14:56:10+02:00",
+        "subject": "Merge pull request #258 from ainstance-labs/GSL-138-guard-layer"
       },
       {
-        "sha": "171f78d",
+        "sha": "208af72",
         "author": "R",
-        "ts": "2026-08-02T22:22:22+02:00",
-        "subject": "GSL-178 Пересборка лаборатории: бандл grade=fresh последним коммитом эпика (+первые строки наблюдательного watchdog-леджера в трекаемом архиве супервизии)"
+        "ts": "2026-08-03T14:52:36+02:00",
+        "subject": "GSL-138 [Docs] Guard install.sh как четвёртый слой защиты инварианта публикации"
       },
       {
-        "sha": "97fec6d",
-        "author": "R",
-        "ts": "2026-08-02T22:21:53+02:00",
-        "subject": "GSL-220 Наблюдательный прогон: носитель — мотор тика (шаг 4b, принудительный observe); рунбук v0.6; прогон запущен живым тиком"
+        "sha": "4c9eb75",
+        "author": "rommxx",
+        "ts": "2026-08-03T14:30:51+02:00",
+        "subject": "Merge pull request #257 from ainstance-labs/GSL-138-skills-plan-rework"
       },
       {
-        "sha": "347f3d4",
+        "sha": "cd1f937",
         "author": "R",
-        "ts": "2026-08-02T22:13:31+02:00",
-        "subject": "GSL-218 Сторож верификатора: поллер steps.log tools/lab/verifier-watch.sh, событие verifier.stalled, реакция <=3 мин"
+        "ts": "2026-08-03T14:14:11+02:00",
+        "subject": "GSL-138 [Docs] План системы работы со скиллами: фокус на будущем процессе, ручная публикация из админки"
+      },
+      {
+        "sha": "3da5a9b",
+        "author": "R",
+        "ts": "2026-08-03T12:51:48+02:00",
+        "subject": "GSL-138 [Docs][Process] Откат привязок к gosleep из production-скилла (по команде владельца); правило: production skills правит только владелец"
+      },
+      {
+        "sha": "b8416d9",
+        "author": "R",
+        "ts": "2026-08-03T12:23:39+02:00",
+        "subject": "GSL-138 [Docs][Process] Отчёт независимого дизайн-ревью дашборда (FIX 3 major -> PASS) + решения смены"
+      },
+      {
+        "sha": "e12f53d",
+        "author": "rommxx",
+        "ts": "2026-08-03T12:23:01+02:00",
+        "subject": "Merge pull request #256 from ainstance-labs/GSL-138-skills-plan-report"
+      },
+      {
+        "sha": "1f5744e",
+        "author": "R",
+        "ts": "2026-08-03T12:18:33+02:00",
+        "subject": "GSL-138 [Docs] Правки дашборда по дизайн-ревью: контраст AA, читаемость схем на 390px, перенос длинных путей"
+      },
+      {
+        "sha": "3a59bab",
+        "author": "R",
+        "ts": "2026-08-03T11:57:01+02:00",
+        "subject": "GSL-138 [Docs] Дашборд плана управления скиллами (RU+EN)"
+      },
+      {
+        "sha": "a198784",
+        "author": "R",
+        "ts": "2026-08-03T10:45:58+02:00",
+        "subject": "GSL-138 [Docs][Process] План управления скиллами (production защищён, разработка в repo) + GSL-180 отложен владельцем в бэклог"
       }
     ],
     "prs": [
+      {
+        "number": 258,
+        "state": "MERGED",
+        "title": "GSL-138 [Docs] Guard install.sh как четвёртый слой защиты инварианта публикации",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/258",
+        "mergedAt": "2026-08-03T12:56:10Z"
+      },
+      {
+        "number": 257,
+        "state": "MERGED",
+        "title": "GSL-138 [Docs] План системы работы со скиллами: ручная публикация из админки",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/257",
+        "mergedAt": "2026-08-03T12:30:51Z"
+      },
+      {
+        "number": 256,
+        "state": "MERGED",
+        "title": "GSL-138 [Docs] Дашборд плана управления скиллами (RU+EN) + независимое дизайн-ревью",
+        "url": "https://github.com/ainstance-labs/gosleep/pull/256",
+        "mergedAt": "2026-08-03T10:23:01Z"
+      },
       {
         "number": 255,
         "state": "MERGED",
@@ -524,41 +582,23 @@
         "title": "GSL-65 Self-pulse + night mode — PRD Phase 2",
         "url": "https://github.com/ainstance-labs/gosleep/pull/82",
         "mergedAt": "2026-07-10T08:28:46Z"
-      },
-      {
-        "number": 74,
-        "state": "MERGED",
-        "title": "GSL-58 AutoSK Anatomy v2 — помодульный код-анализ",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/74",
-        "mergedAt": "2026-07-10T07:38:38Z"
-      },
-      {
-        "number": 66,
-        "state": "MERGED",
-        "title": "GSL-49 Watchdog над оркестратором — PRD Phase 1",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/66",
-        "mergedAt": "2026-07-10T06:32:18Z"
-      },
-      {
-        "number": 56,
-        "state": "MERGED",
-        "title": "GSL-41 Orchestration deep-research — reports + PRD",
-        "url": "https://github.com/ainstance-labs/gosleep/pull/56",
-        "mergedAt": "2026-07-09T21:34:58Z"
       }
     ]
   },
   "orchestrator": {
     "heartbeat": {
-      "ts": "2026-08-02T20:30:05Z",
-      "cycle": 151,
+      "ts": "2026-08-03T14:28:08Z",
+      "cycle": 172,
       "context_pct": 99,
-      "open_workers": 2,
+      "open_workers": 1,
       "status": "ok",
-      "pane": "%10"
+      "pane": "%10",
+      "session": "gosleep-21",
+      "session_id": "a716426f-bca2-4ef4-901e-2b15368e8375",
+      "cli": "2.1.220"
     },
-    "live_status": "SHIFT 74 2026-07-28 06:45Z→ | cycle 149 | orchestrator=Fable 5 pane=%10 | ВОЗОБНОВЛЕНИЕ 13:1xZ (пауза 12:45-13:1x): owner финализировал модельную политику — Fable 5 для ВСЕХ + режим максимума (d-013, extra-usage активен). Итог смены к этому часу: ТРИ эпика слиты (#252/#253/#254), ledger-цепочка до 725fce7, gate.sh зелёный (smoke 545/0, hooks 19), очередь open=2 (только BLOCKER q-002/q-003). impl-178 спавнится на эпик GSL-178 (watchdog наблюдательный, 10 задач GSL-211..220, d-001) — наследование Fable 5 теперь легально. | latest handoff=docs/handoff/53-2026-07-28-handoff-shift74-three-epics-model-policy.md | questions: open=2 (2B/0D/0C/0F) lines=70 | open_workers=1 | status=executing-GSL-178`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
-    "telemetry_last": "cycle=150 worker=impl-178-2 model=claude-fable-5 (транскрипт d3238523; легален d-013 на момент спавна, пережил 5-дневный простой подписки в панели) tokens_out=~220000 tokens_in=~75000 cache_read=~95000000 (self-est) | running: cycles=150 total≈19449000 (+исторические гэпы) [эпик GSL-178 10/10 + бандл (171f78d), PR #255 OPEN/CLEAN; watchdog smoke 75→168/0; observe-режим по умолчанию, жизнь=claude agents --json, пороги из каденции, наблюдательный прогон ЗАПУЩЕН (первая боевая строка в архиве); 2 э"
+    "live_status": "SHIFT 74 2026-07-28→08-03 | cycle 157 | orchestrator=Fable 5 pane=%10 | ЧЕТЫРЕ ЭПИКА + ДАШБОРД ПЛАНА СКИЛЛОВ: PR #256 MERGED regular @ e12f53d (RU+EN, 3 SVG, дизайн-ревью FIX→PASS), отчёт ревью b8416d9. Ранее: GSL-175 (#252), GSL-179 (#253), GSL-176 (#254), GSL-178 (#255). Флот ПУСТ (панели %61/%63 убраны после сдачи). GSL-180 отложен владельцем в бэклог (d-2026-08-03-001). Очередь open=1 (q-002 скиллы — ждёт решения владельца по плану). ЖДЁМ ВЛАДЕЛЬЦА: согласование плана docs/plans/skills-governance-plan.md + дашборда docs/reports/skills-governance-2026-08-03/index.html; судьба правок 02.08 в production (вариант А перенести/Б откатить); заводить ли эпик GSL-174 по этапам плана; дата контрольной ночи; передача смены на новую сессию по handoff 55. | latest handoff=docs/handoff/55-2026-08-02-handoff-shift74-final-four-epics.md | questions: open=1 (1B/0D/0C/0F) lines=78 | open_workers=0 | status=awaiting-owner`\n\n`(Прошлые LIVE-STATUS: смена 73 2026-07-24 — глобальный аудит завершён и опубликован (дашборд EN+RU, 99 находок, 0 CRITICAL, готовность 70-75%/45%), бэклог 8 эпиков / 61 задача / 69 зеркал GH, 8 вопросов в очередь, эпик GSL-177 исполнен и слит PR #251, smoke 404→452, сайт лаборатории пересобран, детали handoff 49; смена 72 2026-07-23→24 — цикл верификации редизайна сошёлся (run 04: 0C/0M/5m, 92/100; regression 34/34), 4 PR смёржены (#135/#145/#156/#165), ~35 задач закрыто, smoke 358→404, детали handoff 47; смена 71 — редизайн GSL-111 PR #135, детали handoff 46; смена 2026-07-20 — cycles 59-70, Ф5 merged PR #115 + Ф6 частично PR #125, детали handoff 45; смена 2026-07-13 — cycles 53-58, impl-ui-1..6. Детали: handoff 35/45/46/47 + TELEMETRY + git history этого файла.)",
+    "telemetry_last": "cycle=157 worker=design-review-skills model=claude-opus-4-7 (независимый ревьюер, брифа автора не видел) tokens=не отданы (gap flagged) | running: cycles=157 [дизайн-ревью: проход 1 = FIX 0C/3M/4m/4nit; после фикса повторная сверка = PASS, контрасты пересчитаны самостоятельно 4.72-7.65 все AA; отчёт docs/reviews/design-review-skills-dashboard-2026-08-03.md]"
   },
   "degraded": [],
   "narrative": null,
@@ -575,6 +615,6 @@
       "cost.html",
       "library.html"
     ],
-    "last_success_at": "2026-08-02T20:33:32Z"
+    "last_success_at": "2026-08-03T14:32:58Z"
   }
 }
