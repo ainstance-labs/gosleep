@@ -1,104 +1,105 @@
-# Handoff — gosleep — 2026-07-20 (цикл 67, impl-mob-3: GSL-109 дизайн-проход закрыт)
+# Handoff — gosleep — 2026-07-20 (cycle 67, impl-mob-3: GSL-109 design pass closed)
 
-> Для оркестратора и следующего impl-воркера Фазы 6. Читай Part 1 → ORCHESTRATOR REPORT → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + handoff 39 (развёртка Фазы 6) + handoff 40 (RC) +
-> handoff 41 (phone-readable) + этот файл + handoff 35 (20 правил и 6 уроков — все в силе).
-> Я — impl-воркер цикла 67. Сделал ровно одну задачу: **GSL-109**.
+> For the orchestrator and the next Phase 6 impl-worker. Read Part 1 → ORCHESTRATOR REPORT → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + handoff 39 (Phase 6 rollout) + handoff 40 (RC) +
+> handoff 41 (phone-readable) + this file + handoff 35 (20 rules and 6 lessons — all in force).
+> I am the impl-worker of cycle 67. Did exactly one task: **GSL-109**.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Что сделано
+## 1. What was done
 
-**GSL-109 закрыт** (Jira **Done**, коммит `fa7bdcf`). Семь экранов Laboratory получили
-дизайн-систему вместо набора ad-hoc значений. Задача существовала потому, что владелец открыл сайт и
-назвал его «просто какой-то AI-слоп» — это прямое пожелание, а не догадка о вкусе.
+**GSL-109 closed** (Jira **Done**, commit `fa7bdcf`). The seven Laboratory screens got a design
+system instead of a set of ad-hoc values. The task existed because the owner opened the site and
+called it "just some AI slop" — this is a direct wish, not a guess about taste.
 
-Скриншоты ДО/ПОСЛЕ — `docs/dev_history/assets/GSL-109/` (все 7 экранов на одном листе,
-light+dark × desktop+390px, 8 файлов).
+BEFORE/AFTER screenshots — `docs/dev_history/assets/GSL-109/` (all 7 screens on one sheet,
+light+dark × desktop+390px, 8 files).
 
-## 2. Главный результат: дизайн-проход нашёл дефект, которого не видела разметка
+## 2. Main result: the design pass found a defect the markup did not see
 
-Первый же скриншот ДО показал «FRESH» **янтарным** — цветом предупреждения. При этом класс в
-разметке был правильный (`class="stale fresh"`), данные правильные, а тест на `class="stale dead"`
-зелёный. Правило грейда было написано так:
+The very first BEFORE screenshot showed "FRESH" in **amber** — the warning color. Meanwhile the
+markup class was correct (`class="stale fresh"`), the data correct, and the test for
+`class="stale dead"` green. The grade rule was written like this:
 
 ```css
 .stale.fresh{color:var(--ok)} .stale.stale{color:var(--warn)} .stale.dead{color:var(--dead)}
 ```
 
-`.stale.stale` — это **не** «элемент stale И грейда stale». Это `.stale`, написанный дважды. Он
-матчит **любой** баннер с той же специфичностью (0,2,0), что и `.stale.fresh`, и, стоя позже по
-исходнику, выигрывает каскад.
+`.stale.stale` is **not** "an element stale AND grade stale". It is `.stale` written twice. It
+matches **any** banner with the same specificity (0,2,0) as `.stale.fresh`, and standing later in
+the source, wins the cascade.
 
-**Свежая сборка печатала свой баннер цветом тревоги. На всех семи экранах. Всю Фазу 5.**
+**A fresh build was printing its banner in the alarm color. On all seven screens. All of Phase 5.**
 
-Поймать это ассертом на разметку было невозможно в принципе: разметка была верна каждый раз. Ошибку
-сделал **стилевой слой**, которому не хватило языка выразить требуемое различие. Цена не
-косметическая: дашборд, постоянно окрашенный в цвет тревоги, тревогу поднять уже не может — янтарный
-канал потерял значение раньше, чем им хоть раз воспользовались.
+Catching this with a markup assert was impossible in principle: markup was correct every time. The
+error was made by the **style layer**, which lacked the language to express the required
+distinction. The cost is not cosmetic: a dashboard permanently painted in the alarm color can no
+longer raise the alarm — the amber channel lost its meaning before it was used even once.
 
-> Урок в ту же копилку, что циклы 65 и 66. Там обобщали по одному `--help` и по одному расширению
-> файла. Здесь **проверяли не тот слой**: три года ассертов на разметку не покрывают вопрос «какое
-> правило выиграет каскад», а видно это было с первого взгляда на страницу.
+> Lesson to the same pile as cycles 65 and 66. There we generalized from a single `--help` and a
+> single file extension. Here we **checked the wrong layer**: three years of markup asserts do not
+> cover the question "which rule wins the cascade", and it was visible at first glance at the page.
 
-**Починка:** грейды выбираются по `data-grade`, который и так часть контракта, проверяемого
-`smoke.sh`. Три правила стали взаимоисключающими.
+**Fix:** grades are chosen by `data-grade`, which is already part of the contract checked by
+`smoke.sh`. The three rules became mutually exclusive.
 
-## 3. Второй дефект: «unknown» носил чужой цвет
+## 3. Second defect: "unknown" wore someone else's color
 
-`runway.tsx` тратит весь свой докстринг на различие между «ничего не идёт к нулю» и «я не могу
-прочитать часы» — дословно: *«nothing is wrong» и «I cannot see whether anything is wrong» —
-разные предложения*. И сразу под этим маппит `bound === "unknown"` в тон **`warn`**: тот же янтарь,
-что и «осталось меньше четырёх часов». Показание и отсутствие показания красились одинаково.
+`runway.tsx` spends its entire docstring on the distinction between "nothing is going to zero" and
+"I cannot read the clock" — verbatim: *"nothing is wrong" and "I cannot see whether anything is
+wrong" — different sentences*. And right below it maps `bound === "unknown"` to the tone
+**`warn`**: the same amber as "less than four hours remaining". A reading and the absence of a
+reading were painted the same.
 
-`unknown` получил собственный тон — пурпурный, пунктирный, **вне оси green-amber-red**, потому что
-unknown не оценка на этой оси. То же сделано с `.unknown`, `.clock.unknown`, `.sh-m.unknown`,
-`.tag.sev.unknown`: раньше все они красились в `--dim`, то есть **в цвет сносок и подписей**.
+`unknown` got its own tone — purple, dashed, **off the green-amber-red axis** — because unknown is
+not a rating on that axis. The same was done for `.unknown`, `.clock.unknown`, `.sh-m.unknown`,
+`.tag.sev.unknown`: earlier all of them were painted `--dim`, that is, **in the color of
+footnotes and captions**.
 
-Тон — это CSS-класс и только он. Ни одно число, ни один порог, ни одна формула не тронуты.
+The tone is a CSS class and only that. No number, no threshold, no formula was touched.
 
-## 4. Палитра выбрана замером, а не вкусом
+## 4. Palette chosen by measurement, not by taste
 
-Первым кандидатом на `unknown` был фиолетовый. Валидатор скилла `dataviz` его **зарубил**: против
-синего, которым покрашены ссылки, он даёт ΔE **8.7** при нормальном зрении (порог 15) — два цвета
-были бы неразличимы. Заменён на пурпурный.
+The first candidate for `unknown` was violet. The `dataviz` skill's validator **rejected** it:
+against the blue that colors links, it gives ΔE **8.7** for normal vision (threshold 15) — the
+two colors would be indistinguishable. Replaced with purple.
 
-Затем валидатор зарубил и всю палитру целиком: red↔green даёт ΔE 4.2 под дейтеранопией. Прежде чем
-переделывать, я прогнал **контроль — референсную статусную палитру самого скилла**. Она проваливает
-тот же гейт **хуже** (ΔE 4.1) и вдобавок проваливает контраст, который моя проходит. Значит гейт
-применён не по адресу: он для категориальных серий, а светофорная семантика пройти его не может по
-построению (о чём валидатор сам пишет в scope-строке). Для статусных цветов мерят WCAG-контраст и
-требуют обязательного второго канала.
+Then the validator rejected the whole palette: red↔green gives ΔE 4.2 under deuteranopia. Before
+redoing anything I ran a **control — the skill's own reference status palette**. It fails the same
+gate **worse** (ΔE 4.1) and additionally fails a contrast check that mine passes. So the gate is
+applied to the wrong thing: it is for categorical series, and traffic-light semantics cannot pass
+it by construction (which the validator itself writes in its scope line). For status colors you
+measure WCAG contrast and require a mandatory second channel.
 
-**Контраст дефектом не был, и заявлять его починку было бы неправдой** — старая палитра тоже
-проходила AA во всех ролях. Изменилось другое:
+**Contrast was not a defect, and claiming a fix for it would have been a lie** — the old palette
+too passed AA in all roles. What changed is different:
 
-| | старая | новая |
+| | old | new |
 |---|---|---|
-| AA (≥4.5:1), 5 ролей × 2 темы | ✅ | ✅ |
-| Тёмная тема | `#4ade80`/`#fbbf24`/`#f87171` — **9.9:1 и 10.3:1**, неон на чёрном | **5.2–5.7:1** |
-| `unknown` как роль | ❌ = `--dim` (цвет сносок) | ✅ собственный тон |
+| AA (≥4.5:1), 5 roles × 2 themes | ✅ | ✅ |
+| Dark theme | `#4ade80`/`#fbbf24`/`#f87171` — **9.9:1 and 10.3:1**, neon on black | **5.2–5.7:1** |
+| `unknown` as a role | ❌ = `--dim` (footnote color) | ✅ own tone |
 
-Для дашборда, который читают из кровати в 4 утра, «слишком ярко» — тоже дефект.
+For a dashboard read from bed at 4 in the morning, "too bright" is also a defect.
 
-## 5. Дизайн-система
+## 5. Design system
 
-Четыре шкалы, объявленные один раз; ни одно правило не имеет права взять значение вне них.
-Типографика — **7 ступеней вместо 18** ad-hoc размеров. Отступы — база 4px, **7 ступеней вместо
-12** ad-hoc. Плюс 3 радиуса и 5 семантических ролей цвета на 3 поверхностях.
+Four scales, declared once; no rule has the right to take a value outside them. Typography — **7
+steps instead of 18** ad-hoc sizes. Spacing — 4px base, **7 steps instead of 12** ad-hoc. Plus 3
+radii and 5 semantic color roles across 3 surfaces.
 
-Иерархия под вопрос «что владелец должен увидеть за 3 секунды»: runway — единственный элемент на
-верхней ступени шкалы; хром (masthead, nav, баннер, footer) уведён вниз; nav стал табами с явным
-активным состоянием.
+The hierarchy is under the question "what must the owner see in 3 seconds": runway — the only
+element on the top step of the scale; chrome (masthead, nav, banner, footer) pushed down; nav
+became tabs with an explicit active state.
 
-Баннер свежести теперь **масштабируется по тому, что сообщает**: FRESH — тихая линия, STALE —
-янтарь с подложкой, DEAD — заливка и удвоенная рамка. Асимметрия и есть правило честности,
-направленное на сам баннер: страница, которой разрешено молчать, когда всё хорошо, потратит
-громкость там, где она нужна.
+The freshness banner now **scales with what it says**: FRESH — a quiet line, STALE — amber with a
+backing, DEAD — fill and doubled border. Asymmetry is the honesty rule aimed at the banner
+itself: a page allowed to be silent when all is well will spend loudness where loudness is needed.
 
-## 6. Проблемы
+## 6. Problems
 
-Блокеров по своей задаче нет. Для следующего воркера — см. ⭐ RESUME.
+No blockers on my task. For the next worker — see ⭐ RESUME.
 
 ---
 
@@ -106,137 +107,141 @@ unknown не оценка на этой оси. То же сделано с `.un
 
 | | |
 |---|---|
-| **Задача** | **GSL-109** `[UI][Design]` → Jira **Done** (верифицировано GET'ом), GH #123 **не закрывал** |
-| **Коммит** | **`fa7bdcf`** — 14 файлов, +481/−133, пофайлово (`git add` списком, не `-A`) |
-| **Гейты** | smoke **287/287** (285 базовых + 2 новых, **ни один старый не ослаблен**) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 7 страниц |
-| **390px** | живой прогон по **всем 7** экранам: `scrollWidth == clientWidth == 390` везде, nav не переполняется, 7/7 ссылок — **GSL-100 не регрессировал** |
-| **Схема** | `render/7` **не трогалась**; data-контракты, пороги, формулы, `client.ts` — тоже |
-| **Разметка** | две обёртки без новой прозы (`header.masthead`, `main`) + один тон-класс; **нового видимого текста нет нигде** |
-| **Дефекты найдены** | 2 содержательных, оба чинились: каскадная коллизия `.stale.stale` (Фаза 5, все 7 экранов) и `unknown`, красившийся тоном `warn` |
-| **Решения** | новых DECISION не заводил (спорных развилок не возникло); очередь `open=0` |
-| **install.sh** | **не трогался**, guard не снимался |
-| **Acceptance по description** | ✅ typography/spacing/color/иерархия/консистентность 7 экранов · ✅ 390px + light/dark · ✅ инвариант 1 (схема) · ✅ инвариант 2 (ассерты) · ✅ инвариант 3 (правился рендерер) · ✅ инвариант 4 (честность не смягчена — усилена) · ⏳ **глаза владельца** |
+| **Task** | **GSL-109** `[UI][Design]` → Jira **Done** (verified by GET), GH #123 **not closed** |
+| **Commit** | **`fa7bdcf`** — 14 files, +481/−133, per-file (`git add` by list, not `-A`) |
+| **Gates** | smoke **287/287** (285 base + 2 new, **not a single old one weakened**) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 7 pages |
+| **390px** | live run across **all 7** screens: `scrollWidth == clientWidth == 390` everywhere, nav does not overflow, 7/7 links — **GSL-100 did not regress** |
+| **Schema** | `render/7` **untouched**; data contracts, thresholds, formulas, `client.ts` — same |
+| **Markup** | two wrappers without new prose (`header.masthead`, `main`) + one tone class; **no new visible text anywhere** |
+| **Defects found** | 2 substantive, both fixed: cascade collision `.stale.stale` (Phase 5, all 7 screens) and `unknown` painted with the `warn` tone |
+| **Decisions** | no new DECISION filed (no disputed forks arose); queue `open=0` |
+| **install.sh** | **untouched**, guard not removed |
+| **Acceptance per description** | ✅ typography/spacing/color/hierarchy/consistency of 7 screens · ✅ 390px + light/dark · ✅ invariant 1 (schema) · ✅ invariant 2 (asserts) · ✅ invariant 3 (renderer edited) · ✅ invariant 4 (honesty not softened — strengthened) · ⏳ **owner's eyes** |
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Что изменено
+## What was changed
 
-| Файл | Роль |
+| File | Role |
 |---|---|
-| `tools/lab/ui/src/theme.ts` | дизайн-система целиком: 4 шкалы, палитра, каскадная починка грейдов, `@media (max-width:26rem)`; все прежние комментарии-уроки сохранены |
-| `tools/lab/ui/src/runway.tsx` | `bound === "unknown"` → тон `unk` вместо `warn` (только класс) |
-| `tools/lab/ui/src/page.tsx` | `header.masthead` вокруг h1+nav, `main` вокруг тела |
+| `tools/lab/ui/src/theme.ts` | design system in full: 4 scales, palette, cascade fix for grades, `@media (max-width:26rem)`; all previous comment-lessons preserved |
+| `tools/lab/ui/src/runway.tsx` | `bound === "unknown"` → tone `unk` instead of `warn` (class only) |
+| `tools/lab/ui/src/page.tsx` | `header.masthead` around h1+nav, `main` around the body |
 | `tools/lab/smoke.sh` | +2 ⭐ (285 → **287**) |
-| `docs/dev_history/GSL-109-…md` + `README.md` | dev history + индекс |
-| `docs/dev_history/assets/GSL-109/*.jpeg` | 8 скриншотов ДО/ПОСЛЕ |
+| `docs/dev_history/GSL-109-…md` + `README.md` | dev history + index |
+| `docs/dev_history/assets/GSL-109/*.jpeg` | 8 BEFORE/AFTER screenshots |
 
-`docs/lab/site/*.html` **не коммитил** — DERIVED, та же конвенция, что в `e0b71e8`.
+`docs/lab/site/*.html` **not committed** — DERIVED, same convention as in `e0b71e8`.
 
-## Тесты (⭐ = имеет мутанта, который краснит именно его)
+## Tests (⭐ = has a mutant that reddens exactly it)
 
-| Чек | Механизм | Мутант |
+| Check | Mechanism | Mutant |
 |---|---|---|
-| ⭐ каждый грейд — свой цвет | **симулирует каскад**: резолвит `color` для реального элемента каждого грейда против выпущенного стиля, как это делает браузер | возврат к `.stale.stale` → `fresh=var(--warn)`, красный, ровно он |
-| ⭐ нечитаемый runway не берёт чужой тон | `class="runway unk"` есть, `class="runway warn"` нет (фикстура RWU) | возврат тона в `"warn"` → красный |
+| ⭐ each grade — its own color | **simulates the cascade**: resolves `color` for a real element of each grade against the released style, as the browser does | rollback to `.stale.stale` → `fresh=var(--warn)`, red, exactly it |
+| ⭐ unreadable runway does not take a foreign tone | `class="runway unk"` present, `class="runway warn"` absent (fixture RWU) | tone back to `"warn"` → red |
 
-Мутант первого прогонялся на **копии выпущенной страницы** в scratchpad — живое дерево не
-трогалось — и воспроизвёл исходный дефект дословно:
+The first mutant was run on a **copy of the released page** in scratchpad — live tree untouched —
+and reproduced the original defect verbatim:
 `fresh=var(--warn) stale=var(--warn) dead=var(--dead)`.
 
 ## Connections
 
 | | |
 |---|---|
-| Ветка | `GSL-102-mobile` @ **`fa7bdcf`** |
-| Эпик | GSL-102 = GH #116; задачи GSL-103…GSL-110 = GH #117…#124 |
-| PR Фазы 6 | **ещё не открыт** |
-| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции 11/21/31/**41=Done** |
-| Очередь | `open=0 (0B/0D/0C/0F)` |
+| Branch | `GSL-102-mobile` @ **`fa7bdcf`** |
+| Epic | GSL-102 = GH #116; tasks GSL-103…GSL-110 = GH #117…#124 |
+| Phase 6 PR | **not yet open** |
+| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions 11/21/31/**41=Done** |
+| Queue | `open=0 (0B/0D/0C/0F)` |
 
-## Статус задач Фазы 6 (проверено JQL, не по памяти)
+## Phase 6 task status (verified by JQL, not from memory)
 
-**Done (4):** GSL-103 ledger · GSL-104 RC · GSL-108 phone-readable · **GSL-109 дизайн-проход** (этот цикл).
+**Done (4):** GSL-103 ledger · GSL-104 RC · GSL-108 phone-readable · **GSL-109 design pass** (this cycle).
 **To Do (4):** GSL-105, GSL-106, GSL-107, GSL-110.
 
-## ⚠️ Железные правила
+## ⚠️ Hard rules
 
-Все 20 правил handoff 35 в силе без ослаблений: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
-после push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
-`docs/lab/site/*.html` DERIVED · коммит через `git commit -F` · дирти дерево — норма.
-**Owner directive 2026-07-20 (IN FORCE):** `./install.sh` целиком не гонять (там GUARD, exit 1 —
-не снимать и не обходить); точечный `rsync -a skill/<name>/ ~/.claude/skills/<name>/`; глобальная
-копия `orchestrating-delivery-agents` авторитетна.
+All 20 handoff-35 rules in force without weakening: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
+after push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
+`docs/lab/site/*.html` DERIVED · commit via `git commit -F` · dirty tree — norm.
+**Owner directive 2026-07-20 (IN FORCE):** `./install.sh` whole not run (GUARD in it, exit 1 —
+do not remove and do not bypass); point-`rsync -a skill/<name>/ ~/.claude/skills/<name>/`; the
+global copy `orchestrating-delivery-agents` is authoritative.
 
 ## Gotchas
 
-Все прежние в силе (включая `chronicler.py` c `sys.exit(main())` на уровне модуля). Новое от меня:
+All prior ones in force (including `chronicler.py` with `sys.exit(main())` at module level).
+New from me:
 
-- **Наивный `re.sub(r"<[^>]+>", "", html)` врёт на атрибутах, содержащих `>`.** Чтение вслух дало
-  `…self-report alone"> orchestrator context…` — выглядело как утечка атрибута в текст. Арбитр —
-  DOM, а не regex: `document.body.innerText` вернул `leaksQuoteGt: false`. `title` легитимно
-  содержит `->`, сломался мой стриппер. Второй сигнал (`<path` в тексте) — тоже экранированная
-  проза. **Оба ложные, оба проверены руками, ни один не записан как дефект.**
-- **Замер в загрязнённом окне измеряет загрязнение.** Первый прогон 390px дал `scrollWidth 402` —
-  виновником был **мой же iframe**, оставшийся в DOM от прерванного скрипта. Перезагрузка → 390.
-- **`file://`-iframe не отдаёт `contentDocument` родителю с `file://`** (opaque origin), но
-  **рендерится**. Контактный лист из 7 iframe'ов годится для скриншотов и **не годится** для
-  измерений — все замеры делались навигацией на каждую страницу отдельно.
-- **`evaluate_script` с последовательными iframe-загрузками вешается** на 120s тул-таймаут и уходит
-  в фон (`TaskStop` его снимает). Одна страница на вызов — надёжнее.
-- **Скриншоты тяжёлые.** 8 листов вышли на 9.5 МБ; `sips -Z <w> -s formatOptions 45` ужал до 1.8 МБ
-  без потери читаемости.
+- **Naive `re.sub(r"<[^>]+>", "", html)` lies on attributes containing `>`.** Reading aloud gave
+  `…self-report alone"> orchestrator context…` — it looked like an attribute leak into the text.
+  Arbiter — the DOM, not a regex: `document.body.innerText` returned `leaksQuoteGt: false`.
+  `title` legitimately contained `->`, my stripper broke. The second signal (`<path` in text) —
+  also escaped prose. **Both false, both verified by hand, none recorded as a defect.**
+- **A measurement in a polluted window measures pollution.** The first 390px run gave
+  `scrollWidth 402` — the culprit was **my own iframe** left in the DOM from an aborted script.
+  Reload → 390.
+- **A `file://` iframe does not give `contentDocument` to a `file://` parent** (opaque origin),
+  but **renders**. A contact sheet of 7 iframes is fine for screenshots and **not fine** for
+  measurements — all measurements were done by navigating to each page separately.
+- **`evaluate_script` with sequential iframe loads hangs** on the 120s tool timeout and goes to
+  the background (`TaskStop` removes it). One page per call is more reliable.
+- **Screenshots are heavy.** 8 sheets came out to 9.5 MB; `sips -Z <w> -s formatOptions 45`
+  squeezed them down to 1.8 MB without losing readability.
 
 ---
 
-## ⭐ RESUME POINT — следующий impl-воркер Фазы 6
+## ⭐ RESUME POINT — next Phase 6 impl-worker
 
 ```bash
 # Orient
 head -30 docs/handoff/ORCHESTRATION-STATE.md
-cat docs/handoff/42-2026-07-20-handoff-impl-mob-3.md   # этот файл
+cat docs/handoff/42-2026-07-20-handoff-impl-mob-3.md   # this file
 git branch --show-current                 # GSL-102-mobile
 git log --oneline -1                      # fa7bdcf (GSL-109)
-ls -la .env.local 2>/dev/null || echo "GSL-105 всё ещё заблокирована"
+ls -la .env.local 2>/dev/null || echo "GSL-105 still blocked"
 tools/lab/lab-emit.sh list --count
 ```
 
-### Проверено мной на факте, не унаследовано (2026-07-20, конец цикла 67)
+### Verified by me by fact, not inherited (2026-07-20, end of cycle 67)
 
 | | |
 |---|---|
-| `.env.local` | **ОТСУТСТВУЕТ** — блокер GSL-105 в силе, ничего не изменилось |
-| `tailscale` CLI | **не установлен** на машине |
-| очередь вопросов | `open=0 (0B/0D/0C/0F)`, 20 строк |
+| `.env.local` | **ABSENT** — GSL-105 blocker in force, nothing changed |
+| `tailscale` CLI | **not installed** on the machine |
+| question queue | `open=0 (0B/0D/0C/0F)`, 20 lines |
 
-### Остаток фазы
+### Phase remainder
 
-- **GSL-105** — **BLOCKER** по секрету ntfy-топика: `.env.local` проверено, по-прежнему нет.
-  Запаркована, не брать.
-- **GSL-106** — PRD велит ставить её **после** 105, то есть транзитивно заблокирована.
-- **GSL-107** `[Docs]` Tailscale/mosh break-glass runbook — **единственная незаблокированная
-  содержательная**. Писать можно; закрывать приёмку F6-S4 — нет: `tailscale` на машине отсутствует,
-  честная проверка упрётся в установку владельцем. Фиксировать как `⏳`, не как «должно работать».
-- **GSL-110** `[Docs]` dev_history Фазы 6 + приёмка F6-S1..S4 — по смыслу **последняя** в фазе.
-  Её приёмка частично упрётся в то же: F6-S4 без tailscale не закрывается.
+- **GSL-105** — **BLOCKER** on the ntfy topic secret: `.env.local` verified, still absent.
+  Parked, do not take.
+- **GSL-106** — PRD requires it be done **after** 105, so transitively blocked.
+- **GSL-107** `[Docs]` Tailscale/mosh break-glass runbook — **the only unblocked meaningful
+  one**. You can write; you cannot close F6-S4 acceptance: `tailscale` is absent on the machine,
+  an honest check will hit installation by the owner. Record as `⏳`, not "should work".
+- **GSL-110** `[Docs]` Phase 6 dev_history + acceptance F6-S1..S4 — by meaning **the last** of
+  the phase. Its acceptance will partly hit the same: F6-S4 without tailscale does not close.
 
-**Рекомендация:** GSL-107 (написать runbook, приёмку оставить в `⏳`), затем GSL-110 как закрывающая.
-Если владелец поставит tailscale или положит `.env.local` — приоритет меняется на 107-приёмку/105.
+**Recommendation:** GSL-107 (write the runbook, leave acceptance in `⏳`), then GSL-110 as the
+closer. If the owner installs tailscale or puts down `.env.local` — the priority flips to
+107-acceptance / 105 accordingly.
 
-### Предупреждение по моей работе
+### Warning about my work
 
-Телефонная страница GSL-108 (`docs/lab/mobile/README.md`) — **Markdown, её оформляет GitHub, CSS у
-неё отобрать нельзя**, и дизайн-проход её не касался. Обе поверхности читают один
-`render_bundle.json`, и это единственная гарантия, что они не разъедутся. Если после какой-то правки
-экраны и телефонная страница начнут говорить разными словами об одних числах — это регресс.
+The phone page GSL-108 (`docs/lab/mobile/README.md`) — **Markdown, GitHub formats it, its CSS
+cannot be taken away**, and the design pass did not touch it. Both surfaces read the same
+`render_bundle.json`, and this is the only guarantee they will not diverge. If after some edit the
+screens and the phone page start saying different words about the same numbers — that is a
+regression.
 
 ## Blocked on human
 
-- **GSL-109 (моя):** взгляд владельца на 7 экранов — согласиться, что это больше не «AI-слоп».
-  Скриншоты в `docs/dev_history/assets/GSL-109/`, живые страницы в `docs/lab/site/*.html`.
-  Не блокирует другие задачи. **Результат записать включая отрицательный.**
-- **GSL-108 / F5-S4c:** финальный взгляд с реального телефона (handoff 41 §«Что осталось владельцу»).
-- **GSL-104 / F6-S1:** hands-on пэйринг + второй пуш-тоггл (handoff 40).
-- **GSL-105:** BLOCKER по секрету ntfy-топика — `.env.local` **проверено, отсутствует**.
-- **GSL-107 / F6-S4:** `tailscale` не установлен — приёмка требует установки владельцем.
+- **GSL-109 (mine):** owner's look at 7 screens — agree that this is no longer "AI slop".
+  Screenshots in `docs/dev_history/assets/GSL-109/`, live pages in `docs/lab/site/*.html`.
+  Does not block other tasks. **Record the result including a negative.**
+- **GSL-108 / F5-S4c:** final look from a real phone (handoff 41 · "What is left to the owner").
+- **GSL-104 / F6-S1:** hands-on pairing + the second push toggle (handoff 40).
+- **GSL-105:** BLOCKER on the ntfy topic secret — `.env.local` **verified, absent**.
+- **GSL-107 / F6-S4:** `tailscale` is not installed — acceptance requires installation by the owner.

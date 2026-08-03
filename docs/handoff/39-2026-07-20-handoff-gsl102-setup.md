@@ -1,66 +1,69 @@
-# Handoff — gosleep — 2026-07-20 (цикл 64, gsl102-setup: Фаза 6 Mobile развёрнута, ledger закрыт)
+# Handoff — gosleep — 2026-07-20 (cycle 64, gsl102-setup: Phase 6 Mobile rolled out, ledger closed)
 
-> Для оркестратора и первого impl-воркера Фазы 6. Читай Part 1 → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл + handoff 38 (roll) + handoff 35 (20 правил и 6 уроков — все в силе).
-> Я — setup-воркер цикла 64. Кода фазы не писал: только Jira/GH/ветка/ledger/handoff.
+> For the orchestrator and the first Phase 6 impl-worker. Read Part 1 → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file + handoff 38 (roll) + handoff 35 (20 rules and 6 lessons — all in force).
+> I am the setup worker of cycle 64. Did not write phase code: only Jira/GH/branch/ledger/handoff.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Что сделано
+## 1. What was done
 
-**Фаза 6 «Mobile» развёрнута и готова к реализации.** Создан эпик **GSL-102** (In Progress) с
-**8 задачами** GSL-103…GSL-110, каждая зазеркалена в GitHub (#116 эпик, #117…#124 задачи), каждая
-назначена на владельца. Ветка **`GSL-102-mobile`** отведена от main @ `c4dafed` (тот самый merge
-PR #115, которым закрылась Фаза 5) и запушена. Ledger-коммит **`40497bd`** зафиксировал 17
-owner-sovereign файлов закрытия Фазы 5 — as-is, ничего в них не правил.
+**Phase 6 "Mobile" is rolled out and ready for implementation.** Epic **GSL-102** created (In
+Progress) with **8 tasks** GSL-103…GSL-110, each mirrored to GitHub (#116 epic, #117…#124 tasks),
+each assigned to the owner. Branch **`GSL-102-mobile`** cut off main @ `c4dafed` (the very merge
+of PR #115 that closed Phase 5) and pushed. Ledger commit **`40497bd`** pinned 17
+owner-sovereign files for the Phase 5 close — as-is, nothing edited in them.
 
-Очередь вопросов чиста: **open=0**. Висевший DECISION `q-2026-07-20-002` (владелец назвал UI
-«AI-слопом») закрыт по дефолту — из него родилась задача **GSL-109**, и решение записано в журнал
-как `d-2026-07-20-005`.
+The question queue is clean: **open=0**. The hanging DECISION `q-2026-07-20-002` (the owner
+called the UI "AI slop") was closed by default — it produced task **GSL-109**, and the decision
+is recorded in the log as `d-2026-07-20-005`.
 
-## 2. Что я проверил руками, прежде чем поверить PRD
+## 2. What I verified by hand before believing the PRD
 
-PRD писался 2026-07-08 — двенадцать дней назад. Проверил всё, на что он опирается в Фазе 6:
+The PRD was written 2026-07-08 — twelve days ago. I verified everything it relies on in Phase 6:
 
-- **Remote Control реально доступен.** CLI на машине — **2.1.215**, порог из исследования 2.1.181.
-  НО: PRD называет команду `claude remote-control` / `--rc` / `/rc`, а фактический флаг в
-  `claude --help` — **`--remote-control [name]`** (+ `--remote-control-session-name-prefix`). Это
-  вписано в описания эпика и GSL-104: реализация опирается на `claude --help`, не на цитату PRD.
-- **Хуки для ntfy уже стоят.** `Notification`, `StopFailure`, `SubagentStop` сконфигурированы в
-  `.claude/settings.json` ещё с Фазы 4. GSL-105 — это **расширение** существующих обработчиков, а не
-  стройка с нуля. Написал это в задаче явно, чтобы воркер не начал переизобретать hook-слой и не
-  сломал живой event-поток.
-- **`.env.local` отсутствует** → `ATLASSIAN_API_TOKEN` нет → обратные ссылки Jira↔GH сделаны
-  комментариями, а не remote-link REST. Это же ограничение ждёт GSL-105 (секрет ntfy-топика хранить
-  негде — воркеру придётся завести `.env.local` самому).
-- **Исследование сверено:** `docs/research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md` §6
-  подтверждает состав Фазы 6 дословно (RC / ntfy / Telegram / Tailscale). Hands-on тестирования RC
-  не было ни у кого — в задаче это названо честно.
+- **Remote Control is really available.** CLI on the machine — **2.1.215**, the research
+  threshold is 2.1.181. BUT: the PRD names the command `claude remote-control` / `--rc` / `/rc`,
+  while the actual flag in `claude --help` is **`--remote-control [name]`** (+
+  `--remote-control-session-name-prefix`). This is written into the epic and GSL-104 descriptions:
+  the implementation leans on `claude --help`, not on the PRD quote.
+- **Hooks for ntfy are already in place.** `Notification`, `StopFailure`, `SubagentStop` were
+  configured in `.claude/settings.json` back in Phase 4. GSL-105 is an **extension** of existing
+  handlers, not building from scratch. Written this in the task explicitly, so a worker does not
+  start reinventing the hook layer and break the live event stream.
+- **`.env.local` is absent** → `ATLASSIAN_API_TOKEN` is missing → Jira↔GH back-links are done via
+  comments, not the remote-link REST. The same limitation awaits GSL-105 (nowhere to store the
+  ntfy topic secret — the worker will have to create `.env.local` itself).
+- **Research verified:** `docs/research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md`
+  section 6 confirms the Phase 6 composition verbatim (RC / ntfy / Telegram / Tailscale). Hands-on
+  testing of RC was done by nobody — this is named honestly in the task.
 
-## 3. Где я отклонился от PRD (и почему)
+## 3. Where I deviated from the PRD (and why)
 
-PRD § Фаза 6 перечисляет 5 задач. Я создал 8. Три добавления, ни одного сокращения:
+The PRD · Phase 6 lists 5 tasks. I created 8. Three additions, no reductions:
 
-1. **GSL-103 ledger-коммит** — не работа фазы, а гигиена: owner-sovereign файлы Фазы 5 висели
-   незакоммиченными. Прецеденты GSL-82 (Фаза 4) и GSL-91 (Фаза 5). Уже сделан и закрыт.
-2. **GSL-108 phone-readable дашборд** — закрывает **опровергнутый F5-S4c**. Приёмка Фазы 5 честно
-   записала: приватный GitHub отдаёт `text/plain` + `nosniff`, Pages на приватном репо → 404, то
-   есть **HTML с телефона не читается**, и позитивный контроль на `README.md` показал, что это
-   универсальное поведение, а не дефект нашей страницы. Значит **SC-F не выполнен**. Фаза 5 закрыта
-   и смёржена — дыру некуда девать, кроме Фазы 6, а Фаза 6 ровно про мобильную досягаемость.
-3. **GSL-109 дизайн-проход** — по DECISION `q-2026-07-20-002`, как и предписано брифом.
+1. **GSL-103 ledger commit** — not phase work but hygiene: owner-sovereign Phase 5 files were
+   uncommitted. Precedents GSL-82 (Phase 4) and GSL-91 (Phase 5). Already done and closed.
+2. **GSL-108 phone-readable dashboard** — closes the **refuted F5-S4c**. Phase 5 acceptance
+   honestly recorded: private GitHub returns `text/plain` + `nosniff`, Pages on a private repo →
+   404, that is, **HTML from a phone is unreadable**, and a positive control on `README.md`
+   showed that this is universal behavior, not our page's defect. So **SC-F is not met**. Phase 5
+   is closed and merged — there is nowhere to put the hole except Phase 6, and Phase 6 is exactly
+   about mobile reach.
+3. **GSL-109 design pass** — per DECISION `q-2026-07-20-002`, as the brief prescribed.
 
-## 4. Что дальше
+## 4. What's next
 
-Первый impl-воркер берёт **GSL-104** (Remote Control) — это R6.1, от него зависит ценностная
-цепочка «пуш → ответ → буфер», и его же PRD ставит первым. GSL-106 (Telegram) по PRD ставится
-**после** R6.1+R6.2 — не запускать раньше. GSL-109 (дизайн) независим и может идти параллельно.
+The first impl-worker takes **GSL-104** (Remote Control) — this is R6.1, on which the value
+chain "push → answer → buffer" depends, and the PRD itself puts it first. GSL-106 (Telegram) per
+the PRD is placed **after** R6.1+R6.2 — do not launch earlier. GSL-109 (design) is independent
+and can go in parallel.
 
-## 5. Проблемы
+## 5. Problems
 
-Блокеров нет. Наследуемые долги (не мои, для владельца) — в handoff 38 §4: GSL-30 без dev_history;
-ledger-naming gap; `task.completed` не стреляет с 07-13; ночные дефолты по таймеру никто не
-применяет; token ceiling не машиночитаем.
+No blockers. Inherited debts (not mine, for the owner) — in handoff 38 · section 4: GSL-30
+without dev_history; ledger-naming gap; `task.completed` not firing since 07-13; nightly
+defaults on a timer that nobody applies; token ceiling not machine-readable.
 
 ---
 
@@ -68,107 +71,108 @@ ledger-naming gap; `task.completed` не стреляет с 07-13; ночные
 
 | | |
 |---|---|
-| **Эпик** | **GSL-102** «[Tooling][Docs] Фаза 6 — Mobile (Remote Control + hook→ntfy + answer-path + break-glass)» → Jira **In Progress**, GH **#116** (label `epic`) |
-| **Задачи** | **GSL-103…GSL-110** (8) = GH **#117…#124** (label `task`); привязка `parent = GSL-102` проверена JQL, `hasNextPage=false` → ровно 8; assignee = owner на всех |
-| **Статусы Jira** | GSL-103 **Done** (ledger сделан); GSL-104…GSL-110 **To Do** (7) |
-| **Ветка** | `GSL-102-mobile` от main @ `c4dafed`, запушена, remote = `40497bd` |
-| **Ledger-коммит** | **`40497bd`** — 17 файлов, as-is, пофайлово; `docs/prompts/` НЕ включён (проверено grep'ом перед коммитом) |
-| **Handoff 39** | этот файл, отдельным коммитом |
-| **Очередь** | open=0 (0B/0D/0C/0F), lines=18; `q-2026-07-20-002` resolved → `d-2026-07-20-005` |
-| **Отклонения от PRD** | +3 задачи (ledger / phone-readable F5-S4c / дизайн-проход), 0 сокращений — обоснования в Part 1 §3 и в описании эпика |
+| **Epic** | **GSL-102** "[Tooling][Docs] Phase 6 — Mobile (Remote Control + hook→ntfy + answer-path + break-glass)" → Jira **In Progress**, GH **#116** (label `epic`) |
+| **Tasks** | **GSL-103…GSL-110** (8) = GH **#117…#124** (label `task`); `parent = GSL-102` link verified by JQL, `hasNextPage=false` → exactly 8; assignee = owner on all |
+| **Jira statuses** | GSL-103 **Done** (ledger done); GSL-104…GSL-110 **To Do** (7) |
+| **Branch** | `GSL-102-mobile` from main @ `c4dafed`, pushed, remote = `40497bd` |
+| **Ledger commit** | **`40497bd`** — 17 files, as-is, per-file; `docs/prompts/` NOT included (verified by grep before commit) |
+| **Handoff 39** | this file, separate commit |
+| **Queue** | open=0 (0B/0D/0C/0F), lines=18; `q-2026-07-20-002` resolved → `d-2026-07-20-005` |
+| **PRD deviations** | +3 tasks (ledger / phone-readable F5-S4c / design pass), 0 reductions — justifications in Part 1 · section 3 and in the epic description |
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Состав Фазы 6
+## Phase 6 composition
 
-| Задача | GH | Требование | Критерий |
+| Task | GH | Requirement | Criterion |
 |---|---|---|---|
-| GSL-103 `[Docs]` Ledger: Phase 5 close + orchestration state | #117 | — (гигиена) | **Done** |
-| GSL-104 `[Skill][Docs]` Remote Control обёртка + runbook пэйринга | #118 | R6.1 | F6-S1 |
+| GSL-103 `[Docs]` Ledger: Phase 5 close + orchestration state | #117 | — (hygiene) | **Done** |
+| GSL-104 `[Skill][Docs]` Remote Control wrapper + pairing runbook | #118 | R6.1 | F6-S1 |
 | GSL-105 `[Tooling]` hook→ntfy fleet/lab push + ACL/self-host | #119 | R6.2 | F6-S3 |
 | GSL-106 `[Tooling]` Telegram answer-path → queue.jsonl | #120 | R6.3 | F6-S2 |
 | GSL-107 `[Docs]` Tailscale + Blink/mosh break-glass runbook | #121 | R6.4 | F6-S4 |
-| GSL-108 `[Tooling][Docs]` Phone-readable дашборд (F5-S4c) | #122 | добавлено | SC-F |
-| GSL-109 `[UI][Design]` Дизайн-проход 7 экранов Laboratory | #123 | q-2026-07-20-002 | — |
-| GSL-110 `[Docs]` dev_history Фазы 6 + приёмка F6-S1..S4 | #124 | PRD задача 5 | F6-S1..S4 |
+| GSL-108 `[Tooling][Docs]` Phone-readable dashboard (F5-S4c) | #122 | added | SC-F |
+| GSL-109 `[UI][Design]` Design pass over 7 Laboratory screens | #123 | q-2026-07-20-002 | — |
+| GSL-110 `[Docs]` Phase 6 dev_history + F6-S1..S4 acceptance | #124 | PRD task 5 | F6-S1..S4 |
 
-**Порядок реализации:** GSL-104 → GSL-105 → GSL-106 (PRD: «оценить после 1+2»). GSL-107 / GSL-108 /
-GSL-109 независимы. GSL-110 — последней.
+**Implementation order:** GSL-104 → GSL-105 → GSL-106 (PRD: "assess after 1+2"). GSL-107 / GSL-108
+/ GSL-109 are independent. GSL-110 last.
 
 ## Connections
 
 | | |
 |---|---|
-| Jira | project **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции 11/21/31/**41=Done** |
+| Jira | project **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions 11/21/31/**41=Done** |
 | GitHub | `ainstance-labs/gosleep` (private) |
-| main | @ `c4dafed` (Фаза 5 = PR #115, merged) |
-| Ветка Фазы 6 | `GSL-102-mobile` @ `40497bd` |
-| PR Фазы 6 | **ещё не открыт** — открывается, когда все задачи закоммичены |
+| main | @ `c4dafed` (Phase 5 = PR #115, merged) |
+| Phase 6 branch | `GSL-102-mobile` @ `40497bd` |
+| Phase 6 PR | **not yet open** — opens when all tasks are committed |
 | Owner | Roman L, accountId `557058:83b04839-8bde-4331-9c2d-24843d0b8e67` |
-| PRD | `docs/prd/PRD-gosleep-evolution.md` § «Фаза 6» — **последняя фаза PRD** |
+| PRD | `docs/prd/PRD-gosleep-evolution.md` · "Phase 6" — **the last PRD phase** |
 
-## Gates (CI нет — руками)
+## Gates (no CI — by hand)
 
-`bash tools/lab/smoke.sh` → **264/264** (флейк :234 pre-existing, не чинить) ·
+`bash tools/lab/smoke.sh` → **264/264** (flake :234 pre-existing, do not fix) ·
 `bash tools/lab/hooks-verify.sh` → 14/14 · `(cd tools/lab/ui && npx tsc --noEmit)` → 0 ·
-`bash tools/lab/chronicler.sh --no-poll` → 7 страниц. Схема `gosleep.lab.render/7`.
-Gates Фазы 6 сверх этого: ntfy-hook — валидный async command; RC-обёртка задокументирована.
+`bash tools/lab/chronicler.sh --no-poll` → 7 pages. Schema `gosleep.lab.render/7`.
+Phase 6 gates on top of that: ntfy-hook — a valid async command; RC wrapper documented.
 
-## ⚠️ Железные правила
+## ⚠️ Hard rules
 
-Все 20 правил handoff 35 § Part 2 в силе без ослаблений. Ключевое для Фазы 6:
+All 20 handoff-35 · Part 2 rules in force without weakening. Key for Phase 6:
 ⛔ tree-wide git ops (`reset --hard` / `stash` / `checkout -- .` / `clean`) · ⛔ force-push ·
-⛔ `--amend` после push (до push — легально) · ⛔ Workflow tool · ⛔ `git add -A` ·
-fleet cap 3 · kill-pane только по явному id · NO Story (Epic+Task only) · REGULAR merge, не squash ·
-`docs/lab/site/*.html` DERIVED — править рендерер · коммит через `git commit -F` ·
-дирти дерево после ledger'а — норма (оркестратор пишет heartbeat/events параллельно).
+⛔ `--amend` after push (before push — legal) · ⛔ Workflow tool · ⛔ `git add -A` ·
+fleet cap 3 · kill-pane only by explicit id · NO Story (Epic+Task only) · REGULAR merge, not squash ·
+`docs/lab/site/*.html` DERIVED — edit the renderer · commit via `git commit -F` ·
+dirty tree after the ledger is norm (the orchestrator writes heartbeat/events in parallel).
 
-**Owner directive 2026-07-20 (IN FORCE):** `orchestrating-delivery-agents` — использовать ТОЛЬКО
-глобальный скилл (`~/.claude/skills/`), НЕ локальную копию `skill/` этого репо. `./install.sh` для
-ЭТОГО скилла не гонять.
+**Owner directive 2026-07-20 (IN FORCE):** `orchestrating-delivery-agents` — use the GLOBAL skill
+ONLY (`~/.claude/skills/`), NOT the local copy `skill/` of this repo. Do not run `./install.sh`
+for THIS skill.
 
-## 6 уроков воркеров (вшивать в каждый impl-бриф)
+## 6 worker lessons (bake into every impl brief)
 
-1. Jira description читать **первым тулом**. 2. Грепать прежде чем верить description.
-3. «Нет источника» — проверяй руками. 4. ⛔ tree-wide git ops. 5. ⛔ background restore-trap.
-6. Прочитай прозу вслух + поставь позитивный контроль.
+1. Read Jira description **first tool**. 2. Grep before believing the description.
+3. "No source" — verify by hand. 4. ⛔ tree-wide git ops. 5. ⛔ background restore-trap.
+6. Read prose aloud + set a positive control.
 
 ## Gotchas
 
-Все из handoff 35 и 38 в силе. Новое от меня: **`.env.local` в репо нет** — GSL-105 (секрет
-ntfy-топика) и любые токены упрутся в это первыми; создавать git-ignored, никогда не коммитить и не
-echo'ить. Нумерация GH общая с PR — доверять ссылкам в телах issue, не номерам.
+All from handoffs 35 and 38 in force. New from me: **`.env.local` is absent from the repo** —
+GSL-105 (ntfy topic secret) and any tokens hit this first; create git-ignored, never commit or
+echo. GitHub numbering is shared with PRs — trust the links in issue bodies, not the numbers.
 
-## ⭐ RESUME POINT — первый impl-воркер Фазы 6
+## ⭐ RESUME POINT — first Phase 6 impl-worker
 
 ```bash
 # Orient
 cat docs/handoff/ORCHESTRATION-STATE.md | head -30
-cat docs/handoff/39-2026-07-20-handoff-gsl102-setup.md   # этот файл
+cat docs/handoff/39-2026-07-20-handoff-gsl102-setup.md   # this file
 git branch --show-current                 # GSL-102-mobile
 git log --oneline -1                      # 40497bd (ledger)
 tools/lab/lab-emit.sh list --count        # open=0
 
-# Задача GSL-104 — описание ПЕРВЫМ тулом, не по памяти
-# (mcp__atlassian__getJiraIssue GSL-104), затем:
-claude --help | grep -i remote-control    # фактическая поверхность, НЕ цитата PRD
+# Task GSL-104 — description FIRST tool, not from memory
+# (mcp__atlassian__getJiraIssue GSL-104), then:
+claude --help | grep -i remote-control    # actual surface, NOT PRD quote
 ```
 
-**Первая задача — GSL-104 `[Skill][Docs]` Remote Control обёртка + runbook пэйринга (R6.1 → F6-S1).**
+**First task — GSL-104 `[Skill][Docs]` Remote Control wrapper + pairing runbook (R6.1 → F6-S1).**
 
-1. Прочитать описание GSL-104 в Jira первым тулом; затем `docs/research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md` §6 (строки ~428–446).
-2. **Сверить поверхность руками:** `claude --help`, официальные доки. На CLI 2.1.215 флаг —
-   `--remote-control [name]`, а НЕ `--rc`. PRD здесь устарел — писать по факту.
-3. Тонкая **swappable** скилл-обёртка (research-preview может поменяться) + runbook пэйринга
-   оркестраторской сессии + оба push-тоггла.
-4. Честно задокументировать ограничения: локальный процесс должен жить; ~10 мин offline убивают
-   сессию; RC зеркалит ОДНУ сессию (fleet-level — это GSL-105).
-5. Проверить, ведёт ли себя **Agent-Teams LEAD-сессия** нормально под RC — hands-on этого не делал
-   никто. Результат записать **по факту**, не подгоняя под критерий.
-6. Один коммит `GSL-104 …`, dev_history по конвенции, Jira → Done, отчёт + telemetry line.
+1. Read the GSL-104 description in Jira first tool; then
+   `docs/research/2026-07-07-orchestration/05-lab-ui-mobile-autonomy.md` section 6 (lines ~428–446).
+2. **Verify the surface by hand:** `claude --help`, official docs. On CLI 2.1.215 the flag is
+   `--remote-control [name]`, NOT `--rc`. The PRD is stale here — write by fact.
+3. A thin **swappable** skill wrapper (research preview may change) + a pairing runbook for the
+   orchestrator session + both push toggles.
+4. Honestly document limits: the local process must live; ~10 min offline kills the session;
+   RC mirrors ONE session (fleet-level is GSL-105).
+5. Check whether the **Agent-Teams LEAD session** behaves normally under RC — nobody did this
+   hands-on. Record the result **by fact**, not fitting to the criterion.
+6. One commit `GSL-104 …`, dev_history by convention, Jira → Done, report + telemetry line.
 
 ## Blocked on human
 
-**Нет.** Очередь open=0.
+**None.** Queue open=0.
