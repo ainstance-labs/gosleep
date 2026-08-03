@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skills governance — plan (2026-08-03)</title>
+<meta name="description" content="Dashboard for the plan: production protected, development in the repo. Drafted by the orchestrator, awaits the owner's decision.">
+<script>
+  // Resolve theme before first paint — no flash.
+  (function () {
+    try {
+      var t = localStorage.getItem('sg-theme');
+      if (t === 'dark' || t === 'light') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    } catch (e) {}
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    --bg:            #f6f6f3;
+    --surface:       #ffffff;
+    --surface-2:     #fbfbf9;
+    --surface-3:     #f0efec;
+    --text:          #0b0b0b;
+    --text-2:        #4a4a46;
+    --text-3:        #6a6965;   /* AA-compliant: 5.01:1 on --bg, 5.51:1 on --surface, 4.77:1 on risk-bg */
+    --border:        rgba(11,11,11,0.10);
+    --border-strong: rgba(11,11,11,0.18);
+    --border-hair:   rgba(11,11,11,0.06);
+
+    --accent:          #2a5cd6;
+    --accent-ink:      #1e46a0;
+    --accent-contrast: #ffffff;
+    --ring:            rgba(42,92,214,0.35);
+
+    --ok-bg:      rgba(16,142,72,0.10);
+    --ok-fg:      #0a6a3a;
+    --ok-bd:      rgba(16,142,72,0.30);
+    --warn-bg:    rgba(214,140,20,0.14);
+    --warn-fg:    #8a5a08;
+    --warn-bd:    rgba(214,140,20,0.34);
+    --risk-bg:    rgba(196,50,50,0.10);
+    --risk-fg:    #a71f1f;
+    --risk-bd:    rgba(196,50,50,0.32);
+    --wait-bg:    rgba(11,11,11,0.05);
+    --wait-fg:    #4a4a46;
+    --wait-bd:    rgba(11,11,11,0.14);
+
+    --radius:     10px;
+    --radius-sm:  6px;
+    --radius-lg:  16px;
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 32px;
+    --s-7: 48px;
+    --s-8: 64px;
+    --maxw: 960px;
+    --maxw-prose: 68ch;
+
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 4px 16px rgba(11,11,11,0.05);
+    --shadow-strong: 0 2px 4px rgba(11,11,11,0.05), 0 10px 30px rgba(11,11,11,0.08);
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Roboto Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:            #0c0c0c;
+      --surface:       #161615;
+      --surface-2:     #1c1c1b;
+      --surface-3:     #232322;
+      --text:          #f2f2ee;
+      --text-2:        #c0bfb6;
+      --text-3:        #8a8983;
+      --border:        rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --border-hair:   rgba(255,255,255,0.06);
+
+      --accent:          #6f9cee;
+      --accent-ink:      #a9c1f2;
+      --accent-contrast: #0b0b0b;
+      --ring:            rgba(111,156,238,0.45);
+
+      --ok-bg:      rgba(76,190,120,0.14);
+      --ok-fg:      #7fdca4;
+      --ok-bd:      rgba(76,190,120,0.36);
+      --warn-bg:    rgba(240,180,60,0.14);
+      --warn-fg:    #f2c96b;
+      --warn-bd:    rgba(240,180,60,0.34);
+      --risk-bg:    rgba(230,120,120,0.16);
+      --risk-fg:    #f2a1a1;
+      --risk-bd:    rgba(230,120,120,0.38);
+      --wait-bg:    rgba(255,255,255,0.06);
+      --wait-fg:    #c0bfb6;
+      --wait-bd:    rgba(255,255,255,0.16);
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.45);
+      --shadow-strong: 0 2px 4px rgba(0,0,0,0.5), 0 12px 30px rgba(0,0,0,0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:            #0c0c0c;
+    --surface:       #161615;
+    --surface-2:     #1c1c1b;
+    --surface-3:     #232322;
+    --text:          #f2f2ee;
+    --text-2:        #c0bfb6;
+    --text-3:        #8a8983;
+    --border:        rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --border-hair:   rgba(255,255,255,0.06);
+
+    --accent:          #6f9cee;
+    --accent-ink:      #a9c1f2;
+    --accent-contrast: #0b0b0b;
+    --ring:            rgba(111,156,238,0.45);
+
+    --ok-bg:      rgba(76,190,120,0.14);
+    --ok-fg:      #7fdca4;
+    --ok-bd:      rgba(76,190,120,0.36);
+    --warn-bg:    rgba(240,180,60,0.14);
+    --warn-fg:    #f2c96b;
+    --warn-bd:    rgba(240,180,60,0.34);
+    --risk-bg:    rgba(230,120,120,0.16);
+    --risk-fg:    #f2a1a1;
+    --risk-bd:    rgba(230,120,120,0.38);
+    --wait-bg:    rgba(255,255,255,0.06);
+    --wait-fg:    #c0bfb6;
+    --wait-bd:    rgba(255,255,255,0.16);
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.45);
+    --shadow-strong: 0 2px 4px rgba(0,0,0,0.5), 0 12px 30px rgba(0,0,0,0.55);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--accent); color: var(--accent-contrast); }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  code, kbd, samp, pre { font-family: var(--mono); font-size: 0.92em; }
+  code { background: var(--surface-3); padding: 0.08em 0.32em; border-radius: 4px; border: 1px solid var(--border-hair); overflow-wrap: anywhere; word-break: break-word; }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--s-3) var(--s-4); overflow-x: auto; }
+  pre code { background: transparent; padding: 0; border: 0; }
+
+  .site-head {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in oklab, var(--bg) 94%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .site-head .row {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--s-3) var(--s-5);
+    display: flex; align-items: center; gap: var(--s-4);
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: var(--s-3); min-width: 0;
+  }
+  .brand .k {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+  }
+  .brand .n {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    letter-spacing: -0.005em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .site-head .tools {
+    display: flex; align-items: center; gap: var(--s-2);
+    flex-shrink: 0;
+  }
+  .tool-btn {
+    appearance: none;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: var(--font);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  .tool-btn:hover { border-color: var(--border-strong); }
+  .lang-switch { display: inline-flex; }
+  .lang-switch a, .lang-switch span {
+    display: inline-block;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .lang-switch a:first-child, .lang-switch span:first-child { border-radius: 8px 0 0 8px; border-right-width: 0; }
+  .lang-switch a:last-child, .lang-switch span:last-child { border-radius: 0 8px 8px 0; }
+  .lang-switch .active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  main { max-width: var(--maxw); margin: 0 auto; padding: var(--s-6) var(--s-5) var(--s-8); }
+  section { margin-top: var(--s-8); }
+  section:first-of-type { margin-top: var(--s-6); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
+  h1 { font-size: clamp(28px, 4vw, 36px); line-height: 1.15; margin: 0 0 var(--s-3); }
+  h2 { font-size: 22px; line-height: 1.25; margin: 0 0 var(--s-4); }
+  h3 { font-size: 17px; line-height: 1.3; margin: 0 0 var(--s-2); font-weight: 600; }
+  p, li { max-width: var(--maxw-prose); }
+  p { margin: 0 0 var(--s-3); color: var(--text-2); }
+  ul, ol { margin: 0 0 var(--s-4); padding-left: 1.35em; color: var(--text-2); }
+  li + li { margin-top: var(--s-1); }
+
+  .lead {
+    font-size: 18px;
+    color: var(--text-2);
+    line-height: 1.55;
+    max-width: var(--maxw-prose);
+    margin: 0 0 var(--s-5);
+  }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+  .chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-3);
+  }
+  .chip.chip-status .dot { background: var(--warn-fg); }
+  .chip.chip-jira .dot { background: var(--accent); }
+
+  .cta-frame {
+    margin-top: var(--s-6);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-strong);
+    overflow: hidden;
+  }
+  .cta-frame .cta-head {
+    padding: var(--s-5) var(--s-5) var(--s-3);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3);
+    justify-content: space-between;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  }
+  .cta-frame .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .cta-frame h2 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .cta-frame .stamp {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.03em;
+  }
+  .cta-body {
+    padding: var(--s-4) var(--s-5) var(--s-5);
+  }
+  .cta-question {
+    font-size: 18px;
+    color: var(--text);
+    margin: 0 0 var(--s-4);
+    max-width: 62ch;
+  }
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-3);
+  }
+  .option {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    background: var(--surface-2);
+  }
+  .option .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface-3);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    margin-bottom: var(--s-2);
+  }
+  .option.rec { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, var(--surface)); }
+  .option.rec .tag { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+  .option h3 { margin: 0 0 var(--s-1); font-size: 15px; }
+  .option p { margin: 0; font-size: 14px; }
+  .cta-footer {
+    margin-top: var(--s-4);
+    padding-top: var(--s-4);
+    border-top: 1px dashed var(--border);
+    display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+  .cta-footer .lock {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-5);
+    box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: var(--s-4); }
+  .card h3 { margin-top: 0; }
+
+  .term-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-3);
+    margin-top: var(--s-2);
+  }
+  .term {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    background: var(--surface-2);
+  }
+  .term h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: var(--s-2);
+    font-weight: 500;
+  }
+  .term .path {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text);
+    margin-bottom: var(--s-2);
+    word-break: break-all;
+  }
+  .term p { font-size: 14px; margin: 0; }
+  .term.hard {
+    border-color: var(--risk-bd);
+    background: var(--risk-bg);
+  }
+  .term.hard h3 { color: var(--risk-fg); }
+
+  .incident {
+    border-left: 3px solid var(--warn-fg);
+    background: var(--warn-bg);
+    padding: var(--s-4) var(--s-5);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: var(--s-4) 0 0;
+  }
+  .incident .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--warn-fg);
+    font-weight: 600;
+    display: block;
+    margin-bottom: var(--s-2);
+  }
+  .incident p { color: var(--text); margin: 0; }
+  .incident p + p { margin-top: var(--s-2); }
+
+  .admission {
+    border-left: 3px solid var(--risk-fg);
+    background: var(--risk-bg);
+    padding: var(--s-4) var(--s-5);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: var(--s-4) 0 0;
+  }
+  .admission .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--risk-fg);
+    font-weight: 600;
+    display: block;
+    margin-bottom: var(--s-2);
+  }
+  .admission p { color: var(--text); margin: 0; }
+  .admission p + p { margin-top: var(--s-2); }
+
+  .table-wrap {
+    margin-top: var(--s-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; }
+  table.state {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  table.state th, table.state td {
+    padding: var(--s-3) var(--s-4);
+    text-align: left;
+    border-bottom: 1px solid var(--border-hair);
+    vertical-align: middle;
+  }
+  table.state thead th {
+    font-weight: 500;
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--surface-2);
+  }
+  table.state tbody tr:last-child td { border-bottom: 0; }
+  table.state td.mono { font-family: var(--mono); font-size: 12.5px; }
+  table.state td.name { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+  table.state .b {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    letter-spacing: 0.02em;
+  }
+  .b.ok    { background: var(--ok-bg);   color: var(--ok-fg);   border-color: var(--ok-bd); }
+  .b.warn  { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bd); }
+  .b.risk  { background: var(--risk-bg); color: var(--risk-fg); border-color: var(--risk-bd); }
+  .b.wait  { background: var(--wait-bg); color: var(--wait-fg); border-color: var(--wait-bd); }
+
+  .stages {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: var(--s-4) 0 0;
+    display: grid;
+    gap: var(--s-3);
+  }
+  .stages li {
+    counter-increment: step;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-7);
+    position: relative;
+    max-width: none;
+  }
+  .stages li::before {
+    content: counter(step);
+    position: absolute;
+    left: var(--s-4);
+    top: var(--s-4);
+    width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--text);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+  }
+  .stages h3 { margin: 0 0 4px; font-size: 15px; }
+  .stages p { margin: 0; font-size: 14px; max-width: none; }
+
+  figure.diagram {
+    margin: var(--s-4) 0 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  figure.diagram .svg-wrap {
+    overflow-x: auto;
+    padding: var(--s-5) var(--s-4);
+    background: var(--surface);
+  }
+  figure.diagram svg { display: block; margin: 0 auto; width: 100%; height: auto; }
+  /* Preserve legibility on narrow viewports: force horizontal scroll on the
+     wrap instead of shrinking labels below their readable minimum. */
+  figure.diagram .svg-wrap.w720 svg { min-width: 720px; max-width: 720px; }
+  figure.diagram .svg-wrap.w900 svg { min-width: 900px; max-width: 900px; }
+  figure.diagram figcaption {
+    padding: var(--s-3) var(--s-4);
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-3);
+    background: var(--surface-2);
+  }
+
+  .sv-text     { fill: var(--text); }
+  .sv-text-2   { fill: var(--text-2); }
+  .sv-text-3   { fill: var(--text-3); }
+  .sv-surface  { fill: var(--surface); }
+  .sv-surface-2{ fill: var(--surface-2); }
+  .sv-border   { stroke: var(--border-strong); }
+  .sv-hair     { stroke: var(--border); }
+  .sv-accent   { stroke: var(--accent); }
+  .sv-ok       { stroke: var(--ok-fg); }
+  .sv-warn     { stroke: var(--warn-fg); }
+  .sv-risk     { stroke: var(--risk-fg); }
+  .sv-fill-ok  { fill: var(--ok-bg); }
+  .sv-fill-warn{ fill: var(--warn-bg); }
+  .sv-fill-risk{ fill: var(--risk-bg); }
+  .sv-fill-accent { fill: color-mix(in oklab, var(--accent) 15%, var(--surface)); }
+  .sv-mono     { font-family: var(--mono); }
+  .sv-sans     { font-family: var(--font); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-3); font-size: 12px; color: var(--text-3); }
+  .legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .sw {
+    width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border);
+    display: inline-block;
+  }
+  .legend .sw.ok   { background: var(--ok-bg);   border-color: var(--ok-bd); }
+  .legend .sw.warn { background: var(--warn-bg); border-color: var(--warn-bd); }
+  .legend .sw.risk { background: var(--risk-bg); border-color: var(--risk-bd); }
+  .legend .sw.wait { background: var(--wait-bg); border-color: var(--wait-bd); }
+
+  .impact {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-5);
+    display: grid;
+    grid-template-columns: minmax(0, 220px) 1fr;
+    gap: var(--s-5);
+    align-items: start;
+  }
+  .impact .k {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: var(--s-1);
+  }
+  .impact h3 { margin: 0 0 var(--s-1); }
+  .impact p { margin: 0; }
+
+  footer.site-foot {
+    margin-top: var(--s-8);
+    padding: var(--s-5) var(--s-5) var(--s-6);
+    border-top: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 12px;
+    max-width: var(--maxw);
+    margin-left: auto; margin-right: auto;
+  }
+  footer.site-foot .g { display: flex; flex-wrap: wrap; gap: var(--s-4); }
+  footer.site-foot .k { color: var(--text-3); font-family: var(--mono); }
+  footer.site-foot .v { color: var(--text-2); font-family: var(--mono); }
+
+  @media (max-width: 720px) {
+    .site-head .row { padding: var(--s-3) var(--s-4); }
+    main { padding: var(--s-5) var(--s-4) var(--s-7); }
+    .term-grid { grid-template-columns: 1fr; }
+    .options { grid-template-columns: 1fr; }
+    .impact { grid-template-columns: 1fr; gap: var(--s-3); }
+    .brand .n { max-width: 40vw; }
+  }
+  @media (max-width: 430px) {
+    .brand .k { display: none; }
+    .lang-switch a, .lang-switch span { padding: 5px 8px; font-size: 11.5px; }
+    .tool-btn { padding: 5px 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media print {
+    .site-head, .tool-btn, .lang-switch { display: none; }
+    body { background: white; color: black; }
+    .card, .table-wrap, figure.diagram { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-head" role="banner">
+  <div class="row">
+    <div class="brand">
+      <span class="k">GSL-138</span>
+      <span class="n">Skills governance — plan</span>
+    </div>
+    <div class="tools">
+      <div class="lang-switch" role="group" aria-label="Language">
+        <a href="../index.html" hreflang="ru" aria-label="Russian version">RU</a>
+        <span class="active" aria-current="page">EN</span>
+      </div>
+      <button class="tool-btn" id="theme-toggle" type="button" aria-label="Toggle theme">Theme</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="meta-row" aria-label="Metadata">
+    <span class="chip chip-jira"><span class="dot"></span>GSL-138</span>
+    <span class="chip chip-status"><span class="dot"></span>PROPOSAL — awaits owner's decision</span>
+    <span class="chip">2026-08-03</span>
+    <span class="chip">Author: orchestrator</span>
+  </div>
+
+  <h1>Skills governance:<br>production protected, development in the repo</h1>
+  <p class="lead">
+    Investigating the q-2026-07-24-002 blocker produced a plan that separates two
+    things &mdash; the working skills every project on this machine relies on, and
+    the skill-development work that should leave a trail in git. Nothing moves further
+    without your decision.
+  </p>
+
+  <!-- ================== PRIMARY CTA ================== -->
+  <section class="cta-frame" id="decision" aria-labelledby="decision-h">
+    <div class="cta-head">
+      <div>
+        <div class="kicker">Decision required</div>
+        <h2 id="decision-h">What to do with the 02.08 edits in production</h2>
+      </div>
+      <div class="stamp">One question &middot; owner's call</div>
+    </div>
+    <div class="cta-body">
+      <p class="cta-question">
+        The edits made to the production skill <code>orchestrating-delivery-agents</code>
+        on 02.08, bypassing the process, are already helping &mdash; they fix a real
+        breakage where the orchestrator went silent. Their fate is your call.
+      </p>
+      <div class="options">
+        <div class="option rec">
+          <span class="tag">Option A &middot; recommended</span>
+          <h3>Port and review retroactively</h3>
+          <p>
+            Copy the current production edits into <code>skill/orchestrating-delivery-agents/</code>
+            as the first development change, with a Jira task and a review. Production stays
+            as it is for now &mdash; the edits are useful and already working.
+          </p>
+        </div>
+        <div class="option">
+          <span class="tag">Option B</span>
+          <h3>Roll back and redo</h3>
+          <p>
+            Revert production to its pre-02.08 state (the exact set of replacements is known,
+            the rollback is mechanical), then perform the same edits normally: through
+            <code>skill/</code> &rarr; commit &rarr; registry &rarr; publish.
+          </p>
+        </div>
+      </div>
+      <div class="cta-footer">
+        <span class="lock">Publish &mdash; always the owner</span>
+        <span>Either option uses the same publish process going forward.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== 1. TERMINOLOGY ================== -->
+  <section id="terms" aria-labelledby="terms-h">
+    <h2 id="terms-h">1. Terminology (corrected per the owner)</h2>
+    <p>
+      Earlier discussion used the phrase &laquo;working copy&raquo; &mdash; it is
+      imprecise and the orchestrator has withdrawn it. The proper terms are below.
+    </p>
+    <div class="term-grid">
+      <div class="term hard">
+        <h3>Production skills</h3>
+        <div class="path">~/.claude/skills/&lt;name&gt;/</div>
+        <p>
+          Used by every orchestrator and every project on this machine. Editing here
+          is changing production live, with no review and no rollback.
+          <strong>Agents are strictly forbidden to edit.</strong>
+        </p>
+      </div>
+      <div class="term">
+        <h3>Development skills</h3>
+        <div class="path">skill/&lt;name&gt;/ (gosleep repo)</div>
+        <p>
+          The development site: edits are made here, reviewed here, and land in git
+          with history and an author.
+        </p>
+      </div>
+      <div class="term">
+        <h3>Publish</h3>
+        <div class="path">development &rarr; production</div>
+        <p>
+          Moving a change from development to production. Performed
+          <strong>only by the owner</strong>, explicitly, after review. The single
+          point where a human acts.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== 2. WHY THE BAN IS JUSTIFIED ================== -->
+  <section id="why" aria-labelledby="why-h">
+    <h2 id="why-h">2. Why the ban is justified (fact, not conjecture)</h2>
+    <p>
+      The orchestrator response rules recorded in the production skill
+      <code>orchestrating-delivery-agents</code> have already paralysed the work once:
+      the owner stopped seeing the orchestrator's messages while the fleet was alive.
+    </p>
+    <div class="incident">
+      <span class="lbl">Incident &middot; a production rule that broke the channel</span>
+      <p>
+        The rule required &laquo;a turn ends with text&raquo;, while the worked example
+        showed an order where the last action was a scheduler call &mdash; its response
+        (&laquo;nothing more to do&raquo;) cut the turn off before the text.
+      </p>
+      <p>
+        A contradiction inside a skill is invisible to tests. A bug in a production
+        skill propagates to every project at once and is only discovered by symptom &mdash;
+        already in production.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 3. ADMITTED VIOLATION ================== -->
+  <section id="admission" aria-labelledby="admission-h">
+    <h2 id="admission-h">3. The violation the orchestrator must acknowledge</h2>
+    <div class="admission">
+      <span class="lbl">02.08.2026 &middot; edit made bypassing the process</span>
+      <p>
+        On the owner's verbal instruction &laquo;fix the skill&raquo;, the edits were
+        applied <strong>directly to the production copy</strong>
+        <code>~/.claude/skills/orchestrating-delivery-agents/SKILL.md</code> &mdash;
+        the turn ordering plus six replacements from the GSL-178 errata.
+      </p>
+      <p>
+        The owner did give the instruction, but the proper path &mdash; edit in
+        <code>skill/</code> and publish by the owner &mdash; did not exist, and the
+        orchestrator did not build it; it worked around it instead. The precedent is
+        recorded as d-2026-08-02-004. The fate of those edits is the decision above
+        (the &laquo;Decision required&raquo; block).
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 4. CURRENT STATE ================== -->
+  <section id="state" aria-labelledby="state-h">
+    <h2 id="state-h">4. Current state (measured 2026-08-03)</h2>
+    <p>
+      Six skills. One is missing from git altogether. Two diverge from production &mdash;
+      one heavily, one over a single important lesson. Three are identical.
+    </p>
+
+    <figure class="diagram" aria-label="Skill divergence map">
+      <div class="svg-wrap w720">
+        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg3-title">
+          <title id="svg3-title">Divergence between development and production, per skill</title>
+
+          <g class="sv-sans" font-size="11">
+            <text x="12" y="28" class="sv-text-3">SKILL</text>
+            <text x="222" y="28" class="sv-text-3">DIVERGENCE (lines, production vs development)</text>
+            <text x="640" y="28" class="sv-text-3" text-anchor="end">IN GIT</text>
+          </g>
+
+          <line x1="12" y1="38" x2="708" y2="38" class="sv-hair" stroke-width="1"/>
+
+          <g class="sv-sans sv-text-3" font-size="10">
+            <text x="222" y="308" class="sv-text-3">0</text>
+            <text x="322" y="308" class="sv-text-3">20</text>
+            <text x="422" y="308" class="sv-text-3">40</text>
+            <text x="522" y="308" class="sv-text-3">60</text>
+            <text x="622" y="308" class="sv-text-3">80 lines</text>
+          </g>
+          <g class="sv-hair" stroke-dasharray="2 3">
+            <line x1="222" y1="52" x2="222" y2="296"/>
+            <line x1="322" y1="52" x2="322" y2="296"/>
+            <line x1="422" y1="52" x2="422" y2="296"/>
+            <line x1="522" y1="52" x2="522" y2="296"/>
+            <line x1="622" y1="52" x2="622" y2="296"/>
+          </g>
+
+          <!-- 1) orchestrating-delivery-agents: 69 -->
+          <g>
+            <text x="12" y="72" class="sv-sans sv-text" font-size="12">orchestrating-delivery-agents</text>
+            <rect x="222" y="60" width="345" height="16" rx="3" class="sv-fill-risk"/>
+            <rect x="222" y="60" width="345" height="16" rx="3" fill="none" class="sv-risk" stroke-width="1"/>
+            <text x="573" y="72" class="sv-sans sv-text" font-size="11" font-weight="600">69 lines</text>
+            <text x="640" y="72" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
+          </g>
+
+          <!-- 2) using-jira: 24 -->
+          <g>
+            <text x="12" y="112" class="sv-sans sv-text" font-size="12">using-jira</text>
+            <rect x="222" y="100" width="120" height="16" rx="3" class="sv-fill-warn"/>
+            <rect x="222" y="100" width="120" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
+            <text x="348" y="112" class="sv-sans sv-text" font-size="11" font-weight="600">24 lines</text>
+            <text x="640" y="112" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
+          </g>
+
+          <!-- 3) delivery-workflow: 0 -->
+          <g>
+            <text x="12" y="152" class="sv-sans sv-text" font-size="12">delivery-workflow</text>
+            <rect x="222" y="140" width="6" height="16" rx="3" class="sv-fill-ok"/>
+            <rect x="222" y="140" width="6" height="16" rx="3" fill="none" class="sv-ok" stroke-width="1"/>
+            <text x="234" y="152" class="sv-sans sv-text-2" font-size="11">identical</text>
+            <text x="640" y="152" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
+          </g>
+
+          <!-- 4) handoff: 0 -->
+          <g>
+            <text x="12" y="192" class="sv-sans sv-text" font-size="12">handoff</text>
+            <rect x="222" y="180" width="6" height="16" rx="3" class="sv-fill-ok"/>
+            <rect x="222" y="180" width="6" height="16" rx="3" fill="none" class="sv-ok" stroke-width="1"/>
+            <text x="234" y="192" class="sv-sans sv-text-2" font-size="11">identical</text>
+            <text x="640" y="192" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
+          </g>
+
+          <!-- 5) writing-prds: 0 -->
+          <g>
+            <text x="12" y="232" class="sv-sans sv-text" font-size="12">writing-prds</text>
+            <rect x="222" y="220" width="6" height="16" rx="3" class="sv-fill-ok"/>
+            <rect x="222" y="220" width="6" height="16" rx="3" fill="none" class="sv-ok" stroke-width="1"/>
+            <text x="234" y="232" class="sv-sans sv-text-2" font-size="11">identical</text>
+            <text x="640" y="232" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
+          </g>
+
+          <!-- 6) tmux-agents-orchestration: missing from git -->
+          <g>
+            <text x="12" y="272" class="sv-sans sv-text" font-size="12">tmux-agents-orchestration</text>
+            <rect x="222" y="260" width="400" height="16" rx="3" fill="none" class="sv-risk" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="228" y="272" class="sv-sans" font-size="11" font-weight="600" fill="var(--risk-fg)">missing from git &mdash; only copy is production (14 KB)</text>
+            <text x="640" y="272" class="sv-mono" font-size="11" text-anchor="end" fill="var(--risk-fg)" font-weight="600">NO</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        Diagram (c): divergence between <code>skill/</code> (development) and
+        <code>~/.claude/skills/</code> (production) for every skill, measured 2026-08-03.
+      </figcaption>
+    </figure>
+
+    <div class="legend">
+      <span class="swatch"><span class="sw ok"></span>identical &mdash; no publish needed</span>
+      <span class="swatch"><span class="sw warn"></span>divergence &mdash; needs review and publish</span>
+      <span class="swatch"><span class="sw risk"></span>heavy divergence or file missing from git</span>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="state">
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>skill/ (git)</th>
+              <th>~/.claude/skills/ (prod)</th>
+              <th>divergence</th>
+              <th>status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="name">orchestrating-delivery-agents</td>
+              <td class="mono">yes</td>
+              <td class="mono">yes</td>
+              <td>69 lines (02.08 edits + older)</td>
+              <td><span class="b risk">risk</span></td>
+            </tr>
+            <tr>
+              <td class="name">using-jira</td>
+              <td class="mono">yes</td>
+              <td class="mono">yes</td>
+              <td>24 lines (ATLASSIAN_API_TOKEN lesson only in prod)</td>
+              <td><span class="b warn">warn</span></td>
+            </tr>
+            <tr>
+              <td class="name">delivery-workflow</td>
+              <td class="mono">yes</td>
+              <td class="mono">yes</td>
+              <td>identical</td>
+              <td><span class="b ok">ok</span></td>
+            </tr>
+            <tr>
+              <td class="name">handoff</td>
+              <td class="mono">yes</td>
+              <td class="mono">yes</td>
+              <td>identical</td>
+              <td><span class="b ok">ok</span></td>
+            </tr>
+            <tr>
+              <td class="name">writing-prds</td>
+              <td class="mono">yes</td>
+              <td class="mono">yes</td>
+              <td>identical</td>
+              <td><span class="b ok">ok</span></td>
+            </tr>
+            <tr>
+              <td class="name">tmux-agents-orchestration</td>
+              <td class="mono" style="color: var(--risk-fg); font-weight: 600;">NO</td>
+              <td class="mono">yes (14 KB)</td>
+              <td>only copy, no backup</td>
+              <td><span class="b risk">risk</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: var(--s-4);">
+      <h3>Why <code>install.sh</code> currently cannot run as a whole</h3>
+      <p>
+        The installer syncs <em>every subfolder</em> from <code>skill/</code> to
+        <code>~/.claude/skills/</code> at once, with <code>--delete</code>. One run
+        today would wipe the <code>ATLASSIAN_API_TOKEN</code> lesson that lives only in
+        the production <code>using-jira</code>, and would <em>completely remove</em>
+        <code>tmux-agents-orchestration</code>, which is not in git. The 2026-07-20
+        guard cannot be lifted &mdash; the replacement is a per-skill publish with review.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 5. TODAY'S GAP ================== -->
+  <section id="today" aria-labelledby="today-h">
+    <h2 id="today-h">5. Today's gap, diagrammed</h2>
+    <p>
+      Where exactly the break is: production is used but not filled from git &mdash;
+      edits leak straight into production, past the history.
+    </p>
+
+    <figure class="diagram" aria-label="Today's state diagram">
+      <div class="svg-wrap w720">
+        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg1-title">
+          <title id="svg1-title">Today's state: three stores, broken connections</title>
+
+          <defs>
+            <marker id="ah-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ok-fg)"/>
+            </marker>
+            <marker id="ah-risk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--risk-fg)"/>
+            </marker>
+            <marker id="ah-mute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/>
+            </marker>
+          </defs>
+
+          <!-- development skill/ -->
+          <g>
+            <rect x="20" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
+            <text x="110" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">DEVELOPMENT</text>
+            <text x="110" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">skill/</text>
+            <text x="110" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">in the gosleep repo</text>
+            <line x1="36" y1="146" x2="184" y2="146" class="sv-hair"/>
+            <text x="110" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">5 of 6 skills</text>
+            <text x="110" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">tmux-agents absent</text>
+            <text x="110" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">edits do not flow out</text>
+          </g>
+
+          <!-- git origin/main -->
+          <g>
+            <rect x="270" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
+            <text x="360" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">HISTORY</text>
+            <text x="360" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">git origin/main</text>
+            <text x="360" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">commits, PRs, review</text>
+            <line x1="286" y1="146" x2="434" y2="146" class="sv-hair"/>
+            <text x="360" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">what can be rolled back</text>
+            <text x="360" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">what has an author</text>
+          </g>
+
+          <!-- production ~/.claude/skills/ -->
+          <g>
+            <rect x="520" y="60" width="180" height="180" rx="10" fill="var(--risk-bg)" stroke="var(--risk-fg)" stroke-width="1.5"/>
+            <text x="610" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">PRODUCTION</text>
+            <text x="610" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">~/.claude/skills/</text>
+            <text x="610" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-2)">shared machine, all projects</text>
+            <line x1="536" y1="146" x2="684" y2="146" class="sv-hair"/>
+            <text x="610" y="168" text-anchor="middle" class="sv-sans sv-text" font-size="11.5" font-weight="600">in use right now</text>
+            <text x="610" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">install.sh guarded off</text>
+            <text x="610" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--risk-fg)">agents forbidden to edit</text>
+          </g>
+
+          <!-- skill → git : works -->
+          <line x1="200" y1="150" x2="270" y2="150" stroke="var(--ok-fg)" stroke-width="1.6" marker-end="url(#ah-ok)"/>
+          <text x="235" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--ok-fg)">commit</text>
+
+          <!-- git → production: broken -->
+          <line x1="450" y1="150" x2="510" y2="150" stroke="var(--text-3)" stroke-width="1.4" stroke-dasharray="4 4"/>
+          <text x="480" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">install.sh</text>
+          <text x="480" y="167" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">disabled</text>
+          <g transform="translate(490,150)">
+            <circle r="7" fill="none" stroke="var(--risk-fg)" stroke-width="1.4"/>
+            <line x1="-4.5" y1="-4.5" x2="4.5" y2="4.5" stroke="var(--risk-fg)" stroke-width="1.4"/>
+          </g>
+
+          <!-- 02.08 direct edit bypassing everything -->
+          <path d="M 110 240 C 110 285, 610 285, 610 246" fill="none" stroke="var(--risk-fg)" stroke-width="1.6" stroke-dasharray="6 3" marker-end="url(#ah-risk)"/>
+          <text x="360" y="302" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">
+            02.08: agent's edit went straight into production, bypassing git
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        Diagram (a): today's state. The break is on the right &mdash; git does not
+        publish to production; the 02.08 edit bypassed the whole chain.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ================== 6. TARGET PROCESS ================== -->
+  <section id="target" aria-labelledby="target-h">
+    <h2 id="target-h">6. Target process</h2>
+    <p>
+      One direct flow from lesson to production, with exactly one point where a human
+      acts &mdash; publish. Everything else has an author, a task, a commit, and a cause.
+    </p>
+
+    <figure class="diagram" aria-label="Target process">
+      <div class="svg-wrap w900">
+        <svg viewBox="0 0 900 220" role="img" aria-labelledby="svg2-title">
+          <title id="svg2-title">Target process from lesson to production, with a single human-only publish step</title>
+
+          <defs>
+            <marker id="ah-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-2)"/>
+            </marker>
+          </defs>
+
+          <!-- 1: Lesson -->
+          <g>
+            <rect x="14" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="64" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">01</text>
+            <text x="64" y="118" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Lesson</text>
+          </g>
+          <line x1="114" y1="102" x2="128" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 2: Jira task -->
+          <g>
+            <rect x="128" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="178" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">02</text>
+            <text x="178" y="118" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Jira task</text>
+          </g>
+          <line x1="228" y1="102" x2="242" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 3: Edit skill/ -->
+          <g>
+            <rect x="242" y="72" width="110" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="297" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">03</text>
+            <text x="297" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Edit</text>
+            <text x="297" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">skill/&lt;name&gt;/</text>
+          </g>
+          <line x1="352" y1="102" x2="366" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 4: Commit -->
+          <g>
+            <rect x="366" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="416" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">04</text>
+            <text x="416" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Commit</text>
+            <text x="416" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">task key</text>
+          </g>
+          <line x1="466" y1="102" x2="480" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 5: Registry -->
+          <g>
+            <rect x="480" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="530" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">05</text>
+            <text x="530" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Registry</text>
+            <text x="530" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">CHANGELOG.jsonl</text>
+          </g>
+          <line x1="580" y1="102" x2="594" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 6: Admin -->
+          <g>
+            <rect x="594" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="644" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">06</text>
+            <text x="644" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Admin UI</text>
+            <text x="644" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">diff &middot; waits</text>
+          </g>
+          <line x1="694" y1="102" x2="708" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 7: OWNER (human gate) -->
+          <g>
+            <rect x="708" y="52" width="112" height="100" rx="10" fill="color-mix(in oklab, var(--accent) 12%, var(--surface))" stroke="var(--accent)" stroke-width="2"/>
+            <text x="764" y="76" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--accent-ink)" font-weight="600">07 &middot; HUMAN GATE</text>
+            <text x="764" y="98" text-anchor="middle" class="sv-sans" font-size="13" font-weight="700" fill="var(--text)">OWNER</text>
+            <text x="764" y="115" text-anchor="middle" class="sv-sans sv-text-2" font-size="11">approves</text>
+            <text x="764" y="132" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">publish &lt;name&gt;</text>
+          </g>
+          <line x1="820" y1="102" x2="834" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- 8: Prod -->
+          <g>
+            <rect x="834" y="72" width="60" height="60" rx="8" fill="var(--ok-bg)" stroke="var(--ok-fg)"/>
+            <text x="864" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--ok-fg)" font-weight="600">08</text>
+            <text x="864" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">prod</text>
+            <text x="864" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">+backup</text>
+          </g>
+
+          <!-- Callout for the single human point -->
+          <path d="M 764 40 L 764 52" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="764" y="30" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--accent-ink)" font-weight="600">
+            the single point where a human acts
+          </text>
+
+          <text x="450" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="12">
+            steps 01&ndash;06 are agent work &mdash; every edit has an author, a task, and a commit
+          </text>
+          <text x="450" y="206" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">
+            publish (07&ndash;08) is forbidden to agents by rule and by an owner-check
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        Diagram (b): the target process. Eight steps from lesson to production;
+        step 07 is the single point where a human acts.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ================== 7. WORK STAGES ================== -->
+  <section id="stages" aria-labelledby="stages-h">
+    <h2 id="stages-h">7. Work stages (proposed epic)</h2>
+    <p>
+      Six sequential stages. Acceptance &mdash; on a live example, not on paper.
+    </p>
+    <ol class="stages">
+      <li>
+        <h3>Development catch-up</h3>
+        <p>
+          Move the production versions back into <code>skill/</code> (a one-off reverse
+          sync, global &rarr; local, on the owner's command), including
+          <code>tmux-agents-orchestration</code>, which is not in git. Each skill lands
+          as a separate commit stating what was caught up. After this step,
+          <code>skill/</code> is the truth and all further development happens only there.
+        </p>
+      </li>
+      <li>
+        <h3>Change registry</h3>
+        <p>
+          <code>docs/skills/CHANGELOG.jsonl</code> &mdash; one line per edit: date,
+          skill, Jira task, commit, root-cause lesson, status
+          <code>draft</code>&nbsp;/&nbsp;<code>reviewed</code>&nbsp;/&nbsp;<code>published</code>.
+          Written by the agent at edit time; extended at publish time.
+        </p>
+      </li>
+      <li>
+        <h3>Publish tool</h3>
+        <p>
+          <code>tools/skills/publish.sh &lt;name&gt;</code>: shows a diff of development
+          against production, requires the owner's confirmation, backs up production to
+          <code>docs/skills/backups/&lt;name&gt;-&lt;date&gt;/</code>, syncs
+          <strong>one named</strong> skill, and appends a line to the registry.
+          No mass operations &mdash; <code>--all</code> does not exist. Agents are
+          forbidden to run it, by rule and by an owner-check.
+        </p>
+      </li>
+      <li>
+        <h3>Admin UI &mdash; a &laquo;Skills&raquo; page in the lab</h3>
+        <p>
+          List of skills, status (matches production / has unpublished edits), history
+          from the registry with a lesson and links to the task and commit, diff view,
+          and the exact publish command ready to copy. A &laquo;Publish&raquo; button
+          in static HTML is impossible &mdash; publishing stays the owner's command;
+          if we later enable an interactive web tier, the button will call the same
+          <code>publish</code>.
+        </p>
+      </li>
+      <li>
+        <h3>Checks</h3>
+        <p>
+          A test that fails if an agent modified a file under
+          <code>~/.claude/skills/</code>; a test for the registry format; and a rule in
+          <code>CLAUDE.md</code> and inside the skills:
+          &laquo;production skills are edited by the owner only, via publish&raquo;.
+        </p>
+      </li>
+      <li>
+        <h3>Acceptance</h3>
+        <p>
+          On a live example: take a real lesson (e.g. the turn ordering), run it end to
+          end through development &rarr; registry &rarr; admin UI &rarr; publish, and
+          show every trace in the report.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ================== 8. GSL-174 ================== -->
+  <section id="gsl174" aria-labelledby="gsl174-h">
+    <h2 id="gsl174-h">8. What this changes for the GSL-174 epic</h2>
+    <div class="impact">
+      <div>
+        <span class="k">Epic</span>
+        <h3>GSL-174 &laquo;who edits the skills&raquo;</h3>
+        <span class="chip">becomes executable</span>
+      </div>
+      <div>
+        <p>
+          The answer to the epic's question: <strong>the repo edits, the owner
+          publishes.</strong> Its contents are rewritten to match the stages of
+          section&nbsp;7 &mdash; tasks are filed once this plan is agreed.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="g">
+    <div><span class="k">Report:</span> <span class="v">skills-governance-2026-08-03/en/index.html</span></div>
+    <div><span class="k">Branch:</span> <span class="v">GSL-138-skills-plan-report</span></div>
+    <div><span class="k">Source:</span> <span class="v">docs/plans/skills-governance-plan.md</span></div>
+    <div><span class="k">Author:</span> <span class="v">gosleep orchestrator</span></div>
+    <div><span class="k">Date:</span> <span class="v">2026-08-03</span></div>
+  </div>
+  <p style="margin-top: var(--s-3); max-width: 68ch;">
+    The dashboard is read by the owner. Nothing on this page is executed until his
+    command. The open question is in the &laquo;Decision required&raquo; block at the top.
+  </p>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    function currentTheme() {
+      var explicit = document.documentElement.getAttribute('data-theme');
+      if (explicit === 'dark' || explicit === 'light') return explicit;
+      var mql = window.matchMedia('(prefers-color-scheme: dark)');
+      return mql.matches ? 'dark' : 'light';
+    }
+    btn.addEventListener('click', function () {
+      var next = currentTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('sg-theme', next); } catch (e) {}
+    });
+  })();
+</script>
+
+</body>
+</html>
