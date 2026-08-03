@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Управление скиллами — план (2026-08-03)</title>
+<meta name="description" content="Дашборд плана: production защищён, разработка идёт в репозитории. Составлен по указанию владельца, ожидает решения.">
+<script>
+  // Определяем тему до первой отрисовки — без вспышки.
+  (function () {
+    try {
+      var t = localStorage.getItem('sg-theme');
+      if (t === 'dark' || t === 'light') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    } catch (e) {}
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    /* Нейтральная база */
+    --bg:            #f6f6f3;
+    --surface:       #ffffff;
+    --surface-2:     #fbfbf9;
+    --surface-3:     #f0efec;
+    --text:          #0b0b0b;
+    --text-2:        #4a4a46;
+    --text-3:        #7a7975;
+    --border:        rgba(11,11,11,0.10);
+    --border-strong: rgba(11,11,11,0.18);
+    --border-hair:   rgba(11,11,11,0.06);
+
+    /* Единственный акцент */
+    --accent:          #2a5cd6;
+    --accent-ink:      #1e46a0;
+    --accent-contrast: #ffffff;
+    --ring:            rgba(42,92,214,0.35);
+
+    /* Семантические — только там, где есть семантика */
+    --ok-bg:      rgba(16,142,72,0.10);
+    --ok-fg:      #0a6a3a;
+    --ok-bd:      rgba(16,142,72,0.30);
+    --warn-bg:    rgba(214,140,20,0.14);
+    --warn-fg:    #8a5a08;
+    --warn-bd:    rgba(214,140,20,0.34);
+    --risk-bg:    rgba(196,50,50,0.10);
+    --risk-fg:    #a71f1f;
+    --risk-bd:    rgba(196,50,50,0.32);
+    --wait-bg:    rgba(11,11,11,0.05);
+    --wait-fg:    #4a4a46;
+    --wait-bd:    rgba(11,11,11,0.14);
+
+    /* Метрика */
+    --radius:     10px;
+    --radius-sm:  6px;
+    --radius-lg:  16px;
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 32px;
+    --s-7: 48px;
+    --s-8: 64px;
+    --maxw: 960px;
+    --maxw-prose: 68ch;
+
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 4px 16px rgba(11,11,11,0.05);
+    --shadow-strong: 0 2px 4px rgba(11,11,11,0.05), 0 10px 30px rgba(11,11,11,0.08);
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Roboto Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:            #0c0c0c;
+      --surface:       #161615;
+      --surface-2:     #1c1c1b;
+      --surface-3:     #232322;
+      --text:          #f2f2ee;
+      --text-2:        #c0bfb6;
+      --text-3:        #8a8983;
+      --border:        rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --border-hair:   rgba(255,255,255,0.06);
+
+      --accent:          #6f9cee;
+      --accent-ink:      #a9c1f2;
+      --accent-contrast: #0b0b0b;
+      --ring:            rgba(111,156,238,0.45);
+
+      --ok-bg:      rgba(76,190,120,0.14);
+      --ok-fg:      #7fdca4;
+      --ok-bd:      rgba(76,190,120,0.36);
+      --warn-bg:    rgba(240,180,60,0.14);
+      --warn-fg:    #f2c96b;
+      --warn-bd:    rgba(240,180,60,0.34);
+      --risk-bg:    rgba(230,120,120,0.16);
+      --risk-fg:    #f2a1a1;
+      --risk-bd:    rgba(230,120,120,0.38);
+      --wait-bg:    rgba(255,255,255,0.06);
+      --wait-fg:    #c0bfb6;
+      --wait-bd:    rgba(255,255,255,0.16);
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.45);
+      --shadow-strong: 0 2px 4px rgba(0,0,0,0.5), 0 12px 30px rgba(0,0,0,0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:            #0c0c0c;
+    --surface:       #161615;
+    --surface-2:     #1c1c1b;
+    --surface-3:     #232322;
+    --text:          #f2f2ee;
+    --text-2:        #c0bfb6;
+    --text-3:        #8a8983;
+    --border:        rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --border-hair:   rgba(255,255,255,0.06);
+
+    --accent:          #6f9cee;
+    --accent-ink:      #a9c1f2;
+    --accent-contrast: #0b0b0b;
+    --ring:            rgba(111,156,238,0.45);
+
+    --ok-bg:      rgba(76,190,120,0.14);
+    --ok-fg:      #7fdca4;
+    --ok-bd:      rgba(76,190,120,0.36);
+    --warn-bg:    rgba(240,180,60,0.14);
+    --warn-fg:    #f2c96b;
+    --warn-bd:    rgba(240,180,60,0.34);
+    --risk-bg:    rgba(230,120,120,0.16);
+    --risk-fg:    #f2a1a1;
+    --risk-bd:    rgba(230,120,120,0.38);
+    --wait-bg:    rgba(255,255,255,0.06);
+    --wait-fg:    #c0bfb6;
+    --wait-bd:    rgba(255,255,255,0.16);
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.45);
+    --shadow-strong: 0 2px 4px rgba(0,0,0,0.5), 0 12px 30px rgba(0,0,0,0.55);
+  }
+
+  /* Сброс */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--accent); color: var(--accent-contrast); }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :root[data-theme="dark"] a,
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) a { color: var(--accent-ink); } }
+
+  code, kbd, samp, pre { font-family: var(--mono); font-size: 0.92em; }
+  code { background: var(--surface-3); padding: 0.08em 0.32em; border-radius: 4px; border: 1px solid var(--border-hair); }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--s-3) var(--s-4); overflow-x: auto; }
+  pre code { background: transparent; padding: 0; border: 0; }
+
+  /* Шапка (стики) */
+  .site-head {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in oklab, var(--bg) 92%, transparent);
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .site-head .row {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--s-3) var(--s-5);
+    display: flex; align-items: center; gap: var(--s-4);
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: var(--s-3); min-width: 0;
+  }
+  .brand .k {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+  }
+  .brand .n {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    letter-spacing: -0.005em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .site-head .tools {
+    display: flex; align-items: center; gap: var(--s-2);
+    flex-shrink: 0;
+  }
+  .tool-btn {
+    appearance: none;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: var(--font);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  .tool-btn:hover { border-color: var(--border-strong); }
+  .lang-switch { display: inline-flex; }
+  .lang-switch a, .lang-switch span {
+    display: inline-block;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .lang-switch a:first-child, .lang-switch span:first-child { border-radius: 8px 0 0 8px; border-right-width: 0; }
+  .lang-switch a:last-child, .lang-switch span:last-child { border-radius: 0 8px 8px 0; }
+  .lang-switch .active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Основной каркас */
+  main { max-width: var(--maxw); margin: 0 auto; padding: var(--s-6) var(--s-5) var(--s-8); }
+  section { margin-top: var(--s-8); }
+  section:first-of-type { margin-top: var(--s-6); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
+  h1 { font-size: clamp(28px, 4vw, 36px); line-height: 1.15; margin: 0 0 var(--s-3); }
+  h2 { font-size: 22px; line-height: 1.25; margin: 0 0 var(--s-4); }
+  h3 { font-size: 17px; line-height: 1.3; margin: 0 0 var(--s-2); font-weight: 600; }
+  p, li { max-width: var(--maxw-prose); }
+  p { margin: 0 0 var(--s-3); color: var(--text-2); }
+  ul, ol { margin: 0 0 var(--s-4); padding-left: 1.35em; color: var(--text-2); }
+  li + li { margin-top: var(--s-1); }
+
+  .lead {
+    font-size: 18px;
+    color: var(--text-2);
+    line-height: 1.55;
+    max-width: var(--maxw-prose);
+    margin: 0 0 var(--s-5);
+  }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+  .chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-3);
+  }
+  .chip.chip-status .dot { background: var(--warn-fg); }
+  .chip.chip-jira .dot { background: var(--accent); }
+
+  /* Секция «Ключевой вопрос» — главный CTA */
+  .cta-frame {
+    margin-top: var(--s-6);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-strong);
+    overflow: hidden;
+  }
+  .cta-frame .cta-head {
+    padding: var(--s-5) var(--s-5) var(--s-3);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3);
+    justify-content: space-between;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  }
+  .cta-frame .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .cta-frame h2 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .cta-frame .stamp {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.03em;
+  }
+  .cta-body {
+    padding: var(--s-4) var(--s-5) var(--s-5);
+  }
+  .cta-question {
+    font-size: 18px;
+    color: var(--text);
+    margin: 0 0 var(--s-4);
+    max-width: 62ch;
+  }
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-3);
+  }
+  .option {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    background: var(--surface-2);
+  }
+  .option .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface-3);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    margin-bottom: var(--s-2);
+  }
+  .option.rec { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, var(--surface)); }
+  .option.rec .tag { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+  .option h3 { margin: 0 0 var(--s-1); font-size: 15px; }
+  .option p { margin: 0; font-size: 14px; }
+  .cta-footer {
+    margin-top: var(--s-4);
+    padding-top: var(--s-4);
+    border-top: 1px dashed var(--border);
+    display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+  .cta-footer .lock {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  /* Табличная секция */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-5);
+    box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: var(--s-4); }
+  .card h3 { margin-top: 0; }
+
+  .term-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-3);
+    margin-top: var(--s-2);
+  }
+  .term {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    background: var(--surface-2);
+  }
+  .term h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: var(--s-2);
+    font-weight: 500;
+  }
+  .term .path {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text);
+    margin-bottom: var(--s-2);
+    word-break: break-all;
+  }
+  .term p { font-size: 14px; margin: 0; }
+  .term.hard {
+    border-color: var(--risk-bd);
+    background: var(--risk-bg);
+  }
+  .term.hard h3 { color: var(--risk-fg); }
+
+  /* Инцидент — блок цитаты */
+  .incident {
+    border-left: 3px solid var(--warn-fg);
+    background: var(--warn-bg);
+    padding: var(--s-4) var(--s-5);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: var(--s-4) 0 0;
+  }
+  .incident .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--warn-fg);
+    font-weight: 600;
+    display: block;
+    margin-bottom: var(--s-2);
+  }
+  .incident p { color: var(--text); margin: 0; }
+  .incident p + p { margin-top: var(--s-2); }
+
+  .admission {
+    border-left: 3px solid var(--risk-fg);
+    background: var(--risk-bg);
+    padding: var(--s-4) var(--s-5);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: var(--s-4) 0 0;
+  }
+  .admission .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--risk-fg);
+    font-weight: 600;
+    display: block;
+    margin-bottom: var(--s-2);
+  }
+  .admission p { color: var(--text); margin: 0; }
+  .admission p + p { margin-top: var(--s-2); }
+
+  /* Таблица состояния */
+  .table-wrap {
+    margin-top: var(--s-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; }
+  table.state {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  table.state th, table.state td {
+    padding: var(--s-3) var(--s-4);
+    text-align: left;
+    border-bottom: 1px solid var(--border-hair);
+    vertical-align: middle;
+  }
+  table.state thead th {
+    font-weight: 500;
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--surface-2);
+  }
+  table.state tbody tr:last-child td { border-bottom: 0; }
+  table.state td.mono { font-family: var(--mono); font-size: 12.5px; }
+  table.state td.name { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+  table.state .b {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    letter-spacing: 0.02em;
+  }
+  .b.ok    { background: var(--ok-bg);   color: var(--ok-fg);   border-color: var(--ok-bd); }
+  .b.warn  { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bd); }
+  .b.risk  { background: var(--risk-bg); color: var(--risk-fg); border-color: var(--risk-bd); }
+  .b.wait  { background: var(--wait-bg); color: var(--wait-fg); border-color: var(--wait-bd); }
+
+  /* Список этапов */
+  .stages {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: var(--s-4) 0 0;
+    display: grid;
+    gap: var(--s-3);
+  }
+  .stages li {
+    counter-increment: step;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-7);
+    position: relative;
+    max-width: none;
+  }
+  .stages li::before {
+    content: counter(step);
+    position: absolute;
+    left: var(--s-4);
+    top: var(--s-4);
+    width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--text);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+  }
+  .stages h3 { margin: 0 0 4px; font-size: 15px; }
+  .stages p { margin: 0; font-size: 14px; max-width: none; }
+
+  /* Диаграммы */
+  figure.diagram {
+    margin: var(--s-4) 0 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  figure.diagram .svg-wrap {
+    overflow-x: auto;
+    padding: var(--s-5) var(--s-4);
+    background: var(--surface);
+  }
+  figure.diagram svg { display: block; margin: 0 auto; }
+  figure.diagram figcaption {
+    padding: var(--s-3) var(--s-4);
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-3);
+    background: var(--surface-2);
+  }
+
+  /* Токены цвета для SVG (используются через currentColor / var()) */
+  .sv-text     { fill: var(--text); }
+  .sv-text-2   { fill: var(--text-2); }
+  .sv-text-3   { fill: var(--text-3); }
+  .sv-surface  { fill: var(--surface); }
+  .sv-surface-2{ fill: var(--surface-2); }
+  .sv-border   { stroke: var(--border-strong); }
+  .sv-hair     { stroke: var(--border); }
+  .sv-accent   { stroke: var(--accent); }
+  .sv-ok       { stroke: var(--ok-fg); }
+  .sv-warn     { stroke: var(--warn-fg); }
+  .sv-risk     { stroke: var(--risk-fg); }
+  .sv-fill-ok  { fill: var(--ok-bg); }
+  .sv-fill-warn{ fill: var(--warn-bg); }
+  .sv-fill-risk{ fill: var(--risk-bg); }
+  .sv-fill-accent { fill: color-mix(in oklab, var(--accent) 15%, var(--surface)); }
+  .sv-mono     { font-family: var(--mono); }
+  .sv-sans     { font-family: var(--font); }
+
+  /* Легенда */
+  .legend { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-3); font-size: 12px; color: var(--text-3); }
+  .legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .sw {
+    width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border);
+    display: inline-block;
+  }
+  .legend .sw.ok   { background: var(--ok-bg);   border-color: var(--ok-bd); }
+  .legend .sw.warn { background: var(--warn-bg); border-color: var(--warn-bd); }
+  .legend .sw.risk { background: var(--risk-bg); border-color: var(--risk-bd); }
+  .legend .sw.wait { background: var(--wait-bg); border-color: var(--wait-bd); }
+
+  /* GSL-174 карточка */
+  .impact {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-5);
+    display: grid;
+    grid-template-columns: minmax(0, 220px) 1fr;
+    gap: var(--s-5);
+    align-items: start;
+  }
+  .impact .k {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: var(--s-1);
+  }
+  .impact h3 { margin: 0 0 var(--s-1); }
+  .impact p { margin: 0; }
+
+  /* Подвал */
+  footer.site-foot {
+    margin-top: var(--s-8);
+    padding: var(--s-5) var(--s-5) var(--s-6);
+    border-top: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 12px;
+    max-width: var(--maxw);
+    margin-left: auto; margin-right: auto;
+  }
+  footer.site-foot .g { display: flex; flex-wrap: wrap; gap: var(--s-4); }
+  footer.site-foot .k { color: var(--text-3); font-family: var(--mono); }
+  footer.site-foot .v { color: var(--text-2); font-family: var(--mono); }
+
+  /* Адаптив */
+  @media (max-width: 720px) {
+    .site-head .row { padding: var(--s-3) var(--s-4); }
+    main { padding: var(--s-5) var(--s-4) var(--s-7); }
+    .term-grid { grid-template-columns: 1fr; }
+    .options { grid-template-columns: 1fr; }
+    .impact { grid-template-columns: 1fr; gap: var(--s-3); }
+    .brand .n { max-width: 40vw; }
+  }
+  @media (max-width: 430px) {
+    .brand .k { display: none; }
+    .lang-switch a, .lang-switch span { padding: 5px 8px; font-size: 11.5px; }
+    .tool-btn { padding: 5px 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media print {
+    .site-head, .tool-btn, .lang-switch { display: none; }
+    body { background: white; color: black; }
+    .card, .table-wrap, figure.diagram { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-head" role="banner">
+  <div class="row">
+    <div class="brand">
+      <span class="k">GSL-138</span>
+      <span class="n">Управление скиллами — план</span>
+    </div>
+    <div class="tools">
+      <div class="lang-switch" role="group" aria-label="Язык">
+        <span class="active" aria-current="page">RU</span>
+        <a href="en/index.html" hreflang="en" aria-label="English version">EN</a>
+      </div>
+      <button class="tool-btn" id="theme-toggle" type="button" aria-label="Переключить тему">Тема</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="meta-row" aria-label="Метаданные">
+    <span class="chip chip-jira"><span class="dot"></span>GSL-138</span>
+    <span class="chip chip-status"><span class="dot"></span>ПРЕДЛОЖЕНИЕ — ожидает решения владельца</span>
+    <span class="chip">2026-08-03</span>
+    <span class="chip">Автор: оркестратор</span>
+  </div>
+
+  <h1>Управление скиллами:<br>production защищён, разработка идёт в репозитории</h1>
+  <p class="lead">
+    Разбор блокера q-2026-07-24-002 привёл к плану, который разводит две сущности &mdash;
+    рабочие скиллы, которыми пользуются все проекты машины, и разработку скиллов,
+    которая должна оставлять след в git. Дальше без вашего решения ничего не двигается.
+  </p>
+
+  <!-- ================== ГЛАВНЫЙ CTA ================== -->
+  <section class="cta-frame" id="decision" aria-labelledby="decision-h">
+    <div class="cta-head">
+      <div>
+        <div class="kicker">Требуется решение</div>
+        <h2 id="decision-h">Что делать с правками 02.08 в production</h2>
+      </div>
+      <div class="stamp">Один вопрос &middot; выбор владельца</div>
+    </div>
+    <div class="cta-body">
+      <p class="cta-question">
+        Правки в production-скилл <code>orchestrating-delivery-agents</code>, внесённые
+        02.08 в обход процесса, уже помогают &mdash; они лечат реальную поломку молчания
+        оркестратора. Их судьба &mdash; ваш выбор.
+      </p>
+      <div class="options">
+        <div class="option rec">
+          <span class="tag">Вариант А &middot; рекомендация</span>
+          <h3>Перенести и отревьюить ретроспективно</h3>
+          <p>
+            Скопировать текущие production-правки в <code>skill/orchestrating-delivery-agents/</code>
+            как первую development-правку с задачей в Jira и ревью. Production временно остаётся
+            как есть &mdash; правки полезны и уже работают.
+          </p>
+        </div>
+        <div class="option">
+          <span class="tag">Вариант Б</span>
+          <h3>Откатить и провести заново</h3>
+          <p>
+            Вернуть production к состоянию до 02.08 (точный набор замен известен, откат
+            механический), затем провести те же правки нормальным путём через
+            <code>skill/</code> &rarr; коммит &rarr; реестр &rarr; publish.
+          </p>
+        </div>
+      </div>
+      <div class="cta-footer">
+        <span class="lock">Публикация &mdash; всегда владелец</span>
+        <span>Оба варианта используют один и тот же процесс publish в будущем.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== 1. ТЕРМИНОЛОГИЯ ================== -->
+  <section id="terms" aria-labelledby="terms-h">
+    <h2 id="terms-h">1. Терминология (исправлена по требованию владельца)</h2>
+    <p>
+      В обсуждении фигурировало слово «рабочая копия» &mdash; оно неточное и оркестратор
+      его изъял. Правильные термины ниже.
+    </p>
+    <div class="term-grid">
+      <div class="term hard">
+        <h3>Production skills</h3>
+        <div class="path">~/.claude/skills/&lt;name&gt;/</div>
+        <p>
+          Ими пользуются все оркестраторы и все проекты этой машины. Правка здесь &mdash;
+          изменение продакшна вживую, без ревью и без отката.
+          <strong>Агентам правка запрещена строжайше.</strong>
+        </p>
+      </div>
+      <div class="term">
+        <h3>Development skills</h3>
+        <div class="path">skill/&lt;name&gt;/ (репо gosleep)</div>
+        <p>
+          Место разработки: сюда вносятся правки, здесь они ревьюятся, отсюда попадают в
+          git с историей и автором.
+        </p>
+      </div>
+      <div class="term">
+        <h3>Publish</h3>
+        <div class="path">development &rarr; production</div>
+        <p>
+          Перенос development в production. Совершается <strong>только владельцем</strong>,
+          явным действием, после ревью. Единственная точка, где действует человек.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== 2. ПОЧЕМУ ЗАПРЕТ ================== -->
+  <section id="why" aria-labelledby="why-h">
+    <h2 id="why-h">2. Почему запрет обоснован (факт, а не предположение)</h2>
+    <p>
+      Правила ответа оркестратора, записанные в production-скилле
+      <code>orchestrating-delivery-agents</code>, однажды уже парализовали работу:
+      владелец перестал видеть сообщения оркестратора при живом флоте.
+    </p>
+    <div class="incident">
+      <span class="lbl">Инцидент &middot; продакшн-правило, которое сломало связь</span>
+      <p>
+        Правило требовало «ход кончается текстом», а рабочий пример показывал порядок,
+        при котором последним действием оказывался вызов планировщика &mdash; его ответ
+        («больше делать нечего») обрывал ход до текста.
+      </p>
+      <p>
+        Противоречие внутри скилла не ловится тестом. Ошибка в продакшн-скилле
+        распространяется на все проекты сразу и обнаруживается только по симптому &mdash;
+        уже в бою.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 3. ПРИЗНАННОЕ НАРУШЕНИЕ ================== -->
+  <section id="admission" aria-labelledby="admission-h">
+    <h2 id="admission-h">3. Нарушение, которое обязан признать оркестратор</h2>
+    <div class="admission">
+      <span class="lbl">02.08.2026 &middot; правка внесена в обход процесса</span>
+      <p>
+        По устной команде владельца «поправь скилл» правки были внесены
+        <strong>напрямую в production-копию</strong>
+        <code>~/.claude/skills/orchestrating-delivery-agents/SKILL.md</code> &mdash;
+        порядок хода плюс шесть замен из эрраты GSL-178.
+      </p>
+      <p>
+        Команда владельца была, но правильного пути &mdash; правка в <code>skill/</code> и
+        publish владельцем &mdash; не существовало, и оркестратор его не восстановил, а
+        обошёл. Прецедент задокументирован в d-2026-08-02-004. Судьба правок &mdash;
+        решение выше (раздел «Требуется решение»).
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 4. ТЕКУЩЕЕ СОСТОЯНИЕ ================== -->
+  <section id="state" aria-labelledby="state-h">
+    <h2 id="state-h">4. Текущее состояние (замерено 2026-08-03)</h2>
+    <p>
+      Шесть скиллов. Один в git отсутствует вовсе. Два расходятся с production &mdash; один
+      сильно, один по одному важному уроку. Три идентичны.
+    </p>
+
+    <figure class="diagram" aria-label="Карта расхождений скиллов">
+      <div class="svg-wrap">
+        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg3-title" width="100%" style="max-width: 720px;">
+          <title id="svg3-title">Карта расхождений между development и production по каждому скиллу</title>
+
+          <!-- Оси: левая колонка = имя, средняя полоса = production, правая = git -->
+          <g class="sv-sans" font-size="11">
+            <text x="12" y="28" class="sv-text-3">СКИЛЛ</text>
+            <text x="222" y="28" class="sv-text-3">РАСХОЖДЕНИЕ (строк, production vs development)</text>
+            <text x="640" y="28" class="sv-text-3" text-anchor="end">В GIT</text>
+          </g>
+
+          <!-- Разделительная линия -->
+          <line x1="12" y1="38" x2="708" y2="38" class="sv-hair" stroke-width="1"/>
+
+          <!-- Шкала: 0 .. 80 строк, ширина 400 (222..622) -->
+          <!-- Метки шкалы -->
+          <g class="sv-sans" font-size="10" class="sv-text-3">
+            <text x="222" y="308" class="sv-text-3">0</text>
+            <text x="322" y="308" class="sv-text-3">20</text>
+            <text x="422" y="308" class="sv-text-3">40</text>
+            <text x="522" y="308" class="sv-text-3">60</text>
+            <text x="622" y="308" class="sv-text-3">80 строк</text>
+          </g>
+          <g class="sv-hair" stroke-dasharray="2 3">
+            <line x1="222" y1="52" x2="222" y2="296"/>
+            <line x1="322" y1="52" x2="322" y2="296"/>
+            <line x1="422" y1="52" x2="422" y2="296"/>
+            <line x1="522" y1="52" x2="522" y2="296"/>
+            <line x1="622" y1="52" x2="622" y2="296"/>
+          </g>
+
+          <!-- Ряды -->
+          <!-- 1) orchestrating-delivery-agents: 69 строк расхождения -->
+          <g>
+            <text x="12" y="72" class="sv-sans sv-text" font-size="12">orchestrating-delivery-agents</text>
+            <rect x="222" y="60" width="345" height="16" rx="3" class="sv-fill-risk"/>
+            <rect x="222" y="60" width="345" height="16" rx="3" fill="none" class="sv-risk" stroke-width="1"/>
+            <text x="573" y="72" class="sv-sans sv-text" font-size="11" font-weight="600">69 строк</text>
+            <text x="640" y="72" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
+          </g>
+
+          <!-- 2) using-jira: 24 строки -->
+          <g>
+            <text x="12" y="112" class="sv-sans sv-text" font-size="12">using-jira</text>
+            <rect x="222" y="100" width="120" height="16" rx="3" class="sv-fill-warn"/>
+            <rect x="222" y="100" width="120" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
+            <text x="348" y="112" class="sv-sans sv-text" font-size="11" font-weight="600">24 строки</text>
+            <text x="640" y="112" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
+          </g>
+
+          <!-- 3) delivery-workflow: 0 -->
+          <g>
+            <text x="12" y="152" class="sv-sans sv-text" font-size="12">delivery-workflow</text>
+            <rect x="222" y="140" width="6" height="16" rx="3" class="sv-fill-ok"/>
+            <rect x="222" y="140" width="6" height="16" rx="3" fill="none" class="sv-ok" stroke-width="1"/>
+            <text x="234" y="152" class="sv-sans sv-text-2" font-size="11">идентичны</text>
+            <text x="640" y="152" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
+          </g>
+
+          <!-- 4) handoff: 0 -->
+          <g>
+            <text x="12" y="192" class="sv-sans sv-text" font-size="12">handoff</text>
+            <rect x="222" y="180" width="6" height="16" rx="3" class="sv-fill-ok"/>
+            <rect x="222" y="180" width="6" height="16" rx="3" fill="none" class="sv-ok" stroke-width="1"/>
+            <text x="234" y="192" class="sv-sans sv-text-2" font-size="11">идентичны</text>
+            <text x="640" y="192" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
+          </g>
+
+          <!-- 5) writing-prds: 0 -->
+          <g>
+            <text x="12" y="232" class="sv-sans sv-text" font-size="12">writing-prds</text>
+            <rect x="222" y="220" width="6" height="16" rx="3" class="sv-fill-ok"/>
+            <rect x="222" y="220" width="6" height="16" rx="3" fill="none" class="sv-ok" stroke-width="1"/>
+            <text x="234" y="232" class="sv-sans sv-text-2" font-size="11">идентичны</text>
+            <text x="640" y="232" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
+          </g>
+
+          <!-- 6) tmux-agents-orchestration: missing from git -->
+          <g>
+            <text x="12" y="272" class="sv-sans sv-text" font-size="12">tmux-agents-orchestration</text>
+            <rect x="222" y="260" width="400" height="16" rx="3" fill="none" class="sv-risk" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="228" y="272" class="sv-sans" font-size="11" font-weight="600" fill="var(--risk-fg)">файл в git отсутствует &mdash; единственный экземпляр в production (14 КБ)</text>
+            <text x="640" y="272" class="sv-mono" font-size="11" text-anchor="end" fill="var(--risk-fg)" font-weight="600">НЕТ</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        Схема (в): расхождения между <code>skill/</code> (development) и
+        <code>~/.claude/skills/</code> (production) для каждого скилла, замер 2026-08-03.
+      </figcaption>
+    </figure>
+
+    <div class="legend">
+      <span class="swatch"><span class="sw ok"></span>идентичны &mdash; publish не нужен</span>
+      <span class="swatch"><span class="sw warn"></span>расхождение &mdash; нужен ревью и publish</span>
+      <span class="swatch"><span class="sw risk"></span>сильное расхождение или файла нет в git</span>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="state">
+          <thead>
+            <tr>
+              <th>Скилл</th>
+              <th>skill/ (git)</th>
+              <th>~/.claude/skills/ (prod)</th>
+              <th>расхождение</th>
+              <th>статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="name">orchestrating-delivery-agents</td>
+              <td class="mono">есть</td>
+              <td class="mono">есть</td>
+              <td>69 строк (правки 02.08 + старые)</td>
+              <td><span class="b risk">risk</span></td>
+            </tr>
+            <tr>
+              <td class="name">using-jira</td>
+              <td class="mono">есть</td>
+              <td class="mono">есть</td>
+              <td>24 строки (урок ATLASSIAN_API_TOKEN только в prod)</td>
+              <td><span class="b warn">warn</span></td>
+            </tr>
+            <tr>
+              <td class="name">delivery-workflow</td>
+              <td class="mono">есть</td>
+              <td class="mono">есть</td>
+              <td>идентичны</td>
+              <td><span class="b ok">ok</span></td>
+            </tr>
+            <tr>
+              <td class="name">handoff</td>
+              <td class="mono">есть</td>
+              <td class="mono">есть</td>
+              <td>идентичны</td>
+              <td><span class="b ok">ok</span></td>
+            </tr>
+            <tr>
+              <td class="name">writing-prds</td>
+              <td class="mono">есть</td>
+              <td class="mono">есть</td>
+              <td>идентичны</td>
+              <td><span class="b ok">ok</span></td>
+            </tr>
+            <tr>
+              <td class="name">tmux-agents-orchestration</td>
+              <td class="mono" style="color: var(--risk-fg); font-weight: 600;">НЕТ</td>
+              <td class="mono">есть (14 КБ)</td>
+              <td>единственный экземпляр, без резервной копии</td>
+              <td><span class="b risk">risk</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: var(--s-4);">
+      <h3>Почему <code>install.sh</code> сейчас нельзя запускать целиком</h3>
+      <p>
+        Инсталлятор синхронизирует <em>все подпапки</em> из <code>skill/</code> в
+        <code>~/.claude/skills/</code> разом с <code>--delete</code>. Один запуск сегодня
+        затёр бы урок про <code>ATLASSIAN_API_TOKEN</code>, живущий только в production
+        <code>using-jira</code>, и <em>полностью снёс</em> бы
+        <code>tmux-agents-orchestration</code>, которого в git нет. Guard от 2026-07-20
+        снимать нельзя &mdash; вместо него нужен поштучный publish с ревью.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 5. СХЕМА СЕГОДНЯ ================== -->
+  <section id="today" aria-labelledby="today-h">
+    <h2 id="today-h">5. Схема сегодняшнего разрыва</h2>
+    <p>
+      Где именно разрыв: production используется, но не наполняется из git &mdash;
+      правки утекают напрямую в production, минуя историю.
+    </p>
+
+    <figure class="diagram" aria-label="Схема сегодняшнего состояния">
+      <div class="svg-wrap">
+        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg1-title" width="100%" style="max-width: 720px;">
+          <title id="svg1-title">Сегодняшнее состояние: три хранилища, разорванные связи</title>
+
+          <!-- маркер-наконечники -->
+          <defs>
+            <marker id="ah-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ok-fg)"/>
+            </marker>
+            <marker id="ah-risk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--risk-fg)"/>
+            </marker>
+            <marker id="ah-mute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/>
+            </marker>
+          </defs>
+
+          <!-- Три хранилища как колонки -->
+          <!-- development skill/ -->
+          <g>
+            <rect x="20" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
+            <text x="110" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">DEVELOPMENT</text>
+            <text x="110" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">skill/</text>
+            <text x="110" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">в репо gosleep</text>
+            <line x1="36" y1="146" x2="184" y2="146" class="sv-hair"/>
+            <text x="110" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">5 из 6 скиллов</text>
+            <text x="110" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">tmux-agents отсутствует</text>
+            <text x="110" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">правки не текут наружу</text>
+          </g>
+
+          <!-- git origin/main -->
+          <g>
+            <rect x="270" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
+            <text x="360" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">ИСТОРИЯ</text>
+            <text x="360" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">git origin/main</text>
+            <text x="360" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">коммиты, PR, ревью</text>
+            <line x1="286" y1="146" x2="434" y2="146" class="sv-hair"/>
+            <text x="360" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">то, что можно откатить</text>
+            <text x="360" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">и о чём есть автор</text>
+          </g>
+
+          <!-- production ~/.claude/skills/ -->
+          <g>
+            <rect x="520" y="60" width="180" height="180" rx="10" fill="var(--risk-bg)" stroke="var(--risk-fg)" stroke-width="1.5"/>
+            <text x="610" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">PRODUCTION</text>
+            <text x="610" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">~/.claude/skills/</text>
+            <text x="610" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">общая машина, все проекты</text>
+            <line x1="536" y1="146" x2="684" y2="146" class="sv-hair"/>
+            <text x="610" y="168" text-anchor="middle" class="sv-sans sv-text" font-size="11.5" font-weight="600">используется прямо сейчас</text>
+            <text x="610" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">install.sh отключён guard</text>
+            <text x="610" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--risk-fg)">агентам правка запрещена</text>
+          </g>
+
+          <!-- Стрелки: skill/ → git (ok), git → production (нет), production ← прямая правка 02.08 (risk) -->
+          <!-- skill → git : работает -->
+          <line x1="200" y1="150" x2="270" y2="150" stroke="var(--ok-fg)" stroke-width="1.6" marker-end="url(#ah-ok)"/>
+          <text x="235" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--ok-fg)">коммит</text>
+
+          <!-- git → production: разорвано -->
+          <line x1="450" y1="150" x2="510" y2="150" stroke="var(--text-3)" stroke-width="1.4" stroke-dasharray="4 4"/>
+          <text x="480" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">install.sh</text>
+          <text x="480" y="167" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">отключён</text>
+          <g transform="translate(490,150)">
+            <circle r="7" fill="none" stroke="var(--risk-fg)" stroke-width="1.4"/>
+            <line x1="-4.5" y1="-4.5" x2="4.5" y2="4.5" stroke="var(--risk-fg)" stroke-width="1.4"/>
+          </g>
+
+          <!-- Прямая правка агента 02.08: в обход -->
+          <path d="M 110 240 C 110 285, 610 285, 610 246" fill="none" stroke="var(--risk-fg)" stroke-width="1.6" stroke-dasharray="6 3" marker-end="url(#ah-risk)"/>
+          <text x="360" y="302" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">
+            02.08: правка агента напрямую в production, минуя git
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        Схема (а): текущее состояние. Разрыв справа &mdash; git не публикует в
+        production; правка 02.08 обошла всю цепочку.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ================== 6. ЦЕЛЕВОЙ ПРОЦЕСС ================== -->
+  <section id="target" aria-labelledby="target-h">
+    <h2 id="target-h">6. Целевой процесс</h2>
+    <p>
+      Один прямой поток от урока до production, с ровно одной точкой, где действует
+      человек &mdash; publish. Всё остальное имеет автора, задачу, коммит и причину.
+    </p>
+
+    <figure class="diagram" aria-label="Целевой процесс">
+      <div class="svg-wrap">
+        <svg viewBox="0 0 900 220" role="img" aria-labelledby="svg2-title" width="100%" style="max-width: 900px;">
+          <title id="svg2-title">Целевой процесс от урока до production, с единственным человеко-шагом publish</title>
+
+          <defs>
+            <marker id="ah-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-2)"/>
+            </marker>
+          </defs>
+
+          <!-- 8 шагов на одной оси. Оставим место для выделения publish. -->
+          <!-- Шаг 1: Урок -->
+          <g>
+            <rect x="14" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="64" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">01</text>
+            <text x="64" y="118" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Урок</text>
+          </g>
+          <line x1="114" y1="102" x2="128" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 2: Задача Jira -->
+          <g>
+            <rect x="128" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="178" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">02</text>
+            <text x="178" y="118" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Задача Jira</text>
+          </g>
+          <line x1="228" y1="102" x2="242" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 3: Правка skill/ -->
+          <g>
+            <rect x="242" y="72" width="110" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="297" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">03</text>
+            <text x="297" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Правка</text>
+            <text x="297" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">skill/&lt;name&gt;/</text>
+          </g>
+          <line x1="352" y1="102" x2="366" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 4: Коммит -->
+          <g>
+            <rect x="366" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="416" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">04</text>
+            <text x="416" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Коммит</text>
+            <text x="416" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">ключ задачи</text>
+          </g>
+          <line x1="466" y1="102" x2="480" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 5: Реестр -->
+          <g>
+            <rect x="480" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="530" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">05</text>
+            <text x="530" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Реестр</text>
+            <text x="530" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">CHANGELOG.jsonl</text>
+          </g>
+          <line x1="580" y1="102" x2="594" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 6: Админка -->
+          <g>
+            <rect x="594" y="72" width="100" height="60" rx="8" class="sv-surface-2" stroke="var(--border-strong)"/>
+            <text x="644" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">06</text>
+            <text x="644" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Админка</text>
+            <text x="644" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">diff &middot; ждёт</text>
+          </g>
+          <line x1="694" y1="102" x2="708" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 7: ВЛАДЕЛЕЦ (единственная точка человека) -->
+          <g>
+            <rect x="708" y="52" width="112" height="100" rx="10" fill="color-mix(in oklab, var(--accent) 12%, var(--surface))" stroke="var(--accent)" stroke-width="2"/>
+            <text x="764" y="76" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--accent-ink)" font-weight="600">07 &middot; HUMAN GATE</text>
+            <text x="764" y="98" text-anchor="middle" class="sv-sans" font-size="13" font-weight="700" fill="var(--text)">ВЛАДЕЛЕЦ</text>
+            <text x="764" y="115" text-anchor="middle" class="sv-sans sv-text-2" font-size="11">подтверждает</text>
+            <text x="764" y="132" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">publish &lt;name&gt;</text>
+          </g>
+          <line x1="820" y1="102" x2="834" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
+
+          <!-- Шаг 8: Publish → production -->
+          <g>
+            <rect x="834" y="72" width="60" height="60" rx="8" fill="var(--ok-bg)" stroke="var(--ok-fg)"/>
+            <text x="864" y="98" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--ok-fg)" font-weight="600">08</text>
+            <text x="864" y="115" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">prod</text>
+            <text x="864" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">+backup</text>
+          </g>
+
+          <!-- Подпись «единственная точка» -->
+          <path d="M 764 40 L 764 52" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="764" y="30" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--accent-ink)" font-weight="600">
+            единственная точка, где действует человек
+          </text>
+
+          <!-- Подпись под строкой: агент не может -->
+          <text x="450" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="12">
+            шаги 01&ndash;06 делает агент &mdash; каждая правка имеет автора, задачу и коммит
+          </text>
+          <text x="450" y="206" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">
+            publish (07&ndash;08) агенту запрещён правилом и проверкой на владельца
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        Схема (б): целевой процесс. Восемь шагов от урока до production; шаг 07 &mdash;
+        единственная точка, где действует человек.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ================== 7. ЭТАПЫ РАБОТ ================== -->
+  <section id="stages" aria-labelledby="stages-h">
+    <h2 id="stages-h">7. Этапы работ (предлагаемый эпик)</h2>
+    <p>
+      Шесть последовательных этапов. Приёмка &mdash; на живом примере, не на бумаге.
+    </p>
+    <ol class="stages">
+      <li>
+        <h3>Догон development</h3>
+        <p>
+          Перенести production-версии в <code>skill/</code> (обратная синхронизация
+          global &rarr; local, разово, по команде владельца), включая
+          <code>tmux-agents-orchestration</code>, которого в git нет. Каждый скилл &mdash;
+          отдельным коммитом с указанием, что именно догнали. После этого
+          <code>skill/</code> = истина, и вся дальнейшая разработка идёт только там.
+        </p>
+      </li>
+      <li>
+        <h3>Реестр изменений</h3>
+        <p>
+          <code>docs/skills/CHANGELOG.jsonl</code> &mdash; одна строка на правку: дата,
+          скилл, задача Jira, коммит, урок-первопричина, статус
+          <code>draft</code>&nbsp;/&nbsp;<code>reviewed</code>&nbsp;/&nbsp;<code>published</code>.
+          Пишется агентом при правке, дополняется при публикации.
+        </p>
+      </li>
+      <li>
+        <h3>Publish-инструмент</h3>
+        <p>
+          <code>tools/skills/publish.sh &lt;name&gt;</code>: показывает diff development
+          против production, требует подтверждения владельца, делает бэкап production в
+          <code>docs/skills/backups/&lt;name&gt;-&lt;дата&gt;/</code>, синхронизирует
+          <strong>один названный</strong> скилл, дописывает строку в реестр.
+          Никаких массовых операций &mdash; <code>--all</code> не существует.
+          Агенту запуск запрещён правилом и проверкой на владельца.
+        </p>
+      </li>
+      <li>
+        <h3>Админка &mdash; страница «Скиллы» в лаборатории</h3>
+        <p>
+          Список скиллов, статус (совпадает с production / есть неопубликованные правки),
+          история из реестра с уроком и ссылками на задачу и коммит, отображение diff,
+          и точная команда публикации для копирования. Кнопка «опубликовать» в статике
+          невозможна &mdash; публикация остаётся командой владельца; если позже включим
+          интерактивную версию веба, кнопка будет вызывать тот же <code>publish</code>.
+        </p>
+      </li>
+      <li>
+        <h3>Проверки</h3>
+        <p>
+          Тест, который падает, если агент изменил файл в <code>~/.claude/skills/</code>;
+          тест на формат реестра; правило в <code>CLAUDE.md</code> и в скиллах:
+          «production скиллы правит только владелец через publish».
+        </p>
+      </li>
+      <li>
+        <h3>Приёмка</h3>
+        <p>
+          На живом примере: взять реальный урок (например, порядок хода), провести его
+          полным путём development &rarr; реестр &rarr; админка &rarr; publish, показать
+          в отчёте все следы.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ================== 8. GSL-174 ================== -->
+  <section id="gsl174" aria-labelledby="gsl174-h">
+    <h2 id="gsl174-h">8. Что это меняет для эпика GSL-174</h2>
+    <div class="impact">
+      <div>
+        <span class="k">Эпик</span>
+        <h3>GSL-174 &laquo;кто правит скиллы&raquo;</h3>
+        <span class="chip">становится исполнимым</span>
+      </div>
+      <div>
+        <p>
+          Ответ на вопрос эпика: <strong>правит репозиторий, публикует владелец.</strong>
+          Содержание эпика переписывается под этапы раздела&nbsp;7 &mdash; задачи заводятся
+          после согласования этого плана.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="g">
+    <div><span class="k">Отчёт:</span> <span class="v">skills-governance-2026-08-03/index.html</span></div>
+    <div><span class="k">Ветка:</span> <span class="v">GSL-138-skills-plan-report</span></div>
+    <div><span class="k">Источник:</span> <span class="v">docs/plans/skills-governance-plan.md</span></div>
+    <div><span class="k">Автор:</span> <span class="v">оркестратор gosleep</span></div>
+    <div><span class="k">Дата:</span> <span class="v">2026-08-03</span></div>
+  </div>
+  <p style="margin-top: var(--s-3); max-width: 68ch;">
+    Дашборд читает владелец. Ничего из перечисленного не выполняется до его команды.
+    Открытый вопрос &mdash; в блоке «Требуется решение» наверху.
+  </p>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    function currentTheme() {
+      var explicit = document.documentElement.getAttribute('data-theme');
+      if (explicit === 'dark' || explicit === 'light') return explicit;
+      var mql = window.matchMedia('(prefers-color-scheme: dark)');
+      return mql.matches ? 'dark' : 'light';
+    }
+    btn.addEventListener('click', function () {
+      var next = currentTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('sg-theme', next); } catch (e) {}
+    });
+  })();
+</script>
+
+</body>
+</html>
