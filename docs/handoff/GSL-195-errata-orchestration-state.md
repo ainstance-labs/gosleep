@@ -1,101 +1,108 @@
-# GSL-195 — Эррата для ORCHESTRATION-STATE.md (поправки красных команд)
+# GSL-195 — Errata for ORCHESTRATION-STATE.md (red team corrections)
 
-**Статус: ПОДГОТОВЛЕНО, НЕ ПРИМЕНЕНО.** `docs/handoff/ORCHESTRATION-STATE.md` — суверенный файл:
-его правит только владелец или оркестратор смены. Этот документ — точный, механически применимый
-текст поправки (старая строка → новая строка), подготовленный исполнителем эпика GSL-175 по
-задаче GSL-195. Применяющий делает точечные замены ниже и ничего больше.
+**Status: PREPARED, NOT APPLIED.** `docs/handoff/ORCHESTRATION-STATE.md` is a sovereign file:
+only the owner or the shift orchestrator edits it. This document is the exact, mechanically
+applicable correction text (old line → new line), prepared by the epic GSL-175 executor for task
+GSL-195. The applier performs the pinpoint replacements below and nothing more.
 
-Источник поправок: калибровка первой красной команды — `redteam-verdicts.md`
-(закоммиченная копия: `docs/reports/system-audit-2026-07-24/evidence/redteam-verdicts.md`),
-её сводка лежит в самом STATE телеметрийной строкой `cycle=109 worker=audit-redteam`
-(«ОПРОВЕРГНУТЫЕ ЧИСЛА»). Правило приоритета — из README доказательной базы: там, где вердикт
-красной команды расходится с исходной находкой, прав вердикт.
+Source of the corrections: calibration by the first red team — `redteam-verdicts.md`
+(committed copy: `docs/reports/system-audit-2026-07-24/evidence/redteam-verdicts.md`),
+its summary lies in STATE itself as the telemetry line `cycle=109 worker=audit-redteam`
+("REFUTED NUMBERS"). The precedence rule — from the evidence base README: where a red team
+verdict differs from an original finding, the verdict is right.
 
-## Что и почему правим
+## What and why we're correcting
 
-В телеметрийной строке `cycle=105 worker=audit-autonomy` (раздел TELEMETRY) записаны три
-утверждения, снятые калибровкой ПОСЛЕ записи:
+In the telemetry line `cycle=105 worker=audit-autonomy` (section TELEMETRY) three statements
+were written that calibration removed AFTER the record:
 
-1. «13 из 19 дефолтов применены РАНЬШЕ дедлайна» — фактически **10 из 20**.
-2. «q-2026-07-23-001 в ту же секунду» — опровергнуто: аудитор сравнивал со временем ПОСТАНОВКИ
-   вопроса, а не с дедлайном; фактически применение было за **2 часа до** дедлайна.
-3. «0 из 21 решения цитируют РЕАЛЬНО существующий пункт» — фактически **3 цитируют выдуманный
-   пункт, ~8 цитируют реальный раздел в неканоническом формате**.
+1. "13 of 19 defaults applied BEFORE the deadline" — actually **10 of 20**.
+2. "q-2026-07-23-001 at the same second" — refuted: the auditor compared with the time of
+   FILING the question, not the deadline; actually the application was **2 hours before**
+   the deadline.
+3. "0 of 21 decisions cite a REALLY EXISTING clause" — actually **3 cite an invented clause,
+   ~8 cite a real section in a non-canonical format**.
 
-Стиль поправки — как у C8-дисциплины проекта: исправление не стирает историю. Опровергнутое число
-остаётся видимым внутри маркера «[ПОПРАВКА …: было …]», но строка больше не УТВЕРЖДАЕТ его, и
-рядом стоит ссылка на источник. Строка `cycle=109` (сама сводка красной команды) не трогается —
-она и есть источник.
+The correction style — like the project's C8 discipline: a fix does not erase history. A refuted
+number remains visible inside a "[CORRECTION …: was …]" marker, but the line no longer ASSERTS
+it, and a reference to the source stands next to it. The `cycle=109` line (the red team
+summary itself) is not touched — it is the source.
 
-## Замена 1 (строка `cycle=105`, фрагмент про дефолты раньше срока)
+## Replacement 1 (line `cycle=105`, fragment about defaults before the deadline)
 
-**Старый фрагмент (дословно):**
+**Old fragment (verbatim):**
 
 ```
 и наоборот 13 из 19 дефолтов применены РАНЬШЕ дедлайна (до 11.9ч; q-2026-07-23-001 в ту же секунду) — подушка на вето владельца не работала ни разу.
 ```
 
-**Новый фрагмент:**
+**New fragment:**
 
 ```
 и наоборот 10 из 20 дефолтов применены РАНЬШЕ дедлайна [ПОПРАВКА красной команды (cycle=109; redteam-verdicts.md): было «13 из 19»; «q-2026-07-23-001 в ту же секунду» опровергнуто — сравнение шло со временем постановки, а не с дедлайном; фактически −2ч до дедлайна] — подушка на вето владельца не работала ни разу.
 ```
 
-## Замена 2 (та же строка `cycle=105`, фрагмент про цитирование манифеста)
+## Replacement 2 (the same line `cycle=105`, fragment about manifest citation)
 
-**Старый фрагмент (дословно):**
+**Old fragment (verbatim):**
 
 ```
 Манифест не работает как источник решений: 0 из 21 решения цитируют РЕАЛЬНО существующий пункт, три ссылаются на выдуманный manifest §2.default-hit-at-deadline (grep → NOT FOUND);
 ```
 
-**Новый фрагмент:**
+**New fragment:**
 
 ```
 Манифест не работает как источник решений: цитирование расшатано — три решения ссылаются на выдуманный manifest §2.default-hit-at-deadline (grep → NOT FOUND), ~8 цитируют реальный раздел в неканоническом формате [ПОПРАВКА красной команды (cycle=109; redteam-verdicts.md): было «0 из 21 цитируют реально существующий пункт»];
 ```
 
-## Чего в файле НЕ нашлось (проверено грепом, править не нужно)
+Note: the two replacement fragments above are kept in the original Russian because they are the
+LITERAL text of the STATE line to be inserted verbatim; changing that text would defeat the
+mechanical `grep`-based application procedure.
 
-- «бюджет рестартов сгорит за три тика» — встречается только внутри строки `cycle=109` как
-  цитата-опровержение; исходного утверждения в файле нет.
-- «ctx=98 в 178 строках» — в файле нет; строка `cycle=104` говорит «178/200 строк выше
-  WD_CONTEXT_CEILING_PCT=80», что красная команда подтвердила как корректную формулировку
-  (178 — это строки со значением не ниже 80).
-- «14 интервалов» — в файле нет (только исправленные «15» внутри `cycle=109`).
+## What was NOT found in the file (verified by grep, no edit needed)
 
-## Как проверить после применения
+- "the restart budget will burn in three ticks" — occurs only inside the `cycle=109` line as a
+  refutation quote; the original claim is not in the file.
+- "ctx=98 in 178 lines" — not in the file; the `cycle=104` line says "178/200 lines above
+  WD_CONTEXT_CEILING_PCT=80", which the red team confirmed as a correct wording
+  (178 is lines with a value at or above 80).
+- "14 intervals" — not in the file (only corrected "15" inside `cycle=109`).
+
+## How to verify after application
 
 ```
-grep -c "13 из 19" docs/handoff/ORCHESTRATION-STATE.md   # 0 вне маркеров «было …»
-grep -c "0 из 21"  docs/handoff/ORCHESTRATION-STATE.md   # 0 вне маркеров «было …»
-grep -c "в ту же секунду" docs/handoff/ORCHESTRATION-STATE.md   # 0 вне маркеров «было …»
+grep -c "13 из 19" docs/handoff/ORCHESTRATION-STATE.md   # 0 outside "было …" markers
+grep -c "0 из 21"  docs/handoff/ORCHESTRATION-STATE.md   # 0 outside "было …" markers
+grep -c "в ту же секунду" docs/handoff/ORCHESTRATION-STATE.md   # 0 outside "было …" markers
 ```
 
-Точнее: каждое из трёх сочетаний должно встречаться только внутри «[ПОПРАВКА …: было …]» и внутри
-строки `cycle=109` (цитаты-опровержения). Рядом с каждым исправленным числом — ссылка на источник
-(cycle=109; redteam-verdicts.md). Это в точности критерий приёмки GSL-195.
+More precisely: each of the three phrases must occur only inside "[ПОПРАВКА …: было …]" and
+inside the `cycle=109` line (refutation quotes). Next to each corrected number — a reference to
+the source (cycle=109; redteam-verdicts.md). This is exactly the GSL-195 acceptance criterion.
 
 ---
 
-## Дополнение от GSL-194 — правило «не коммитить бандл с grade != fresh молча»
+## Addition from GSL-194 — the "do not silently commit a bundle with grade != fresh" rule
 
-**Статус: ПОДГОТОВЛЕНО, НЕ ПРИМЕНЕНО** (тот же суверенитет, что и выше). Задача GSL-194 требует
-записать правило в чек-лист закрытия смены; ритуал закрытия смены живёт в суверенном
-ORCHESTRATION-STATE.md, поэтому текст готовится здесь, тем же порядком. Предлагаемая строка для
-раздела «Standing rules / decisions»:
+**Status: PREPARED, NOT APPLIED** (the same sovereignty as above). Task GSL-194 requires
+recording the rule in the shift-close checklist; the shift-close ritual lives in the sovereign
+ORCHESTRATION-STATE.md, so the text is prepared here in the same order. Proposed line for the
+"Standing rules / decisions" section:
 
 ```
-- **2026-07-28 (аудит, находка 23; GSL-194, IN FORCE): НЕ КОММИТИТЬ БАНДЛ С grade != fresh МОЛЧА.**
-  Пересборка лаборатории — ПОСЛЕДНИЙ шаг закрытия смены/эпика (норма GSL-150): сначала все
-  источники (dev_history, индексы, отчёты), затем chronicler.sh, затем ОДИН коммит производных,
-  и между сборкой и коммитом — никаких других коммитов. Перед коммитом прочитать grade:
-  `jq -r .staleness.grade docs/lab/render_bundle.json`. grade != fresh — блокер закрытия, а не
-  примечание: либо пересобрать, либо назвать причину в сообщении коммита и в handoff.
-  Операционная копия правила — docs/lab/README.md, раздел «Rebuild discipline» (GSL-150/GSL-194).
+- **2026-07-28 (audit, finding 23; GSL-194, IN FORCE): DO NOT SILENTLY COMMIT A BUNDLE WITH grade != fresh.**
+  Lab rebuild — the LAST step of the shift/epic close (norm GSL-150): first all sources
+  (dev_history, indexes, reports), then chronicler.sh, then ONE commit of derivatives,
+  and between the build and the commit — no other commits. Before the commit, read grade:
+  `jq -r .staleness.grade docs/lab/render_bundle.json`. grade != fresh is a close blocker,
+  not a note: either rebuild or name the reason in the commit message and in the handoff.
+  The operational copy of the rule — docs/lab/README.md, section "Rebuild discipline"
+  (GSL-150/GSL-194).
 ```
 
-Обоснование: находка 23 (MAJOR) поймала в `main` бандл, объявлявший себя DEAD в момент
-собственного коммита, при более свежей сборке в рабочем дереве; норма GSL-150 к тому моменту была
-нарушена дважды (после сборки легло шесть коммитов при требовании «ни одного» — усиление красной
-командой). Правило добавляет к дисциплине «пересборка последним коммитом» явный ГЕЙТ на grade.
+Justification: finding 23 (MAJOR) caught in `main` a bundle declaring itself DEAD at the moment
+of its own commit, with a fresher build in the working tree; norm GSL-150 by that time was
+broken twice (after the build six commits landed, while the requirement is "none" — reinforced
+by the red team). The rule adds an explicit GATE on grade to the "rebuild as the last commit"
+discipline.

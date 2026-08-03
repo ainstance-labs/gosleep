@@ -1,102 +1,102 @@
-# Handoff — gosleep — 2026-07-20 (оркестраторский roll: Phase 5 отревьюена и пофикшена, остался finalizer)
+# Handoff — gosleep — 2026-07-20 (orchestrator roll: Phase 5 reviewed and fixed, only the finalizer remains)
 
-> Для СВЕЖЕГО оркестратора. Читай Part 1 → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл + handoff 37 (fixer, § RESUME для finalizer'а) + handoff 35 (там 20 правил и 6 уроков — все в силе).
-> Мой пред — handoff 35 (roll 2026-07-13). Я cold-started 2026-07-20 10:18Z, ролюсь ~12:16Z на чистой границе: fixer COMPLETE + terminated, флот пуст, контекст ~76% (потолок 70%).
+> For a FRESH orchestrator. Read Part 1 → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file + handoff 37 (fixer, · RESUME for the finalizer) + handoff 35 (20 rules and 6 lessons — all in force).
+> My predecessor — handoff 35 (roll 2026-07-13). I cold-started 2026-07-20 10:18Z, rolling ~12:16Z on a clean boundary: fixer COMPLETE + terminated, fleet empty, context ~76% (ceiling 70%).
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-**Phase 5 UI (эпик GSL-90) полностью готова к мержу.** PR **#115** OPEN / mergeStateStatus **CLEAN**, ветка `GSL-90-ui-orchestration @ 2d2b699` (25 коммитов от main @ `5fd1de2`: 21 на открытии PR + 3 фикс-коммита + handoff 37). Все 11 задач эпика (GSL-91..GSL-101) в Jira Done, эпик In Review. Ревью пройдено (вердикт FIX → всё пофикшено и перепроверено). Остался **финализ**: merge → close issues → Jira Done → cleanup → **Phase 6 Mobile setup без остановки**.
+**Phase 5 UI (epic GSL-90) is fully ready for merge.** PR **#115** OPEN / mergeStateStatus **CLEAN**, branch `GSL-90-ui-orchestration @ 2d2b699` (25 commits from main @ `5fd1de2`: 21 at PR open + 3 fix commits + handoff 37). All 11 epic tasks (GSL-91..GSL-101) in Jira Done, epic In Review. Review passed (verdict FIX → everything fixed and rechecked). What remains is the **finalizer**: merge → close issues → Jira Done → cleanup → **Phase 6 Mobile setup without stopping**.
 
-Флот пуст (0/3). Очередь чиста (open=0, lines=16). smoke **264/264**, hooks-verify 14/14, tsc чист, схема `render/7` (не двигалась).
+Fleet empty (0/3). Queue clean (open=0, lines=16). smoke **264/264**, hooks-verify 14/14, tsc clean, schema `render/7` (untouched).
 
-## 2. Что сделано в моей смене (cold-start 10:18Z → roll ~12:16Z, 4 цикла)
+## 2. What was done in my shift (cold-start 10:18Z → roll ~12:16Z, 4 cycles)
 
-- **Cycle 59 (impl-ui-7): GSL-100 приёмка Фазы 5** — `dc2a925` + handoff 36 `9fb5766`. F5-S1..S3 + S4a/b ✅ живыми прогонами; **F5-S4c «читается через приватный GitHub» ОПРОВЕРГНУТ** (nosniff + text/plain + Pages 404 — записано по факту, формулировка не подгонялась; это вход Фазы 6). Приёмка нашла и починила **настоящий nav-дефект**: на 390px Cost/Library были недостижимы (нет точек переноса), scrollWidth 850→390. smoke 248→252.
-- **Cycle 60 (mechanic-gsl90): PR #115 открыт**, эпик → In Review. Механик сам нашёл, что **GSL-101 — 11-я задача эпика** (GH #114, в моём брифе её не было) и внёс в Closes. Попутно: описание Jira-эпика перечисляет 10 задач — устарело.
-- **Cycle 61 (reviewer-gsl90): вердикт FIX — 0 CRITICAL / 3 MAJOR / 2 MINOR / 3 NIT** (`docs/reviews/REVIEW-gsl90.md`, gitignored). Тройка MAJOR била в одну точку: метры честности сами ошибались в успокаивающую сторону (ложный handoff-долг; pane.ended ≠ граница цикла; замороженные возрасты Fleet). Слепота 252 тестов объяснена: фикстура кодировала порядок, которого прод не производит.
-- **Cycle 62 (fixer-gsl90): всё закрыто** — `5e6d5ed` (M3) + `7c73aa3` (M1+M2+фикстуры тем же коммитом) + `61fcd86` (m1+n1) + handoff 37 `2d2b699`. **12 новых тестов, каждый красный на до-фиксовом 9fb5766**; M1 доказан end-to-end на живых данных (undocumented_cycles 2→0). smoke 252→264. Отложено честно: n2-половина (риск>выгоды), n3 (не требует действий), n1 без DOM-теста (нет харнесса под client.ts) — названо вслух.
-- **Housekeeping смены**: 3 просроченных DECISION (07-13/14) resolved к применённым дефолтам; handoff 35 был untracked → late-commit `66bce16` (тот же класс долга, что 28/29); STATE «At a glance» переписан (был протухшим с эры GSL-41); nav-DECISION q-2026-07-20-001 resolved (d-2026-07-20-004).
+- **Cycle 59 (impl-ui-7): GSL-100 Phase 5 acceptance** — `dc2a925` + handoff 36 `9fb5766`. F5-S1..S3 + S4a/b ✅ by live runs; **F5-S4c "readable through private GitHub" REFUTED** (nosniff + text/plain + Pages 404 — recorded by fact, wording not adjusted; this is the entry to Phase 6). Acceptance found and fixed a **real nav defect**: at 390px Cost/Library were unreachable (no wrap points), scrollWidth 850→390. smoke 248→252.
+- **Cycle 60 (mechanic-gsl90): PR #115 opened**, epic → In Review. The mechanic found on his own that **GSL-101 is the 11th epic task** (GH #114, not in my brief) and put it into Closes. Along the way: the Jira epic description lists 10 tasks — stale.
+- **Cycle 61 (reviewer-gsl90): verdict FIX — 0 CRITICAL / 3 MAJOR / 2 MINOR / 3 NIT** (`docs/reviews/REVIEW-gsl90.md`, gitignored). The three MAJOR hit one point: honesty meters themselves erred in the reassuring direction (false handoff debt; pane.ended ≠ a cycle boundary; frozen Fleet ages). The blindness of 252 tests is explained: the fixture encoded an order the production does not produce.
+- **Cycle 62 (fixer-gsl90): everything closed** — `5e6d5ed` (M3) + `7c73aa3` (M1+M2+fixtures in the same commit) + `61fcd86` (m1+n1) + handoff 37 `2d2b699`. **12 new tests, each red on the pre-fix 9fb5766**; M1 proven end-to-end on live data (undocumented_cycles 2→0). smoke 252→264. Honestly deferred: n2-half (risk>benefit), n3 (no action needed), n1 without a DOM test (no harness for client.ts) — named aloud.
+- **Shift housekeeping**: 3 overdue DECISIONs (07-13/14) resolved to applied defaults; handoff 35 was untracked → late-commit `66bce16` (same class of debt as 28/29); STATE "At a glance" rewritten (was stale from the GSL-41 era); nav-DECISION q-2026-07-20-001 resolved (d-2026-07-20-004).
 
-## 3. Что дальше (немедленно)
+## 3. What's next (immediately)
 
-Successor спавнит **finalizer-gsl90** (Opus 4.8): REGULAR merge PR #115 → close GH issues → Jira GSL-90 Done → удалить ветку → fetch main. Затем **без остановки Phase 6 Mobile setup** (owner mandate 2026-07-10 continue-at-milestone-boundaries): PRD § «Фаза 6», новый эпик GSL-102+, GH #116+. Детальные шаги — в ⭐ RESUME ниже.
+The successor spawns **finalizer-gsl90** (Opus 4.8): REGULAR merge PR #115 → close GH issues → Jira GSL-90 Done → delete branch → fetch main. Then **without stopping Phase 6 Mobile setup** (owner mandate 2026-07-10 continue-at-milestone-boundaries): PRD · "Phase 6", new epic GSL-102+, GH #116+. Detailed steps — in ⭐ RESUME below.
 
-## 4. Проблемы
+## 4. Problems
 
-Блокеров нет. Наследуемые долги (НЕ Phase 5, для owner'а): GSL-30 без dev_history; ledger-naming gap (48 имён); `task.completed` не стреляет с 07-13 12:54; дефолты по таймеру ночью никто не применяет; token ceiling не машиночитаем. Новое: описание Jira-эпика GSL-90 устарело (10 задач вместо 11) — может поправить finalizer одной строкой или owner.
+No blockers. Inherited debts (NOT Phase 5, for the owner): GSL-30 without dev_history; ledger-naming gap (48 names); `task.completed` not firing since 07-13 12:54; timer defaults nobody applies at night; token ceiling not machine-readable. New: the Jira epic GSL-90 description is stale (10 tasks instead of 11) — the finalizer can fix it in one line or the owner.
 
-## 5. Комментарии и уроки смены
+## 5. Comments and shift lessons
 
-- **Owner directive 2026-07-20 (IN FORCE):** `orchestrating-delivery-agents` — использовать ТОЛЬКО глобальный скилл (`~/.claude/skills/`), НЕ локальную копию `skill/` этого репо (в ней проблемы). `./install.sh` для этого скилла не гонять. Факт на 10:24Z: копии byte-identical, но авторитет — глобальная.
-- **⚠️ Мой хронический фейл смены — successor'у не повторять:** я 7+ раз закончил turn tool-вызовом (ScheduleWakeup) без финального текста владельцу; Stop-hook ловил каждый раз. Правило простое: **результат ScheduleWakeup = сигнал писать текст владельцу, а не конец хода.** Это уже HARD ×2 в памяти — теперь ×3.
-- Все 6 уроков воркеров (Jira description первым тулом; grep прежде чем верить description; «нет источника» проверяй руками; ⛔ tree-wide git ops; ⛔ background restore-trap; прочитай прозу вслух + позитивный контроль) — живут в handoff 35 § Part 1.5, вшивать в каждый impl-бриф.
-- Amend ДО push — легально (fixer делал d7606b6→5e6d5ed до пуша); после push — запрещён, как и раньше.
+- **Owner directive 2026-07-20 (IN FORCE):** `orchestrating-delivery-agents` — use the GLOBAL skill ONLY (`~/.claude/skills/`), NOT the local copy `skill/` of this repo (there are problems in it). Do not run `./install.sh` for this skill. Fact at 10:24Z: copies are byte-identical, but the authority is the global.
+- **⚠️ My chronic shift failure — the successor should not repeat:** I ended a turn with a tool call (ScheduleWakeup) without a final text to the owner 7+ times; the Stop-hook caught it every time. The rule is simple: **the ScheduleWakeup result = a signal to write text to the owner, not the end of the turn.** This is already HARD ×2 in memory — now ×3.
+- All 6 worker lessons (Jira description first tool; grep before believing the description; "no source" verify by hand; ⛔ tree-wide git ops; ⛔ background restore-trap; read prose aloud + positive control) — live in handoff 35 · Part 1.5, bake into every impl brief.
+- Amend BEFORE push — legal (the fixer did d7606b6→5e6d5ed before push); after push — forbidden, as before.
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## ⚠️ Железные правила
+## ⚠️ Hard rules
 
-**Все 20 правил handoff 35 § Part 2 в силе без ослаблений** (turn кончается текстом; все воркеры Opus 4.8 транскрипт-verify; NO Workflow; fleet cap 3; AUTONOMOUS mode; REGULAR merge / no force-push / `gh api -X PUT` для мержа; kill-pane по явному id; ⛔ tree-wide git ops; ⛔ restore-trap; hook shim; settings live; status.json через lab-write.sh; дирти дерево норма; poll-fill не трогать; no `git add -A`; sovereign-файлы; C5 слова + literal `teammate_name` exemption; схема render/N = 4 файла; queue читать FOLD; ассертить mechanism + mutation; print your glob). Плюс новое: **global-skill directive 2026-07-20** (выше).
+**All 20 handoff-35 · Part 2 rules in force without weakening** (turn ends with text; all workers Opus 4.8 transcript-verify; NO Workflow; fleet cap 3; AUTONOMOUS mode; REGULAR merge / no force-push / `gh api -X PUT` for merge; kill-pane by explicit id; ⛔ tree-wide git ops; ⛔ restore-trap; hook shim; settings live; status.json via lab-write.sh; dirty tree norm; poll-fill untouched; no `git add -A`; sovereign files; C5 words + literal `teammate_name` exemption; render/N schema = 4 files; queue read FOLD; assert mechanism + mutation; print your glob). Plus new: **global-skill directive 2026-07-20** (above).
 
 ## Connections
 
 | | |
 |---|---|
-| Jira | project **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции 11/21/31/**41=Done** |
+| Jira | project **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions 11/21/31/**41=Done** |
 | GitHub | `ainstance-labs/gosleep` (private) |
 | **PR #115** | OPEN/CLEAN, base main ← `GSL-90-ui-orchestration @ 2d2b699`, Closes #103..#114 |
-| Эпик GSL-90 | Jira **In Review**; GH issue #103 |
+| Epic GSL-90 | Jira **In Review**; GH issue #103 |
 | main | @ `5fd1de2` (Phase 4 = PR #102) |
 | Owner | Roman L, accountId `557058:83b04839-8bde-4331-9c2d-24843d0b8e67` |
 | Next Jira / GH | **GSL-102+** / **#116+** (Phase 6) |
-| PRD | `docs/prd/PRD-gosleep-evolution.md` § «Фаза 6» (Mobile) |
+| PRD | `docs/prd/PRD-gosleep-evolution.md` · "Phase 6" (Mobile) |
 
-## Gates (CI нет — руками)
+## Gates (no CI — by hand)
 
-`bash tools/lab/smoke.sh` → **264/264** (флейк :234 pre-existing, не чинить) · `bash tools/lab/hooks-verify.sh` → 14/14 · `(cd tools/lab/ui && npx tsc --noEmit)` → 0 · `bash tools/lab/chronicler.sh --no-poll` → 7 страниц. Схема `gosleep.lab.render/7`.
+`bash tools/lab/smoke.sh` → **264/264** (flake :234 pre-existing, do not fix) · `bash tools/lab/hooks-verify.sh` → 14/14 · `(cd tools/lab/ui && npx tsc --noEmit)` → 0 · `bash tools/lab/chronicler.sh --no-poll` → 7 pages. Schema `gosleep.lab.render/7`.
 
 ## ⭐ RESUME POINT — successor orchestrator
 
 ```bash
-# Cold-start orient (по порядку)
+# Cold-start orient (in order)
 cat docs/handoff/ORCHESTRATION-STATE.md | head -30   # At a glance + LIVE-STATUS
-cat docs/handoff/38-2026-07-20-handoff-orchestrator-roll.md   # этот файл
-tail -5 docs/handoff/.orchestrator-heartbeat          # мой финальный status=rolling
+cat docs/handoff/38-2026-07-20-handoff-orchestrator-roll.md   # this file
+tail -5 docs/handoff/.orchestrator-heartbeat          # my final status=rolling
 
 # Sanity
-tmux list-panes -t "$(tmux display-message -p '#{session_id}')"  # только твоя pane
+tmux list-panes -t "$(tmux display-message -p '#{session_id}')"  # own pane only
 git log main --oneline -1                 # 5fd1de2
 git ls-remote origin GSL-90-ui-orchestration  # 2d2b699
 gh pr view 115 --json state,mergeStateStatus  # OPEN + CLEAN
 tools/lab/lab-emit.sh list --count        # open=0 (0B/0D/0C/0F) lines=16
 
-# Первый heartbeat (cycle 63, закрывает watchdog grace)
+# First heartbeat (cycle 63, closes the watchdog grace)
 ```
 
-**Задача 1 — finalizer-gsl90 (Opus 4.8), бриф:**
-1. `gh api -X PUT repos/ainstance-labs/gosleep/pulls/115/merge -f merge_method=merge` (НИКОГДА `gh pr merge`, никогда squash). Verify: `gh pr view 115 --json state,mergedAt`.
-2. Close GH issues: #103 закроется авто (первый в Closes); **#104..#114 закрыть вручную** `gh issue close N --comment "GSL-9x merged in PR #115"` — проверить каждый.
-3. Jira GSL-90 → Done (41), верифицировать `getJiraIssue` status.name="Done".
-4. Удалить remote-ветку `GSL-90-ui-orchestration`; локальный main: `git fetch origin main:main` (БЕЗ checkout; HEAD остаётся на локальной эпик-ветке до Phase 6 ветки).
-5. Опционально одной строкой: дописать в Jira-описание эпика GSL-90 упоминание GSL-101 (устарело — 10 задач вместо 11).
-6. Отчёт ≤10 строк + модель по транскрипту + telemetry line.
+**Task 1 — finalizer-gsl90 (Opus 4.8), brief:**
+1. `gh api -X PUT repos/ainstance-labs/gosleep/pulls/115/merge -f merge_method=merge` (NEVER `gh pr merge`, never squash). Verify: `gh pr view 115 --json state,mergedAt`.
+2. Close GH issues: #103 will close automatically (first in Closes); **close #104..#114 by hand** `gh issue close N --comment "GSL-9x merged in PR #115"` — verify each.
+3. Jira GSL-90 → Done (41), verify `getJiraIssue` status.name="Done".
+4. Delete remote branch `GSL-90-ui-orchestration`; local main: `git fetch origin main:main` (WITHOUT checkout; HEAD stays on the local epic branch until the Phase 6 branch).
+5. Optional one line: add to the GSL-90 Jira epic description a mention of GSL-101 (stale — 10 tasks instead of 11).
+6. Report ≤10 lines + model per transcript + telemetry line.
 
-**Задача 2 — Phase 6 Mobile setup (без остановки, owner mandate):** прочитать PRD § «Фаза 6» → spawn setup-воркер (Opus 4.8): эпик GSL-102 + задачи в Jira (assignee owner), GH mirror #116+, ветка `GSL-102-<slug>` от нового main, ledger-коммит owner-sovereign файлов (STATE, queue.jsonl, decisions/log.jsonl, handoff 38, digest — прецеденты GSL-82/GSL-91) первой задачей. Затем impl-циклы по задачам с 6 уроками в брифах.
+**Task 2 — Phase 6 Mobile setup (without stopping, owner mandate):** read PRD · "Phase 6" → spawn setup worker (Opus 4.8): epic GSL-102 + tasks in Jira (assignee owner), GH mirror #116+, branch `GSL-102-<slug>` from the new main, ledger commit of owner-sovereign files (STATE, queue.jsonl, decisions/log.jsonl, handoff 38, digest — precedents GSL-82/GSL-91) as the first task. Then impl cycles per tasks with the 6 lessons in briefs.
 
-## Cumulative TELEMETRY (не сбрасывать)
+## Cumulative TELEMETRY (do not reset)
 
-- **cycles_completed = 87**, total ≈ **8 589 000** tokens_out (+гэпы 2a/32/35/48-52/57-cache-write — см. STATE TELEMETRY).
-- Моя смена (59-62): impl-ui-7 226k/37.6M · mechanic 19k/1.8M · reviewer 112k/9.1M · fixer 166k/23.5M ≈ **523k out / 72M cache_read**.
+- **cycles_completed = 87**, total ≈ **8 589 000** tokens_out (+ gaps 2a/32/35/48-52/57-cache-write — see STATE TELEMETRY).
+- My shift (59-62): impl-ui-7 226k/37.6M · mechanic 19k/1.8M · reviewer 112k/9.1M · fixer 166k/23.5M ≈ **523k out / 72M cache_read**.
 
 ## Gotchas
 
-Все из handoff 35 в силе (site/ DERIVED; коммит через `git commit -F`; ORCHESTRATION-STATE не handoff; pane.ended граница — теперь с дебаунсом 600s; opechatки имён — process gap). Новые: self-health считает интервал последнего цикла ОТКРЫТЫМ (handoff после последней границы гасит долг); Fleet-возрасты живые через общий Age-компонент (`components.tsx`); `docs/reviews/REVIEW-gsl90.md` gitignored — не коммитить.
+All from handoff 35 in force (site/ DERIVED; commit via `git commit -F`; ORCHESTRATION-STATE is not a handoff; pane.ended boundary — now with debounce 600s; name typos — process gap). New: self-health counts the last cycle's interval as OPEN (a handoff after the last boundary extinguishes the debt); Fleet ages live through the shared Age component (`components.tsx`); `docs/reviews/REVIEW-gsl90.md` gitignored — do not commit.
 
 ## Blocked on human
 
-**Нет.** Очередь open=0. Вопросы для owner'а (не блокеры, копятся с handoff 35): GSL-30 dev_history; naming gap; ночные дефолты; token ceiling; + Jira-описание эпика GSL-90 устарело.
+**None.** Queue open=0. Questions for the owner (not blockers, accumulate from handoff 35): GSL-30 dev_history; naming gap; nightly defaults; token ceiling; + Jira description of epic GSL-90 stale.

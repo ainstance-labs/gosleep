@@ -1,77 +1,81 @@
-# Handoff 52 — impl-176: эпик GSL-176 (мотор регулярности) реализован, PR #254 ждёт слияния
+# Handoff 52 — impl-176: epic GSL-176 (cadence engine) delivered, PR #254 waiting for merge
 
-**Дата:** 2026-07-28. **Автор:** impl-176 (воркер смены 74). **Статус эпика:** In Review, PR НЕ слит.
+**Date:** 2026-07-28. **Author:** impl-176 (shift-74 worker). **Epic status:** In Review, PR NOT merged.
 
-## Part 1 — что произошло, простыми словами
+## Part 1 — what happened, plain words
 
-У системы появился мотор. Раньше всё «регулярное» — пересобрать дашборд, применить просроченное
-решение, свериться с Jira — держалось на памяти живого агента: забыл — и дашборд врал возрастом,
-а решение висело открытым до утра. Теперь это делают два механизма без единого LLM-вызова.
+The system got an engine. Before, everything "regular" — rebuild the dashboard, apply an overdue
+decision, check against Jira — hung on the memory of a live agent: forget it, and the dashboard
+lied about its age and the decision hung open until morning. Now this is done by two mechanisms
+without a single LLM call.
 
-Первый — дебаунс-хук, который был спроектирован ещё в исходном исследовании и просто выпал при
-реализации: любая запись в `docs/lab/` через 90 секунд тишины сама пересобирает лабораторию. Он
-уже работает — в журнале `docs/lab/supervision/tick-ledger.jsonl` лежат реальные строки от этой
-же смены.
+First is the debounce hook, which was designed back in the original research and simply dropped
+during implementation: any write into `docs/lab/`, after 90 seconds of silence, rebuilds the lab
+by itself. It is already working — the log `docs/lab/supervision/tick-ledger.jsonl` holds real
+lines from this very shift.
 
-Второй — страховочный тик `tools/lab/tick.sh` для часов, когда агентов нет: опросить внешнюю
-правду, применить просроченные дефолты (новая команда `apply-due`; заодно `resolve` больше не
-позволяет закрывать решения раньше срока или повторно — аудит ловил это в половине случаев),
-пересобрать поверхности, если несвежо, и оставить одну строку в журнале. Если работы нет — тик
-честно пишет «idle» и не тратит ничего. Осталось выбрать носителя тика — это ночной preflight,
-который владелец запускает одним действием, когда назначит дату.
+Second is the safety tick `tools/lab/tick.sh` for hours when there are no agents: poll external
+truth, apply overdue defaults (the new `apply-due` command; separately, `resolve` no longer allows
+closing decisions early or twice — the audit caught this in half the cases), rebuild surfaces if
+stale, and leave a single line in the log. If there is no work — the tick honestly writes "idle"
+and spends nothing. What remains is picking the tick carrier — this is the night-time preflight
+the owner runs with a single action once he picks the date.
 
-Ещё штатный гейт смены стал кодом (`tools/lab/gate.sh`) и больше не выключает сверку с трекером,
-а как всем этим управлять — описано в рунбуке `docs/runbooks/tick-engine.md`.
+The standard shift gate has also become code (`tools/lab/gate.sh`) and no longer turns the tracker
+check off, and how to run it all is described in the runbook `docs/runbooks/tick-engine.md`.
 
 ## ORCHESTRATOR REPORT
 
-**Ветка:** `GSL-176-tick-engine` от 746e98c (origin/main), запушена.
+**Branch:** `GSL-176-tick-engine` from 746e98c (origin/main), pushed.
 **PR:** https://github.com/ainstance-labs/gosleep/pull/254 — `Implements GSL-176`, closes #176,
-#198–#204. **НЕ СЛИВАТЬ без владельца/оркестратора** (правило брифа).
-**Jira:** GSL-176 In Review; GSL-198, 199, 200, 201, 202, 203, 204 — все Done, комментарий с
-итогом на эпике.
+#198–#204. **DO NOT MERGE without owner/orchestrator** (brief rule).
+**Jira:** GSL-176 In Review; GSL-198, 199, 200, 201, 202, 203, 204 — all Done, summary comment
+on the epic.
 
-**Коммиты (один на задачу + финал):**
-1. `ffa5f32` GSL-198 — дебаунс-хук (движок + fail-open шим + 2 записи в settings.json)
-2. `9df9f86` GSL-200 — `lab-emit apply-due` + гварды `resolve` (ранний → только `--early` =
-   answered-by-default; двойное закрытие и BLOCKER — отказ)
-3. `3e0a20a` GSL-199 — `tick.sh` (poll-fill → apply-due → летописец при несвежести → armed-check
-   → строка леджера; лок; `--repo` для фикстур)
-4. `803704d` GSL-202 — idle-гейт («не будить, если работы нет», след в леджере)
-5. `1e945e1` GSL-201 — preflight носителей (plist-шаблон, arm/disarm ВЛАДЕЛЬЦА, утренний отчёт)
-6. `44882b3` GSL-203 — `gate.sh` (штатный гейт без `--no-poll`; оффлайн только явный) + эррата
-7. `0fb475f` GSL-204 — рунбук `docs/runbooks/tick-engine.md`
-8. `af65d73` GSL-176 — пересборка бандла grade=fresh последним коммитом (правило GSL-194)
+**Commits (one per task + finalizer):**
+1. `ffa5f32` GSL-198 — debounce hook (engine + fail-open shim + 2 records in settings.json)
+2. `9df9f86` GSL-200 — `lab-emit apply-due` + `resolve` guards (early → only `--early` =
+   answered-by-default; double close and BLOCKER — refused)
+3. `3e0a20a` GSL-199 — `tick.sh` (poll-fill → apply-due → chronicler on stale → armed-check
+   → ledger line; lock; `--repo` for fixtures)
+4. `803704d` GSL-202 — idle gate ("don't wake if there is no work", trace in the ledger)
+5. `1e945e1` GSL-201 — carrier preflight (plist template, OWNER's arm/disarm, morning report)
+6. `44882b3` GSL-203 — `gate.sh` (standard gate without `--no-poll`; offline only if explicit) + errata
+7. `0fb475f` GSL-204 — runbook `docs/runbooks/tick-engine.md`
+8. `af65d73` GSL-176 — bundle rebuild grade=fresh as the last commit (rule GSL-194)
 
-**Гейты (было → стало):** smoke 497 → 545, FAIL=0; hooks-verify 14 → 19, FAIL=0; tsc 0;
-chronicler С опросом FRESH. Квитанции в `.artifacts/lab/gates/`.
+**Gates (before → after):** smoke 497 → 545, FAIL=0; hooks-verify 14 → 19, FAIL=0; tsc 0;
+chronicler WITH polling FRESH. Receipts in `.artifacts/lab/gates/`.
 
-**Действия, ожидающие суверена (оркестратор/владелец):**
-1. **Слить PR #254** (regular merge) и закрыть GH-issues #176, #198–#204 (auto-close возьмёт
-   только первый из списка).
-2. **Применить эррату гейта** — `docs/handoff/GSL-203-errata-shift-gate.md`: в брифах воркеров и
-   STATE формула гейта меняется на `bash tools/lab/gate.sh` (без `--no-poll`).
-3. **Назначить дату preflight-ночи** (d-2026-07-28-005). Запуск вечером:
-   `bash tools/lab/preflight/preflight-arm.sh` (владелец; печатает и инструкцию Desktop-задачи) +
-   обычный caffeinate. Утром: `bash tools/lab/tick-preflight-report.sh` — таблица по носителям
-   для развилки вопроса 5 (основной — кто тикал; launchd — страховка, d-2026-07-28-003).
+**Actions waiting on the sovereign (orchestrator/owner):**
+1. **Merge PR #254** (regular merge) and close GH issues #176, #198–#204 (auto-close will take
+   only the first in the list).
+2. **Apply the gate errata** — `docs/handoff/GSL-203-errata-shift-gate.md`: in worker briefs and
+   STATE the gate formula changes to `bash tools/lab/gate.sh` (without `--no-poll`).
+3. **Pick the preflight-night date** (d-2026-07-28-005). Evening run:
+   `bash tools/lab/preflight/preflight-arm.sh` (owner; prints the Desktop task instruction too) +
+   ordinary caffeinate. Morning: `bash tools/lab/tick-preflight-report.sh` — a per-carrier table
+   for the question-5 fork (main — who ticked; launchd — safety net, d-2026-07-28-003).
 
-**Отклонения и находки:**
-- Инцидент-урок (без ущерба): при ручном тесте tick.sh один вызов `lab-emit question` ушёл в
-  живую очередь без `GOSLEEP_LAB_DIR` (запись `q-2026-07-28-005`); закрыт честно
-  `answer --by impl-176`, очередь как была (3 open). Правило: каждый герметичный вызов lab-emit
-  начинается с `GOSLEEP_LAB_DIR=фикстура`.
-- `armed-check` не существует (строит GSL-211 в GSL-178) — тик пишет `"armed_check":"absent"`
-  честно; подхватит скрипт автоматически по появлении (`-x tools/lab/armed-check.sh`).
-- Дебаунс-хук ЖИВОЙ с момента правки settings.json (перечитывается на лету): фоновые пересборки
-  идут во время любой сессии; kill switch — `GOSLEEP_DEBOUNCE_DISABLE=1`; рунбук описывает.
-- В tick.sh летописец идёт с `--no-poll` ПО КОМПОЗИЦИИ (шаг 1 сам опросил) — это не оффлайн;
-  не «чинить».
-- Леджер `docs/lab/supervision/tick-ledger.jsonl` — трекаемый append-only (как events/): дерево
-  будет регулярно грязниться его строками между коммитами; это норма supervision-архива.
+**Deviations and findings:**
+- Incident-lesson (no damage): during a manual test of tick.sh a single `lab-emit question` went
+  into the live queue without `GOSLEEP_LAB_DIR` (record `q-2026-07-28-005`); closed honestly
+  with `answer --by impl-176`, queue as it was (3 open). Rule: every hermetic lab-emit call starts
+  with `GOSLEEP_LAB_DIR=fixture`.
+- `armed-check` does not exist (GSL-211 in GSL-178 builds it) — the tick honestly writes
+  `"armed_check":"absent"`; the script will pick it up automatically once present
+  (`-x tools/lab/armed-check.sh`).
+- The debounce hook is LIVE since the settings.json edit (reread on the fly): background rebuilds
+  run during any session; kill switch — `GOSLEEP_DEBOUNCE_DISABLE=1`; runbook describes.
+- In tick.sh the chronicler runs with `--no-poll` BY COMPOSITION (step 1 has already polled) — this
+  is not offline; do not "fix".
+- The ledger `docs/lab/supervision/tick-ledger.jsonl` — tracked append-only (like events/): the
+  tree will regularly get dirty with its lines between commits; this is the norm for the
+  supervision archive.
 
-**dev_history:** 7 файлов `GSL-19x/20x-audit3-*.md` + индекс (секция эпика GSL-176).
-**Рунбук:** `docs/runbooks/tick-engine.md` (вооружённость/выключение/диагностика без чтения кода).
+**dev_history:** 7 files `GSL-19x/20x-audit3-*.md` + index (epic GSL-176 section).
+**Runbook:** `docs/runbooks/tick-engine.md` (armed status / disarming / diagnosis without reading code).
 
-**Резюме для следующего:** мотор построен и частично уже живой (дебаунс тикает, тик догфужен
-вручную); ночь-преflight — за владельцем; после слияния PR и эрраты формула гейта — одна команда.
+**Summary for the next agent:** the engine is built and partly already live (debounce ticks, tick
+was dogfooded manually); the preflight night is on the owner; after PR merge and the errata the
+gate formula is one command.

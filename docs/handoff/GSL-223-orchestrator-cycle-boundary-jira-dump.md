@@ -1,49 +1,52 @@
-# GSL-223 — шаг границы цикла для оркестратора: JQL-выгрузка для poll-fill
+# GSL-223 — cycle-boundary step for the orchestrator: a JQL dump for poll-fill
 
-Подготовлено impl-179 (эпик GSL-179). Чек-лист границы цикла живёт в СУВЕРЕННОМ глобальном скилле
-`orchestrating-delivery-agents` — воркерам его править запрещено. Этот документ — готовый текст
-шага для оркестратора/владельца, по образцу эрраты GSL-195. Механика на стороне репозитория уже
-работает (poll-fill.py подхватывает выгрузку сам); не хватает только привычки её сохранять.
+Prepared by impl-179 (epic GSL-179). The cycle-boundary checklist lives in the SOVEREIGN global
+skill `orchestrating-delivery-agents` — workers are forbidden to edit it. This document is the
+ready step text for the orchestrator/owner, after the GSL-195 errata template. The mechanics on
+the repository side already work (poll-fill.py picks up the dump itself); what is missing is only
+the habit of saving it.
 
-## Что добавить в чек-лист границы цикла (готовый текст шага)
+## What to add to the cycle-boundary checklist (ready step text)
 
 ```
-- Jira dump for poll-fill (GSL-223): сохранить свежую выгрузку задач в
-  docs/lab/scratch/jira-poll.json — ОДИН вызов Atlassian MCP:
+- Jira dump for poll-fill (GSL-223): save a fresh task dump into
+  docs/lab/scratch/jira-poll.json — ONE Atlassian MCP call:
   searchJiraIssuesUsingJql(cloudId, jql="project = GSL ORDER BY key ASC",
-  fields=["summary","status","updated"], maxResults=100, nextPageToken=<пагинация до конца>),
-  результат — ПЛОСКИЙ массив [{"key","status","updated","summary"}] (raw REST-форма тоже
-  принимается). Файл в scratch/ (gitignored) — это транспорт, не история; историю пишет
-  poll-fill событиями tracker.issue.updated (src=poll-fill).
+  fields=["summary","status","updated"], maxResults=100, nextPageToken=<paginate to the end>),
+  the result — a FLAT array [{"key","status","updated","summary"}] (raw REST form is also
+  accepted). The file in scratch/ (gitignored) is a transport, not history; history is
+  written by poll-fill with tracker.issue.updated events (src=poll-fill).
 ```
 
-## Почему это работа оркестратора
+## Why this is the orchestrator's work
 
-Лаборатория не держит Jira-ключей (C1) и Jira CLI на машине нет — трекер достижим только через
-MCP, который есть у оркестратора и воркеров, но не у механического poll-fill. Находка 12 (MAJOR):
-152 из 161 задач без статуса, трекер не опрашивался 11 дней, ветка сверки с Jira построена целиком
-и просто не была подключена к данным.
+The lab holds no Jira keys (C1) and there is no Jira CLI on the machine — the tracker is
+reachable only via MCP, which the orchestrator and workers have but the mechanical poll-fill does
+not. Finding 12 (MAJOR): 152 of 161 tasks without a status, the tracker was not polled for 11
+days, the whole Jira cross-check branch was built and simply was not wired to the data.
 
-## Что уже сделано на стороне репозитория (GSL-223, ветка GSL-179-token-ceiling)
+## What is already done on the repository side (GSL-223, branch GSL-179-token-ceiling)
 
-- `poll-fill.py from_jira()`: три источника по порядку — `--jira-json FILE`, acli/jira CLI,
-  **автоподхват `docs/lab/scratch/jira-poll.json`**. Выгрузка используется ГРОМКО: отчёт несёт
-  `jira_feed` с возрастом файла («scratch dump … (age 3.2h)») — «сверился с дампом прошлого
-  вторника» и «сверился с трекером» не выглядят одинаково.
-- Хроникёр без изменений: его штатный шаг 0 (poll-fill) получает Jira-ветку автоматически, как
-  только дамп лежит на месте. Будущий тик GSL-176 — тоже, без нового кода.
+- `poll-fill.py from_jira()`: three sources in order — `--jira-json FILE`, acli/jira CLI,
+  **auto pickup of `docs/lab/scratch/jira-poll.json`**. The dump is used LOUDLY: the report
+  carries `jira_feed` with the file's age ("scratch dump … (age 3.2h)") — "cross-checked with
+  last Tuesday's dump" and "cross-checked with the tracker" do not look the same.
+- The chronicler unchanged: its standard step 0 (poll-fill) gets the Jira branch automatically as
+  soon as the dump is in place. The future GSL-176 tick — too, with no new code.
 
-## Примечание про --no-poll в гейтах (вторая половина находки 12)
+## Note on --no-poll in the gates (the second half of finding 12)
 
-Гейтовый прогон смены (`chronicler.sh --no-poll`) выключает сверку целиком. Это осознанно для
-коммит-гейтов воркеров (не мутировать общий лог событий из-под задач), но ХОТЯ БЫ ОДИН штатный
-проход на границе цикла оркестратора должен идти БЕЗ `--no-poll` — иначе выгрузка лежит, а ветка
-к ней не подключена. Рекомендация в тот же чек-лист: на границе цикла, после сохранения дампа,
-гонять `bash tools/lab/chronicler.sh` (без --no-poll).
+The shift gate run (`chronicler.sh --no-poll`) turns the cross-check off entirely. This is
+intentional for worker commit gates (do not mutate the shared events log from under tasks), but
+AT LEAST ONE standard pass on the orchestrator's cycle boundary must go WITHOUT `--no-poll` —
+otherwise the dump lies there while the branch is not wired to it. Recommendation into the same
+checklist: on the cycle boundary, after saving the dump, run `bash tools/lab/chronicler.sh`
+(without --no-poll).
 
-## Bootstrap-оговорка
+## Bootstrap caveat
 
-По умолчанию poll-fill отсекает «доисторию» (факты старше первой строки лога событий) — считает
-вслух, не пишет. Если после первой выгрузки доля unknown на экране Tasks не упала ниже 15
-процентов из-за задач, чей последний update старше пола лога, — один раз прогнать
-`bash tools/lab/poll-fill.sh --prehistory` (одноразовый bootstrap, флаг для этого и существует).
+By default poll-fill cuts off "prehistory" (facts older than the first line of the events log) —
+counts aloud, does not write. If after the first dump the share of unknown on the Tasks screen
+does not drop below 15 percent because of tasks whose last update is older than the log floor —
+run `bash tools/lab/poll-fill.sh --prehistory` once (a one-time bootstrap, the flag exists
+exactly for this).

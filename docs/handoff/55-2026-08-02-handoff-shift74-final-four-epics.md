@@ -1,109 +1,111 @@
-# Handoff — gosleep — 2026-08-02 (итог смены 74: четыре эпика; передача оркестрации на Opus 4.7)
+# Handoff — gosleep — 2026-08-02 (shift 74 result: four epics; orchestration handed to Opus 4.7)
 
-> Для НОВОГО оркестратора (ожидаемо на Opus 4.7). Читай Part 1 → Part 2 → RESUME.
-> Supersedes handoff 53 (промежуточный) и 54 (worker impl-178). Ground truth = ORCHESTRATION-STATE.md.
+> For a NEW orchestrator (expected on Opus 4.7). Read Part 1 → Part 2 → RESUME.
+> Supersedes handoff 53 (interim) and 54 (worker impl-178). Ground truth = ORCHESTRATION-STATE.md.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Смена 74 (28 июля — 2 августа, с пятидневным простоем подписки посередине) закрыла ЧЕТЫРЕ эпика
-плана аудита из восьми: гигиена лаборатории (GSL-175), потолок токенов (GSL-179), мотор внешнего
-тика (GSL-176) и наблюдательный супервизор (GSL-178). Все слиты обычными мержами — PR #252, #253,
-#254, #255; ledger-цепочка из пяти коммитов, последний 8b23ffb. Смоук вырос с 452 до 545 (плюс
-отдельный смоук сторожа 75→168), гейт стал одной командой `gate.sh` и по умолчанию сверяется с
-трекером. Watchdog live: идёт наблюдательный прогон, боевые строки пишутся в трекаемый архив.
+Shift 74 (28 July — 2 August, with a five-day subscription outage in the middle) closed FOUR epics
+of the audit plan out of eight: lab hygiene (GSL-175), token ceiling (GSL-179), external tick
+engine (GSL-176), and observing supervisor (GSL-178). All merged with regular merges — PR #252, #253,
+#254, #255; a ledger chain of five commits, latest 8b23ffb. Smoke grew from 452 to 545 (plus a
+separate watchdog smoke 75→168), the gate became a single command `gate.sh` and now checks against
+the tracker by default. Watchdog is live: the observe run is under way, live lines are written into
+the tracked archive.
 
-Незаблокированной работы не осталось: всё упирается в решения владельца (кто правит скиллы q-002;
-разрешения агентов q-003; вооружение сторожа после трёх суток прогона; дата контрольной ночи;
-состав GSL-181 — проверить).
+There is no unblocked work left: everything hits owner decisions (who edits skills q-002;
+agent permissions q-003; arming the watchdog after three days of the run; date of the control
+night; scope of GSL-181 — verify).
 
-## 2. Модели — как теперь устроено
+## 2. Models — how it works now
 
-Оркестратор смены 74 — Fable 5 (лимиты на исходе — потому и передача). Воркеры получают модель из
-`CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-4-7` в ~/.claude/settings.json владельца — проверено
-транскриптом finalizer-178 (первый воркер на конфиге). Параметр model в Agent tool на этой
-поверхности НЕ работает (наследование, доказано трижды); модель воркера сверять ТОЛЬКО по
-транскрипту (self-report врёт — finalizer-178 назвал себя «4.5», был 4-7).
+The shift-74 orchestrator is Fable 5 (limits running out — hence the handoff). Workers get their
+model from `CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-4-7` in the owner's ~/.claude/settings.json —
+verified by the finalizer-178 transcript (the first worker on the config). The Agent tool's model
+parameter DOES NOT work on this surface (inheritance, proven three times); check a worker's model
+ONLY from the transcript (self-report lies — finalizer-178 named itself "4.5", was 4-7).
 
-## 3. Что чинили в процессе (важно для преемника)
+## 3. What we fixed along the way (matters for the successor)
 
-Болезнь «немой ход»: ответ ScheduleWakeup («Nothing more to do…»), прочитанный последним,
-обрывает ход до финального текста владельцу. По команде владельца поправлены глобальный скилл
-orchestrating-delivery-agents (Turn order: heartbeat → wakeup ВТОРЫМ → пробы → текст; HARD
-COROLLARY «ScheduleWakeup никогда не последний tool-вызов»; worked example; Quick reference) и
-память wakeup-first-text-last. Также в скилл внесена эррата GSL-178 (heartbeat-протокол: писатель
-tools/lab/heartbeat.sh, поля session/session_id/cli, пункт breaker-check, verifier-watch.sh).
-Проверено грепами. Stop-hook по-прежнему стоит и ловит нарушения.
+The "silent turn" illness: the ScheduleWakeup response ("Nothing more to do…"), if read last,
+cuts the turn off before the final text to the owner. On owner command we amended the global skill
+orchestrating-delivery-agents (Turn order: heartbeat → wakeup SECOND → probes → text; HARD
+COROLLARY "ScheduleWakeup is never the last tool call"; worked example; Quick reference) and the
+memory wakeup-first-text-last. The skill also received errata GSL-178 (heartbeat protocol: writer
+tools/lab/heartbeat.sh, fields session/session_id/cli, breaker-check item, verifier-watch.sh).
+Verified with greps. The Stop-hook is still in place and catches violations.
 
-## 4. Проблемы и хвосты
+## 4. Problems and loose ends
 
-- tools/lab/heartbeat.sh не имеет бита +x (запускать `bash tools/lab/heartbeat.sh …`) — чинится
-  в ledger части 6 этой смены.
-- Панели %28 (impl-178-2) и %44 (finalizer-178) живы-idle по приказу владельца «не терминировать»;
-  новый оркестратор их НЕ наследует как рабочих — они отработали; спросить владельца про чистку.
-- Токены finalizer-178 не отданы харнессом — в TELEMETRY оценка по аналогии, gap flagged.
+- tools/lab/heartbeat.sh has no +x bit (run it as `bash tools/lab/heartbeat.sh …`) — fixed in
+  the ledger part 6 of this shift.
+- Panes %28 (impl-178-2) and %44 (finalizer-178) are live-idle by owner order "do not terminate";
+  the new orchestrator does NOT inherit them as workers — they have finished; ask the owner about cleanup.
+- Finalizer-178's tokens were not returned by the harness — TELEMETRY has an estimate by analogy,
+  gap flagged.
 
-## 5. Комментарии
+## 5. Comments
 
-Владелец активен и отвечает быстро; правки скиллов сегодня шли по его прямым командам (прецедент
-q-002 залогирован d-2026-08-02-004, сам BLOCKER открыт). apply-due работает в бою. Дебаунс-хук
-жив и сам держит бандл свежим — при гонке с полным гейтом бывает транзиентная краснота smoke,
-одиночный повторный прогон честен (урок GSL-218).
+The owner is active and replies quickly; today's skill edits went on his direct commands (precedent
+q-002 logged in d-2026-08-02-004, the BLOCKER itself is open). apply-due is live in production. The
+debounce hook is alive and keeps the bundle fresh on its own — on a race with the full gate there
+is a transient smoke red, a single rerun is honest (lesson GSL-218).
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
 ## Hard rules
-Полный свод — Standing rules в ORCHESTRATION-STATE.md (читать ПЕРВЫМ). Ключевое смены: гейт =
-`bash tools/lab/gate.sh` (GSL-203); бандл grade!=fresh не коммитить молча (GSL-194); лимиты
-токенов настраиваемые + unlimited (d-007); пульс heartbeat→wakeup ВТОРЫМ→пробы→ТЕКСТ последним;
-«handoff», не «батон»; воркеры Opus 4.7 конфигом; NO Workflow (ask-first); REGULAR merge; closes
-перед каждым номером; sovereign не трогать; мобильное/push на паузе.
+Full set — Standing rules in ORCHESTRATION-STATE.md (read FIRST). Shift essentials: gate =
+`bash tools/lab/gate.sh` (GSL-203); do not silently commit bundle grade!=fresh (GSL-194); token
+limits configurable + unlimited (d-007); pulse heartbeat→wakeup SECOND→probes→TEXT last;
+"handoff", not "baton"; workers Opus 4.7 by config; NO Workflow (ask-first); REGULAR merge; closes
+before each number; sovereign untouched; mobile/push on pause.
 
 ## Connections
-Jira GSL, cloudId 74054cdc-47ef-497d-9684-734149876a8b, транзиции 11/21/31/41 · GitHub
-ainstance-labs/gosleep · владелец Roman L, accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67 ·
-main @ 8b23ffb (+ ledger часть 6 сверху) · скиллы глобальные ~/.claude/skills/ (5 шт).
+Jira GSL, cloudId 74054cdc-47ef-497d-9684-734149876a8b, transitions 11/21/31/41 · GitHub
+ainstance-labs/gosleep · owner Roman L, accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67 ·
+main @ 8b23ffb (+ ledger part 6 on top) · global skills ~/.claude/skills/ (5 in total).
 
-## Gates (база main)
-`bash tools/lab/gate.sh` — smoke 545/545 FAIL=0 · hooks-verify 19 · tsc 0 · chronicler С опросом
-(фид docs/lab/scratch/jira-poll.json по чек-листу GSL-223). Watchdog smoke: `bash
-tools/watchdog/smoke.sh` 168/0. Проверка breaker-строки STATE: `bash tools/lab/breaker-check.sh`.
+## Gates (main base)
+`bash tools/lab/gate.sh` — smoke 545/545 FAIL=0 · hooks-verify 19 · tsc 0 · chronicler WITH polling
+(feed docs/lab/scratch/jira-poll.json per checklist GSL-223). Watchdog smoke: `bash
+tools/watchdog/smoke.sh` 168/0. Check the STATE breaker line: `bash tools/lab/breaker-check.sh`.
 
-## Очередь и решения
-open=2: q-2026-07-24-002 BLOCKER (кто правит скиллы; прецедент d-2026-08-02-004),
-q-2026-07-24-003 BLOCKER (разрешения агентов). Решения смены: d-2026-07-28-001…016 +
-d-2026-08-02-001…005 в docs/lab/decisions/log.jsonl.
+## Queue and decisions
+open=2: q-2026-07-24-002 BLOCKER (who edits skills; precedent d-2026-08-02-004),
+q-2026-07-24-003 BLOCKER (agent permissions). Shift decisions: d-2026-07-28-001…016 +
+d-2026-08-02-001…005 in docs/lab/decisions/log.jsonl.
 
-## TELEMETRY (нарастающий итог)
-cycles_completed=151, total≈19 462 000 tokens_out (+исторические гэпы — см. STATE). Смена 74:
-10 воркеров (8 отработали, 1 ранний kill по d-011, финализатор-178 первый на Opus 4.7).
+## TELEMETRY (cumulative)
+cycles_completed=151, total≈19 462 000 tokens_out (+ historical gaps — see STATE). Shift 74:
+10 workers (8 finished, 1 early kill per d-011, finalizer-178 first on Opus 4.7).
 
-## RESUME POINT — новый оркестратор (Opus 4.7)
-1. Cold start по скиллу: 5 глобальных скиллов → ORCHESTRATION-STATE.md (At a glance, LIVE-STATUS,
-   Standing rules, строки cli=/breaker= над TELEMETRY) → этот handoff.
-2. Sanity: tmux list-panes (своя панель; %28/%44 — отработавшие idle по приказу владельца) ·
-   git log origin/main -1 (8b23ffb или новее) · gh pr list --state open (пусто) ·
+## RESUME POINT — new orchestrator (Opus 4.7)
+1. Cold start per the skill: 5 global skills → ORCHESTRATION-STATE.md (At a glance, LIVE-STATUS,
+   Standing rules, cli=/breaker= lines above TELEMETRY) → this handoff.
+2. Sanity: tmux list-panes (own pane; %28/%44 — finished idle panes per owner order) ·
+   git log origin/main -1 (8b23ffb or newer) · gh pr list --state open (empty) ·
    tools/lab/lab-emit.sh list --count (open=2 2B) · bash tools/lab/lab-emit.sh apply-due ·
    bash tools/lab/breaker-check.sh.
-3. Пульс: `bash tools/lab/heartbeat.sh --cycle 153 --context-pct N --open-workers N --status ok`
-   ПЕРВЫМ актом каждого хода; ScheduleWakeup ВТОРЫМ; пробы; ТЕКСТ владельцу последним.
-4. Работы без владельца НЕТ — спросить владельца, что дальше: ответы на q-002/q-003 разблокируют
-   GSL-174/GSL-180; GSL-181 — проверить состав в Jira; через ~3 суток наблюдательного прогона —
-   отчёт по runbooks/watchdog.md раздел 0 и решение о вооружении; дата контрольной ночи за
-   владельцем (всё для preflight готово: вечер preflight-arm.sh / утро tick-preflight-report.sh).
-5. Мерж-цепочки эпиков — по образцу finalizer-176/178 в логе STATE (merge regular → зеркала →
-   Jira Done → граница цикла GSL-223 → ledger).
+3. Pulse: `bash tools/lab/heartbeat.sh --cycle 153 --context-pct N --open-workers N --status ok`
+   FIRST act of every turn; ScheduleWakeup SECOND; probes; TEXT to owner LAST.
+4. There is NO work without the owner — ask the owner what's next: answers to q-002/q-003 unblock
+   GSL-174/GSL-180; GSL-181 — verify scope in Jira; after ~3 days of the observe run — report
+   per runbooks/watchdog.md section 0 and decide on arming; date of the control night is on the
+   owner (all preflight is ready: evening preflight-arm.sh / morning tick-preflight-report.sh).
+5. Epic merge chains — per the finalizer-176/178 pattern in the STATE log (regular merge → mirrors
+   → Jira Done → cycle boundary GSL-223 → ledger).
 
 ## Gotchas
-- Модель воркера — только по транскрипту (grep '"model"' по ~/.claude/projects/.../\*.jsonl,
-  файл искать по фразе брифа). Ответ ScheduleWakeup — ловушка. Пустой idle-notification живого
-  воркера = обязательный capture-pane; после kill — шум. Тесты lab-emit только под
-  GOSLEEP_LAB_DIR. chronicler.py запускает main() при импорте. Handoff'ы воркеров коммитит ledger.
-- Не роллиться по самооценке context_pct (правило владельца) — только по реальному сигналу.
+- Worker model — only from the transcript (grep '"model"' over ~/.claude/projects/.../\*.jsonl,
+  find the file by the brief phrase). ScheduleWakeup response is a trap. An empty idle-notification
+  from a live worker = mandatory capture-pane; after a kill — noise. Tests with lab-emit only under
+  GOSLEEP_LAB_DIR. chronicler.py runs main() on import. Worker handoffs are committed by the ledger.
+- Do not roll based on self-estimated context_pct (owner rule) — only on a real signal.
 
 ## Blocked on the human
-1. q-2026-07-24-002 — кто и как правит скиллы (GSL-174).
-2. q-2026-07-24-003 — разрешения агентов (GSL-180).
-3. Вооружение сторожа: 3 суток прогона → runbooks/watchdog.md разделы 0-1 (launchctl — руки владельца).
-4. Дата контрольной ночи (d-005). 5. Судьба панелей %28/%44. 6. Состав GSL-181.
+1. q-2026-07-24-002 — who and how edits skills (GSL-174).
+2. q-2026-07-24-003 — agent permissions (GSL-180).
+3. Arming the watchdog: 3 days of run → runbooks/watchdog.md sections 0-1 (launchctl — owner's hands).
+4. Date of the control night (d-005). 5. Fate of panes %28/%44. 6. Scope of GSL-181.

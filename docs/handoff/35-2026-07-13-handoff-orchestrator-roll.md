@@ -1,90 +1,90 @@
-# Handoff — gosleep — 2026-07-13 (оркестраторский roll: Phase 5 impl 6/9 Done, impl-ui-7 GSL-100 remains)
+# Handoff — gosleep — 2026-07-13 (orchestrator roll: Phase 5 impl 6/9 Done, impl-ui-7 GSL-100 remains)
 
-> Для СВЕЖЕГО оркестратора. Читай Part 1 → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл + `34-2026-07-13-handoff-impl-ui-6.md` (последний impl handoff, содержит § RESUME для impl-ui-7).
-> Мой пред — я же, cold-started этой сессии ~13:35Z. Ролюсь на границе impl-ui-6 COMPLETE, context ~67%, roll ceiling 70%. Все воркеры terminated, флот пуст.
+> For a FRESH orchestrator. Read Part 1 → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file + `34-2026-07-13-handoff-impl-ui-6.md` (last impl handoff, contains · RESUME for impl-ui-7).
+> My predecessor — me myself, cold-started this session ~13:35Z. Rolling on the boundary impl-ui-6 COMPLETE, context ~67%, roll ceiling 70%. All workers terminated, fleet empty.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-**Phase 5 UI** («Дашборд оркестрации», PRD задача R5.1-R5.3) в разгаре. Эпик **GSL-90**, ветка **`GSL-90-ui-orchestration @ 8258e30`** (8 коммитов от main @ 5fd1de2). **6 из 9 impl задач Done** + мой orchestrator ledger commit сегодня. Следующая — **GSL-100 (F5-S4 приёмка)**, ещё не спавнена — это твоя первая работа.
+**Phase 5 UI** ("Orchestration dashboard", PRD tasks R5.1-R5.3) is in full swing. Epic **GSL-90**, branch **`GSL-90-ui-orchestration @ 8258e30`** (8 commits from main @ 5fd1de2). **6 of 9 impl tasks Done** + my orchestrator ledger commit today. Next — **GSL-100 (F5-S4 acceptance)**, not spawned yet — that is your first work.
 
-Флот пуст (0/3). Очередь чиста (open=3, 0 BLOCKER — все три applied default'ы). Watchdog может быть включён.
+Fleet empty (0/3). Queue clean (open=3, 0 BLOCKER — all three applied defaults). Watchdog may be on.
 
-## 2. Что сделано в моей смене (cold-start ~13:35Z, roll ~18:20Z)
+## 2. What was done in my shift (cold-start ~13:35Z, roll ~18:20Z)
 
-**7 коммитов на ветке `GSL-90-ui-orchestration` за 5 часов** (@6355aee до @8258e30):
+**7 commits on branch `GSL-90-ui-orchestration` in 5 hours** (@6355aee to @8258e30):
 
-- **GSL-95** `164bfa5` (impl-ui-2) — Questions deadline countdown F5-S2 CLOSED. Mutation-tested countdown, `clock = max(now, generated_at)` (часы не могут идти назад).
-- **GSL-96** `c965089` (impl-ui-3) — Tasks board keyed by Jira F5-S3 CLOSED. 0 битых ссылок из 475. Схема render/3 → /4.
-- **GSL-97** `fccc720` (impl-ui-4) — Timeline+Library+клиентский JS-фильтр R5.2 CLOSED. 103 артефакта в Library с print-your-glob. Схема /4 → /5.
-- **GSL-98** `33b9343` (impl-ui-5) — Fleet+Cost R5.1 fleet+budget axes readable. Схема /5 → /6. C5 exemption через DECISION q-2026-07-13-005 (strict — только literal `teammate_name`).
-- **GSL-99** `83f49f8` + `cbdcb26` (проза fix) + `e49cf71` (handoff) (impl-ui-6) — Laboratory self-health metrics R5.3. Схема /6 → /7. Три коммита — правило 1-per-task нарушено честно (force-push запрещён).
-- **GSL-90** `8258e30` (orchestrator ledger) — late-commit orphaned handoffs 28+29 (impl-ui-6 self-health finding: они лежали `??` в git status 6 циклов).
+- **GSL-95** `164bfa5` (impl-ui-2) — Questions deadline countdown F5-S2 CLOSED. Mutation-tested countdown, `clock = max(now, generated_at)` (the clock cannot go backwards).
+- **GSL-96** `c965089` (impl-ui-3) — Tasks board keyed by Jira F5-S3 CLOSED. 0 broken links out of 475. Schema render/3 → /4.
+- **GSL-97** `fccc720` (impl-ui-4) — Timeline+Library+client JS filter R5.2 CLOSED. 103 artifacts in Library with print-your-glob. Schema /4 → /5.
+- **GSL-98** `33b9343` (impl-ui-5) — Fleet+Cost R5.1 fleet+budget axes readable. Schema /5 → /6. C5 exemption via DECISION q-2026-07-13-005 (strict — only literal `teammate_name`).
+- **GSL-99** `83f49f8` + `cbdcb26` (prose fix) + `e49cf71` (handoff) (impl-ui-6) — Laboratory self-health metrics R5.3. Schema /6 → /7. Three commits — the 1-per-task rule broken honestly (force-push forbidden).
+- **GSL-90** `8258e30` (orchestrator ledger) — late-commit orphaned handoffs 28+29 (impl-ui-6 self-health finding: they lay `??` in git status for 6 cycles).
 
-**smoke прогрессия: 130 → 174 → 182 → 192 → 208 → 230 → 248/248.** hooks-verify 14/14 всегда. tsc чист.
+**smoke progression: 130 → 174 → 182 → 192 → 208 → 230 → 248/248.** hooks-verify 14/14 always. tsc clean.
 
-## 3. Что делаем дальше (немедленно)
+## 3. What we do next (immediately)
 
-**GSL-100 (impl-ui-7)** — «[Docs] Приёмка Фазы 5: end-check (light/dark, file:// vs GitHub) + сводный dev_history + контракт site/». Задача 6 PRD-списка, закрывающая эпик. **F5-S4 буквально проверить**: «читается с телефона через приватный GitHub-репо» — GitHub не рендерит HTML из приватного репозитория как страницу, факт может быть raw/download; записать по факту, не подогнать формулировку. **Приёмка = ДОКАЗАТЕЛЬСТВО, не наблюдение** (урок Фазы 4 R4.2 → PENDING).
+**GSL-100 (impl-ui-7)** — "[Docs] Phase 5 acceptance: end-check (light/dark, file:// vs GitHub) + consolidated dev_history + site/ contract". Task 6 of the PRD list, closing the epic. **Verify F5-S4 literally**: "reads from the phone through a private GitHub repo" — GitHub does not render HTML from a private repository as a page, the fact may be raw/download; record by fact, do not fit the wording. **Acceptance = EVIDENCE, not observation** (Phase 4 R4.2 lesson → PENDING).
 
-Оценка: ~40-90 мин (documentation + acceptance sweep, не сложный код).
+Estimate: ~40-90 min (documentation + acceptance sweep, not complex code).
 
-**Затем без остановки** (owner mandate 2026-07-10, вписано в память): mechanic PR (открывает GH PR, транзиция GSL-90 → In Review) → reviewer → (fixer если найдёт CRITICAL/MAJOR) → finalizer (REGULAR merge, close issues, GSL-90 → Done, cleanup) → **Phase 6 Mobile setup** (эпик после GSL-90 в PRD).
+**Then without stopping** (owner mandate 2026-07-10, in memory): mechanic PR (opens GH PR, transition GSL-90 → In Review) → reviewer → (fixer if it finds CRITICAL/MAJOR) → finalizer (REGULAR merge, close issues, GSL-90 → Done, cleanup) → **Phase 6 Mobile setup** (epic after GSL-90 in the PRD).
 
-## 4. Открытые проблемы (не блокеры, но передаю)
+## 4. Open problems (not blockers, but I'm passing them on)
 
-- **2 REAL DEBTS найдены impl-ui-6 self-health метрами** на живом репо: (1) **GSL-30 никогда не имел dev_history** (14 эпиков, 87 задач, ровно одна дыра, коммит 80b1e3f существует). Не Phase 5, старая фаза. Для owner'а. (2) **Handoffs 28/29 orphaned** — закрыл сам в 8258e30.
-- **Ledger vs log naming gap** (impl-ui-5): 48 несопоставленных имён леджера — `gsl81-reviewer` в TELEMETRY vs `reviewer-lab` в логе. Fleet экран показывает 5/8 промахов и печатает несопоставленные имена. Process gap, не bug кода. Для owner'а.
-- **9 безымянных сессий** — воркер не закрывший через task-систему не получает Fleet карточку. Process gap.
-- **`task.completed` перестал стрелять после 12:54** (impl-ui-1 close). Циклы 53-57 не закрывались через task-систему; граница цикла = `pane.ended`.
-- **Дефолты по таймеру не применяет никто** — только живой оркестратор на пульсе (impl-ui-2 finding). Ночь без пульса = defaults не срабатывают. Не UI-задача.
-- **Token ceiling не существует машиночитаемо** (q-2026-07-13-002 auto-resolved к status quo). BUDGET_EXCEEDED не может файриться. Runway budget-час = unknown, runway = верхняя граница.
-- **`api.failure` hook wired but never fired** — quota clock = `clear*` со звёздочкой.
-- **smoke.sh:234 «stale temp survives»** — pre-existing flake (kill -9 race), до цикла 56. НЕ чинить.
+- **2 REAL DEBTS found by impl-ui-6 self-health meters** on the live repo: (1) **GSL-30 never had a dev_history** (14 epics, 87 tasks, exactly one hole, commit 80b1e3f exists). Not Phase 5, old phase. For the owner. (2) **Handoffs 28/29 orphaned** — I closed this myself in 8258e30.
+- **Ledger vs log naming gap** (impl-ui-5): 48 unmatched ledger names — `gsl81-reviewer` in TELEMETRY vs `reviewer-lab` in the log. The Fleet screen shows 5/8 misses and prints the unmatched names. Process gap, not a code bug. For the owner.
+- **9 nameless sessions** — a worker that did not close through the task system does not get a Fleet card. Process gap.
+- **`task.completed` stopped firing after 12:54** (impl-ui-1 close). Cycles 53-57 did not close through the task system; cycle boundary = `pane.ended`.
+- **Nobody applies timer defaults** — only a live orchestrator on a pulse (impl-ui-2 finding). A night without a pulse = defaults do not fire. Not a UI task.
+- **Token ceiling does not exist machine-readably** (q-2026-07-13-002 auto-resolved to status quo). BUDGET_EXCEEDED cannot fire. Runway budget hours = unknown, runway = upper bound.
+- **`api.failure` hook wired but never fired** — quota clock = `clear*` with an asterisk.
+- **smoke.sh:234 "stale temp survives"** — pre-existing flake (kill -9 race), before cycle 56. Do NOT fix.
 
-## 5. Комментарии и уроки этой смены (важно для брифа impl-ui-7)
+## 5. Comments and lessons of this shift (important for the impl-ui-7 brief)
 
-**Шесть накопленных уроков, каждый следующий воркер их наследует** (вписаны в брифы impl-ui-2 через impl-ui-6):
+**Six accumulated lessons, every following worker inherits them** (baked into briefs impl-ui-2 through impl-ui-6):
 
-1. **Читай Jira description ПЕРВЫМ ТУЛОМ** (impl-ui-2/3 lesson, 2 раза подряд — половина acceptance была в description, не в брифе).
-2. **Grep код чтобы проверить актуальность описания Jira** (impl-ui-4 lesson): описание — снимок намерения на момент написания, не ground truth. `build_timeline`/`build_library` не существовали к моменту GSL-97, а Jira требовало их удалить.
-3. **«Нет источника» есть утверждение — проверяй руками, не наследуй** (impl-ui-3 lesson): impl-ui-1 записал «нет Jira→GH mapping» — прожило 2 цикла, impl-ui-3 нашёл через `gh issue list`. impl-ui-5 применил тот же принцип к C5 (нашёл strict exemption).
-4. **⛔ НИКОГДА tree-wide git ops в общем дереве** (impl-ui-4 incident, memory `no-git-stash-in-shared-tree.md`): `git reset --hard`, `git stash push` (внутри = reset --hard), `git checkout -- .`, `git clean` — уничтожают чужую работу. Для сравнения → только `git worktree add /tmp/x <sha>`.
-5. **⛔ Background restore-trap = tree-wide писатель** (impl-ui-5 incident): `trap restore EXIT` мутационного скрипта сработал ПОСЛЕ начала правки дерева, затёр фикстуру бэкапом. Тот же класс что git stash. Признак: счётчик тестов не вырос после добавления. Правило: `pgrep` подтвердить restore-процесс мёртв.
-6. **🔥 Читай текст своей секции ВСЛУХ после зелёного smoke** (impl-ui-6 lesson): «0s old ago» прожил под 246 зелёными тестами (все ассертят механизм, ни один не читает по-английски). **Тест на прозу прогни против сломанной версии** (`git show <parent>:<file>`) — иначе проверил что не падает, а не что ловит.
+1. **Read the Jira description as the FIRST TOOL** (impl-ui-2/3 lesson, twice in a row — half of acceptance was in the description, not in the brief).
+2. **Grep the code to check the currency of the Jira description** (impl-ui-4 lesson): the description is a snapshot of intention at write time, not ground truth. `build_timeline`/`build_library` did not exist by the time of GSL-97, and Jira required removing them.
+3. **"No source" is a claim — verify by hand, do not inherit** (impl-ui-3 lesson): impl-ui-1 recorded "no Jira→GH mapping" — it lived 2 cycles, impl-ui-3 found it via `gh issue list`. impl-ui-5 applied the same principle to C5 (found a strict exemption).
+4. **⛔ NEVER tree-wide git ops in the shared tree** (impl-ui-4 incident, memory `no-git-stash-in-shared-tree.md`): `git reset --hard`, `git stash push` (inside = reset --hard), `git checkout -- .`, `git clean` — destroy others' work. For comparison → only `git worktree add /tmp/x <sha>`.
+5. **⛔ Background restore-trap = tree-wide writer** (impl-ui-5 incident): the `trap restore EXIT` of a mutation script fired AFTER the tree edits began and wiped the fixture with a backup. Same class as git stash. Symptom: the test counter did not grow after adding. Rule: `pgrep` confirms the restore process is dead.
+6. **🔥 Read your section's text ALOUD after green smoke** (impl-ui-6 lesson): "0s old ago" lived under 246 greens (all assert the mechanism, none read in English). **Run a prose guard test against the broken version** (`git show <parent>:<file>`) — otherwise you checked that it doesn't fall, not that it catches.
 
-**Про меня самого:** cold-started ~13:35Z сегодня после roll предыдущего оркестратора (impl-ui-1 прочитал МОЙ live heartbeat 76→78→80% = force-roll ceiling). Все воркеры этой смены = Opus 4.8, транскрипт-verified (session-id path → jsonl → поле `model`). Модель self-report врёт — сверять только по транскрипту (impl-ui-5 self-check 240/240, impl-ui-6 168/168).
+**About me:** cold-started ~13:35Z today after a roll of the previous orchestrator (impl-ui-1 read MY live heartbeat 76→78→80% = force-roll ceiling). All workers of this shift = Opus 4.8, transcript-verified (session-id path → jsonl → field `model`). The self-report model lies — verify only from the transcript (impl-ui-5 self-check 240/240, impl-ui-6 168/168).
 
-**Стек:** shell hooks + Python data (chronicler.py = data layer) + TypeScript UI (Preact + preact-render-to-string + esbuild, SSG не SPA — `file://` не даёт fetch). Стек утверждён владельцем. Схема сейчас `render/7` (impl-ui-6 бампнул для self_health). Bump до /8 требует правки в 4 файлах разом (`chronicler.py`, `render.tsx`, `types.ts`, `smoke.sh`).
+**Stack:** shell hooks + Python data (chronicler.py = data layer) + TypeScript UI (Preact + preact-render-to-string + esbuild, SSG not SPA — `file://` does not give fetch). Stack approved by the owner. Schema now `render/7` (impl-ui-6 bumped for self_health). Bump to /8 requires an edit in 4 files at once (`chronicler.py`, `render.tsx`, `types.ts`, `smoke.sh`).
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## ⚠️ Железные правила (не ослаблять — накоплены handoff'ами 21-34 + инциденты 2026-07-13)
+## ⚠️ Hard rules (do not weaken — accumulated in handoffs 21-34 + incidents 2026-07-13)
 
-1. **Каждый turn кончается ТЕКСТОМ владельцу** после ВСЕХ tool calls. Stop-hook блокирует молчаливые turn'ы механически.
-2. **Модели: ВСЕ агенты — Opus 4.8** (`model: opus` резолвится в 4.8). Сверять по транскрипту (`~/.claude/projects/-Users-.../<session-id>.jsonl`, поле `model`). Self-report врёт.
+1. **Every turn ends with TEXT to the owner** after ALL tool calls. Stop-hook blocks silent turns mechanically.
+2. **Models: ALL agents on Opus 4.8** (`model: opus` resolves to 4.8). Verify from the transcript (`~/.claude/projects/-Users-.../<session-id>.jsonl`, field `model`). Self-report lies.
 3. **NO Workflow tool.** Fleet cap 3.
-4. **AUTONOMOUS mode** (owner mandate 2026-07-12 20:35): не останавливайся на кларификациях мелочей. DECISION-forks → typed queue record (`tools/lab/lab-emit.sh question`), продолжай. Только BLOCKER (denylist/credentials/irreversible) паркуется, и только affected task.
-5. **REGULAR merge никогда squash. Никогда `git push --force`.** `gh api -X PUT` для merge (verb "gh pr merge" в VERBS hook писал бы дубликат; см. R4.2 addendum handoff 28).
-6. **kill-pane только по явному id после re-list.** `-a` запрещён (killed live fleet 2026-07-07).
-7. **⛔ НИКОГДА tree-wide git ops** в общем дереве: reset --hard, stash push, checkout -- ., clean. Для сравнения → `git worktree add /tmp/x <sha>`.
-8. **⛔ Background restore-trap = tree-wide писатель.** `pgrep <script>` подтвердить restore-процесс мёртв.
-9. **Hook shim обязателен** для новых bash-хуков (`tools/hooks/lab-log-hook.sh`, exit 0 always). Bare exit 2 в хуке = «заблокировать операцию» (impl-lab-1 инцидент 2026-07-12).
-10. **`.claude/settings.json` подхватывается live** — правка = эффект без рестарта.
-11. **`status.json` только через `tools/lab/lab-write.sh`** (atomic temp+rename).
-12. **Дирти дерево между коммитами — норма** (`events/<today>.jsonl`, `queue.jsonl`, `ORCHESTRATION-STATE.md`, `.orchestrator-heartbeat` растут). НЕ «чинить».
-13. **poll-fill — страховочная сетка, никогда не удалять**.
-14. **Никогда `git add -A`** — пофайлово.
-15. **`docs/prompts/`, `ORCHESTRATION-STATE.md`, `docs/lab/decisions/manifest.md`** — owner/orchestrator-sovereign. Воркеры не трогают.
-16. **C5 денилист СЛОВ** (`tmux/spawn/Agent tool/teammate`), не файлов. Файл `chronicler.py` трогать можно (impl-ui-3/4/5/6 трогали). **impl-ui-5 explicit strict exemption**: только literal `teammate_name` разрешён, 3 CI-теста держат границу.
-17. **Схема render/N — двусторонний контракт.** Рендерер бросает на незнакомой схеме. Bump — правка в 4 файлах одновременно.
-18. **Queue state читай FOLD (`lab-emit.sh list`), не grep** по `"status"` — базовая запись всегда open, resolve — отдельная append-строка (impl-ui-4 lesson).
-19. **Ассертить MECHANISM** (id/attr/isolation), не тень строки. Mutation — единственное доказательство что ассерт живой. Каждый ⭐ краснит РОВНО свой. Позитивный контроль на прозу.
-20. **Print your glob** для пустых секций (impl-ui-4 pattern) — пустая полка ДОКАЗЫВАЕТ откуда искала.
+4. **AUTONOMOUS mode** (owner mandate 2026-07-12 20:35): do not stop on clarifications about small things. DECISION forks → typed queue record (`tools/lab/lab-emit.sh question`), continue. Only BLOCKER (denylist/credentials/irreversible) is parked, and only the affected task.
+5. **REGULAR merge never squash. Never `git push --force`.** `gh api -X PUT` for merge (the verb "gh pr merge" in the VERBS hook would write a duplicate; see R4.2 addendum handoff 28).
+6. **kill-pane only by explicit id after a re-list.** `-a` forbidden (killed live fleet 2026-07-07).
+7. **⛔ NEVER tree-wide git ops** in the shared tree: reset --hard, stash push, checkout -- ., clean. For comparison → `git worktree add /tmp/x <sha>`.
+8. **⛔ Background restore-trap = tree-wide writer.** `pgrep <script>` confirms the restore process is dead.
+9. **Hook shim is mandatory** for new bash hooks (`tools/hooks/lab-log-hook.sh`, exit 0 always). Bare exit 2 in a hook = "block the operation" (impl-lab-1 incident 2026-07-12).
+10. **`.claude/settings.json` is picked up live** — an edit = effect without a restart.
+11. **`status.json` only via `tools/lab/lab-write.sh`** (atomic temp+rename).
+12. **A dirty tree between commits is norm** (`events/<today>.jsonl`, `queue.jsonl`, `ORCHESTRATION-STATE.md`, `.orchestrator-heartbeat` grow). Do NOT "fix".
+13. **poll-fill — a safety net, never delete**.
+14. **Never `git add -A`** — per file.
+15. **`docs/prompts/`, `ORCHESTRATION-STATE.md`, `docs/lab/decisions/manifest.md`** — owner/orchestrator-sovereign. Workers do not touch.
+16. **C5 denylist of WORDS** (`tmux/spawn/Agent tool/teammate`), not files. The file `chronicler.py` may be touched (impl-ui-3/4/5/6 did). **impl-ui-5 explicit strict exemption**: only literal `teammate_name` allowed, 3 CI tests hold the boundary.
+17. **Schema render/N — a two-sided contract.** The renderer throws on an unfamiliar schema. Bump — an edit in 4 files at once.
+18. **Queue state — read FOLD (`lab-emit.sh list`), not grep** on `"status"` — the base record is always open, resolve — a separate append line (impl-ui-4 lesson).
+19. **Assert MECHANISM** (id/attr/isolation), not the shadow of a string. Mutation is the only proof that an assert is alive. Each ⭐ reddens EXACTLY its own. A positive control on prose.
+20. **Print your glob** for empty sections (impl-ui-4 pattern) — an empty shelf PROVES where it looked.
 
 ## Connections
 
@@ -93,33 +93,33 @@
 | Jira | project **GSL**, site `ainstance-labs.atlassian.net`, cloudId `74054cdc-47ef-497d-9684-734149876a8b` |
 | Jira transitions | To Do=11, In Progress=21, In Review=31, **Done=41** |
 | GitHub | `ainstance-labs/gosleep` (private) |
-| Epic GSL-90 | = **GH #103** (issue, НЕ PR — GSL-90 не имеет PR ещё; mechanic откроет) |
+| Epic GSL-90 | = **GH #103** (issue, NOT PR — GSL-90 has no PR yet; the mechanic opens it) |
 | Owner accountId | `557058:83b04839-8bde-4331-9c2d-24843d0b8e67` (Roman L, rommxx@gmail.com) |
-| Ветка | `GSL-90-ui-orchestration @ 8258e30` (запушена, tracking origin, 8 коммитов от main) |
+| Branch | `GSL-90-ui-orchestration @ 8258e30` (pushed, tracking origin, 8 commits from main) |
 | Local main | @ `5fd1de2` (= PR #102 merged, Phase 4 Laboratory) |
-| Following Jira key | **GSL-102+** (GSL-101 = Phase 4 R4.2 fix закрыт); Phase 6 стартует с GSL-102 |
-| Following GH number | **#115** (после #114 = GSL-101) |
+| Following Jira key | **GSL-102+** (GSL-101 = Phase 4 R4.2 fix closed); Phase 6 starts with GSL-102 |
+| Following GH number | **#115** (after #114 = GSL-101) |
 
-## Gates (CI нет — руками)
+## Gates (no CI — by hand)
 
-- `bash tools/lab/smoke.sh` — сейчас **248/248**. Знай `smoke.sh:234` "stale temp survives" pre-existing flake (kill -9 race, до цикла 56, не чинить).
-- `bash tools/lab/hooks-verify.sh` — 14/14 на живом процессе.
-- `(cd tools/lab/ui && npx tsc --noEmit)` — чисто.
-- `bash tools/lab/chronicler.sh --no-poll` — 7 страниц, всё well-formed.
-- Схема сейчас `gosleep.lab.render/7`.
+- `bash tools/lab/smoke.sh` — currently **248/248**. Know `smoke.sh:234` "stale temp survives" pre-existing flake (kill -9 race, before cycle 56, do not fix).
+- `bash tools/lab/hooks-verify.sh` — 14/14 on a live process.
+- `(cd tools/lab/ui && npx tsc --noEmit)` — clean.
+- `bash tools/lab/chronicler.sh --no-poll` — 7 pages, all well-formed.
+- Schema now `gosleep.lab.render/7`.
 
-## Что есть в коде (короткая карта)
+## What is in the code (short map)
 
-- `tools/lab/chronicler.py` — data layer (Python stdlib, 0 API keys). Реализует `load_events()`, `load_heartbeat()`, `fleet_workers()` с join по `session_id`, `session_models()` для модели по транскрипту, self-health метры.
-- `tools/lab/chronicler.sh` — регенерация 7 страниц + status.json + morning digest.
-- `tools/lab/ui/src/render.tsx` — TS/Preact SSG рендерер.
-- `tools/lab/ui/src/screens/` — 7 экранов (overview, timeline, tasks, questions, fleet, cost, library).
-- `tools/lab/ui/src/client.ts` — клиентский JS (staleness re-grade, countdown, tickCountdowns, tickAges, FilterBar/FilterCount/initFilters паттерн общий).
-- `tools/lab/ui/src/countdown.ts` — общий SSR+client форматтер (`clock = max(now, generated_at)`).
-- `tools/lab/ui/src/types.ts` — контракт схемы `gosleep.lab.render/7`.
-- `tools/lab/smoke.sh` — 248 тестов, mutation-friendly assertions.
+- `tools/lab/chronicler.py` — data layer (Python stdlib, 0 API keys). Implements `load_events()`, `load_heartbeat()`, `fleet_workers()` with a join on `session_id`, `session_models()` for model-from-transcript, self-health meters.
+- `tools/lab/chronicler.sh` — regeneration of 7 pages + status.json + morning digest.
+- `tools/lab/ui/src/render.tsx` — TS/Preact SSG renderer.
+- `tools/lab/ui/src/screens/` — 7 screens (overview, timeline, tasks, questions, fleet, cost, library).
+- `tools/lab/ui/src/client.ts` — client JS (staleness re-grade, countdown, tickCountdowns, tickAges, FilterBar/FilterCount/initFilters pattern common).
+- `tools/lab/ui/src/countdown.ts` — a common SSR+client formatter (`clock = max(now, generated_at)`).
+- `tools/lab/ui/src/types.ts` — contract for the schema `gosleep.lab.render/7`.
+- `tools/lab/smoke.sh` — 248 tests, mutation-friendly assertions.
 - `tools/hooks/` — 13 hooks + shim.
-- `tools/lab/lab-emit.sh` — семантические события + question queue helper.
+- `tools/lab/lab-emit.sh` — semantic events + question queue helper.
 - `tools/lab/lab-write.sh` — atomic status.json writer.
 - `.claude/settings.json` — hooks config, Stop-hook `stop-require-final-text.sh` blocking silent turns.
 
@@ -128,75 +128,75 @@
 ```bash
 # Cold-start orient
 cat docs/handoff/ORCHESTRATION-STATE.md | head -80  # LIVE-STATUS + At a glance
-cat docs/handoff/35-2026-07-13-handoff-orchestrator-roll.md  # этот файл
-cat docs/handoff/34-2026-07-13-handoff-impl-ui-6.md  # последний impl handoff, § RESUME для impl-ui-7
-tail -5 docs/handoff/.orchestrator-heartbeat  # мой финальный status:"rolling"
+cat docs/handoff/35-2026-07-13-handoff-orchestrator-roll.md  # this file
+cat docs/handoff/34-2026-07-13-handoff-impl-ui-6.md  # last impl handoff, · RESUME for impl-ui-7
+tail -5 docs/handoff/.orchestrator-heartbeat  # my final status:"rolling"
 
 # Reality sanity check
-tmux list-panes -a | grep '^11:'  # должно быть только твоя pane
+tmux list-panes -a | grep '^11:'  # should be only your pane
 git log main --oneline -1  # 5fd1de2
 git ls-remote origin GSL-90-ui-orchestration  # 8258e30
-git status --porcelain | head 10  # owner-sovereign штатно
+git status --porcelain | head 10  # owner-sovereign as normal
 tools/lab/lab-emit.sh list --count  # open=3 (0B/3D/0C/0F), 0 BLOCKER
 
-# ⚠️ FIRST HEARTBEAT (заканчивает watchdog startup grace)
+# ⚠️ FIRST HEARTBEAT (ends the watchdog startup grace)
 hb="docs/handoff/.orchestrator-heartbeat"
 line='{"ts":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","cycle":59,"context_pct":<TWO_DIGITS>,"open_workers":0,"status":"ok","pane":"'"${TMUX_PANE}"'","note":"re-wake from handoff 35 orchestrator roll"}'
 { [ -f "$hb" ] && tail -n 199 "$hb"; printf '%s\n' "$line"; } > "$hb.tmp" && mv "$hb.tmp" "$hb"
 ```
 
-**Первая задача — спавнить `impl-ui-7`** (Opus 4.8) на **GSL-100** (F5-S4 приёмка + сводный dev_history + контракт site/).
+**First task — spawn `impl-ui-7`** (Opus 4.8) on **GSL-100** (F5-S4 acceptance + consolidated dev_history + site/ contract).
 
-Что уже прочитано мной и передано (полностью в этом файле выше):
-- **Jira `GSL-100` description** — три части: end-check (light/dark, file:// vs GitHub), dev_history (per-task + сводка Phase 5), site/README.md контракт (пере­писать «no JS» устарело).
-- **F5-S4 буквально проверить**: приватный GitHub-репо не рендерит HTML как страницу; факт = raw/download; записать по факту.
-- **Приёмка = ДОКАЗАТЕЛЬСТВО, не наблюдение** (урок Фазы 4 R4.2). Критерий, который нечем подтвердить = ⏳ PENDING с планом закрытия, а не ✅ по памяти.
+What I have already read and passed on (in full above):
+- **Jira `GSL-100` description** — three parts: end-check (light/dark, file:// vs GitHub), dev_history (per-task + Phase 5 summary), site/README.md contract (rewrite "no JS" is stale).
+- **Verify F5-S4 literally**: a private GitHub repo does not render HTML as a page; fact = raw/download; record by fact.
+- **Acceptance = EVIDENCE, not observation** (Phase 4 R4.2 lesson). A criterion with nothing to confirm it = ⏳ PENDING with a plan to close, not ✅ from memory.
 
-**Бриф impl-ui-7** должен содержать все 6 накопленных уроков (см. Part 1 § 5 выше) + известные факты + правила + первые действия.
+**The impl-ui-7 brief** must contain all 6 accumulated lessons (see Part 1 · section 5 above) + known facts + rules + first actions.
 
-**После impl-ui-7 COMPLETE:**
-1. Спавнить `mechanic-gsl90` (Opus 4.8) — открывает PR `GSL-90 <title>`, body `Implements GSL-90.` + Tasks checklist + `Mirrors #103.` + `Closes #103, #105..#113, #115.` (если ещё есть GH issues из моего orchestrator ledger commit). Транзиция GSL-90 → In Review (31).
-2. Спавнить `reviewer-gsl90` (Opus 4.8) — off-tree review пинн'ится к SHA, 3-4 линзы, report в `docs/reviews/REVIEW-gsl90.md`. Если CRITICAL/MAJOR → fixer, если FIX/MERGE → finalizer.
-3. Спавнить `finalizer-gsl90` (Opus 4.8) — REGULAR merge через `gh api -X PUT repos/ainstance-labs/gosleep/pulls/<N>/merge -f merge_method=merge` (verb "gh pr merge" не использовать), close оставшиеся GH issues вручную, транзиция GSL-90 → Done (41), удалить remote+local branch, `git fetch origin main:main` + оставаться на локальной ветке для леджера.
-4. **Phase 6 Mobile SETUP без остановки** (owner mandate 2026-07-10 continue-at-milestone-boundaries). Стартует с GSL-102+, GH #115+. Прочитать PRD § «Фаза 6».
+**After impl-ui-7 COMPLETE:**
+1. Spawn `mechanic-gsl90` (Opus 4.8) — opens the PR `GSL-90 <title>`, body `Implements GSL-90.` + Tasks checklist + `Mirrors #103.` + `Closes #103, #105..#113, #115.` (if there are still GH issues from my orchestrator ledger commit). Transition GSL-90 → In Review (31).
+2. Spawn `reviewer-gsl90` (Opus 4.8) — off-tree review pinned to the SHA, 3-4 lenses, report in `docs/reviews/REVIEW-gsl90.md`. If CRITICAL/MAJOR → fixer, if FIX/MERGE → finalizer.
+3. Spawn `finalizer-gsl90` (Opus 4.8) — REGULAR merge via `gh api -X PUT repos/ainstance-labs/gosleep/pulls/<N>/merge -f merge_method=merge` (do not use the verb "gh pr merge"), close remaining GH issues by hand, transition GSL-90 → Done (41), delete remote+local branch, `git fetch origin main:main` + stay on the local branch for the ledger.
+4. **Phase 6 Mobile SETUP without stopping** (owner mandate 2026-07-10 continue-at-milestone-boundaries). Starts with GSL-102+, GH #115+. Read PRD · "Phase 6".
 
 ## Cumulative TELEMETRY (persistent across rolls — never reset)
 
-- **cycles_completed ≈ 83** (from handoff 21 total ≈5464000 → сейчас **≈8066000**, delta моей смены ≈ 2600k tokens_out across 7 impl workers)
-- **Гэпы flagged**: 2a/32/35/48-52/57-cache-write (see STATE TELEMETRY block detail)
-- **Моя смена (cycles 53-58, impl-ui-1 через impl-ui-6)**:
+- **cycles_completed ≈ 83** (from handoff 21 total ≈5464000 → now **≈8066000**, delta of my shift ≈ 2600k tokens_out across 7 impl workers)
+- **Flagged gaps**: 2a/32/35/48-52/57-cache-write (see STATE TELEMETRY block detail)
+- **My shift (cycles 53-58, impl-ui-1 through impl-ui-6)**:
   - cycle 53 impl-ui-1: ~461k out, 55M cache_read
   - cycle 54 impl-ui-2: 163k out, 11.8M cache_read
   - cycle 55 impl-ui-3: 245k out, 21.7M cache_read
   - cycle 56 impl-ui-4: 299k out, 29.9M cache_read
-  - cycle 57 impl-ui-5: ~360k out estimate (TELEMETRY line не отдан в SendMessage — gap flagged), ~40M cache_read
+  - cycle 57 impl-ui-5: ~360k out estimate (TELEMETRY line not returned in SendMessage — gap flagged), ~40M cache_read
   - cycle 58 impl-ui-6: 292k out, 51.1M cache_read
-  - Sum моя смена: ~1820k out, ~210M cache_read
+  - Sum of my shift: ~1820k out, ~210M cache_read
 - Total ≈ 8066k tokens_out through 83 cycles + gaps flagged.
 
-## Gotchas (унаследованные, не ослаблены)
+## Gotchas (inherited, not weakened)
 
-- **`chronicler.py` C5 денилист СЛОВ** (`tmux/spawn/Agent tool/teammate`) — грепает smoke. impl-ui-5 explicit exemption: literal `teammate_name` разрешён + 3 CI-теста держат границу. Другие слова под запретом.
-- **Схема `gosleep.lab.render/7`** — bump в 4 файлах разом (`chronicler.py`, `render.tsx`, `types.ts`, `smoke.sh`).
-- **`docs/lab/site/` — DERIVED**. Не править руками; регенерация `chronicler.sh --no-poll`.
-- **Коммит через heredoc хук не видит** — `git commit -F <файл>`.
-- **`ORCHESTRATION-STATE.md`** лежит в `docs/handoff/`, но НЕ handoff. Хук `handoff.written` на неё стреляет ложно. impl-ui-6 исключил поимённо + M2 mutation краснит.
-- **`task.completed` перестал стрелять после 12:54** — граница цикла = `pane.ended`.
-- **Опечатки/дубли имён воркеров** между леджером и логом (48 промахов) — process gap.
+- **`chronicler.py` C5 denylist of WORDS** (`tmux/spawn/Agent tool/teammate`) — greps smoke. impl-ui-5 explicit exemption: literal `teammate_name` allowed + 3 CI tests hold the boundary. Other words forbidden.
+- **Schema `gosleep.lab.render/7`** — bump in 4 files at once (`chronicler.py`, `render.tsx`, `types.ts`, `smoke.sh`).
+- **`docs/lab/site/` — DERIVED**. Do not edit by hand; regenerate `chronicler.sh --no-poll`.
+- **A commit via heredoc the hook does not see** — `git commit -F <file>`.
+- **`ORCHESTRATION-STATE.md`** lies in `docs/handoff/` but is NOT a handoff. The `handoff.written` hook fires on it falsely. impl-ui-6 excluded by name + M2 mutation reddens.
+- **`task.completed` stopped firing after 12:54** — cycle boundary = `pane.ended`.
+- **Typos/duplicate worker names** between the ledger and the log (48 misses) — process gap.
 
 ## Blocked on human
 
-**Нет.** Очередь `open=3 (0B/3D/0C/0F)`:
-- `q-2026-07-13-001` — фреймворк UI, **дефолт применён** (Preact + esbuild), работает.
-- `q-2026-07-13-004` — schema render/4 → /5 в GSL-97, **default applied**.
-- `q-2026-07-13-005` — C5 exemption для literal `teammate_name`, **default applied strict**.
+**None.** Queue `open=3 (0B/3D/0C/0F)`:
+- `q-2026-07-13-001` — UI framework, **default applied** (Preact + esbuild), works.
+- `q-2026-07-13-004` — schema render/4 → /5 in GSL-97, **default applied**.
+- `q-2026-07-13-005` — C5 exemption for literal `teammate_name`, **default applied strict**.
 
-Все reversible high, работу не держат.
+All reversible high, do not hold work.
 
-**Возможные вопросы для owner'а после Phase 5 close** (передаю, не эскалирую сам — не блокер):
-- GSL-30 никогда не имел dev_history (16 фаз назад, старая дыра).
-- Ledger vs log naming gap (48 несопоставленных имён — единая конвенция или явное поле).
-- Дефолты по таймеру не применяет никто в ночь без пульса (impl-ui-2 finding).
-- Token ceiling не машиночитаем (q-2026-07-13-002 auto-resolved к status quo).
+**Possible questions for the owner after Phase 5 close** (I pass them, do not escalate myself — not a blocker):
+- GSL-30 never had a dev_history (16 phases ago, an old hole).
+- Ledger vs log naming gap (48 unmatched names — a unified convention or an explicit field).
+- Nobody applies timer defaults on a night without a pulse (impl-ui-2 finding).
+- Token ceiling is not machine-readable (q-2026-07-13-002 auto-resolved to status quo).
 
-**Owner directive 2026-07-12 20:35 IN FORCE**: AUTONOMOUS MODE — не останавливайся на кларификациях. Continue-at-milestone-boundaries на границе GSL-90 → GSL-102 без остановки.
+**Owner directive 2026-07-12 20:35 IN FORCE**: AUTONOMOUS MODE — do not stop on clarifications. Continue-at-milestone-boundaries on the GSL-90 → GSL-102 boundary without stopping.

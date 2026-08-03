@@ -1,117 +1,120 @@
-# Handoff — gosleep — 2026-07-28 (смена 74: три эпика слиты; модельная политика упёрлась в наследование)
+# Handoff — gosleep — 2026-07-28 (shift 74: three epics merged; model policy hit inheritance)
 
-> Для НОВОГО оркестратора (или продолжения этой сессии после решения владельца). Читай Part 1 → Part 2 → RESUME.
-> Supersedes handoff 49 (батон смены 73) и worker-handoff'ы 50/51/52 (детали эпиков — там). Ground truth = ORCHESTRATION-STATE.md.
+> For a NEW orchestrator (or continuation of this session after the owner's decision). Read Part 1 → Part 2 → RESUME.
+> Supersedes handoff 49 (shift 73's baton) and worker handoffs 50/51/52 (epic details — there). Ground truth = ORCHESTRATION-STATE.md.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Смена 74 за один день закрыла три эпика плана аудита: гигиену лаборатории (GSL-175), потолок
-токенов (GSL-179) и мотор внешнего страховочного тика (GSL-176). Все три слиты в main обычными
-мержами (PR #252, #253, #254), зеркала закрыты, Jira — Done, ledger-цепочка a114c8a → 746e98c →
-e72d818. Набор проверок вырос с 452 до 545 при нуле падений, и появился единый гейт `gate.sh`,
-который по умолчанию сверяется с трекером (раньше сверка была выключена «по умолчанию прозы»).
+Shift 74 closed three epics of the audit plan in one day: lab hygiene (GSL-175), the token ceiling
+(GSL-179), and the external safety-tick engine (GSL-176). All three merged into main with regular
+merges (PR #252, #253, #254), mirrors closed, Jira → Done, ledger chain a114c8a → 746e98c →
+e72d818. The check suite grew from 452 to 545 with zero failures, and a single gate `gate.sh`
+appeared, which by default checks against the tracker (previously the check was off "by default
+of prose").
 
-Работа встала на единственном месте: владелец приказал запускать следующих воркеров на Opus, но
-teammate-панель НАСЛЕДУЕТ модель оркестратора — параметр model:opus игнорируется (подтверждено
-ТРЕМЯ транскриптами за день). Эта сессия оркестратора идёт на Fable 5, значит приказ владельца
-механически исполним только перезапуском оркестратора на Opus. impl-178 был убит через минуту
-после спавна, до начала работы, ровно по этой процедуре.
+Work stalled at a single spot: the owner ordered the next workers to run on Opus, but the
+teammate pane INHERITS the orchestrator's model — the model:opus parameter is ignored (confirmed
+by THREE transcripts in a day). This orchestrator session runs on Fable 5, so the owner's order is
+mechanically executable only by restarting the orchestrator on Opus. impl-178 was killed a minute
+after spawn, before starting work, exactly by this procedure.
 
-## 2. Что сделано за смену
+## 2. What was done this shift
 
-Утром применены 6 просроченных умолчаний (d-001…006) — механизма автоприменения тогда не было;
-теперь ЕСТЬ: `lab-emit.sh apply-due` (сделан в GSL-200). Владелец за день дал три директивы:
-потолок токенов настраиваемый с режимом «без лимитов» (исполнено в GSL-179), «handoff, не батон»,
-и «следующие воркеры на Opus» (d-011 — упёрлась в наследование). Плюс закрыт вопрос формата:
-каждый ход оркестратора ОБЯЗАН кончаться текстом владельцу — три немых хода подряд чуть не
-похоронили доверие; корень — ответ ScheduleWakeup, притворяющийся концом хода.
+Six overdue defaults were applied in the morning (d-001…006) — there was no auto-apply mechanism
+then; there IS ONE now: `lab-emit.sh apply-due` (built in GSL-200). The owner gave three directives
+during the day: configurable token ceiling with an "unlimited" mode (executed in GSL-179),
+"handoff, not baton", and "next workers on Opus" (d-011 — hit inheritance). Plus the format
+question was closed: every orchestrator turn MUST end with text to the owner — three silent turns
+in a row nearly buried trust; the root is the ScheduleWakeup response pretending to be the end
+of the turn.
 
-Детали эпиков — в handoff 50 (GSL-175), 51 (GSL-179), 52 (GSL-176). Ключевое новое хозяйство:
-tick.sh (идемпотентный тик без LLM), apply-due, дебаунс-хук пересборки (живой), gate.sh,
-архив супервизии docs/lab/supervision/, preflight обоих носителей тика ГОТОВ К РУКАМ ВЛАДЕЛЬЦА
-(вечер = tools/lab/preflight-arm.sh, утро = tools/lab/tick-preflight-report.sh; launchctl —
-только владелец).
+Epic details — in handoff 50 (GSL-175), 51 (GSL-179), 52 (GSL-176). Key new gear:
+tick.sh (idempotent tick without an LLM), apply-due, the rebuild debounce hook (live), gate.sh,
+the supervision archive docs/lab/supervision/, preflight of both tick carriers READY FOR THE
+OWNER'S HANDS (evening = tools/lab/preflight-arm.sh, morning = tools/lab/tick-preflight-report.sh;
+launchctl — owner only).
 
-## 3. Что дальше
+## 3. What's next
 
-Один незаблокированный эпик — GSL-178 (watchdog в наблюдательном режиме, kill/re-wake выключены,
-источник жизни `claude agents --json`). Бриф готов и проверен (см. RESUME). Дальше всё упирается
-в владельца: BLOCKER q-002 (кто правит скиллы → GSL-174), BLOCKER q-003 (разрешения агентов →
-GSL-180), дата контрольной ночи (d-005), решение по перезапуску оркестратора на Opus.
+One unblocked epic — GSL-178 (watchdog in observe mode, kill/re-wake off, aliveness source
+`claude agents --json`). The brief is ready and checked (see RESUME). Everything else hits the
+owner: BLOCKER q-002 (who edits skills → GSL-174), BLOCKER q-003 (agent permissions → GSL-180),
+date of the control night (d-005), decision on restarting the orchestrator on Opus.
 
-## 4. Проблемы
+## 4. Problems
 
-- **Наследование модели** (главная): teammate-спавн игнорирует model:opus, воркер получает модель
-  оркестратора. Три транскрипта-подтверждения: ce2de7ba (impl-175), 2ec7dfa9 (impl-176), e700cbdb
-  (impl-178, убит рано). Исполнение приказа владельца = перезапуск оркестратора на Opus.
-- Ловушка ScheduleWakeup: его tool result уговаривает закончить ход без финального текста.
-  Порядок пульса: heartbeat → wakeup РАНО → пробы → ТЕКСТ ПОСЛЕДНИМ. Дефект зафиксирован и в
-  скилле (worked example ставит wakeup последним) — править скилл нельзя без ответа на q-002.
-- Инцидент-урок смены: тестовый lab-emit без GOSLEEP_LAB_DIR утёк в живую очередь (закрыт честно).
+- **Model inheritance** (main): teammate spawn ignores model:opus, the worker gets the
+  orchestrator's model. Three transcripts confirm: ce2de7ba (impl-175), 2ec7dfa9 (impl-176), e700cbdb
+  (impl-178, killed early). Executing the owner's order = restart the orchestrator on Opus.
+- ScheduleWakeup trap: its tool result talks you into ending the turn without the final text.
+  Pulse order: heartbeat → wakeup EARLY → probes → TEXT LAST. The defect is recorded in the
+  skill too (worked example puts wakeup last) — the skill cannot be edited without an answer to q-002.
+- Shift incident-lesson: a test lab-emit without GOSLEEP_LAB_DIR leaked into the live queue (closed honestly).
 
-## 5. Комментарии
+## 5. Comments
 
-Утренний дайджест за 28.07 существует — два старых падения smoke про него ушли сами. Владелец
-активен в чате весь день и отвечает быстро; вопросы нести ему прямо в финальном тексте хода.
+The morning digest for 07-28 exists — two old smoke failures about it went away on their own. The
+owner is active in chat all day and replies quickly; bring questions to him directly in the
+final text of the turn.
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
 ## Hard rules
-Полный свод — Standing rules в ORCHESTRATION-STATE.md. Ключевые новые за смену:
-лимиты токенов настраиваемые + режим unlimited (12:20Z: следующие воркеры на Opus, d-011) ·
-штатный гейт = `bash tools/lab/gate.sh` (GSL-203; --no-poll только явный оффлайн) ·
-не коммитить бандл grade != fresh молча (GSL-194) · «handoff», не «батон».
+Full set — Standing rules in ORCHESTRATION-STATE.md. Key new items this shift:
+token limits configurable + unlimited mode (12:20Z: next workers on Opus, d-011) ·
+standard gate = `bash tools/lab/gate.sh` (GSL-203; --no-poll only explicit offline) ·
+do not silently commit a bundle grade != fresh (GSL-194) · "handoff", not "baton".
 
 ## Connections
-Jira GSL, cloudId 74054cdc-47ef-497d-9684-734149876a8b, транзиции 11/21/31/41 · GitHub
-ainstance-labs/gosleep · владелец Roman L, accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67 ·
-main @ e72d818 · скиллы глобальные (~/.claude/skills/): orchestrating-delivery-agents,
+Jira GSL, cloudId 74054cdc-47ef-497d-9684-734149876a8b, transitions 11/21/31/41 · GitHub
+ainstance-labs/gosleep · owner Roman L, accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67 ·
+main @ e72d818 · global skills (~/.claude/skills/): orchestrating-delivery-agents,
 tmux-agents-orchestration, handoff, delivery-workflow, using-jira.
 
-## Gates (база main @ e72d818)
-`bash tools/lab/gate.sh` — всё сразу: smoke 545/545 FAIL=0 · hooks-verify 19 · tsc 0 · chronicler
-С опросом (фид docs/lab/scratch/jira-poll.json, дамп на границе цикла по
-docs/handoff/GSL-223-orchestrator-cycle-boundary-jira-dump.md). Квитанция .artifacts/lab/gates/gate.json.
+## Gates (main base @ e72d818)
+`bash tools/lab/gate.sh` — everything at once: smoke 545/545 FAIL=0 · hooks-verify 19 · tsc 0 · chronicler
+WITH polling (feed docs/lab/scratch/jira-poll.json, dump on the cycle boundary per
+docs/handoff/GSL-223-orchestrator-cycle-boundary-jira-dump.md). Receipt .artifacts/lab/gates/gate.json.
 
-## Очередь вопросов (на момент handoff)
-open=3: q-2026-07-24-002 BLOCKER (скиллы), q-2026-07-24-003 BLOCKER (разрешения),
-q-2026-07-28-004 DECISION (архив супервизии; due 12:41:59Z — применить apply-due, дефолт уже
-реализован кодом GSL-225). Решения смены: d-001…011 в docs/lab/decisions/log.jsonl.
+## Question queue (at handoff time)
+open=3: q-2026-07-24-002 BLOCKER (skills), q-2026-07-24-003 BLOCKER (permissions),
+q-2026-07-28-004 DECISION (supervision archive; due 12:41:59Z — apply apply-due, the default is
+already implemented in code by GSL-225). Shift decisions: d-001…011 in docs/lab/decisions/log.jsonl.
 
-## TELEMETRY (нарастающий итог)
-cycles_completed=147, total≈19 229 000 tokens_out (+исторические гэпы — см. TELEMETRY в STATE).
-Смена 74: 7 воркеров (6 отработали, impl-178 убит рано), все фактически на Fable 5.
+## TELEMETRY (cumulative)
+cycles_completed=147, total≈19 229 000 tokens_out (+ historical gaps — see TELEMETRY in STATE).
+Shift 74: 7 workers (6 finished, impl-178 killed early), all effectively on Fable 5.
 
 ## RESUME POINT
-1. Cold start по скиллу: 5 глобальных скиллов → ORCHESTRATION-STATE.md (At a glance, LIVE-STATUS,
-   Standing rules) → этот handoff. Sanity: tmux list-panes (одна своя панель) · git log origin/main -1
-   (e72d818 или новее) · gh pr list --state open (пусто) · tools/lab/lab-emit.sh list --count ·
-   bash tools/lab/lab-emit.sh apply-due (просроченные умолчания — теперь одной командой).
-2. Первый heartbeat: cycle 149+, свой $TMUX_PANE, честный context_pct.
-3. Если эта сессия ПЕРЕЗАПУЩЕНА на Opus по решению владельца: спавнить impl-178 на эпик GSL-178 —
-   бриф строить по образцу в логе STATE (раздел смены 74; суть: наблюдательный режим per d-001,
-   kill/re-wake выключены, launchctl за владельцем, гейт gate.sh, PR не сливать, ранняя сверка
-   модели по транскрипту ОБЯЗАТЕЛЬНА). После COMPLETE — финализатор по образцу finalizer-176
-   (merge regular, зеркала, Jira Done, граница цикла GSL-223, ledger).
-4. Если владелец разрешил продолжать на Fable 5 — то же самое без перезапуска.
-5. Порядок пульса ЖЁСТКИЙ: heartbeat ПЕРВЫМ → ScheduleWakeup ВТОРЫМ (его ответ — ловушка) →
-   пробы → финальный ТЕКСТ владельцу ПОСЛЕДНИМ актом каждого хода. Stop-hook это контролирует.
-6. Владельцу к рукам (напомнить): ночной preflight носителей тика (вечер preflight-arm.sh /
-   утро tick-preflight-report.sh, дата за владельцем), ответы на q-002/q-003.
+1. Cold start per the skill: 5 global skills → ORCHESTRATION-STATE.md (At a glance, LIVE-STATUS,
+   Standing rules) → this handoff. Sanity: tmux list-panes (one own pane) · git log origin/main -1
+   (e72d818 or newer) · gh pr list --state open (empty) · tools/lab/lab-emit.sh list --count ·
+   bash tools/lab/lab-emit.sh apply-due (overdue defaults — now one command).
+2. First heartbeat: cycle 149+, own $TMUX_PANE, honest context_pct.
+3. If this session HAS BEEN RESTARTED on Opus by the owner's decision: spawn impl-178 for epic
+   GSL-178 — build the brief per the STATE log template (shift 74 section; essence: observe mode
+   per d-001, kill/re-wake off, launchctl on the owner, gate gate.sh, PR unmerged, MANDATORY early
+   model verification from the transcript). After COMPLETE — a finalizer per the finalizer-176
+   template (regular merge, mirrors, Jira Done, cycle boundary GSL-223, ledger).
+4. If the owner allowed continuing on Fable 5 — same thing without a restart.
+5. Pulse order is HARD: heartbeat FIRST → ScheduleWakeup SECOND (its response is a trap) →
+   probes → final TEXT to owner LAST act of every turn. The Stop-hook enforces this.
+6. For the owner's hands (remind): night-time preflight of the tick carriers (evening preflight-arm.sh /
+   morning tick-preflight-report.sh, date on the owner), answers to q-002/q-003.
 
 ## Gotchas
-- model:opus у teammate-спавна игнорируется — модель ТОЛЬКО по транскрипту (grep '"model"' по
-  ~/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep/*.jsonl, файл ищи по
-  фразе брифа, не по mtime).
-- chronicler.py запускает main() при импорте; внутри tick.sh --no-poll легален (композиция).
-- Пустой idle-notification живого воркера = обязательный capture-pane; после kill-pane — шум.
-- Тесты с lab-emit — только под GOSLEEP_LAB_DIR (утечка в живую очередь = инцидент).
-- Handoff'ы воркеров НЕ коммитятся воркерами — забирает ledger-коммит финализатора/оркестратора.
+- model:opus at teammate spawn is ignored — model ONLY from the transcript (grep '"model"' over
+  ~/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep/*.jsonl, find the file by
+  the brief phrase, not by mtime).
+- chronicler.py runs main() on import; inside tick.sh --no-poll is legal (composition).
+- An empty idle-notification from a live worker = mandatory capture-pane; after kill-pane — noise.
+- Tests with lab-emit — only under GOSLEEP_LAB_DIR (a leak into the live queue = incident).
+- Worker handoffs are NOT committed by workers — the finalizer/orchestrator ledger commit takes them.
 
 ## Blocked on the human
-1. Перезапуск оркестратора на Opus (исполнение d-011) — или явное разрешение продолжить на Fable 5.
-2. q-2026-07-24-002: кто и как правит скиллы (блокирует GSL-174 и фикс ловушки ScheduleWakeup в скилле).
-3. q-2026-07-24-003: разрешения агентов (блокирует GSL-180).
-4. Дата контрольной ночи + ночной preflight носителей (всё готово, нужны только ваши руки вечером).
+1. Restart the orchestrator on Opus (execute d-011) — or explicit permission to continue on Fable 5.
+2. q-2026-07-24-002: who and how edits skills (blocks GSL-174 and the fix of the ScheduleWakeup trap in the skill).
+3. q-2026-07-24-003: agent permissions (blocks GSL-180).
+4. Date of the control night + the night preflight of the carriers (all ready, only your evening hands needed).

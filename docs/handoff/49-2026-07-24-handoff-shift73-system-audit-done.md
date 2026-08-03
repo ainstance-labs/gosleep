@@ -1,186 +1,191 @@
-# Handoff — gosleep — 2026-07-24 (смена 73: глобальный аудит системы завершён, план в работе)
+# Handoff — gosleep — 2026-07-24 (shift 73: global system audit complete, plan in flight)
 
-> Для НОВОГО оркестратора. Читай Part 1 → Part 2 → RESUME. Ground truth = ORCHESTRATION-STATE.md + этот файл.
-> Предыдущий батон: briefing 48 (мандат владельца на аудит). Этот supersedes его.
+> For a NEW orchestrator. Read Part 1 → Part 2 → RESUME. Ground truth = ORCHESTRATION-STATE.md + this file.
+> Previous baton: briefing 48 (owner's audit mandate). This one supersedes it.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Владелец дал смене 73 один мандат: провести глобальный аудит всей системы оркестрации против
-исходного промпта `docs/prompts/2-deep-orchestrating-research.md`, сделать свои выводы свежими
-глазами и составить план развития. Аудит проведён и закрыт. Двенадцать воркеров-экспертов, 99
-находок после калибровки, ни одной находки высшей серьёзности не осталось. Результат опубликован:
-HTML-дашборд на двух языках лежит в репозитории, доказательная база рядом с ним, план превращён в
-живой бэклог из восьми эпиков и 61 задачи. Сейчас идёт исполнение первого незаблокированного
-эпика — качество веб-версии.
+The owner gave shift 73 one mandate: run a global audit of the whole orchestration system against
+the original prompt `docs/prompts/2-deep-orchestrating-research.md`, make our own conclusions with
+fresh eyes and draw up a development plan. The audit was carried out and closed. Twelve expert
+workers, 99 findings after calibration, not a single top-severity finding left. The result was
+published: a bilingual HTML dashboard in the repository, the evidence base alongside, the plan
+turned into a live backlog of eight epics and 61 tasks. Right now the first unblocked epic is
+in execution — quality of the web version.
 
-Главная цифра, которую нужно понимать про проект: **как исследовательская работа система готова на
-70-75%, а как продукт «владелец спит, система доставляет» — примерно на 45%**. Разрыв объясняется
-тремя вещами: у механизмов, описанных в инструкциях, нет исполнителя; у утверждений нет владельца
-обновления; единственный источник правды о том, жива ли система, — её собственный отчёт о себе.
+The main number to understand about the project: **as research work the system is 70-75% ready,
+but as a product "the owner sleeps, the system delivers" — around 45%**. The gap is explained by
+three things: the mechanisms described in the instructions have no executor; the statements have
+no update owner; the single source of truth about whether the system is alive is its own report
+about itself.
 
-## 2. Что сделано
+## 2. What was done
 
-Собрана экспертная панель волнами по три (лимит флота — три одновременных воркера). Шесть доменных
-аудиторов разобрали десять столпов мандата: конкуренты, супервизия оркестратора, headless-режим,
-автономность, лаборатория, веб-версия, доставка и PRD, отчёты, плюс слепая зона, которую нашёл сам
-оркестратор — пять скиллов проекта как продукт. Затем три красные команды пытались опровергнуть
-выводы. Затем синтез, дашборд, бэклог и два фиксера.
+An expert panel was assembled in waves of three (fleet cap — three simultaneous workers). Six
+domain auditors dissected the mandate's ten pillars: competitors, orchestrator supervision,
+headless mode, autonomy, lab, web version, delivery and PRD, reports, plus a blind spot found by
+the orchestrator itself — five project skills as a product. Then three red teams tried to refute
+the conclusions. Then synthesis, dashboard, backlog, and two fixers.
 
-Самое ценное — не сами находки, а то, что проверка сработала. **Тринадцать меток CRITICAL за три
-независимые калибровки — не устояла ни одна.** Панель аудиторов оказалась надёжной в фактах и
-систематически завышала оценку последствий. Синтез, столкнувшись с калибровкой, снял четыре
-собственных вывода и поднял оценку системы с 35 до 45 процентов.
+The most valuable thing is not the findings themselves but that the check worked. **Thirteen
+CRITICAL labels across three independent calibrations — not a single one held.** The auditor
+panel proved reliable on facts and systematically overstated consequences. Synthesis, faced with
+calibration, withdrew four of its own conclusions and raised the system score from 35 to 45
+percent.
 
-Что выяснилось по существу. Механический сторож оркестратора существовал только как код: в системе
-он не был установлен ни разу, а при включении с настройками по умолчанию поднял бы второго
-оркестратора рядом с живым. Опасение владельца, что headless-режим не работает по подписке, не
-подтвердилось — работает. Платформа Claude Code уже закрывает часть проблемы супервизии штатно, но
-её демон не ставится сервисом, поэтому внешний тик всё равно нужен — зато самоделку можно сжать в
-разы. Ночь система не отрабатывала ни разу: рекорд автономной работы — 6 часов 47 минут, и тот
-вечером. И самое неприятное: блока разрешений в конфигурации нет вовсе, оркестратор запускается с
-полностью снятыми проверками, и этого никто сознательно не выбирал.
+What emerged in substance. The mechanical orchestrator watchdog existed only as code: in the
+system it had never been installed, and if enabled with default settings would have raised a
+second orchestrator next to the live one. The owner's concern that headless mode does not work on
+subscription was not confirmed — it works. The Claude Code platform already covers part of the
+supervision problem out of the box, but its daemon is not installed as a service, so an external
+tick is still needed — but our homegrown one can be shrunk many times over. The system had never
+worked through a night: the autonomous work record is 6 hours 47 minutes, and even that in the
+evening. And most unpleasant: there is no permissions block in the configuration at all, the
+orchestrator runs with all checks fully off, and no one consciously chose this.
 
-## 3. Что дальше
+## 3. What's next
 
-Восемь эпиков в приоритетном порядке уже в Jira. Пять из них упираются в решения владельца и ждут
-ответа — вопросы записаны в очередь проекта. Два эпика не заблокированы: качество веб-версии
-(GSL-177, в работе) и вечерняя гигиена (GSL-175, следующий). Работать по ним можно прямо сейчас.
+Eight epics in priority order are already in Jira. Five of them rest on the owner's decisions and
+wait for an answer — the questions are written down in the project queue. Two epics are not
+blocked: web-version quality (GSL-177, in progress) and evening hygiene (GSL-175, next). Work on
+them can start right now.
 
-Первый эпик плана намеренно дешёвый — примерно час работы: четыре точечные правки инструкции плюс
-правило, которое не даст им снова протухнуть. Но он упирается в вопрос «кто теперь правит скиллы»,
-потому что авторитетная копия лежит вне git и вне ревью.
+The plan's first epic is deliberately cheap — about an hour of work: four point-edits of the
+instruction plus a rule that will not let them go stale again. But it hits the "who edits skills
+now" question, because the authoritative copy sits outside git and outside review.
 
-## 4. Проблемы и уроки смены
+## 4. Shift problems and lessons
 
-- Установка «владелец сомневается в прежних заявлениях» систематически смещает аудиторов в сторону
-  негатива. Это подтвердилось трижды. Впредь такую установку надо уравновешивать красной командой
-  сразу, а не после.
-- Синтез в первом проходе решил, что двух калибровок не существует, и откалибровал 47 находок сам.
-  Возврат на доработку это исправил. Проверять, что агент действительно прочитал то, на что
-  ссылается, — обязательный шаг.
-- Утверждения в служебных файлах протухают быстрее, чем кажется: пояснение к доказательной базе
-  стало ложным через сорок минут после написания, когда закончилась третья красная команда.
-- Материалы аудита изначально писались в игнорируемую папку и не пережили бы смену. Доказательная
-  база должна лежать рядом с отчётом, а не в служебном каталоге.
+- The framing "the owner doubts prior claims" systematically biases auditors toward the negative.
+  It was confirmed three times. From now on this framing must be balanced with a red team
+  immediately, not after.
+- Synthesis in the first pass decided that two calibrations did not exist and calibrated 47
+  findings itself. Sending it back for rework fixed this. Checking that an agent actually read
+  what it references is a mandatory step.
+- Claims in service files go stale faster than it seems: the explanation to the evidence base
+  became false within forty minutes of being written, when the third red team finished.
+- Audit materials were originally written into an ignored folder and would not have survived the
+  shift. The evidence base must sit next to the report, not in a service directory.
 
-## 5. Комментарии
+## 5. Comments
 
-Владелец в этой смене дал одну директиву: мобильная версия и push-уведомления ставятся на паузу,
-приоритет — профессиональная работа веб-версии со всеми функциями и всеми сервисами. Это отражено
-в правилах, в бэклоге (мобильные пункты не заводились) и в приоритете исполнения.
+The owner gave one directive this shift: the mobile version and push notifications are put on
+pause, the priority is professional work on the web version with all functions and all services.
+This is reflected in the rules, in the backlog (mobile items were not filed) and in the execution
+priority.
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Hard rules (нести дальше, не ослаблять)
+## Hard rules (carry forward, do not weaken)
 
-Полный свод — раздел Standing rules в `docs/handoff/ORCHESTRATION-STATE.md`. Ключевое:
-Opus 5 для оркестратора и всех воркеров · NO Workflow tool · fleet cap 3, панель строится волнами ·
-REGULAR merge, никогда squash · `closes` перед каждым номером · no force-push, no `git add -A`,
-no `--amend` после push · запрет tree-wide git операций в общих деревьях · sovereign не трогать
-(`docs/prompts/`, `docs/lab/decisions/manifest.md`, `docs/handoff/ORCHESTRATION-STATE.md`) ·
-временные файлы только в дереве проекта, не в системном временном каталоге · значок параграфа не
-использовать · `install.sh` под guard, не снимать · kill-pane только по явному id после повторного
-списка · мобильное и push на паузе (owner 2026-07-24) · порядок пульса: heartbeat → wakeup рано →
-пробы → финальный текст владельцу.
+Full set — the Standing rules section in `docs/handoff/ORCHESTRATION-STATE.md`. Key items:
+Opus 5 for the orchestrator and all workers · NO Workflow tool · fleet cap 3, panel is built in
+waves · REGULAR merge, never squash · `closes` before each number · no force-push, no
+`git add -A`, no `--amend` after push · tree-wide git operations forbidden in shared trees ·
+sovereign untouched (`docs/prompts/`, `docs/lab/decisions/manifest.md`,
+`docs/handoff/ORCHESTRATION-STATE.md`) · temporary files only in the project tree, not in the
+system temporary directory · section-sign character not used · `install.sh` under guard, do not
+remove · kill-pane only by explicit id after a re-list · mobile and push on pause (owner
+2026-07-24) · pulse order: heartbeat → wakeup early → probes → final text to owner.
 
 ## Connections
 
-Jira **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции To Do=11 / In Progress=21 /
-In Review=31 / Done=41 · GitHub `ainstance-labs/gosleep` · владелец Roman L, accountId
-`557058:83b04839-8bde-4331-9c2d-24843d0b8e67` · main @ **250b207** · скиллы ГЛОБАЛЬНЫЕ
+Jira **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions To Do=11 / In Progress=21 /
+In Review=31 / Done=41 · GitHub `ainstance-labs/gosleep` · owner Roman L, accountId
+`557058:83b04839-8bde-4331-9c2d-24843d0b8e67` · main @ **250b207** · skills GLOBAL
 (`~/.claude/skills/`): orchestrating-delivery-agents, tmux-agents-orchestration, handoff,
 delivery-workflow, using-jira.
 
-## Gates (база main)
+## Gates (main base)
 
 ```
-bash tools/lab/smoke.sh            # 404/404, FAIL=0 (флейк на строке 234 — pre-existing)
+bash tools/lab/smoke.sh            # 404/404, FAIL=0 (flake on line 234 — pre-existing)
 bash tools/lab/hooks-verify.sh     # 14/14
 (cd tools/lab/ui && npx tsc --noEmit)   # 0
-bash tools/lab/chronicler.sh --no-poll  # 7 страниц
+bash tools/lab/chronicler.sh --no-poll  # 7 pages
 ```
-Готча: `chronicler.py` запускает `main()` при импорте. Смоук надёжнее гонять в клоне или worktree.
+Gotcha: `chronicler.py` runs `main()` on import. Smoke is more reliable in a clone or worktree.
 
-## Что сдано этой сменой
+## Delivered this shift
 
-- **Дашборд аудита:** `docs/reports/system-audit-2026-07-24/index.html` + `ru/index.html`
-  (22 файла, 99 находок с фильтрами, 11 столпов, 5 корневых причин, 8 эпиков, 5 инлайн-схем,
-  глоссарий 32 термина, 461 внутренний якорь резолвится, обращений в сеть ноль).
-- **Доказательная база:** `docs/reports/system-audit-2026-07-24/evidence/` — 13 файлов
-  (6 доменных findings, 3 вердикта красных команд, синтез, payload, дельта PRD, README).
-- **Бэклог:** эпики GSL-174…181, задачи GSL-182…242, 69 зеркал GitHub, все назначены на владельца.
-- **Очередь вопросов:** 8 записей `q-2026-07-24-001…008`, `open=8 (2B/6D/0C/0F)`.
-- **Слитые PR:** #173 (GSL-169 — мандат владельца и доказательная база в git), #248 (GSL-243 —
-  публикация отчёта, догон базы, игнор-файл, пересборка сайта).
-- **Сайт лаборатории** пересобран: было «мёртв» / 1345 событий → стало «свежо» / 2116 событий.
+- **Audit dashboard:** `docs/reports/system-audit-2026-07-24/index.html` + `ru/index.html`
+  (22 files, 99 findings with filters, 11 pillars, 5 root causes, 8 epics, 5 inline diagrams,
+  a 32-term glossary, 461 internal anchors resolving, zero network requests).
+- **Evidence base:** `docs/reports/system-audit-2026-07-24/evidence/` — 13 files
+  (6 domain findings, 3 red team verdicts, synthesis, payload, PRD delta, README).
+- **Backlog:** epics GSL-174…181, tasks GSL-182…242, 69 GitHub mirrors, all assigned to the owner.
+- **Question queue:** 8 records `q-2026-07-24-001…008`, `open=8 (2B/6D/0C/0F)`.
+- **Merged PRs:** #173 (GSL-169 — owner mandate and evidence base in git), #248 (GSL-243 —
+  report publish, base catch-up, ignore file, site rebuild).
+- **Lab site** rebuilt: was "dead" / 1345 events → became "fresh" / 2116 events.
 
-## Открытые вопросы владельцу (ждут ответа)
+## Open questions to the owner (awaiting answer)
 
-| id | тип | задача | о чём |
+| id | type | task | about |
 |---|---|---|---|
-| q-2026-07-24-002 | BLOCKER | GSL-174 | Кто и как правит скиллы теперь |
-| q-2026-07-24-003 | BLOCKER | GSL-180 | Разрешения агентов: оставить снятыми, перечислить явно или relay через Channels |
-| q-2026-07-24-001 | DECISION | GSL-178 | Вооружать ли сторож и в каком режиме |
-| q-2026-07-24-004 | DECISION | GSL-179 | Какое число ставить потолком токенов |
-| q-2026-07-24-005 | DECISION | GSL-176 | Носитель внешнего тика: launchd или задачи Claude Desktop |
-| q-2026-07-24-006 | DECISION | GSL-177 | Раскрываем ли вторую версию веб-интерфейса |
-| q-2026-07-24-007 | DECISION | GSL-176 | Когда провести первый настоящий ночной прогон |
-| q-2026-07-24-008 | DECISION | GSL-177 | Считается ли веб-дашборд «отчётом владельцу» по манифесту |
+| q-2026-07-24-002 | BLOCKER | GSL-174 | Who and how edits skills now |
+| q-2026-07-24-003 | BLOCKER | GSL-180 | Agent permissions: leave off, list explicitly, or relay via Channels |
+| q-2026-07-24-001 | DECISION | GSL-178 | Arm the watchdog or not, and in which mode |
+| q-2026-07-24-004 | DECISION | GSL-179 | What number to set as the token ceiling |
+| q-2026-07-24-005 | DECISION | GSL-176 | External tick carrier: launchd or Claude Desktop tasks |
+| q-2026-07-24-006 | DECISION | GSL-177 | Do we roll out a second version of the web interface |
+| q-2026-07-24-007 | DECISION | GSL-176 | When to run the first real overnight run |
+| q-2026-07-24-008 | DECISION | GSL-177 | Does the web dashboard count as a "report to the owner" per the manifest |
 
-Срок автоприменения умолчаний у решений — 2026-07-25 08:00Z. **Автоприменения не существует**
-(это и есть находка первого эпика): умолчания применяются вручную оркестратором на пульсе через
-`tools/lab/lab-emit.sh list --due`.
+Default auto-apply deadline for the decisions is 2026-07-25 08:00Z. **Auto-apply does not exist**
+(this is finding one of the first epic): defaults are applied manually by the orchestrator on the
+pulse via `tools/lab/lab-emit.sh list --due`.
 
-## Дополнительно на решение владельца (вне очереди)
+## Additionally for owner decision (outside the queue)
 
-Скилл `tmux-agents-orchestration` существует единственной копией в `~/.claude/skills/`, никогда не
-коммитился, резервной копии нет. Правило владельца от 20 июля запрещает копировать глобальные
-скиллы в репозиторий без его команды, поэтому копия не сделана. Подтверждено тремя способами.
+The skill `tmux-agents-orchestration` exists as a single copy in `~/.claude/skills/`, was never
+committed, and there is no backup. The owner's rule from July 20 forbids copying global skills into
+the repository without his command, so no copy was made. Confirmed three ways.
 
-## Эпик GSL-177 исполнен (первый эпик плана, приоритет владельца)
+## Epic GSL-177 delivered (first epic of the plan, owner's priority)
 
-Веб-версия: свежесть, связность и качество первой версии. 8 задач (GSL-205…210 плюс заведённые
-исполнителем GSL-248 на пересборку и GSL-249 на историю разработки), PR #251 слит обычным слиянием.
+Web version: freshness, coherence and quality of the first version. 8 tasks (GSL-205…210 plus
+executor-filed GSL-248 for rebuild and GSL-249 for dev history), PR #251 merged with a regular merge.
 
-Гейты было → стало: smoke **404/404 → 452/452**, FAIL=0 (48 новых утверждений, включая контроли
-отказа); проверка хуков 14/14; типы 0; хроникёр 7 страниц. Живая проверка в изолированном
-браузере: ключевые показатели подняты с 2117 до 812 пикселей, блок «ожидает вас» — с 2228 до 923;
-14 интерактивных элементов работают; утечка домашнего пути на таймлайне устранена полностью; ноль
-ошибок консоли и ноль внешних запросов на всех семи экранах. Приёмочный ран:
+Gates before → after: smoke **404/404 → 452/452**, FAIL=0 (48 new assertions, including failure
+controls); hooks check 14/14; types 0; chronicler 7 pages. Live check in an isolated browser:
+key indicators pulled from 2117 to 812 pixels, the "waiting for you" block — from 2228 to 923;
+14 interactive elements work; the home-path leak on the timeline is fully removed; zero console
+errors and zero external requests on all seven screens. Acceptance run:
 `docs/reports/verifications/GSL-210/runs/01/` (EN + RU).
 
-Вторая версия веба не начиналась — это вопрос `q-2026-07-24-006`, ждёт владельца.
+The web's second version has not started — that is question `q-2026-07-24-006`, waiting on the owner.
 
-## Состояние репозитория на момент передачи
+## Repository state at handoff
 
-`main` @ **dc4bcdd** — ledger-коммит смены 73 (файл состояния с телеметрией циклов 104-118, этот
-handoff, очередь вопросов, события лаборатории). Рабочее дерево чистое, открытых PR нет, флот пуст.
+`main` @ **dc4bcdd** — the shift-73 ledger commit (state file with cycle 104-118 telemetry, this
+handoff, question queue, lab events). Working tree clean, no open PRs, fleet empty.
 
 ## TELEMETRY
 
-Нарастающим итогом: cycles_completed=141, tokens_out≈18 900 000 (плюс исторические гэпы — детали в
-блоке TELEMETRY файла состояния). Смена 73: 13 воркеров, ≈2.27M tokens_out, все на Opus 5, модель
-каждого сверена по транскрипту.
+Cumulative: cycles_completed=141, tokens_out≈18 900 000 (plus historical gaps — details in the
+state file's TELEMETRY block). Shift 73: 13 workers, ≈2.27M tokens_out, all on Opus 5, model of
+each verified from the transcript.
 
-## RESUME POINT — следующий оркестратор
+## RESUME POINT — next orchestrator
 
-1. Подними 5 глобальных скиллов → `ORCHESTRATION-STATE.md` (At a glance, LIVE-STATUS, Standing
-   rules) → этот handoff.
-2. Sanity: `tmux list-panes -t 11` (должна быть только своя панель) · `git log origin/main -1`
-   (ожидается dc4bcdd или новее) · `gh pr list --state open` (пусто) ·
-   `tools/lab/lab-emit.sh list --count` (ожидается `open=8 (2B/6D/0C/0F)`) · `head -12 install.sh`
-   (guard на месте).
-3. Первый heartbeat: цикл 139+, свой `$TMUX_PANE`, честный context_pct.
-4. **Первым делом проверь очередь вопросов** — `tools/lab/lab-emit.sh list` и `list --due`. Если
-   владелец ответил, действуй по ответу и разблокируй соответствующий эпик. Если сроки умолчаний
-   истекли (после 2026-07-25 08:00Z), примени умолчания вручную и залогируй решение — механизма
-   автоприменения в системе нет, это находка первого эпика.
-5. Работа, доступная без ответов владельца: **GSL-175** (гигиена за вечер: архив, расход, глубина
-   Библиотеки). Бриф исполнителю строй по образцу эпика GSL-177: читает эпик и задачи в Jira,
-   читает относящиеся находки в `docs/reports/system-audit-2026-07-24/evidence/` с приоритетом
-   вердиктов красных команд, исполняет задача за задачей с гейтами и историей разработки, PR не
-   сливает.
-6. Порядок пульса: heartbeat → ScheduleWakeup рано (в середине хода) → чеклист-пробы → финальный
-   текст владельцу. На вопросы владельца отвечать первым делом.
+1. Load the 5 global skills → `ORCHESTRATION-STATE.md` (At a glance, LIVE-STATUS, Standing
+   rules) → this handoff.
+2. Sanity: `tmux list-panes -t 11` (should be own pane only) · `git log origin/main -1`
+   (expected dc4bcdd or newer) · `gh pr list --state open` (empty) ·
+   `tools/lab/lab-emit.sh list --count` (expected `open=8 (2B/6D/0C/0F)`) · `head -12 install.sh`
+   (guard in place).
+3. First heartbeat: cycle 139+, own `$TMUX_PANE`, honest context_pct.
+4. **First thing check the question queue** — `tools/lab/lab-emit.sh list` and `list --due`. If
+   the owner answered, act on the answer and unblock the corresponding epic. If default deadlines
+   are past (after 2026-07-25 08:00Z), apply the defaults manually and log a decision — there is
+   no auto-apply mechanism in the system, that is finding one of the first epic.
+5. Work available without owner answers: **GSL-175** (evening hygiene: archive, spend, Library
+   depth). Build the executor brief per the epic GSL-177 template: reads the epic and tasks in
+   Jira, reads the relevant findings in `docs/reports/system-audit-2026-07-24/evidence/` with
+   priority on red team verdicts, executes task after task with gates and dev history, does not
+   merge the PR.
+6. Pulse order: heartbeat → ScheduleWakeup early (middle of the turn) → checklist probes → final
+   text to the owner. Answer owner questions first thing.

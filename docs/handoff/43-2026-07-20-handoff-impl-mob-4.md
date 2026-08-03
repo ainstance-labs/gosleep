@@ -1,90 +1,93 @@
-# Handoff — gosleep — 2026-07-20 (цикл 68, impl-mob-4: GSL-107 break-glass runbook)
+# Handoff — gosleep — 2026-07-20 (cycle 68, impl-mob-4: GSL-107 break-glass runbook)
 
-> Для оркестратора и следующего impl-воркера Фазы 6. Читай Part 1 → ORCHESTRATOR REPORT → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + handoff 39 (развёртка Фазы 6) + 40 (RC) +
-> 41 (phone-readable) + 42 (дизайн-проход) + этот файл + handoff 35 (20 правил и 6 уроков — все в силе).
-> Я — impl-воркер цикла 68. Сделал ровно одну задачу: **GSL-107**.
+> For the orchestrator and the next impl-worker of Phase 6. Read Part 1 → ORCHESTRATOR REPORT → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + handoff 39 (Phase 6 rollout) + 40 (RC) +
+> 41 (phone-readable) + 42 (design pass) + this file + handoff 35 (20 rules and 6 lessons — all in force).
+> I am the impl-worker of cycle 68. Did exactly one task: **GSL-107**.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Что сделано
+## 1. What was done
 
-**GSL-107** (Jira **In Review**, не Done — почему, см. §5; коммит `19dfd47`). Написан runbook
-аварийного доступа к флоту с телефона — `docs/runbooks/break-glass.md` — и к нему исполняемый
-детектор готовности `tools/breakglass/bg-preflight.sh`, брат `rc-preflight.sh` из GSL-104.
+**GSL-107** (Jira **In Review**, not Done — why, see section 5; commit `19dfd47`). Wrote a runbook
+for emergency access to the fleet from the phone — `docs/runbooks/break-glass.md` — and to go with
+it an executable readiness detector `tools/breakglass/bg-preflight.sh`, sibling of `rc-preflight.sh`
+from GSL-104.
 
-## 2. Главный результат: цепь длиннее, чем её называют
+## 2. Main result: the chain is longer than it is named
 
-Задача называется «Tailscale + Blink/mosh». Это звучит как два звена. Их **пять**, и одно из них
-описание не упоминает вовсе.
+The task is named "Tailscale + Blink/mosh". It sounds like two links. There are **five**, and the
+description does not mention one at all.
 
-**mosh — не транспорт, а пассажир SSH.** Он поднимает `mosh-server` на той стороне **через SSH**,
-читает из его вывода ключ и порт, и только потом переходит на свой UDP-канал. Значит между «tailnet
-поднят» и «есть shell» стоит **SSH-терминатор**. На этой машине его нет ни в одном из двух видов:
+**mosh is not the transport but a passenger on SSH.** It starts a `mosh-server` on the other side
+**via SSH**, reads the key and port from its output, and only then switches to its own UDP channel.
+So between "tailnet up" and "shell exists" stands an **SSH terminator**. On this machine it does
+not exist in either form:
 
-| Звено | Состояние (проверено 2026-07-20) |
+| Link | State (verified 2026-07-20) |
 |---|---|
-| `tailscale` | **отсутствует** — ни в PATH, ни в `/Applications`, ни в brew |
-| tailnet | недоступен без предыдущего |
-| **SSH-транспорт** | **системный Remote Login ВЫКЛЮЧЕН, `:22` закрыт** ← в описании задачи этого нет |
-| `mosh-server` | **отсутствует** |
-| `tmux` | ✅ 3.6a, 9 живых сессий — **единственное готовое звено** |
+| `tailscale` | **absent** — not on PATH, not in `/Applications`, not in brew |
+| tailnet | unavailable without the previous |
+| **SSH transport** | **system Remote Login OFF, `:22` closed** ← not in the task description |
+| `mosh-server` | **absent** |
+| `tmux` | ✅ 3.6a, 9 live sessions — **the only ready link** |
 
-Опасность этого звена в том, что его отказ **выглядит как успех**: Tailscale зелёный, mosh
-установлен, путь кажется готовым. Поэтому `bg-preflight.sh` проверяет транспорт отдельно и **не
-выдаёт `ready` при четырёх готовых звеньях из пяти**.
+The danger of this link is that its failure **looks like success**: Tailscale green, mosh
+installed, the path seems ready. That is why `bg-preflight.sh` verifies the transport separately
+and **does not report `ready` on four ready links out of five**.
 
-## 3. Развилка, у которой есть цена в безопасности
+## 3. A fork with a security price
 
-Терминатора два, и выбор между ними не вкусовой:
+There are two terminators, and the choice between them is not a matter of taste:
 
-| | Tailscale SSH | системный Remote Login |
+| | Tailscale SSH | system Remote Login |
 |---|---|---|
-| Порт на машине | **не открывается вообще** | `:22` на **всех** интерфейсах, включая кафе-Wi-Fi |
-| Связка с mosh | ⏳ здесь не проверена | проверенная временем |
+| Port on the machine | **does not open at all** | `:22` on **all** interfaces, including café-Wi-Fi |
+| Bundling with mosh | ⏳ not verified here | proven by time |
 
-Приёмка F6-S4 требует «БЕЗ открытия входящих портов». Путь через Remote Login выполняет её
-**буквой** (роутер не проброшен) и нарушает **на уровне машины**. Записано как DECISION
-`q-2026-07-20-004`, дефолт применён: Tailscale SSH основным, Remote Login запасным — с
-предупреждением и рецептом `ListenAddress` на tailscale-адрес.
+Acceptance for F6-S4 requires "WITHOUT opening incoming ports". The path through Remote Login
+satisfies it **to the letter** (the router is not forwarded) and violates it **at the machine
+level**. Recorded as DECISION `q-2026-07-20-004`, default applied: Tailscale SSH as primary,
+Remote Login as backup — with a warning and a `ListenAddress` recipe on the tailscale address.
 
-## 4. Инвариант kill-pane получил механизм вместо цитаты
+## 4. The kill-pane invariant now has a mechanism instead of a quote
 
-MEMORY несёт HARD-урок 2026-07-07 («`kill-pane -a` убил живой флот»). Runbook, который учит
-владельца килять панели с телефона, обязан нести это предупреждение — но пересказ урока не
-объясняет, **почему** правило именно такое. Эксперимент в изолированной тестовой сессии (живой флот
-не трогался) уточнил два факта, ни один из которых не следовал из формулировки:
+MEMORY carries a HARD lesson 2026-07-07 ("`kill-pane -a` killed the live fleet"). A runbook that
+teaches the owner to kill panes from the phone must carry this warning — but a paraphrase of the
+lesson does not explain **why** the rule is exactly this. An experiment in an isolated test
+session (the live fleet not touched) refined two facts, neither of which followed from the wording:
 
-**Радиус `-a` — окно, а не сервер.** `kill-pane -a -t %427` убил `%429` и `%430`; панели соседнего
-окна уцелели. Утешает это только формально: **флот gosleep живёт панелями в одном окне**
-(`12:0.0`…`12:0.3`), так что для этого проекта `-a` практически означает «убить всех воркеров,
-кроме себя».
+**The `-a` radius is a window, not a server.** `kill-pane -a -t %427` killed `%429` and `%430`;
+panes of the neighboring window survived. That is only formally consoling: **the gosleep fleet
+lives as panes in one window** (`12:0.0`…`12:0.3`), so for this project `-a` practically means
+"kill all workers but yourself".
 
-**Позиционные адреса перенумеровываются.** После смерти `%428` панель `%429` сменила адрес
-`0.2` → `0.1`, **не сменив id**. С телефона между «прочитал список» и «набрал команду» проходят
-минуты, за которые воркер может закончиться сам, — и `kill-pane -t 12:0.2` убьёт **не ту панель,
-которую читали**. Правило «только по явному `%id`» перестаёт быть суеверием и становится следствием.
+**Positional addresses get renumbered.** After `%428` died the pane `%429` changed address
+`0.2` → `0.1`, **without changing its id**. From the phone, minutes pass between "read the list"
+and "type the command", during which a worker can finish on its own — and `kill-pane -t 12:0.2`
+will kill **not the pane that was read**. The rule "only by an explicit `%id`" stops being
+superstition and becomes a consequence.
 
-**Отдельно: attach с телефона искажает флот на десктопе.** `window-size` = `latest`, то есть размер
-окна задаёт последний активный клиент. Телефон пережимает панели **для всех**, и утром владельца
-встречает покорёженная раскладка. Поэтому телефонный attach в runbook всегда
-`-r -f ignore-size` (оба флага проверены на 3.6a; контроль — `-Z` даёт `unknown flag`).
+**Separately: attach from the phone distorts the desktop fleet.** `window-size` = `latest`, i.e.
+the window size is set by the last active client. The phone squeezes panes **for everyone**, and
+in the morning the owner meets a mangled layout. Therefore phone attach in the runbook is always
+`-r -f ignore-size` (both flags verified on 3.6a; control — `-Z` gives `unknown flag`).
 
-## 5. Почему Jira **In Review**, а не Done
+## 5. Why Jira **In Review**, not Done
 
-Описание задачи называет приёмкой **F6-S4** — «с телефона возможен `tmux attach` к живой панели».
-Четыре звена из пяти на машине отсутствуют, поэтому живого прогона не было и быть не могло.
-Ставить Tailscale самому я не стал: установка системного VPN на машину владельца без его команды —
-BLOCKER-класс.
+The task description names **F6-S4** the acceptance — "`tmux attach` to a live pane from the
+phone is possible". Four of five links on the machine are absent, so a live run was not and could
+not be. I did not install Tailscale myself: installing a system VPN on the owner's machine
+without his command is a BLOCKER class.
 
-Deliverable готов и проверен в той части, которая проверяема; приёмка требует шага владельца.
-`In Review` описывает это точно, `Done` был бы утверждением о непроверенной способности.
-**Решение за оркестратором** — если консистентность с GSL-104 (там Done при blocked-on-human
-приёмке) важнее, транзиция 41 занимает одну команду.
+The deliverable is ready and verified in the part that is verifiable; acceptance requires an
+owner step. `In Review` describes this precisely, `Done` would be a statement about an unverified
+capability. **The orchestrator decides** — if consistency with GSL-104 (there Done on a
+blocked-on-human acceptance) matters more, transition 41 is one command.
 
-## 6. Проблемы
+## 6. Problems
 
-Блокеров по своей задаче нет. Для следующего воркера — см. ⭐ RESUME.
+No blockers on my task. For the next worker — see ⭐ RESUME.
 
 ---
 
@@ -92,159 +95,163 @@ Deliverable готов и проверен в той части, которая 
 
 | | |
 |---|---|
-| **Задача** | **GSL-107** `[Docs]` → Jira **In Review** (верифицировано GET'ом), GH #121 **не закрывал** |
-| **Коммит** | **`19dfd47`** — 5 файлов, **+872/−0**, пофайлово (`git add` списком, не `-A`) |
-| **Гейты** | smoke **303/303** (287 базовых + 16 новых, **0 удалений — ни один старый не ослаблен**) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 7 страниц |
-| **Мутанты** | **8 ⭐, каждый краснит РОВНО свой** — прогнано на копии в scratchpad, живое дерево не трогалось |
-| **Решения** | **`q-2026-07-20-004`** (DECISION, транспорт) — заведён, дефолт применён, очередь `open=1` |
-| **Схема** | `render/7` не трогалась; `docs/lab/*` не коммитил (DERIVED + чужие правки) |
-| **install.sh** | **не трогался**, guard не снимался; глобальные скиллы не трогались |
-| **Модель** | **`claude-opus-4-8`** — сверено по транскрипту (см. ниже), не self-report |
-| **Acceptance** | ✅ 7 пунктов description (из них 2 живым прогоном) · ⏳ **F6-S4 НЕ ЗАКРЫТ** |
+| **Task** | **GSL-107** `[Docs]` → Jira **In Review** (verified by GET), GH #121 **not closed** |
+| **Commit** | **`19dfd47`** — 5 files, **+872/−0**, per-file (`git add` by list, not `-A`) |
+| **Gates** | smoke **303/303** (287 base + 16 new, **0 removals — no old asserts weakened**) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 7 pages |
+| **Mutants** | **8 ⭐, each reddens EXACTLY its own** — run on a copy in scratchpad, live tree untouched |
+| **Decisions** | **`q-2026-07-20-004`** (DECISION, transport) — filed, default applied, queue `open=1` |
+| **Schema** | `render/7` untouched; `docs/lab/*` not committed (DERIVED + foreign edits) |
+| **install.sh** | **untouched**, guard not removed; global skills untouched |
+| **Model** | **`claude-opus-4-8`** — verified from the transcript (see below), not self-report |
+| **Acceptance** | ✅ 7 items of the description (of them 2 by a live run) · ⏳ **F6-S4 NOT CLOSED** |
 
-**Сверка модели.** Транскрипт опознан по session-id из scratchpad-пути:
+**Model check.** Transcript identified by session-id from the scratchpad path:
 `~/.claude/projects/…/b4b5c84b-f286-45c2-b6fa-6a34289b7aa5.jsonl` → `"model":"claude-opus-4-8"`,
-**129 записей, единственное значение**. ⚠️ Первый взятый файл (самый свежий по `mtime`) оказался
-**чужой** сессией на `claude-fable-5` — «свежайший по mtime» **не** значит «мой», якорь только
-session-id.
+**129 records, only value**. ⚠️ The first file I took (freshest by `mtime`) turned out to be a
+**foreign** session on `claude-fable-5` — "freshest by mtime" does **not** mean "mine", the anchor
+is only session-id.
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Что изменено
+## What was changed
 
-| Файл | Роль |
+| File | Role |
 |---|---|
-| `tools/breakglass/bg-preflight.sh` | **новый**, 227 строк — детект цепи, `--json`, коды 0/1/2, блок `SURFACE`, 0-LLM |
-| `docs/runbooks/break-glass.md` | **новый**, 323 строки — 8 разделов, ⏳-метки в шапке |
-| `tools/lab/smoke.sh` | **+157/−0** — блок GSL-107, 16 ассертов (8 ⭐ + позитивные контроли) |
-| `docs/dev_history/GSL-107-…md` + `README.md` | dev history + строка индекса |
+| `tools/breakglass/bg-preflight.sh` | **new**, 227 lines — chain detect, `--json`, codes 0/1/2, `SURFACE` block, 0-LLM |
+| `docs/runbooks/break-glass.md` | **new**, 323 lines — 8 sections, ⏳ marks in the header |
+| `tools/lab/smoke.sh` | **+157/−0** — GSL-107 block, 16 asserts (8 ⭐ + positive controls) |
+| `docs/dev_history/GSL-107-…md` + `README.md` | dev history + index line |
 
-## Тесты (⭐ = имеет мутанта, который краснит именно его)
+## Tests (⭐ = has a mutant that reddens exactly it)
 
-| ⭐ | Механизм | Мутант |
+| ⭐ | Mechanism | Mutant |
 |---|---|---|
-| зелёный tailnet без транспорта ≠ ready | вердикт при `RunSSH=false` + sshd off | ослабить ветку «no transport at all» |
-| `unknown` не округляется вверх | нечитаемые prefs → `tailscale_ssh=unknown`, статус ≠ ready | считать `!= off` транспортом |
-| экспозиция запасного пути названа | `:22 on EVERY interface` в выводе | убрать предупреждение |
-| preflight не мутирует машину | grep исполняемых строк | дописать `tailscale up --ssh` |
-| runbook запрещает `kill-pane -a` | текст + `⛔`/`НИКОГДА` | смягчить формулировку |
-| …и объясняет **почему** | требует объяснения перенумерации | убрать механизм, оставить правило |
-| каждая копируемая команда attach несёт `ignore-size` | строк `tmux attach -t` **без** флага = 0 | снять флаг с команд |
-| F6-S4 всё ещё открыт | `НЕ ЗАКРЫТО` в таблице приёмки | заменить на ✅ |
+| green tailnet without transport ≠ ready | verdict on `RunSSH=false` + sshd off | soften the "no transport at all" branch |
+| `unknown` is not rounded up | unreadable prefs → `tailscale_ssh=unknown`, status ≠ ready | count `!= off` as transport |
+| exposure of the backup path is named | `:22 on EVERY interface` in the output | remove the warning |
+| preflight does not mutate the machine | grep executable lines | append `tailscale up --ssh` |
+| runbook forbids `kill-pane -a` | text + `⛔`/`NEVER` | soften the wording |
+| …and explains **why** | requires an explanation of renumbering | remove the mechanism, keep the rule |
+| every copyable attach command carries `ignore-size` | lines `tmux attach -t` **without** the flag = 0 | drop the flag from commands |
+| F6-S4 still open | `NOT CLOSED` in the acceptance table | replace with ✅ |
 
-**Тестирование герметично:** фейковые `tailscale`/`mosh-server`/`tmux` в `$WORK`, состояние sshd —
-через `BG_SSHD_STATE`. Вердикты не зависят от того, поставит ли владелец Tailscale завтра.
+**Testing is hermetic:** fake `tailscale`/`mosh-server`/`tmux` in `$WORK`, sshd state via
+`BG_SSHD_STATE`. Verdicts do not depend on whether the owner installs Tailscale tomorrow.
 
-### Мутанты нашли слабый тест, а не только подтвердили сильные
+### Mutants found a weak test, not just confirmed strong ones
 
-Первая версия проверки `ignore-size` грепала документ на само слово. Мутант снял флаг со **всех
-трёх** копируемых команд, оставив пояснительную таблицу, — и тест **прошёл**. Это ровно та правка,
-которую сделает будущий переписыватель. Проверка переписана на свойство **per-command**.
+The first version of the `ignore-size` check grepped the document for the word itself. A mutant
+removed the flag from **all three** copyable commands, leaving the explanatory table, — and the
+test **passed**. That is exactly the edit a future rewriter would make. The check is rewritten
+to be **per-command**.
 
-### И поймали ложное срабатывание в собственном детекторе
+### And caught a false positive in the detector itself
 
-«preflight не мутирует машину» покраснела на строке
-`TAILNET_STATE="down"; warn "… tailscale up is an owner step"`. Вызова там нет — есть **текст
-предупреждения**; стриппер отбрасывает строку, только если она **начинается** с печатающей функции.
-Починено в скрипте (warn на отдельной строке + комментарий о причине), к детектору добавлен
-**позитивный контроль** на настоящем `tailscale up --ssh`.
+"preflight does not mutate the machine" reddened on the line
+`TAILNET_STATE="down"; warn "… tailscale up is an owner step"`. There is no call there — there is
+**warning text**; the stripper drops a line only if it **begins** with a printing function. Fixed
+in the script (warn on a separate line + a comment about the reason), a **positive control** on a
+real `tailscale up --ssh` added to the detector.
 
 ## Connections
 
 | | |
 |---|---|
-| Ветка | `GSL-102-mobile` @ **`19dfd47`** (+ этот handoff) |
-| Эпик | GSL-102 = GH #116; задачи GSL-103…GSL-110 = GH #117…#124 |
-| PR Фазы 6 | **ещё не открыт** |
-| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции 11/21/**31=In Review**/41 |
-| Очередь | `open=1 (0B/1D/0C/0F)` — мой `q-2026-07-20-004` |
+| Branch | `GSL-102-mobile` @ **`19dfd47`** (+ this handoff) |
+| Epic | GSL-102 = GH #116; tasks GSL-103…GSL-110 = GH #117…#124 |
+| Phase 6 PR | **not yet open** |
+| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions 11/21/**31=In Review**/41 |
+| Queue | `open=1 (0B/1D/0C/0F)` — my `q-2026-07-20-004` |
 
-## Статус задач Фазы 6 (проверено JQL, не по памяти)
+## Phase 6 task status (verified by JQL, not from memory)
 
 **Done (4):** GSL-103 · GSL-104 · GSL-108 · GSL-109.
-**In Review (1):** **GSL-107** (эта).
+**In Review (1):** **GSL-107** (this).
 **To Do (3):** GSL-105, GSL-106, GSL-110.
 
-## ⚠️ Железные правила
+## ⚠️ Hard rules
 
-Все 20 правил handoff 35 в силе без ослаблений: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
-после push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
-`docs/lab/site/*.html` DERIVED · коммит через `git commit -F` · дирти дерево — норма.
-**Owner directive 2026-07-20 (IN FORCE):** `./install.sh` целиком не гонять (GUARD, exit 1 — не
-снимать и не обходить); точечный `rsync -a skill/<name>/ ~/.claude/skills/<name>/`; глобальная
-копия `orchestrating-delivery-agents` авторитетна.
+All 20 handoff-35 rules in force without weakening: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
+after push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
+`docs/lab/site/*.html` DERIVED · commit via `git commit -F` · dirty tree — norm.
+**Owner directive 2026-07-20 (IN FORCE):** `./install.sh` whole not run (GUARD, exit 1 — do
+not remove and do not bypass); point-`rsync -a skill/<name>/ ~/.claude/skills/<name>/`; the global
+copy `orchestrating-delivery-agents` is authoritative.
 
 ## Gotchas
 
-Все прежние в силе. Новое от меня:
+All prior ones in force. New from me:
 
-- **`kill-pane -a` бьёт по окну, а не по серверу** — но флот в одном окне, разница утешает только
-  формально.
-- **`window-size` = `latest`**: любой новый клиент переопределяет размер окна для всех остальных.
-  Телефонный attach без `-f ignore-size` корёжит десктопную раскладку.
-- **Стриппер комментариев (`rc-`/`bg-preflight` harness) отбрасывает строку только если она
-  НАЧИНАЕТСЯ с печатающей функции** — `X=1; warn "…"` читается как исполняемая строка.
-- **«Самый свежий транскрипт по `mtime`» ≠ «мой».** На машине несколько живых сессий; чужая дала
-  бы неверную модель в отчёте. Якорь — session-id из scratchpad-пути.
-- **App Store-сборка Tailscale прячет CLI в бандле** (`…/Tailscale.app/Contents/MacOS/Tailscale`).
-- **Ключи устройств Tailscale истекают**: мак, «просто переставший отвечать» через месяцы, — скорее
-  всего истёкший ключ, а не поломка.
-- **zsh не знает `PIPESTATUS`** (там `pipestatus`) — оборвало один диагностический прогон.
+- **`kill-pane -a` hits the window, not the server** — but the fleet is in one window, the
+  difference consoles only formally.
+- **`window-size` = `latest`**: any new client overrides the window size for everyone else.
+  Phone attach without `-f ignore-size` mangles the desktop layout.
+- **The comment stripper (`rc-`/`bg-preflight` harness) drops a line only if it BEGINS with a
+  printing function** — `X=1; warn "…"` reads as an executable line.
+- **"Freshest transcript by `mtime`" ≠ "mine".** There are several live sessions on the machine;
+  someone else's would give the wrong model in the report. Anchor — session-id from the scratchpad
+  path.
+- **App Store Tailscale build hides the CLI inside the bundle** (`…/Tailscale.app/Contents/MacOS/Tailscale`).
+- **Tailscale device keys expire**: a Mac "just stopped responding" after months — likely an
+  expired key, not a breakdown.
+- **zsh does not know `PIPESTATUS`** (it has `pipestatus`) — broke one diagnostic run.
 
 ---
 
-## ⭐ RESUME POINT — следующий impl-воркер Фазы 6
+## ⭐ RESUME POINT — next Phase 6 impl-worker
 
 ```bash
 # Orient
 head -30 docs/handoff/ORCHESTRATION-STATE.md
-cat docs/handoff/43-2026-07-20-handoff-impl-mob-4.md   # этот файл
+cat docs/handoff/43-2026-07-20-handoff-impl-mob-4.md   # this file
 git branch --show-current                 # GSL-102-mobile
-git log --oneline -1                      # 19dfd47 (GSL-107) + handoff-коммит
-ls -la .env.local 2>/dev/null || echo "GSL-105 всё ещё заблокирована"
-tools/breakglass/bg-preflight.sh || true  # 2 = unavailable, ожидаемо
+git log --oneline -1                      # 19dfd47 (GSL-107) + handoff commit
+ls -la .env.local 2>/dev/null || echo "GSL-105 still blocked"
+tools/breakglass/bg-preflight.sh || true  # 2 = unavailable, expected
 tools/lab/lab-emit.sh list --count
 ```
 
-### Проверено мной на факте, не унаследовано (2026-07-20, конец цикла 68)
+### Verified by me by fact, not inherited (2026-07-20, end of cycle 68)
 
 | | |
 |---|---|
-| `.env.local` | **ОТСУТСТВУЕТ** — блокер GSL-105 в силе, ничего не изменилось |
-| `tailscale` / `mosh` | **не установлены** |
-| **системный Remote Login** | **выключен**, `:22` закрыт — новый факт, ранее не зафиксированный |
-| очередь вопросов | `open=1 (0B/1D/0C/0F)` — мой DECISION о транспорте |
+| `.env.local` | **ABSENT** — GSL-105 blocker in force, nothing changed |
+| `tailscale` / `mosh` | **not installed** |
+| **system Remote Login** | **off**, `:22` closed — a new fact, not previously recorded |
+| question queue | `open=1 (0B/1D/0C/0F)` — my DECISION on transport |
 
-### Остаток фазы
+### Phase remainder
 
-- **GSL-105** — **BLOCKER** по секрету ntfy-топика: `.env.local` по-прежнему нет. Не брать.
-- **GSL-106** — PRD велит ставить её **после** 105 ⇒ транзитивно заблокирована.
-- **GSL-110** `[Docs]` dev_history Фазы 6 + приёмка F6-S1..S4 — **единственная незаблокированная**.
-  Учесть: её приёмка **не закроется целиком** — F6-S1 ждёт hands-on владельца (handoff 40),
-  F6-S2/S3 упираются в незакрытые 105/106, F6-S4 — в отсутствие Tailscale. Задача остаётся
-  осмысленной: dev_history Фазы 6 пишется по реально приземлённому, а приёмка фиксируется **по
-  факту**, с ⏳ там, где доказательства нет. Правило честности приёмки записано прямо в её
-  description — не смягчать формулировки до выполнимых.
+- **GSL-105** — **BLOCKER** on the ntfy topic secret: `.env.local` still absent. Do not take.
+- **GSL-106** — PRD requires it be done **after** 105 ⇒ transitively blocked.
+- **GSL-110** `[Docs]` Phase 6 dev_history + F6-S1..S4 acceptance — **the only unblocked one**.
+  Note: its acceptance **will not close entirely** — F6-S1 waits for the owner's hands-on
+  (handoff 40), F6-S2/S3 hit unresolved 105/106, F6-S4 — on the absence of Tailscale. The task
+  remains meaningful: Phase 6 dev_history is written per what actually landed, and acceptance
+  is recorded **by fact**, with ⏳ where there is no evidence. The honesty-of-acceptance rule
+  is written directly in its description — do not soften wording to fit what can be met.
 
-**Рекомендация:** GSL-110 как закрывающая, с честной ⏳-таблицей. Если владелец поставит Tailscale
-или положит `.env.local` — приоритет меняется на 107-приёмку / 105 соответственно.
+**Recommendation:** GSL-110 as the closer, with an honest ⏳ table. If the owner installs
+Tailscale or puts down `.env.local` — the priority flips to 107-acceptance / 105 accordingly.
 
-### Предупреждение по моей работе
+### Warning about my work
 
-`bg-preflight.sh` написан против **документированной** поверхности Tailscale — на машине его нет,
-и живым прогоном подтверждена только tmux-часть. Поэтому пробы имеют **три** состояния, и
-`unknown` никогда не округляется вверх. Когда Tailscale появится, **первый прогон обязателен
-именно как проверка скрипта**: если он скажет `ready` там, где путь не работает, — дефект в
-`SURFACE`-блоке, а не в цепи. Разделы §2/§3/§6 runbook'а помечены ⏳ ровно по той же причине.
+`bg-preflight.sh` is written against the **documented** Tailscale surface — it is absent on the
+machine, and only the tmux part is confirmed by a live run. Therefore probes have **three**
+states, and `unknown` is never rounded up. When Tailscale appears, **the first run is mandatory
+exactly as a check of the script**: if it says `ready` where the path does not work — the defect
+is in the `SURFACE` block, not in the chain. Sections 2/3/6 of the runbook are marked ⏳ for
+exactly the same reason.
 
 ## Blocked on human
 
-- **GSL-107 / F6-S4 (моя):** поставить Tailscale и **днём, не в аварию**, пройти §7 runbook'а.
-  Признак закрытия — `bg-preflight.sh` со статусом `ready`. Сейчас честно `unavailable`.
-  ⚠️ Установка системного VPN — BLOCKER-класс для агента, только владелец.
-- **GSL-109:** взгляд владельца на 7 экранов (handoff 42). Результат записать включая отрицательный.
-- **GSL-108 / F5-S4c:** финальный взгляд с реального телефона (handoff 41).
-- **GSL-104 / F6-S1:** hands-on пэйринг + второй пуш-тоггл (handoff 40).
-- **GSL-105:** BLOCKER по секрету ntfy-топика — `.env.local` **проверено, отсутствует**.
+- **GSL-107 / F6-S4 (mine):** install Tailscale and **in daylight, not in an emergency**, walk
+  through runbook section 7. Sign of closure — `bg-preflight.sh` with status `ready`. Currently
+  honestly `unavailable`.
+  ⚠️ Installing a system VPN is a BLOCKER class for an agent, owner only.
+- **GSL-109:** owner's look at the 7 screens (handoff 42). Record the result including a negative.
+- **GSL-108 / F5-S4c:** final look from a real phone (handoff 41).
+- **GSL-104 / F6-S1:** hands-on pairing + the second push toggle (handoff 40).
+- **GSL-105:** BLOCKER on the ntfy topic secret — `.env.local` **verified, absent**.

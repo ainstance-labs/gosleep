@@ -1,59 +1,62 @@
-# Handoff 51 — 2026-07-28 — impl-179: эпик GSL-179 исполнен полностью, PR #253 открыт
+# Handoff 51 — 2026-07-28 — impl-179: epic GSL-179 delivered in full, PR #253 open
 
-## Part 1 — что случилось, простыми словами
+## Part 1 — what happened, plain words
 
-Я исполнитель эпика GSL-179 «Индикаторы автономности начинают отвечать» (эпик 6 плана аудита
-2026-07-24 + директива владельца d-2026-07-28-007 про настраиваемый потолок и первоклассный
-unlimited). Посреди работы была пауза по приказу владельца (quota-wait, после GSL-221), затем
-resume — эпик доведён до конца: все 6 задач сделаны, PR открыт, НЕ слит (мерж за оркестратором).
+I am the executor of epic GSL-179 "Autonomy indicators start answering" (epic 6 of the 2026-07-24
+audit plan + owner directive d-2026-07-28-007 about a configurable ceiling and first-class
+unlimited). Midway through the work there was a pause on owner command (quota-wait, after
+GSL-221), then resume — the epic taken to the end: all 6 tasks done, PR open, NOT merged
+(merge on the orchestrator).
 
-Что изменилось для владельца: RUNWAY впервые за 17 сборок отвечает (bound=exact, теперь 7 осей);
-потолок токенов — три честных состояния (дефолт 16M/НОЧЬ переопределяем, своё число, unlimited по
-явному слову — везде рисуется как выбор, не как дыра); доска Tasks знает статус каждой из 249
-задач (было 94 процента «не знаю»); появилась вторая метрика автономности 0.816 с честной рамкой;
-след супервизии наконец копится в git; ветка рендера BLOCKER впервые исполнена и закреплена
-ассертами.
+What changed for the owner: RUNWAY, for the first time in 17 builds, answers (bound=exact,
+now 7 axes); the token ceiling — three honest states (default 16M/NIGHT overrideable, own number,
+unlimited on an explicit word — everywhere drawn as a choice, not a hole); the Tasks board knows
+the status of each of 249 tasks (used to be 94 percent "don't know"); a second autonomy metric
+0.816 appeared with an honest frame; the supervision trace finally accumulates in git; the
+BLOCKER render branch has been executed for the first time and pinned with asserts.
 
 ## ORCHESTRATOR REPORT
 
-- Ветка `GSL-179-token-ceiling` (от a114c8a), запушена. **PR #253 открыт, НЕ слит** — title
-  `GSL-179 …`, body: Implements + чеклист + Mirrors GH #179 + closes перед каждым из #179,
-  #221..226 (номера зеркал проверены через gh, совпали с ключами).
-- Коммиты по задачам: f6ee225 GSL-221 (потолок: 3 режима, ночная семантика с якорем суток UTC),
-  e7d31e5 GSL-222 (1−asks/shipped 7д + рамка), 8989128 GSL-223 (автоподхват JQL-дампа; первый
-  прогон: 338 событий, unknown 0/249), 42dc5d1 GSL-224 (7-я ось decisions + правило «незапущенный
-  механизм → unknown»), e3ba732 GSL-225 (архив супервизии docs/lab/supervision/, 200 пульсов в
-  git), 23514ee GSL-226 (BLOCKER-рендер испытан, 5 ассертов), e5d0af4 GSL-179 (пересборка
-  grade=fresh последним коммитом, правило GSL-194).
-- Jira: задачи GSL-221..226 Done (комментарии с отклонениями на 221/223), эпик GSL-179 In Review.
-- Гейты (было→стало): smoke 462→497 PASS / 0 FAIL; hooks-verify 14/14; tsc 0; chronicler FRESH.
-- **Действия оркестратора после мержа:**
-  1. `docs/handoff/GSL-223-orchestrator-cycle-boundary-jira-dump.md` — готовый шаг чек-листа
-     границы цикла (сохранять JQL-дамп в docs/lab/scratch/jira-poll.json + гонять chronicler БЕЗ
-     --no-poll на границе цикла). Применить к суверенному скиллу может только оркестратор/владелец.
-  2. Ledger-коммит: docs/lab/events/2026-07-28.jsonl (+338 трекерных событий и хуки),
-     docs/lab/questions/queue.jsonl (q-2026-07-28-003/004 от меня), docs/lab/decisions/log.jsonl
-     (правки не мои), STATE — как обычно, руками оркестратора.
-  3. runway.bound=exact уже в 2 сборках подряд; третья (критерий эпика) добирается любым штатным
-     проходом.
-- Развилки, закрытые дефолтами (обе reversibility high, можно молча оставить):
-  q-2026-07-28-003 (потолок считается ЗА НОЧЬ: окно=сутки UTC, якорь=кумулятив на первой сборке
-  дня; кумулятив 18.98M > 16M — кумулятивная семантика дала бы вечный ложный BUDGET_EXCEEDED),
-  q-2026-07-28-004 (след супервизии — трекаемым АРХИВОМ; живые runtime-файлы остаются ignored по
-  контракту суверенного скилла).
-- Инцидентов нет; sovereign не тронут; Workflow tool не использовался; force-push/amend/stash — нет.
+- Branch `GSL-179-token-ceiling` (from a114c8a), pushed. **PR #253 open, NOT merged** — title
+  `GSL-179 …`, body: Implements + checklist + Mirrors GH #179 + closes before each of #179,
+  #221..226 (mirror numbers verified via gh, matched the keys).
+- Task commits: f6ee225 GSL-221 (ceiling: 3 modes, night semantics with a UTC day anchor),
+  e7d31e5 GSL-222 (1−asks/shipped 7d + frame), 8989128 GSL-223 (auto pickup of the JQL dump; first
+  run: 338 events, unknown 0/249), 42dc5d1 GSL-224 (7th axis decisions + rule "an unstarted
+  mechanism → unknown"), e3ba732 GSL-225 (supervision archive docs/lab/supervision/, 200 pulses
+  in git), 23514ee GSL-226 (BLOCKER render exercised, 5 asserts), e5d0af4 GSL-179 (rebuild
+  grade=fresh as the last commit, rule GSL-194).
+- Jira: tasks GSL-221..226 Done (deviation comments on 221/223), epic GSL-179 In Review.
+- Gates (before→after): smoke 462→497 PASS / 0 FAIL; hooks-verify 14/14; tsc 0; chronicler FRESH.
+- **Orchestrator actions after the merge:**
+  1. `docs/handoff/GSL-223-orchestrator-cycle-boundary-jira-dump.md` — a ready cycle-boundary
+     checklist step (save the JQL dump into docs/lab/scratch/jira-poll.json + run chronicler
+     WITHOUT --no-poll on the cycle boundary). Only the orchestrator/owner may apply this to the
+     sovereign skill.
+  2. Ledger commit: docs/lab/events/2026-07-28.jsonl (+338 tracker events and hooks),
+     docs/lab/questions/queue.jsonl (q-2026-07-28-003/004 from me), docs/lab/decisions/log.jsonl
+     (edits not mine), STATE — as usual, orchestrator's hands.
+  3. runway.bound=exact already in 2 builds in a row; the third (epic's criterion) picks up on
+     any standard pass.
+- Forks closed by defaults (both reversibility high, can be left silently):
+  q-2026-07-28-003 (ceiling counted PER NIGHT: window=UTC day, anchor=cumulative on the day's
+  first build; cumulative 18.98M > 16M — cumulative semantics would have produced an eternal
+  false BUDGET_EXCEEDED),
+  q-2026-07-28-004 (supervision trace — as a tracked ARCHIVE; live runtime files remain ignored
+  by the sovereign skill's contract).
+- No incidents; sovereign untouched; Workflow tool not used; force-push/amend/stash — none.
 
-## Формальная часть — заметки преемнику
+## Formal part — notes to the successor
 
 - dev_history: GSL-221-audit6-token-ceiling, GSL-222-audit6-autonomy-metric,
   GSL-223-audit6-jira-dump-pollfill, GSL-224-audit6-runway-decisions-axis,
-  GSL-225-audit6-supervision-archive, GSL-226-audit6-blocker-render-branch (+ индекс).
-- Грабли, собранные по пути: chronicler.py запускает main() при импорте (только subprocess);
-  jq печатает 200.0 по-разному (числовые ассерты через jq -e '== N'); старые закоммиченные бандлы
-  не имеют новых полей cost — вью обязано `?? null`; smoke герметичен по GOSLEEP_TOKEN_CEILING
-  (unset в шапке) и по стороже (override GOSLEEP_WATCHDOG_PLIST в фикстурах); пагинация
-  searchJiraIssuesUsingJql — токен передавать целиком; prehistory-пол poll-fill требует
-  --prehistory для одноразового bootstrap.
-- Известное честное состояние: RUNWAY 0h binding=blockers — на доске реальный открытый BLOCKER
-  (не артефакт этого эпика); леджер сторожа в архиве супервизии отсутствует честно (сторож ни разу
-  не тикал).
+  GSL-225-audit6-supervision-archive, GSL-226-audit6-blocker-render-branch (+ index).
+- Rakes gathered along the way: chronicler.py runs main() on import (only subprocess);
+  jq prints 200.0 in different ways (numeric asserts via jq -e '== N'); old committed bundles
+  do not have the new cost fields — the view must `?? null`; smoke is hermetic on GOSLEEP_TOKEN_CEILING
+  (unset in the head) and on the watchdog (override GOSLEEP_WATCHDOG_PLIST in fixtures); pagination
+  of searchJiraIssuesUsingJql — pass the token whole; prehistory-floor poll-fill requires
+  --prehistory for one-time bootstrap.
+- Known honest state: RUNWAY 0h binding=blockers — the board has a real open BLOCKER
+  (not an artifact of this epic); the watchdog ledger is honestly absent from the supervision archive
+  (the watchdog has never ticked).

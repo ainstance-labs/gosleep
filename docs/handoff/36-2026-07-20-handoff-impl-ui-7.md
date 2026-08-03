@@ -1,106 +1,72 @@
-# Handoff 36 — цикл 59 (impl-ui-7), GSL-100 закрыт, Фаза 5 принята
+# Handoff 36 — cycle 59 (impl-ui-7), GSL-100 closed, Phase 5 accepted
 
-**Дата:** 2026-07-20 · **Воркер:** impl-ui-7 · **Модель:** Opus 4.8 (сверено по транскрипту: `claude-opus-4-8`, 262 записи, других значений нет)
-**Ветка:** `GSL-90-ui-orchestration @ dc2a925` · **Jira:** GSL-100 → Done · **GH:** #113
+**Date:** 2026-07-20 · **Worker:** impl-ui-7 · **Model:** Opus 4.8 (verified from the transcript: `claude-opus-4-8`, 262 records, no other values)
+**Branch:** `GSL-90-ui-orchestration @ dc2a925` · **Jira:** GSL-100 → Done · **GH:** #113
 
 ---
 
-## Part 1 — что нужно знать, не читая код
+## Part 1 — what you need to know without reading the code
 
-### Где мы
+### Where we are
 
-**Фаза 5 закончена.** Все десять задач эпика GSL-90 закрыты, приёмка проведена, эпик готов к PR.
-Осталось ровно одно действие — открыть PR эпика, и это следующая работа (см. RESUME POINT).
+**Phase 5 is finished.** All ten tasks of epic GSL-90 are closed, acceptance done, the epic is ready for PR. Exactly one action remains — open the epic PR, and that is the next work (see RESUME POINT).
 
-### Что сделано
+### What was done
 
-Приёмка закрывающей задачи. Правило было одно, и оно стоит в самом Jira description: **критерий
-закрывается доказательством, а не наблюдением.** Урок Фазы 4 — R4.2 стоял зелёным на доказательстве,
-которого в репозитории не оказалось. Поэтому каждый из F5-S1..S4 здесь закрыт выводом команды или
-замером в браузере, который можно перепрогнать.
+Acceptance of the closing task. There was one rule, and it stands in the Jira description itself: **a criterion is closed by evidence, not by observation.** Lesson from Phase 4 — R4.2 was green on evidence that turned out not to be in the repository. Therefore each of F5-S1..S4 here is closed by a command output or a browser measurement that can be reproduced.
 
-**И приёмка сработала так, как приёмка должна: она нашла то, чего никто не искал.**
+**And the acceptance worked as acceptance should: it found what nobody was looking for.**
 
-### Два настоящих дефекта — на самом критерии фазы
+### Two real defects — on the phase's own criterion
 
-До этого цикла **никто ни разу не открыл эти страницы на ширине телефона**. Открыл — и нашлось два:
+Before this cycle **nobody ever opened these pages at phone width**. Opened them — and two things turned up:
 
-1. **Nav не переносился, и две страницы из семи были недостижимы.** На 390px семь ссылок лежали в
-   одной неразрывной строке 469px внутри колонки 358px; «Cost» и «Library» уходили за край экрана.
-   Причина оказалась не той, которую ожидаешь: дело не в отсутствующем брейкпоинте, а в том, что
-   рендерер печатает `<a>Overview</a><a>Timeline</a>` **без пробелов между элементами**, а у inline-
-   боксов без пробельного текста **точки мягкого переноса нет вообще**. `margin-right` рисовал
-   зазоры, но ни одного места разрыва.
+1. **The nav did not wrap, and two out of seven pages were unreachable.** At 390px seven links lay in a single unbreakable 469px string inside a 358px column; "Cost" and "Library" went off the screen. The cause turned out not to be what you would expect: it was not a missing breakpoint but the fact that the renderer prints `<a>Overview</a><a>Timeline</a>` **without whitespace between elements**, and inline boxes without whitespace text have **no soft break point at all**. `margin-right` drew the gaps but not a single break site.
 
-2. **Mono-карточка молча резала собственную цитату.** Заметка оркестратора обрывалась на
-   `"context_pct":26,"o` — остаток предложения терялся, **и на экране не было ничего, что признало бы
-   пропажу**. Молчаливое усечение — ровно тот отказ, который эта лаборатория существует предотвращать.
+2. **The mono card was silently cutting its own quote.** An orchestrator note broke off at `"context_pct":26,"o` — the rest of the sentence was lost, **and there was nothing on the screen that admitted the loss**. Silent truncation — exactly the failure this lab exists to prevent.
 
-Оба починены. Замер после: `scrollWidth` **850 → 390** (ровно viewport), ноль несдержанных
-переполнений, все семь ссылок на экране.
+Both fixed. Measurement after: `scrollWidth` **850 → 390** (exactly the viewport), zero unrestrained overflows, all seven links on the screen.
 
-### F5-S4 из PRD оказался неверен — и записан как есть
+### F5-S4 in the PRD turned out wrong — and recorded as is
 
-PRD обещал, что владелец откроет страницу «через приватный GitHub-репо с телефона». **GitHub так не
-умеет**, и это проверено, а не предположено:
+The PRD promised the owner would open the page "through a private GitHub repo from the phone". **GitHub does not know how to do that**, and this is verified, not assumed:
 
-- Contents API отдаёт `application/vnd.github.raw`;
-- `raw.githubusercontent.com` отдаёт `text/plain`;
-- **оба ставят `nosniff`** — браузеру прямо запрещено считать файл HTML, хотя он HTML и есть;
-- CSP `default-src 'none'` убил бы весь инлайн-JS, даже если бы отрендерил;
-- Pages для приватного репо на free-плане недоступен (404).
+- Contents API returns `application/vnd.github.raw`;
+- `raw.githubusercontent.com` returns `text/plain`;
+- **both set `nosniff`** — the browser is directly forbidden to consider the file as HTML, even though it is HTML;
+- CSP `default-src 'none'` would kill all inline JS even if it did render;
+- Pages for a private repo on the free plan is unavailable (404).
 
-**Контроль:** тот же raw отдаёт `text/plain` и для `README.md` — значит это универсальное поведение
-raw, а не что-то про наш файл. **GitHub — транспорт для байтов, не средство просмотра.**
+**Control:** the same raw returns `text/plain` for `README.md` too — so this is universal raw behavior, not something about our file. **GitHub is a transport for the bytes, not a viewer.**
 
-Формулировка **не подгонялась** под желаемое. Что при этом верно и стоит защищать: страница — один
-файл без зависимостей, и она полностью отрисовывается, как только попадёт на телефон любым способом,
-который кладёт файл на устройство.
+The wording was **not adjusted** to fit the desired. What is true and worth defending: the page is one file with no dependencies, and it fully renders as soon as it reaches the phone by any means that lays the file on the device.
 
-### Три урока цикла — все три про то, что я сам сделал неправильно
+### Three lessons of the cycle — all three about what I did wrong myself
 
-**1. Мой собственный детектор был сломан и показал бы «баг» при любом исходе.** Проверяя фильтр
-Library, я считал видимость через `style.display`, тогда как фильтр скрывает через свойство `hidden`,
-и брал scope не из того атрибута. Тест бодро сообщил «фильтр не работает» — при том что фильтр
-работает идеально. Спасло только правило прочитать код механизма, прежде чем верить своему замеру.
+**1. My own detector was broken and would have shown a "bug" no matter the outcome.** Checking the Library filter, I read visibility via `style.display`, while the filter hides via the `hidden` property, and took scope from the wrong attribute. The test cheerfully reported "the filter is broken" — while the filter works perfectly. Only the rule "read the mechanism's code before believing your own measurement" saved me.
 
-**2. Тут же второй раз, в ту же сторону.** Следующий прогон показал «на загрузке скрыты все 107
-строк». Тоже ложь: **загрязнение от моего же предыдущего теста**, оставившего значение в select'е.
-Перезагрузка дала честное «107 из 107».
+**2. Right there a second time, in the same direction.** The next run showed "on load all 107 rows are hidden". Also a lie: **pollution from my own previous test**, which had left a value in a select. A reload gave an honest "107 of 107".
 
-> **Правило:** измерение на странице, которую ты уже трогал, — не измерение.
+> **Rule:** a measurement on a page you have already touched is not a measurement.
 
-**3. Я отредактировал DERIVED-файл, и его стёрло.** Переписал `docs/lab/site/README.md` руками —
-следующий прогон хрониста вернул старый текст, потому что README тоже генерируется (константа
-`SITE_README` в `chronicler.py`). Файл, чья **первая строка** гласит «DERIVED. Do not hand-edit», был
-отредактирован руками — воркером, который в этом же цикле переписывал правило про это. Перенесено в
-источник и проверено двумя прогонами подряд.
+**3. I edited a DERIVED file, and it was wiped.** I rewrote `docs/lab/site/README.md` by hand — the next chronicler pass returned the old text, because README too is generated (constant `SITE_README` in `chronicler.py`). A file whose **first line** says "DERIVED. Do not hand-edit" was hand-edited — by a worker who was in the same cycle rewriting the rule about that. Moved to the source and verified with two passes in a row.
 
-**Бонусом — про предупреждения.** Я уронил сборку backtick'ом внутри CSS (весь стиль — один template
-literal). Строка `NOTE: no backticks in here, ever` **уже была в файле**, в десятке строк от места
-моей правки. Вывод не «добавить предупреждение» — оно было. Вывод: предупреждение в середине
-250-строчного файла не работает, и оно поднято в шапку.
+**Bonus — about warnings.** I broke the build with a backtick inside CSS (the whole style is one template literal). The line `NOTE: no backticks in here, ever` was **already in the file**, ten lines from where I edited. The conclusion is not "add a warning" — it was there. The conclusion: a warning in the middle of a 250-line file does not work, and it is raised to the header.
 
-### Что дальше
+### What's next
 
-**Фаза 6 (Mobile).** Находка F5-S4 переходит в неё **входом, а не хвостом**: раз GitHub не средство
-просмотра, доставка страницы на телефон — отдельная задача, и решать её надо транспортом (файл на
-устройстве), а не надеждой на рендеринг в вебе.
+**Phase 6 (Mobile).** The F5-S4 finding passes into it **as an entry, not a tail**: since GitHub is not a viewer, delivery of the page to the phone is a separate task, and it must be solved by transport (a file on the device), not by hoping for web rendering.
 
-### Проблемы
+### Problems
 
-- **GSL-30 без dev_history** — единственная дыра во всём репозитории, найдена метром GSL-99. Жива,
-  решение за владельцем.
-- **Проверен один класс устройств** — 390×844. Планшет и ≤320px не замерялись.
-- **`smoke.sh:234` «stale temp survives»** — pre-existing флейк (kill -9 race). НЕ чинить.
-- Хвосты из handoff 33/34 живы (48 несопоставленных имён, 9 безымянных сессий, потолка токенов нет
-  машиночитаемо, `task.completed` молчит с 13 июля).
+- **GSL-30 without dev_history** — the only hole in the whole repository, found by the GSL-99 meter. Alive, decision on the owner.
+- **One class of devices verified** — 390×844. Tablet and ≤320px not measured.
+- **`smoke.sh:234` "stale temp survives"** — pre-existing flake (kill -9 race). DO NOT fix.
+- Tails from handoff 33/34 alive (48 unmatched names, 9 nameless sessions, no machine-readable token ceiling, `task.completed` silent since July 13).
 
-### Комментарии
+### Comments
 
-Фаза 5 закончилась тем же, чем занималась: **отказом красить зелёным то, что не доказано.** Приёмка
-могла закрыть F5-S4 галочкой по памяти — никто бы не проверил. Вместо этого она опровергла
-собственный критерий и нашла два дефекта в том, что считалось готовым. Это и есть работающая приёмка.
+Phase 5 ended by doing what it had been doing: **refusing to paint green what is not proven.** Acceptance could have closed F5-S4 with a check mark from memory — nobody would have verified it. Instead it refuted its own criterion and found two defects in what was considered done. That is what a working acceptance looks like.
 
 ---
 
@@ -109,89 +75,82 @@ literal). Строка `NOTE: no backticks in here, ever` **уже была в �
 ```
 CYCLE_ID: 59 / impl-ui-7
 STATUS: COMPLETE
-EPIC: GSL-90 (Phase 5 UI) — ВСЕ ЗАДАЧИ ЗАКРЫТЫ, эпик готов к PR
+EPIC: GSL-90 (Phase 5 UI) — ALL TASKS CLOSED, epic ready for PR
 BRANCH: GSL-90-ui-orchestration
-COMMIT: dc2a925 (основной) + handoff-коммит (этот файл)
-JIRA: GSL-100 → Done (верифицировано: status.name = "Done")
-GATES: smoke 252/252 (было 248) · hooks-verify 14/14 · tsc чист · chronicler 7 страниц · C5 чист
-SCHEMA: gosleep.lab.render/7 — НЕ менялась
-DECISION: q-2026-07-20-001 (объём фикса; продолжено по дефолту, AUTONOMOUS)
-BLOCKED_ON_HUMAN: нет
-MODEL: Opus 4.8 (claude-opus-4-8, сверено по транскрипту)
+COMMIT: dc2a925 (main) + handoff commit (this file)
+JIRA: GSL-100 → Done (verified: status.name = "Done")
+GATES: smoke 252/252 (was 248) · hooks-verify 14/14 · tsc clean · chronicler 7 pages · C5 clean
+SCHEMA: gosleep.lab.render/7 — UNCHANGED
+DECISION: q-2026-07-20-001 (fix scope; continued by default, AUTONOMOUS)
+BLOCKED_ON_HUMAN: none
+MODEL: Opus 4.8 (claude-opus-4-8, verified from transcript)
 ```
 
-### Приёмка F5-S1..S4 — по факту прогона
+### Acceptance F5-S1..S4 — by fact of run
 
-| Критерий | Вердикт | Доказательство |
+| Criterion | Verdict | Evidence |
 |---|---|---|
-| **F5-S1** runway = `min()`, связывающее ограничение + ETA | ✅ MET | Живой замер: `RUNWAY unknown`, бейдж «no readable stopping clock», 6 карточек, ETA «orchestrator context in 1.7h» + скриншот |
-| **F5-S2** живой обратный отсчёт | ✅ MET (**впервые вживую**) | 116 мин = расчёт по часам читателя; испечённое на сборке дало бы 117 — дискриминатор различает |
-| **F5-S3** Tasks со ссылками | ✅ MET | 115 Jira / 255 GH / 122 commit из `file://` |
-| **F5-S4a** `file://` без сервера | ✅ MET | 1 сетевой запрос (сам файл), 0 ошибок консоли; фильтр 107→36→107→0 |
-| **F5-S4b** light/dark на телефоне | ✅ MET **после фикса** (сначала ❌) | `scrollWidth` 850→390, 4 скриншота before/after |
-| **F5-S4c** «через приватный GitHub» | ❌ **ОПРОВЕРГНУТ** | `nosniff` + `text/plain` + Pages 404; контроль на `.md` |
+| **F5-S1** runway = `min()`, binding constraint + ETA | ✅ MET | Live measurement: `RUNWAY unknown`, badge "no readable stopping clock", 6 cards, ETA "orchestrator context in 1.7h" + screenshot |
+| **F5-S2** live countdown | ✅ MET (**first time live**) | 116 min = computed from the reader's clock; a baked value at build time would give 117 — the discriminator distinguishes |
+| **F5-S3** Tasks with links | ✅ MET | 115 Jira / 255 GH / 122 commit from `file://` |
+| **F5-S4a** `file://` without a server | ✅ MET | 1 network request (the file itself), 0 console errors; filter 107→36→107→0 |
+| **F5-S4b** light/dark on phone | ✅ MET **after fix** (initially ❌) | `scrollWidth` 850→390, 4 before/after screenshots |
+| **F5-S4c** "through private GitHub" | ❌ **REFUTED** | `nosniff` + `text/plain` + Pages 404; control on `.md` |
 
 ---
 
-## Part 2 — техническая часть
+## Part 2 — technical part
 
-### Изменения
+### Changes
 
-| Файл | Что |
+| File | What |
 |---|---|
-| `tools/lab/ui/src/theme.ts` | `nav` → `display:flex;flex-wrap:wrap;column-gap:.9rem`; `.mono:not(table):not(.wrap *){overflow-wrap:anywhere}`; backtick-предупреждение поднято в шапку; поправлена ложная посылка про blob view |
-| `tools/lab/ui/src/screens/timeline.tsx` | Та же ложная посылка поправлена, верный вывод сохранён |
-| `tools/lab/chronicler.py` | `SITE_README` — контракт переписан **в источнике** |
-| `tools/lab/smoke.sh` | +4 теста (2 ⭐ + 2 позитивных контроля) |
-| `docs/dev_history/` | `GSL-100-phase5-cycle59-acceptance.md`, индекс + **сводка Фазы 5**, `assets/GSL-100/` (6 скриншотов) |
+| `tools/lab/ui/src/theme.ts` | `nav` → `display:flex;flex-wrap:wrap;column-gap:.9rem`; `.mono:not(table):not(.wrap *){overflow-wrap:anywhere}`; backtick warning raised to the header; false premise about the blob view corrected |
+| `tools/lab/ui/src/screens/timeline.tsx` | Same false premise corrected, correct conclusion preserved |
+| `tools/lab/chronicler.py` | `SITE_README` — contract rewritten **in the source** |
+| `tools/lab/smoke.sh` | +4 tests (2 ⭐ + 2 positive controls) |
+| `docs/dev_history/` | `GSL-100-phase5-cycle59-acceptance.md`, index + **Phase 5 summary**, `assets/GSL-100/` (6 screenshots) |
 
-### Новые тесты — и почему им можно верить
+### New tests — and why they can be trusted
 
 ```
-sh_nav_wraps()  -> grep -E 'nav\{[^}]*flex-wrap:wrap'   на СГЕНЕРИРОВАННОЙ странице
-sh_mono_wraps() -> grep -E 'overflow-wrap:anywhere'      на СГЕНЕРИРОВАННОЙ странице
+sh_nav_wraps()  -> grep -E 'nav\{[^}]*flex-wrap:wrap'   on the GENERATED page
+sh_mono_wraps() -> grep -E 'overflow-wrap:anywhere'      on the GENERATED page
 ```
 
-Ассертится по странице, а не по исходнику: **читателю достаётся страница**. Перед каждым ⭐-тестом
-идёт **позитивный контроль** — оба детектора показываются синтетическому до-фиксовому стилю и обязаны
-его **отвергнуть**. Детектор, не узнающий дефект, — зелёная галочка над пустотой (ровно то, чем был
-тест на двойной суффикс, пока impl-ui-6 не прогнал его против родительского коммита). Мутаций дерева
-не делалось: контроль синтетический, поэтому harness не мог ничего потерять.
+Asserted against the page, not the source: **the reader gets the page**. Before each ⭐ test comes a **positive control** — both detectors are shown a synthetic pre-fix style and are obliged to **reject** it. A detector that does not recognize the defect is a green check mark over emptiness (exactly what the double-suffix test was until impl-ui-6 ran it against the parent commit). No tree mutations were done: the control is synthetic, so the harness could not lose anything.
 
-### Что НЕ коммитилось (по прецеденту `83f49f8`/`cbdcb26`)
+### What was NOT committed (by precedent `83f49f8`/`cbdcb26`)
 
 `ORCHESTRATION-STATE.md`, `decisions/log.jsonl`, `events/*.jsonl`, `questions/queue.jsonl`,
-`digest/*`, `docs/prompts/` — это территория оркестратора и хуков. Мой DECISION
-`q-2026-07-20-001` лежит в `queue.jsonl` **незакоммиченным** намеренно.
+`digest/*`, `docs/prompts/` — orchestrator and hook territory. My DECISION
+`q-2026-07-20-001` sits in `queue.jsonl` **uncommitted** deliberately.
 
 ---
 
-## ⭐ RESUME POINT для механика (PR эпика GSL-90)
+## ⭐ RESUME POINT for the mechanic (PR of epic GSL-90)
 
-**Ветка:** `GSL-90-ui-orchestration @ dc2a925` (+ handoff-коммит), запушена. Схема `render/7`.
+**Branch:** `GSL-90-ui-orchestration @ dc2a925` (+ handoff commit), pushed. Schema `render/7`.
 
-**Задача: открыть PR эпика GSL-90.** Все задачи эпика в Done, приёмка проведена, гейты зелёные.
+**Task: open the PR of epic GSL-90.** All epic tasks in Done, acceptance done, gates green.
 
-1. **Заголовок:** `GSL-90 UI оркестрации, static v1 (PRD Phase 5)`.
-2. **Тело:** `Implements GSL-90.` + чек-лист задач GSL-91..GSL-100 (все `[x]`) + `Mirrors GH #103.`
-   + `Closes #…` со списком issue задач (**#113** — GSL-100).
-3. **Мердж — обычный, НЕ squash** (сохраняет один-коммит-на-задачу).
-4. **GH issues задач** закрываются через `Closes`-список; GitHub автозакроет только первый — остальные
-   руками `gh issue close`.
-5. Эпик GSL-90 в Jira → **In Review** при открытии PR, → **Done** после мержа.
+1. **Title:** `GSL-90 UI orchestration, static v1 (PRD Phase 5)`.
+2. **Body:** `Implements GSL-90.` + task checklist GSL-91..GSL-100 (all `[x]`) + `Mirrors GH #103.`
+   + `Closes #…` with the list of task issues (**#113** — GSL-100).
+3. **Merge — regular, NOT squash** (preserves one commit per task).
+4. **GH issues of tasks** close via the `Closes` list; GitHub will auto-close only the first — the rest by
+   hand `gh issue close`.
+5. Epic GSL-90 in Jira → **In Review** on PR open, → **Done** after the merge.
 
-**Перед PR прогони гейты** (ничего не должно упасть):
+**Before the PR run the gates** (nothing should fall):
 ```bash
 bash tools/lab/smoke.sh          # 252/252
 bash tools/lab/hooks-verify.sh   # 14/14
 (cd tools/lab/ui && npx tsc --noEmit)
-bash tools/lab/chronicler.sh --no-poll   # 7 страниц
+bash tools/lab/chronicler.sh --no-poll   # 7 pages
 ```
 
-**Что важно НЕ потерять при описании PR:** F5-S4 закрыт **частично и честно** — локальный `file://` и
-light/dark ✅, а «через приватный GitHub-репо» ❌ опровергнут. Если в теле PR написать «Phase 5
-complete, all criteria met», это будет ровно тот фальшивый зелёный, против которого построена вся
-фаза. Формулировка — из сводки в `docs/dev_history/README.md`.
+**What is important NOT to lose in the PR description:** F5-S4 is closed **partially and honestly** — local `file://` and light/dark ✅, but "through a private GitHub repo" ❌ refuted. If the PR body says "Phase 5 complete, all criteria met", that would be exactly the false green the whole phase was built against. The wording — from the summary in `docs/dev_history/README.md`.
 
-**Открытые хвосты (НЕ баги, но знай):** GSL-30 без dev_history · планшет/≤320px не замерялись ·
-`smoke.sh:234` флейк (kill -9 race, НЕ чинить) · хвосты handoff 33/34.
+**Open tails (NOT bugs, but know):** GSL-30 without dev_history · tablet/≤320px not measured ·
+`smoke.sh:234` flake (kill -9 race, do NOT fix) · handoff 33/34 tails.

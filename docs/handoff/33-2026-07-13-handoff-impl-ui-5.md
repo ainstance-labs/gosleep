@@ -1,63 +1,39 @@
-# Handoff 33 — цикл 57 (impl-ui-5), GSL-98 закрыт
+# Handoff 33 — cycle 57 (impl-ui-5), GSL-98 closed
 
-**Дата:** 2026-07-13 · **Воркер:** impl-ui-5 · **Модель:** Opus 4.8 (сверено по транскрипту)
-**Ветка:** `GSL-90-ui-orchestration @ 33b9343` (запушена) · **Jira:** GSL-98 → Done · **GH:** #111
+**Date:** 2026-07-13 · **Worker:** impl-ui-5 · **Model:** Opus 4.8 (verified from the transcript)
+**Branch:** `GSL-90-ui-orchestration @ 33b9343` (pushed) · **Jira:** GSL-98 → Done · **GH:** #111
 
 ---
 
-## Part 1 — что нужно знать, не читая код
+## Part 1 — what you need to know without reading the code
 
-### Что сделано
+### What was done
 
-Экраны **Fleet** и **Cost** закрыты. Fleet теперь рендерит карточку на воркера, где **возраст последнего
-события — главное поле** (самый крупный шрифт, физически **над** именем). Cost получил разбивку по моделям и
-секцию quota-событий.
+Screens **Fleet** and **Cost** are closed. Fleet now renders a card per worker where **the age of the last event is the main field** (largest font, physically **above** the name). Cost got a breakdown by model and a quota-events section.
 
-Тем самым **два из шести часов runway** (fleet slots, budget) перестали быть непрочитанными. Часы по-прежнему
-могут показывать `unknown` — но теперь потому, что источника действительно нет, а не потому, что экрана не было.
+Thereby **two out of six runway clocks** (fleet slots, budget) stopped being unread. The clocks can still show `unknown` — but now because a source really is not there, not because a screen was missing.
 
-### Четыре факта, добытых грепом (не унаследованных)
+### Four facts obtained by grep (not inherited)
 
-1. **Имя воркера в логе есть.** `task.completed` — **единственное** событие, несущее одновременно `session_id`
-   и имя воркера. Это тот join, которого не хватало: связав их раз, получаешь весь след сессии
-   (`pane.started` → `agent.turn_ended` → `pane.ended`), а с ним и возраст последнего события. Без этого join'а
-   старый экран не мог ответить на единственный вопрос, ради которого существует.
+1. **The worker's name is in the log.** `task.completed` is the **only** event carrying `session_id` and the worker name at once. This is the missing join: link them once and you get the whole session trail (`pane.started` → `agent.turn_ended` → `pane.ended`), and with it the age of the last event. Without this join the old screen could not answer the one question it exists to answer.
 
-2. **Номера панели в логе нет — и это подтвердилось.** Прогрепал весь лог за все дни: 0 событий с номером
-   панели, 0 полей pane/window/tty в любом хуке. Старый docstring это утверждал; проверка его подтвердила.
-   Карточка пишет `unknown` и добавляет, что **чинится это хуком, а не рендерером** — чтобы следующий не искал
-   баг в UI.
+2. **The pane number is not in the log — and this was confirmed.** Grepped the whole log across all days: 0 events with a pane number, 0 pane/window/tty fields in any hook. The old docstring claimed this; the check confirmed it. The card writes `unknown` and adds that **this is fixed by a hook, not the renderer** — so the next one does not hunt for a bug in the UI.
 
-3. **Модель берётся из транскрипта сессии**, а не со слов воркера. Тот же источник, что и аудиторская сверка
-   (циклы 49/50: self-report врёт). Нет транскрипта → `unknown`, **даже если воркер прямо назвался**.
+3. **The model is taken from the session transcript**, not from the worker's word. The same source as the auditor cross-check (cycles 49/50: self-report lies). No transcript → `unknown`, **even if the worker explicitly named itself**.
 
-4. **⚠️ Леджер и лог называют одного воркера по-разному.** В `ORCHESTRATION-STATE §TELEMETRY` он
-   `gsl81-reviewer`, в логе — `reviewer-lab`. Два имени, набранные руками в двух разных местах, и ничто их не
-   сверяет. Join по имени промахивается у **5 карточек из 8**. Карточка пишет **«промах имени», а не «потратил
-   ноль»**, и экран печатает все 48 несопоставленных имён леджера рядом — это диагноз, который может поставить
-   только человек, видящий обе колонки. **Это не баг моего кода; это расхождение в процессе, и оно теперь
-   видно.**
+4. **⚠️ The ledger and the log name the same worker differently.** In `ORCHESTRATION-STATE · TELEMETRY` he is `gsl81-reviewer`, in the log — `reviewer-lab`. Two names typed by hand in two different places and nothing cross-checks them. Join by name misses on **5 cards out of 8**. The card writes **"name miss", not "spent zero"**, and the screen prints all 48 unmatched ledger names next to it — this is a diagnosis only a human seeing both columns can make. **This is not a bug of my code; this is a process discrepancy, and it is now visible.**
 
-### Урок цикла: мутация поймала спящий тест — дважды
+### Lesson of the cycle: mutation caught a sleeping test — twice
 
-Первый мутационный прогон дал по тесту «модель по факту» **`⛔ NO TEST WENT RED`**. Разбор вскрыл **две разные**
-проблемы:
+The first mutation pass gave the "model by fact" test **`⛔ NO TEST WENT RED`**. The analysis uncovered **two different** problems:
 
-1. **Фикстура была однобокой.** Self-report утекает на карточку **двумя** маршрутами: код может *предпочесть*
-   декларацию (когда транскрипт есть) или *откатиться* к ней (когда его нет). У воркера без транскрипта ложного
-   self-report в фикстуре не было — второй маршрут не покрывался вовсе. Теперь **врут оба** воркера, и добавлен
-   **позитивный контроль**: тест сначала доказывает, что обе лживые строки **есть** в фикстуре, — иначе
-   grep-на-отсутствие был бы зелёной галочкой над пустотой.
+1. **The fixture was one-sided.** The self-report leaks onto a card via **two** routes: the code can *prefer* the declaration (when a transcript exists) or *fall back* to it (when there is none). For a worker without a transcript there was no false self-report in the fixture — the second route was not covered at all. Now **both** workers lie, and a **positive control** is added: the test first proves that both lying strings **are** in the fixture — otherwise a grep-on-absence would be a green check mark over emptiness.
 
-2. **🔥 Гонка с фоновым harness'ом — новый класс аварии.** Второй прогон снова показал «спит», но виноват был не
-   тест: **правки `smoke.sh` исчезли**. `trap restore EXIT` моего же мутационного скрипта сработал уже **после**
-   того, как я начал редактировать дерево, и затёр фикстуру своим бэкапом.
+2. **🔥 A race with a background harness — a new class of accident.** The second pass again showed "asleep", but not the test's fault: **the edits to `smoke.sh` disappeared**. The `trap restore EXIT` of my own mutation script fired **after** I had begun editing the tree and overwrote the fixture with the backup.
 
-   **Это тот же класс, что `git stash` из handoff 32: фоновый скрипт с restore-трапом — это tree-wide писатель.**
-   - **Признак:** счётчик тестов не вырос после добавления теста (229 вместо 230). Если добавил тест, а число не
-     изменилось — правки нет, а не тест «не считается».
-   - **Правило:** не редактировать файлы, которые бэкапнул живой фоновый процесс; не считать `restore`
-     состоявшимся, пока процесс не подтверждён мёртвым (`pgrep`).
+   **This is the same class as `git stash` from handoff 32: a background script with a restore trap is a tree-wide writer.**
+   - **Symptom:** the test counter did not grow after adding a test (229 instead of 230). If you added a test and the number did not change — the edit is not there, not the test "does not count".
+   - **Rule:** do not edit files a live background process has backed up; do not consider `restore` to have happened until the process is confirmed dead (`pgrep`).
 
 ---
 
@@ -69,129 +45,117 @@ STATUS: COMPLETE
 EPIC: GSL-90 (Phase 5 UI)
 BRANCH: GSL-90-ui-orchestration
 COMMIT: 33b9343
-JIRA: GSL-98 → Done (верифицировано getJiraIssue)
-GATES: smoke 230/230 (было 208) · hooks-verify 14/14 · tsc чист · chronicler 7 страниц
-ACCEPTANCE: все пункты Jira description выполнены (см. ниже)
-MUTATION-TESTED: 10 мутаций, каждая краснит РОВНО свой тест
-DECISION: q-2026-07-13-005 (C5 exemption) — default применён, reversibility high
-BLOCKED_ON_HUMAN: нет
-MODEL: Opus 4.8 (claude-opus-4-8, сверено по транскрипту)
+JIRA: GSL-98 → Done (verified by getJiraIssue)
+GATES: smoke 230/230 (was 208) · hooks-verify 14/14 · tsc clean · chronicler 7 pages
+ACCEPTANCE: all Jira description items met (see below)
+MUTATION-TESTED: 10 mutations, each reddens EXACTLY its test
+DECISION: q-2026-07-13-005 (C5 exemption) — default applied, reversibility high
+BLOCKED_ON_HUMAN: none
+MODEL: Opus 4.8 (claude-opus-4-8, verified from transcript)
 ```
 
-### Приёмка (по Jira description, пункт за пунктом)
+### Acceptance (per Jira description, item by item)
 
-| Требование | Статус |
+| Requirement | Status |
 |---|---|
-| Fleet: карточка на воркера (state/model/pane/started/last-event-age/tokens/task) | ✅ все 7 полей |
-| Возраст последнего события — **главное** поле карточки | ✅ крупнейший шрифт, над именем |
-| Тихий и мёртвый воркер не различаются — не притворяться | ✅ состояния 3, `dead` нет намеренно |
-| Модель — по факту, из того же источника что сверка | ✅ транскрипт сессии, не self-report |
-| Cost: per-cycle | ✅ (был) |
-| Cost: cumulative vs ceiling | ✅ ceiling = `unknown` (его нет на диске) |
-| Cost: per-model | ✅ + число нечитаемых строк рядом с каждой суммой |
-| Cost: quota-события | ✅ пусто, но печатает свой глоб |
-| Метрики без источника → `unknown`, час runway → unknown (**не удлинять**) | ✅ verified на живом рендере: budget `unknown`, headline «Cannot say» |
+| Fleet: a card per worker (state/model/pane/started/last-event-age/tokens/task) | ✅ all 7 fields |
+| Age of the last event — the **main** field of the card | ✅ largest font, above the name |
+| Silent and dead workers do not blur — do not pretend | ✅ 3 states, no `dead` deliberately |
+| Model — by fact, from the same source as the cross-check | ✅ session transcript, not self-report |
+| Cost: per-cycle | ✅ (was) |
+| Cost: cumulative vs ceiling | ✅ ceiling = `unknown` (not on disk) |
+| Cost: per-model | ✅ + number of unreadable lines next to each sum |
+| Cost: quota events | ✅ empty, but prints its glob |
+| Metrics without a source → `unknown`, runway hours → unknown (**do not lengthen**) | ✅ verified on the live render: budget `unknown`, headline "Cannot say" |
 
 ---
 
-## Part 2 — техническая часть
+## Part 2 — technical part
 
-### Схема `render/6`
+### Schema `render/6`
 
-Правка в 4 местах разом. Новое в bundle: `fleet.workers`, `fleet.unnamed_sessions`, `fleet.ledger_only`,
+Edit in 4 places at once. New in the bundle: `fleet.workers`, `fleet.unnamed_sessions`, `fleet.ledger_only`,
 `cost.by_model`, `cost.quota`.
 
-### C5 — как прочитать `teammate_name`, не убив проверку
+### C5 — how to read `teammate_name` without killing the check
 
-Денилист C5 охраняет **способность**, а не словарь.
+The C5 denylist guards **capability**, not vocabulary.
 
-**Решение** (DECISION `q-2026-07-13-005`): исключить **ровно один литерал** `teammate_name`:
+**Solution** (DECISION `q-2026-07-13-005`): exclude **exactly one literal** `teammate_name`:
 
 ```bash
 c5_takes_a_pane() { sed -E 's/teammate_name//g' "$1" | grep -qEi 'tmux|spawn|Agent tool|teammate'; }
 ```
 
-Что **не** сделано и почему:
-- **Не** word-boundary (`\bteammate\b`), как рекомендовал бриф: применённый ко всем четырём словам, он перестал
-  бы ловить `tmux_send` и `spawn_worker`. Это ослабление, а не уточнение. Мой вариант **строже** рекомендованного.
-- **Не** отдельный скрипт: вынести строку в файл, который C5 не сканирует, — обход проверки, а не разделение.
-- **Не** `tmux list-panes`: нарушение C5 по существу.
+What was **not** done and why:
+- **Not** a word-boundary (`\bteammate\b`), as the brief recommended: applied to all four words it would stop catching `tmux_send` and `spawn_worker`. This is a weakening, not a refinement. My variant is **stricter** than the recommended one.
+- **Not** a separate script: moving the string into a file C5 does not scan is bypassing the check, not separating it.
+- **Not** `tmux list-panes`: a C5 violation in substance.
 
-**🔑 Своё поле переименовано, а не исключено.** Первая версия карточки завела `spawned_ts` — и уронила C5.
-Исключать `spawn` нельзя: это слово охраняет реальную опасную способность. Переименовал в `started_ts` по
-словарю самого лога (`pane.started`) — вдобавок точнее: хронист не создаёт панели, он видит, что панель
-открылась.
+**🔑 Renamed my own field instead of excluding it.** The first card version introduced `spawned_ts` — and it broke C5. Excluding `spawn` is not allowed: this word guards a real dangerous capability. I renamed to `started_ts` by the log's own vocabulary (`pane.started`) — also more accurate: the chronicler does not create panes, it sees a pane opened.
 
-> **Правило для будущих циклов: не ослабляй capability-слово, когда переименование бесплатно.**
-> Исключение оправдано только там, где имя задано чужим форматом и альтернативы нет (`teammate_name`).
+> **Rule for future cycles: do not weaken a capability word when renaming is free.**
+> Exclusion is justified only where the name is set by someone else's format and there is no alternative (`teammate_name`).
 
-Граница исключения держится **тремя тестами в CI** (`C5-narrow`), не комментарием: ключ проходит,
-`teammate.spawned` падает, голое `teammate` падает. Проверка, чьё исключение может тихо расшириться, — уже
-мёртвая проверка.
+The exclusion boundary is held **by three tests in CI** (`C5-narrow`), not a comment: the key passes,
+`teammate.spawned` fails, bare `teammate` fails. A check whose exclusion can silently widen is already
+a dead check.
 
-### Мутационная матрица (10/10)
+### Mutation matrix (10/10)
 
-| Мутация | Краснеет |
+| Mutation | Reddens |
 |---|---|
-| M1 исключение C5 расширено до целого слова | `C5-narrow: exemption widened` |
-| M2 исключение C5 убрано | `C5-narrow: exempt key is rejected` |
-| M3 карточка не рендерит возраст | `card does not render the age element` |
-| M4 тихий воркер объявлен мёртвым | `silent worker was not called silent` + `claims to tell silent from dead` |
-| M5a карточка **предпочла** self-report транскрипту | `model is not the transcript's` + `self-report reached the page` |
-| M5b карточка **откатилась** к self-report | `self-report reached the page` + `model invented` |
-| M6 выдуман pane id | `a pane id was invented` |
-| M7 промах join'а отрендерен как ноль | `unjoined worker rendered as having spent zero` |
-| M8 rollup скрыл нечитаемые строки | `cycle with unreadable token field silently dropped` |
-| M9 пустая quota-секция не печатает глоб | `quota section cannot say where it looked` |
+| M1 C5 exclusion widened to a whole word | `C5-narrow: exemption widened` |
+| M2 C5 exclusion removed | `C5-narrow: exempt key is rejected` |
+| M3 card does not render age | `card does not render the age element` |
+| M4 silent worker declared dead | `silent worker was not called silent` + `claims to tell silent from dead` |
+| M5a card **preferred** self-report over the transcript | `model is not the transcript's` + `self-report reached the page` |
+| M5b card **fell back** to self-report | `self-report reached the page` + `model invented` |
+| M6 a pane id was invented | `a pane id was invented` |
+| M7 join miss rendered as zero | `unjoined worker rendered as having spent zero` |
+| M8 rollup hid unreadable lines | `cycle with unreadable token field silently dropped` |
+| M9 empty quota section does not print the glob | `quota section cannot say where it looked` |
 
-### Переменные окружения (для offline-фикстур)
+### Environment variables (for offline fixtures)
 
-- `GOSLEEP_TRANSCRIPT_DIR` — где искать транскрипты (иначе `~/.claude/projects/<repo-slug>/`).
-- `GOSLEEP_QUIET_AFTER_S` — порог тишины (по умолчанию 900).
-- `GOSLEEP_TOKEN_CEILING`, `GOSLEEP_SLOT_CAP` — уже были.
+- `GOSLEEP_TRANSCRIPT_DIR` — where to look for transcripts (otherwise `~/.claude/projects/<repo-slug>/`).
+- `GOSLEEP_QUIET_AFTER_S` — silence threshold (default 900).
+- `GOSLEEP_TOKEN_CEILING`, `GOSLEEP_SLOT_CAP` — were there before.
 
 ---
 
-## ⭐ RESUME POINT для impl-ui-6 (GSL-99, self-health)
+## ⭐ RESUME POINT for impl-ui-6 (GSL-99, self-health)
 
-**Ветка:** `GSL-90-ui-orchestration @ 33b9343`, запушена. Схема `render/6`.
+**Branch:** `GSL-90-ui-orchestration @ 33b9343`, pushed. Schema `render/6`.
 
-### Обязательное к прочтению
-1. **Этот handoff, Part 1** — четыре добытых факта + оба урока (спящий тест, гонка с harness'ом).
-2. `docs/handoff/32-...-impl-ui-4.md` — git stash lesson; `31-...` — «нет источника» проверять руками.
-3. **Прочитай Jira GSL-99 description сам** — половина приёмки живёт там.
-4. **И прогрепай код, прежде чем удалять/менять то, что описание просит удалить** (урок impl-ui-4: описание
-   Jira — снимок намерения, не ground truth).
+### Mandatory reading
+1. **This handoff, Part 1** — four obtained facts + both lessons (a sleeping test, a race with the harness).
+2. `docs/handoff/32-...-impl-ui-4.md` — git stash lesson; `31-...` — verify "no source" by hand.
+3. **Read the Jira GSL-99 description yourself** — half the acceptance lives there.
+4. **And grep the code before deleting/changing what the description asks to delete** (impl-ui-4 lesson: the Jira description is a snapshot of intent, not ground truth).
 
-### Что тебе понадобится из моего цикла
+### What you will need from my cycle
 
-- **`load_events()` + join по `session_id`** — если self-health нужно понимать, кто что делал, join уже есть в
-  `fleet_workers()` (chronicler.py). Не изобретай второй.
-- **`session_models()`** — резолв фактической модели по session_id. Готов, с offline-фикстурой через
-  `GOSLEEP_TRANSCRIPT_DIR`.
-- **Правило «print your glob»** — любая пустая секция обязана печатать, где искала. У меня это `cost.quota.searched`
-  и `fleet.workers_searched`. «Пусто» и «показали не то» иначе неразличимы.
-- **Фикстура `$WORK/f5-fleet`** в smoke.sh — образец: свой throwaway-репо, свои транскрипты, свой леджер.
+- **`load_events()` + join on `session_id`** — if self-health needs to understand who did what, the join is already in `fleet_workers()` (chronicler.py). Do not invent a second.
+- **`session_models()`** — resolve the actual model by session_id. Ready, with an offline fixture via `GOSLEEP_TRANSCRIPT_DIR`.
+- **The "print your glob" rule** — any empty section must print where it looked. For me these are `cost.quota.searched` and `fleet.workers_searched`. "Empty" and "showed the wrong thing" are otherwise indistinguishable.
+- **Fixture `$WORK/f5-fleet`** in smoke.sh — a template: its own throwaway repo, its own transcripts, its own ledger.
 
-### Открытые хвосты (НЕ мои баги, но знай)
+### Open tails (NOT my bugs, but know)
 
-- **48 имён леджера не сопоставляются с картами.** Разные конвенции именования между эпиками. Чинится либо
-  единой конвенцией, либо явным полем в TELEMETRY-булите. Экран это показывает — решение за владельцем.
-- **9 сессий в логе безымянны** — воркер, не закрывший задачу через task-систему, не получает карточки. Чинится
-  только на стороне хуков/процесса, не в UI.
-- **`api.failure` не выстреливал ни разу.** Quota-часы — `clear` со звёздочкой. Секция Cost/quota печатает свой
-  глоб именно поэтому.
-- **Потолок токенов не существует машиночитаемо** (DECISION `q-2026-07-13-002`). Budget-час = `unknown`, runway
-  = верхняя граница. Это находка, а не баг.
-- **`smoke.sh` «stale temp survives»** — pre-existing флейк (kill -9 race). У меня прошёл, но знай.
+- **48 ledger names do not map to cards.** Different naming conventions between epics. Fixed either by a unified convention or by an explicit field in the TELEMETRY bullet. The screen shows it — the decision is on the owner.
+- **9 sessions in the log are nameless** — a worker that did not close a task through the task system does not get a card. Fixed only on the hooks/process side, not in the UI.
+- **`api.failure` never fired.** Quota clock is `clear` with an asterisk. The Cost/quota section prints its glob exactly for this reason.
+- **Token ceiling does not exist machine-readably** (DECISION `q-2026-07-13-002`). Budget hours = `unknown`, runway = upper bound. This is a finding, not a bug.
+- **`smoke.sh` "stale temp survives"** — pre-existing flake (kill -9 race). Passed for me, but know.
 
-### Гейты, которые нельзя уронить
+### Gates that must not fall
 
 ```bash
 bash tools/lab/smoke.sh          # 230/230
 bash tools/lab/hooks-verify.sh   # 14/14
 (cd tools/lab/ui && npx tsc --noEmit)
-bash tools/lab/chronicler.sh --no-poll   # 7 страниц
+bash tools/lab/chronicler.sh --no-poll   # 7 pages
 ```
 
-Если бампаешь схему до `/7` — правка в **4 местах разом**: `chronicler.py`, `render.tsx`, `types.ts`, `smoke.sh`.
+If you bump the schema to `/7` — edit in **4 places at once**: `chronicler.py`, `render.tsx`, `types.ts`, `smoke.sh`.

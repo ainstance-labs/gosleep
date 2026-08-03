@@ -1,35 +1,35 @@
-# Handoff — gosleep — 2026-07-10 (GSL-65 complete: ядро «владелец спит» готово)
+# Handoff — gosleep — 2026-07-10 (GSL-65 complete: the "owner sleeps" core is ready)
 
-> For a FRESH orchestrator. Ground truth = ORCHESTRATION-STATE.md (FIRST) + этот файл. Правила процесса verbatim — handoff 17 §4 (актуальны). Supersedes 17 в части resume-point.
+> For a FRESH orchestrator. Ground truth = ORCHESTRATION-STATE.md (FIRST) + this file. Process rules verbatim — handoff 17 · section 4 (still current). Supersedes 17 on the resume point.
 
 # ── Part 1 · Plain words ──
 
 ## 1. Where we are now
-**Эпик GSL-65 «Self-pulse + night mode» (PRD Phase 2) СМЕРЖЕН**: PR #82 → `main @ 135ce1f`, issues #75..#81 закрыты, Jira Done, remote-ветка удалена. Вместе с watchdog (GSL-49) **ядро концепции «владелец спит» готово**: оркестратор пишет пульс и сам просыпается по правильной каденции, ночью копит вопросы, переживает лимиты, останавливается при зацикливании, а внешний watchdog перезапускает его при смерти.
+**Epic GSL-65 "Self-pulse + night mode" (PRD Phase 2) MERGED**: PR #82 → `main @ 135ce1f`, issues #75..#81 closed, Jira Done, remote branch deleted. Together with the watchdog (GSL-49) **the "owner sleeps" core is ready**: the orchestrator writes a pulse and wakes itself up on the right cadence, at night queues questions, survives limits, stops on loops, and an external watchdog restarts it on death.
 
-## 2. Что добавила Phase 2 (по-компонентно)
-- **Каденция пульса** по cache-окнам: ~270s активный мониторинг / 540s+ стабильное ожидание / 1200–1800s глубокое; зона [300,540) запрещена; закон armed-wake-up: три легитимных выхода из хода — armed / quiesced+0 / rolling (без wake-up).
-- **Night mode/activeHours**: ночью вопросы → QUESTIONS-PENDING, эскалации в буфер (critical будит всегда), утром один summary; heartbeat несёт `mode`.
-- **Quota auto-wait**: детекция лимита по 4 сигналам → quiesced+ETA; один wake-up до ETA+120s; подстраховка — watchdog v0.5.1-будильник (щит quiesced истекает через 900s после ETA); авто-резюм.
-- **Circuit-breaker** поверх loop-guard: 4 сигнала зацикливания → OPEN (стоп спавнов + эскалация), HALF_OPEN одна проба после 30 мин, повторный OPEN — только ручной сброс из STATE.
-- **HEARTBEAT_OK fast-path**: дешёвый пульс ≤3-4 tool-calls.
-- Ревью поймало 2 MAJOR логических дыры (quota-цепочка, rolling-выход) — исправлены до merge (69a12b9); smoke 75/75.
+## 2. What Phase 2 added (per component)
+- **Pulse cadence** by cache windows: ~270s active monitoring / 540s+ stable wait / 1200–1800s deep; the zone [300,540) is forbidden; the armed-wake-up law: three legitimate turn exits — armed / quiesced+0 / rolling (without a wake-up).
+- **Night mode/activeHours**: at night questions → QUESTIONS-PENDING, escalations into the buffer (critical always wakes), one summary in the morning; the heartbeat carries `mode`.
+- **Quota auto-wait**: detect the limit by 4 signals → quiesced+ETA; one wake-up until ETA+120s; a safety net — watchdog v0.5.1 alarm (the quiesced shield expires 900s after ETA); auto-resume.
+- **Circuit-breaker** on top of the loop-guard: 4 loop signals → OPEN (spawn stop + escalation), HALF_OPEN a single probe after 30 min, a second OPEN — only a manual reset from STATE.
+- **HEARTBEAT_OK fast-path**: a cheap pulse ≤3-4 tool calls.
+- The review caught 2 MAJOR logic holes (quota chain, rolling exit) — fixed before merge (69a12b9); smoke 75/75.
 
-## 3. Сегодня смержено три эпика
-GSL-49 watchdog (PR #66 → 878f438) · GSL-58 анатомия autosk (PR #74 → a217393) · GSL-65 pulse/night (PR #82 → 135ce1f).
+## 3. Three epics merged today
+GSL-49 watchdog (PR #66 → 878f438) · GSL-58 autosk anatomy (PR #74 → a217393) · GSL-65 pulse/night (PR #82 → 135ce1f).
 
 # ── Part 2 · Formal ──
 
 ## Connections
 Jira GSL cloudId 74054cdc-47ef-497d-9684-734149876a8b (11/21/31/41); GH ainstance-labs/gosleep, **main @ 135ce1f**, 0 open PRs; next Jira=GSL-72, GH=#83; owner accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67.
 
-## SHA GSL-65
-270e519 (66 ledger) / f35a2b2 (67) / b510de8 (68) / d1fbb42 (69) / 79f76bb (70) / 7e9b37c (71) / 69a12b9 (fix M1/M2) / merge 135ce1f. Пути: SKILL.md новые секции; tools/watchdog v0.5.1 (smoke 75); dev_history GSL-66..71.
+## GSL-65 SHAs
+270e519 (66 ledger) / f35a2b2 (67) / b510de8 (68) / d1fbb42 (69) / 79f76bb (70) / 7e9b37c (71) / 69a12b9 (fix M1/M2) / merge 135ce1f. Paths: SKILL.md new sections; tools/watchdog v0.5.1 (smoke 75); dev_history GSL-66..71.
 
 ## ⭐ Immediate next steps
-1. **Известный хвост:** рабочее дерево ещё на локальной ветке `GSL-65-self-pulse-night` (checkout main блокировал незакоммиченный леджер). Setup следующего эпика: `git fetch origin && git checkout main`... если блокирует леджер — `git checkout -m main` НЕ использовать; путь: закоммитить леджер ПРЯМО на новой ветке эпика, созданной от origin/main (`git checkout -b <EPIC>-question-buffer origin/main` перенесёт uncommitted), потом `git branch -d GSL-65-self-pulse-night`.
-2. **Setup Phase 3 PRD «Question buffer + decision manifest»** (Opus, механика): PRD constraints C1-C8 + секция Phase 3 → Jira эпик + задачи (+задача-1 [Process] леджер: STATE + handoffs 17, 18) + GH-зеркало + ветка от origin/main + housekeeping-коммит + push. Брифы конвейера — по образцу GSL-65 (лог STATE).
-3. impl Fable → механик PR → ревьюер Fable → merge-финализатор Opus → handoff 19 → доклад → Phase 4 Laboratory.
+1. **Known tail:** the working tree is still on local branch `GSL-65-self-pulse-night` (a checkout of main blocked on the uncommitted ledger). Next epic setup: `git fetch origin && git checkout main`... if the ledger blocks — do NOT use `git checkout -m main`; path: commit the ledger DIRECTLY on the new epic branch created from origin/main (`git checkout -b <EPIC>-question-buffer origin/main` will carry over uncommitted), then `git branch -d GSL-65-self-pulse-night`.
+2. **Setup Phase 3 PRD "Question buffer + decision manifest"** (Opus, mechanics): PRD constraints C1-C8 + Phase 3 section → Jira epic + tasks (+ task-1 [Process] ledger: STATE + handoffs 17, 18) + GH mirror + branch from origin/main + housekeeping commit + push. Pipeline briefs — per the GSL-65 template (STATE log).
+3. impl Fable → mechanic PR → reviewer Fable → merge finalizer Opus → handoff 19 → report → Phase 4 Laboratory.
 
-## Бэклог
-pi/packages/orchestrator разбор (prior art!); watchdog F1-S1 live-check (владелец); e2e ночной прогон с rate_limit-инъекцией; gsl49 M3+8 minors; gsl58 off-by-one; SC-19/N-header/SC-11; локальные ветки GSL-7/19 (+GSL-65 после ухода с неё); prompts-файл владельца. Телеметрия: ~65 циклов, ≈4.7M+ (полный блок в STATE; циклы 32/35 gap).
+## Backlog
+pi/packages/orchestrator analysis (prior art!); watchdog F1-S1 live-check (owner); e2e night run with rate_limit injection; gsl49 M3+8 minors; gsl58 off-by-one; SC-19/N-header/SC-11; local branches GSL-7/19 (+GSL-65 after leaving it); owner's prompts file. Telemetry: ~65 cycles, ≈4.7M+ (the full block in STATE; cycles 32/35 gap).

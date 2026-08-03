@@ -1,91 +1,98 @@
-# Handoff — gosleep — 2026-07-20 (цикл 66, impl-mob-2: GSL-108 phone-readable дашборд закрыт)
+# Handoff — gosleep — 2026-07-20 (cycle 66, impl-mob-2: GSL-108 phone-readable dashboard closed)
 
-> Для оркестратора и следующего impl-воркера Фазы 6. Читай Part 1 → ORCHESTRATOR REPORT → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + handoff 39 (развёртка Фазы 6) + handoff 40 (RC) +
-> этот файл + handoff 35 (20 правил и 6 уроков — все в силе).
-> Я — impl-воркер цикла 66. Сделал ровно одну задачу: **GSL-108**.
+> For the orchestrator and the next Phase 6 impl-worker. Read Part 1 → ORCHESTRATOR REPORT → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + handoff 39 (Phase 6 rollout) + handoff 40 (RC) +
+> this file + handoff 35 (20 rules and 6 lessons — all in force).
+> I am the impl-worker of cycle 66. Did exactly one task: **GSL-108**.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Что сделано
+## 1. What was done
 
-**GSL-108 закрыт** (Jira **Done**, коммит `e0b71e8`, запушен). Владелец теперь читает утренний экран
-с телефона по одной ссылке, которая не устаревает:
+**GSL-108 closed** (Jira **Done**, commit `e0b71e8`, pushed). The owner now reads the morning
+screen from the phone via a single link that does not go stale:
 
 ```
 https://github.com/ainstance-labs/gosleep/tree/main/docs/lab/mobile
 ```
 
-(пока Фаза 6 не смёржена — `…/tree/GSL-102-mobile/docs/lab/mobile`).
+(until Phase 6 is merged — `…/tree/GSL-102-mobile/docs/lab/mobile`).
 
-Это **папка**, а не файл: GitHub сам рендерит её `README.md`.
+This is a **folder**, not a file: GitHub renders its `README.md` itself.
 
-## 2. Главный результат: неверен был не замер Фазы 5, а вывод из него
+## 2. Main result: it was not the Phase 5 measurement that was wrong, but the conclusion from it
 
-Фаза 5 записала F5-S4c как **опровергнутый**, и её измерения верны — я воспроизвёл их первым делом,
-сходится до заголовка: `raw` отдаёт `text/plain` + `nosniff`, Pages на приватном репо → 404.
+Phase 5 recorded F5-S4c as **refuted**, and its measurements are correct — I reproduced them
+first thing, converges down to the header: `raw` returns `text/plain` + `nosniff`, Pages on a
+private repo → 404.
 
-Но вывод, зафиксированный в `chronicler.py` (генераторе `docs/lab/site/README.md`), звучал так:
+But the conclusion recorded in `chronicler.py` (the generator of `docs/lab/site/README.md`) went
+like this:
 
-> «There is no URL on github.com that renders these pages. **GitHub is a transport for the bytes, not
-> a viewer.**»
+> "There is no URL on github.com that renders these pages. **GitHub is a transport for the
+> bytes, not a viewer.**"
 
-Первое предложение истинно — **для `.html`**. Второе шире собственных доказательств: мерили `.html` и
-`raw`, а заключили про **GitHub целиком**. Именно это обобщение держало дыру открытой целую фазу,
-потому что оно закрывает не тот путь, который проверяли, а все пути сразу.
+The first sentence is true — **for `.html`**. The second is broader than its own evidence: we
+measured `.html` and `raw` and concluded about **the whole of GitHub**. This is exactly the
+generalization that held the hole open across the whole phase, because it closes not the path
+that was checked but all paths at once.
 
-**Перемер** (тот же приватный репо, аутентифицированно):
+**Remeasurement** (same private repo, authenticated):
 
-| Что | Что вернулось |
+| What | What came back |
 |---|---|
-| `.md` через Contents API (`Accept: html`) | `<article class="markdown-body">` — **отрендерено серверно** |
-| `.html` через тот же API | `<pre class="plain">&lt;!doctype html&gt;` — **экранировано**, показан исходник |
-| `README.md` папки (`GET /readme/<dir>`) | тоже рендерится |
-| папка **без** `README.md` | `404` |
+| `.md` via Contents API (`Accept: html`) | `<article class="markdown-body">` — **server-rendered** |
+| `.html` via the same API | `<pre class="plain">&lt;!doctype html&gt;` — **escaped**, source shown |
+| A folder's `README.md` (`GET /readme/<dir>`) | also rendered |
+| A folder **without** `README.md` | `404` |
 
-**Механизм:** `nosniff` никогда не управлял Markdown, потому что Markdown браузеру на интерпретацию
-**не отдают** — GitHub рендерит его у себя и присылает готовый HTML. Препятствием был не приватный
-репозиторий, а **расширение файла**. GitHub — и транспорт, и просмотрщик, смотря что ему дали.
+**Mechanism:** `nosniff` never controlled Markdown because Markdown is **not given** to the
+browser for interpretation — GitHub renders it on their side and sends ready HTML. The obstacle
+was not the private repository but the **file extension**. GitHub is both transport and viewer,
+depending on what it is given.
 
-> Урок в ту же копилку, что и цикл 65: там вывод сделали по одному `--help`, здесь — по одному
-> расширению файла. Оба раза измерение было верным, а **обобщение** — нет, и оба раза цена
-> обобщения оказалась выше цены проверки.
+> Lesson in the same pile as cycle 65: there the conclusion was drawn from one `--help`, here
+> — from one file extension. Both times the measurement was correct and the **generalization**
+> was not, and both times the cost of the generalization turned out higher than the cost of a
+> check.
 
-## 3. Негативный контроль, который сначала был невалиден
+## 3. A negative control that was invalid at first
 
-Строку «папка без README → 404» я сперва проверил на `docs/lab/events`, получил **200** и чуть не
-записал, что GitHub отдаёт README любой папки. Спасла проверка диска перед выводом: **у той папки
-README есть**, так что 200 был корректен, а контроль — бессмысленным. Переделал на три папки, где
-README действительно нет (`docs/handoff`, `docs/prompts`, `docs/runbooks`) — все три дают 404.
+I first checked the line "folder without README → 404" on `docs/lab/events`, got **200** and
+almost recorded that GitHub serves the README of any folder. Saved by a disk check before the
+conclusion: **that folder has a README**, so 200 was correct and the control was meaningless.
+Redone against three folders that really lack README (`docs/handoff`, `docs/prompts`,
+`docs/runbooks`) — all three give 404.
 
-## 4. Где я поймал себя на AI-слопе
+## 4. Where I caught myself in AI slop
 
-Владелец в этот же день назвал Laboratory UI «AI-слопом». Первый прогон моей страницы был им же.
-Прочитал вслух — и услышал четыре дефекта, два из них содержательные:
+The owner that same day called the Laboratory UI "AI slop". The first run of my page was itself
+one. I read it aloud — and heard four defects, two of them substantive:
 
-* **«Latest decisions» печатал четыре самых старых решения.** `decisions.recent` приходит
-  **oldest-first**, а я взял `[:4]`. Подпись прямо противоречила списку — страница врала ровно там,
-  где обещала свежесть.
-* **Решение печаталось как `d-2026-07-13-001 — q-2026-07-12-001`** — идентификатор, описанием
-  которого служит другой идентификатор. Мой фолбэк `d.get("what") or d.get("re")` провалился в `re`,
-  потому что поля `what` в записи **не существует**; настоящее — `decision`. На телефоне это хуже
-  отсутствия секции: стоит тапа и не сообщает ничего.
-* «101 unknown» первым номером (сортировка по убыванию выносила вперёд отсутствие информации) и
-  «in 0.46h» вместо «28m».
+* **"Latest decisions" printed the four oldest decisions.** `decisions.recent` comes
+  **oldest-first**, and I took `[:4]`. The caption directly contradicted the list — the page lied
+  exactly where it promised freshness.
+* **A decision was printed as `d-2026-07-13-001 — q-2026-07-12-001`** — an identifier whose
+  description is another identifier. My fallback `d.get("what") or d.get("re")` fell through to
+  `re`, because the `what` field does not exist in the record; the real one is `decision`. On a
+  phone this is worse than a missing section: costs a tap and communicates nothing.
+* "101 unknown" as the first item (descending sort put "no information" up front) and "in 0.46h"
+  instead of "28m".
 
-Оба содержательных закреплены ⭐-тестами на фикстуре решений 1900…2099: любая несортированная
-нарезка кладёт вперёд не ту запись.
+Both substantive ones are pinned by ⭐ tests on a decisions fixture 1900…2099: any unsorted slice
+puts the wrong record up front.
 
-## 5. Свойство, ради которого стоило городить именно так
+## 5. The property that made it worth building it exactly this way
 
-Семь HTML-экранов требуют node. Эта страница — **нет**: её пишет Python из бандла, который Python уже
-записал, и запись стоит **вне** ветки «рендер удался». Иначе единственная поверхность, доступная из
-кровати, исчезала бы ровно в ту ночь, когда ломается сборка. Плюс страница **говорит** читателю, что
-HTML рядом с ней устарел. Проверено срезанием node из `PATH`.
+Seven HTML screens require node. This page — **does not**: Python writes it from a bundle Python
+has already written, and the write stands **outside** the "render succeeded" branch. Otherwise
+the only surface available from bed would disappear exactly on the night the build breaks. Plus
+the page **tells** the reader that the HTML next to it is stale. Verified by cutting node from
+`PATH`.
 
-## 6. Проблемы
+## 6. Problems
 
-Блокеров по своей задаче нет. Для следующего воркера — см. ⭐ RESUME.
+No blockers on my task. For the next worker — see ⭐ RESUME.
 
 ---
 
@@ -93,137 +100,141 @@ HTML рядом с ней устарел. Проверено срезанием 
 
 | | |
 |---|---|
-| **Задача** | **GSL-108** `[Tooling][Docs]` → Jira **Done** (верифицировано), GH #122 **не закрывал** |
-| **Коммит** | **`e0b71e8`** — 7 файлов, +680/−15, пофайлово, запушен в `GSL-102-mobile` |
-| **Гейты** | smoke **285/285** (276 + 9) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 7 страниц |
-| **Мутации** | 7 прогнано в APFS-клонах (живое дерево не трогалось); **каждый ⭐ краснит свой**; m3/m4/m7 — ровно 1 красный, остальные каскадят семантически |
-| **Живой прогон** | запушенная папка на GitHub: `200`, `markdown-body`, 7×`h2`, **0** утечек исходника; `POST /markdown` → `text/html`; снимок **390px** без переполнения |
-| **Схема** | `render/7` **не трогалась** (я только читатель бандла) |
-| **Решения** | новых DECISION не заводил; очередь `open=0` |
-| **install.sh** | **не гонялся** (директива владельца) |
-| **Acceptance** | ✅ путь найден и реализован · ✅ Non-goals соблюдены (0 инфры, ничего публичного) · ✅ регенерируется, схема цела · ✅ живой прогон заголовками+скриншотом · ⏳ **глаза владельца на реальном телефоне** |
+| **Task** | **GSL-108** `[Tooling][Docs]` → Jira **Done** (verified), GH #122 **not closed** |
+| **Commit** | **`e0b71e8`** — 7 files, +680/−15, per-file, pushed to `GSL-102-mobile` |
+| **Gates** | smoke **285/285** (276 + 9) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 7 pages |
+| **Mutations** | 7 run in APFS clones (live tree untouched); **each ⭐ reddens its own**; m3/m4/m7 — exactly 1 red, the rest cascade semantically |
+| **Live run** | pushed folder on GitHub: `200`, `markdown-body`, 7×`h2`, **0** source leaks; `POST /markdown` → `text/html`; a snapshot at **390px** without overflow |
+| **Schema** | `render/7` **untouched** (I am only a bundle reader) |
+| **Decisions** | no new DECISION filed; queue `open=0` |
+| **install.sh** | **not run** (owner directive) |
+| **Acceptance** | ✅ path found and implemented · ✅ Non-goals respected (0 infra, nothing public) · ✅ regenerated, schema intact · ✅ live run by headers + screenshot · ⏳ **owner's eyes on a real phone** |
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Что изменено
+## What was changed
 
-| Файл | Роль |
+| File | Role |
 |---|---|
-| `tools/lab/chronicler.py` | `build_mobile()` + `_hours()`/`_ml()`; вызов в `main()` **вне** ветки успеха рендера; исправлено ложное обобщение в `SITE_README` |
-| `tools/lab/smoke.sh` | +9 чеков (276 → **285**) |
-| `docs/lab/mobile/README.md` | **DERIVED** — телефонная страница, 7 секций |
-| `docs/runbooks/phone-dashboard.md` | runbook владельца (RU): что открывать, почему работает, §5 что осталось на него, §6 таблица «проверено / не проверено» |
-| `docs/dev_history/GSL-108-phase6-cycle66-…md` + `README.md` | dev history + индекс |
+| `tools/lab/chronicler.py` | `build_mobile()` + `_hours()`/`_ml()`; call in `main()` **outside** the render success branch; false generalization in `SITE_README` fixed |
+| `tools/lab/smoke.sh` | +9 checks (276 → **285**) |
+| `docs/lab/mobile/README.md` | **DERIVED** — phone page, 7 sections |
+| `docs/runbooks/phone-dashboard.md` | owner runbook (RU): what to open, why it works, section 5 what is left to him, section 6 "verified / not verified" table |
+| `docs/dev_history/GSL-108-phase6-cycle66-…md` + `README.md` | dev history + index |
 
-## Тесты (⭐ = имеет мутанта, который краснит именно его)
+## Tests (⭐ = has a mutant that reddens exactly it)
 
-| Чек | Механизм | Мутант |
+| Check | Mechanism | Mutant |
 |---|---|---|
-| ⭐ имя файла | страница именно `mobile/README.md` — иначе открытие папки не рендерит | переименование → красный (+каскад: без файла падает всё, что его читает) |
-| ⭐ производность | несёт `generated_at` **этого** прохода (сверка со `status.json`) | зашитая строка → красный |
-| ⭐ только рабочие ссылки | ни одной ссылки на `.html` | вставка `.html`-ссылки → красный, **ровно он** |
-| ⭐ «latest» значит latest | первой идёт `NEWEST-DECISION-TEXT` (фикстура 1900…2099) | `recent_dec[:4]` → красный, **ровно он** |
-| ⭐ решение читается как решение | печатается `decision`, не `re` | `d.get("re")` → красный |
-| ⭐ переживает no-node | node срезан из `PATH`: `ui.reason=no-node`, страница написана и свежа | запись внутрь ветки «рендер ок» → красный |
-| ⭐ и говорит об этом | предупреждение про устаревший HTML на странице | условие → `if False` → красный, **ровно он** |
-| PC ×2 | страница непуста и несёт 7 секций; no-node-фикстура действительно потеряла рендерер | — |
+| ⭐ file name | the page is exactly `mobile/README.md` — otherwise opening the folder does not render | rename → red (+cascade: without the file everything reading it falls) |
+| ⭐ derived | carries `generated_at` from **this** pass (cross-check with `status.json`) | hardcoded string → red |
+| ⭐ only working links | not a single link to `.html` | insert a `.html` link → red, **exactly it** |
+| ⭐ "latest" means latest | first goes `NEWEST-DECISION-TEXT` (fixture 1900…2099) | `recent_dec[:4]` → red, **exactly it** |
+| ⭐ decision reads as a decision | prints `decision`, not `re` | `d.get("re")` → red |
+| ⭐ survives no-node | node cut from `PATH`: `ui.reason=no-node`, the page is written and fresh | write inside the "render ok" branch → red |
+| ⭐ and says so | warning about stale HTML on the page | condition → `if False` → red, **exactly it** |
+| PC ×2 | the page is not empty and carries 7 sections; the no-node fixture actually lost the renderer | — |
 
 ## Connections
 
 | | |
 |---|---|
-| Ветка | `GSL-102-mobile` @ **`e0b71e8`** (запушена) |
-| Эпик | GSL-102 = GH #116; задачи GSL-103…GSL-110 = GH #117…#124 |
-| PR Фазы 6 | **ещё не открыт** |
-| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции 11/21/31/**41=Done** |
-| Очередь | `open=0` |
+| Branch | `GSL-102-mobile` @ **`e0b71e8`** (pushed) |
+| Epic | GSL-102 = GH #116; tasks GSL-103…GSL-110 = GH #117…#124 |
+| Phase 6 PR | **not yet open** |
+| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions 11/21/31/**41=Done** |
+| Queue | `open=0` |
 
-## Статус задач Фазы 6 (проверено JQL, не по памяти)
+## Phase 6 task status (verified by JQL, not from memory)
 
-**Done (3):** GSL-103 ledger · GSL-104 RC · **GSL-108 phone-readable** (этот цикл).
+**Done (3):** GSL-103 ledger · GSL-104 RC · **GSL-108 phone-readable** (this cycle).
 **To Do (5):** GSL-105, GSL-106, GSL-107, GSL-109, GSL-110.
 
-## ⚠️ Железные правила
+## ⚠️ Hard rules
 
-Все 20 правил handoff 35 в силе без ослаблений: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
-после push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
-`docs/lab/site/*.html` DERIVED · коммит через `git commit -F` · дирти дерево — норма.
-**Owner directive 2026-07-20 (IN FORCE):** `./install.sh` целиком не гонять; точечный
-`rsync -a skill/<name>/ ~/.claude/skills/<name>/`. В `CLAUDE.md` владелец сегодня усилил это
-формулировкой про авторитетность глобальной копии — читать её, а не мою цитату.
+All 20 handoff-35 rules in force without weakening: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
+after push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
+`docs/lab/site/*.html` DERIVED · commit via `git commit -F` · dirty tree — norm.
+**Owner directive 2026-07-20 (IN FORCE):** `./install.sh` whole not run; point-
+`rsync -a skill/<name>/ ~/.claude/skills/<name>/`. In `CLAUDE.md` the owner strengthened this
+today with a wording about the authority of the global copy — read it, not my quote.
 
 ## Gotchas
 
-Все прежние в силе. Новое от меня:
+All prior ones in force. New from me:
 
-- **`tools/lab/chronicler.py` кончается `sys.exit(main())` на уровне модуля**, без
-  `if __name__ == "__main__"`. Любой `import` запускает **полный проход** и пишет 12 файлов — я на
-  это наступил, пробуя протестировать генератор изолированно. Пострадали только derived-файлы,
-  суверенные не тронуты. Следствие: **юнит-тест импортом невозможен**, только подпроцесс в
-  throwaway-репо (как и весь `smoke.sh`).
-- **Мутационный прогон дёшев через APFS copy-on-write:** `cp -Rc <repo> <clone>` почти бесплатен по
-  месту и времени, 7 клонов ушли параллельно и живое дерево не трогалось ни разу. Полный `smoke.sh`
-  идёт **>120 c** — гнать фоном, иначе тул-таймаут.
-- **`docs/lab/digest/*.md` уже помечен в шапке `chronicler.sh` как «(owner, phone)»** — Markdown как
-  телефонная поверхность был задуман ещё в Фазе 4; не хватало только точки входа без даты в имени.
+- **`tools/lab/chronicler.py` ends with `sys.exit(main())` at module level**, without
+  `if __name__ == "__main__"`. Any `import` triggers a **full pass** and writes 12 files — I
+  stepped on that trying to test the generator in isolation. Only derived files suffered,
+  sovereign untouched. Consequence: **an import-based unit test is impossible**, only a
+  subprocess in a throwaway repo (same as all of `smoke.sh`).
+- **Mutation runs are cheap via APFS copy-on-write:** `cp -Rc <repo> <clone>` is almost free on
+  space and time, 7 clones went in parallel and the live tree was not touched once. The full
+  `smoke.sh` takes **>120 s** — run in background, otherwise the tool timeout.
+- **`docs/lab/digest/*.md` is already marked in the header of `chronicler.sh` as "(owner,
+  phone)"** — Markdown as a phone surface was conceived back in Phase 4; only an entry point
+  without a date in the name was missing.
 
 ---
 
-## ⭐ RESUME POINT — следующий impl-воркер Фазы 6
+## ⭐ RESUME POINT — next Phase 6 impl-worker
 
 ```bash
 # Orient
 head -30 docs/handoff/ORCHESTRATION-STATE.md
-cat docs/handoff/41-2026-07-20-handoff-impl-mob-2.md   # этот файл
+cat docs/handoff/41-2026-07-20-handoff-impl-mob-2.md   # this file
 git branch --show-current                 # GSL-102-mobile
 git log --oneline -1                      # e0b71e8 (GSL-108)
-ls -la .env.local 2>/dev/null || echo "GSL-105 всё ещё заблокирована"
+ls -la .env.local 2>/dev/null || echo "GSL-105 still blocked"
 tools/lab/lab-emit.sh list --count
 ```
 
-### Проверено мной на факте, не унаследовано
+### Verified by me by fact, not inherited
 
 | | |
 |---|---|
-| `.env.local` | **ОТСУТСТВУЕТ** — блокер GSL-105 в силе, ничего не изменилось |
-| `tailscale` CLI | **не установлен** на машине |
-| очередь вопросов | `open=0` |
+| `.env.local` | **ABSENT** — GSL-105 blocker in force, nothing changed |
+| `tailscale` CLI | **not installed** on the machine |
+| question queue | `open=0` |
 
-### Рекомендация: **GSL-109 `[UI][Design]` дизайн-проход 7 экранов**
+### Recommendation: **GSL-109 `[UI][Design]` design pass on 7 screens**
 
-Почему она, а не следующая по номеру:
+Why it and not the next by number:
 
-1. **Незаблокирована** — секретов не требует, в отличие от GSL-105 (`.env.local` нет) и GSL-106
-   (PRD прямо велит ставить её **после** 105).
-2. **Владелец просил её сам** — задача материализует DECISION `q-2026-07-20-002`, поднятый после
-   того, как он назвал UI «AI-слопом». Это единственная задача фазы с прямым пожеланием владельца.
-3. Описание уже несёт жёсткие инварианты (схему `render/7` не двигать, mechanism-ассерты не
-   ослаблять, править **рендерер** `tools/lab/ui/`, а не `site/*.html`) и три урока циклов 59/61.
-   Читать описание **первым тулом** — половина приёмки живёт там.
+1. **Unblocked** — requires no secrets, unlike GSL-105 (`.env.local` absent) and GSL-106 (PRD
+   directly requires it be done **after** 105).
+2. **The owner asked for it himself** — the task materializes DECISION `q-2026-07-20-002`,
+   raised after he called the UI "AI slop". This is the only task of the phase with a direct
+   owner wish.
+3. The description already carries hard invariants (do not move the `render/7` schema, do not
+   weaken mechanism asserts, edit the **renderer** `tools/lab/ui/`, not `site/*.html`) and three
+   lessons from cycles 59/61. Read the description **first tool** — half of the acceptance
+   lives there.
 
-**Предупреждение от меня по GSL-109:** мою телефонную страницу дизайн-проход **не покрывает** — она
-Markdown, её оформляет GitHub, и CSS у неё отобрать нельзя. Если после дизайн-прохода экраны и
-телефонная страница начнут говорить разными словами об одних числах — это регресс; обе читают один
-`render_bundle.json`, и это единственная гарантия, что они не разъедутся.
+**Warning from me about GSL-109:** the design pass does **not** cover my phone page — it is
+Markdown, GitHub formats it, and CSS cannot be taken away from it. If after the design pass the
+screens and the phone page start saying different words about the same numbers — that is a
+regression; both read the same `render_bundle.json`, and this is the only guarantee they will not
+diverge.
 
-### Альтернатива, если нужен docs-цикл
+### Alternative, if a docs cycle is needed
 
-**GSL-107** `[Docs]` Tailscale/mosh break-glass runbook — независим, но `tailscale` на машине нет,
-поэтому честная проверка F6-S4 упрётся в установку владельцем. Писать можно, закрывать приёмку —
-нет; фиксировать как `⏳`, а не как «должно работать».
+**GSL-107** `[Docs]` Tailscale/mosh break-glass runbook — independent, but `tailscale` is not on
+the machine, so an honest F6-S4 check will hit installation by the owner. You can write; you
+cannot close acceptance; record as `⏳`, not "should work".
 
-### Что осталось владельцу по GSL-108 (не воркеру)
+### What is left to the owner on GSL-108 (not to a worker)
 
-Один заход, ~1 минута: открыть ссылку из §1 с телефона и убедиться, что видит **отрендеренный
-текст**, а не исходник и не 404. Результат записать **включая отрицательный** — как это сделала
-Фаза 5. Известные причины отказа: не залогинен в GitHub на телефоне; у аккаунта нет доступа к
-приватному репо; открыт файл, а не папка.
+One visit, ~1 minute: open the link from section 1 from the phone and confirm he sees
+**rendered text**, not source and not 404. Record the result **including a negative** — as
+Phase 5 did. Known reasons for failure: not logged in to GitHub on the phone; the account has no
+access to the private repo; opened a file, not a folder.
 
 ## Blocked on human
 
-- **GSL-108 / F5-S4c:** финальный взгляд с реального телефона (см. выше). Не блокирует другие задачи.
-- **GSL-104 / F6-S1:** hands-on пэйринг + второй пуш-тоггл (handoff 40). Не блокирует.
-- **GSL-105:** BLOCKER по секрету ntfy-топика — `.env.local` **проверено, по-прежнему отсутствует**.
-- **GSL-107 / F6-S4:** `tailscale` не установлен — приёмка требует установки владельцем.
+- **GSL-108 / F5-S4c:** final look from a real phone (see above). Does not block other tasks.
+- **GSL-104 / F6-S1:** hands-on pairing + the second push toggle (handoff 40). Does not block.
+- **GSL-105:** BLOCKER on the ntfy topic secret — `.env.local` **verified, still absent**.
+- **GSL-107 / F6-S4:** `tailscale` is not installed — acceptance requires installation by the owner.

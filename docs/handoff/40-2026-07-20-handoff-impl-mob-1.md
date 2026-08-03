@@ -1,102 +1,105 @@
-# Handoff — gosleep — 2026-07-20 (цикл 65, impl-mob-1: GSL-104 Remote Control закрыт)
+# Handoff — gosleep — 2026-07-20 (cycle 65, impl-mob-1: GSL-104 Remote Control closed)
 
-> Для оркестратора и следующего impl-воркера Фазы 6. Читай Part 1 → Part 2 → ⭐ RESUME.
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + handoff 39 (развёртка Фазы 6) + этот файл +
-> handoff 35 (20 правил и 6 уроков — все в силе).
-> Я — impl-воркер цикла 65. Сделал ровно одну задачу: **GSL-104**.
+> For the orchestrator and the next Phase 6 impl-worker. Read Part 1 → Part 2 → ⭐ RESUME.
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + handoff 39 (Phase 6 rollout) + this file +
+> handoff 35 (20 rules and 6 lessons — all in force).
+> I am the impl-worker of cycle 65. Did exactly one task: **GSL-104**.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Что сделано
+## 1. What was done
 
-**GSL-104 закрыт** (Jira **Done**, коммит `eebc33e`, запушен). Собрана тонкая обёртка над Remote
-Control, написан runbook пэйринга для владельца, и — главное — **фактическая поверхность выяснена
-руками**, а не процитирована.
+**GSL-104 closed** (Jira **Done**, commit `eebc33e`, pushed). A thin wrapper over Remote Control
+was built, an owner pairing runbook written, and — most importantly — **the actual surface was
+established by hand**, not quoted.
 
-## 2. Оба письменных источника оказались неточны, и в разные стороны
+## 2. Both written sources turned out to be inaccurate, and in different directions
 
-Это главный результат цикла, и он стоит того, чтобы прочитать его целиком.
+This is the main result of the cycle, and it is worth reading in full.
 
-PRD (2026-07-08) называл `claude remote-control`, `--rc` и `/rc`. Setup-воркер цикла 64 посмотрел
-`claude --help`, ничего из этого там не нашёл, увидел флаг `--remote-control` и записал в описание
-задачи вывод: **«PRD устарел, фактический флаг — `--remote-control`»**.
+The PRD (2026-07-08) named `claude remote-control`, `--rc` and `/rc`. The setup worker of cycle 64
+looked at `claude --help`, found none of those there, saw the flag `--remote-control` and wrote
+down in the task description the conclusion: **"PRD is stale, the actual flag is
+`--remote-control`"**.
 
-Вывод был бы верен, если бы `--help` показывал всё. Он не показывает. В бинарнике CLI 2.1.215:
+The conclusion would be correct if `--help` showed everything. It does not. In the CLI binary
+2.1.215:
 
 ```
 .command("remote-control", {hidden:!0}).alias("rc")
 ```
 
-Подкоманда **существует** — просто помечена `hidden`. `claude remote-control --help` отвечает
-нормально и показывает целый server mode: `--spawn same-dir|worktree|session`, `--capacity` (по
-умолчанию **32** — ровно то число, что называло исследование), `--session-id`, `--permission-mode`.
-Слэш-команда `/rc` тоже реальна (алиас `/remote-control`, тоггл connect/disconnect).
+The subcommand **exists** — just marked `hidden`. `claude remote-control --help` responds
+normally and shows a whole server mode: `--spawn same-dir|worktree|session`, `--capacity` (default
+**32** — exactly the number the research named), `--session-id`, `--permission-mode`. The slash
+command `/rc` is also real (alias `/remote-control`, toggle connect/disconnect).
 
-Счёт по трём именам PRD: `claude remote-control` — верно, `/rc` — верно, `--rc` — неверно (это
-алиас подкоманды, не флаг). **PRD ошибался в одном имени из трёх; поправка, исправляя его, отменила
-два верных.**
+Score by the PRD's three names: `claude remote-control` — correct, `/rc` — correct, `--rc` —
+incorrect (it is a subcommand alias, not a flag). **The PRD was wrong on one name out of three;
+the correction, fixing it, canceled two correct ones.**
 
-> Урок, который стоит вписывать в брифы наравне с остальными шестью: **опровергнуть источник по
-> одному `--help` — значит заменить одну непроверенную уверенность другой.** «Я проверил» тоже
-> нуждается в проверке, и дешёвый способ проверить существует (греп по бинарю занял минуту).
+> A lesson worth writing into briefs alongside the other six: **refuting a source from one
+> `--help` means replacing one unverified certainty with another.** "I checked" also needs a
+> check, and a cheap way to check exists (a grep over the binary took a minute).
 
-## 3. Практическое следствие, которого не было ни в одном источнике
+## 3. A practical consequence not in any source
 
-Три поверхности не взаимозаменяемы:
+The three surfaces are not interchangeable:
 
-| Путь | До чего дотягивается |
+| Path | What it reaches |
 |---|---|
-| `/rc [имя]` — слэш в сессии | **та сессия, в которой вы уже находитесь** |
-| `claude --remote-control [имя]` | новая сессия, запэйренная со старта |
-| `claude remote-control` (скрытая, алиас `rc`) | сервер на много сессий |
+| `/rc [name]` — a slash in the session | **the session you are already in** |
+| `claude --remote-control [name]` | a new session, paired at startup |
+| `claude remote-control` (hidden, alias `rc`) | a many-session server |
 
-**Флаги действуют в момент старта процесса.** Значит живой оркестратор, копивший состояние флота
-часами, пэйрится **только** через `/rc`. Если бы обёртка следовала описанию задачи (где назван лишь
-флаг), единственным способом дать владельцу телефон стал бы **рестарт оркестратора** — обмен всего
-живого контекста на телефонную ссылку. Это ловушка, и теперь она названа прямым текстом в скилле.
+**Flags act at process start time.** So a live orchestrator that has accumulated fleet state for
+hours pairs **only** via `/rc`. If the wrapper followed the task description (where only the flag
+is named), the only way to give the owner the phone would be a **restart of the orchestrator** —
+exchanging all live context for a phone link. This is a trap, and it is now named directly in
+the skill.
 
-## 4. Тоггл, которого не было — и почему я его не включил
+## 4. A toggle that was not there — and why I did not turn it on
 
-Приёмка F6-S1 требует **оба** пуш-тоггла ON. По факту на машине:
+F6-S1 acceptance requires **both** push toggles ON. In fact on the machine:
 
-- `agentPushNotifEnabled` («Push when Claude decides») = `true` ✅
-- `inputNeededNotifEnabled` («Push when actions required») — **ключа нет**
+- `agentPushNotifEnabled` ("Push when Claude decides") = `true` ✅
+- `inputNeededNotifEnabled` ("Push when actions required") — **the key is missing**
 
-Оба читаются в бинарнике как `?? !1`: **отсутствие ключа означает «выключено», а не «включено»**.
-Выключен именно тот, что несёт всю ночную ценность — он превращает заблокированный
-permission-промпт в жужжание телефона. Без него сессия может простоять заблокированной до утра, а
-телефон промолчит.
+Both are read in the binary as `?? !1`: **absence of the key means "off", not "on"**. What is off
+is exactly the one that carries all the nightly value — it turns a blocked permission prompt into
+a phone buzz. Without it a session can stand blocked until morning, and the phone will be silent.
 
-Я его **не включил намеренно** (решение `q-2026-07-20-003`, применён дефолт). `~/.claude/settings.json`
-лежит **вне репозитория** и подхватывается живыми сессиями сразу: включение означает пуш с
-**каждого** permission-промпта **каждой** сессии работающего сейчас флота. Ночью это не страховка,
-а будильник, звонящий десятки раз. Владельцу оставлен однострочник в runbook §3 — включает, зная
-цену.
+I did not turn it on **deliberately** (decision `q-2026-07-20-003`, default applied).
+`~/.claude/settings.json` sits **outside the repository** and is picked up by live sessions
+immediately: turning it on means a push from **every** permission prompt of **every** session of
+the currently running fleet. At night this is not a safety net but an alarm ringing dozens of
+times. Left to the owner a one-liner in runbook section 3 — turns it on knowing the price.
 
-Отдельно стоит знать: строка «Push when actions required» **дополнительно гейтится серверным
-флагом** `tengu_kairos_input_needed_push`. При выключенном гейте её в `/config` просто не будет —
-**отсутствие строки ≠ отсутствие фичи**, и вход тогда только через файл настроек.
+Separately worth knowing: the "Push when actions required" line is **additionally gated by a
+server flag** `tengu_kairos_input_needed_push`. With the gate off, `/config` simply will not have
+it — **absence of the line ≠ absence of the feature**, and entry is then only through the
+settings file.
 
-## 5. Почему обёртка не пэйрит
+## 5. Why the wrapper does not pair
 
-Пэйринг — QR-скан между терминалом и телефоном живого человека. Headless-пути нет. Скрипт, который
-делал бы вид, что умеет запэйриться за владельца, был бы театром, а его зелёная галочка — ложью
-ровно там, где на неё положатся. Поэтому `rc-preflight.sh` отвечает на машинную часть (поверхность,
-оба тоггла, presence-подавление), выдаёт `ready`/`degraded`/`unavailable` и **называет человеческий
-шаг, который взять не может**. Сейчас честно говорит `degraded`.
+Pairing is a QR scan between a terminal and the phone of a live person. There is no headless
+path. A script pretending to be able to pair for the owner would be theater, and its green check
+mark a lie exactly where it is being relied on. Therefore `rc-preflight.sh` answers the machine
+part (surface, both toggles, presence suppression), gives `ready`/`degraded`/`unavailable` and
+**names the human step it cannot take**. It currently honestly says `degraded`.
 
-## 6. Где я поймал себя на тени строки
+## 6. Where I caught myself in a shadow of a string
 
-Первый заход тестов упал — и упал правильно. Два чека («не зовёт модель», «не запускает сессию»)
-сработали на **собственный комментарий скрипта** (`# 0-LLM (C1): no claude -p`) и на строку, которую
-скрипт **печатает**. То есть проверяли присутствие слова в файле, а не то, что файл **исполняет** —
-ровно запрещённый паттерн. Переписал на quote-aware срезание комментариев + отбрасывание печатающих
-функций, с позитивным контролем, что стриппер не съел сами вызовы (иначе оба чека проходили бы над
-пустым файлом).
+The first pass of tests failed — and failed correctly. Two checks ("does not call a model", "does
+not spawn a session") fired on the **script's own comment** (`# 0-LLM (C1): no claude -p`) and on
+a string the script **prints**. That is, they checked the presence of a word in a file, not the
+fact that the file **executes** — exactly the forbidden pattern. Rewrote to quote-aware comment
+stripping + dropping printing functions, with a positive control that the stripper did not eat
+the calls themselves (otherwise both checks would pass over an empty file).
 
-## 7. Проблемы
+## 7. Problems
 
-Блокеров по своей задаче нет. **Для следующего воркера блокер есть — см. ⭐ RESUME §GSL-105.**
+No blockers on my task. **For the next worker there is a blocker — see ⭐ RESUME · GSL-105.**
 
 ---
 
@@ -104,134 +107,133 @@ permission-промпт в жужжание телефона. Без него с
 
 | | |
 |---|---|
-| **Задача** | **GSL-104** `[Skill][Docs]` Remote Control → Jira **Done** (верифицировано `getJiraIssue`), GH #118 **не закрывал** (финализатор эпика) |
-| **Коммит** | **`eebc33e`** — 6 файлов, +698 строк, пофайлово, запушен в `GSL-102-mobile` |
-| **Гейты** | smoke **276/276** (база 264 + 12) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 617 событий |
-| **Мутации** | 6 прогнано, **каждый ⭐-тест краснит свой мутант**; дерево восстановлено чисто (`git status tools/` пусто) |
-| **Решения** | `q-2026-07-20-003` — не править глобальные настройки владельца автоматически (дефолт применён) |
-| **Схема** | `render/7` **не трогалась** |
-| **install.sh** | **целиком НЕ гонялся** — он ставит все подпапки и перезаписал бы `orchestrating-delivery-agents` вопреки директиве владельца; установлен только `skill/remote-control` тем же rsync-паттерном (остальные 135 глобальных скиллов не тронуты) |
-| **Acceptance F6-S1** | ✅ поверхность / swappability / ограничения · ⏳ **один тоггл из двух** · ⏳ **пуш на телефон требует владельца** · ❌ **LEAD под RC не проверена hands-on** |
+| **Task** | **GSL-104** `[Skill][Docs]` Remote Control → Jira **Done** (verified by `getJiraIssue`), GH #118 **not closed** (epic finalizer) |
+| **Commit** | **`eebc33e`** — 6 files, +698 lines, per-file, pushed to `GSL-102-mobile` |
+| **Gates** | smoke **276/276** (base 264 + 12) · hooks-verify **14/14** · `tsc --noEmit` **0** · chronicler **FRESH**, 617 events |
+| **Mutations** | 6 run, **each ⭐ test reddens its mutant**; tree restored clean (`git status tools/` empty) |
+| **Decisions** | `q-2026-07-20-003` — do not touch the owner's global settings automatically (default applied) |
+| **Schema** | `render/7` **untouched** |
+| **install.sh** | **whole NOT run** — it installs all subfolders and would have overwritten `orchestrating-delivery-agents` against the owner's directive; only `skill/remote-control` installed by the same rsync pattern (the other 135 global skills untouched) |
+| **Acceptance F6-S1** | ✅ surface / swappability / limits · ⏳ **one toggle out of two** · ⏳ **push to the phone requires the owner** · ❌ **LEAD under RC not verified hands-on** |
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## Что добавлено
+## What was added
 
-| Файл | Роль |
+| File | Role |
 |---|---|
-| `tools/rc/rc-preflight.sh` | **единственное место в исполняемом коде**, знающее поверхность RC (блок `SURFACE`); вердикт + `--json`; 0-LLM; не пэйрит |
-| `skill/remote-control/SKILL.md` | три поверхности и когда какая, оба тоггла, ограничения, честная деградация |
-| `docs/runbooks/remote-control.md` | runbook пэйринга (RU) + §6 «что именно проверено руками» |
-| `tools/lab/smoke.sh` | +12 чеков (264 → **276**) |
+| `tools/rc/rc-preflight.sh` | **the only place in executable code** that knows the RC surface (`SURFACE` block); verdict + `--json`; 0-LLM; does not pair |
+| `skill/remote-control/SKILL.md` | three surfaces and when to use which, both toggles, limits, honest degradation |
+| `docs/runbooks/remote-control.md` | pairing runbook (RU) + section 6 "what exactly was verified by hand" |
+| `tools/lab/smoke.sh` | +12 checks (264 → **276**) |
 | `docs/dev_history/GSL-104-phase6-cycle65-remote-control.md` | dev history |
-| `docs/dev_history/README.md` | индекс: новая секция `Epic GSL-102 — Mobile (PRD Phase 6)` |
+| `docs/dev_history/README.md` | index: new section `Epic GSL-102 — Mobile (PRD Phase 6)` |
 
-## Тесты (⭐ = имеет мутанта, который краснит именно его)
+## Tests (⭐ = has a mutant that reddens exactly it)
 
-| Чек | Механизм | Мутант |
+| Check | Mechanism | Mutant |
 |---|---|---|
-| ⭐ absent = OFF | settings без ключа → `absent`, `status != ready` | `true\|absent) good` → красный, **только он** |
-| ⭐ false = OFF | явный `false` не даёт `ready` | `true\|false) good` → красный, **только он** |
-| ⭐ вердикт различает | оба `true` → `ready` | `RC_FLAG="--REDACTED"` → красный |
-| ⭐ swappability | поверхность не закреплена вне `tools/rc/` | файл с флагом в `tools/lab/` → красный, **только он** |
-| ⭐ C1 0-LLM | среди **исполняемых** строк нет `claude -p` | `claude -p` в неиспользуемой функции → красный (+ no-pairing, что семантически верно) |
-| ⭐ не пэйрит | вызовы `claude` только `--version`/`--help`/`command -v` | `claude --remote-control demo` → красный, **только он** |
-| PC ×4 | SURFACE реально называет флаг и ключ; детектор хардкода ловит нарушителя; стриппер сохраняет вызовы | — |
+| ⭐ absent = OFF | settings without the key → `absent`, `status != ready` | `true\|absent) good` → red, **only it** |
+| ⭐ false = OFF | explicit `false` does not give `ready` | `true\|false) good` → red, **only it** |
+| ⭐ verdict distinguishes | both `true` → `ready` | `RC_FLAG="--REDACTED"` → red |
+| ⭐ swappability | the surface is not pinned outside `tools/rc/` | a file with the flag in `tools/lab/` → red, **only it** |
+| ⭐ C1 0-LLM | among **executable** lines there is no `claude -p` | `claude -p` in an unused function → red (+ no-pairing, semantically correct) |
+| ⭐ does not pair | `claude` calls are only `--version`/`--help`/`command -v` | `claude --remote-control demo` → red, **only it** |
+| PC ×4 | SURFACE actually names the flag and the key; the hardcode detector catches a violator; the stripper preserves calls | — |
 
-Harness строит искомые литералы из фрагментов (`'--remote'"-control"`), иначе сам был бы
-нарушением собственного правила.
+The harness builds the target literals from fragments (`'--remote'"-control"`), otherwise it
+would itself be a violation of its own rule.
 
 ## Connections
 
 | | |
 |---|---|
-| Ветка | `GSL-102-mobile` @ **`eebc33e`** (запушена) |
-| Эпик | GSL-102 = GH #116; задачи GSL-103…GSL-110 = GH #117…#124 |
-| PR Фазы 6 | **ещё не открыт** |
-| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции 11/21/31/**41=Done** |
-| Очередь | `q-2026-07-20-003` открыт (DECISION, дефолт применён мной) |
+| Branch | `GSL-102-mobile` @ **`eebc33e`** (pushed) |
+| Epic | GSL-102 = GH #116; tasks GSL-103…GSL-110 = GH #117…#124 |
+| Phase 6 PR | **not yet open** |
+| Jira | cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions 11/21/31/**41=Done** |
+| Queue | `q-2026-07-20-003` open (DECISION, default applied by me) |
 
-## Статус задач Фазы 6
+## Phase 6 task status
 
-GSL-103 **Done** (ledger) · **GSL-104 Done** (этот цикл) · GSL-105…GSL-110 **To Do** (6).
+GSL-103 **Done** (ledger) · **GSL-104 Done** (this cycle) · GSL-105…GSL-110 **To Do** (6).
 
-## ⚠️ Железные правила
+## ⚠️ Hard rules
 
-Все 20 правил handoff 35 в силе без ослаблений: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
-после push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
-`docs/lab/site/*.html` DERIVED · коммит через `git commit -F` · дирти дерево — норма.
+All 20 handoff-35 rules in force without weakening: ⛔ tree-wide git ops · ⛔ force-push · ⛔ `--amend`
+after push · ⛔ Workflow tool · ⛔ `git add -A` · fleet cap 3 · NO Story · REGULAR merge ·
+`docs/lab/site/*.html` DERIVED · commit via `git commit -F` · dirty tree — norm.
 
-**Owner directive 2026-07-20 (IN FORCE):** `orchestrating-delivery-agents` — только глобальный
-скилл, `./install.sh` для него не гонять. **Практическое следствие, проверенное в этом цикле:**
-`install.sh` ставит **все** подпапки `skill/`, то есть гнать его целиком = нарушить директиву.
-Ставьте свой скилл точечно:
-`rsync -a --delete skill/<name>/ "$HOME/.claude/skills/<name>/"`.
+**Owner directive 2026-07-20 (IN FORCE):** `orchestrating-delivery-agents` — global skill only,
+do not run `./install.sh` for it. **Practical consequence verified in this cycle:** `install.sh`
+installs **all** `skill/` subfolders, i.e. running it whole = violating the directive. Install
+your skill point-wise: `rsync -a --delete skill/<name>/ "$HOME/.claude/skills/<name>/"`.
 
 ## Gotchas
 
-Все прежние в силе. Новое от меня:
+All prior ones in force. New from me:
 
-- **`claude --help` показывает не всё.** Подкоманды бывают `hidden`. Проверять греп по бинарю
-  (`/Users/romanlidovskyi/.local/share/claude/versions/<ver>`) — минута работы, и он опроверг вывод
-  предыдущего цикла.
-- **`ugrep` падает** на длинных `-oE` с `{0,N}` («exceeds complexity limits») — для разбора бинаря
-  берите python, а не grep.
-- **`cd` в Bash-туле переживает вызов**: следующая команда стартует из той же директории. Гоните
-  гейты с абсолютным `cd <repo>` в начале, иначе `chronicler.sh` «не найден».
-- **`.env.local` по-прежнему отсутствует** — GSL-105 упрётся первым (см. RESUME).
+- **`claude --help` does not show everything.** Subcommands can be `hidden`. Verify with a grep
+  over the binary (`/Users/romanlidovskyi/.local/share/claude/versions/<ver>`) — a minute of
+  work, and it refuted the conclusion of the previous cycle.
+- **`ugrep` falls** on long `-oE` with `{0,N}` ("exceeds complexity limits") — for parsing the
+  binary use python, not grep.
+- **`cd` in the Bash tool survives the call**: the next command starts from the same directory.
+  Run gates with an absolute `cd <repo>` at the start, otherwise `chronicler.sh` is "not found".
+- **`.env.local` is still absent** — GSL-105 hits it first (see RESUME).
 
 ---
 
-## ⭐ RESUME POINT — следующий impl-воркер Фазы 6
+## ⭐ RESUME POINT — next Phase 6 impl-worker
 
 ```bash
 # Orient
 cat docs/handoff/ORCHESTRATION-STATE.md | head -30
-cat docs/handoff/40-2026-07-20-handoff-impl-mob-1.md   # этот файл
+cat docs/handoff/40-2026-07-20-handoff-impl-mob-1.md   # this file
 git branch --show-current                 # GSL-102-mobile
 git log --oneline -1                      # eebc33e (GSL-104)
 tools/lab/lab-emit.sh list --count
-tools/rc/rc-preflight.sh                  # текущее состояние телефонного пути
+tools/rc/rc-preflight.sh                  # current state of the phone path
 ```
 
-### Рекомендация: **GSL-105 `[Tooling]` hook→ntfy fleet/lab push (R6.2 → F6-S3)**
+### Recommendation: **GSL-105 `[Tooling]` hook→ntfy fleet/lab push (R6.2 → F6-S3)**
 
-По PRD-порядку следующая (104 → 105 → 106; GSL-106 **не начинать** раньше 105). Но идите в неё с
-открытыми глазами:
+By PRD order the next (104 → 105 → 106; do **not** start GSL-106 before 105). But go in with
+open eyes:
 
-1. **Описание Jira — ПЕРВЫМ тулом**, затем греп кода. Известное: хуки `Notification`,
-   `StopFailure`, `SubagentStop` **уже стоят** в `.claude/settings.json` с Фазы 4 — это
-   **расширение**, а не стройка заново. Не сломайте живой event-поток.
-2. **⚠️ Ожидаемый BLOCKER (credentials):** `.env.local` отсутствует, секрета ntfy-топика негде
-   взять. **Не выдумывайте секрет.** Сообщите оркестратору немедленно, запаркуйте **только**
-   зависимую часть и делайте незаблокированное: структура, hook-расширение, выбор
-   self-hosted/ACL-схемы, код без секрета, тесты на **degraded-путь** (что происходит, когда топика
-   нет — должно деградировать явно, а не молча не слать).
-3. Новые bash-хуки — **только** за шимом `tools/hooks/lab-log-hook.sh` (exit 0 always; bare
-   `exit 2` заблокирует операцию — это был инцидент impl-lab-1).
-4. `.claude/settings.json` подхватывается **live**: правка = немедленный эффект на живой флот.
-   Stop-hook не ломать. Валидировать `jq .` **и** реальным прогоном `hooks-verify.sh`.
-5. Полезное от меня: **fleet-level push — это именно ваша задача.** Remote Control по построению
-   per-session и не видит воркера, умершего в незапэйренной панели; в скилле и runbook это записано
-   как разделение зон, на него можно опираться.
+1. **Jira description — FIRST tool**, then grep the code. Known: hooks `Notification`,
+   `StopFailure`, `SubagentStop` are **already** in `.claude/settings.json` since Phase 4 — this
+   is an **extension**, not building from scratch. Do not break the live event stream.
+2. **⚠️ Expected BLOCKER (credentials):** `.env.local` is absent, nowhere to take the ntfy topic
+   secret. **Do not invent a secret.** Report to the orchestrator immediately, park **only** the
+   dependent part and do the unblocked: structure, hook extension, choice of self-hosted/ACL
+   scheme, code without the secret, tests for the **degraded path** (what happens when there is
+   no topic — should degrade explicitly, not silently fail to send).
+3. New bash hooks — **only** behind the shim `tools/hooks/lab-log-hook.sh` (exit 0 always; bare
+   `exit 2` will block the operation — this was the impl-lab-1 incident).
+4. `.claude/settings.json` is picked up **live**: an edit = immediate effect on the live fleet.
+   Do not break the Stop-hook. Validate with `jq .` **and** a real run of `hooks-verify.sh`.
+5. Useful from me: **fleet-level push is exactly your task.** Remote Control is per-session by
+   construction and does not see a worker that died in an unpaired pane; in the skill and the
+   runbook this is recorded as a division of zones, you can lean on it.
 
-### Альтернатива, если оркестратор хочет цикл без блокера
+### Alternative, if the orchestrator wants a cycle without a blocker
 
-**GSL-108** `[Tooling][Docs]` phone-readable дашборд — полностью независим, секретов не требует, и
-закрывает **опровергнутый F5-S4c** (приватный GitHub отдаёт `text/plain` + `nosniff` → HTML с
-телефона не читается; решать транспортом, а не надеждой на рендеринг). **GSL-107** и **GSL-109**
-тоже независимы.
+**GSL-108** `[Tooling][Docs]` phone-readable dashboard — fully independent, no secrets, and
+closes the **refuted F5-S4c** (private GitHub returns `text/plain` + `nosniff` → HTML from a
+phone is unreadable; solve by transport, not by hoping for rendering). **GSL-107** and **GSL-109**
+are also independent.
 
-### Что осталось владельцу по GSL-104 (не воркеру)
+### What is left to the owner on GSL-104 (not to a worker)
 
-Один заход, ~2 минуты: включить второй тоггл (runbook §3) → `/rc` в панели оркестратора → дождаться
-permission-промпта → подтвердить с телефона. **Результат записать по факту, включая отрицательный.**
-Это же закроет открытый вопрос «ведёт ли себя LEAD-сессия Agent-Teams нормально под RC» — его не
-проверял никто, и я не проверил.
+One visit, ~2 minutes: turn on the second toggle (runbook section 3) → `/rc` in the orchestrator
+pane → wait for a permission prompt → confirm from the phone. **Record the result by fact,
+including a negative.** This will also close the open question "does the Agent-Teams LEAD session
+behave normally under RC" — nobody checked it, and I did not either.
 
 ## Blocked on human
 
-- **GSL-104 / F6-S1:** hands-on пэйринг + второй пуш-тоггл (см. выше). Не блокирует следующие задачи.
-- **GSL-105:** ожидаемый BLOCKER по секрету ntfy-топика (`.env.local` отсутствует).
+- **GSL-104 / F6-S1:** hands-on pairing + the second push toggle (see above). Does not block the next tasks.
+- **GSL-105:** expected BLOCKER on the ntfy topic secret (`.env.local` absent).
