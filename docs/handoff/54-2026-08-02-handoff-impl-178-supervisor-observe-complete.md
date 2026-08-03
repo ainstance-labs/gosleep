@@ -1,70 +1,71 @@
-# Handoff 54 — impl-178: эпик GSL-178 исполнен целиком, PR #255 открыт (2026-08-02)
+# Handoff 54 — impl-178: epic GSL-178 executed in full, PR #255 open (2026-08-02)
 
-## Часть 1 — простыми словами
+## Part 1 — plain words
 
-Я построил наблюдательный режим сторожа над оркестратором и запустил его. Сторож теперь судит о
-жизни оркестратора по самой платформе (`claude agents --json` — штатный машинный список живых
-сессий), а не по скрейпингу tmux; личность сессии едет в самом пульсе (`session`/`session_id`
-пишет новый писатель `tools/lab/heartbeat.sh` прямо из ростера — опечатка невозможна, раздвоение
-флота из аудита F2 исключено конструктивно). По умолчанию сторож ТОЛЬКО НАБЛЮДАЕТ: всё дерево
-решений работает, но каждое действие лишь записывается в леджер как `would_*` — ничего не
-убивается и не спавнится; вооружение — только явной строкой `WD_MODE=armed` в конфиге владельца
-плюс его launchctl. Отказ «жив, но бесполезен» (находка номер один аудита) теперь ловится за
-ноль токенов: детектор заморозки cycle+context_pct. Появились классы состояния (ZFC, уклон «лучше
-пропустить, чем убить живого»), трёхступенчатая лестница вмешательств (напомнить → оживить ту же
-сессию через `claude --resume` → поднять свежего), пороги из ИЗМЕРЕННОЙ каденции (900→3900с;
-потолок контекста выключен — на живых данных он «лечил» бы здоровую систему), версия CLI в каждом
-пульсе, reality-гейт `armed-check` (зелёный на живой машине, красный на чужом имени сессии за
-секунды; веб-плитка «вооружено» строится из его квитанции), минимальный circuit breaker (строка в
-STATE + механический читатель) и поллер зависшего верификатора. Наблюдательный прогон УЖЕ ИДЁТ:
-его носителем стал мотор тика (каждый тик = один observe-тик сторожа), первая боевая строка
-леджера снята и заархивирована. Владельцу осталось: дать прогону трое суток, прочитать леджер по
-разделу 0 рунбука — и решить, вооружать ли.
+I built the watchdog's observe mode over the orchestrator and started it running. The watchdog now
+judges the orchestrator's aliveness from the platform itself (`claude agents --json` — a standard
+machine list of live sessions), not from tmux scraping; session identity travels in the pulse itself
+(`session`/`session_id` written by the new writer `tools/lab/heartbeat.sh` straight from the roster
+— a typo is impossible, and audit finding F2's "fleet double-vision" is structurally excluded).
+By default the watchdog ONLY OBSERVES: the whole decision tree runs, but every action is only
+recorded in the ledger as `would_*` — nothing is killed and nothing is spawned; arming is done
+only by the explicit line `WD_MODE=armed` in the owner's config plus his launchctl. The
+"alive but useless" failure mode (audit finding number one) is now caught at zero tokens: a
+freeze detector on cycle+context_pct. State classes appeared (ZFC, bias "better skip than kill
+someone alive"), a three-step intervention ladder (remind → revive the same session via
+`claude --resume` → bring up a fresh one), thresholds from MEASURED cadence (900→3900s;
+context ceiling off — on live data it would have "cured" a healthy system), a CLI version in every
+pulse, a reality gate `armed-check` (green on the live machine, red on a foreign session name in
+seconds; the web tile "armed" is built from its receipt), a minimal circuit breaker (a line in
+STATE + a mechanical reader), and a stalled-verifier poller. The observe run is ALREADY RUNNING:
+its carrier is the tick engine (each tick = one watchdog observe-tick), the first live ledger line
+has been captured and archived. What's left for the owner: give the run three days, read the
+ledger per runbook section 0 — and decide whether to arm.
 
 ## ORCHESTRATOR REPORT
 
-- **Эпик:** GSL-178 → In Review. **PR #255** (НЕ слит — правило эпика), ветка
-  `GSL-178-supervisor-observe`, 11 коммитов (10 задач + бандл grade=fresh последним), база 725fce7.
-- **Jira:** все 10 задач GSL-211…GSL-220 → Done; зеркала GH #211-#220 закроются мержем
-  (closes перед каждым номером в теле PR).
-- **Гейты:** watchdog smoke 75→168/0; lab smoke 545/0 (база сохранена: 3 ожидания эволюционировали
-  1:1 — 3→4 объявленных гейта, armed_check=rc=N, +verifier.stalled в severity); hooks 19; tsc 0;
-  chronicler fresh перед каждым коммитом. Квитанции в .artifacts/lab/gates/.
-- **Вопросы:** q-2026-07-28-006/007/008 — дефолты применены (носитель прогона = tick.sh; скилл-дельты
-  только эрратами; синтетика breaker.opened на фикстуре по уроку q-005).
-- **ТРЕБУЕТ ТЕБЯ (оркестратор):**
-  1. Применить эрраты: `docs/handoff/GSL-178-errata-orchestration-state.md` (строки cli= и
-     breaker= в STATE; после этого `tools/lab/breaker-check.sh` позеленеет — сейчас честный rc1)
-     и `docs/handoff/GSL-178-errata-skill-heartbeat.md` (6 замен в ГЛОБАЛЬНОМ скилле; каждый
-     старый фрагмент сверен grep -cF=1).
-  2. Перейти на писатель пульса: `tools/lab/heartbeat.sh --cycle N --context-pct N
-     --open-workers N [--status ...]` вместо ручного JSON (даст session/session_id/cli в пульсе;
-     до перехода сторож матчит по cwd_single — работает, но слабее).
-  3. Слить PR #255 (regular merge), закрыть зеркала, эпик → Done.
-- **ВЛАДЕЛЬЦУ:** дать наблюдательному прогону трое суток (носитель тика; при желании — one-action
-  включение launchd-тика по preflight GSL-201), читать леджер по runbooks/watchdog.md раздел 0;
-  вооружение = раздел 1 (WD_MODE=armed + plist + launchctl — только его руки).
+- **Epic:** GSL-178 → In Review. **PR #255** (NOT merged — epic rule), branch
+  `GSL-178-supervisor-observe`, 11 commits (10 tasks + bundle grade=fresh as the last), base 725fce7.
+- **Jira:** all 10 tasks GSL-211…GSL-220 → Done; GH mirrors #211-#220 will close on merge
+  (closes before every number in the PR body).
+- **Gates:** watchdog smoke 75→168/0; lab smoke 545/0 (base preserved: 3 expectations evolved
+  1:1 — 3→4 declared gates, armed_check=rc=N, +verifier.stalled in severity); hooks 19; tsc 0;
+  chronicler fresh before every commit. Receipts in .artifacts/lab/gates/.
+- **Questions:** q-2026-07-28-006/007/008 — defaults applied (run carrier = tick.sh; skill deltas
+  only via errata; synthetic breaker.opened on a fixture per q-005's lesson).
+- **NEEDS YOU (orchestrator):**
+  1. Apply the errata: `docs/handoff/GSL-178-errata-orchestration-state.md` (cli= and
+     breaker= lines in STATE; after that `tools/lab/breaker-check.sh` will turn green — right now
+     it is honestly rc1) and `docs/handoff/GSL-178-errata-skill-heartbeat.md` (6 replacements in the
+     GLOBAL skill; every old fragment verified with grep -cF=1).
+  2. Switch to the pulse writer: `tools/lab/heartbeat.sh --cycle N --context-pct N
+     --open-workers N [--status ...]` instead of hand-written JSON (will give session/session_id/cli
+     in the pulse; until the switch the watchdog matches by cwd_single — works, but weaker).
+  3. Merge PR #255 (regular merge), close mirrors, epic → Done.
+- **FOR THE OWNER:** give the observe run three days (tick carrier; if you want — one-action
+  launchd tick via preflight GSL-201), read the ledger per runbooks/watchdog.md section 0; arming
+  = section 1 (WD_MODE=armed + plist + launchctl — only your hands).
 
-## Формальная часть
+## Formal part
 
-- **Коммиты (по задаче):** 859d145 GSL-212 · a7885a9 GSL-213 · c54d8ff GSL-215 · ee58fe4 GSL-216 ·
+- **Commits (per task):** 859d145 GSL-212 · a7885a9 GSL-213 · c54d8ff GSL-215 · ee58fe4 GSL-216 ·
   a3c011b GSL-217 · 8f468e4 GSL-219 · d36378b GSL-211 · 189159a GSL-214 · 347f3d4 GSL-218 ·
-  97fec6d GSL-220 · 171f78d бандл fresh.
-- **Новые инструменты:** tools/lab/heartbeat.sh, armed-check.sh, breaker-check.sh,
-  verifier-watch.sh; watchdog.sh v0.5.1→v0.6.5 (observe/armed, платформенный источник жизни,
-  session_mismatch/platform_unknown, заморозка, классы, лестница c resume, mode-scoped память,
-  tick-строка с основанием); tick.sh шаги 4/4b; chronicler: EXPECTED_GATES+armed-check;
+  97fec6d GSL-220 · 171f78d bundle fresh.
+- **New tools:** tools/lab/heartbeat.sh, armed-check.sh, breaker-check.sh,
+  verifier-watch.sh; watchdog.sh v0.5.1→v0.6.5 (observe/armed, platform aliveness source,
+  session_mismatch/platform_unknown, freeze, classes, ladder with resume, mode-scoped memory,
+  tick line with justification); tick.sh steps 4/4b; chronicler: EXPECTED_GATES+armed-check;
   lab-emit: +verifier.stalled; severity.ts: WARN.
-- **Пороги (измерено 222 строки пульса):** busy med=436/p90=620; idle med=1856/p90=5120; все
-  разрывы >3900с — owner-standby → stale=3900, slow=1950, grace 600; потолок контекста 100=off до
-  GSL-182 (медиана ctx на живых данных 93, макс 98).
-- **dev_history:** 10 файлов GSL-2xx-audit5-*.md + индекс (раздел эпика GSL-178).
-- **Отклонения/находки:** транзиентная краснота lab smoke во время полного гейта (гонка с
-  дебаунс-хуком; одиночный прогон зелёный — правило «перепроверь одиночным до правки кода»
-  записано в dev_history GSL-218); архив супервизии отстаёт от живого watchdog-леджера на один
-  проход летописца (порядок шагов тика; следующий тик догоняет); пауза подписки 07-28→08-02
-  посреди GSL-218 — работа возобновлена без потерь, первая наблюдательная строка снята уже с
-  cycle=150.
-- **Не сделано намеренно:** launchctl не вызывался; живые панели/оркестратор не тронуты; STATE и
-  глобальный скилл не правились (эрраты); локальный skill/ не тронут (отстаёт от глобального);
-  боевого breaker.opened нет (появится при первом реальном OPEN).
+- **Thresholds (222 pulse lines measured):** busy med=436/p90=620; idle med=1856/p90=5120; all
+  breaks >3900s — owner-standby → stale=3900, slow=1950, grace 600; context ceiling 100=off until
+  GSL-182 (ctx median 93 on live data, max 98).
+- **dev_history:** 10 files GSL-2xx-audit5-*.md + index (epic GSL-178 section).
+- **Deviations/findings:** transient smoke lab red during the full gate (race with the debounce
+  hook; single run green — the rule "recheck with a single run before editing code" is written
+  down in dev_history GSL-218); the supervision archive lags the live watchdog ledger by one
+  chronicler pass (order of tick steps; the next tick catches up); the subscription pause
+  07-28→08-02 landed mid-GSL-218 — work resumed with no losses, the first observe line was captured
+  already at cycle=150.
+- **Deliberately not done:** launchctl was not invoked; live panes/orchestrator were not touched;
+  STATE and the global skill were not edited (errata); local skill/ was not touched (lags the
+  global); no live breaker.opened (will appear on the first real OPEN).

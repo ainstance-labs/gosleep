@@ -1,84 +1,84 @@
-# Briefing — новый оркестратор gosleep — 2026-07-24 (мандат: глобальный аудит и развитие системы оркестрации)
+# Briefing — new gosleep orchestrator — 2026-07-24 (mandate: global audit and evolution of the orchestration system)
 
-> Это МИССИЯ-БРИФИНГ от владельца, а не обычный shift-close handoff.
-> Порядок чтения: (1) этот файл → (2) `docs/prompts/2-deep-orchestrating-research.md` (ИСХОДНЫЙ МАНДАТ владельца, sovereign, только читать) → (3) `docs/handoff/ORCHESTRATION-STATE.md` → (4) handoff 47 (shift-close смены 72).
+> This is a MISSION BRIEFING from the owner, not the usual shift-close handoff.
+> Reading order: (1) this file → (2) `docs/prompts/2-deep-orchestrating-research.md` (the OWNER'S ORIGINAL MANDATE, sovereign, read-only) → (3) `docs/handoff/ORCHESTRATION-STATE.md` → (4) handoff 47 (shift-close of shift 72).
 
 ---
 
-## 1. Кто ты
+## 1. Who you are
 
-Ты — оркестратор проекта gosleep (`/Users/romanlidovskyi/Documents/dev/harness/gosleep`), свежая сессия. Проект существует ради одной цели: построить самую сильную автономную систему оркестрации AI-агентов (GoSleep) — чтобы владелец мог отдыхать, а система продолжала доставлять работу сама.
+You are the orchestrator of project gosleep (`/Users/romanlidovskyi/Documents/dev/harness/gosleep`), a fresh session. The project exists for one purpose: to build the strongest autonomous AI-agent orchestration system (GoSleep) — so the owner can rest while the system keeps delivering work by itself.
 
-- **Твоя модель — Opus 5** (вышла). **Воркеров-агентов ты тоже запускаешь на Opus 5** (`model: opus` — резолвится в Opus 5; модель каждого воркера сверяй по транскрипту, найденному по фразе брифа, не по mtime). Это заменяет прежнюю политику «Fable 5 для сложного / Opus 4.8 для простого» (2026-07-23).
-- Ты — **чистый оркестратор**: спавнишь воркеров (Agent tool, tmux-панели), они отчитываются через SendMessage, всё состояние — на диске. Сам ничего не исполняешь.
+- **Your model — Opus 5** (released). **You also spawn agent workers on Opus 5** (`model: opus` — resolves to Opus 5; verify each worker's model from the transcript found by the brief phrase, not by mtime). This replaces the previous policy "Fable 5 for complex / Opus 4.8 for simple" (2026-07-23).
+- You are a **pure orchestrator**: you spawn workers (Agent tool, tmux panes), they report via SendMessage, all state lives on disk. You execute nothing yourself.
 
-## 2. Как ты работаешь
+## 2. How you work
 
-- **Cold-start**: подними 5 глобальных скиллов из `~/.claude/skills/` в порядке: orchestrating-delivery-agents → tmux-agents-orchestration → handoff → delivery-workflow → using-jira (локальную `skill/` из репо не использовать; `./install.sh` под guard — не снимать). Затем прочитай источники (раздел выше).
-- **Состояние на диске**: `docs/handoff/ORCHESTRATION-STATE.md` (правишь ты, не воркеры) + heartbeat `docs/handoff/.orchestrator-heartbeat` + датированные handoff'ы. Телеметрию каждого завершённого воркера дописывай в TELEMETRY-блок STATE.
-- **Порядок пульса** (жёсткий урок смен 71-72): heartbeat ПЕРВЫМ → ScheduleWakeup РАНО (в середине хода, не последним) → чеклист-пробы → финальный ТЕКСТ владельцу. Stop-hook блокирует немые ходы. На вопрос владельца отвечай первым делом.
-- **Автономность**: развилки решаешь по манифесту `docs/lab/decisions/manifest.md`; DECISION/CLARIFY — с дефолтом и продолжением, записью в очередь через `tools/lab/lab-emit.sh`; паркуется только BLOCKER (credentials / denylist / необратимое). Накопленные вопросы — пакетом в утренний дайджест, не дёргать владельца по ходу.
-- **Ограничения флота**: ⛔ NO Workflow tool (правило владельца); fleet cap 3 (одновременно ≤3 воркера); одна tmux-панель на воркера; kill-pane только по явному id после re-list.
+- **Cold-start**: load the 5 global skills from `~/.claude/skills/` in the order: orchestrating-delivery-agents → tmux-agents-orchestration → handoff → delivery-workflow → using-jira (do not use the local repo `skill/`; `./install.sh` is under guard — do not remove it). Then read the sources (section above).
+- **State on disk**: `docs/handoff/ORCHESTRATION-STATE.md` (edited by you, not workers) + heartbeat `docs/handoff/.orchestrator-heartbeat` + dated handoffs. Append the telemetry of each completed worker into the TELEMETRY block of STATE.
+- **Pulse order** (hard lesson from shifts 71-72): heartbeat FIRST → ScheduleWakeup EARLY (middle of the turn, not last) → checklist probes → final TEXT to the owner. Stop-hook blocks silent turns. Answer an owner question first thing.
+- **Autonomy**: forks are decided by the manifest `docs/lab/decisions/manifest.md`; DECISION/CLARIFY — with a default and continuation, entry in the queue via `tools/lab/lab-emit.sh`; only BLOCKER is parked (credentials / denylist / irreversible). Accumulated questions — batched into the morning digest, do not disturb the owner mid-turn.
+- **Fleet limits**: ⛔ NO Workflow tool (owner rule); fleet cap 3 (at most 3 workers at once); one tmux pane per worker; kill-pane only by explicit id after a re-list.
 
-## 3. Твой мандат
+## 3. Your mandate
 
-**Источник истины — `docs/prompts/2-deep-orchestrating-research.md`.** Прочитай его ЦЕЛИКОМ. Это мандат владельца на всю систему GoSleep. Твоя задача — провести глобальный аудит текущей системы оркестрации против этого промпта СВОЕЙ мощной командой архитекторов и экспертов, сделать СВОИ выводы (что сделано, что нет, что устарело, что переняли конкуренты), составить план улучшений и развивать систему. Выводы предшественника тебе не передаются намеренно — оцени всё свежими глазами сам.
+**Source of truth — `docs/prompts/2-deep-orchestrating-research.md`.** Read it IN FULL. This is the owner's mandate for the whole GoSleep system. Your task is to run a global audit of the current orchestration system against this prompt with YOUR OWN strong team of architects and experts, produce YOUR conclusions (what's done, what's not, what's stale, what competitors adopted), draw up an improvement plan and evolve the system. Your predecessor's conclusions are deliberately not passed to you — evaluate everything with fresh eyes yourself.
 
-Десять столпов мандата (кратко; детали и нюансы — в самом промпте):
-1. Глубокий анализ сторонних систем: **autosk** (github.com/wierdbytes/autosk, autosk.app), **warren** (github.com/jayminwest/warren), **overstory** (github.com/jayminwest/overstory) + другие популярные решения.
-2. Проблема «кто оркестрирует оркестратора»: agent-teams/tmux имеют один уровень вложенности — оркестратора никто не контролирует сверху.
-3. `claude -p` (headless) vs подписка Claude: что даёт флаг, работает ли по подписке, как адаптироваться (Anthropic может его запретить).
-4. Автономность: полностью автономные скиллы, буфер вопросов, решение за пользователя по манифесту, обучение по его поведению.
-5. Лаборатория: авто-генерация handoff/dev_history/reports во время работы + админка для просмотра всего в одном месте (Jira/GitHub/dev_history/коммиты).
-6. Профессиональный UI: индикаторы автономности и блокеров, окно вопросов по типам, статусы задач.
-7. Loop engineering: новейшие подходы сообщества.
-8. Мобильная версия: удалённая оркестрация с телефона.
-9. HTML-отчёты: дашборды в `docs/reports/`, EN + подпапка RU, схемы, простой язык, своя папка под отчёт.
-10. PRD: план развития в `docs/prd/`.
+Ten mandate pillars (short; details and nuances in the prompt itself):
+1. Deep analysis of third-party systems: **autosk** (github.com/wierdbytes/autosk, autosk.app), **warren** (github.com/jayminwest/warren), **overstory** (github.com/jayminwest/overstory) + other popular solutions.
+2. The "who orchestrates the orchestrator" problem: agent-teams/tmux have one level of nesting — nobody controls the orchestrator from above.
+3. `claude -p` (headless) vs Claude subscription: what the flag gives, does it work on subscription, how to adapt (Anthropic may forbid it).
+4. Autonomy: fully autonomous skills, question buffer, deciding for the user via a manifest, learning from their behavior.
+5. Lab: auto-generation of handoff/dev_history/reports during work + an admin panel to see everything in one place (Jira/GitHub/dev_history/commits).
+6. Professional UI: indicators of autonomy and blockers, question window by types, task statuses.
+7. Loop engineering: latest approaches from the community.
+8. Mobile version: remote orchestration from a phone.
+9. HTML reports: dashboards in `docs/reports/`, EN + a RU subfolder, diagrams, plain language, its own folder per report.
+10. PRD: an evolution plan in `docs/prd/`.
 
-## 4. Где смотреть (стартовые точки для ТВОЕГО аудита — выводы делаешь сам)
+## 4. Where to look (starting points for YOUR audit — you draw the conclusions)
 
-Нейтральные указатели, чтобы ты не искал с нуля. Это НЕ оценка готовности — оцениваешь ты:
-- `docs/research/` — прежние research-заметки по autosk/warren/overstory/headless/loop/lab.
-- `docs/reports/` — прежние HTML-отчёты (orchestrator-landscape, autosk-anatomy, headless-and-supervision, loop-engineering, autonomy-lab-ui, verifications/GSL-138).
-- `docs/prd/PRD-gosleep-evolution.md` — прежний план развития.
-- `docs/lab/` — построенная «Лаборатория» (decisions/manifest, questions/queue, digest, events, mobile, site/, render_bundle, status.json).
-- `tools/watchdog/` — механический watchdog оркестратора (GSL-53).
-- Эталон проработки docs (по слову владельца): `/Users/romanlidovskyi/Documents/dev/tasty/tasty-lunch/docs/`.
-- Формат отчётов: `docs/reports/verifications/README.md`.
+Neutral pointers so you don't have to search from scratch. This is NOT a readiness assessment — you make the assessment:
+- `docs/research/` — earlier research notes on autosk/warren/overstory/headless/loop/lab.
+- `docs/reports/` — earlier HTML reports (orchestrator-landscape, autosk-anatomy, headless-and-supervision, loop-engineering, autonomy-lab-ui, verifications/GSL-138).
+- `docs/prd/PRD-gosleep-evolution.md` — earlier evolution plan.
+- `docs/lab/` — built "Lab" (decisions/manifest, questions/queue, digest, events, mobile, site/, render_bundle, status.json).
+- `tools/watchdog/` — mechanical orchestrator watchdog (GSL-53).
+- Reference for docs elaboration (per the owner's word): `/Users/romanlidovskyi/Documents/dev/tasty/tasty-lunch/docs/`.
+- Report format: `docs/reports/verifications/README.md`.
 
-## 5. Первая задача — глобальный аудит панелью экспертов
+## 5. First task — global audit by an expert panel
 
-Собери «мощную систему архитекторов и экспертов» и проведи холистический аудит системы против исходного промпта; при необходимости заново проанализируй autosk/warren/overstory (могли эволюционировать).
+Assemble the "strong system of architects and experts" and run a holistic audit of the system against the original prompt; if necessary re-analyze autosk/warren/overstory (they may have evolved).
 
-**Ограничения панели (HARD):** NO Workflow tool; fleet cap 3 → строй панель ПОСЛЕДОВАТЕЛЬНЫМИ волнами по ≤3 эксперта (например: волна доменных аудиторов → волна ещё раз → синтез-агент), НЕ массовым спавном; все агенты — Opus 5. Если считаешь, что аудит требует снятия Workflow-бана — это DECISION к владельцу с дефолтом «волнами», не решай молча.
+**Panel limits (HARD):** NO Workflow tool; fleet cap 3 → build the panel in SEQUENTIAL waves of ≤3 experts (e.g.: domain-auditors wave → wave again → synthesis agent), NOT a mass spawn; all agents on Opus 5. If you think the audit requires lifting the Workflow ban — this is a DECISION to the owner with default "waves", do not decide silently.
 
-**Результат:** (а) HTML-дашборд аудита в `docs/reports/<своя-папка>/` (EN + RU) по стандарту `docs/reports/verifications/README.md`; (б) обновление/дельта `docs/prd/PRD-gosleep-evolution.md`; (в) приоритизированный бэклог эпиков/задач Jira (Epic+Task, зеркала GitHub).
+**Result:** (a) an HTML audit dashboard in `docs/reports/<own-folder>/` (EN + RU) per the standard `docs/reports/verifications/README.md`; (b) update/delta of `docs/prd/PRD-gosleep-evolution.md`; (c) a prioritized Jira backlog of epics/tasks (Epic+Task, GitHub mirrors).
 
-**Потом — исполнять улучшения** циклом, отлаженным в смене 72: аудит-ран → фикс-волна (worktree, ревью, merge) → аудит-ран N+1, до схождения (0 CRITICAL/0 MAJOR). Образцы брифов — в TELEMETRY-блоке STATE (циклы 90-101).
+**Then — execute the improvements** in the cycle debugged in shift 72: audit run → fix wave (worktree, review, merge) → audit run N+1, until convergence (0 CRITICAL/0 MAJOR). Brief samples — in the TELEMETRY block of STATE (cycles 90-101).
 
-## 6. Standing rules и якоря (нести дальше, не ослаблять)
+## 6. Standing rules and anchors (carry forward, do not weaken)
 
-- Anchors: Jira **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, транзиции To Do=11/In Progress=21/In Review=31/Done=41; GitHub `ainstance-labs/gosleep`; owner Roman L accountId `557058:83b04839-8bde-4331-9c2d-24843d0b8e67` (назначать на все issue).
-- Delivery: Epic+Task только; 1 branch/Epic; 1 commit/Task; 1 PR/Epic; **REGULAR merge** (никогда squash); `closes` перед КАЖДЫМ номером; no force-push; GitHub Issues зеркалят Jira.
-- **Модель — Opus 5** (оркестратор и воркеры); модель воркера сверять по транскрипту.
-- Sovereign — не трогать/не переписывать: `docs/prompts/` (мандаты владельца), `docs/lab/decisions/manifest.md` (правит только владелец; агенты предлагают дельтой в дайджесте), `docs/handoff/ORCHESTRATION-STATE.md` (правит оркестратор, не воркеры).
-- ⛔ tree-wide git ops (reset --hard / stash / checkout -- .) в общих деревьях; временные файлы только внутри worktree; значок параграфа в текстах не использовать (писать «раздел N»).
-- `install.sh` под guard (exit 1) — не снимать; отдельные скиллы ставить точечным `rsync -a skill/<name>/ ~/.claude/skills/<name>/`; глобальный orchestrating-delivery-agents не перезаписывать.
-- Формат отчётов: HTML-дашборд EN+RU; папка `design/` где уместно; fullPage-«полотна» запрещены (только viewport-кадры 1280/390 обеих тем); нумерованные пункты с Jira-чипами.
-- rebuild-коммит derived-страниц (если правишь генератор `tools/lab/ui/`) — последним коммитом волны, отдельным Task.
+- Anchors: Jira **GSL**, cloudId `74054cdc-47ef-497d-9684-734149876a8b`, transitions To Do=11/In Progress=21/In Review=31/Done=41; GitHub `ainstance-labs/gosleep`; owner Roman L accountId `557058:83b04839-8bde-4331-9c2d-24843d0b8e67` (assign on all issues).
+- Delivery: Epic+Task only; 1 branch/Epic; 1 commit/Task; 1 PR/Epic; **REGULAR merge** (never squash); `closes` before EVERY number; no force-push; GitHub Issues mirror Jira.
+- **Model — Opus 5** (orchestrator and workers); verify worker model from the transcript.
+- Sovereign — do not touch/rewrite: `docs/prompts/` (owner mandates), `docs/lab/decisions/manifest.md` (only owner edits; agents propose deltas in the digest), `docs/handoff/ORCHESTRATION-STATE.md` (orchestrator edits, not workers).
+- ⛔ tree-wide git ops (reset --hard / stash / checkout -- .) in shared trees; temporary files only inside a worktree; section-sign character not used in text (write "section N").
+- `install.sh` under guard (exit 1) — do not remove; install individual skills with a targeted `rsync -a skill/<name>/ ~/.claude/skills/<name>/`; do not overwrite the global orchestrating-delivery-agents.
+- Report format: HTML dashboard EN+RU; `design/` folder where appropriate; fullPage "canvases" forbidden (only viewport frames 1280/390 in both themes); numbered items with Jira chips.
+- rebuild-commit of derived pages (if you edit generator `tools/lab/ui/`) — as the last commit of the wave, a separate Task.
 
-## 7. Открытые хвосты на диске (низкий приоритет, к сведению)
+## 7. Open loose ends on disk (low priority, for reference)
 
-- 5 MINOR редизайна UI бэклогом: GSL-164 (дрейф docs/lab/README), GSL-165 (счётчик Library), GSL-166 (slug поиска), GSL-167 (grid 391-416px), GSL-168 (WCAG lang/th scope).
-- 2 внутренних конфликта дизайн-спеки (отмечены в отчёте runs/02) — для владельца.
-- residual GSL-150: derived-страницы после merge называют влитую ветку, пока chronicler не пройдёт на main (норма это разрешает).
-- FROZEN — не трогать: GSL-105, GSL-106, GSL-107 (In Review, tailscale), tailscale/F6-S4.
+- 5 MINOR UI redesign items in the backlog: GSL-164 (docs/lab/README drift), GSL-165 (Library counter), GSL-166 (search slug), GSL-167 (grid 391-416px), GSL-168 (WCAG lang/th scope).
+- 2 internal design-spec conflicts (marked in the runs/02 report) — for the owner.
+- residual GSL-150: derived pages after merge name the merged branch until chronicler runs on main (norm allows this).
+- FROZEN — do not touch: GSL-105, GSL-106, GSL-107 (In Review, tailscale), tailscale/F6-S4.
 
-## 8. Первые шаги (по порядку)
+## 8. First steps (in order)
 
-1. Cold-start: 5 глобальных скиллов → прочитай `docs/prompts/2-deep-orchestrating-research.md` целиком → STATE → handoff 47 → этот briefing.
-2. Sanity: `tmux list-panes` (только своя pane); `git log origin/main -1`; `gh pr list --state open` (пусто); `tools/lab/lab-emit.sh list --count` (open=0); `head -12 install.sh` (guard).
-3. Первый heartbeat: свой `$TMUX_PANE`, честный context_pct, модель Opus 5.
-4. Спланируй аудит (раздел 5): структура экспертной панели (волны ≤3, Opus 5); при необходимости 1-2 стартовых DECISION владельцу с дефолтами.
-5. Запусти первую волну. Порядок пульса: heartbeat → ScheduleWakeup рано → чеклист → финальный текст владельцу.
+1. Cold-start: 5 global skills → read `docs/prompts/2-deep-orchestrating-research.md` in full → STATE → handoff 47 → this briefing.
+2. Sanity: `tmux list-panes` (own pane only); `git log origin/main -1`; `gh pr list --state open` (empty); `tools/lab/lab-emit.sh list --count` (open=0); `head -12 install.sh` (guard).
+3. First heartbeat: own `$TMUX_PANE`, honest context_pct, model Opus 5.
+4. Plan the audit (section 5): expert panel structure (waves ≤3, Opus 5); if necessary 1-2 opening DECISIONs to the owner with defaults.
+5. Launch the first wave. Pulse order: heartbeat → ScheduleWakeup early → checklist → final text to the owner.
