@@ -1,45 +1,45 @@
-# Эррата GSL-178 для суверенного docs/handoff/ORCHESTRATION-STATE.md
+# GSL-178 errata for the sovereign docs/handoff/ORCHESTRATION-STATE.md
 
-**Статус:** подготовлена impl-178 (смена 74) по образцу GSL-195. **Применяет оркестратор** —
-STATE суверенен, воркеры его не трогают (эта эррата и есть штатный канал: точный текст, ноль
-самодеятельности). Обе вставки идемпотентны: если строка с таким префиксом уже есть — не
-дублировать, а обновить её.
+**Status:** prepared by impl-178 (shift 74) after the GSL-195 template. **Applied by the orchestrator** —
+STATE is sovereign, workers do not touch it (this errata is the standard channel: exact text, zero
+initiative). Both inserts are idempotent: if a line with the same prefix already exists — do not
+duplicate, update it.
 
-## Вставка 1 (GSL-219) — строка версии CLI
+## Insert 1 (GSL-219) — the CLI version line
 
-**Якорь:** сразу ПОСЛЕ строки-заголовка `## TELEMETRY (cumulative — never reset; append one
-line per cycle)` (строка ~18), рядом с которой по спецификации скилла живут строки состояния.
+**Anchor:** immediately AFTER the header line `## TELEMETRY (cumulative — never reset; append one
+line per cycle)` (line ~18), next to which by the skill spec the status lines live.
 
-**Точный текст вставляемой строки** (значение версии — первое поле вывода `claude --version`
-на момент применения; на 2026-07-28 это 2.1.220):
+**Exact text of the inserted line** (the version value — the first field of `claude --version`
+output at the moment of application; on 2026-07-28 this is 2.1.220):
 
 ```
 cli=2.1.220 observed=2026-07-28T00:00:00Z
 ```
 
-**Дисциплина обновления:** оркестратор обновляет эту строку **на каждой границе цикла**
-(та же точка, где пишется строка TELEMETRY): свежий `claude --version` → если версия
-изменилась, заменить строку и упомянуть смену в записи цикла. Механическая половина уже
-работает: писатель пульса штампует `cli` в каждую строку heartbeat, watchdog превращает смену
-версии между строками в событие `cli_version_changed` (леджер). Строка в STATE — человеческая
-половина: версия видна при любом cold-start ДО чтения леджеров.
+**Update discipline:** the orchestrator updates this line **on every cycle boundary**
+(the same point where the TELEMETRY line is written): fresh `claude --version` → if the version
+changed, replace the line and mention the change in the cycle record. The mechanical half already
+works: the pulse writer stamps `cli` into every heartbeat line, the watchdog turns a change of
+version between lines into a `cli_version_changed` event (ledger). The STATE line is the human
+half: the version is visible on any cold start BEFORE reading the ledgers.
 
-## Вставка 2 (GSL-214) — строка circuit breaker
+## Insert 2 (GSL-214) — the circuit breaker line
 
-**Якорь:** та же точка — сразу после строки `cli=…` из вставки 1.
+**Anchor:** the same point — immediately after the `cli=…` line from insert 1.
 
-**Точный текст вставляемой строки:**
+**Exact text of the inserted line:**
 
 ```
 breaker=CLOSED since=2026-07-28T00:00:00Z counters: next_same=0/2 no_pr=0/3 err_same=0/3 decline=0/2 cooldown=30m next_probe=none
 ```
 
-**Дисциплина обновления:** оркестратор обновляет строку **на каждой границе цикла** атомарно
-(счётчики по спецификации скилла, раздел «Circuit breaker»); механический читатель —
-`tools/lab/breaker-check.sh` (GSL-214): он валидирует формат, возраст и состояние строки как
-пункт HEARTBEAT_OK и порождает `breaker.opened`/`breaker.closed` в docs/lab/events/ при смене
-состояния. Строка со state=OPEN без свежего `since` или счётчики без знаменателей — это
-ошибка формата, breaker-check назовёт её вслух.
+**Update discipline:** the orchestrator updates the line **on every cycle boundary** atomically
+(counters per the skill spec, section "Circuit breaker"); the mechanical reader is
+`tools/lab/breaker-check.sh` (GSL-214): it validates the format, age, and state of the line as a
+HEARTBEAT_OK item and produces `breaker.opened`/`breaker.closed` in docs/lab/events/ on a state
+change. A line with state=OPEN without a fresh `since` or counters without denominators is a
+format error, breaker-check will name it aloud.
 
-(Обе метки времени `2026-07-28T00:00:00Z` — плейсхолдеры: при применении подставить фактический
-момент вставки в UTC ISO-8601.)
+(Both timestamps `2026-07-28T00:00:00Z` are placeholders: on application substitute the actual
+moment of insertion in UTC ISO-8601.)

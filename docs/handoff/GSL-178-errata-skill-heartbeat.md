@@ -1,32 +1,32 @@
-# Эррата GSL-178: дельты «Heartbeat protocol» для ГЛОБАЛЬНОГО скилла orchestrating-delivery-agents
+# GSL-178 errata: "Heartbeat protocol" deltas for the GLOBAL orchestrating-delivery-agents skill
 
-**Статус:** подготовлена impl-178 (смена 74). **Применяет оркестратор или владелец** к
-`~/.claude/skills/orchestrating-delivery-agents/SKILL.md` — глобальная копия авторитетна
-(инверсия 2026-07-20), агентам её править запрещено; локальная `skill/` не тронута тем более
-(она отстаёт от глобальной, и правка отстающей копии — мёртвая буква). Развилка оформлена
-вопросом q-2026-07-28-007, дефолт применён.
+**Status:** prepared by impl-178 (shift 74). **Applied by the orchestrator or the owner** to
+`~/.claude/skills/orchestrating-delivery-agents/SKILL.md` — the global copy is authoritative
+(inversion 2026-07-20), agents are forbidden to edit it; the local `skill/` is not touched either
+(it lags the global, and editing a lagging copy is dead letter). The fork is filed as question
+q-2026-07-28-007, default applied.
 
-**Проверено:** раздел «Heartbeat protocol» в локальной и глобальной копиях побайтово идентичен
-(diff пуст, 2026-07-28), поэтому каждый «старый» фрагмент ниже действителен для обеих; перед
-применением сверить `grep -cF` = 1 на каждый фрагмент.
+**Verified:** the "Heartbeat protocol" section in the local and global copies is byte-identical
+(diff empty, 2026-07-28), so every "old" fragment below is valid for both; before applying, verify
+`grep -cF` = 1 on each fragment.
 
-Источники истины на стороне репозитория, с которыми эти дельты синхронизируют скилл:
-шапка `tools/lab/heartbeat.sh` (схема пульса), `tools/watchdog/watchdog.sh` v0.6.x,
-`tools/watchdog/watchdog.conf.example` (семантика context_pct и пороги),
+Sources of truth on the repository side that these deltas sync the skill to:
+the header of `tools/lab/heartbeat.sh` (pulse schema), `tools/watchdog/watchdog.sh` v0.6.x,
+`tools/watchdog/watchdog.conf.example` (semantics of context_pct and thresholds),
 `tools/watchdog/LEDGER.md`.
 
 ---
 
-## Замена 1 — семантика context_pct (GSL-217; одна фраза, одинаковая во всех источниках)
+## Replacement 1 — semantics of context_pct (GSL-217; one phrase, identical across all sources)
 
-Старый фрагмент (в списке Required, начинается на строке ~218):
+Old fragment (in the Required list, starts around line ~218):
 
 ```
 `context_pct` (your HONEST estimate —
   the watchdog compares it to the roll ceiling; a fabricated number defeats roll-at-~70%)
 ```
 
-Новый:
+New:
 
 ```
 `context_pct` (your HONEST estimate of the share of the context window CONSUMED so far,
@@ -36,29 +36,29 @@
   this self-estimate — enforces nothing on it)
 ```
 
-## Замена 2 — пример строки формата (GSL-212: поля session / session_id)
+## Replacement 2 — example format line (GSL-212: fields session / session_id)
 
-Старый фрагмент (строка ~217):
+Old fragment (line ~217):
 
 ```
 `{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4"}`
 ```
 
-Новый (включая `cli` из GSL-219):
+New (including `cli` from GSL-219):
 
 ```
 `{"ts":"2026-07-10T03:14:07Z","cycle":12,"context_pct":41,"open_workers":2,"status":"ok","pane":"%4","session":"gosleep-21","session_id":"a716426f-…","cli":"2.1.220"}`
 ```
 
-## Замена 3 — session/session_id в списке Required (GSL-212)
+## Replacement 3 — session/session_id in the Required list (GSL-212)
 
-Старый фрагмент (конец описания `pane`, строка ~224):
+Old fragment (end of the `pane` description, line ~224):
 
 ```
 watchdog refuses to act on a live session and escalates to the owner instead). Optional:
 ```
 
-Новый:
+New:
 
 ```
 watchdog refuses to act on a live session and escalates to the owner instead) ·
@@ -73,9 +73,9 @@ watchdog refuses to act on a live session and escalates to the owner instead) ·
   record instead of invisible). Optional:
 ```
 
-## Замена 4 — сниппет ручной записи → писатель tools/lab/heartbeat.sh (GSL-212)
+## Replacement 4 — the manual-write snippet → the writer tools/lab/heartbeat.sh (GSL-212)
 
-Старый фрагмент (bash-блок, строки ~238-240):
+Old fragment (bash block, lines ~238-240):
 
 ```
   hb="docs/handoff/.orchestrator-heartbeat"
@@ -83,7 +83,7 @@ watchdog refuses to act on a live session and escalates to the owner instead) ·
   { [ -f "$hb" ] && tail -n 199 "$hb"; printf '%s\n' "$line"; } > "$hb.tmp" && mv "$hb.tmp" "$hb"
 ```
 
-Новый:
+New:
 
 ```
   # GSL-212: use the writer — it derives session/session_id from `claude agents --json`
@@ -92,29 +92,29 @@ watchdog refuses to act on a live session and escalates to the owner instead) ·
   tools/lab/heartbeat.sh --cycle 12 --context-pct 41 --open-workers 2 --status ok
 ```
 
-## Замена 5 — пункт HEARTBEAT_OK, читающий строку breaker= (GSL-214)
+## Replacement 5 — the HEARTBEAT_OK item that reads the breaker= line (GSL-214)
 
-Старый фрагмент (таблица «Pulse / wake-up tick begins», строка ~946; `grep -cF` = 1):
+Old fragment (table "Pulse / wake-up tick begins", line ~946; `grep -cF` = 1):
 
 ```
 inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / clocks — all green
 ```
 
-Новый:
+New:
 
 ```
 inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / breaker (`tools/lab/breaker-check.sh` — the STATE `breaker=` line exists, parses, and is not OPEN; rc 2 = deliberate STOP, rc 1 = the line is missing/malformed/tripped-but-closed — fix the line, not the checklist) / clocks — all green
 ```
 
-## Замена 6 — сторож верификатора обрёл исполняемую форму (GSL-218)
+## Replacement 6 — the verifier watchdog gets an executable form (GSL-218)
 
-Старый фрагмент (раздел «Verification watchdog», строка ~141; `grep -cF` = 1):
+Old fragment (section "Verification watchdog", line ~141; `grep -cF` = 1):
 
 ```
 So arm an EXTERNAL watchdog: a background watcher polling the verifier's
 ```
 
-Новый:
+New:
 
 ```
 So arm an EXTERNAL watchdog — it exists as `tools/lab/verifier-watch.sh` (start it right
@@ -125,10 +125,10 @@ So arm an EXTERNAL watchdog — it exists as `tools/lab/verifier-watch.sh` (star
 
 ---
 
-Дельта GSL-219 (поле `cli`) уже включена в замены 2 и 3 выше. Оставшаяся дельта эпика —
-GSL-214 (пункт HEARTBEAT_OK, читающий строку `breaker=` из STATE) — добавится ниже своей
-задачей.
+Delta GSL-219 (field `cli`) is already included in replacements 2 and 3 above. The remaining epic
+delta — GSL-214 (the HEARTBEAT_OK item reading the `breaker=` line from STATE) — will be added
+below by its own task.
 
-Сопутствующая эррата для суверенного `docs/handoff/ORCHESTRATION-STATE.md` (строки `cli=` и
-`breaker=`) — отдельным файлом `docs/handoff/GSL-178-errata-orchestration-state.md` по образцу
-GSL-195; вставляет оркестратор.
+The companion errata for the sovereign `docs/handoff/ORCHESTRATION-STATE.md` (lines `cli=` and
+`breaker=`) — a separate file `docs/handoff/GSL-178-errata-orchestration-state.md` after the
+GSL-195 template; inserted by the orchestrator.

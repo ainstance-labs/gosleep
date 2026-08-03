@@ -1,58 +1,61 @@
-# GSL-203 — Эррата для суверенных текстов: штатный гейт смены больше не содержит --no-poll
+# GSL-203 — Errata for sovereign texts: the shift's standard gate no longer contains --no-poll
 
-**Статус: ПОДГОТОВЛЕНО, НЕ ПРИМЕНЕНО.** Суверенные носители формулы гейта — брифы воркеров
-(`docs/prompts/`) и `docs/handoff/ORCHESTRATION-STATE.md` — правит только владелец или оркестратор
-смены. Этот документ — точный текст замены, подготовленный исполнителем эпика GSL-176 по задаче
-GSL-203. Применяющий делает замену ниже во всех местах, где брифы или STATE диктуют формулу гейта,
-и ничего больше.
+**Status: PREPARED, NOT APPLIED.** The sovereign carriers of the gate formula — worker briefs
+(`docs/prompts/`) and `docs/handoff/ORCHESTRATION-STATE.md` — are edited only by the owner or the
+shift orchestrator. This document is the exact replacement text, prepared by the epic GSL-176
+executor for task GSL-203. The applier performs the replacement below wherever the briefs or STATE
+dictate the gate formula, and nothing more.
 
-## Что случилось и что построено
+## What happened and what was built
 
-Находка 12 аудита (MAJOR): штатный гейт смены жил ПРОЗОЙ в брифах и диктовал
-`bash tools/lab/chronicler.sh --no-poll` — сверка с трекером выключалась по умолчанию, трекер не
-опрашивался 11 дней, 152 задачи из 161 стояли без статуса при зелёных гейтах. GSL-223 уже дал
-poll-fill конвенционный фид (`docs/lab/scratch/jira-poll.json`, дамп оркестратора на границе
-цикла), так что опрос в штатном пути больше ничем не блокирован.
+Audit finding 12 (MAJOR): the shift's standard gate lived in PROSE in the briefs and dictated
+`bash tools/lab/chronicler.sh --no-poll` — the tracker cross-check was off by default, the tracker
+was not polled for 11 days, 152 tasks out of 161 stood without a status while the gates were
+green. GSL-223 already gave poll-fill a conventional feed
+(`docs/lab/scratch/jira-poll.json`, an orchestrator dump on the cycle boundary), so polling in
+the standard path is no longer blocked by anything.
 
-Теперь гейт — код: **`tools/lab/gate.sh`** (одна команда = все четыре гейта: smoke → hooks-verify
-→ tsc → chronicler С опросом; квитанция `.artifacts/lab/gates/gate.json`). `--no-poll` остался
-только за ЯВНЫМ оффлайн-режимом: `gate.sh --offline` (и тогда квитанция и вердикт прямо говорят
-«these gates ran offline»). `--fast` — межкоммитная разминка (tsc+chronicler), полный гейт перед
-коммитом обязателен.
+Now the gate is code: **`tools/lab/gate.sh`** (one command = all four gates: smoke → hooks-verify
+→ tsc → chronicler WITH polling; receipt `.artifacts/lab/gates/gate.json`). `--no-poll` remains
+only behind an EXPLICIT offline mode: `gate.sh --offline` (and then the receipt and the verdict
+directly say "these gates ran offline"). `--fast` — a between-commit warm-up (tsc+chronicler);
+the full gate before a commit is mandatory.
 
-## Замена (формула гейта в брифах и STATE)
+## Replacement (gate formula in briefs and STATE)
 
-Старый блок (в любом написании, суть — четыре команды с `--no-poll` у летописца):
+Old block (in any writing, the essence — four commands with `--no-poll` on the chronicler):
 
 ```
-bash tools/lab/smoke.sh                  # база N, FAIL=0
+bash tools/lab/smoke.sh                  # base N, FAIL=0
 bash tools/lab/hooks-verify.sh           # M/M
 (cd tools/lab/ui && npx tsc --noEmit)    # 0
-bash tools/lab/chronicler.sh --no-poll   # 7 страниц; или без --no-poll при свежем дампе
+bash tools/lab/chronicler.sh --no-poll   # 7 pages; or without --no-poll on a fresh dump
 ```
 
-Новый блок:
+New block:
 
 ```
-bash tools/lab/gate.sh                   # штатный гейт целиком: smoke (FAIL=0) + hooks-verify +
-                                         # tsc (0) + chronicler С опросом трекера (GSL-203).
-                                         # Оффлайн — только явно: gate.sh --offline.
+bash tools/lab/gate.sh                   # the standard gate as a whole: smoke (FAIL=0) + hooks-verify +
+                                         # tsc (0) + chronicler WITH tracker polling (GSL-203).
+                                         # Offline — only explicit: gate.sh --offline.
 ```
 
-Если бриф перечисляет гейты по отдельности (для пояснения базовых чисел) — четвёртую строку
-заменить на `bash tools/lab/chronicler.sh` БЕЗ `--no-poll`; упоминание «или без --no-poll при
-свежем дампе» удалить как отжившее: свежий дамп теперь подхватывается всегда, а его отсутствие —
-громкая деградация в отчёте, не повод выключать опрос.
+If the brief lists the gates separately (to explain baseline numbers) — replace the fourth line
+with `bash tools/lab/chronicler.sh` WITHOUT `--no-poll`; remove the note "or without --no-poll on
+a fresh dump" as obsolete: a fresh dump is now picked up always, and its absence is a loud
+degradation in the report, not a reason to turn off polling.
 
-## Почему это безопасно применять
+## Why this is safe to apply
 
-- poll-fill деградирует громко, а не падает: без фида Jira-источник ПРОПУСКАЕТСЯ с записью в
-  отчёт/status.json; git/gh-ветки работают всегда. Гейт от отсутствия дампа не краснеет.
-- Внутри `tick.sh` летописец по-прежнему зовётся с `--no-poll` — это композиция (шаг 1 тика сам
-  только что опросил), не оффлайн; в коде тика это объяснено комментарием.
-- smoke-база на момент этой эрраты: 545 (после GSL-198/199/200/201/202/203), hooks-verify 19.
+- poll-fill degrades loudly, does not fall: without the feed the Jira source is SKIPPED with a
+  record in the report/status.json; git/gh branches always work. The gate does not redden from
+  the dump's absence.
+- Inside `tick.sh` the chronicler is still called with `--no-poll` — this is composition (step 1
+  of the tick has just polled), not offline; in the tick's code this is explained by a comment.
+- Smoke baseline at the moment of this errata: 545 (after GSL-198/199/200/201/202/203),
+  hooks-verify 19.
 
-## Ссылки
+## References
 
-Jira GSL-203; GH #203; `tools/lab/gate.sh`; находка 12 — `docs/reviews/system-audit-2026-07-24/`
-(SYNTHESIS, R1); фид — GSL-223 (`docs/handoff/GSL-223-orchestrator-cycle-boundary-jira-dump.md`).
+Jira GSL-203; GH #203; `tools/lab/gate.sh`; finding 12 — `docs/reviews/system-audit-2026-07-24/`
+(SYNTHESIS, R1); the feed — GSL-223 (`docs/handoff/GSL-223-orchestrator-cycle-boundary-jira-dump.md`).
