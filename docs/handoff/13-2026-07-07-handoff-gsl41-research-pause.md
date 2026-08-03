@@ -1,66 +1,66 @@
-# Handoff — gosleep — 2026-07-07 (GSL-41 research: PAUSE по лимитам, середина фазы)
+# Handoff — gosleep — 2026-07-07 (GSL-41 research: PAUSED on limits, mid-phase)
 
 > For a FRESH orchestrator or the owner returning. Read Part 1 first, then "Immediate next steps". Ground truth = `docs/handoff/ORCHESTRATION-STATE.md` (read FIRST) + this file. Supersedes the 2026-07-01 handoff (hardening arc complete).
 
 # ── Part 1 · Plain words ──
 
 ## 1. Where we are now
-gosleep — репозиторий оркестрационного харнесса (5 delivery-скиллов). Идёт эпик **GSL-41: глубокое исследование внешних оркестраторов** (AutoSK, Warren, Overstory, экосистема) с выходом в 4 HTML-отчёта (EN+RU) + PRD. Владелец приостановил работу из-за исчерпания лимитов ровно посередине: **все 5 исследований написаны (4 полностью, 1 частично), отчёты ещё не написаны**.
+gosleep — a repository of an orchestration harness (5 delivery skills). Epic **GSL-41: deep research of external orchestrators** is running (AutoSK, Warren, Overstory, ecosystem) with output as 4 HTML reports (EN+RU) + a PRD. The owner paused the work due to a limit exhaustion right in the middle: **all 5 researches are written (4 in full, 1 partial), the reports are not yet written**.
 
 ## 2. What's already done
-- Эпик GSL-41 + 7 задач (GSL-42..48) созданы в Jira, зеркалированы в GH (#48..55). Ветка `GSL-41-orchestration-research` от main, коммит GSL-42 (`898297c`, леджер+housekeeping) запушен.
-- Исследования в `docs/research/2026-07-07-orchestration/` (НЕ закоммичены, лежат на диске): 01-autosk (32КБ, ГОТОВ), 02-warren-overstory (37КБ, ГОТОВ), 03-headless-subscription-landscape (37КБ, ГОТОВ), 04-loop-engineering (36КБ, почти готов — воркер не успел отчитаться), 05-lab-ui-mobile-autonomy (7.6КБ, В ПРОЦЕССЕ — оборван паузой).
-- Главные ответы уже получены: (а) `claude -p` работает по подписке штатно, но с ~15.06.2026 программные вызовы метятся отдельным месячным кредитным пулом; риск закрытия НИЗКИЙ; рекомендация — оставить tmux+Agent Teams движком; (б) супервизия оркестратора решается механическим watchdog'ом (heartbeat-файл + launchd + бюджет рестартов) по образцу Warren; Overstory повторяет нашу архитектуру и имеет ту же дыру; (в) AutoSK доказывает subscription-native подход и даёт mobile-референс (Tauri iOS, но без TLS/push).
+- Epic GSL-41 + 7 tasks (GSL-42..48) filed in Jira, mirrored to GH (#48..55). Branch `GSL-41-orchestration-research` from main, commit GSL-42 (`898297c`, ledger + housekeeping) pushed.
+- Researches in `docs/research/2026-07-07-orchestration/` (NOT committed, on disk): 01-autosk (32KB, READY), 02-warren-overstory (37KB, READY), 03-headless-subscription-landscape (37KB, READY), 04-loop-engineering (36KB, almost ready — the worker did not finish reporting), 05-lab-ui-mobile-autonomy (7.6KB, IN PROGRESS — cut off by the pause).
+- The main answers are already obtained: (a) `claude -p` works on subscription as a first-class surface, but since ~15.06.2026 programmatic calls are marked with a separate monthly credit pool; the risk of it being closed is LOW; recommendation — keep tmux+Agent Teams as the engine; (b) orchestrator supervision is solved by a mechanical watchdog (heartbeat file + launchd + restart budget) after the Warren pattern; Overstory repeats our architecture and has the same hole; (c) AutoSK proves the subscription-native approach and gives a mobile reference (Tauri iOS, but without TLS/push).
 
 ## 3. What we're doing next
-После возобновления: дописать 05 (res-labui), затем 4 писателя отчётов + PRD, затем коммиттер (Opus), ревью, PR, merge. Детальная очередь — в Part 2.
+After resumption: finish 05 (res-labui), then 4 report writers + PRD, then the committer (Opus), review, PR, merge. The detailed queue — in Part 2.
 
 ## 4. Problems we have
-- Лимиты подписки исчерпаны — причина паузы. Три воркер-панели могли остаться живыми (квиесцированы владельцем напрямую): res-loops, res-labui, writer-landscape — их надо переучесть при возобновлении (см. Part 2).
-- Телеметрия циклов 5-7 (res-loops, res-labui, writer-landscape) НЕ получена — воркеры не успели отчитаться; в TELEMETRY стоит gap-флаг.
-- Спавн-лимит машины: максимум 3 одновременных воркер-панели (4-я падает с "fork failed: Device not configured").
+- Subscription limits exhausted — the pause cause. Three worker panes may have remained alive (quiesced by the owner directly): res-loops, res-labui, writer-landscape — they must be re-verified on resume (see Part 2).
+- Telemetry of cycles 5-7 (res-loops, res-labui, writer-landscape) NOT received — the workers did not finish reporting; in TELEMETRY there is a gap flag.
+- Machine spawn limit: at most 3 simultaneous worker panes (the 4th falls with "fork failed: Device not configured").
 
 ## 5. Comments & recent decisions
-- Владелец (2026-07-07): все агенты — Fable 5; только механика — Opus 4.8. ПУЛЬС оркестратора каждые ~5-10 мин при живом флоте (ScheduleWakeup в конце каждого хода) — после моего dead-stall'а.
-- Инцидент-урок: `tmux kill-pane -a` убил первый флот исследователей — панели убивать ТОЛЬКО по явному id. Транзиентный "API Error: Server error mid-response" лечится одним continue-наджем на файл находок (проверено 2×).
-- Исследователи пишут находки инкрементально в СВОЙ файл, git не трогают (один коммиттер в конце). Клоны — в gitignored `.research-cache/`.
+- Owner (2026-07-07): all agents on Fable 5; only mechanics on Opus 4.8. Orchestrator PULSE every ~5-10 min with a live fleet (ScheduleWakeup at the end of every turn) — after my dead-stall.
+- Incident lesson: `tmux kill-pane -a` killed the first researcher fleet — kill panes ONLY by explicit id. The transient "API Error: Server error mid-response" is cured by one continue nudge on the findings file (verified 2×).
+- Researchers write findings incrementally into THEIR file, do not touch git (one committer at the end). Clones — in the gitignored `.research-cache/`.
 
 # ── Part 2 · Formal / precise ──
 
 ## ⚠️ Hard rules (carry verbatim)
-- NO Workflow tool. ALL agents = tmux-pane teammates (Fable 5; Opus 4.8 только механика). Max 3 concurrent панели. Пульс ~270s при живом флоте. kill-pane только по явному id. Оркестратор НЕ исполняет delivery сам. Reviews+merges автоматом (full autonomy). Артефакты в дереве проекта; никаких /tmp.
-- Epic+Task; 1 branch/Epic; 1 commit/Task (`GSL-N ...`); 1 PR/Epic; REGULAR merge; идемпотентность; no force-push.
+- NO Workflow tool. ALL agents = tmux-pane teammates (Fable 5; Opus 4.8 only mechanics). Max 3 concurrent panes. Pulse ~270s with a live fleet. kill-pane only by explicit id. The orchestrator does NOT execute delivery itself. Reviews+merges automatic (full autonomy). Artifacts in the project tree; no /tmp.
+- Epic+Task; 1 branch/Epic; 1 commit/Task (`GSL-N ...`); 1 PR/Epic; REGULAR merge; idempotency; no force-push.
 
 ## Connections
 | Thing | Value |
 |---|---|
 | Jira | GSL, cloudId 74054cdc-47ef-497d-9684-734149876a8b; To Do=11/In Progress=21/In Review=31/Done=41 |
 | GitHub | ainstance-labs/gosleep; main @ 41566be; branch `GSL-41-orchestration-research` @ `898297c` (pushed) |
-| Epic | GSL-41 (In Progress) = GH #48; tasks GSL-42..48 = GH #49..55; GSL-42 Done, остальные To Do |
+| Epic | GSL-41 (In Progress) = GH #48; tasks GSL-42..48 = GH #49..55; GSL-42 Done, the rest To Do |
 | Next free | Jira GSL-49; GH #56 |
 | Owner | Roman L, rommxx@gmail.com, accountId 557058:83b04839-8bde-4331-9c2d-24843d0b8e67 |
 
 ## Fleet at pause (2026-07-07 ~23:15 local)
-- Панели окна 1:0: %36 = оркестратор; %91 = res-loops (04, файл 35596B — почти готов, отчёта НЕ прислал); %92 = res-labui (05, файл 7618B — В ПРОЦЕССЕ); %93 = writer-landscape (входы читал, файлов отчёта ещё НЕ создал). Владелец сам велел им пауза — ожидаются квиесцированными.
-- Окна/сессии 0/2/3/4 tmux — ЧУЖИЕ проекты, не трогать.
+- Panes of window 1:0: %36 = orchestrator; %91 = res-loops (04, file 35596B — almost ready, report NOT sent); %92 = res-labui (05, file 7618B — IN PROGRESS); %93 = writer-landscape (was reading inputs, has not yet created report files). The owner himself told them to pause — expected quiesced.
+- Windows/sessions 0/2/3/4 tmux — OTHER people's projects, do not touch.
 
 ## Immediate next steps (⭐ RESUME POINT)
-1. Прочитать `ORCHESTRATION-STATE.md` + этот handoff; `tmux list-panes -t 1:0` — сверить панели с "Fleet at pause".
-2. Живые квиесцированные воркеры: res-loops — нуджнуть «допиши COVERAGE и пришли финальный отчёт с телеметрией»; res-labui — нуджнуть «продолжай по брифу с места остановки» (бриф в логе сессии/восстановить из этого handoff §Writer-briefs); writer-landscape — нуджнуть «продолжай: пиши docs/reports/orchestrator-landscape/index.html + RU/index.html». Мёртвые панели → перезапустить с суффиксом -2, указав продолжать по частичному файлу.
-3. Дальше очередь писателей (max 3 панели, Fable 5): (b) writer-headless → `docs/reports/headless-and-supervision/` (входы 03+02, ГОТОВЫ); (c) writer-autonomy → `docs/reports/autonomy-lab-ui/` (входы 05+01); (d) writer-loops → `docs/reports/loop-engineering/` (вход 04); (e) writer-prd → `docs/prd/` (все 5 findings + отчёты; markdown по скиллу writing-prds, фазовая структура; ПОСЛЕДНИМ).
-4. Требования к отчётам (владелец): дашборд с нуля, self-contained HTML (инлайн CSS/SVG, без внешних ресурсов), светлая+тёмная тема, responsive, схемы-SVG, термины объяснять просто с вводом в контекст, максимально подробно (дублирование ок), EN `index.html` + полная RU-версия `RU/index.html`, каждый отчёт в своей папке.
-5. После писателей: коммиттер (Opus, механика): коммиты по задачам — GSL-43 (findings pack: docs/research/*), GSL-44..47 (по отчёту), GSL-48 (PRD), каждый с dev_history-файлом `docs/dev_history/GSL-NN-...md` + обновлением README-индекса; Jira-переходы в Done; push; PR `GSL-41 ...` (body: Implements GSL-41, checklist, Mirrors GH #48, Closes #48..#55); ревьюер (Fable 5) по pushed SHA; merge REGULAR; закрыть GH-issues; эпик → Done.
-6. Телеметрию циклов 5-7 запросить в финальных отчётах воркеров; если воркер мёртв — range-read его `## ORCHESTRATOR REPORT`-блока НЕ применим (это findings-файлы, не handoff) → писать `tokens=UNRECOVERED — gap flagged`.
+1. Read `ORCHESTRATION-STATE.md` + this handoff; `tmux list-panes -t 1:0` — verify the panes against "Fleet at pause".
+2. Live quiesced workers: res-loops — nudge "finish COVERAGE and send the final report with telemetry"; res-labui — nudge "continue by the brief from where you stopped" (the brief in the session log / recover from this handoff · section Writer-briefs); writer-landscape — nudge "continue: write docs/reports/orchestrator-landscape/index.html + RU/index.html". Dead panes → restart with a -2 suffix, telling them to continue from the partial file.
+3. Next the writer queue (max 3 panes, Fable 5): (b) writer-headless → `docs/reports/headless-and-supervision/` (inputs 03+02, READY); (c) writer-autonomy → `docs/reports/autonomy-lab-ui/` (inputs 05+01); (d) writer-loops → `docs/reports/loop-engineering/` (input 04); (e) writer-prd → `docs/prd/` (all 5 findings + reports; markdown per the writing-prds skill; phase structure; LAST).
+4. Report requirements (owner): a dashboard from scratch, self-contained HTML (inline CSS/SVG, no external resources), light+dark theme, responsive, SVG diagrams, explain terms simply from context, in maximum detail (duplication OK), EN `index.html` + a full RU version `RU/index.html`, each report in its own folder.
+5. After the writers: the committer (Opus, mechanics): commits per task — GSL-43 (findings pack: docs/research/*), GSL-44..47 (per report), GSL-48 (PRD), each with a dev_history file `docs/dev_history/GSL-NN-...md` + updating the README index; Jira transitions to Done; push; PR `GSL-41 ...` (body: Implements GSL-41, checklist, Mirrors GH #48, Closes #48..#55); reviewer (Fable 5) by pushed SHA; merge REGULAR; close GH issues; epic → Done.
+6. Telemetry of cycles 5-7 request in the final worker reports; if a worker is dead — a range-read of its `## ORCHESTRATOR REPORT` block does NOT apply (these are findings files, not handoffs) → write `tokens=UNRECOVERED — gap flagged`.
 
-## Writer-briefs (эталон — writer-landscape)
-Полный текст брифа writer-landscape хранится в логе этой сессии; ключевые элементы для реконструкции: роль, входные findings-файлы, выходные пути (`docs/reports/<folder>/index.html` + `RU/index.html`), требования владельца (дашборд/термины/подробность), технические требования HTML (self-contained, темы, responsive, SVG), правила (no git, no Workflow, ≤2 субагентов, инкрементальность, PROGRESS >10 мин, контекст до ~75-80%), финальный отчёт ≤12 строк + телеметрия.
+## Writer briefs (reference — writer-landscape)
+The full text of the writer-landscape brief is stored in this session's log; key elements for reconstruction: role, input findings files, output paths (`docs/reports/<folder>/index.html` + `RU/index.html`), owner requirements (dashboard/terms/detail), HTML technical requirements (self-contained, themes, responsive, SVG), rules (no git, no Workflow, ≤2 subagents, incremental, PROGRESS >10 min, context up to ~75-80%), final report ≤12 lines + telemetry.
 
 ## Gotchas
-- Findings НЕ закоммичены (untracked) — не потерять при переключении веток; коммитит их только коммиттер-воркер задачей GSL-43.
-- `docs/prompts/2-deep-orchestrating-research.md` untracked — файл владельца, в коммиты не включать без его решения.
-- 03-headless CAVEAT: цифры кредитного пула ($20/$100/$200) из вторичных источников — перепроверить перед использованием в PRD.
-- Существующий `docs/reports/token-overage-incident-2026-06-28` — старый стиль, владелец просил НЕ ориентироваться на него.
-- Спавн-кап 3; "API Error mid-response" → один continue-надж; kill-pane только по id.
+- Findings NOT committed (untracked) — do not lose them on branch switch; only the committer worker commits them as task GSL-43.
+- `docs/prompts/2-deep-orchestrating-research.md` untracked — the owner's file, do not include in commits without their decision.
+- 03-headless CAVEAT: credit pool figures ($20/$100/$200) from secondary sources — verify before use in the PRD.
+- The existing `docs/reports/token-overage-incident-2026-06-28` — old style, the owner asked NOT to orient by it.
+- Spawn cap 3; "API Error mid-response" → one continue nudge; kill-pane only by id.
 
 ## Blocked on the human
-- Возобновление работы (лимиты). Опционально при возобновлении: подтвердить бюджет на фазу писателей (5 Fable-циклов + коммиттер + ревью ≈ заметный расход).
+- Resumption of work (limits). Optional on resume: confirm the budget for the writers phase (5 Fable cycles + committer + review ≈ noticeable spend).

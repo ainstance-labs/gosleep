@@ -1,42 +1,42 @@
-# Handoff — gosleep — 2026-07-12 (для fresh-оркестратора; GSL-72 полностью готов и верифицирован, остался ТОЛЬКО merge)
+# Handoff — gosleep — 2026-07-12 (for a fresh orchestrator; GSL-72 is fully ready and verified, ONLY merge remains)
 
-> ДЛЯ СВЕЖЕГО ОРКЕСТРАТОРА. Читай: Part 1 → «⚠️ ЖЕЛЕЗНЫЕ ПРАВИЛА» → «⭐ RESUME». Ground truth = ORCHESTRATION-STATE.md (первым) + этот файл. Supersedes handoff 20 (2026-07-10).
+> FOR A FRESH ORCHESTRATOR. Read: Part 1 → "⚠️ HARD RULES" → "⭐ RESUME". Ground truth = ORCHESTRATION-STATE.md (first) + this file. Supersedes handoff 20 (2026-07-10).
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
-Эпик **GSL-72 «Question buffer + decision manifest»** (PRD Phase 3) готов на 100%: 8 задач + фиксы по ревью запушены (HEAD **d86ba0f**), **PR #92 OPEN / CLEAN**, Jira-эпик In Review, задачи Done, smoke **37/37**. Всё это перепроверено ДВУМЯ независимыми read-only агентами (verify-skill 5/5 PASS, verify-delivery 6/6 PASS). Осталось одно действие: **merge и закрытие хвостов** — потом Phase 4.
+## 1. Where we are
+Epic **GSL-72 "Question buffer + decision manifest"** (PRD Phase 3) is 100% ready: 8 tasks + review fixes pushed (HEAD **d86ba0f**), **PR #92 OPEN / CLEAN**, Jira epic In Review, tasks Done, smoke **37/37**. All of this was double-checked by TWO independent read-only agents (verify-skill 5/5 PASS, verify-delivery 6/6 PASS). One action remains: **merge and close the tails** — then Phase 4.
 
-## 2. Что случилось в прошлых двух сессиях (важно понять)
-Два оркестратора подряд «молчали в чате»: заканчивали turn'ы tool call'ом (обычно ScheduleWakeup), а текст, написанный до/между tool calls, владельцу не показывается. Владелец дважды был на грани остановки проекта. Исправление: (а) из скилла orchestrating-delivery-agents вырезан сам паттерн «turn кончается tool call'ом» и строка-ловушка; (б) в проект поставлен Stop-hook, который механически блокирует конец turn'а без финального текста. Подробности — Урок №1 ниже.
+## 2. What happened in the previous two sessions (important to understand)
+Two orchestrators in a row "were silent in chat": ended turns with a tool call (usually ScheduleWakeup), and the text written before/between tool calls is not shown to the owner. The owner was twice on the verge of stopping the project. Fix: (a) from the `orchestrating-delivery-agents` skill the very pattern "a turn ends with a tool call" and the trap line were cut out; (b) a Stop-hook was installed in the project that mechanically blocks the end of a turn without a final text. Details — Lesson #1 below.
 
-## 3. Отношения с владельцем — прочитай обязательно
-Доверие подорвано. Владелец требует: отвечать на КАЖДОЕ его сообщение; объяснять каждый спавн/стоп воркера; никакой самодеятельности сверх приказа (исполнять буквально; сомнения — спрашивать); стандартную терминологию (tool call, tool result, turn — никаких самодельных переводов); при сомнении в твоих словах — он вправе требовать независимых агентов-проверщиков (паттерн verify-*, себя оправдал). Не спорь, показывай команды и их вывод.
+## 3. Relationship with the owner — read it, mandatory
+Trust is undermined. The owner demands: answer to EVERY message of his; explain every worker spawn/stop; no initiative beyond the order (execute literally; doubts — ask); standard terminology (tool call, tool result, turn — no homemade translations); when in doubt about your words — he is entitled to demand independent checker agents (the verify-* pattern proved itself). Do not argue, show commands and their output.
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## ⚠️ ЖЕЛЕЗНЫЕ ПРАВИЛА (нарушение первого = немедленная остановка проекта)
-1. **КАЖДЫЙ turn заканчивается ТЕКСТОМ владельцу — после ВСЕХ tool calls, ноль tool calls после текста.** Любой tool result (в т.ч. ответ ScheduleWakeup, что бы он ни говорил) — НЕ разрешение закончить turn. Знание правила НЕ спасает — двух предшественников оно не спасло; спасает привычка: последний акт = текст. Stop-hook (`.claude/settings.json` → `tools/hooks/stop-require-final-text.sh`) подстрахует блокировкой, но правило соблюдай сам. ScheduleWakeup (если пользуешься пульсом) взводится В СЕРЕДИНЕ turn'а.
-2. **Модели: ВСЕ агенты — Opus 4.8** (`model: opus`); оркестратор — Fable 5. Модель воркера сверяй по его транскрипту (`grep '"model"' ~/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep/<новейший>.jsonl`) — self-report врёт (fixer назвался fable-5, был opus-4-8).
-3. NO Workflow tool; max 3 воркер-панели (4-я падает: fork failed); kill-pane только по явному id; no force-push; REGULAR merge (никогда squash); идемпотентность; телеметрия в STATE после каждого цикла; оркестратор не исполняет delivery сам; воркеры НЕ трогают леджер-файлы.
-4. tmux: наше окно 1:0; сессии 0/2/3/4 — ЧУЖИЕ проекты (tasty-lunch, agentic-flow-admin, v8-inspect), их панели не трогать.
+## ⚠️ HARD RULES (violation of the first = an immediate project stop)
+1. **EVERY turn ends with TEXT to the owner — after ALL tool calls, zero tool calls after the text.** Any tool result (including the ScheduleWakeup response, whatever it says) is NOT permission to end the turn. Knowing the rule does NOT save — two predecessors it did not save; what saves is the habit: the last act = text. The Stop-hook (`.claude/settings.json` → `tools/hooks/stop-require-final-text.sh`) backs it up with a block, but hold the rule yourself. ScheduleWakeup (if you use a pulse) is armed IN THE MIDDLE of a turn.
+2. **Models: ALL agents on Opus 4.8** (`model: opus`); the orchestrator — Fable 5. Verify the worker model from its transcript (`grep '"model"' ~/.claude/projects/-Users-romanlidovskyi-Documents-dev-harness-gosleep/<latest>.jsonl`) — self-report lies (the fixer named itself fable-5, was opus-4-8).
+3. NO Workflow tool; max 3 worker panes (the 4th falls: fork failed); kill-pane only by explicit id; no force-push; REGULAR merge (never squash); idempotency; telemetry in STATE after every cycle; the orchestrator does not execute delivery itself; workers do NOT touch ledger files.
+4. tmux: our window 1:0; sessions 0/2/3/4 — OTHER people's projects (tasty-lunch, agentic-flow-admin, v8-inspect), do not touch their panes.
 
-## ⭐ RESUME POINT (по порядку)
-1. Подними скиллы: orchestrating-delivery-agents (уже вычищен от ловушки), handoff, delivery-workflow, using-jira. Прочитай ORCHESTRATION-STATE.md + этот файл. Сверь реальность: `tmux list-panes -t 1:0` (должна быть только твоя панель), `git log --oneline -1` (**d86ba0f** на `GSL-72-question-buffer`, sync с origin), `gh pr view 92 --json state,mergeStateStatus` (OPEN/CLEAN). Первым же turn'ом напиши владельцу текст — он проверит видимость.
-2. **Merge-финализатор** (воркер, Opus 4.8, чистая механика): `gh pr merge 92 --merge` (REGULAR) → закрыть issues **#84..#91** вручную (`Closes` авто-закроет только #83; проверить все девять) → Jira эпик GSL-72 → Done (transition **41**, cloudId ниже) → удалить ТОЛЬКО remote-ветку (`git push origin --delete GSL-72-question-buffer`) → локальный main FF: `git fetch origin main:main`. **Локальную ветку и checkout НЕ трогать** — в дереве незакоммиченный леджер. Отчёт ≤12 строк + model= (по транскрипту) + телеметрия.
-3. **Phase 4 «Laboratory»** по PRD (`docs/prd/PRD-gosleep-evolution.md`): setup-воркер (Opus) создаёт эпик GSL-81+ (GH #93+), ветку от свежего origin/main. **Первая задача эпика = леджер-коммит**, в который входят: ORCHESTRATION-STATE.md, handoffs 19/20/21, docs/reports/bugs/, `.gitignore` (правка), `skill/orchestrating-delivery-agents/SKILL.md` (чистка ловушки), `.claude/settings.json` + `tools/hooks/stop-require-final-text.sh` (Stop-hook едет в репо). `docs/prompts/2-*.md` НЕ коммитить (решение владельца не принято). Дальше конвейер: impl → механик PR → ревьюер → (фиксер) → финализатор. Потом Phase 5 UI, Phase 6 Mobile.
+## ⭐ RESUME POINT (in order)
+1. Raise skills: orchestrating-delivery-agents (already cleaned of the trap), handoff, delivery-workflow, using-jira. Read ORCHESTRATION-STATE.md + this file. Check reality: `tmux list-panes -t 1:0` (should be your pane only), `git log --oneline -1` (**d86ba0f** on `GSL-72-question-buffer`, in sync with origin), `gh pr view 92 --json state,mergeStateStatus` (OPEN/CLEAN). On the very first turn write text to the owner — he will check visibility.
+2. **Merge finalizer** (worker, Opus 4.8, pure mechanics): `gh pr merge 92 --merge` (REGULAR) → close issues **#84..#91** manually (`Closes` will auto-close only #83; verify all nine) → Jira epic GSL-72 → Done (transition **41**, cloudId below) → delete ONLY the remote branch (`git push origin --delete GSL-72-question-buffer`) → local main FF: `git fetch origin main:main`. **Do NOT touch the local branch or checkout** — the tree has an uncommitted ledger. Report ≤12 lines + model= (from transcript) + telemetry.
+3. **Phase 4 "Laboratory"** per the PRD (`docs/prd/PRD-gosleep-evolution.md`): a setup worker (Opus) creates the epic GSL-81+ (GH #93+), a branch from a fresh origin/main. **The first task of the epic = the ledger commit**, into which go: ORCHESTRATION-STATE.md, handoffs 19/20/21, docs/reports/bugs/, `.gitignore` (edit), `skill/orchestrating-delivery-agents/SKILL.md` (trap cleanup), `.claude/settings.json` + `tools/hooks/stop-require-final-text.sh` (the Stop-hook rides into the repo). `docs/prompts/2-*.md` do NOT commit (the owner decision is not made). Then the pipeline: impl → mechanic PR → reviewer → (fixer) → finalizer. Then Phase 5 UI, Phase 6 Mobile.
 
 ## Connections
-Jira GSL cloudId `74054cdc-47ef-497d-9684-734149876a8b` (To Do=11 / In Progress=21 / In Review=31 / Done=41); GH `ainstance-labs/gosleep`; PR #92; origin/main @ 135ce1f (до merge); next Jira=GSL-81, GH=#93; owner Roman L (rommxx@gmail.com) accountId `557058:83b04839-8bde-4331-9c2d-24843d0b8e67`. Обе копии скилла (skill/ и ~/.claude/skills/) идентичны, sync = `./install.sh` (только local→global).
+Jira GSL cloudId `74054cdc-47ef-497d-9684-734149876a8b` (To Do=11 / In Progress=21 / In Review=31 / Done=41); GH `ainstance-labs/gosleep`; PR #92; origin/main @ 135ce1f (before merge); next Jira=GSL-81, GH=#93; owner Roman L (rommxx@gmail.com) accountId `557058:83b04839-8bde-4331-9c2d-24843d0b8e67`. Both copies of the skill (skill/ and ~/.claude/skills/) are identical, sync = `./install.sh` (only local→global).
 
-## Что лежит незакоммиченным в дереве (штатно, уходит леджер-коммитом Phase 4)
-`M .gitignore` · `M docs/handoff/ORCHESTRATION-STATE.md` · `M skill/orchestrating-delivery-agents/SKILL.md` · `?? .claude/` (settings.json; scheduled_tasks.lock уже в gitignore) · `?? docs/handoff/19,20,21-*.md` · `?? docs/reports/bugs/` (багрепорт инцидента) · `?? tools/hooks/` · `?? docs/prompts/2-*.md` (НЕ коммитить).
+## What lies uncommitted in the tree (normal, goes with a Phase 4 ledger commit)
+`M .gitignore` · `M docs/handoff/ORCHESTRATION-STATE.md` · `M skill/orchestrating-delivery-agents/SKILL.md` · `?? .claude/` (settings.json; scheduled_tasks.lock already in gitignore) · `?? docs/handoff/19,20,21-*.md` · `?? docs/reports/bugs/` (the incident bug report) · `?? tools/hooks/` · `?? docs/prompts/2-*.md` (do NOT commit).
 
-## Бэклог
-lab-emit: m1 (мёртвые zC/wF в --count), m5 (answer/resolve без проверки статуса, нужен --force); m6 (08:30–09:00 вне режимов) и m7 (якоря denylist §3) → предлагать как manifest candidates (манифест owner-sovereign, агенты НЕ правят); разбор pi/packages/orchestrator (кандидат эпика); watchdog F1-S1 live-check (за владельцем, runbook §8); e2e «ночь с развилкой»; gsl49 M3+8 minors; gsl58 off-by-one; SC-19 polish; локальные ветки GSL-7/GSL-19.
+## Backlog
+lab-emit: m1 (dead zC/wF in --count), m5 (answer/resolve without a status check, need --force); m6 (08:30–09:00 outside the modes) and m7 (denylist anchors · section 3) → propose as manifest candidates (the manifest is owner-sovereign, agents do NOT edit); analysis of pi/packages/orchestrator (an epic candidate); watchdog F1-S1 live-check (on the owner, runbook · section 8); e2e "a night with a fork"; gsl49 M3+8 minors; gsl58 off-by-one; SC-19 polish; local branches GSL-7/GSL-19.
 
-## Телеметрия прогона (кумулятив — продолжать, не обнулять)
-≈72 цикла, total≈**5.43M** токенов approx (полный блок в STATE; гэпы 2a/32/35 помечены).
+## Run telemetry (cumulative — continue, do not reset)
+≈72 cycles, total≈**5.43M** tokens approx (the full block in STATE; gaps 2a/32/35 flagged).
 
 ## Blocked on human
-Нет. Очередь вопросов `tools/lab/lab-emit.sh list` → open=0.
+None. Question queue `tools/lab/lab-emit.sh list` → open=0.

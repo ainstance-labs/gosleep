@@ -1,77 +1,49 @@
-# Handoff — gosleep — 2026-07-12 (Фаза 4: у лаборатории появился летописец — и он сразу поймал таймлайн на вранье)
+# Handoff — gosleep — 2026-07-12 (Phase 4: the lab got a chronicler — and immediately caught the timeline lying)
 
-> Для СВЕЖЕГО агента. Читай Part 1 (простыми словами) → `## ORCHESTRATOR REPORT` → Part 2 → «⭐ RESUME».
-> Ground truth = `ORCHESTRATION-STATE.md` (первым) + этот файл. Дополняет handoff 23, не отменяет его
-> железные правила.
+> For a FRESH agent. Read Part 1 (plain words) → `## ORCHESTRATOR REPORT` → Part 2 → "⭐ RESUME".
+> Ground truth = `ORCHESTRATION-STATE.md` (first) + this file. Complements handoff 23, does not cancel its
+> hard rules.
 
-# ── Part 1 · Простыми словами ──
+# ── Part 1 · Plain words ──
 
-## 1. Где мы
+## 1. Where we are
 
-Фаза 4 замкнулась в рабочий контур. Предыдущий цикл научил ночь **оставлять** механический след; этот
-научил её **предъявлять** себя человеку и **сверяться с реальностью**.
+Phase 4 has closed into a working loop. The previous cycle taught the night to **leave** a mechanical trace; this one taught it to **present itself** to a human and **cross-check with reality**.
 
-Теперь одна команда — `tools/lab/chronicler.sh` — за 0.7 секунды перегенерирует всё, что владелец
-открывает утром: `status.json` (машинный снимок), три страницы `docs/lab/site/` (дашборд, таймлайн,
-библиотека — самодостаточный HTML, открывается из `file://` в самолёте) и утренний дайджест по
-каноническому шаблону. **Ни одна строка не берётся из памяти модели**: коммиты — из `git log`, «PR #92
-merged» — из `gh`, переходы Jira — из событийного лога, стоимость — из строки TELEMETRY, план — из
-LIVE-STATUS.
+Now one command — `tools/lab/chronicler.sh` — in 0.7 seconds regenerates everything the owner opens in the morning: `status.json` (a machine snapshot), three pages `docs/lab/site/` (dashboard, timeline, library — self-contained HTML, opens from `file://` on a plane) and a morning digest by a canonical template. **Not a single line comes from model memory**: commits — from `git log`, "PR #92 merged" — from `gh`, Jira transitions — from the event log, cost — from the TELEMETRY line, plan — from LIVE-STATUS.
 
-Ключевое свойство, ради которого всё писалось: **мёртвая страница выглядит мёртвой**. Каждый артефакт
-несёт `generated_at` и возраст последнего события и сам себя аттестует — `fresh` / `stale` / `dead`.
-Убил летописца `kill -9` пять раз посреди прохода: `status.json` каждый раз остался валидным. Крах
-летописца не роняет доставку — данные просто стареют, и страница об этом **говорит**.
+The key property for which all of this was written: **a dead page looks dead**. Every artifact carries `generated_at` and the age of the last event and attests itself — `fresh` / `stale` / `dead`. I killed the chronicler with `kill -9` five times mid-pass: `status.json` every time remained valid. A chronicler crash does not drop the delivery — the data just gets stale, and the page **says so**.
 
-## 2. Что уже сделано
+## 2. What is already done
 
-Две задачи, два коммита. **GSL-86** — летописец. **GSL-87** — poll-fill: сверка `git` / `gh` / Jira с
-логом и дописывание пробелов задним числом (`src="poll-fill"`, чтобы вывод никогда не выдавал себя за
-наблюдение).
+Two tasks, two commits. **GSL-86** — the chronicler. **GSL-87** — poll-fill: cross-check of `git` / `gh` / Jira with the log and writing gaps in retroactively (`src="poll-fill"`, so the output never passes itself off as observation).
 
-## 3. Что делаем дальше
+## 3. What we do next
 
-**impl-lab-3 стартует с GSL-88** (одна строка `lab-emit event --type handoff.written` в
-`skill/handoff/SKILL.md` — это ЕДИНСТВЕННАЯ разрешённая правка яруса T2) и **GSL-89** (dev_history Фазы
-4 + контракт generated-at/staleness — контракт уже реализован и описан, осталось его зафиксировать
-документально). Дальше — механик: PR на эпик GSL-81.
+**impl-lab-3 starts with GSL-88** (one line `lab-emit event --type handoff.written` in
+`skill/handoff/SKILL.md` — this is the ONE allowed T2-tier edit) and **GSL-89** (Phase 4 dev_history + generated-at/staleness contract — the contract is already implemented and described, all that is left is to document it). Then — the mechanic: a PR on epic GSL-81.
 
-## 4. Какие есть проблемы
+## 4. Which problems there are
 
-**Главное открытие цикла: таймлайн уже врал, и поймал я его собственным коммитом.** Хук `PostToolUse`
-**не увидел коммит GSL-86** (`3f52736`): сообщение шло heredoc'ом внутри подстановки команд, и парсер
-потерял внутри неё `git commit`. Ещё один коммит записан с **пустым sha**. Это хуже отсутствующего
-хука: лог *выглядит* полным. Оба факта восстановил poll-fill — задача, которая писалась «на всякий
-случай», оказалась ремонтом уже работающей лжи.
+**The main discovery of the cycle: the timeline was already lying, and I caught it with my own commit.** The `PostToolUse` hook **did not see the GSL-86 commit** (`3f52736`): the message went in a heredoc inside a command substitution, and the parser lost `git commit` inside it. One more commit was recorded with an **empty sha**. This is worse than a missing hook: the log *looks* complete. Both facts were restored by poll-fill — a task written "just in case" turned out to be a repair of already working lies.
 
-Отсюда бесплатный индикатор здоровья ярусa T1, которого раньше не было:
+Hence a free health indicator of the T1 tier that did not exist before:
 
 ```bash
-jq -r 'select(.src=="poll-fill") | .type' docs/lab/events/*.jsonl   # что хуки ПРОПУСТИЛИ
+jq -r 'select(.src=="poll-fill") | .type' docs/lab/events/*.jsonl   # what the hooks MISSED
 ```
 
-**Растущая доля `poll-fill` = гниющий хук.**
+**A growing share of `poll-fill` = a rotting hook.**
 
-**Хорошая новость, отменяющая прежнюю осторожность:** `TeammateIdle` **срабатывает** (ровно как
-предсказывал `events/README.md`: «просто посмотри после ночи работы флота»). `TaskCreated` /
-`TaskCompleted` — тоже. Секция «честного статуса» в `docs/lab/events/README.md` обновлена в обе
-стороны: что доказано — признано, что теряется — записано.
+**Good news that cancels the previous caution:** `TeammateIdle` **fires** (exactly as `events/README.md` predicted: "just look after a night of fleet work"). `TaskCreated` / `TaskCompleted` — too. The "honest status" section in `docs/lab/events/README.md` is updated in both directions: what is proven is admitted, what is lost is recorded.
 
-**Чего я сознательно НЕ делал:** не чинил парсер `lab-log` (GSL-83). `.claude/settings.json`
-live-watched, а ошибка в хуке = exit 2 = «заблокировать операцию» — ровно так в цикле 45 сломанный
-скрипт заморозил каждый Write/Edit в живой сессии. Правка парсера на живом флоте — работа для ревьюера
-или отдельной задачи, не для попутного фикса.
+**What I deliberately did NOT do:** did not fix the `lab-log` parser (GSL-83). `.claude/settings.json` is live-watched, and an error in a hook = exit 2 = "block the operation" — exactly how in cycle 45 a broken script froze every Write/Edit in a live session. Editing the parser on a live fleet is work for a reviewer or a separate task, not a drive-by fix.
 
-## 5. Комментарии и свежие решения
+## 5. Comments and fresh decisions
 
-- **Развилка «кто рисует страницу — код или LLM» решена в пользу кода.** Описание GSL-86 в Jira отдавало
-  `claude -p` генерацию и HTML, и дайджеста. Я так не сделал: если страницу рисует LLM, то её крах,
-  исчерпанный бюджет или таймаут = **нет страницы**, и критерий F4-S3 падает в первую же плохую ночь.
-  Скелет детерминированный; `claude -p` — опциональная (`--narrate`) прозаическая врезка под
-  `--max-budget-usd` и с **пустым** `--allowedTools`. Записано в очередь как **q-2026-07-12-001**
-  (DECISION, дефолт = мой выбор, автоприменение 2026-07-13 08:00). Владелец может возразить утром.
-- **Открытых блокеров нет.** Очередь: open=1 (та самая DECISION), 0 BLOCKER.
-- `docs/prompts/2-deep-orchestrating-research.md` по-прежнему **не коммитить** (owner-sovereign).
+- **The "who draws the page — code or LLM" fork is resolved in favor of code.** The GSL-86 description in Jira gave `claude -p` generation for both HTML and the digest. I did not do it: if the LLM draws the page, then its crash, exhausted budget or timeout = **no page**, and the F4-S3 criterion falls on the first bad night. The skeleton is deterministic; `claude -p` — an optional (`--narrate`) prose insert under `--max-budget-usd` and with **empty** `--allowedTools`. Recorded in the queue as **q-2026-07-12-001** (DECISION, default = my choice, auto-apply 2026-07-13 08:00). The owner can object in the morning.
+- **No open blockers.** Queue: open=1 (that DECISION), 0 BLOCKER.
+- `docs/prompts/2-deep-orchestrating-research.md` — still **do not commit** (owner-sovereign).
 
 ---
 
@@ -80,98 +52,89 @@ live-watched, а ошибка в хуке = exit 2 = «заблокироват�
 ```
 CYCLE_ID: impl-lab-2 #46
 CYCLE_STATUS: COMPLETE
-EPIC: GSL-81 (In Progress) / GH #93 — PRD Phase 4 «Laboratory (auto-doc)»
+EPIC: GSL-81 (In Progress) / GH #93 — PRD Phase 4 "Laboratory (auto-doc)"
 TASKS: GSL-83/84/85 (Done) · GSL-86 (Done) · GSL-87 (Done) · GSL-88..89 (To Do)
-BRANCH: GSL-81-laboratory-auto-doc @ 101836c — запушена
+BRANCH: GSL-81-laboratory-auto-doc @ 101836c — pushed
 COMMITS: 2 — 3f52736 (GSL-86 chronicler) · 101836c (GSL-87 poll-fill)
-GATES: smoke 105/105 (было 60/60) · hooks-verify 13/13 · status.json валиден · kill -9 ×5 без torn-write
-       · acceptance R4.2 доказан на живом PR #92 · идемпотентность poll-fill = 0 новых строк
-TREE: porcelain = docs/prompts/2-*.md + handoff 22/23/24 + STATE + живой events/<сегодня>.jsonl (штатно)
-PR: не открыт — по конвенции откроет механик после GSL-88..89
+GATES: smoke 105/105 (was 60/60) · hooks-verify 13/13 · status.json valid · kill -9 ×5 without torn write
+       · R4.2 acceptance proven on the live PR #92 · poll-fill idempotency = 0 new lines
+TREE: porcelain = docs/prompts/2-*.md + handoff 22/23/24 + STATE + live events/<today>.jsonl (normal)
+PR: not open — by convention the mechanic will open after GSL-88..89
 NEXT: impl-lab-3 — GSL-88 (skill handoff.written) + GSL-89 (dev_history + generated-at/staleness)
-BLOCKED_ON_HUMAN: нет. Очередь: open=1 (q-2026-07-12-001, DECISION, авто 2026-07-13 08:00), 0 BLOCKER
-MODEL: claude-opus-4-8 (сверено по транскрипту 993e2c34-*.jsonl, не по самоотчёту)
+BLOCKED_ON_HUMAN: none. Queue: open=1 (q-2026-07-12-001, DECISION, auto 2026-07-13 08:00), 0 BLOCKER
+MODEL: claude-opus-4-8 (verified from transcript 993e2c34-*.jsonl, not by self-report)
 TELEMETRY: tokens_out≈95k tokens_in≈1k cache_read≈14M cache_write≈600k
 ```
 
 ---
 
-# ── Part 2 · Формально ──
+# ── Part 2 · Formal ──
 
-## ⚠️ Железные правила (перенесены из handoff 21/22/23 — не ослаблять)
+## ⚠️ Hard rules (carried from handoffs 21/22/23 — do not weaken)
 
-1. **Каждый turn заканчивается ТЕКСТОМ владельцу — после ВСЕХ tool calls.**
-2. **Модели: ВСЕ агенты — Opus 4.8**; сверять **по транскрипту**, self-report врёт.
-3. NO Workflow tool; максимум **3** воркер-панели; kill-pane только по явному id; **no force-push**;
-   **regular merge** (никогда squash); телеметрия в STATE после цикла; **воркеры не трогают
-   леджер-файлы**.
+1. **Every turn ends with TEXT to the owner — after ALL tool calls.**
+2. **Models: ALL agents on Opus 4.8**; verify **from the transcript**, self-report lies.
+3. NO Workflow tool; at most **3** worker panes; kill-pane only by explicit id; **no force-push**;
+   **regular merge** (never squash); telemetry in STATE after a cycle; **workers do not touch
+   ledger files**.
 4. `docs/lab/decisions/manifest.md` — **owner-sovereign**.
-5. **НИКОГДА `git add -A`** — только пофайлово.
+5. **NEVER `git add -A`** — per file only.
 
-## Что появилось в коде (Фаза 4, ярус T3)
+## What appeared in the code (Phase 4, tier T3)
 
-| Файл | Роль |
+| File | Role |
 |---|---|
-| `tools/lab/chronicler.sh` + `.py` | **Летописец.** Один проход → `status.json`, `site/{index,timeline,library}.html`, `site/README.md`, дайджест. Bounded job, НЕ панель (C5). `--narrate` = опциональная врезка `claude -p` (bounded, toolless). `--dry-run`, `--repo`, `--date`, `--no-poll`, retention. |
-| `tools/lab/poll-fill.sh` + `.py` | **Сверка.** `git`/`gh`/Jira → пробелы в логе. Идемпотентно (ключ = внешняя личность факта). Шаг 0 каждого прохода летописца. |
-| `docs/lab/status.json` | Машинный снимок. **Только через `lab-write.sh`** — торн-запись здесь катастрофична. |
-| `docs/lab/site/` | Производные страницы. **Никто не правит руками** — следующий проход перезапишет. |
-| `docs/lab/events/README.md` | Таблица провенанса + **честный статус хуков** (что доказано, что молчит, **что теряет коммиты**). |
-| `tools/lab/smoke.sh` | **105/105** (было 60/60): +28 летописец, +17 poll-fill. |
+| `tools/lab/chronicler.sh` + `.py` | **The chronicler.** One pass → `status.json`, `site/{index,timeline,library}.html`, `site/README.md`, digest. Bounded job, NOT a pane (C5). `--narrate` = optional `claude -p` insert (bounded, toolless). `--dry-run`, `--repo`, `--date`, `--no-poll`, retention. |
+| `tools/lab/poll-fill.sh` + `.py` | **Cross-check.** `git`/`gh`/Jira → gaps in the log. Idempotent (key = external identity of a fact). Step 0 of every chronicler pass. |
+| `docs/lab/status.json` | Machine snapshot. **Only via `lab-write.sh`** — a torn write here is catastrophic. |
+| `docs/lab/site/` | Derived pages. **Nobody edits by hand** — the next pass will overwrite. |
+| `docs/lab/events/README.md` | Provenance table + **honest hook status** (what is proven, what is silent, **what loses commits**). |
+| `tools/lab/smoke.sh` | **105/105** (was 60/60): +28 chronicler, +17 poll-fill. |
 
-## Контракт staleness (действует для ВСЕХ производных артефактов, включая будущие Фазы 5)
+## Staleness contract (applies to ALL derived artifacts, including future Phase 5s)
 
-| Grade | Возраст последнего события | Env |
+| Grade | Age of the last event | Env |
 |---|---|---|
-| `fresh` | ≤ 30 мин | `GOSLEEP_FRESH_S=1800` |
-| `stale` | ≤ 3 ч | — |
-| `dead` | > 3 ч | `GOSLEEP_DEAD_S=10800` |
+| `fresh` | ≤ 30 min | `GOSLEEP_FRESH_S=1800` |
+| `stale` | ≤ 3 h | — |
+| `dead` | > 3 h | `GOSLEEP_DEAD_S=10800` |
 
-## Gates (CI нет — руками, перед каждым коммитом)
+## Gates (no CI — by hand, before every commit)
 
-- Трогал `tools/lab/` → `tools/lab/smoke.sh` (**105/105**, не сломать).
-- Трогал хуки/`settings.json` → `tools/lab/hooks-verify.sh` (**13/13**, поднимает живой процесс).
-- Писал jsonl → `jq -c . docs/lab/events/*.jsonl > /dev/null`.
-- Перед push → `git show --stat HEAD`: ровно намеченные файлы.
+- Touched `tools/lab/` → `tools/lab/smoke.sh` (**105/105**, do not break).
+- Touched hooks/`settings.json` → `tools/lab/hooks-verify.sh` (**13/13**, raises a live process).
+- Wrote jsonl → `jq -c . docs/lab/events/*.jsonl > /dev/null`.
+- Before push → `git show --stat HEAD`: exactly the intended files.
 
-## Ловушки, которые укусили в ЭТОМ цикле (не наступать заново)
+## Traps that bit in THIS cycle (do not step on again)
 
-- **bash 3.2 (штатный на macOS) не heredoc-aware внутри `$( )`**: он считает backtick'и и кавычки
-  ВНУТРИ quoted-heredoc. 33 backtick'а (нечётное) → `unexpected EOF while looking for matching '` '`.
-  Лечение — не «сбалансировать кавычки», а **вынести программу в отдельный `.py`**. Синтаксическая
-  ошибка bash = exit 2 = «заблокировать операцию» в протоколе хуков.
-- **Пустые данные маскируют баг.** `lab-emit list --json` печатает **JSONL**, а пустая очередь — вообще
-  ничего. Наивный `json.loads()` проходил все тесты и рухнул на **первом реальном вопросе**. Теперь в
-  smoke есть кейс с непустой очередью.
-- **Одно поле не может значить две вещи.** `--repo` у poll-fill означал и «где лаборатория», и «какой
-  репозиторий сверять» — и `gh` (который вне git-worktree не работает) молча уезжал в `skipped`.
-  Разведено на `--repo` и `--git-repo`.
-- **`ts` бэкфилла — это «когда узнали», а не «когда случилось»** (`lab-log` не принимает `--ts`).
-  Реальное время — в `data.occurred_at`. Первый прогон хотел записать 72 недельных коммита на
-  сегодняшний таймлайн; введён **пол** (floor = время первой строки лога), а отброшенное **считается
-  вслух** (`prehistory_skipped`).
+- **bash 3.2 (default on macOS) is not heredoc-aware inside `$( )`**: it counts backticks and quotes INSIDE a quoted heredoc. 33 backticks (odd) → `unexpected EOF while looking for matching '` '`.
+  Cure — not "balance the quotes" but **move the program into a separate `.py`**. A bash syntax error = exit 2 = "block the operation" in the hook protocol.
+- **Empty data masks a bug.** `lab-emit list --json` prints **JSONL**, and an empty queue — nothing at all. Naive `json.loads()` passed all tests and crashed on the **first real question**. Now smoke has a case with a non-empty queue.
+- **One field cannot mean two things.** `--repo` in poll-fill meant both "where the lab is" and "which repo to cross-check" — and `gh` (which does not work outside a git worktree) silently drifted into `skipped`. Split into `--repo` and `--git-repo`.
+- **The backfill `ts` is "when we learned", not "when it happened"** (`lab-log` does not accept `--ts`). The real time is in `data.occurred_at`. The first pass wanted to record 72 weekly commits into today's timeline; introduced a **floor** (floor = the time of the first log line), and the discarded is **counted aloud** (`prehistory_skipped`).
 
 ## ⭐ RESUME POINT
 
-**impl-lab-3 (Opus 4.8) стартует с GSL-88, затем GSL-89.**
+**impl-lab-3 (Opus 4.8) starts with GSL-88, then GSL-89.**
 
 ```bash
-git checkout GSL-81-laboratory-auto-doc   # @ 101836c, запушена
-tools/lab/smoke.sh                        # ожидается 105/105
-tools/lab/chronicler.sh --dry-run --json  # летописец жив; покажет staleness и пробелы
-git status --porcelain                    # prompts/2-* + handoff'ы + STATE + живой events — штатно
+git checkout GSL-81-laboratory-auto-doc   # @ 101836c, pushed
+tools/lab/smoke.sh                        # expected 105/105
+tools/lab/chronicler.sh --dry-run --json  # chronicler is alive; will show staleness and gaps
+git status --porcelain                    # prompts/2-* + handoffs + STATE + live events — normal
 ```
 
-| Ключ | GH | Задача | Готово к старту |
+| Key | GH | Task | Ready to start |
 |---|---|---|---|
-| **GSL-88** | #100 | одна строка `lab-emit event --type handoff.written` в `skill/handoff/SKILL.md` | тип в вокабуляре; **единственная разрешённая правка T2**. После правки — `./install.sh`. |
-| GSL-89 | #101 | dev_history Фазы 4 + контракт `generated-at`/staleness | контракт **уже реализован** (таблица выше) — осталось задокументировать. Кандидаты туда же: `--ts` у `lab-log` (чтобы бэкфилл вставал на своё место в таймлайне) и `--supersedes`. |
+| **GSL-88** | #100 | one line `lab-emit event --type handoff.written` in `skill/handoff/SKILL.md` | type in the vocabulary; **the ONLY allowed T2 edit**. After the edit — `./install.sh`. |
+| GSL-89 | #101 | Phase 4 dev_history + `generated-at`/staleness contract | contract **already implemented** (table above) — need to document. Candidates also: `--ts` on `lab-log` (so the backfill sits in its own place in the timeline) and `--supersedes`. |
 
-**Отдельно для ревьюера (не блокер, но важно):** парсер `git commit` в `tools/lab/lab-log.sh`
-**теряет коммиты с heredoc-сообщением** и иногда пишет пустой `sha`. Компенсировано poll-fill'ом,
-но не починено. Чинить осторожно: хуки живые.
+**Separately for the reviewer (not a blocker, but important):** the `git commit` parser in `tools/lab/lab-log.sh`
+**loses commits with a heredoc message** and sometimes writes an empty `sha`. Compensated by poll-fill,
+but not fixed. Fix carefully: hooks are live.
 
 ## Blocked on human
 
-Нет. Очередь: **open=1** — `q-2026-07-12-001` (DECISION, «летописец: код или LLM рисует страницу»,
-дефолт применится 2026-07-13 08:00). Блокеров, требующих владельца сейчас, нет.
+None. Queue: **open=1** — `q-2026-07-12-001` (DECISION, "chronicler: code or LLM draws the page",
+default applies 2026-07-13 08:00). No blockers requiring the owner right now.
