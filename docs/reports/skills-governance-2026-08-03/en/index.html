@@ -731,13 +731,15 @@
           <strong>four</strong> layers: a rule in <code>CLAUDE.md</code>, an owner-check
           inside the <code>publish</code> CLI, a test that fails if a file under
           <code>~/.claude/skills/</code> was modified by an agent, and a guard in
-          <code>install.sh</code> &mdash; two committed lines at the top of the script
-          (<code>echo&hellip;</code>&nbsp;+&nbsp;<code>exit&nbsp;1</code>) that
-          physically block the bulk local&nbsp;&rarr;&nbsp;global sync. The guard was
-          added by the owner on 2026-07-20 and <strong>is already in effect
-          today</strong> &mdash; the other three layers arrive with the system. Once
-          the system is built the guard stays on: the new system has no bulk sync at
-          all &mdash; exactly one named skill is published per button press.
+          <code>install.sh</code> &mdash; two committed lines at the top of the script:
+          a message to stderr and <code>exit&nbsp;1</code>, which aborts execution
+          <strong>before</strong> the first <code>rsync</code>. The script physically
+          never reaches the sync: any invocation, by an agent or by mistake, exits with
+          code 1 and changes nothing in production. The guard was added by the owner on
+          2026-07-20 and <strong>is already in effect today</strong> &mdash; the other
+          three layers arrive with the system. Once the system is built the guard stays
+          on: the new system has no bulk sync at all &mdash; exactly one named skill is
+          published per button press.
         </p>
       </div>
     </div>
@@ -942,19 +944,21 @@
     </div>
 
     <div class="card" style="margin-top: var(--s-4);">
-      <h3>Why <code>install.sh</code> currently cannot run as a whole</h3>
+      <h3>Why <code>install.sh</code> currently does not run the sync</h3>
       <p>
-        The installer syncs <em>every subfolder</em> from <code>skill/</code> to
-        <code>~/.claude/skills/</code> at once, with <code>--delete</code>. One run
-        today would wipe the <code>ATLASSIAN_API_TOKEN</code> lesson that lives only in
-        the production <code>using-jira</code>, and would <em>completely remove</em>
-        <code>tmux-agents-orchestration</code>, which is not in git. The 2026-07-20
-        guard is the <strong>fourth layer</strong> of the invariant defense from
-        section&nbsp;1 (<code>echo&hellip;</code>&nbsp;+&nbsp;<code>exit&nbsp;1</code>
-        at the top of the script) and the only one of the four that <strong>is
-        already in effect today</strong>. It cannot be lifted; the replacement is a
-        per-skill publish with review. After the system is built the guard stays on
-        &mdash; the new system has no bulk sync at all.
+        Without the guard the installer would sync <em>every subfolder</em> from
+        <code>skill/</code> to <code>~/.claude/skills/</code> at once, with
+        <code>--delete</code>: one run would wipe the <code>ATLASSIAN_API_TOKEN</code>
+        lesson that lives only in the production <code>using-jira</code>, and would
+        <em>completely remove</em> <code>tmux-agents-orchestration</code>, which is not
+        in git. The 2026-07-20 guard is the <strong>fourth layer</strong> of the
+        invariant defense from section&nbsp;1: two committed lines at the top of the
+        script &mdash; a message to stderr and <code>exit&nbsp;1</code> &mdash; abort
+        execution before the first <code>rsync</code>, so any invocation exits with
+        code 1 and changes nothing in production. It is the only one of the four layers
+        that <strong>is already in effect today</strong>. It cannot be lifted; the
+        replacement is a per-skill publish with review. After the system is built the
+        guard stays on &mdash; the new system has no bulk sync at all.
       </p>
     </div>
   </section>
@@ -1184,11 +1188,13 @@
           edited by the owner only, via the admin UI&raquo;); an owner-check inside
           <code>publish.sh</code> from stage&nbsp;3; a test that fails if an agent
           modified a file under <code>~/.claude/skills/</code>; and a test for the
-          registry format. The guard in <code>install.sh</code>
-          (<code>echo&hellip;</code>&nbsp;+&nbsp;<code>exit&nbsp;1</code>, added
-          2026-07-20) is the fourth layer, <strong>already in effect</strong>; it is
-          not filed as its own stage but is listed here as part of the same defense
-          and stays on after the system is built.
+          registry format. The guard in <code>install.sh</code> &mdash; two committed
+          lines at the top (a message to stderr and <code>exit&nbsp;1</code>, which
+          aborts execution before the first <code>rsync</code>; added 2026-07-20)
+          &mdash; is the fourth layer, <strong>already in effect</strong>: any
+          invocation exits with code 1 and changes nothing in production. It is not
+          filed as its own stage but is listed here as part of the same defense and
+          stays on after the system is built.
         </p>
       </li>
       <li>
