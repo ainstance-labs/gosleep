@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Skills governance — plan (2026-08-03)</title>
-<meta name="description" content="Dashboard for the plan: production protected, development in the repo. Drafted by the orchestrator, awaits the owner's decision.">
+<title>Skills governance system — plan (2026-08-03)</title>
+<meta name="description" content="Plan for the future process: the local skill in the project repo evolves; the owner publishes by pressing a button in the admin UI.">
 <script>
   // Resolve theme before first paint — no flash.
   (function () {
@@ -406,45 +406,51 @@
   }
   .term.hard h3 { color: var(--risk-fg); }
 
-  .incident {
-    border-left: 3px solid var(--warn-fg);
-    background: var(--warn-bg);
-    padding: var(--s-4) var(--s-5);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    margin: var(--s-4) 0 0;
+  /* Invariant — visually highlighted principle */
+  .invariant {
+    margin-top: var(--s-4);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--accent) 7%, var(--surface));
+    padding: var(--s-5) var(--s-5);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s-4);
+    align-items: start;
   }
-  .incident .lbl {
+  .invariant .mark {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .invariant .kicker {
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--warn-fg);
-    font-weight: 600;
-    display: block;
+    color: var(--accent-ink);
     margin-bottom: var(--s-2);
-  }
-  .incident p { color: var(--text); margin: 0; }
-  .incident p + p { margin-top: var(--s-2); }
-
-  .admission {
-    border-left: 3px solid var(--risk-fg);
-    background: var(--risk-bg);
-    padding: var(--s-4) var(--s-5);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    margin: var(--s-4) 0 0;
-  }
-  .admission .lbl {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--risk-fg);
-    font-weight: 600;
     display: block;
-    margin-bottom: var(--s-2);
   }
-  .admission p { color: var(--text); margin: 0; }
-  .admission p + p { margin-top: var(--s-2); }
+  .invariant h3 {
+    margin: 0 0 var(--s-2);
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .invariant p {
+    margin: 0;
+    color: var(--text);
+    max-width: 62ch;
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+  .invariant p + p { margin-top: var(--s-2); color: var(--text-2); font-size: 14.5px; }
 
   .table-wrap {
     margin-top: var(--s-4);
@@ -623,6 +629,7 @@
     .term-grid { grid-template-columns: 1fr; }
     .options { grid-template-columns: 1fr; }
     .impact { grid-template-columns: 1fr; gap: var(--s-3); }
+    .invariant { grid-template-columns: 1fr; gap: var(--s-3); padding: var(--s-4); }
     .brand .n { max-width: 40vw; }
   }
   @media (max-width: 430px) {
@@ -664,68 +671,75 @@
 
   <div class="meta-row" aria-label="Metadata">
     <span class="chip chip-jira"><span class="dot"></span>GSL-138</span>
-    <span class="chip chip-status"><span class="dot"></span>PROPOSAL — awaits owner's decision</span>
+    <span class="chip chip-status"><span class="dot"></span>PROPOSAL — awaits sign-off</span>
     <span class="chip">2026-08-03</span>
     <span class="chip">Author: orchestrator</span>
   </div>
 
-  <h1>Skills governance:<br>production protected, development in the repo</h1>
+  <h1>Skills governance system:<br>the repo evolves, the owner publishes</h1>
   <p class="lead">
-    Investigating the q-2026-07-24-002 blocker produced a plan that separates two
-    things &mdash; the working skills every project on this machine relies on, and
-    the skill-development work that should leave a trail in git. Nothing moves further
-    without your decision.
+    Plan for the future process. Only the local skill in the project repo evolves.
+    The move to production is done by one person &mdash; the owner &mdash; by pressing
+    a button in the lab admin UI. No agent takes part in the publish step.
   </p>
 
   <!-- ================== PRIMARY CTA ================== -->
   <section class="cta-frame" id="decision" aria-labelledby="decision-h">
     <div class="cta-head">
       <div>
-        <div class="kicker">Decision required</div>
-        <h2 id="decision-h">What to do with the 02.08 edits in production</h2>
+        <div class="kicker">Sign-off required</div>
+        <h2 id="decision-h">Agree on the system and launch epic GSL-174</h2>
       </div>
-      <div class="stamp">One question &middot; owner's call</div>
+      <div class="stamp">One action &middot; agree on the plan</div>
     </div>
     <div class="cta-body">
       <p class="cta-question">
-        The edits made to the production skill <code>orchestrating-delivery-agents</code>
-        on 02.08, bypassing the process, are already helping &mdash; they fix a real
-        breakage where the orchestrator went silent. Their fate is your call.
+        Below &mdash; the principle, the target process, the admin UI design and seven
+        work stages. Agreement is the signal to file tasks under the stages of epic
+        GSL-174.
       </p>
-      <div class="options">
-        <div class="option rec">
-          <span class="tag">Option A &middot; recommended</span>
-          <h3>Port and review retroactively</h3>
-          <p>
-            Copy the current production edits into <code>skill/orchestrating-delivery-agents/</code>
-            as the first development change, with a Jira task and a review. Production stays
-            as it is for now &mdash; the edits are useful and already working.
-          </p>
-        </div>
-        <div class="option">
-          <span class="tag">Option B</span>
-          <h3>Roll back and redo</h3>
-          <p>
-            Revert production to its pre-02.08 state (the exact set of replacements is known,
-            the rollback is mechanical), then perform the same edits normally: through
-            <code>skill/</code> &rarr; commit &rarr; registry &rarr; publish.
-          </p>
-        </div>
-      </div>
       <div class="cta-footer">
         <span class="lock">Publish &mdash; always the owner</span>
-        <span>Either option uses the same publish process going forward.</span>
+        <span>No agent takes part in the publish step under any wording of the command.</span>
       </div>
     </div>
   </section>
 
-  <!-- ================== 1. TERMINOLOGY ================== -->
-  <section id="terms" aria-labelledby="terms-h">
-    <h2 id="terms-h">1. Terminology (corrected per the owner)</h2>
+  <!-- ================== 1. PRINCIPLE + INVARIANT ================== -->
+  <section id="principle" aria-labelledby="principle-h">
+    <h2 id="principle-h">1. Principle of the system</h2>
     <p>
-      Earlier discussion used the phrase &laquo;working copy&raquo; &mdash; it is
-      imprecise and the orchestrator has withdrawn it. The proper terms are below.
+      Evolving a skill means working with the local (development) copy in the project
+      repo. Edits, commits, review and registry entries happen there and only there.
+      Production is never edited by agents, under any circumstance and under any
+      wording of the command.
     </p>
+    <div class="invariant" role="note" aria-labelledby="invariant-h">
+      <div class="mark" aria-hidden="true">01</div>
+      <div>
+        <span class="kicker">System invariant</span>
+        <h3 id="invariant-h">Publish is manual, owner-only, one button press in the admin UI</h3>
+        <p>
+          Moving a change from development to production is the single point of the
+          process where a human acts, and that human is the owner alone. The act is
+          pressing the &laquo;Publish&raquo; button next to the target skill in the
+          lab admin UI.
+        </p>
+        <p>
+          No agent takes part in the publish step &mdash; neither as executor nor as a
+          &laquo;confirmation helper&raquo;. The constraint is enforced on three
+          layers: a rule in <code>CLAUDE.md</code>, an owner-check inside the
+          <code>publish</code> CLI, and a test that fails if a file under
+          <code>~/.claude/skills/</code> was modified by an agent.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== 2. TERMINOLOGY ================== -->
+  <section id="terms" aria-labelledby="terms-h">
+    <h2 id="terms-h">2. Terminology</h2>
+    <p>The three terms the rest of this document refers back to.</p>
     <div class="term-grid">
       <div class="term hard">
         <h3>Production skills</h3>
@@ -749,63 +763,20 @@
         <div class="path">development &rarr; production</div>
         <p>
           Moving a change from development to production. Performed
-          <strong>only by the owner</strong>, explicitly, after review. The single
-          point where a human acts.
+          <strong>only by the owner</strong>, explicitly (a button in the admin UI),
+          after review. The single point of the process where a human acts.
         </p>
       </div>
     </div>
   </section>
 
-  <!-- ================== 2. WHY THE BAN IS JUSTIFIED ================== -->
-  <section id="why" aria-labelledby="why-h">
-    <h2 id="why-h">2. Why the ban is justified (fact, not conjecture)</h2>
-    <p>
-      The orchestrator response rules recorded in the production skill
-      <code>orchestrating-delivery-agents</code> have already paralysed the work once:
-      the owner stopped seeing the orchestrator's messages while the fleet was alive.
-    </p>
-    <div class="incident">
-      <span class="lbl">Incident &middot; a production rule that broke the channel</span>
-      <p>
-        The rule required &laquo;a turn ends with text&raquo;, while the worked example
-        showed an order where the last action was a scheduler call &mdash; its response
-        (&laquo;nothing more to do&raquo;) cut the turn off before the text.
-      </p>
-      <p>
-        A contradiction inside a skill is invisible to tests. A bug in a production
-        skill propagates to every project at once and is only discovered by symptom &mdash;
-        already in production.
-      </p>
-    </div>
-  </section>
-
-  <!-- ================== 3. ADMITTED VIOLATION ================== -->
-  <section id="admission" aria-labelledby="admission-h">
-    <h2 id="admission-h">3. The violation the orchestrator must acknowledge</h2>
-    <div class="admission">
-      <span class="lbl">02.08.2026 &middot; edit made bypassing the process</span>
-      <p>
-        On the owner's verbal instruction &laquo;fix the skill&raquo;, the edits were
-        applied <strong>directly to the production copy</strong>
-        <code>~/.claude/skills/orchestrating-delivery-agents/SKILL.md</code> &mdash;
-        the turn ordering plus six replacements from the GSL-178 errata.
-      </p>
-      <p>
-        The owner did give the instruction, but the proper path &mdash; edit in
-        <code>skill/</code> and publish by the owner &mdash; did not exist, and the
-        orchestrator did not build it; it worked around it instead. The precedent is
-        recorded as d-2026-08-02-004. The fate of those edits is the decision above
-        (the &laquo;Decision required&raquo; block).
-      </p>
-    </div>
-  </section>
-
-  <!-- ================== 4. CURRENT STATE ================== -->
+  <!-- ================== 3. CURRENT STATE ================== -->
   <section id="state" aria-labelledby="state-h">
-    <h2 id="state-h">4. Current state (measured 2026-08-03)</h2>
+    <h2 id="state-h">3. Current state (measured 2026-08-03)</h2>
     <p>
       Six skills. One is missing from git altogether. Two diverge from production &mdash;
-      one heavily, one over a single important lesson. Three are identical.
+      one by the turn-ordering edit only (2026-08-03 rollback of gosleep-specific bits
+      completed), one by a single shared lesson. Three are identical.
     </p>
 
     <figure class="diagram" aria-label="Skill divergence map">
@@ -823,10 +794,10 @@
 
           <g class="sv-sans sv-text-3" font-size="10">
             <text x="222" y="308" class="sv-text-3">0</text>
-            <text x="322" y="308" class="sv-text-3">20</text>
-            <text x="422" y="308" class="sv-text-3">40</text>
-            <text x="522" y="308" class="sv-text-3">60</text>
-            <text x="622" y="308" class="sv-text-3">80 lines</text>
+            <text x="322" y="308" class="sv-text-3">10</text>
+            <text x="422" y="308" class="sv-text-3">20</text>
+            <text x="522" y="308" class="sv-text-3">30</text>
+            <text x="622" y="308" class="sv-text-3">40 lines</text>
           </g>
           <g class="sv-hair" stroke-dasharray="2 3">
             <line x1="222" y1="52" x2="222" y2="296"/>
@@ -836,21 +807,21 @@
             <line x1="622" y1="52" x2="622" y2="296"/>
           </g>
 
-          <!-- 1) orchestrating-delivery-agents: 69 -->
+          <!-- 1) orchestrating-delivery-agents: +21 / -12 = 33 lines -->
           <g>
             <text x="12" y="72" class="sv-sans sv-text" font-size="12">orchestrating-delivery-agents</text>
-            <rect x="222" y="60" width="345" height="16" rx="3" class="sv-fill-risk"/>
-            <rect x="222" y="60" width="345" height="16" rx="3" fill="none" class="sv-risk" stroke-width="1"/>
-            <text x="573" y="72" class="sv-sans sv-text" font-size="11" font-weight="600">69 lines</text>
+            <rect x="222" y="60" width="330" height="16" rx="3" class="sv-fill-warn"/>
+            <rect x="222" y="60" width="330" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
+            <text x="558" y="72" class="sv-sans sv-text" font-size="11" font-weight="600">+21 / &minus;12</text>
             <text x="640" y="72" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
           </g>
 
-          <!-- 2) using-jira: 24 -->
+          <!-- 2) using-jira: +16 / -0 -->
           <g>
             <text x="12" y="112" class="sv-sans sv-text" font-size="12">using-jira</text>
-            <rect x="222" y="100" width="120" height="16" rx="3" class="sv-fill-warn"/>
-            <rect x="222" y="100" width="120" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
-            <text x="348" y="112" class="sv-sans sv-text" font-size="11" font-weight="600">24 lines</text>
+            <rect x="222" y="100" width="160" height="16" rx="3" class="sv-fill-warn"/>
+            <rect x="222" y="100" width="160" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
+            <text x="388" y="112" class="sv-sans sv-text" font-size="11" font-weight="600">+16 / &minus;0</text>
             <text x="640" y="112" class="sv-mono sv-text-2" font-size="11" text-anchor="end">yes</text>
           </g>
 
@@ -891,8 +862,9 @@
         </svg>
       </div>
       <figcaption>
-        Diagram (c): divergence between <code>skill/</code> (development) and
+        Diagram (a): divergence between <code>skill/</code> (development) and
         <code>~/.claude/skills/</code> (production) for every skill, measured 2026-08-03.
+        The bar encodes total changed lines (additions plus deletions).
       </figcaption>
     </figure>
 
@@ -919,14 +891,14 @@
               <td class="name">orchestrating-delivery-agents</td>
               <td class="mono">yes</td>
               <td class="mono">yes</td>
-              <td>69 lines (02.08 edits + older)</td>
-              <td><span class="b risk">risk</span></td>
+              <td>+21 / &minus;12 lines (turn-ordering edit only)</td>
+              <td><span class="b warn">warn</span></td>
             </tr>
             <tr>
               <td class="name">using-jira</td>
               <td class="mono">yes</td>
               <td class="mono">yes</td>
-              <td>24 lines (ATLASSIAN_API_TOKEN lesson only in prod)</td>
+              <td>+16 / &minus;0 lines (ATLASSIAN_API_TOKEN lesson only in prod)</td>
               <td><span class="b warn">warn</span></td>
             </tr>
             <tr>
@@ -975,105 +947,19 @@
     </div>
   </section>
 
-  <!-- ================== 5. TODAY'S GAP ================== -->
-  <section id="today" aria-labelledby="today-h">
-    <h2 id="today-h">5. Today's gap, diagrammed</h2>
-    <p>
-      Where exactly the break is: production is used but not filled from git &mdash;
-      edits leak straight into production, past the history.
-    </p>
-
-    <figure class="diagram" aria-label="Today's state diagram">
-      <div class="svg-wrap w720">
-        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg1-title">
-          <title id="svg1-title">Today's state: three stores, broken connections</title>
-
-          <defs>
-            <marker id="ah-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--ok-fg)"/>
-            </marker>
-            <marker id="ah-risk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--risk-fg)"/>
-            </marker>
-            <marker id="ah-mute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/>
-            </marker>
-          </defs>
-
-          <!-- development skill/ -->
-          <g>
-            <rect x="20" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
-            <text x="110" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">DEVELOPMENT</text>
-            <text x="110" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">skill/</text>
-            <text x="110" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">in the gosleep repo</text>
-            <line x1="36" y1="146" x2="184" y2="146" class="sv-hair"/>
-            <text x="110" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">5 of 6 skills</text>
-            <text x="110" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">tmux-agents absent</text>
-            <text x="110" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">edits do not flow out</text>
-          </g>
-
-          <!-- git origin/main -->
-          <g>
-            <rect x="270" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
-            <text x="360" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">HISTORY</text>
-            <text x="360" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">git origin/main</text>
-            <text x="360" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">commits, PRs, review</text>
-            <line x1="286" y1="146" x2="434" y2="146" class="sv-hair"/>
-            <text x="360" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">what can be rolled back</text>
-            <text x="360" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">what has an author</text>
-          </g>
-
-          <!-- production ~/.claude/skills/ -->
-          <g>
-            <rect x="520" y="60" width="180" height="180" rx="10" fill="var(--risk-bg)" stroke="var(--risk-fg)" stroke-width="1.5"/>
-            <text x="610" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">PRODUCTION</text>
-            <text x="610" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">~/.claude/skills/</text>
-            <text x="610" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-2)">shared machine, all projects</text>
-            <line x1="536" y1="146" x2="684" y2="146" class="sv-hair"/>
-            <text x="610" y="168" text-anchor="middle" class="sv-sans sv-text" font-size="11.5" font-weight="600">in use right now</text>
-            <text x="610" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">install.sh guarded off</text>
-            <text x="610" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--risk-fg)">agents forbidden to edit</text>
-          </g>
-
-          <!-- skill → git : works -->
-          <line x1="200" y1="150" x2="270" y2="150" stroke="var(--ok-fg)" stroke-width="1.6" marker-end="url(#ah-ok)"/>
-          <text x="235" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--ok-fg)">commit</text>
-
-          <!-- git → production: broken -->
-          <line x1="450" y1="150" x2="510" y2="150" stroke="var(--text-3)" stroke-width="1.4" stroke-dasharray="4 4"/>
-          <text x="480" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">install.sh</text>
-          <text x="480" y="167" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">disabled</text>
-          <g transform="translate(490,150)">
-            <circle r="7" fill="none" stroke="var(--risk-fg)" stroke-width="1.4"/>
-            <line x1="-4.5" y1="-4.5" x2="4.5" y2="4.5" stroke="var(--risk-fg)" stroke-width="1.4"/>
-          </g>
-
-          <!-- 02.08 direct edit bypassing everything -->
-          <path d="M 110 240 C 110 285, 610 285, 610 246" fill="none" stroke="var(--risk-fg)" stroke-width="1.6" stroke-dasharray="6 3" marker-end="url(#ah-risk)"/>
-          <text x="360" y="302" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">
-            02.08: agent's edit went straight into production, bypassing git
-          </text>
-        </svg>
-      </div>
-      <figcaption>
-        Diagram (a): today's state. The break is on the right &mdash; git does not
-        publish to production; the 02.08 edit bypassed the whole chain.
-      </figcaption>
-    </figure>
-  </section>
-
-  <!-- ================== 6. TARGET PROCESS ================== -->
+  <!-- ================== 4. TARGET PROCESS ================== -->
   <section id="target" aria-labelledby="target-h">
-    <h2 id="target-h">6. Target process</h2>
+    <h2 id="target-h">4. Target process</h2>
     <p>
       One direct flow from lesson to production, with exactly one point where a human
-      acts &mdash; publish. Everything else has an author, a task, a commit, and a cause.
+      acts &mdash; the owner presses the &laquo;Publish&raquo; button in the admin UI.
+      Everything else has an author, a task, a commit, and a cause.
     </p>
 
     <figure class="diagram" aria-label="Target process">
       <div class="svg-wrap w900">
-        <svg viewBox="0 0 900 220" role="img" aria-labelledby="svg2-title">
-          <title id="svg2-title">Target process from lesson to production, with a single human-only publish step</title>
+        <svg viewBox="0 0 900 240" role="img" aria-labelledby="svg2-title">
+          <title id="svg2-title">Target process from lesson to production, with a single manual step &mdash; the owner's button in the admin UI</title>
 
           <defs>
             <marker id="ah-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -1133,13 +1019,22 @@
           </g>
           <line x1="694" y1="102" x2="708" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
 
+          <!-- Boundary: repo | production -->
+          <line x1="700" y1="46" x2="700" y2="158" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+          <text x="352" y="60" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)" letter-spacing="0.06em">
+            REPO &middot; AGENT
+          </text>
+          <text x="864" y="60" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)" letter-spacing="0.06em">
+            PRODUCTION
+          </text>
+
           <!-- 7: OWNER (human gate) -->
           <g>
             <rect x="708" y="52" width="112" height="100" rx="10" fill="color-mix(in oklab, var(--accent) 12%, var(--surface))" stroke="var(--accent)" stroke-width="2"/>
-            <text x="764" y="76" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--accent-ink)" font-weight="600">07 &middot; HUMAN GATE</text>
+            <text x="764" y="76" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--accent-ink)" font-weight="600">07 &middot; MANUAL STEP</text>
             <text x="764" y="98" text-anchor="middle" class="sv-sans" font-size="13" font-weight="700" fill="var(--text)">OWNER</text>
-            <text x="764" y="115" text-anchor="middle" class="sv-sans sv-text-2" font-size="11">approves</text>
-            <text x="764" y="132" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">publish &lt;name&gt;</text>
+            <text x="764" y="115" text-anchor="middle" class="sv-sans sv-text-2" font-size="11">clicks button</text>
+            <text x="764" y="132" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">&laquo;Publish&raquo;</text>
           </g>
           <line x1="820" y1="102" x2="834" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
 
@@ -1151,73 +1046,122 @@
             <text x="864" y="128" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">+backup</text>
           </g>
 
-          <!-- Callout for the single human point -->
+          <!-- Callout for the single manual step -->
           <path d="M 764 40 L 764 52" stroke="var(--accent)" stroke-width="1.2"/>
           <text x="764" y="30" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--accent-ink)" font-weight="600">
-            the single point where a human acts
+            the single manual step &mdash; the admin-UI button
           </text>
 
-          <text x="450" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="12">
+          <text x="450" y="196" text-anchor="middle" class="sv-sans sv-text-2" font-size="12">
             steps 01&ndash;06 are agent work &mdash; every edit has an author, a task, and a commit
           </text>
-          <text x="450" y="206" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">
-            publish (07&ndash;08) is forbidden to agents by rule and by an owner-check
+          <text x="450" y="216" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">
+            publish (07&ndash;08) is forbidden to agents by rule, by a CLI owner-check, and by a test
           </text>
         </svg>
       </div>
       <figcaption>
         Diagram (b): the target process. Eight steps from lesson to production;
-        step 07 is the single point where a human acts.
+        step&nbsp;07 is the single manual step &mdash; the owner's &laquo;Publish&raquo;
+        button in the admin UI.
       </figcaption>
     </figure>
   </section>
 
+  <!-- ================== 5. ADMIN UI ================== -->
+  <section id="admin" aria-labelledby="admin-h">
+    <h2 id="admin-h">5. Admin UI &mdash; a &laquo;Skills&raquo; page in the lab</h2>
+    <p>
+      A dedicated page in the lab. It shows the list of skills and everything the owner
+      needs to decide about publishing without switching to a terminal.
+    </p>
+    <ul>
+      <li><strong>Status:</strong> &laquo;matches production&raquo; or &laquo;has unpublished edits&raquo;.</li>
+      <li><strong>History lesson&nbsp;&rarr;&nbsp;edit&nbsp;&rarr;&nbsp;task&nbsp;&rarr;&nbsp;commit:</strong>
+          rows from the change registry, each with links to the Jira task and the commit.</li>
+      <li><strong>Diff</strong> of the local copy against production &mdash; viewed on the page.</li>
+      <li><strong>&laquo;Publish&raquo; button</strong> per skill &mdash; the only interactive control.</li>
+    </ul>
+
+    <div class="card" style="margin-top: var(--s-4);">
+      <h3>Technical consequence (spelled out honestly)</h3>
+      <p>
+        Today's web is a static site generated by the chronicler. A static page cannot
+        execute commands on the owner's machine. So the &laquo;Publish&raquo; button
+        needs a <strong>local admin server</strong> &mdash; a process on
+        <code>localhost</code> that accepts the click and invokes the
+        <code>publish</code> CLI. That is a separate stage of work (stage&nbsp;4 in
+        section&nbsp;7), not an assumption. Until that server runs, the page shows the
+        exact command to copy instead of an active button &mdash; publishing itself stays
+        a command the owner runs in the terminal.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 6. REGISTRY ================== -->
+  <section id="registry" aria-labelledby="registry-h">
+    <h2 id="registry-h">6. Change registry &mdash; data source for the admin UI</h2>
+    <p>
+      <code>docs/skills/CHANGELOG.jsonl</code> &mdash; one line per development-edit:
+      date, skill, Jira task, commit, root-cause lesson, status
+      <code>draft</code>&nbsp;/&nbsp;<code>reviewed</code>&nbsp;/&nbsp;<code>published</code>.
+      Written by the agent when editing the development copy, extended at publish time.
+      The admin UI reads this file to render history and status.
+    </p>
+  </section>
+
   <!-- ================== 7. WORK STAGES ================== -->
   <section id="stages" aria-labelledby="stages-h">
-    <h2 id="stages-h">7. Work stages (proposed epic)</h2>
+    <h2 id="stages-h">7. Work stages (epic GSL-174)</h2>
     <p>
-      Six sequential stages. Acceptance &mdash; on a live example, not on paper.
+      Seven sequential stages. Acceptance &mdash; on a live example, not on paper.
     </p>
     <ol class="stages">
       <li>
         <h3>Development catch-up</h3>
         <p>
           Move the production versions back into <code>skill/</code> (a one-off reverse
-          sync, global &rarr; local, on the owner's command), including
+          sync, global&nbsp;&rarr;&nbsp;local, the owner's action), including
           <code>tmux-agents-orchestration</code>, which is not in git. Each skill lands
           as a separate commit stating what was caught up. After this step,
-          <code>skill/</code> is the truth and all further development happens only there.
+          <code>skill/</code>&nbsp;is the truth and all further development happens only
+          there.
         </p>
       </li>
       <li>
         <h3>Change registry</h3>
         <p>
-          <code>docs/skills/CHANGELOG.jsonl</code> &mdash; one line per edit: date,
-          skill, Jira task, commit, root-cause lesson, status
-          <code>draft</code>&nbsp;/&nbsp;<code>reviewed</code>&nbsp;/&nbsp;<code>published</code>.
-          Written by the agent at edit time; extended at publish time.
+          <code>docs/skills/CHANGELOG.jsonl</code>: schema fixed, format validated.
+          Written by the agent when editing; extended at publish time.
         </p>
       </li>
       <li>
-        <h3>Publish tool</h3>
+        <h3>Publish CLI</h3>
         <p>
           <code>tools/skills/publish.sh &lt;name&gt;</code>: shows a diff of development
-          against production, requires the owner's confirmation, backs up production to
-          <code>docs/skills/backups/&lt;name&gt;-&lt;date&gt;/</code>, syncs
-          <strong>one named</strong> skill, and appends a line to the registry.
+          against production, requires the owner's explicit confirmation, backs up
+          production to <code>docs/skills/backups/&lt;name&gt;-&lt;date&gt;/</code>,
+          syncs <strong>one named</strong> skill, and appends a line to the registry.
           No mass operations &mdash; <code>--all</code> does not exist. Agents are
           forbidden to run it, by rule and by an owner-check.
         </p>
       </li>
       <li>
-        <h3>Admin UI &mdash; a &laquo;Skills&raquo; page in the lab</h3>
+        <h3>Local admin server + publish button</h3>
         <p>
-          List of skills, status (matches production / has unpublished edits), history
-          from the registry with a lesson and links to the task and commit, diff view,
-          and the exact publish command ready to copy. A &laquo;Publish&raquo; button
-          in static HTML is impossible &mdash; publishing stays the owner's command;
-          if we later enable an interactive web tier, the button will call the same
-          <code>publish</code>.
+          A process on <code>localhost</code> that serves the &laquo;Skills&raquo; page
+          and handles the button click. The button invokes the same
+          <code>publish.sh</code> from stage&nbsp;3 and shows the result in the UI.
+          Without this stage the button in the static dashboard stays inert and
+          publishing remains a command the owner runs in the terminal.
+        </p>
+      </li>
+      <li>
+        <h3>Admin UI</h3>
+        <p>
+          The &laquo;Skills&raquo; page: list, status, registry history, diff, button.
+          Until the server (stage&nbsp;4) is up, the page is rendered by the chronicler
+          in static form and shows the exact command to copy instead of an active button.
         </p>
       </li>
       <li>
@@ -1226,15 +1170,15 @@
           A test that fails if an agent modified a file under
           <code>~/.claude/skills/</code>; a test for the registry format; and a rule in
           <code>CLAUDE.md</code> and inside the skills:
-          &laquo;production skills are edited by the owner only, via publish&raquo;.
+          &laquo;production skills are edited by the owner only, via the admin UI&raquo;.
         </p>
       </li>
       <li>
         <h3>Acceptance</h3>
         <p>
           On a live example: take a real lesson (e.g. the turn ordering), run it end to
-          end through development &rarr; registry &rarr; admin UI &rarr; publish, and
-          show every trace in the report.
+          end through development&nbsp;&rarr;&nbsp;registry&nbsp;&rarr;&nbsp;admin
+          UI&nbsp;&rarr;&nbsp;publish by the owner, and show every trace in the report.
         </p>
       </li>
     </ol>
@@ -1264,14 +1208,15 @@
 <footer class="site-foot">
   <div class="g">
     <div><span class="k">Report:</span> <span class="v">skills-governance-2026-08-03/en/index.html</span></div>
-    <div><span class="k">Branch:</span> <span class="v">GSL-138-skills-plan-report</span></div>
+    <div><span class="k">Branch:</span> <span class="v">GSL-138-skills-plan-rework</span></div>
     <div><span class="k">Source:</span> <span class="v">docs/plans/skills-governance-plan.md</span></div>
     <div><span class="k">Author:</span> <span class="v">gosleep orchestrator</span></div>
     <div><span class="k">Date:</span> <span class="v">2026-08-03</span></div>
   </div>
   <p style="margin-top: var(--s-3); max-width: 68ch;">
-    The dashboard is read by the owner. Nothing on this page is executed until his
-    command. The open question is in the &laquo;Decision required&raquo; block at the top.
+    The plan describes the future process. Nothing on this page is executed until the
+    owner's command. Sign-off is the signal to file tasks under the stages of epic
+    GSL-174.
   </p>
 </footer>
 

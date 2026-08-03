@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Управление скиллами — план (2026-08-03)</title>
-<meta name="description" content="Дашборд плана: production защищён, разработка идёт в репозитории. Составлен по указанию владельца, ожидает решения.">
+<title>Система работы со скиллами — план (2026-08-03)</title>
+<meta name="description" content="План будущей системы: развивается локальный скилл в репозитории, публикует владелец нажатием кнопки в админке.">
 <script>
   // Определяем тему до первой отрисовки — без вспышки.
   (function () {
@@ -371,6 +371,52 @@
     border-radius: 6px;
   }
 
+  /* Инвариант — визуально выделенный принцип */
+  .invariant {
+    margin-top: var(--s-4);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--accent) 7%, var(--surface));
+    padding: var(--s-5) var(--s-5);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s-4);
+    align-items: start;
+  }
+  .invariant .mark {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .invariant .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin-bottom: var(--s-2);
+    display: block;
+  }
+  .invariant h3 {
+    margin: 0 0 var(--s-2);
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .invariant p {
+    margin: 0;
+    color: var(--text);
+    max-width: 62ch;
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+  .invariant p + p { margin-top: var(--s-2); color: var(--text-2); font-size: 14.5px; }
+
   /* Табличная секция */
   .card {
     background: var(--surface);
@@ -416,47 +462,6 @@
     background: var(--risk-bg);
   }
   .term.hard h3 { color: var(--risk-fg); }
-
-  /* Инцидент — блок цитаты */
-  .incident {
-    border-left: 3px solid var(--warn-fg);
-    background: var(--warn-bg);
-    padding: var(--s-4) var(--s-5);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    margin: var(--s-4) 0 0;
-  }
-  .incident .lbl {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--warn-fg);
-    font-weight: 600;
-    display: block;
-    margin-bottom: var(--s-2);
-  }
-  .incident p { color: var(--text); margin: 0; }
-  .incident p + p { margin-top: var(--s-2); }
-
-  .admission {
-    border-left: 3px solid var(--risk-fg);
-    background: var(--risk-bg);
-    padding: var(--s-4) var(--s-5);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    margin: var(--s-4) 0 0;
-  }
-  .admission .lbl {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--risk-fg);
-    font-weight: 600;
-    display: block;
-    margin-bottom: var(--s-2);
-  }
-  .admission p { color: var(--text); margin: 0; }
-  .admission p + p { margin-top: var(--s-2); }
 
   /* Таблица состояния */
   .table-wrap {
@@ -643,6 +648,7 @@
     .term-grid { grid-template-columns: 1fr; }
     .options { grid-template-columns: 1fr; }
     .impact { grid-template-columns: 1fr; gap: var(--s-3); }
+    .invariant { grid-template-columns: 1fr; gap: var(--s-3); padding: var(--s-4); }
     .brand .n { max-width: 40vw; }
   }
   @media (max-width: 430px) {
@@ -684,67 +690,74 @@
 
   <div class="meta-row" aria-label="Метаданные">
     <span class="chip chip-jira"><span class="dot"></span>GSL-138</span>
-    <span class="chip chip-status"><span class="dot"></span>ПРЕДЛОЖЕНИЕ — ожидает решения владельца</span>
+    <span class="chip chip-status"><span class="dot"></span>ПРЕДЛОЖЕНИЕ — ожидает согласования</span>
     <span class="chip">2026-08-03</span>
     <span class="chip">Автор: оркестратор</span>
   </div>
 
-  <h1>Управление скиллами:<br>production защищён, разработка идёт в репозитории</h1>
+  <h1>Система работы со скиллами:<br>репозиторий развивает, владелец публикует</h1>
   <p class="lead">
-    Разбор блокера q-2026-07-24-002 привёл к плану, который разводит две сущности &mdash;
-    рабочие скиллы, которыми пользуются все проекты машины, и разработку скиллов,
-    которая должна оставлять след в git. Дальше без вашего решения ничего не двигается.
+    План будущего процесса. Развивается только локальный скилл в репозитории проекта.
+    Перенос в production делает один человек &mdash; владелец, нажатием кнопки в админке
+    лаборатории. Ни один агент не участвует в шаге публикации.
   </p>
 
   <!-- ================== ГЛАВНЫЙ CTA ================== -->
   <section class="cta-frame" id="decision" aria-labelledby="decision-h">
     <div class="cta-head">
       <div>
-        <div class="kicker">Требуется решение</div>
-        <h2 id="decision-h">Что делать с правками 02.08 в production</h2>
+        <div class="kicker">Требуется согласование</div>
+        <h2 id="decision-h">Утвердить состав системы и запустить эпик GSL-174</h2>
       </div>
-      <div class="stamp">Один вопрос &middot; выбор владельца</div>
+      <div class="stamp">Одно действие &middot; согласование плана</div>
     </div>
     <div class="cta-body">
       <p class="cta-question">
-        Правки в production-скилл <code>orchestrating-delivery-agents</code>, внесённые
-        02.08 в обход процесса, уже помогают &mdash; они лечат реальную поломку молчания
-        оркестратора. Их судьба &mdash; ваш выбор.
+        Ниже &mdash; принцип, целевой процесс, устройство админки и семь этапов работ.
+        Согласование &mdash; сигнал заводить задачи по этапам эпика GSL-174.
       </p>
-      <div class="options">
-        <div class="option rec">
-          <span class="tag">Вариант А &middot; рекомендация</span>
-          <h3>Перенести и отревьюить ретроспективно</h3>
-          <p>
-            Скопировать текущие production-правки в <code>skill/orchestrating-delivery-agents/</code>
-            как первую development-правку с задачей в Jira и ревью. Production временно остаётся
-            как есть &mdash; правки полезны и уже работают.
-          </p>
-        </div>
-        <div class="option">
-          <span class="tag">Вариант Б</span>
-          <h3>Откатить и провести заново</h3>
-          <p>
-            Вернуть production к состоянию до 02.08 (точный набор замен известен, откат
-            механический), затем провести те же правки нормальным путём через
-            <code>skill/</code> &rarr; коммит &rarr; реестр &rarr; publish.
-          </p>
-        </div>
-      </div>
       <div class="cta-footer">
         <span class="lock">Публикация &mdash; всегда владелец</span>
-        <span>Оба варианта используют один и тот же процесс publish в будущем.</span>
+        <span>Агенты в шаге публикации не участвуют ни при каких формулировках команды.</span>
       </div>
     </div>
   </section>
 
-  <!-- ================== 1. ТЕРМИНОЛОГИЯ ================== -->
-  <section id="terms" aria-labelledby="terms-h">
-    <h2 id="terms-h">1. Терминология (исправлена по требованию владельца)</h2>
+  <!-- ================== 1. ПРИНЦИП + ИНВАРИАНТ ================== -->
+  <section id="principle" aria-labelledby="principle-h">
+    <h2 id="principle-h">1. Принцип системы</h2>
     <p>
-      В обсуждении фигурировало слово «рабочая копия» &mdash; оно неточное и оркестратор
-      его изъял. Правильные термины ниже.
+      Развитие скилла &mdash; это работа с локальной (development) копией в репозитории
+      проекта. Правка, коммит, ревью и запись в реестр изменений происходят только здесь.
+      Production не редактируется агентами ни при каких обстоятельствах и ни при каких
+      формулировках команды.
     </p>
+    <div class="invariant" role="note" aria-labelledby="invariant-h">
+      <div class="mark" aria-hidden="true">01</div>
+      <div>
+        <span class="kicker">Инвариант системы</span>
+        <h3 id="invariant-h">Публикация &mdash; только ручная, только владельцем, нажатием кнопки в админке</h3>
+        <p>
+          Перенос из development в production &mdash; единственная точка процесса, где
+          действует человек, и этот человек &mdash; только владелец. Форма действия
+          &mdash; нажатие кнопки «Опубликовать» напротив нужного скилла в админке
+          лаборатории.
+        </p>
+        <p>
+          Агенты в шаге публикации не участвуют вообще: ни как исполнители, ни как
+          «помощники подтвердить». Ограничение обеспечивается на трёх уровнях: правилом в
+          <code>CLAUDE.md</code>, проверкой на владельца внутри CLI-инструмента publish и
+          тестом, который падает, если файл в <code>~/.claude/skills/</code> изменён
+          агентом.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== 2. ТЕРМИНОЛОГИЯ ================== -->
+  <section id="terms" aria-labelledby="terms-h">
+    <h2 id="terms-h">2. Терминология</h2>
+    <p>Три термина, к которым апеллирует весь остальной документ.</p>
     <div class="term-grid">
       <div class="term hard">
         <h3>Production skills</h3>
@@ -768,61 +781,20 @@
         <div class="path">development &rarr; production</div>
         <p>
           Перенос development в production. Совершается <strong>только владельцем</strong>,
-          явным действием, после ревью. Единственная точка, где действует человек.
+          явным действием (кнопкой в админке), после ревью. Единственная точка процесса,
+          где действует человек.
         </p>
       </div>
     </div>
   </section>
 
-  <!-- ================== 2. ПОЧЕМУ ЗАПРЕТ ================== -->
-  <section id="why" aria-labelledby="why-h">
-    <h2 id="why-h">2. Почему запрет обоснован (факт, а не предположение)</h2>
-    <p>
-      Правила ответа оркестратора, записанные в production-скилле
-      <code>orchestrating-delivery-agents</code>, однажды уже парализовали работу:
-      владелец перестал видеть сообщения оркестратора при живом флоте.
-    </p>
-    <div class="incident">
-      <span class="lbl">Инцидент &middot; продакшн-правило, которое сломало связь</span>
-      <p>
-        Правило требовало «ход кончается текстом», а рабочий пример показывал порядок,
-        при котором последним действием оказывался вызов планировщика &mdash; его ответ
-        («больше делать нечего») обрывал ход до текста.
-      </p>
-      <p>
-        Противоречие внутри скилла не ловится тестом. Ошибка в продакшн-скилле
-        распространяется на все проекты сразу и обнаруживается только по симптому &mdash;
-        уже в бою.
-      </p>
-    </div>
-  </section>
-
-  <!-- ================== 3. ПРИЗНАННОЕ НАРУШЕНИЕ ================== -->
-  <section id="admission" aria-labelledby="admission-h">
-    <h2 id="admission-h">3. Нарушение, которое обязан признать оркестратор</h2>
-    <div class="admission">
-      <span class="lbl">02.08.2026 &middot; правка внесена в обход процесса</span>
-      <p>
-        По устной команде владельца «поправь скилл» правки были внесены
-        <strong>напрямую в production-копию</strong>
-        <code>~/.claude/skills/orchestrating-delivery-agents/SKILL.md</code> &mdash;
-        порядок хода плюс шесть замен из эрраты GSL-178.
-      </p>
-      <p>
-        Команда владельца была, но правильного пути &mdash; правка в <code>skill/</code> и
-        publish владельцем &mdash; не существовало, и оркестратор его не восстановил, а
-        обошёл. Прецедент задокументирован в d-2026-08-02-004. Судьба правок &mdash;
-        решение выше (раздел «Требуется решение»).
-      </p>
-    </div>
-  </section>
-
-  <!-- ================== 4. ТЕКУЩЕЕ СОСТОЯНИЕ ================== -->
+  <!-- ================== 3. ТЕКУЩЕЕ СОСТОЯНИЕ ================== -->
   <section id="state" aria-labelledby="state-h">
-    <h2 id="state-h">4. Текущее состояние (замерено 2026-08-03)</h2>
+    <h2 id="state-h">3. Текущее состояние (замерено 2026-08-03)</h2>
     <p>
       Шесть скиллов. Один в git отсутствует вовсе. Два расходятся с production &mdash; один
-      сильно, один по одному важному уроку. Три идентичны.
+      только правкой порядка хода (2026-08-03 откат гвоздей в gosleep выполнен), один по
+      одному общему уроку. Три идентичны.
     </p>
 
     <figure class="diagram" aria-label="Карта расхождений скиллов">
@@ -840,14 +812,14 @@
           <!-- Разделительная линия -->
           <line x1="12" y1="38" x2="708" y2="38" class="sv-hair" stroke-width="1"/>
 
-          <!-- Шкала: 0 .. 80 строк, ширина 400 (222..622) -->
+          <!-- Шкала: 0 .. 40 строк, ширина 400 (222..622) -->
           <!-- Метки шкалы -->
           <g class="sv-sans sv-text-3" font-size="10">
             <text x="222" y="308" class="sv-text-3">0</text>
-            <text x="322" y="308" class="sv-text-3">20</text>
-            <text x="422" y="308" class="sv-text-3">40</text>
-            <text x="522" y="308" class="sv-text-3">60</text>
-            <text x="622" y="308" class="sv-text-3">80 строк</text>
+            <text x="322" y="308" class="sv-text-3">10</text>
+            <text x="422" y="308" class="sv-text-3">20</text>
+            <text x="522" y="308" class="sv-text-3">30</text>
+            <text x="622" y="308" class="sv-text-3">40 строк</text>
           </g>
           <g class="sv-hair" stroke-dasharray="2 3">
             <line x1="222" y1="52" x2="222" y2="296"/>
@@ -857,22 +829,22 @@
             <line x1="622" y1="52" x2="622" y2="296"/>
           </g>
 
-          <!-- Ряды -->
-          <!-- 1) orchestrating-delivery-agents: 69 строк расхождения -->
+          <!-- Ряды (шкала: 10 строк = 100px, ширина полосы = сумма +/-) -->
+          <!-- 1) orchestrating-delivery-agents: +21 / -12 = 33 строки -->
           <g>
             <text x="12" y="72" class="sv-sans sv-text" font-size="12">orchestrating-delivery-agents</text>
-            <rect x="222" y="60" width="345" height="16" rx="3" class="sv-fill-risk"/>
-            <rect x="222" y="60" width="345" height="16" rx="3" fill="none" class="sv-risk" stroke-width="1"/>
-            <text x="573" y="72" class="sv-sans sv-text" font-size="11" font-weight="600">69 строк</text>
+            <rect x="222" y="60" width="330" height="16" rx="3" class="sv-fill-warn"/>
+            <rect x="222" y="60" width="330" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
+            <text x="558" y="72" class="sv-sans sv-text" font-size="11" font-weight="600">+21 / &minus;12</text>
             <text x="640" y="72" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
           </g>
 
-          <!-- 2) using-jira: 24 строки -->
+          <!-- 2) using-jira: +16 / -0 -->
           <g>
             <text x="12" y="112" class="sv-sans sv-text" font-size="12">using-jira</text>
-            <rect x="222" y="100" width="120" height="16" rx="3" class="sv-fill-warn"/>
-            <rect x="222" y="100" width="120" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
-            <text x="348" y="112" class="sv-sans sv-text" font-size="11" font-weight="600">24 строки</text>
+            <rect x="222" y="100" width="160" height="16" rx="3" class="sv-fill-warn"/>
+            <rect x="222" y="100" width="160" height="16" rx="3" fill="none" class="sv-warn" stroke-width="1"/>
+            <text x="388" y="112" class="sv-sans sv-text" font-size="11" font-weight="600">+16 / &minus;0</text>
             <text x="640" y="112" class="sv-mono sv-text-2" font-size="11" text-anchor="end">есть</text>
           </g>
 
@@ -913,8 +885,9 @@
         </svg>
       </div>
       <figcaption>
-        Схема (в): расхождения между <code>skill/</code> (development) и
+        Схема (а): расхождения между <code>skill/</code> (development) и
         <code>~/.claude/skills/</code> (production) для каждого скилла, замер 2026-08-03.
+        Полоса кодирует общее число изменённых строк (добавленных плюс удалённых).
       </figcaption>
     </figure>
 
@@ -941,14 +914,14 @@
               <td class="name">orchestrating-delivery-agents</td>
               <td class="mono">есть</td>
               <td class="mono">есть</td>
-              <td>69 строк (правки 02.08 + старые)</td>
-              <td><span class="b risk">risk</span></td>
+              <td>+21 / &minus;12 строк (только правка порядка хода)</td>
+              <td><span class="b warn">warn</span></td>
             </tr>
             <tr>
               <td class="name">using-jira</td>
               <td class="mono">есть</td>
               <td class="mono">есть</td>
-              <td>24 строки (урок ATLASSIAN_API_TOKEN только в prod)</td>
+              <td>+16 / &minus;0 строк (урок ATLASSIAN_API_TOKEN только в prod)</td>
               <td><span class="b warn">warn</span></td>
             </tr>
             <tr>
@@ -997,108 +970,19 @@
     </div>
   </section>
 
-  <!-- ================== 5. СХЕМА СЕГОДНЯ ================== -->
-  <section id="today" aria-labelledby="today-h">
-    <h2 id="today-h">5. Схема сегодняшнего разрыва</h2>
-    <p>
-      Где именно разрыв: production используется, но не наполняется из git &mdash;
-      правки утекают напрямую в production, минуя историю.
-    </p>
-
-    <figure class="diagram" aria-label="Схема сегодняшнего состояния">
-      <div class="svg-wrap w720">
-        <svg viewBox="0 0 720 320" role="img" aria-labelledby="svg1-title">
-          <title id="svg1-title">Сегодняшнее состояние: три хранилища, разорванные связи</title>
-
-          <!-- маркер-наконечники -->
-          <defs>
-            <marker id="ah-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--ok-fg)"/>
-            </marker>
-            <marker id="ah-risk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--risk-fg)"/>
-            </marker>
-            <marker id="ah-mute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/>
-            </marker>
-          </defs>
-
-          <!-- Три хранилища как колонки -->
-          <!-- development skill/ -->
-          <g>
-            <rect x="20" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
-            <text x="110" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">DEVELOPMENT</text>
-            <text x="110" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">skill/</text>
-            <text x="110" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">в репо gosleep</text>
-            <line x1="36" y1="146" x2="184" y2="146" class="sv-hair"/>
-            <text x="110" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">5 из 6 скиллов</text>
-            <text x="110" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">tmux-agents отсутствует</text>
-            <text x="110" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">правки не текут наружу</text>
-          </g>
-
-          <!-- git origin/main -->
-          <g>
-            <rect x="270" y="60" width="180" height="180" rx="10" class="sv-surface-2" stroke="var(--border-strong)" stroke-width="1"/>
-            <text x="360" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--text-3)">ИСТОРИЯ</text>
-            <text x="360" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">git origin/main</text>
-            <text x="360" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">коммиты, PR, ревью</text>
-            <line x1="286" y1="146" x2="434" y2="146" class="sv-hair"/>
-            <text x="360" y="168" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">то, что можно откатить</text>
-            <text x="360" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">и о чём есть автор</text>
-          </g>
-
-          <!-- production ~/.claude/skills/ -->
-          <g>
-            <rect x="520" y="60" width="180" height="180" rx="10" fill="var(--risk-bg)" stroke="var(--risk-fg)" stroke-width="1.5"/>
-            <text x="610" y="86" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">PRODUCTION</text>
-            <text x="610" y="108" text-anchor="middle" class="sv-sans sv-text" font-size="14" font-weight="600">~/.claude/skills/</text>
-            <text x="610" y="128" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-2)">общая машина, все проекты</text>
-            <line x1="536" y1="146" x2="684" y2="146" class="sv-hair"/>
-            <text x="610" y="168" text-anchor="middle" class="sv-sans sv-text" font-size="11.5" font-weight="600">используется прямо сейчас</text>
-            <text x="610" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="11.5">install.sh отключён guard</text>
-            <text x="610" y="220" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--risk-fg)">агентам правка запрещена</text>
-          </g>
-
-          <!-- Стрелки: skill/ → git (ok), git → production (нет), production ← прямая правка 02.08 (risk) -->
-          <!-- skill → git : работает -->
-          <line x1="200" y1="150" x2="270" y2="150" stroke="var(--ok-fg)" stroke-width="1.6" marker-end="url(#ah-ok)"/>
-          <text x="235" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--ok-fg)">коммит</text>
-
-          <!-- git → production: разорвано -->
-          <line x1="450" y1="150" x2="510" y2="150" stroke="var(--text-3)" stroke-width="1.4" stroke-dasharray="4 4"/>
-          <text x="480" y="141" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">install.sh</text>
-          <text x="480" y="167" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)">отключён</text>
-          <g transform="translate(490,150)">
-            <circle r="7" fill="none" stroke="var(--risk-fg)" stroke-width="1.4"/>
-            <line x1="-4.5" y1="-4.5" x2="4.5" y2="4.5" stroke="var(--risk-fg)" stroke-width="1.4"/>
-          </g>
-
-          <!-- Прямая правка агента 02.08: в обход -->
-          <path d="M 110 240 C 110 285, 610 285, 610 246" fill="none" stroke="var(--risk-fg)" stroke-width="1.6" stroke-dasharray="6 3" marker-end="url(#ah-risk)"/>
-          <text x="360" y="302" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--risk-fg)" font-weight="600">
-            02.08: правка агента напрямую в production, минуя git
-          </text>
-        </svg>
-      </div>
-      <figcaption>
-        Схема (а): текущее состояние. Разрыв справа &mdash; git не публикует в
-        production; правка 02.08 обошла всю цепочку.
-      </figcaption>
-    </figure>
-  </section>
-
-  <!-- ================== 6. ЦЕЛЕВОЙ ПРОЦЕСС ================== -->
+  <!-- ================== 4. ЦЕЛЕВОЙ ПРОЦЕСС ================== -->
   <section id="target" aria-labelledby="target-h">
-    <h2 id="target-h">6. Целевой процесс</h2>
+    <h2 id="target-h">4. Целевой процесс</h2>
     <p>
       Один прямой поток от урока до production, с ровно одной точкой, где действует
-      человек &mdash; publish. Всё остальное имеет автора, задачу, коммит и причину.
+      человек &mdash; владелец нажимает кнопку «Опубликовать» в админке. Всё остальное
+      имеет автора, задачу, коммит и причину.
     </p>
 
     <figure class="diagram" aria-label="Целевой процесс">
       <div class="svg-wrap w900">
-        <svg viewBox="0 0 900 220" role="img" aria-labelledby="svg2-title">
-          <title id="svg2-title">Целевой процесс от урока до production, с единственным человеко-шагом publish</title>
+        <svg viewBox="0 0 900 240" role="img" aria-labelledby="svg2-title">
+          <title id="svg2-title">Целевой процесс от урока до production, с единственным ручным шагом &mdash; кнопкой владельца в админке</title>
 
           <defs>
             <marker id="ah-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -1159,13 +1043,22 @@
           </g>
           <line x1="694" y1="102" x2="708" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
 
+          <!-- Граница репозиторий | production -->
+          <line x1="700" y1="46" x2="700" y2="158" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+          <text x="352" y="60" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)" letter-spacing="0.06em">
+            РЕПОЗИТОРИЙ &middot; АГЕНТ
+          </text>
+          <text x="864" y="60" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--text-3)" letter-spacing="0.06em">
+            PRODUCTION
+          </text>
+
           <!-- Шаг 7: ВЛАДЕЛЕЦ (единственная точка человека) -->
           <g>
             <rect x="708" y="52" width="112" height="100" rx="10" fill="color-mix(in oklab, var(--accent) 12%, var(--surface))" stroke="var(--accent)" stroke-width="2"/>
-            <text x="764" y="76" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--accent-ink)" font-weight="600">07 &middot; HUMAN GATE</text>
+            <text x="764" y="76" text-anchor="middle" class="sv-mono" font-size="10" fill="var(--accent-ink)" font-weight="600">07 &middot; РУЧНОЙ ШАГ</text>
             <text x="764" y="98" text-anchor="middle" class="sv-sans" font-size="13" font-weight="700" fill="var(--text)">ВЛАДЕЛЕЦ</text>
-            <text x="764" y="115" text-anchor="middle" class="sv-sans sv-text-2" font-size="11">подтверждает</text>
-            <text x="764" y="132" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">publish &lt;name&gt;</text>
+            <text x="764" y="115" text-anchor="middle" class="sv-sans sv-text-2" font-size="11">жмёт кнопку</text>
+            <text x="764" y="132" text-anchor="middle" class="sv-mono sv-text-2" font-size="10">«Опубликовать»</text>
           </g>
           <line x1="820" y1="102" x2="834" y2="102" stroke="var(--text-2)" marker-end="url(#ah-flow)"/>
 
@@ -1180,86 +1073,135 @@
           <!-- Подпись «единственная точка» -->
           <path d="M 764 40 L 764 52" stroke="var(--accent)" stroke-width="1.2"/>
           <text x="764" y="30" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--accent-ink)" font-weight="600">
-            единственная точка, где действует человек
+            единственный ручной шаг &mdash; кнопка в админке
           </text>
 
           <!-- Подпись под строкой: агент не может -->
-          <text x="450" y="188" text-anchor="middle" class="sv-sans sv-text-2" font-size="12">
+          <text x="450" y="196" text-anchor="middle" class="sv-sans sv-text-2" font-size="12">
             шаги 01&ndash;06 делает агент &mdash; каждая правка имеет автора, задачу и коммит
           </text>
-          <text x="450" y="206" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">
-            publish (07&ndash;08) агенту запрещён правилом и проверкой на владельца
+          <text x="450" y="216" text-anchor="middle" class="sv-mono" font-size="10.5" fill="var(--text-3)">
+            publish (07&ndash;08) агенту запрещён правилом, CLI-проверкой на владельца и тестом
           </text>
         </svg>
       </div>
       <figcaption>
-        Схема (б): целевой процесс. Восемь шагов от урока до production; шаг 07 &mdash;
-        единственная точка, где действует человек.
+        Схема (б): целевой процесс. Восемь шагов от урока до production; шаг&nbsp;07 &mdash;
+        единственный ручной шаг, кнопка «Опубликовать» в админке владельца.
       </figcaption>
     </figure>
   </section>
 
+  <!-- ================== 5. АДМИНКА ================== -->
+  <section id="admin" aria-labelledby="admin-h">
+    <h2 id="admin-h">5. Админка &mdash; раздел «Скиллы» в веб-лаборатории</h2>
+    <p>
+      Отдельная страница в лаборатории. Показывает список скиллов и всё, что нужно, чтобы
+      владелец принял решение о публикации без переключения в терминал.
+    </p>
+    <ul>
+      <li><strong>Статус:</strong> «совпадает с production» либо «есть неопубликованные правки».</li>
+      <li><strong>История урок&nbsp;&rarr;&nbsp;правка&nbsp;&rarr;&nbsp;задача&nbsp;&rarr;&nbsp;коммит:</strong>
+          строки из реестра изменений, каждая с ссылкой на задачу Jira и коммит.</li>
+      <li><strong>Diff</strong> локальной копии против production &mdash; просмотр прямо на странице.</li>
+      <li><strong>Кнопка «Опубликовать»</strong> на скилл &mdash; единственный интерактивный элемент.</li>
+    </ul>
+
+    <div class="card" style="margin-top: var(--s-4);">
+      <h3>Техническое следствие (честно и явно)</h3>
+      <p>
+        Сегодняшний веб &mdash; статический сайт, генерируется хроникёром. Статическая
+        страница не может выполнять команды на машине владельца. Значит кнопка
+        «Опубликовать» требует <strong>локального сервера админки</strong> &mdash; процесса
+        на <code>localhost</code>, который принимает нажатие и вызывает CLI-инструмент
+        <code>publish</code>. Это отдельный этап работ (этап&nbsp;4 в разделе&nbsp;7), а не
+        допущение. Пока сервер не запущен, страница показывает точную команду для
+        копирования вместо активной кнопки &mdash; сама публикация всё это время остаётся
+        командой владельца в терминале.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================== 6. РЕЕСТР ================== -->
+  <section id="registry" aria-labelledby="registry-h">
+    <h2 id="registry-h">6. Реестр изменений &mdash; источник данных для админки</h2>
+    <p>
+      <code>docs/skills/CHANGELOG.jsonl</code> &mdash; одна строка на правку в развитии
+      скилла: дата, скилл, задача Jira, коммит, урок-первопричина, статус
+      <code>draft</code>&nbsp;/&nbsp;<code>reviewed</code>&nbsp;/&nbsp;<code>published</code>.
+      Пишется агентом при правке development-копии, дополняется при публикации. Админка
+      читает этот файл и рисует из него историю и статус.
+    </p>
+  </section>
+
   <!-- ================== 7. ЭТАПЫ РАБОТ ================== -->
   <section id="stages" aria-labelledby="stages-h">
-    <h2 id="stages-h">7. Этапы работ (предлагаемый эпик)</h2>
+    <h2 id="stages-h">7. Этапы работ (эпик GSL-174)</h2>
     <p>
-      Шесть последовательных этапов. Приёмка &mdash; на живом примере, не на бумаге.
+      Семь последовательных этапов. Приёмка &mdash; на живом примере, не на бумаге.
     </p>
     <ol class="stages">
       <li>
         <h3>Догон development</h3>
         <p>
           Перенести production-версии в <code>skill/</code> (обратная синхронизация
-          global &rarr; local, разово, по команде владельца), включая
+          global&nbsp;&rarr;&nbsp;local, разово, действие владельца), включая
           <code>tmux-agents-orchestration</code>, которого в git нет. Каждый скилл &mdash;
           отдельным коммитом с указанием, что именно догнали. После этого
-          <code>skill/</code> = истина, и вся дальнейшая разработка идёт только там.
+          <code>skill/</code>&nbsp;= истина, и вся дальнейшая разработка идёт только там.
         </p>
       </li>
       <li>
         <h3>Реестр изменений</h3>
         <p>
-          <code>docs/skills/CHANGELOG.jsonl</code> &mdash; одна строка на правку: дата,
-          скилл, задача Jira, коммит, урок-первопричина, статус
-          <code>draft</code>&nbsp;/&nbsp;<code>reviewed</code>&nbsp;/&nbsp;<code>published</code>.
-          Пишется агентом при правке, дополняется при публикации.
+          <code>docs/skills/CHANGELOG.jsonl</code>: формат зафиксирован, валидация на
+          схему. Пишется агентом при правке, дополняется при публикации.
         </p>
       </li>
       <li>
-        <h3>Publish-инструмент</h3>
+        <h3>CLI publish-инструмент</h3>
         <p>
           <code>tools/skills/publish.sh &lt;name&gt;</code>: показывает diff development
-          против production, требует подтверждения владельца, делает бэкап production в
-          <code>docs/skills/backups/&lt;name&gt;-&lt;дата&gt;/</code>, синхронизирует
-          <strong>один названный</strong> скилл, дописывает строку в реестр.
-          Никаких массовых операций &mdash; <code>--all</code> не существует.
+          против production, требует явного подтверждения владельца, делает бэкап
+          production в <code>docs/skills/backups/&lt;name&gt;-&lt;дата&gt;/</code>,
+          синхронизирует <strong>один названный</strong> скилл, дописывает строку в
+          реестр. Никаких массовых операций &mdash; <code>--all</code> не существует.
           Агенту запуск запрещён правилом и проверкой на владельца.
         </p>
       </li>
       <li>
-        <h3>Админка &mdash; страница «Скиллы» в лаборатории</h3>
+        <h3>Локальный сервер админки + кнопка публикации</h3>
         <p>
-          Список скиллов, статус (совпадает с production / есть неопубликованные правки),
-          история из реестра с уроком и ссылками на задачу и коммит, отображение diff,
-          и точная команда публикации для копирования. Кнопка «опубликовать» в статике
-          невозможна &mdash; публикация остаётся командой владельца; если позже включим
-          интерактивную версию веба, кнопка будет вызывать тот же <code>publish</code>.
+          Процесс на <code>localhost</code>, отдающий страницу «Скиллы» и обрабатывающий
+          нажатие кнопки. Кнопка вызывает тот же <code>publish.sh</code> из этапа&nbsp;3,
+          показывает результат в интерфейсе. Без этого этапа кнопка в статическом
+          дашборде остаётся неактивной, а публикация &mdash; командой в терминале
+          владельца.
+        </p>
+      </li>
+      <li>
+        <h3>Админка UI</h3>
+        <p>
+          Страница «Скиллы»: список, статус, история из реестра, diff, кнопка. Пока
+          сервер (этап&nbsp;4) не запущен, страница генерируется хроникёром в статическом
+          виде и показывает точную команду для копирования вместо активной кнопки.
         </p>
       </li>
       <li>
         <h3>Проверки</h3>
         <p>
-          Тест, который падает, если агент изменил файл в <code>~/.claude/skills/</code>;
-          тест на формат реестра; правило в <code>CLAUDE.md</code> и в скиллах:
-          «production скиллы правит только владелец через publish».
+          Тест, который падает, если агент изменил файл в
+          <code>~/.claude/skills/</code>; тест на формат реестра; правило в
+          <code>CLAUDE.md</code> и в самих скиллах: «production скиллы правит только
+          владелец через админку».
         </p>
       </li>
       <li>
         <h3>Приёмка</h3>
         <p>
           На живом примере: взять реальный урок (например, порядок хода), провести его
-          полным путём development &rarr; реестр &rarr; админка &rarr; publish, показать
-          в отчёте все следы.
+          полным путём development&nbsp;&rarr;&nbsp;реестр&nbsp;&rarr;&nbsp;админка&nbsp;&rarr;&nbsp;publish
+          владельцем, показать в отчёте все следы.
         </p>
       </li>
     </ol>
@@ -1289,14 +1231,14 @@
 <footer class="site-foot">
   <div class="g">
     <div><span class="k">Отчёт:</span> <span class="v">skills-governance-2026-08-03/index.html</span></div>
-    <div><span class="k">Ветка:</span> <span class="v">GSL-138-skills-plan-report</span></div>
+    <div><span class="k">Ветка:</span> <span class="v">GSL-138-skills-plan-rework</span></div>
     <div><span class="k">Источник:</span> <span class="v">docs/plans/skills-governance-plan.md</span></div>
     <div><span class="k">Автор:</span> <span class="v">оркестратор gosleep</span></div>
     <div><span class="k">Дата:</span> <span class="v">2026-08-03</span></div>
   </div>
   <p style="margin-top: var(--s-3); max-width: 68ch;">
-    Дашборд читает владелец. Ничего из перечисленного не выполняется до его команды.
-    Открытый вопрос &mdash; в блоке «Требуется решение» наверху.
+    План описывает будущий процесс. Ничего из перечисленного не выполняется до команды
+    владельца. Согласование &mdash; сигнал заводить задачи по этапам эпика GSL-174.
   </p>
 </footer>
 
