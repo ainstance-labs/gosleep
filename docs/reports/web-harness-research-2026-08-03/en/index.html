@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive web UI for the harness — research (2026-08-03)</title>
+<meta name="description" content="Research summary: what is built today, what others do, three architecture options, red-team verdict, and the owner's decision.">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('whr-theme');
+      if (t === 'dark' || t === 'light') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    } catch (e) {}
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg:            #f6f6f3;
+    --surface:       #ffffff;
+    --surface-2:     #fbfbf9;
+    --surface-3:     #f0efec;
+    --text:          #0b0b0b;
+    --text-2:        #4a4a46;
+    --text-3:        #6a6965;
+    --border:        rgba(11,11,11,0.10);
+    --border-strong: rgba(11,11,11,0.18);
+    --border-hair:   rgba(11,11,11,0.06);
+
+    --accent:          #2a5cd6;
+    --accent-ink:      #1e46a0;
+    --accent-contrast: #ffffff;
+    --ring:            rgba(42,92,214,0.35);
+
+    --ok-bg:      rgba(16,142,72,0.10);
+    --ok-fg:      #0a6a3a;
+    --ok-bd:      rgba(16,142,72,0.30);
+    --warn-bg:    rgba(214,140,20,0.14);
+    --warn-fg:    #8a5a08;
+    --warn-bd:    rgba(214,140,20,0.34);
+    --risk-bg:    rgba(196,50,50,0.10);
+    --risk-fg:    #a71f1f;
+    --risk-bd:    rgba(196,50,50,0.32);
+    --wait-bg:    rgba(11,11,11,0.05);
+    --wait-fg:    #4a4a46;
+    --wait-bd:    rgba(11,11,11,0.14);
+
+    --radius:     10px;
+    --radius-sm:  6px;
+    --radius-lg:  16px;
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 32px;
+    --s-7: 48px;
+    --s-8: 64px;
+    --maxw: 960px;
+    --maxw-prose: 68ch;
+
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 4px 16px rgba(11,11,11,0.05);
+    --shadow-strong: 0 2px 4px rgba(11,11,11,0.05), 0 10px 30px rgba(11,11,11,0.08);
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Roboto Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:            #0c0c0c;
+      --surface:       #161615;
+      --surface-2:     #1c1c1b;
+      --surface-3:     #232322;
+      --text:          #f2f2ee;
+      --text-2:        #c0bfb6;
+      --text-3:        #8a8983;
+      --border:        rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --border-hair:   rgba(255,255,255,0.06);
+
+      --accent:          #6f9cee;
+      --accent-ink:      #a9c1f2;
+      --accent-contrast: #0b0b0b;
+      --ring:            rgba(111,156,238,0.45);
+
+      --ok-bg:      rgba(76,190,120,0.14);
+      --ok-fg:      #7fdca4;
+      --ok-bd:      rgba(76,190,120,0.36);
+      --warn-bg:    rgba(240,180,60,0.14);
+      --warn-fg:    #f2c96b;
+      --warn-bd:    rgba(240,180,60,0.34);
+      --risk-bg:    rgba(230,120,120,0.16);
+      --risk-fg:    #f2a1a1;
+      --risk-bd:    rgba(230,120,120,0.38);
+      --wait-bg:    rgba(255,255,255,0.06);
+      --wait-fg:    #c0bfb6;
+      --wait-bd:    rgba(255,255,255,0.16);
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.45);
+      --shadow-strong: 0 2px 4px rgba(0,0,0,0.5), 0 12px 30px rgba(0,0,0,0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:            #0c0c0c;
+    --surface:       #161615;
+    --surface-2:     #1c1c1b;
+    --surface-3:     #232322;
+    --text:          #f2f2ee;
+    --text-2:        #c0bfb6;
+    --text-3:        #8a8983;
+    --border:        rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --border-hair:   rgba(255,255,255,0.06);
+
+    --accent:          #6f9cee;
+    --accent-ink:      #a9c1f2;
+    --accent-contrast: #0b0b0b;
+    --ring:            rgba(111,156,238,0.45);
+
+    --ok-bg:      rgba(76,190,120,0.14);
+    --ok-fg:      #7fdca4;
+    --ok-bd:      rgba(76,190,120,0.36);
+    --warn-bg:    rgba(240,180,60,0.14);
+    --warn-fg:    #f2c96b;
+    --warn-bd:    rgba(240,180,60,0.34);
+    --risk-bg:    rgba(230,120,120,0.16);
+    --risk-fg:    #f2a1a1;
+    --risk-bd:    rgba(230,120,120,0.38);
+    --wait-bg:    rgba(255,255,255,0.06);
+    --wait-fg:    #c0bfb6;
+    --wait-bd:    rgba(255,255,255,0.16);
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.45);
+    --shadow-strong: 0 2px 4px rgba(0,0,0,0.5), 0 12px 30px rgba(0,0,0,0.55);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--accent); color: var(--accent-contrast); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  code, kbd, samp, pre { font-family: var(--mono); font-size: 0.92em; }
+  code {
+    background: var(--surface-3);
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    border: 1px solid var(--border-hair);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--s-3) var(--s-4); overflow-x: auto; }
+  pre code { background: transparent; padding: 0; border: 0; }
+
+  .site-head {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in oklab, var(--bg) 94%, transparent);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(6px);
+  }
+  .site-head .row {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--s-3) var(--s-5);
+    display: flex; align-items: center; gap: var(--s-4);
+    justify-content: space-between;
+  }
+  .brand { display: flex; align-items: baseline; gap: var(--s-3); min-width: 0; }
+  .brand .k { font-family: var(--mono); font-size: 12px; color: var(--text-3); letter-spacing: 0.02em; }
+  .brand .n {
+    font-weight: 600; font-size: 14px; color: var(--text);
+    letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .site-head .tools { display: flex; align-items: center; gap: var(--s-2); flex-shrink: 0; }
+  .tool-btn {
+    appearance: none; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-family: var(--font); font-size: 12px;
+    line-height: 1; cursor: pointer; letter-spacing: 0.02em;
+  }
+  .tool-btn:hover { border-color: var(--border-strong); }
+  .lang-switch { display: inline-flex; }
+  .lang-switch a, .lang-switch span {
+    display: inline-block; padding: 6px 10px; font-size: 12px; font-weight: 500; line-height: 1;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+    text-decoration: none; letter-spacing: 0.02em;
+  }
+  .lang-switch a:first-child, .lang-switch span:first-child { border-radius: 8px 0 0 8px; border-right-width: 0; }
+  .lang-switch a:last-child, .lang-switch span:last-child { border-radius: 0 8px 8px 0; }
+  .lang-switch .active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  main { max-width: var(--maxw); margin: 0 auto; padding: var(--s-6) var(--s-5) var(--s-8); }
+  section { margin-top: var(--s-8); }
+  section:first-of-type { margin-top: var(--s-6); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
+  h1 { font-size: clamp(26px, 4vw, 34px); line-height: 1.15; margin: 0 0 var(--s-3); }
+  h2 { font-size: 22px; line-height: 1.25; margin: 0 0 var(--s-4); }
+  h3 { font-size: 17px; line-height: 1.3; margin: 0 0 var(--s-2); font-weight: 600; }
+  p, li { max-width: var(--maxw-prose); }
+  p { margin: 0 0 var(--s-3); color: var(--text-2); }
+  ul, ol { margin: 0 0 var(--s-4); padding-left: 1.35em; color: var(--text-2); }
+  li + li { margin-top: var(--s-1); }
+  strong { color: var(--text); font-weight: 600; }
+
+  .lead { font-size: 18px; color: var(--text-2); line-height: 1.55; max-width: var(--maxw-prose); margin: 0 0 var(--s-5); }
+  .meta-row { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-4); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; font-family: var(--mono); font-size: 11.5px;
+    color: var(--text-2); background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; letter-spacing: 0.02em;
+  }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
+  .chip.chip-jira .dot { background: var(--accent); }
+  .chip.chip-status .dot { background: var(--warn-fg); }
+
+  .summary-frame {
+    margin-top: var(--s-6);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-strong);
+    overflow: hidden;
+  }
+  .summary-head {
+    padding: var(--s-5) var(--s-5) var(--s-3);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3);
+    justify-content: space-between;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  }
+  .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); }
+  .summary-head h2 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+  .summary-head .stamp { font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.03em; }
+  .summary-body { padding: var(--s-4) var(--s-5) var(--s-5); }
+  .summary-body p { font-size: 15.5px; color: var(--text); max-width: 62ch; }
+  .summary-body p + p { color: var(--text-2); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s-5); box-shadow: var(--shadow); }
+  .card + .card { margin-top: var(--s-4); }
+  .card h3 { margin-top: 0; }
+
+  .term-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-2); }
+  .term { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s-4); background: var(--surface-2); }
+  .term h3 {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: var(--s-2); font-weight: 500;
+  }
+  .term p { font-size: 14px; margin: 0 0 var(--s-2); }
+  .term p:last-child { margin-bottom: 0; }
+
+  .table-wrap { margin-top: var(--s-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  .table-scroll { overflow-x: auto; }
+  table.state { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+  table.state th, table.state td { padding: var(--s-3) var(--s-4); text-align: left; border-bottom: 1px solid var(--border-hair); vertical-align: top; }
+  table.state thead th {
+    font-weight: 500; color: var(--text-3);
+    font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: 0.06em; text-transform: uppercase; background: var(--surface-2);
+  }
+  table.state tbody tr:last-child td { border-bottom: 0; }
+  table.state td.mono { font-family: var(--mono); font-size: 12.5px; }
+  table.state td.name { font-family: var(--mono); font-size: 12.5px; color: var(--text); font-weight: 500; }
+  .b {
+    display: inline-block; padding: 2px 8px; font-family: var(--mono); font-size: 11px;
+    line-height: 1.5; border-radius: 4px; border: 1px solid transparent;
+    letter-spacing: 0.02em; white-space: nowrap;
+  }
+  .b.ok    { background: var(--ok-bg);   color: var(--ok-fg);   border-color: var(--ok-bd); }
+  .b.warn  { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bd); }
+  .b.risk  { background: var(--risk-bg); color: var(--risk-fg); border-color: var(--risk-bd); }
+  .b.wait  { background: var(--wait-bg); color: var(--wait-fg); border-color: var(--wait-bd); }
+  .b.accent{ background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+             color: var(--accent-ink);
+             border-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+
+  .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-4); }
+  .option { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s-4); background: var(--surface-2); }
+  .option .tag {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px;
+    background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border);
+    margin-bottom: var(--s-2); text-transform: uppercase;
+  }
+  .option.rec { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, var(--surface)); }
+  .option.rec .tag { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+  .option h3 { margin: 0 0 var(--s-1); font-size: 15px; }
+  .option p { margin: 0 0 var(--s-2); font-size: 14px; }
+  .option p:last-child { margin-bottom: 0; }
+  .option .metric { font-family: var(--mono); font-size: 12px; color: var(--text-3); display: block; margin-top: var(--s-1); }
+  .option .metric strong { color: var(--text); }
+
+  .invariant {
+    margin-top: var(--s-4);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--accent) 7%, var(--surface));
+    padding: var(--s-5);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s-4);
+    align-items: start;
+  }
+  .invariant .mark {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--accent); color: var(--accent-contrast);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .invariant .kicker { display: block; margin-bottom: var(--s-2); }
+  .invariant h3 { margin: 0 0 var(--s-2); font-size: 20px; letter-spacing: -0.01em; }
+  .invariant p { margin: 0; color: var(--text); max-width: 62ch; font-size: 15.5px; line-height: 1.55; }
+  .invariant p + p { margin-top: var(--s-2); color: var(--text-2); font-size: 14.5px; }
+
+  figure.diagram { margin: var(--s-4) 0 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  figure.diagram .svg-wrap { overflow-x: auto; padding: var(--s-5) var(--s-4); background: var(--surface); }
+  figure.diagram svg { display: block; margin: 0 auto; width: 100%; height: auto; }
+  figure.diagram .svg-wrap.w720 svg { min-width: 720px; max-width: 720px; }
+  figure.diagram .svg-wrap.w900 svg { min-width: 900px; max-width: 900px; }
+  figure.diagram figcaption { padding: var(--s-3) var(--s-4); border-top: 1px solid var(--border); font-size: 13px; color: var(--text-3); background: var(--surface-2); }
+  .sv-text { fill: var(--text); }
+  .sv-text-2 { fill: var(--text-2); }
+  .sv-text-3 { fill: var(--text-3); }
+  .sv-surface { fill: var(--surface); }
+  .sv-surface-2 { fill: var(--surface-2); }
+  .sv-border { stroke: var(--border-strong); }
+  .sv-hair { stroke: var(--border); }
+  .sv-accent { stroke: var(--accent); }
+  .sv-ok { stroke: var(--ok-fg); }
+  .sv-warn { stroke: var(--warn-fg); }
+  .sv-risk { stroke: var(--risk-fg); }
+  .sv-fill-ok { fill: var(--ok-bg); }
+  .sv-fill-warn { fill: var(--warn-bg); }
+  .sv-fill-risk { fill: var(--risk-bg); }
+  .sv-fill-accent { fill: color-mix(in oklab, var(--accent) 15%, var(--surface)); }
+  .sv-mono { font-family: var(--mono); }
+  .sv-sans { font-family: var(--font); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-4); }
+  .stat { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s-4); background: var(--surface); }
+  .stat .k { font-family: var(--mono); font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: var(--s-1); }
+  .stat .v { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; line-height: 1.15; }
+  .stat .u { font-size: 12px; color: var(--text-3); display: block; margin-top: var(--s-1); }
+
+  .findings { counter-reset: crit; list-style: none; padding: 0; margin: var(--s-4) 0 0; display: grid; gap: var(--s-3); }
+  .findings li {
+    counter-increment: crit;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-7); position: relative; max-width: none;
+  }
+  .findings li::before {
+    content: "C" counter(crit);
+    position: absolute; left: var(--s-4); top: var(--s-4);
+    padding: 3px 6px;
+    background: var(--risk-bg); color: var(--risk-fg);
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    border: 1px solid var(--risk-bd); border-radius: 4px; letter-spacing: 0.02em;
+  }
+  .findings h3 { margin: 0 0 4px; font-size: 15px; }
+  .findings p { margin: 0 0 var(--s-1); font-size: 14px; max-width: none; }
+  .findings p:last-child { margin-bottom: 0; color: var(--text-3); font-size: 13px; }
+
+  .decide-frame {
+    margin-top: var(--s-5);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+    padding: var(--s-5);
+    box-shadow: var(--shadow-strong);
+  }
+  .decide-frame .kicker { display: block; margin-bottom: var(--s-2); }
+  .decide-frame h2 { margin: 0 0 var(--s-2); font-size: 22px; }
+  .decide-frame p { color: var(--text); max-width: 62ch; }
+  .decide-list { display: grid; gap: var(--s-2); margin: var(--s-4) 0 0; padding: 0; list-style: none; }
+  .decide-list li {
+    padding: var(--s-3) var(--s-4);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 14.5px; color: var(--text); max-width: none;
+  }
+  .decide-list li strong { color: var(--accent-ink); }
+
+  .sources { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); margin-top: var(--s-3); }
+  .sources .src {
+    padding: var(--s-3) var(--s-4); background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13.5px;
+  }
+  .sources .src a { color: var(--text); text-decoration: none; font-family: var(--mono); font-size: 12.5px; }
+  .sources .src a:hover { color: var(--accent-ink); text-decoration: underline; }
+  .sources .src p { margin: var(--s-1) 0 0; font-size: 12.5px; color: var(--text-3); }
+
+  footer.site-foot {
+    margin-top: var(--s-8);
+    padding: var(--s-5) var(--s-5) var(--s-6);
+    border-top: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 12px;
+    max-width: var(--maxw);
+    margin-left: auto; margin-right: auto;
+  }
+  footer.site-foot .g { display: flex; flex-wrap: wrap; gap: var(--s-4); }
+  footer.site-foot .k { color: var(--text-3); font-family: var(--mono); }
+  footer.site-foot .v { color: var(--text-2); font-family: var(--mono); }
+
+  @media (max-width: 720px) {
+    .site-head .row { padding: var(--s-3) var(--s-4); }
+    main { padding: var(--s-5) var(--s-4) var(--s-7); }
+    .term-grid { grid-template-columns: 1fr; }
+    .options { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .invariant { grid-template-columns: 1fr; gap: var(--s-3); padding: var(--s-4); }
+    .sources { grid-template-columns: 1fr; }
+    .brand .n { max-width: 40vw; }
+  }
+  @media (max-width: 430px) {
+    .brand .k { display: none; }
+    .lang-switch a, .lang-switch span { padding: 5px 8px; font-size: 11.5px; }
+    .tool-btn { padding: 5px 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+  @media print {
+    .site-head, .tool-btn, .lang-switch { display: none; }
+    body { background: white; color: black; }
+    .card, .table-wrap, figure.diagram { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-head" role="banner">
+  <div class="row">
+    <div class="brand">
+      <span class="k">GSL-138</span>
+      <span class="n">Interactive web UI for the harness</span>
+    </div>
+    <div class="tools">
+      <div class="lang-switch" role="group" aria-label="Language">
+        <a href="../index.html" hreflang="ru" aria-label="Russian version">RU</a>
+        <span class="active" aria-current="page">EN</span>
+      </div>
+      <button class="tool-btn" id="theme-toggle" type="button" aria-label="Toggle theme">Theme</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="meta-row" aria-label="Metadata">
+    <span class="chip chip-jira"><span class="dot"></span>GSL-138</span>
+    <span class="chip chip-status"><span class="dot"></span>RESEARCH — awaiting owner's decision</span>
+    <span class="chip">2026-08-03</span>
+    <span class="chip">Panel: 3 studies + red team</span>
+  </div>
+
+  <h1>Web UI for the harness:<br>what is built, what others do, what to pick</h1>
+  <p class="lead">
+    The panel's research condensed into a single dashboard. Inside: a map of what
+    already works; three reference tools; three architecture options; the red-team
+    verdict; honest timelines; one call to action for the owner.
+  </p>
+
+  <section class="summary-frame" id="summary" aria-labelledby="summary-h">
+    <div class="summary-head">
+      <div>
+        <div class="kicker">Five- to seven-sentence brief</div>
+        <h2 id="summary-h">What the owner asked and what we found</h2>
+      </div>
+      <div class="stamp">2026-08-03 &middot; research</div>
+    </div>
+    <div class="summary-body">
+      <p>
+        On 24&nbsp;July 2026 the owner asked for a web admin surface where he could
+        look at reports, see autonomy indicators, questions and tasks in one place,
+        and eventually steer the fleet from a phone. The project built a professional
+        static dashboard of seven screens (<code>docs/lab/site/*.html</code>) but
+        <strong>zero buttons that change anything in the system</strong>: the 425-line
+        client only knows how to display. The decision to skip the interactive
+        version wasn't made in conversation &mdash; the orchestrator auto-applied
+        default <code>d-2026-07-28-004</code> on 28&nbsp;July after the owner missed
+        the 25&nbsp;July 08:00&nbsp;UTC deadline on question <code>q-2026-07-24-006</code>.
+      </p>
+      <p>
+        The three references give three different answers. AutoSK runs on the
+        subscription but ships a native Tauri shell rather than a browser UI.
+        Warren is a living, modern template on our stack (React + TS + NDJSON)
+        <strong>but requires an Anthropic API key</strong>, which we do not have
+        &mdash; we run on the subscription. Overstory is Warren's spiritual
+        predecessor, archived. The market as a whole converges on the pattern
+        &ldquo;local daemon + browser SPA + SSE&rdquo; &mdash; exactly the class our
+        problem belongs to.
+      </p>
+      <p>
+        Of three realistic options we recommend <strong>option&nbsp;A</strong>: a
+        thin TypeScript server (~700 lines) on top of the current pipeline, with a
+        single seed action &mdash; the &ldquo;Publish skill&rdquo; button. First
+        working button: 3.5&ndash;5 days from zero; full first release:
+        10&ndash;14 days. The owner's hard rule &mdash; &ldquo;an agent must not be
+        able to publish&rdquo; &mdash; is enforced by a <strong>TouchID gate</strong>
+        inside the publisher: the biometric sensor is the one machine resource the
+        agent, running under the same UID, cannot reach. The red team found three
+        critical flaws in the first draft &mdash; each closed by a mechanism, not a
+        caveat; and the residual risk on a Mac without a sensor is stated openly.
+      </p>
+    </div>
+  </section>
+
+  <section id="today" aria-labelledby="today-h">
+    <h2 id="today-h">1. What is built today</h2>
+    <p>
+      The lab's web surface exists and works as an <strong>observation</strong>
+      dashboard. It is professionally laid out, regenerates automatically, reads
+      well on both a phone (via a Markdown projection) and a laptop
+      (via <code>file://</code>). No client handler sends anything outbound; the
+      source contains neither <code>fetch(</code>, nor <code>WebSocket</code>, nor
+      <code>EventSource</code>.
+    </p>
+
+    <div class="stat-row" aria-label="Measurements">
+      <div class="stat">
+        <span class="k">Pages</span>
+        <span class="v">7</span>
+        <span class="u"><code>index</code>, <code>timeline</code>, <code>tasks</code>, <code>questions</code>, <code>fleet</code>, <code>cost</code>, <code>library</code></span>
+      </div>
+      <div class="stat">
+        <span class="k">Client TS</span>
+        <span class="v">425</span>
+        <span class="u">lines, 6 functions &mdash; all display-only</span>
+      </div>
+      <div class="stat">
+        <span class="k">Action buttons</span>
+        <span class="v">0</span>
+        <span class="u">nothing on the page mutates the system</span>
+      </div>
+      <div class="stat">
+        <span class="k">Server</span>
+        <span class="v">none</span>
+        <span class="u">grep across the tree: 0 matches for <code>http.server</code>, <code>express</code>, <code>fastify</code></span>
+      </div>
+    </div>
+
+    <div class="term-grid" style="margin-top: var(--s-4);">
+      <div class="term">
+        <h3>What it can do today</h3>
+        <p>Render the 7 screens from <code>render_bundle.json</code>, re-age labels,
+        countdowns for question deadlines, filters, search, theme toggle.</p>
+      </div>
+      <div class="term">
+        <h3>What it physically cannot do</h3>
+        <p><code>file://</code> is not allowed to make a network request to a
+        sibling file (CORS). A button would be decorative. The rule is written into
+        <code>docs/lab/site/README.md</code>.</p>
+      </div>
+      <div class="term">
+        <h3>The CLI write path already exists</h3>
+        <p><code>tools/lab/lab-emit.sh</code> and <code>lab-write.sh</code> &mdash;
+        atomic writes under a dir-lock. But there is no bridge from the web to
+        those CLIs.</p>
+      </div>
+    </div>
+
+    <div class="invariant" role="note" aria-labelledby="today-inv-h">
+      <div class="mark" aria-hidden="true">28.07</div>
+      <div>
+        <span class="kicker">How &ldquo;no buttons&rdquo; happened</span>
+        <h3 id="today-inv-h">The decision to skip the interactive version was made by the orchestrator's default, not by the owner</h3>
+        <p>
+          On 24&nbsp;July 2026, 21:24&nbsp;UTC the planning agent filed
+          <code>q-2026-07-24-006</code>: &ldquo;Do we open web&nbsp;v2?&rdquo;. Three
+          options, default &ldquo;hold&nbsp;v1&rdquo;, reply-by
+          25&nbsp;July&nbsp;08:00&nbsp;UTC. The owner did not answer in time. On
+          28&nbsp;July 06:52&nbsp;UTC the orchestrator auto-applied the default
+          under &ldquo;decide-by-default&rdquo; &mdash; recorded as
+          <code>d-2026-07-28-004</code>.
+        </p>
+        <p>
+          Formally correct: the question was flagged
+          <code>reversibility: high</code>. Semantically wrong: the owner was
+          reading his mandate differently and spent ten days expecting an admin
+          with buttons. The gap is in the mandate, not the code.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="others" aria-labelledby="others-h">
+    <h2 id="others-h">2. What others do</h2>
+    <p>
+      The panel read three key references line by line and surveyed a market of
+      20+ tools. Below is the condensed map.
+    </p>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="state" aria-label="Three references compared">
+          <thead>
+            <tr>
+              <th style="width: 22%;">Reference</th>
+              <th>Stack</th>
+              <th style="width: 18%;">Transport</th>
+              <th style="width: 22%;">Runs on the subscription</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="name">AutoSK</td>
+              <td>Tauri (React/Vite inside Rust). Bun daemon <code>autoskd</code>.</td>
+              <td class="mono">JSON-RPC over Unix socket</td>
+              <td><span class="b ok">yes</span> via pi (PKCE OAuth with claude.ai)</td>
+            </tr>
+            <tr>
+              <td class="name">Warren</td>
+              <td>React&nbsp;18 + Vite&nbsp;6 + Tailwind&nbsp;v4 + shadcn/radix + TanStack Query&nbsp;5. Bun server.</td>
+              <td class="mono">NDJSON-over-HTTP</td>
+              <td><span class="b risk">no</span> requires <code>ANTHROPIC_API_KEY</code> in config</td>
+            </tr>
+            <tr>
+              <td class="name">Overstory</td>
+              <td>Vite/TS, headless <code>claude&nbsp;-p</code>, SQLite mail bus.</td>
+              <td class="mono">HTTP + WebSocket</td>
+              <td><span class="b wait">archived</span> 2026-05-28; author moved to Warren</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: var(--s-4);">
+      <h3>Four market patterns (25+ tools)</h3>
+      <ul>
+        <li><strong>Pattern A &mdash; IDE-extension WebView.</strong> Cline, Roo Code, Continue.dev, Zed, Cursor. Lives next to the editor but is IDE-bound.</li>
+        <li><strong>Pattern B &mdash; local daemon + browser SPA.</strong> OpenHands, vibe-kanban, amux, agent-dashboard, Aider <code>--browser</code>, LangGraph Studio. <strong>Closest shape to ours.</strong></li>
+        <li><strong>Pattern C &mdash; desktop app / Electron.</strong> Goose, Sculptor, Conductor, Devin desktop. Heavy; requires distribution.</li>
+        <li><strong>Pattern D &mdash; TUI multiplexer + optional web.</strong> Claude Squad, Crush, OpenCode. Observability boils down to &ldquo;switch to the right pane&rdquo;.</li>
+      </ul>
+      <p style="margin-top: var(--s-2);">
+        For live transport the market converges on <strong>SSE</strong> (AG-UI,
+        amux) for one-way streams and <strong>WebSocket</strong> where both
+        directions are needed (OpenHands, Devin). Warren's author deliberately
+        moved off WebSocket to NDJSON-over-HTTP &mdash; an external signal not to
+        start with WebSocket.
+      </p>
+    </div>
+
+    <figure class="diagram" aria-labelledby="d1-title">
+      <div class="svg-wrap w900">
+        <svg viewBox="0 0 900 400" role="img" aria-labelledby="d1-title d1-desc">
+          <title id="d1-title">How an event flows agent-to-screen and a command flows back in option A</title>
+          <desc id="d1-desc">On the left an agent writes through CLIs into JSONL files. The Python chronicler recomputes the bundle. A TypeScript server on 127.0.0.1:7331 reads the bundle and streams events to the browser via SSE. A browser click POSTs back to the server, which invokes the same CLI.</desc>
+
+          <g class="sv-hair" stroke-dasharray="2 3">
+            <line x1="20" y1="70" x2="880" y2="70"/>
+            <line x1="20" y1="340" x2="880" y2="340"/>
+          </g>
+
+          <g class="sv-sans sv-text-3" font-size="11">
+            <text x="90" y="28">AGENT</text>
+            <text x="285" y="28">CLI (sole writers)</text>
+            <text x="500" y="28">CHRONICLER + SERVER</text>
+            <text x="775" y="28">OWNER'S BROWSER</text>
+          </g>
+          <line x1="20" y1="38" x2="880" y2="38" class="sv-hair" stroke-width="1"/>
+
+          <g class="sv-sans" font-size="12">
+            <rect x="30" y="80" width="130" height="60" rx="8" class="sv-surface-2" stroke="var(--border)" stroke-width="1"/>
+            <text x="95" y="105" text-anchor="middle" class="sv-text" font-weight="600">Agent worker</text>
+            <text x="95" y="122" text-anchor="middle" class="sv-text-3" font-size="11">writes via bash</text>
+
+            <rect x="200" y="80" width="170" height="60" rx="8" class="sv-surface-2" stroke="var(--border)" stroke-width="1"/>
+            <text x="285" y="102" text-anchor="middle" class="sv-mono sv-text" font-size="11">lab-emit.sh answer</text>
+            <text x="285" y="118" text-anchor="middle" class="sv-mono sv-text-3" font-size="10.5">dir-lock, append-only</text>
+            <text x="285" y="132" text-anchor="middle" class="sv-text-3" font-size="10.5">&rarr; queue.jsonl + events/*.jsonl</text>
+
+            <rect x="410" y="80" width="180" height="60" rx="8" class="sv-fill-accent" stroke="var(--accent)" stroke-width="1"/>
+            <text x="500" y="102" text-anchor="middle" class="sv-mono sv-text" font-size="11">chronicler.py</text>
+            <text x="500" y="118" text-anchor="middle" class="sv-text-3" font-size="10.5">computes every number</text>
+            <text x="500" y="132" text-anchor="middle" class="sv-text-3" font-size="10.5">&rarr; render_bundle.json</text>
+
+            <rect x="620" y="80" width="140" height="60" rx="8" class="sv-fill-accent" stroke="var(--accent)" stroke-width="1"/>
+            <text x="690" y="102" text-anchor="middle" class="sv-mono sv-text" font-size="11">serve.ts</text>
+            <text x="690" y="118" text-anchor="middle" class="sv-text-3" font-size="10.5">127.0.0.1:7331</text>
+            <text x="690" y="132" text-anchor="middle" class="sv-text-3" font-size="10.5">tail events + SSE</text>
+
+            <rect x="795" y="80" width="85" height="60" rx="8" class="sv-surface-2" stroke="var(--border)" stroke-width="1"/>
+            <text x="837" y="105" text-anchor="middle" class="sv-text" font-weight="600">EventSource</text>
+            <text x="837" y="122" text-anchor="middle" class="sv-text-3" font-size="10.5">/api/events</text>
+          </g>
+
+          <g class="sv-ok" fill="none" stroke-width="1.75" marker-end="url(#arrow-ok)">
+            <line x1="160" y1="110" x2="200" y2="110"/>
+            <line x1="370" y1="110" x2="410" y2="110"/>
+            <line x1="590" y1="110" x2="620" y2="110"/>
+            <line x1="760" y1="110" x2="795" y2="110"/>
+          </g>
+
+          <text x="450" y="60" class="sv-sans sv-text-2" font-size="12" font-weight="600">Event: agent &rarr; screen</text>
+          <rect x="440" y="47" width="8" height="8" rx="2" class="sv-fill-ok" stroke="var(--ok-fg)" stroke-width="1"/>
+
+          <g class="sv-sans" font-size="12">
+            <rect x="795" y="220" width="85" height="60" rx="8" class="sv-surface-2" stroke="var(--border)" stroke-width="1"/>
+            <text x="837" y="245" text-anchor="middle" class="sv-text" font-weight="600">Click</text>
+            <text x="837" y="262" text-anchor="middle" class="sv-text-3" font-size="10.5">&ldquo;Publish&rdquo;</text>
+
+            <rect x="620" y="220" width="140" height="60" rx="8" class="sv-fill-accent" stroke="var(--accent)" stroke-width="1"/>
+            <text x="690" y="242" text-anchor="middle" class="sv-mono sv-text" font-size="11">POST /api/skills/</text>
+            <text x="690" y="256" text-anchor="middle" class="sv-mono sv-text" font-size="11">publish</text>
+            <text x="690" y="272" text-anchor="middle" class="sv-text-3" font-size="10.5">Bearer + Host guard</text>
+
+            <rect x="410" y="220" width="180" height="60" rx="8" class="sv-fill-accent" stroke="var(--accent)" stroke-width="1"/>
+            <text x="500" y="242" text-anchor="middle" class="sv-mono sv-text" font-size="11">withTimeline(...)</text>
+            <text x="500" y="256" text-anchor="middle" class="sv-text-3" font-size="10.5">server.intent &rarr; CLI</text>
+            <text x="500" y="272" text-anchor="middle" class="sv-text-3" font-size="10.5">&rarr; server.outcome</text>
+
+            <rect x="200" y="220" width="170" height="60" rx="8" class="sv-fill-warn" stroke="var(--warn-fg)" stroke-width="1"/>
+            <text x="285" y="242" text-anchor="middle" class="sv-mono sv-text" font-size="11">publish.sh</text>
+            <text x="285" y="257" text-anchor="middle" class="sv-text-3" font-size="10.5">env check + TouchID</text>
+            <text x="285" y="272" text-anchor="middle" class="sv-text-3" font-size="10.5">&rarr; rsync + CHANGELOG</text>
+
+            <rect x="30" y="220" width="130" height="60" rx="8" class="sv-fill-warn" stroke="var(--warn-fg)" stroke-width="1"/>
+            <text x="95" y="242" text-anchor="middle" class="sv-text" font-weight="600">Owner</text>
+            <text x="95" y="258" text-anchor="middle" class="sv-text-3" font-size="10.5">macOS prompt</text>
+            <text x="95" y="272" text-anchor="middle" class="sv-text-3" font-size="10.5">biometrics</text>
+          </g>
+
+          <g class="sv-accent" fill="none" stroke-width="1.75" marker-end="url(#arrow-accent)">
+            <line x1="795" y1="250" x2="760" y2="250"/>
+            <line x1="620" y1="250" x2="590" y2="250"/>
+            <line x1="410" y1="250" x2="370" y2="250"/>
+            <line x1="200" y1="250" x2="160" y2="250"/>
+          </g>
+
+          <text x="450" y="200" class="sv-sans sv-text-2" font-size="12" font-weight="600">Command: click &rarr; agent/CLI</text>
+          <rect x="440" y="187" width="8" height="8" rx="2" class="sv-fill-accent" stroke="var(--accent)" stroke-width="1"/>
+
+          <g class="sv-accent" fill="none" stroke-width="1.25" stroke-dasharray="4 3" marker-end="url(#arrow-accent-small)">
+            <path d="M500 220 L500 165 L500 145" />
+          </g>
+          <text x="510" y="175" class="sv-sans sv-text-3" font-size="10.5">withTimeline writes</text>
+          <text x="510" y="188" class="sv-sans sv-text-3" font-size="10.5"><tspan class="sv-mono">server.intent/outcome</tspan> into the same stream</text>
+
+          <g class="sv-sans" font-size="11">
+            <text x="30" y="370" class="sv-text-3">Legend:</text>
+            <rect x="90" y="360" width="10" height="10" rx="2" class="sv-fill-ok" stroke="var(--ok-fg)"/>
+            <text x="106" y="370" class="sv-text-2">data stream (event)</text>
+            <rect x="255" y="360" width="10" height="10" rx="2" class="sv-fill-accent" stroke="var(--accent)"/>
+            <text x="271" y="370" class="sv-text-2">user action (command)</text>
+            <rect x="475" y="360" width="10" height="10" rx="2" class="sv-fill-warn" stroke="var(--warn-fg)"/>
+            <text x="491" y="370" class="sv-text-2">biometrics &mdash; agent cannot pass</text>
+          </g>
+
+          <defs>
+            <marker id="arrow-ok" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--ok-fg)"/>
+            </marker>
+            <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--accent)"/>
+            </marker>
+            <marker id="arrow-accent-small" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+      <figcaption>
+        Diagram (a): in option A an event flows from the agent through the CLI and
+        the chronicler to the browser via a single SSE stream; a user's command
+        goes back as a POST that the server &mdash; under the
+        <code>withTimeline</code> discipline &mdash; passes to the same CLI the
+        agent uses. The only place where the agent path and the owner path
+        physically diverge is the TouchID biometric sensor inside
+        <code>publish.sh</code>.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="variants" aria-labelledby="variants-h">
+    <h2 id="variants-h">3. Three options for us</h2>
+    <p>
+      All three preserve the current stack and do not rewrite the static pages.
+      They differ in the size of the new surface and in how many days it takes to
+      reach the first working button.
+    </p>
+
+    <div class="options" aria-label="Architecture options">
+      <div class="option rec">
+        <span class="tag">Recommended</span>
+        <h3>A. Thin TypeScript server on top of the pipeline</h3>
+        <p>Node + Hono, ~700 lines of TS + 40 lines of Swift for TouchID + 30
+        lines of bash for the chronicler's top-level lock. The client gets two
+        new inline modules next to the existing 425-line client. Static pages
+        keep working without the server.</p>
+        <span class="metric"><strong>First button:</strong> 3.5&ndash;5 days</span>
+        <span class="metric"><strong>Full first release:</strong> 10&ndash;14 days</span>
+        <span class="metric"><strong>Reversible:</strong> <code>launchctl bootout</code></span>
+        <span class="metric"><strong>Risk:</strong> low, additive</span>
+      </div>
+      <div class="option">
+        <span class="tag">More expensive</span>
+        <h3>B. Bun + React SPA, Warren-style</h3>
+        <p>Bun server + Vite + React&nbsp;18 + Tailwind&nbsp;v4 + shadcn/radix +
+        TanStack Query + Recharts. ~1500 lines of server, ~4000+ lines of SPA.
+        Duplicates all seven screens. A JSONL-to-SQLite projection adds a new
+        source of drift.</p>
+        <span class="metric"><strong>First button:</strong> ~11&ndash;12 days</span>
+        <span class="metric"><strong>Full first release:</strong> ~25&ndash;30 days</span>
+        <span class="metric"><strong>Requires:</strong> a design lead</span>
+        <span class="metric"><strong>Risk:</strong> medium, design drift</span>
+      </div>
+      <div class="option">
+        <span class="tag">Not recommended</span>
+        <h3>C. Full replacement with Next.js</h3>
+        <p>Next.js&nbsp;15 App Router, React&nbsp;19, server actions. Discards the
+        working SSG. Server actions blur the client/server boundary, making it
+        easier to accidentally write into <code>docs/lab/</code> outside the CLI.
+        Directly contradicts the owner's &ldquo;don't rewrite the stack&rdquo;.</p>
+        <span class="metric"><strong>First button:</strong> ~12&ndash;17 days</span>
+        <span class="metric"><strong>Full first release:</strong> ~30&ndash;45 days</span>
+        <span class="metric"><strong>Reversibility:</strong> weak, git revert only</span>
+        <span class="metric"><strong>Risk:</strong> high, cut-over</span>
+      </div>
+    </div>
+
+    <figure class="diagram" aria-labelledby="d3-title">
+      <div class="svg-wrap w720">
+        <svg viewBox="0 0 720 420" role="img" aria-labelledby="d3-title d3-desc">
+          <title id="d3-title">Options A, B and C compared by complexity and time</title>
+          <desc id="d3-desc">A horizontal timeline in days. Three rows: A from 3.5 to 14, B from 11 to 30, C from 12 to 45. First-working-button marked on the left, full first release on the right. A dashed 14-day threshold separates A from B and C.</desc>
+
+          <g class="sv-sans" font-size="11">
+            <text x="12" y="28" class="sv-text-3">OPTION</text>
+            <text x="655" y="28" class="sv-text-3" text-anchor="end">RISK</text>
+          </g>
+
+          <g class="sv-hair" stroke-dasharray="2 3">
+            <line x1="130" y1="50" x2="130" y2="330"/>
+            <line x1="240" y1="50" x2="240" y2="330"/>
+            <line x1="350" y1="50" x2="350" y2="330"/>
+            <line x1="460" y1="50" x2="460" y2="330"/>
+            <line x1="570" y1="50" x2="570" y2="330"/>
+            <line x1="680" y1="50" x2="680" y2="330"/>
+          </g>
+          <line x1="284" y1="50" x2="284" y2="330" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5 4"/>
+          <text x="289" y="52" class="sv-sans sv-text" font-size="10.5" fill="var(--accent-ink)" font-weight="600">14-day decision threshold</text>
+
+          <g class="sv-sans sv-text-3" font-size="10.5">
+            <text x="130" y="352" text-anchor="middle">0</text>
+            <text x="240" y="352" text-anchor="middle">10</text>
+            <text x="350" y="352" text-anchor="middle">20</text>
+            <text x="460" y="352" text-anchor="middle">30</text>
+            <text x="570" y="352" text-anchor="middle">40</text>
+            <text x="680" y="352" text-anchor="middle">50 days</text>
+          </g>
+
+          <g>
+            <text x="12" y="82" class="sv-sans sv-text" font-size="13" font-weight="600">A</text>
+            <text x="12" y="98" class="sv-sans sv-text-3" font-size="11">TS daemon</text>
+            <text x="12" y="114" class="sv-sans sv-text-3" font-size="10.5">~700 LOC</text>
+            <rect x="168.5" y="76" width="16.5" height="18" rx="3" class="sv-fill-ok" stroke="var(--ok-fg)"/>
+            <rect x="185" y="76" width="99" height="18" rx="3" class="sv-fill-accent" stroke="var(--accent)"/>
+            <text x="228" y="89" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--accent-ink)" font-weight="600">3.5&ndash;5 &rarr; 10&ndash;14 days</text>
+            <text x="655" y="88" text-anchor="end" class="sv-sans" font-size="11" fill="var(--ok-fg)" font-weight="600">low</text>
+            <text x="655" y="103" text-anchor="end" class="sv-sans sv-text-3" font-size="10.5">additive, reversible</text>
+          </g>
+
+          <g>
+            <text x="12" y="162" class="sv-sans sv-text" font-size="13" font-weight="600">B</text>
+            <text x="12" y="178" class="sv-sans sv-text-3" font-size="11">Bun + React SPA</text>
+            <text x="12" y="194" class="sv-sans sv-text-3" font-size="10.5">~5500+ LOC</text>
+            <rect x="251" y="156" width="11" height="18" rx="3" class="sv-fill-ok" stroke="var(--ok-fg)"/>
+            <rect x="262" y="156" width="198" height="18" rx="3" class="sv-fill-warn" stroke="var(--warn-fg)"/>
+            <text x="361" y="169" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--warn-fg)" font-weight="600">11&ndash;12 &rarr; 25&ndash;30 days</text>
+            <text x="655" y="168" text-anchor="end" class="sv-sans" font-size="11" fill="var(--warn-fg)" font-weight="600">medium</text>
+            <text x="655" y="183" text-anchor="end" class="sv-sans sv-text-3" font-size="10.5">SQLite projection, design drift</text>
+          </g>
+
+          <g>
+            <text x="12" y="242" class="sv-sans sv-text" font-size="13" font-weight="600">C</text>
+            <text x="12" y="258" class="sv-sans sv-text-3" font-size="11">Next.js</text>
+            <text x="12" y="274" class="sv-sans sv-text-3" font-size="10.5">~2000+ LOC (entire app)</text>
+            <rect x="262" y="236" width="55" height="18" rx="3" class="sv-fill-ok" stroke="var(--ok-fg)"/>
+            <rect x="317" y="236" width="308" height="18" rx="3" class="sv-fill-risk" stroke="var(--risk-fg)"/>
+            <text x="471" y="249" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)" font-weight="600">12&ndash;17 &rarr; 30&ndash;45 days</text>
+            <text x="655" y="248" text-anchor="end" class="sv-sans" font-size="11" fill="var(--risk-fg)" font-weight="600">high</text>
+            <text x="655" y="263" text-anchor="end" class="sv-sans sv-text-3" font-size="10.5">cut-over, SSG removal</text>
+          </g>
+
+          <g class="sv-sans" font-size="11">
+            <text x="12" y="392" class="sv-text-3">Bars:</text>
+            <rect x="72" y="382" width="10" height="10" rx="2" class="sv-fill-ok" stroke="var(--ok-fg)"/>
+            <text x="88" y="392" class="sv-text-2">to first working button</text>
+            <rect x="252" y="382" width="10" height="10" rx="2" class="sv-fill-accent" stroke="var(--accent)"/>
+            <text x="268" y="392" class="sv-text-2">to full first release (for A)</text>
+            <rect x="502" y="382" width="10" height="10" rx="2" class="sv-fill-warn" stroke="var(--warn-fg)"/>
+            <rect x="514" y="382" width="10" height="10" rx="2" class="sv-fill-risk" stroke="var(--risk-fg)"/>
+            <text x="530" y="392" class="sv-text-2">for B / C respectively</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        Diagram (c): visual comparison of the options. Option A's first working
+        button sits inside a single-epic budget (5 days); B and C reach far past
+        the 14-day threshold, and their &ldquo;full release&rdquo; is a month and
+        a month-and-a-half respectively.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="redteam" aria-labelledby="redteam-h">
+    <h2 id="redteam-h">4. What the red team found and how it was closed</h2>
+    <p>
+      The first draft of option A had three critical flaws. Each is now closed by
+      a mechanism, not by a caveat. Below is each finding and the mechanism that
+      replaces it in the second draft.
+    </p>
+
+    <ol class="findings">
+      <li>
+        <h3>Local port not protected from local agents</h3>
+        <p>
+          In the first draft the only protection was against other websites in the
+          owner's browser. Nothing rejected a <code>curl</code> POST launched by a
+          process under the owner's UID &mdash; exactly the &ldquo;agent under the
+          same UID&rdquo; that the owner explicitly forbade.
+        </p>
+        <p>
+          <strong>Closed by:</strong> three independent layers. A Bearer token on
+          the web endpoint (a random <code>curl</code> without the token is
+          rejected). An env secret <code>GOSLEEP_WEB_TOKEN</code> checked inside
+          <code>publish.sh</code> (bypassing the web via a direct CLI call is
+          rejected). <strong>A TouchID biometric gate inside
+          <code>publish.sh</code></strong> &mdash; the agent cannot physically
+          pass the biometric sensor.
+        </p>
+      </li>
+      <li>
+        <h3>&ldquo;Synchronous chronicler after write&rdquo; does not close the debounce race</h3>
+        <p>
+          <code>chronicler.py</code> has no top-level exclusive lock. Two
+          <code>chronicler.sh</code> processes can run concurrently; the winner is
+          whoever closes <code>os.replace</code> last. Scenario: the server spawns
+          publish then chronicler; a debounce chronicler that started earlier
+          reads stale state and finishes after the server &mdash; the client sees
+          200 but the page never updates.
+        </p>
+        <p>
+          <strong>Closed by:</strong> 30 lines of bash in
+          <code>tools/lab/chronicler.sh</code> &mdash; a top-level mkdir-lock plus
+          a <code>--coalesce-since=&lt;epoch&gt;</code> flag. If the bundle is
+          already fresher than the passed epoch, the second caller exits without
+          work. Guarantee: exactly one chronicler runs at any moment.
+        </p>
+      </li>
+      <li>
+        <h3>Web-side actions are invisible in the timeline &mdash; hooks skip the interactive path</h3>
+        <p>
+          Claude Code PostToolUse hooks fire only for the CLI client's own
+          Bash/Edit tool calls. A <code>child_process.spawn</code> from the Node
+          server is a plain <code>execve</code>; the client hook does not reach
+          it. So every web-issued action bypasses both the timeline and the
+          debounce chronicler.
+        </p>
+        <p>
+          <strong>Closed by:</strong> a <code>withTimeline(endpoint, params, fn)</code>
+          wrapper on every POST. Before spawning the CLI it writes
+          <code>server.intent</code>; after &mdash; <code>server.outcome</code>
+          (success or failure). Plus a <code>touch
+          .artifacts/lab/debounce/web-last-write</code> as an extra signal to the
+          debounce waiter. If the server dies between the CLI and the chronicler,
+          the next <code>tick.sh</code> sees the orphan intent and writes
+          <code>server.outcome</code> with <code>status=orphan</code>.
+        </p>
+      </li>
+    </ol>
+
+    <figure class="diagram" aria-labelledby="d2-title">
+      <div class="svg-wrap w720">
+        <svg viewBox="0 0 720 380" role="img" aria-labelledby="d2-title d2-desc">
+          <title id="d2-title">Three publication defenses: the agent cannot pass the biometric layer</title>
+          <desc id="d2-desc">On the left, an agent tries to publish via two paths. Both hit three defenses. Layers 1 and 2 an agent could theoretically bypass (steal the Bearer, set the env). Layer 3 &mdash; TouchID &mdash; is a physical barrier: the agent has no access to the biometric sensor.</desc>
+
+          <text x="360" y="26" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Three independent layers, each closes its own class of attack</text>
+
+          <g class="sv-sans" font-size="11">
+            <rect x="20" y="70" width="130" height="46" rx="8" class="sv-fill-risk" stroke="var(--risk-fg)" stroke-width="1"/>
+            <text x="85" y="90" text-anchor="middle" class="sv-text" font-weight="600" font-size="12">Agent</text>
+            <text x="85" y="105" text-anchor="middle" class="sv-text-3" font-size="10.5">curl POST /publish</text>
+
+            <rect x="20" y="240" width="130" height="46" rx="8" class="sv-fill-risk" stroke="var(--risk-fg)" stroke-width="1"/>
+            <text x="85" y="260" text-anchor="middle" class="sv-text" font-weight="600" font-size="12">Agent</text>
+            <text x="85" y="275" text-anchor="middle" class="sv-text-3" font-size="10.5">bash publish.sh</text>
+          </g>
+
+          <g>
+            <rect x="180" y="60" width="140" height="270" rx="10" class="sv-fill-warn" stroke="var(--warn-fg)" stroke-width="1"/>
+            <text x="250" y="88" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Layer 1</text>
+            <text x="250" y="106" text-anchor="middle" class="sv-mono sv-text-2" font-size="11">Bearer token</text>
+            <text x="250" y="124" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">32 bytes, 0600</text>
+            <text x="250" y="140" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">on the web endpoint</text>
+            <text x="250" y="176" text-anchor="middle" class="sv-sans sv-text-3" font-size="10.5">closes:</text>
+            <text x="250" y="192" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">random curl</text>
+            <text x="250" y="208" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">without the token</text>
+            <text x="250" y="242" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)" font-weight="600">does not close:</text>
+            <text x="250" y="258" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)">agent reads the file</text>
+            <text x="250" y="274" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)">under the same UID</text>
+          </g>
+
+          <g>
+            <rect x="330" y="60" width="140" height="270" rx="10" class="sv-fill-warn" stroke="var(--warn-fg)" stroke-width="1"/>
+            <text x="400" y="88" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Layer 2</text>
+            <text x="400" y="106" text-anchor="middle" class="sv-mono sv-text-2" font-size="11">GOSLEEP_WEB</text>
+            <text x="400" y="120" text-anchor="middle" class="sv-mono sv-text-2" font-size="11">_TOKEN env</text>
+            <text x="400" y="140" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">inside publish.sh</text>
+            <text x="400" y="176" text-anchor="middle" class="sv-sans sv-text-3" font-size="10.5">closes:</text>
+            <text x="400" y="192" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">bash publish.sh</text>
+            <text x="400" y="208" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">bypassing the web</text>
+            <text x="400" y="242" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)" font-weight="600">does not close:</text>
+            <text x="400" y="258" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)">agent sets the env</text>
+            <text x="400" y="274" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)">itself</text>
+          </g>
+
+          <g>
+            <rect x="480" y="60" width="220" height="270" rx="10" class="sv-fill-accent" stroke="var(--accent)" stroke-width="2"/>
+            <text x="590" y="88" text-anchor="middle" class="sv-sans sv-text" font-size="12" font-weight="600">Layer 3</text>
+            <text x="590" y="106" text-anchor="middle" class="sv-mono" font-size="11" fill="var(--accent-ink)" font-weight="600">TouchID gate</text>
+            <text x="590" y="124" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">Swift, ~40 lines, LocalAuthentication</text>
+            <text x="590" y="140" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">inside publish.sh, before rsync</text>
+
+            <rect x="510" y="164" width="160" height="42" rx="8" fill="var(--risk-bg)" stroke="var(--risk-fg)" stroke-width="1.5"/>
+            <text x="590" y="182" text-anchor="middle" class="sv-sans" font-size="12" font-weight="700" fill="var(--risk-fg)">AGENT CANNOT PASS</text>
+            <text x="590" y="198" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--risk-fg)">the biometric sensor</text>
+
+            <text x="590" y="228" text-anchor="middle" class="sv-sans sv-text-3" font-size="10.5">closes:</text>
+            <text x="590" y="244" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">everything an agent does</text>
+            <text x="590" y="260" text-anchor="middle" class="sv-sans sv-text-2" font-size="10.5">under shell as the same UID</text>
+            <text x="590" y="290" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--warn-fg)" font-weight="600">residual risk:</text>
+            <text x="590" y="306" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--warn-fg)">Mac without a sensor &mdash; fallback</text>
+            <text x="590" y="322" text-anchor="middle" class="sv-sans" font-size="10.5" fill="var(--warn-fg)">to a code on /dev/tty (weaker)</text>
+          </g>
+
+          <g class="sv-risk" fill="none" stroke-width="1.75" marker-end="url(#arrow-risk)">
+            <line x1="150" y1="93" x2="180" y2="93"/>
+            <line x1="150" y1="263" x2="180" y2="150" stroke-dasharray="4 3"/>
+          </g>
+
+          <text x="150" y="228" class="sv-sans sv-text-3" font-size="10" text-anchor="start">Attack 2 bypasses layer 1,</text>
+          <text x="150" y="240" class="sv-sans sv-text-3" font-size="10" text-anchor="start">but hits layer 2</text>
+
+          <g class="sv-sans" font-size="11">
+            <text x="20" y="368" class="sv-text-3">Each layer closes its own class. Only layer 3 is physics, not configuration: the agent has no access to the sensor.</text>
+          </g>
+
+          <defs>
+            <marker id="arrow-risk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--risk-fg)"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+      <figcaption>
+        Diagram (b): the three defenses. Layers 1 and 2 are settings an agent
+        with the same UID could theoretically bypass. Layer 3 &mdash; the
+        biometric sensor &mdash; is the one physical boundary the agent cannot
+        cross. The stamp &ldquo;AGENT CANNOT PASS&rdquo; marks the point where
+        software defenses end and a machine-dependent barrier begins.
+      </figcaption>
+    </figure>
+
+    <p style="margin-top: var(--s-4);">
+      <strong>On residual risk, honestly.</strong> On a MacBook without TouchID
+      (older Air, headless SSH session) the fallback reads a one-time six-digit
+      code from <code>/dev/tty</code>. An agent in a non-interactive context has
+      no owner-owned <code>/dev/tty</code> and is cut off, but a keyboard script
+      under the same UID could inject the code symbolically. This is weaker than
+      biometrics; without a Yubikey there is no absolute defense. TouchID is the
+      best macOS gives without extra hardware. A residual risk of 1&ndash;2% of
+      scenarios remains &mdash; we do not hide that.
+    </p>
+  </section>
+
+  <section id="honest" aria-labelledby="honest-h">
+    <h2 id="honest-h">5. Honest timelines</h2>
+    <p>
+      The red team was right to catch a 2&ndash;3&times; underestimate. The
+      breakdown below includes all the work the first draft forgot: Node
+      dependency install, launchd plist with secret rotation, the
+      <code>CHANGELOG.jsonl</code> schema, an eighth screen in the chronicler,
+      <code>smoke.sh</code> guards, race and SSE-rotation tests, the Bearer
+      setup URL, docs, and integration with <code>hooks-verify.sh</code>.
+    </p>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="state" aria-label="Option A timeline breakdown">
+          <thead>
+            <tr>
+              <th style="width: 60%;">Milestone</th>
+              <th style="width: 26%;">Days, one worker</th>
+              <th style="width: 14%;">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>CHANGELOG.jsonl</code> schema + validator (plan stage 2)</td>
+              <td class="mono">0.5 day</td>
+              <td><span class="b wait">prerequisite</span></td>
+            </tr>
+            <tr>
+              <td><code>tools/skills/publish.sh</code> with env check and TouchID (stage 3)</td>
+              <td class="mono">1 day</td>
+              <td><span class="b wait">prerequisite</span></td>
+            </tr>
+            <tr>
+              <td>Eighth <code>skills.html</code> screen in the chronicler</td>
+              <td class="mono">0.5&ndash;1 day</td>
+              <td><span class="b wait">prerequisite</span></td>
+            </tr>
+            <tr>
+              <td>Top-level mkdir-lock in <code>chronicler.sh</code></td>
+              <td class="mono">0.5 day</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td><code>serve.ts</code> skeleton: Hono + Bearer + Origin/Referer + Host + launchd + Swift compile</td>
+              <td class="mono">1.5 days</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td>POST <code>/api/skills/publish</code> + <code>withTimeline</code> + idempotency</td>
+              <td class="mono">0.5 day</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td>Client: <code>client-transport.ts</code> + <code>client-actions.ts</code></td>
+              <td class="mono">0.5 day</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td><code>smoke.sh</code> guards + race and SSE-rotation tests</td>
+              <td class="mono">1 day</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td colspan="3" style="background: var(--surface-2); border-top: 1px solid var(--border-strong);">
+                <strong style="color: var(--accent-ink);">First working button from zero:</strong>
+                <span class="b accent" style="margin-left: var(--s-2);">3.5&ndash;5 days</span>
+                &nbsp;&nbsp; <span class="mono" style="color: var(--text-3); font-size: 12.5px;">
+                (1.5&ndash;2.5 for the web part alone if stages 2&ndash;3 are already done)
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>v1.1 &mdash; answer with status check, force tick, FYI ack</td>
+              <td class="mono">+1.5 days</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td>v1.2 &mdash; SSE stream, toasts, live counters, UTC rotation</td>
+              <td class="mono">+2 days</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td>v1.3 &mdash; Bearer setup URL, docs, hooks-verify integration</td>
+              <td class="mono">+1.5 days</td>
+              <td><span class="b accent">web</span></td>
+            </tr>
+            <tr>
+              <td colspan="3" style="background: var(--surface-2); border-top: 1px solid var(--border-strong);">
+                <strong style="color: var(--accent-ink);">Full first release from zero:</strong>
+                <span class="b accent" style="margin-left: var(--s-2);">10&ndash;14 days</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p style="margin-top: var(--s-4);">
+      For comparison: option B pushes the first button to ~11&ndash;12 days and
+      the full first release to 25&ndash;30 days; option C to ~12&ndash;17 and
+      30&ndash;45 respectively. The difference is duplicating seven existing
+      screens and standing up a new design system (shadcn/Tailwind) from scratch.
+    </p>
+  </section>
+
+  <section id="decide" aria-labelledby="decide-h">
+    <h2 id="decide-h">6. What the owner decides</h2>
+
+    <div class="decide-frame">
+      <span class="kicker">Decision required</span>
+      <h2>Approve option A and launch the epic <code>GSL-XXX</code></h2>
+      <p>
+        We won't move without an explicit decision here: any change of scope is
+        exactly the class of question the manifest <strong>forbids</strong> to
+        close by default (the lesson of 28&nbsp;July 2026). Below are two
+        independent questions. Answer yes or no to each.
+      </p>
+      <ul class="decide-list" aria-label="Questions for the owner">
+        <li>
+          <strong>Q1.</strong> Do we approve <strong>option A</strong> &mdash;
+          the thin TypeScript server on the current pipeline, three defense
+          layers for publication (Bearer + env secret + TouchID), first
+          &ldquo;Publish skill&rdquo; button in 3.5&ndash;5 days from zero?
+        </li>
+        <li>
+          <strong>Q2.</strong> If <strong>yes</strong>, do we start now &mdash;
+          as a separate epic on top of the already agreed
+          <code>skills-governance-plan.md</code> (stages 2&ndash;3 as
+          prerequisites, steps 4&ndash;10 of the migration path as the web part)?
+          Or do we hold until another signal.
+        </li>
+      </ul>
+    </div>
+
+    <div class="card" style="margin-top: var(--s-4);">
+      <h3>What we do <strong>not</strong> build under any &ldquo;yes&rdquo;</h3>
+      <ul>
+        <li>Electron / Tauri &mdash; no.</li>
+        <li>WebSocket &mdash; no (SSE is enough; Warren's author moved off WS).</li>
+        <li>PWA manifest, service worker, push, ntfy, tailscale &mdash; frozen by
+        the owner's decisions; not designed without an explicit go-ahead.</li>
+        <li>A Warren-style build that requires an Anthropic API key &mdash; we
+        run on the subscription.</li>
+        <li>Direct writes from the server into <code>docs/lab/</code> &mdash;
+        only via CLI.</li>
+        <li>Bulk operations (<code>--all</code>, &ldquo;publish all
+        skills&rdquo;) &mdash; never.</li>
+        <li><code>git commit</code> from the server &mdash; no.</li>
+        <li>Disabling the guard in <code>install.sh</code> &mdash; the guard
+        stays on even after the web surface ships.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="sources" aria-labelledby="sources-h">
+    <h2 id="sources-h">Research sources</h2>
+    <p>
+      All materials live in this report folder. Links open from <code>file://</code>.
+    </p>
+    <div class="sources">
+      <div class="src">
+        <a href="../findings/autosk-warren-ui.md">findings/autosk-warren-ui.md</a>
+        <p>AutoSK, Warren, and Overstory read line by line with direct repo references.</p>
+      </div>
+      <div class="src">
+        <a href="../findings/harness-landscape-ui.md">findings/harness-landscape-ui.md</a>
+        <p>Market survey: 25+ tools, four patterns, live transport, approve-flow.</p>
+      </div>
+      <div class="src">
+        <a href="../findings/our-constraints.md">findings/our-constraints.md</a>
+        <p>Our pipeline: data-flow map, integration points, risks, the owner's standing rules.</p>
+      </div>
+      <div class="src">
+        <a href="../architecture-options.md">architecture-options.md</a>
+        <p>Options A, B, C in the second draft, after the red team.</p>
+      </div>
+      <div class="src">
+        <a href="../redteam-verdict.md">redteam-verdict.md</a>
+        <p>Red-team verdict: 3 critical, 5 major, 6 minor, &laquo;checked and holds&raquo;.</p>
+      </div>
+      <div class="src">
+        <a href="../../web-admin-inventory-2026-08-03.md">../web-admin-inventory-2026-08-03.md</a>
+        <p>Inventory of what is built today and where the interactive-off decision was applied by default.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="g">
+    <span><span class="k">Report:</span> <span class="v">web-harness-research-2026-08-03</span></span>
+    <span><span class="k">Epic:</span> <span class="v">GSL-138</span></span>
+    <span><span class="k">Branch:</span> <span class="v">GSL-138-web-research-report</span></span>
+    <span><span class="k">Author:</span> <span class="v">agentic-report-creator (RU primary)</span></span>
+    <span><span class="k">Date:</span> <span class="v">2026-08-03</span></span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    function apply(t) {
+      if (t === 'light' || t === 'dark') {
+        document.documentElement.setAttribute('data-theme', t);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+    function current() {
+      var explicit = document.documentElement.getAttribute('data-theme');
+      if (explicit) return explicit;
+      return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    btn.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      apply(next);
+      try { localStorage.setItem('whr-theme', next); } catch (e) {}
+    });
+  })();
+</script>
+
+</body>
+</html>
