@@ -12,6 +12,7 @@ import { TimelineScreen } from "./screens/Timeline";
 import { QuestionsScreen } from "./screens/Questions";
 import { TasksScreen } from "./screens/Tasks";
 import { CostScreen } from "./screens/Cost";
+import { FleetScreen } from "./screens/Fleet";
 import { RouteError } from "./components/RouteError";
 
 export const router = createBrowserRouter([
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/overview" replace /> },
       { path: "overview", element: <OverviewScreen /> },
+      { path: "fleet", element: <FleetScreen /> },
       { path: "timeline", element: <TimelineScreen /> },
       { path: "questions", element: <QuestionsScreen /> },
       { path: "tasks", element: <TasksScreen /> },

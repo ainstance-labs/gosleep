@@ -25,12 +25,13 @@ import { readRoutes } from "./routes/read.ts";
 import { eventsRoutes } from "./routes/events.ts";
 import { metricsRoutes } from "./routes/metrics.ts";
 import { actionsRoutes } from "./routes/actions.ts";
-import { internalRoutes } from "./routes/internal.ts";
+import { internalRoutes, stopToolObservedFlush } from "./routes/internal.ts";
 import { getDb } from "./db/client.ts";
 import { reconcileCursors } from "./indexer/reconcile.ts";
 import { startTailIndexer, type TailController } from "./indexer/tail.ts";
 import { startRotationWatcher, type RotationWatcher } from "./sse/rotation.ts";
 import { writeAuthSourceAudit } from "./security/authSource.ts";
+import { startFleetPoll, type FleetPollController } from "./workers/fleet-poll.ts";
 
 const app = new Hono();
 
@@ -48,6 +49,7 @@ app.route("/", internalRoutes);
 
 let tail: TailController | null = null;
 let rotation: RotationWatcher | null = null;
+let fleet: FleetPollController | null = null;
 
 if (process.env.GOSLEEP_DISABLE_INDEXER !== "1") {
   try {
@@ -71,6 +73,28 @@ if (process.env.GOSLEEP_DISABLE_INDEXER !== "1") {
       JSON.stringify({
         ts: new Date().toISOString(),
         event: "core.indexer.boot_failed",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
+}
+
+// Fleet-poll worker (GSL-276) — INDEPENDENT of the tail indexer. Reads `claude agents --json`
+// via `@gosleep/runner-adapter` and reconciles into `agent_sessions`. Gated by its own env
+// (GOSLEEP_DISABLE_FLEET_POLL=1) so:
+//   * a headless test run can turn it off without disabling the whole indexer chain.
+//   * the endpoint smoke (GOSLEEP_DISABLE_INDEXER=1 already set) still gets fleet-poll off by
+//     default because the scratch smoke does not want a background CLI spawn.
+// The default cadence is 4 s (range 3-5 s per Jira scope).
+if (process.env.GOSLEEP_DISABLE_FLEET_POLL !== "1") {
+  try {
+    fleet = startFleetPoll(getDb());
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.fleet_poll.boot_failed",
         error: err instanceof Error ? err.message : String(err),
       }),
     );
@@ -108,7 +132,17 @@ const shutdown = async (signal: string): Promise<void> => {
     /* ignore */
   }
   try {
+    await fleet?.stop();
+  } catch {
+    /* ignore */
+  }
+  try {
     await tail?.stop();
+  } catch {
+    /* ignore */
+  }
+  try {
+    stopToolObservedFlush();
   } catch {
     /* ignore */
   }

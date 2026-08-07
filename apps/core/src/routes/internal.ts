@@ -422,3 +422,180 @@ internalRoutes.get("/internal/questions/:qid/answer-wait", requireInternalSecret
   }
   return c.json({ ok: true, ...result });
 });
+
+// -----------------------------------------------------------------------------
+// POST /internal/agents/tool-observed  (GSL-276 / rev-3 addendum Delta 8.1)
+// -----------------------------------------------------------------------------
+//
+// The PreToolUse Claude Code hook POSTs one JSON body per tool call the agent makes:
+//   { session_id: "<uuid>", tool: "Read"|"Bash"|..., ts: "<ISO>",
+//     context_pct?: 42, intent?: "one-line description" }
+//
+// The core writes `current_tool` (+ `context_pct` when present, + `current_intent` when
+// present) into the agent_sessions row keyed on session_id. If no row exists yet (the
+// fleet-poll worker has not yet observed this session), we INSERT a placeholder row so the
+// data is not lost — the poller will fill in the CLI-owned fields on its next tick.
+//
+// DEBOUNCE. A single tool-use event fires MANY PreToolUse calls (one per invocation), and a
+// long-running agent can push thousands per minute. We coalesce updates for the same
+// session_id at a 1 s window: writes to the DB are batched into a periodic flush timer, and
+// intra-window updates overwrite the pending state in memory. This bounds SQLite writes to
+// ~1/sec/session regardless of tool activity.
+//
+// The debounce is IN THIS MODULE (module-scoped Map), NOT per-request — a per-request map
+// would defeat the entire coalescing point. It's OK to live in the request-handler module
+// because the process is single-instance (target-arch section 6.1).
+
+import { broadcaster as agentSessionsBroadcaster } from "../sse/broadcaster.ts";
+
+interface ToolObservation {
+  session_id: string;
+  tool: string;
+  ts: string;
+  context_pct: number | null;
+  intent: string | null;
+}
+
+/** Per-session pending observation — replaced on every POST, drained by the flush timer. */
+const pendingObservations = new Map<string, ToolObservation>();
+
+/** Debounce flush interval in ms — 1 s per the Jira scope ("1 s debounce"). */
+const TOOL_OBSERVED_FLUSH_MS = 1_000;
+
+/** Flush timer handle — lazy-initialised on the first POST so tests that don't hit this
+ *  endpoint never spin up the interval. Cleared explicitly via `stopToolObservedFlush()`
+ *  which the serve.ts shutdown handler calls. */
+let flushTimer: ReturnType<typeof setInterval> | null = null;
+
+function ensureFlushTimer(): void {
+  if (flushTimer !== null) return;
+  flushTimer = setInterval(flushPendingObservations, TOOL_OBSERVED_FLUSH_MS);
+  if (typeof flushTimer.unref === "function") flushTimer.unref();
+}
+
+/** Public: stop the flush timer (used by graceful shutdown + tests). */
+export function stopToolObservedFlush(): void {
+  if (flushTimer !== null) {
+    clearInterval(flushTimer);
+    flushTimer = null;
+  }
+  // Flush one last time so anything queued during the last window is not dropped.
+  flushPendingObservations();
+}
+
+/**
+ * Drain the pending map to the DB in one transaction. Called by the flush timer AND on the
+ * shutdown path (so a graceful stop does not lose the last <1 s of observations).
+ */
+function flushPendingObservations(): void {
+  if (pendingObservations.size === 0) return;
+  const drained = Array.from(pendingObservations.values());
+  pendingObservations.clear();
+  const db = getDb();
+  const nowTs = nowIso();
+  let affected = 0;
+  const tx = db.raw.transaction(() => {
+    for (const obs of drained) {
+      // Try UPDATE first; if no row, INSERT a placeholder row. This is the "poller hasn't
+      // seen this session yet" case — perfectly legal, the observation carries enough state
+      // to make an intermediate row until the next poll fills in kind/cwd/status.
+      const existing = db.raw
+        .query("SELECT session_id FROM agent_sessions WHERE session_id = ?")
+        .get(obs.session_id) as { session_id: string } | undefined;
+      if (existing !== undefined) {
+        // Only overwrite context_pct / intent when the observation carried non-null values
+        // (a partial observation must not clobber a fresh number with NULL).
+        db.raw
+          .query(
+            `UPDATE agent_sessions SET
+               current_tool = ?,
+               context_pct = COALESCE(?, context_pct),
+               current_intent = COALESCE(?, current_intent),
+               updated_at = ?
+             WHERE session_id = ?`,
+          )
+          .run(
+            obs.tool,
+            obs.context_pct,
+            obs.intent,
+            nowTs,
+            obs.session_id,
+          );
+      } else {
+        // Placeholder INSERT — name/kind/cwd fill in on the next fleet-poll tick.
+        db.raw
+          .query(
+            `INSERT INTO agent_sessions
+               (session_id, name, kind, pid, model, cwd, cycle, context_pct,
+                current_tool, current_intent, status, started_at, updated_at, ended_at)
+             VALUES (?, ?, 'unknown', NULL, NULL, '?', NULL, ?, ?, ?, 'observed', ?, ?, NULL)`,
+          )
+          .run(
+            obs.session_id,
+            obs.session_id, // name defaults to session_id until the poller upgrades it
+            obs.context_pct,
+            obs.tool,
+            obs.intent,
+            obs.ts,
+            nowTs,
+          );
+      }
+      affected += 1;
+    }
+  });
+  tx();
+  if (affected > 0) {
+    // One SSE fan-out per flush — clients invalidate their /fleet query.
+    agentSessionsBroadcaster.emit({
+      seq: 0,
+      day: nowTs.slice(0, 10),
+      ts: nowTs,
+      src: "core",
+      actor: "tool-observed",
+      task: null,
+      type: "agent_sessions.updated",
+      payload: { touched: affected, source: "hook" },
+      ingested_from: null,
+    });
+  }
+}
+
+internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+
+  const sessionId = typeof body.session_id === "string" ? body.session_id : "";
+  const tool = typeof body.tool === "string" ? body.tool : "";
+  const ts = typeof body.ts === "string" && body.ts.length > 0 ? body.ts : nowIso();
+  if (sessionId.length === 0 || tool.length === 0) {
+    return c.json({ ok: false, error: "session_id and tool required" }, 400);
+  }
+  const contextPct =
+    typeof body.context_pct === "number" &&
+    Number.isFinite(body.context_pct) &&
+    body.context_pct >= 0 &&
+    body.context_pct <= 100
+      ? Math.trunc(body.context_pct)
+      : null;
+  const intent =
+    typeof body.intent === "string" && body.intent.length > 0 ? body.intent : null;
+
+  // Overwrite any pending observation for the same session — the debounce is COALESCE, not
+  // FIFO. The last observation is the one we want to reflect.
+  pendingObservations.set(sessionId, {
+    session_id: sessionId,
+    tool,
+    ts,
+    context_pct: contextPct,
+    intent,
+  });
+  ensureFlushTimer();
+
+  return c.json({
+    ok: true,
+    session_id: sessionId,
+    tool,
+    pending: pendingObservations.size,
+    debounce_ms: TOOL_OBSERVED_FLUSH_MS,
+  });
+});

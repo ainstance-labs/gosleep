@@ -12,6 +12,7 @@ import {
   Moon,
   Receipt,
   Sun,
+  Users,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import { Button } from "./ui/Button";
 
 const NAV = [
   { to: "/overview", label: "Overview", icon: ActivitySquare },
+  { to: "/fleet", label: "Fleet", icon: Users },
   { to: "/timeline", label: "Timeline", icon: Clock3 },
   { to: "/questions", label: "Questions", icon: HelpCircle },
   { to: "/tasks", label: "Tasks", icon: ListChecks },

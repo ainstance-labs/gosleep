@@ -145,26 +145,41 @@ export const CostResponse = z.object({
 export type CostResponse = z.infer<typeof CostResponse>;
 
 // -----------------------------------------------------------------------------
-// fleet (STUB in GSL-263, filled by GSL-276)
+// fleet (real projection landed GSL-276; STUB shape in GSL-263 stayed lenient
+// so a later expansion did not break the SDK — every new field arrives as
+// nullable / optional).
 // -----------------------------------------------------------------------------
 
 export const FleetSession = z.object({
+  session_id: z.string(),
   name: z.string(),
+  kind: z.string(),
+  pid: z.number().int().nullable().optional(),
   model: z.string().nullable().optional(),
-  cwd: z.string().nullable().optional(),
+  cwd: z.string(),
   cycle: z.number().int().nullable().optional(),
   context_pct: z.number().int().nullable().optional(),
   current_tool: z.string().nullable().optional(),
   current_intent: z.string().nullable().optional(),
-  started_at: IsoTimestamp.optional(),
-  updated_at: IsoTimestamp.optional(),
+  status: z.string(),
+  started_at: IsoTimestamp,
+  updated_at: IsoTimestamp,
   ended_at: IsoTimestamp.nullable().optional(),
 });
 export type FleetSession = z.infer<typeof FleetSession>;
 
+export const FleetTotals = z.object({
+  agents_total: z.number().int().nonnegative(),
+  agents_live: z.number().int().nonnegative(),
+  agents_busy: z.number().int().nonnegative(),
+  heartbeat_context_pct: z.number().int().nullable(),
+});
+export type FleetTotals = z.infer<typeof FleetTotals>;
+
 export const FleetResponse = z.object({
   sessions: z.array(FleetSession),
   count: z.number().int(),
+  totals: FleetTotals.optional(),
   note: z.string().optional(),
 });
 export type FleetResponse = z.infer<typeof FleetResponse>;

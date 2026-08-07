@@ -332,18 +332,79 @@ readRoutes.get("/cost", requireBearer, (c) => {
 });
 
 // -----------------------------------------------------------------------------
-// /fleet — STUB per rev-3 addendum Delta 8.1
+// /fleet — per-agent projection over `agent_sessions` (GSL-276 / Delta 8.1)
 // -----------------------------------------------------------------------------
 
+interface AgentSessionRow {
+  session_id: string;
+  name: string;
+  kind: string;
+  pid: number | null;
+  model: string | null;
+  cwd: string;
+  cycle: number | null;
+  context_pct: number | null;
+  current_tool: string | null;
+  current_intent: string | null;
+  status: string;
+  started_at: string;
+  updated_at: string;
+  ended_at: string | null;
+}
+
 readRoutes.get("/fleet", requireBearer, (c) => {
-  // The rev-3 addendum routes the real per-session projection to a new `agent_sessions` table
-  // added in GSL-276. GSL-263 wires the route so scrapers/UI do not 404 and returns an empty
-  // shape with an explicit note. NO fallback to the singular `heartbeat.context_pct` scalar
-  // (the addendum forbids it — that scalar is a single-fleet ceiling, not per-session data).
+  // Sort: live sessions first, then by most-recently-updated. `ended` rows sink to the
+  // bottom so the top of the Fleet screen is always the active fleet — but they're not
+  // filtered out, so an owner can still see "who ended in the last hour" without a filter
+  // dance. A future ?include=live query knob is easy to add if the row count ever grows past
+  // the SPA's happy limit.
+  const rows = getDb().raw
+    .query(
+      `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
+              current_intent, status, started_at, updated_at, ended_at
+       FROM agent_sessions
+       ORDER BY (ended_at IS NULL) DESC, updated_at DESC
+       LIMIT 200`,
+    )
+    .all() as AgentSessionRow[];
+
+  // Totals row for the /bundle + Fleet header. `agents_live` = rows without ended_at;
+  // `agents_busy` = subset with status='busy'. The heartbeat scalar (`context_pct`) is joined
+  // in as a legacy field so pre-Fleet-screen dashboards keep the same reading — but the
+  // per-session table above is now the authoritative source per Delta 8.1.
+  const heartbeat = getDb().raw
+    .query(
+      `SELECT context_pct FROM heartbeat
+       ORDER BY seq DESC LIMIT 1`,
+    )
+    .get() as { context_pct: number | null } | undefined;
+
+  const totals = {
+    agents_total: rows.length,
+    agents_live: rows.filter((r) => r.ended_at === null).length,
+    agents_busy: rows.filter((r) => r.ended_at === null && r.status === "busy").length,
+    heartbeat_context_pct: heartbeat?.context_pct ?? null,
+  };
+
   return c.json({
-    sessions: [],
-    count: 0,
-    note: "stub — full projection pending GSL-276 (agent_sessions table)",
+    sessions: rows.map((r) => ({
+      session_id: r.session_id,
+      name: r.name,
+      kind: r.kind,
+      pid: r.pid,
+      model: r.model,
+      cwd: r.cwd,
+      cycle: r.cycle,
+      context_pct: r.context_pct,
+      current_tool: r.current_tool,
+      current_intent: r.current_intent,
+      status: r.status,
+      started_at: r.started_at,
+      updated_at: r.updated_at,
+      ended_at: r.ended_at,
+    })),
+    count: rows.length,
+    totals,
   });
 });
 
@@ -427,6 +488,31 @@ readRoutes.get("/bundle", requireBearer, (c) => {
       labels: parseJsonSafe(r.labels) ?? [],
       last_synced_at: r.last_synced_at,
     })),
-    fleet: { sessions: [], note: "stub — pending GSL-276" },
+    fleet: {
+      sessions: (getDb().raw
+        .query(
+          `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
+                  current_intent, status, started_at, updated_at, ended_at
+           FROM agent_sessions
+           ORDER BY (ended_at IS NULL) DESC, updated_at DESC
+           LIMIT 200`,
+        )
+        .all() as AgentSessionRow[]).map((r) => ({
+        session_id: r.session_id,
+        name: r.name,
+        kind: r.kind,
+        pid: r.pid,
+        model: r.model,
+        cwd: r.cwd,
+        cycle: r.cycle,
+        context_pct: r.context_pct,
+        current_tool: r.current_tool,
+        current_intent: r.current_intent,
+        status: r.status,
+        started_at: r.started_at,
+        updated_at: r.updated_at,
+        ended_at: r.ended_at,
+      })),
+    },
   });
 });

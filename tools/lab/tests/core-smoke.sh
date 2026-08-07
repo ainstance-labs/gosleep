@@ -78,7 +78,7 @@ echo "== booting @gosleep/core (dev Bearer, port $PORT, scratch DB + lab) =="
 GOSLEEP_BEARER_TOKEN="$TOKEN" GOSLEEP_OWNER_NAME="smoke-owner" GOSLEEP_CORE_PORT="$PORT" \
   GOSLEEP_DB_PATH="$SCRATCH_DB" GOSLEEP_LAB_DIR="$SCRATCH_LAB" \
   GOSLEEP_INTERNAL_SECRET="$INTERNAL_SECRET" \
-  GOSLEEP_DISABLE_INDEXER=1 \
+  GOSLEEP_DISABLE_INDEXER=1 GOSLEEP_DISABLE_FLEET_POLL=1 \
   bun run "$REPO_ROOT/apps/core/src/serve.ts" \
   > "$WORK/stdout.log" 2> "$WORK/stderr.log" &
 SERVER_PID=$!
@@ -265,6 +265,54 @@ if [ -n "$SMOKE_QID" ]; then
   fi
 else
   bad "20. skipped — POST did not return a qid"
+fi
+
+echo "== /fleet + /internal/agents/tool-observed scenarios (GSL-276) =="
+# 21. /fleet requires Bearer
+check_status "21. GET /fleet (no auth)"   "401" "http://127.0.0.1:$PORT/fleet" -H "Host: 127.0.0.1:$PORT"
+# 22. /fleet with valid Bearer → 200 + JSON envelope (sessions[] may be empty here — the scratch
+#     smoke disables the indexer and does not run the fleet-poll worker; the endpoint contract
+#     itself is what we're validating).
+FLEET_BODY_FILE="$WORK/fleet-body.json"
+FLEET_STATUS="$(curl -s -o "$FLEET_BODY_FILE" -w '%{http_code}' \
+  -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:$PORT/fleet")"
+if [ "$FLEET_STATUS" = "200" ]; then
+  ok "22. GET /fleet (valid) → 200"
+else
+  bad "22. GET /fleet (valid) → $FLEET_STATUS body=$(cat "$FLEET_BODY_FILE")"
+fi
+if grep -q '"sessions":' "$FLEET_BODY_FILE" && grep -q '"totals":' "$FLEET_BODY_FILE"; then
+  ok "22b. /fleet body has sessions + totals keys"
+else
+  bad "22b. /fleet body missing keys: $(cat "$FLEET_BODY_FILE")"
+fi
+
+# 23. POST /internal/agents/tool-observed with no secret → 401
+check_status "23. POST /internal/agents/tool-observed (no secret)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"smoke-sid","tool":"Bash","ts":"2026-08-07T00:00:00Z"}' \
+  "http://127.0.0.1:$PORT/internal/agents/tool-observed"
+
+# 24. POST /internal/agents/tool-observed with valid secret + malformed body → 400
+check_status "24. POST /internal/agents/tool-observed (missing session_id)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "X-Internal-Secret: $INTERNAL_SECRET" -H "Content-Type: application/json" \
+  -d '{"tool":"Bash"}' \
+  "http://127.0.0.1:$PORT/internal/agents/tool-observed"
+
+# 25. POST /internal/agents/tool-observed with valid secret + valid body → 200
+#     The write is queued (1 s debounce); we only prove the endpoint accepts the shape.
+OBS_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "X-Internal-Secret: $INTERNAL_SECRET" -H "Content-Type: application/json" \
+  -d '{"session_id":"smoke-sid","tool":"Read","ts":"2026-08-07T00:00:00Z","context_pct":42}' \
+  "http://127.0.0.1:$PORT/internal/agents/tool-observed")"
+if [ "$OBS_STATUS" = "200" ]; then
+  ok "25. POST /internal/agents/tool-observed (valid) → 200"
+else
+  bad "25. POST /internal/agents/tool-observed (valid) → $OBS_STATUS"
 fi
 
 echo "== teardown =="

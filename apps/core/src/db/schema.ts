@@ -1,7 +1,8 @@
-// @gosleep/core — SQLite schema v1 (GSL-261).
+// @gosleep/core — SQLite schema v1 (GSL-261, extended GSL-276).
 //
-// Source: target-architecture rev-2 section 4.3. Eight tables, each modeling one facet of the
-// control-plane state. Drizzle-ORM sqliteTable definitions here are the SINGLE source of truth:
+// Source: target-architecture rev-2 section 4.3 + rev-3 addendum Delta 8.1. Nine tables, each
+// modeling one facet of the control-plane state. Drizzle-ORM sqliteTable definitions here are
+// the SINGLE source of truth:
 //   1. `drizzle-kit generate` reads THIS file to produce apps/core/drizzle/00XX_*.sql.
 //   2. The runtime `scripts/migrate.ts` applies the generated SQL against data/gosleep.db.
 //   3. `packages/schema` (future GSL-263) re-exports the inferred TS types for the SDK + web.
@@ -20,10 +21,10 @@
 //     may seed events out of arrival order for compacted files; a hard FK would refuse the load.
 //     Referential integrity is enforced in the tail indexer (GSL-263), not in the schema.
 //   - Deltas the epic tracks separately are NOT here on purpose:
-//       * per-agent fleet table  → GSL-276
+//       * per-agent fleet table  → landed GSL-276 (this file, `agent_sessions`).
 //       * question provenance    → GSL-277 (applied_by + applied_rule_ref columns)
 //       * `deferred` status enum → GSL-278
-//     Keeping GSL-261's diff focused on the eight tables the Jira description names.
+//     GSL-276 adds ONE additive table (`agent_sessions`) — no changes to the original eight.
 
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
@@ -174,6 +175,59 @@ export const ingest_state = sqliteTable("ingest_state", {
   last_sha256_prefix: text("last_sha256_prefix").notNull(),
   updated_at: text("updated_at").notNull(),
 });
+
+/**
+ * Per-agent fleet state (GSL-276 / rev-3 addendum Delta 8.1). One row per live Claude Code
+ * agent session on this host, keyed by the harness's stable `session_id` (UUID from
+ * `claude agents --json`). Owner requirement R4: "how many agents are running, what each is
+ * doing, what its context %" — the row breaks that scalar heartbeat down per session.
+ *
+ * SOURCES that write this table:
+ *   1. The fleet-poll worker (`apps/core/src/workers/fleet-poll.ts`) calls
+ *      `claude agents --json` every 3–5 s through `@gosleep/runner-adapter#listClaudeAgents`,
+ *      and UPSERTs each session row (creates on first sighting, updates status/updated_at on
+ *      every tick, sets ended_at when a session disappears from the roster).
+ *   2. The `POST /internal/agents/tool-observed` shim (fed by the PreToolUse Claude Code hook)
+ *      updates `current_tool` and (optionally) `context_pct` at 1 s debounce per session.
+ *      The hook is the ONLY source for context_pct — the CLI JSON does not carry it.
+ *
+ * COLUMNS. `session_id` is the primary key (a stable UUID; two consecutive spawns of the same
+ * pane get different session_ids). `name` is the harness's human-readable label (e.g.
+ * "gosleep-93"). `kind` is `interactive` | `background` per the CLI. `status` mirrors
+ * `claude agents --json`'s status field ('busy'|'idle'|'waiting'|...); `ended` is stamped by
+ * the poller when a row falls off the roster (that value is not in the CLI, it's an internal
+ * convention meaning "poll saw the row disappear"). Nullable fields (`pid`, `model`, `cycle`,
+ * `context_pct`, `current_tool`, `current_intent`, `ended_at`) may not be populated at INSERT
+ * time — the CLI does not surface model/cycle, and the hook may never fire for a short-lived
+ * session. The web Fleet screen tolerates every NULL by rendering "—".
+ *
+ * INDEXES. `ix_agent_sessions_status_updated` supports the /fleet projection's default sort
+ * (active-first, latest-updated-first). `ix_agent_sessions_updated` supports "show me the
+ * last-N-changed sessions" queries the SSE consumer may add later.
+ */
+export const agent_sessions = sqliteTable(
+  "agent_sessions",
+  {
+    session_id: text("session_id").primaryKey(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull(),
+    pid: integer("pid"),
+    model: text("model"),
+    cwd: text("cwd").notNull(),
+    cycle: integer("cycle"),
+    context_pct: integer("context_pct"),
+    current_tool: text("current_tool"),
+    current_intent: text("current_intent"),
+    status: text("status").notNull(),
+    started_at: text("started_at").notNull(),
+    updated_at: text("updated_at").notNull(),
+    ended_at: text("ended_at"),
+  },
+  (t) => [
+    index("ix_agent_sessions_status_updated").on(t.status, t.updated_at),
+    index("ix_agent_sessions_updated").on(t.updated_at),
+  ],
+);
 
 // Explicit re-export of the SQL tag so consumers can build raw fragments off the same drizzle
 // instance without adding another import surface.

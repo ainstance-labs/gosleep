@@ -76,6 +76,11 @@ export function SseProvider({ children }: { children: ReactNode }) {
             queryClient.invalidateQueries({ queryKey: queryKeys.skills() });
           } else if (type.startsWith("cost.")) {
             queryClient.invalidateQueries({ queryKey: ["core", "cost"] });
+          } else if (type.startsWith("agent_sessions.") || type.startsWith("agent.")) {
+            // GSL-276: fleet-poll worker + PreToolUse shim both emit
+            // `agent_sessions.updated` (via the events broadcaster). The Fleet screen re-fetches
+            // /fleet so cards land within a tick of any status/tool/context change.
+            queryClient.invalidateQueries({ queryKey: queryKeys.fleet() });
           }
         },
         onRotate: (data) => {

@@ -15,6 +15,7 @@
     "db:import-jsonl": "bun run scripts/import-jsonl.ts"
   },
   "dependencies": {
+    "@gosleep/runner-adapter": "*",
     "@hono/zod-validator": "^0.4.0",
     "drizzle-orm": "^0.44.6",
     "hono": "^4.7.0",
