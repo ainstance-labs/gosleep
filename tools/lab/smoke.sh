@@ -4505,6 +4505,47 @@ else
   bad "GSL-260: apps/core/src not found — GSL-260 scaffold missing"
 fi
 
+echo "== GSL-261: no unannotated destructive Drizzle migrations (R28) =="
+# R28 in target-architecture: a `drizzle-kit generate` run that emitted a DROP TABLE or DROP
+# COLUMN must never slip into the tree unreviewed. When such a change is INTENTIONAL, the SQL
+# file gets a `-- WARN: intentional drop` line right above the DROP; that annotation is the
+# operator's explicit acknowledgement the corresponding pre-migration snapshot has been taken.
+# The check here fails only on drop statements that lack the WARN sentinel on any of the
+# 5 lines immediately above them — a bare DROP is a red flag, an annotated one passes.
+DRIZZLE_DIR="$REPO_ROOT/apps/core/drizzle"
+if [ -d "$DRIZZLE_DIR" ]; then
+  UNANN_DROPS="$(find "$DRIZZLE_DIR" -maxdepth 1 -type f -name '*.sql' 2>/dev/null | while read -r f; do
+    # awk emits every unannotated DROP TABLE / DROP COLUMN line prefixed with its file:line.
+    awk -v file="$f" '
+      /^--[[:space:]]*WARN:[[:space:]]*intentional[[:space:]]+drop/ { warn = NR; next }
+      /DROP[[:space:]]+(TABLE|COLUMN)/ {
+        if (warn == 0 || NR - warn > 5) print file ":" NR ": " $0
+      }
+    ' "$f"
+  done)"
+  if [ -z "$UNANN_DROPS" ]; then
+    ok "GSL-261: drizzle/*.sql has no unannotated DROP TABLE|COLUMN (R28)"
+  else
+    bad "GSL-261: unannotated destructive migration — $(printf '%s' "$UNANN_DROPS" | tr '\n' ' | ')"
+  fi
+  # Sanity: the initial migration + its snapshot + the journal must travel together. If any
+  # one of the three vanishes the migration set is broken; catching it here beats a runtime
+  # 'no migrations found' surprise.
+  MIG_FILES_OK=1
+  [ -f "$DRIZZLE_DIR/0000_initial.sql" ]      || MIG_FILES_OK=0
+  [ -f "$DRIZZLE_DIR/meta/_journal.json" ]    || MIG_FILES_OK=0
+  [ -f "$DRIZZLE_DIR/meta/0000_snapshot.json" ] || MIG_FILES_OK=0
+  if [ "$MIG_FILES_OK" -eq 1 ]; then
+    ok "GSL-261: drizzle/ carries 0000_initial.sql + _journal.json + 0000_snapshot.json"
+  else
+    bad "GSL-261: drizzle/ is missing at least one of the 3 migration files"
+  fi
+else
+  # Not-yet-generated is fine during pre-GSL-261 states; keep the guard silent so it doesn't
+  # noise-fail the gate on older branches that haven't merged this task yet.
+  ok "GSL-261: apps/core/drizzle/ absent — no migrations to check"
+fi
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
