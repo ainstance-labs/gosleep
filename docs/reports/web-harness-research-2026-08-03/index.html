@@ -666,6 +666,33 @@
 </head>
 <body>
 
+<!-- ================================================================== -->
+<!-- DEPRECATION BANNER (GSL-283 / rev-3 addendum Delta 11, 2026-08-07). -->
+<!-- Inline-styled so it renders even when the site's stylesheet is bypassed  -->
+<!-- (e.g. GitHub's Markdown viewer stripping the <link> above the fold).     -->
+<!-- ================================================================== -->
+<div role="alert" aria-label="Deprecation notice" style="
+    background: #7a1d1d; color: #fff5f5; border-bottom: 3px solid #d94545;
+    padding: 14px 20px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
+    font-size: 14px; line-height: 1.55; font-weight: 500;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.25);">
+  <strong style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;">
+    Superseded &mdash; historical artefact
+  </strong>
+  <div style="margin-top: 4px; font-weight: 400;">
+    This page's recommendation of <em>variant&nbsp;A</em> (Node + Hono over the existing static
+    pipeline) was rejected on 2026&#8209;08&#8209;03 by owner decision
+    <code style="background: rgba(255,255,255,0.12); padding: 1px 5px; border-radius: 3px;">d-2026-08-03-004</code>
+    in favour of the Warren-model architecture (Bun&#8239;+&#8239;Hono core with a React SPA client).
+    The narrative below is preserved as historical context. For the current design of record,
+    read
+    <a href="target-architecture.md" style="color: #ffe0e0; text-decoration: underline;">target-architecture.md</a>
+    (revision 2, Warren-model) together with
+    <a href="target-architecture-rev3-addendum.md" style="color: #ffe0e0; text-decoration: underline;">target-architecture-rev3-addendum.md</a>
+    (rev&#8209;3 addendum, per-agent fleet + Jira sync + provenance + defer).
+  </div>
+</div>
+
 <header class="site-head" role="banner">
   <div class="row">
     <div class="brand">
@@ -1030,6 +1057,24 @@
   <!-- ================== 3. ТРИ ВАРИАНТА ================== -->
   <section id="variants" aria-labelledby="variants-h">
     <h2 id="variants-h">3. Три варианта для нас</h2>
+
+    <!-- Inline deprecation note (GSL-283 / rev-3 addendum Delta 11). English per the ticket -->
+    <!-- so a reviewer scrolling straight to this section still sees the correction.        -->
+    <aside role="note" aria-label="Superseded recommendation" style="
+        border-left: 4px solid #d94545; background: rgba(217, 69, 69, 0.08);
+        color: inherit; padding: 12px 16px; margin: 12px 0 18px 0; border-radius: 4px;
+        font-size: 14px; line-height: 1.55;">
+      <strong style="color: #d94545; text-transform: uppercase; letter-spacing: 0.05em;
+                     font-size: 12px;">Superseded (2026&#8209;08&#8209;03)</strong>
+      <p style="margin: 6px 0 0 0;">
+        The "Рекомендуем" tag on variant&nbsp;A below is historical. Owner decision
+        <code>d-2026-08-03-004</code> selected the Warren-model architecture; see
+        <a href="target-architecture.md">target-architecture.md</a> (rev&nbsp;2) and
+        <a href="target-architecture-rev3-addendum.md">target-architecture-rev3-addendum.md</a>
+        (rev&#8209;3 addendum) for the current design of record.
+      </p>
+    </aside>
+
     <p>
       Все три сохраняют существующий стек и не переписывают статические страницы.
       Отличаются размером новой поверхности и сроком до первой рабочей кнопки.
