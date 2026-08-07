@@ -1,31 +1,39 @@
 #!/usr/bin/env bash
 # =============================================================================
-# @gosleep/core — launchd install / uninstall / status (GSL-260).
+# @gosleep/core — launchd install / uninstall / status (GSL-260, GSL-264 hardening).
 #
 # What this does:
-#   install   — copy plist template to ~/Library/LaunchAgents with paths substituted,
-#               set Keychain Bearer secret (prompted; NOT echoed to disk), bootstrap agent
-#               with `launchctl bootstrap gui/$UID`, wait for /healthz to answer.
-#   uninstall — `launchctl bootout` the agent, remove the installed plist. The Keychain
-#               item is LEFT IN PLACE by default (owner may reuse it); pass --purge-secret
-#               to also delete it.
-#   status    — one-line health summary: whether the plist is installed, whether launchd
-#               says the label is loaded, whether /healthz answers, and the current PID.
+#   install         — copy plist template to ~/Library/LaunchAgents with paths substituted,
+#                     set Keychain Bearer secret (prompted; NOT echoed to disk), bootstrap agent
+#                     with `launchctl bootstrap gui/$UID`, wait for /healthz to answer.
+#   uninstall       — `launchctl bootout` the agent, remove the installed plist. The Keychain
+#                     item is LEFT IN PLACE by default (owner may reuse it); pass --purge-secret
+#                     to also delete it.
+#   rotate-secret   — set/replace the Keychain item WITHOUT touching launchd. Owner-facing
+#                     command for periodic rotation.
+#   status          — one-line health summary: whether the plist is installed, whether launchd
+#                     says the label is loaded, whether /healthz answers, and the current PID.
 #
 # WHY THIS IS SEPARATE FROM install-deps.sh. install-deps.sh installs the RUNTIME
-# (bun, swiftc availability check, .app bundle wiring). plist.sh wires up the LAUNCH
-# LIFECYCLE. Two nouns, two scripts. `install-deps.sh` runs once, `plist.sh install`
-# runs when the owner wants launchd to actually take over.
+# (bun, swiftc, builds bin/touchid-gate.app). plist.sh wires up the LAUNCH LIFECYCLE + writes
+# the Keychain item with the Delta-5 ACL. Two nouns, two scripts.
 #
-# DEFERRED to GSL-264 per rev-3 addendum Delta 5:
-#   - The `-T <trusted-app>` ACL flags on `security add-generic-password` — the wrapper
-#     currently uses `-A` (allow all callers), which is a dev-friendly stopgap; production
-#     hardening ties the ACL to the built binary path. The `-A` is annotated below.
-#   - Tahoe 26.x HEX-encoding workaround for `security -w` reads.
+# GSL-264 (rev-3 addendum Delta 5) — this script's SECURITY changes:
+#   1. `-T` ACL binding replaces the dev-friendly `-A`. `security add-generic-password` is now
+#      called with `-T <bun>` + `-T <plist.sh>` so ONLY those callers can retrieve the item
+#      without a user consent prompt. Other processes under the same UID get an interactive
+#      Apple prompt; agents in a pipe context cannot answer it.
+#   2. The secret is Base64-encoded with the `b64v1:` prefix before storage. Reader
+#      (src/security/tokenEncoding.ts) detects the prefix and decodes; on Tahoe 26.x this
+#      keeps the on-disk shape ASCII-safe and avoids the `security -w` HEX regression.
+#   3. Tahoe 26.x is detected via `sw_vers -productVersion` and, if present, an operator note
+#      is printed so the owner sees the platform-specific behaviour in the install log.
 #
 # Usage:
-#   apps/core/plist.sh install                # install + bootstrap + smoke
+#   apps/core/plist.sh install                # install + bootstrap + smoke (interactive prompt)
 #   apps/core/plist.sh install --secret ENV   # take secret from $GOSLEEP_BEARER_TOKEN
+#   apps/core/plist.sh rotate-secret          # replace the Keychain item; leave launchd alone
+#   apps/core/plist.sh rotate-secret --secret ENV
 #   apps/core/plist.sh uninstall              # bootout + remove plist
 #   apps/core/plist.sh uninstall --purge-secret
 #   apps/core/plist.sh status                 # print health line
@@ -65,18 +73,86 @@ secret_prompt() {
   printf '%s' "$s1"
 }
 
+# ---------------------------------------------------------------------------------------------
+# Delta-5 secret helpers: Base64 encoding + platform detection
+# ---------------------------------------------------------------------------------------------
+
+# Encode a UTF-8 secret as `b64v1:<base64>`. Matches decodeSecret() in tokenEncoding.ts.
+encode_secret() {
+  local plain="$1"
+  local b64
+  b64="$(printf '%s' "$plain" | base64 | tr -d '\n')"
+  [ -n "$b64" ] || die "base64 encoding produced empty output"
+  printf 'b64v1:%s' "$b64"
+}
+
+# One-shot platform probe. Prints "tahoe" (macOS 26.x) or "prior".
+detect_platform() {
+  if [ "$(uname -s)" != "Darwin" ]; then
+    printf 'non-darwin'
+    return
+  fi
+  local pv
+  pv="$(sw_vers -productVersion 2>/dev/null || echo "")"
+  case "$pv" in
+    26.*) printf 'tahoe' ;;
+    *)    printf 'prior' ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------------------------
+# Delta-5 Keychain install with `-T` ACL bindings
+# ---------------------------------------------------------------------------------------------
+
 install_secret() {
   local secret="$1"
-  # `security add-generic-password -U` updates in place if the item already exists.
-  # `-A` (allow all callers) is a dev-friendly stopgap; GSL-264 replaces this with
-  # per-binary `-T` trusted-app ACLs (see rev-3 addendum Delta 5).
+  local platform
+  platform="$(detect_platform)"
+  say "platform: $platform"
+
+  # Trusted-app list per Delta 5. The bun binary is the ONE that reads the secret at runtime
+  # (via `security find-generic-password -w`); plist.sh is the ONE that writes it. Both must
+  # be in the ACL or the process gets an interactive prompt at read time (fatal for launchd).
+  local bun_bin
+  bun_bin="$(command -v bun || true)"
+  [ -x "$bun_bin" ] || die "no 'bun' on PATH — cannot bind Keychain ACL to it"
+
+  # Resolve the plist.sh full path (readlink -f is GNU-only; use a portable shim).
+  local self_bin
+  self_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+  # Delta-5 encoding: wrap the raw secret as `b64v1:<base64>` before storing. Reader
+  # (src/security/tokenEncoding.ts) transparently decodes.
+  local encoded
+  encoded="$(encode_secret "$secret")"
+
+  # `-U` updates in place if the item already exists. `-T <path>` grants that binary the
+  # right to retrieve the item without a user consent prompt; we deliberately do NOT pass
+  # `-A` (all-callers-allowed) — the ACL is the point.
+  say "storing Keychain item with -T ACL bindings (bun=$bun_bin, self=$self_bin)"
   security add-generic-password \
-    -U -A \
+    -U \
+    -T "$bun_bin" \
+    -T "$self_bin" \
     -s "$KEYCHAIN_SERVICE" \
     -a "$KEYCHAIN_ACCOUNT" \
-    -w "$secret" \
+    -w "$encoded" \
     || die "security add-generic-password failed"
-  say "Keychain item installed (service=$KEYCHAIN_SERVICE, account=$KEYCHAIN_ACCOUNT)"
+  say "Keychain item installed (service=$KEYCHAIN_SERVICE, account=$KEYCHAIN_ACCOUNT, encoding=b64v1)"
+
+  if [ "$platform" = "tahoe" ]; then
+    say "NOTE: macOS Tahoe 26.x detected — the reader enforces a 5s timeout floor and Base64"
+    say "      decoding (see rev-3 addendum Delta 5). The on-disk value is ASCII-safe."
+  fi
+
+  # Round-trip verify: read the item back through the SAME process this script runs from, so
+  # we validate the ACL grant before handing off to launchd.
+  local readback
+  readback="$(security find-generic-password -s "$KEYCHAIN_SERVICE" -a "$KEYCHAIN_ACCOUNT" -w 2>/dev/null || true)"
+  if [ "$readback" != "$encoded" ]; then
+    die "Keychain round-trip verify FAILED (stored value did not round-trip; see 'security list-keychains')"
+  fi
+  say "Keychain round-trip verified (stored → read → matched)"
 }
 
 render_plist() {
@@ -105,12 +181,7 @@ wait_healthz() {
   die "/healthz did not answer within 8s — check $LOGS_DIR/core-stderr.log"
 }
 
-cmd_install() {
-  need_bin security
-  need_bin launchctl
-  need_bin curl
-  [ -f "$TEMPLATE" ] || die "template not found: $TEMPLATE"
-
+read_secret_from_env_or_prompt() {
   local secret=""
   if [ "${1:-}" = "--secret" ] && [ "${2:-}" = "ENV" ]; then
     secret="${GOSLEEP_BEARER_TOKEN:-}"
@@ -118,6 +189,18 @@ cmd_install() {
   else
     secret="$(secret_prompt)"
   fi
+  printf '%s' "$secret"
+}
+
+cmd_install() {
+  need_bin security
+  need_bin launchctl
+  need_bin curl
+  need_bin base64
+  [ -f "$TEMPLATE" ] || die "template not found: $TEMPLATE"
+
+  local secret
+  secret="$(read_secret_from_env_or_prompt "$@")"
 
   install_secret "$secret"
   render_plist
@@ -127,6 +210,18 @@ cmd_install() {
   launchctl bootstrap "gui/$UID" "$INSTALLED" || die "launchctl bootstrap failed"
   say "agent bootstrapped (gui/$UID/${LABEL})"
   wait_healthz
+}
+
+cmd_rotate_secret() {
+  need_bin security
+  need_bin base64
+
+  local secret
+  secret="$(read_secret_from_env_or_prompt "$@")"
+
+  install_secret "$secret"
+  say "Keychain secret rotated. Restart core to pick it up:"
+  say "    launchctl kickstart -k gui/\$UID/${LABEL}"
 }
 
 cmd_uninstall() {
@@ -159,8 +254,9 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  install)   shift; cmd_install "$@" ;;
-  uninstall) shift; cmd_uninstall "$@" ;;
-  status)    cmd_status ;;
-  *) echo "usage: $0 {install [--secret ENV] | uninstall [--purge-secret] | status}" >&2; exit 2 ;;
+  install)        shift; cmd_install "$@" ;;
+  rotate-secret)  shift; cmd_rotate_secret "$@" ;;
+  uninstall)      shift; cmd_uninstall "$@" ;;
+  status)         cmd_status ;;
+  *) echo "usage: $0 {install [--secret ENV] | rotate-secret [--secret ENV] | uninstall [--purge-secret] | status}" >&2; exit 2 ;;
 esac

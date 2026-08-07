@@ -28,6 +28,7 @@ import { getDb } from "./db/client.ts";
 import { reconcileCursors } from "./indexer/reconcile.ts";
 import { startTailIndexer, type TailController } from "./indexer/tail.ts";
 import { startRotationWatcher, type RotationWatcher } from "./sse/rotation.ts";
+import { writeAuthSourceAudit } from "./security/authSource.ts";
 
 const app = new Hono();
 
@@ -47,6 +48,10 @@ let rotation: RotationWatcher | null = null;
 if (process.env.GOSLEEP_DISABLE_INDEXER !== "1") {
   try {
     const db = getDb();
+    // 0. Per-boot auth-source audit line (GSL-264, rev-3 addendum Delta 5). Runs BEFORE the
+    //    indexer so a failed reconcile does not swallow the audit line. Best-effort — a failure
+    //    inside writeAuthSourceAudit only logs to stderr; boot proceeds.
+    void writeAuthSourceAudit(db);
     // 1. Reconcile before starting the tail — otherwise a file edited while we were down
     //    would be tail-appended from the OLD cursor and we would miss the corrected prefix.
     reconcileCursors(db);

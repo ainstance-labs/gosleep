@@ -1,13 +1,13 @@
-// @gosleep/core — Bearer token middleware (GSL-260; target-architecture R38).
+// @gosleep/core — Bearer token middleware (GSL-260 baseline, GSL-264 hardening).
 //
-// Reads the Bearer secret from macOS Keychain (or the dev-env override) via
-// security/keychain.ts. Constant-time comparison against the request's Authorization header.
+// Reads the Bearer secret via the Delta-5 fallback chain (`resolveAuthSource()` — dev-env →
+// Keychain → GOSLEEP_TOKEN_PATH → nothing). Constant-time comparison against the request's
+// Authorization header.
 //
 // FAILURE MODES (per rev-3 addendum Delta 5 and target-architecture R29):
 //   - Missing/malformed Authorization header       → 401 Unauthorized.
 //   - Header present but wrong secret              → 401 Unauthorized.
-//   - Keychain lookup returned null (timeout, missing item, security CLI failed)
-//                                                  → 503 Service Unavailable — NEVER silently
+//   - No source produced a secret                  → 503 Service Unavailable — NEVER silently
 //                                                    fall back to unauth (this is exactly the
 //                                                    gh CLI bug we do not repeat).
 //
@@ -17,13 +17,13 @@
 
 import type { MiddlewareHandler } from "hono";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { readBearerFromKeychain } from "./keychain.ts";
+import { resolveAuthSource } from "./authSource.ts";
 
 const digest = (s: string): Buffer => createHash("sha256").update(s, "utf8").digest();
 
 export const requireBearer: MiddlewareHandler = async (c, next) => {
-  const secret = await readBearerFromKeychain();
-  if (secret === null) {
+  const src = await resolveAuthSource();
+  if (src.secret === null) {
     return c.text("keychain unavailable", 503);
   }
 
@@ -38,7 +38,7 @@ export const requireBearer: MiddlewareHandler = async (c, next) => {
   }
 
   const a = digest(presented);
-  const b = digest(secret);
+  const b = digest(src.secret);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
     return c.text("unauthorized", 401);
   }

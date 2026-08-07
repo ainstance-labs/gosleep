@@ -22,6 +22,13 @@ docs/handoff/.watchdog-*
 # Node
 node_modules/
 
+# Built binaries — apps/core/bin/ carries SIGNED helpers (touchid-gate.app) built
+# by apps/core/scripts/build-touchid-gate.sh at install time (GSL-264 rev-3 addendum
+# Delta 4). The Swift/plist SOURCES are tracked; the .app bundle and its debug
+# symbols are per-host build outputs and stay out of git.
+apps/core/bin/touchid-gate.app/
+apps/core/bin/*.dSYM/
+
 # Runtime data (GSL-258 web control plane): SQLite DB, WAL/SHM sidecars,
 # snapshots, and core logs live under data/. Only the .gitkeep marker and
 # data/.gitignore are tracked so the directory shape survives cloning.

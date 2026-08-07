@@ -21,14 +21,35 @@ export const PORT = Number.parseInt(process.env.GOSLEEP_CORE_PORT ?? "7331", 10)
 export const HOST_HEADER = `${HOST}:${PORT}`;
 
 // Keychain lookup — service/account keys used with macOS `security` CLI.
-export const KEYCHAIN_SERVICE = process.env.GOSLEEP_KEYCHAIN_SERVICE ?? "gosleep-web";
-export const KEYCHAIN_ACCOUNT = process.env.GOSLEEP_KEYCHAIN_ACCOUNT ?? (process.env.USER ?? "");
+//
+// SECURITY-RELATED CONFIG IS LAZY BY DESIGN. Every getter below reads `process.env` at CALL
+// time (not at module import). This is required for the Delta-5 auth-source unit tests which
+// swap env between cases (dev-bypass → token-file → nothing → …); a frozen module-level const
+// would capture the value at first import and every later test would see the stale value. The
+// convention: security-related knobs are functions (`getFoo()`), the rest stay as top-level
+// consts because they are set once at process launch and never change under test.
+export function getKeychainService(): string {
+  return process.env.GOSLEEP_KEYCHAIN_SERVICE ?? "gosleep-web";
+}
+export function getKeychainAccount(): string {
+  return process.env.GOSLEEP_KEYCHAIN_ACCOUNT ?? (process.env.USER ?? "");
+}
 
 // Test/dev seam: if this env is set at process start, the Keychain lookup is BYPASSED and the
 // Bearer middleware accepts this literal value. Never set in production (plist.sh does not
 // export it). This is the seam that lets tools/lab/tests/core-smoke.sh run without a live
 // Keychain item.
-export const DEV_BEARER_TOKEN = process.env.GOSLEEP_BEARER_TOKEN ?? "";
+export function getDevBearerToken(): string {
+  return process.env.GOSLEEP_BEARER_TOKEN ?? "";
+}
+
+// GSL-264 (Delta 5) — explicit token-file fallback path. Set to a filesystem path to opt into
+// the documented plain-file fallback (used when Keychain is unreachable AND the operator has
+// deliberately configured a file-based rescue). Unset (empty) = no fallback (503 on Keychain
+// failure). NEVER inferred from a default location — the operator must set this by hand.
+export function getTokenFilePath(): string {
+  return process.env.GOSLEEP_TOKEN_PATH ?? "";
+}
 
 // Server / API version reported by GET /version. Bumped by hand on breaking changes; the
 // db_schema_version placeholder is filled in a later task (GSL-261 Drizzle schema).
@@ -38,10 +59,9 @@ export const API_VERSIONS = ["v1"] as const;
 // Keychain wrapper's timeout ceiling, per rev-3 addendum Delta 5 (never silently unauth; return
 // 503 instead). 5 seconds is the hard cap the addendum specifies for macOS Tahoe 26.x, and 5s
 // is a safe upper bound for all supported versions. Env override kept for test purposes only.
-export const KEYCHAIN_TIMEOUT_MS = Number.parseInt(
-  process.env.GOSLEEP_KEYCHAIN_TIMEOUT_MS ?? "5000",
-  10,
-);
+export function getKeychainTimeoutMs(): number {
+  return Number.parseInt(process.env.GOSLEEP_KEYCHAIN_TIMEOUT_MS ?? "5000", 10);
+}
 
 // Owner display name (surfaced by GET /whoami). Sourced from env with a system-user fallback.
 // Task-scope: no Directory lookup yet; a future task can wire this to a Keychain entry keyed on

@@ -56,13 +56,25 @@ else
   die "'security' CLI missing — this must run on macOS"
 fi
 
-# ── swiftc (Xcode Command Line Tools) — checked, not compiled here ────────────
-if have swiftc; then
+# ── swiftc (Xcode Command Line Tools) — checked, and used to build touchid-gate.app ────
+if have swiftc && have codesign; then
   say "swiftc present ($(swiftc --version 2>&1 | head -1))"
-  say "NOTE: bin/touchid-gate.swift is SOURCE ONLY. GSL-264 handles the .app-bundle build."
+  if [ "$CHECK_ONLY" = "0" ]; then
+    say "building bin/touchid-gate.app (GSL-264 rev-3 addendum Delta 4)"
+    if bash "$SCRIPT_DIR/scripts/build-touchid-gate.sh"; then
+      say "touchid-gate.app built + signed"
+    else
+      # Non-fatal here: the build can be re-attempted by hand; a missing bundle degrades
+      # the high-blast gate to TTY-confirm only (still safe, just weaker biometrics).
+      say "WARN: touchid-gate.app build failed — high-blast writes will fall back to TTY-confirm"
+    fi
+  else
+    say "NOTE: --check-only mode — skipping touchid-gate.app build"
+  fi
 else
-  say "WARN: swiftc not on PATH. Install Xcode Command Line Tools with 'xcode-select --install'."
-  say "      GSL-264 (Security) will need it to build bin/touchid-gate.app."
+  say "WARN: swiftc/codesign not on PATH. Install Xcode Command Line Tools with 'xcode-select --install'."
+  say "      Without them, apps/core/scripts/build-touchid-gate.sh cannot produce bin/touchid-gate.app."
+  say "      Only the TTY-confirm fallback path will be available for high-blast writes."
 fi
 
 say "done."

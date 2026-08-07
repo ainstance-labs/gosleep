@@ -4480,15 +4480,17 @@ else
 fi
 
 # Rule 2 — no shell scripts under apps/ or packages/ EXCEPT the whitelisted install/plist
-# helpers (which live at apps/core top level per Jira, and apps/core/scripts/*.sh per the
-# architecture directory sketch). Every other .sh under apps/ means someone put a spawner
-# in the wrong layer — real spawners belong in apps/core/src/spawn/*.ts.
+# helpers (which live at apps/core top level per Jira, apps/core/scripts/*.sh per the
+# architecture directory sketch, and apps/core/bin/*.sh for the named gate helpers per GSL-264
+# rev-3 addendum §Delta 4 — tty-confirm.sh sits alongside touchid-gate.app as the section-7.3
+# priority-1 fallback). Every OTHER .sh under apps/ means someone put a spawner in the wrong
+# layer — real spawners belong in apps/core/src/spawn/*.ts.
 APPS_SH="$(cd "$REPO_ROOT" && \
   find apps packages -name '*.sh' 2>/dev/null | \
-  grep -Ev '^apps/core/(install-deps\.sh|plist\.sh|scripts/[^/]+\.sh)$' | \
+  grep -Ev '^apps/core/(install-deps\.sh|plist\.sh|scripts/[^/]+\.sh|bin/[^/]+\.sh)$' | \
   head -5 || true)"
 if [ -z "$APPS_SH" ]; then
-  ok "GSL-260: no unexpected .sh under apps/ or packages/ (§5.3 rule 2 — whitelist: install-deps.sh, plist.sh, apps/core/scripts/*.sh)"
+  ok "GSL-260: no unexpected .sh under apps/ or packages/ (§5.3 rule 2 — whitelist: install-deps.sh, plist.sh, apps/core/scripts/*.sh, apps/core/bin/*.sh)"
 else
   bad "GSL-260: unexpected .sh under apps/ or packages/: $(printf '%s' "$APPS_SH" | tr '\n' ' ')"
 fi
