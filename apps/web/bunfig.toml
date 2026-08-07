@@ -1,0 +1,4 @@
+# @gosleep/web — per-app Bun config (GSL-265).
+#
+# Kept minimal: dev/build/typecheck are all wired through vite/tsc in package.json scripts.
+# Bun is only used as the package installer + script runner here; no test runner tuning yet.
