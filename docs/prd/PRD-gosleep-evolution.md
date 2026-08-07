@@ -502,7 +502,18 @@ tasty-lunch wiki → инвариант «никто не правит рука�
 
 ---
 
-## Фаза 5 — UI оркестрации (static HTML v1)
+## Фаза 5 — UI оркестрации (static HTML v1) — SUPERSEDED
+
+> **Superseded on 2026-08-03 by owner decision `d-2026-08-03-004` (Warren-model,
+> SQLite = source of truth) and formally replaced by Phase 7 «Interactive control
+> plane» below.** The static HTML dashboard delivered by Фаза 5 (chronicler-generated
+> `docs/lab/site/*.html` + 7 экранов) is kept as historical context and remains in
+> git as an archive. All new UI work belongs to Phase 7 and epic
+> [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250). The interactive
+> requirements (runway with a binding constraint, live question window with
+> countdowns, per-agent fleet, real-time updates, manifest-rule provenance, first
+> working "Publish skill" button) migrate into Phase 7 R7.\*. Do NOT plan new work
+> against the Phase 5 tasks below.
 
 **Цель.** Один утренний экран: статический HTML, регенерируемый из `docs/lab/`, никогда не правится
 руками. Autonomy runway, окно вопросов, статусы Jira/GH — «можно ли идти спать» с доказательствами.
@@ -643,6 +654,198 @@ break-glass. **Не строить DIY-transport** — official Remote Control �
   минут пуш приходит на реальный телефон (RC push И/ИЛИ ntfy); владелец отвечает из Telegram/RC →
   ответ появляется в `queue.jsonl` как `answered_by=owner`; при заглушенных «красивых» путях владелец
   делает `tmux attach` через Tailscale+mosh и видит живые панели.
+
+---
+
+## Фаза 7 — Interactive control plane (SQLite = source of truth, gosleep-core, live web UI)
+
+**Замещает Фазу 5.** Источник правды дизайна — `docs/reports/web-harness-research-2026-08-03/target-architecture.md`
+(редакция 2, 2026-08-03) + `docs/reports/web-harness-research-2026-08-03/target-architecture-rev3-addendum.md`
+(редакция 3, deltas only, 2026-08-07). Требования владельца — `d-2026-08-03-007`
+(2026-08-03), переподтверждённые устно 2026-08-06 и разложенные по R1..R7 в
+`docs/reports/web-stack-audit-2026-08-06/coverage.md` раздел 2. Эпик — [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250)
+(«Interactive management web interface (control plane)»).
+
+**Цель.** Живая веб-панель на `http://127.0.0.1:7331`, из которой владелец видит,
+что оркестр делает прямо сейчас, отвечает на вопросы агентов и запускает базовые
+write-действия (первая — «Опубликовать скилл»). Не заменяет Remote Control (Ф6) и
+не пытается работать с телефона напрямую — GitHub-серверный `mobile/README.md`
+живёт независимо.
+
+**Scope.**
+
+| In | Out (и почему) |
+|---|---|
+| **Bun-workspaces monorepo:** `apps/core` (Bun 1.2+ + Hono 4.x + Drizzle + `bun:sqlite`), `apps/web` (React 19 + **Vite 7** + shadcn/ui + Tailwind v4 + TanStack Query v5 + react-router 7 + Recharts + Framer Motion + lucide-react), `packages/schema`, `packages/sdk`, `packages/runner-adapter` (SessionAdapter seed) | Node/Fastify рантайм, Vite 8/Rolldown (v1.1), Prisma/Kysely (rev 2 §4.2 обоснование), Next.js SSR (не нужен) |
+| **SQLite (WAL) = source of truth** (`data/gosleep.db`); Drizzle-миграции + snapshot'ы + JSONL как исторический архив | JSONL как SoT (владелец отменил, `d-2026-08-03-006`), Postgres (overkill для однопользовательского локального) |
+| **REST + SSE** через `packages/schema` (zod), `withTimeline` на каждом POST, per-endpoint concurrency=1, persistent idempotency | WebSocket (Warren осознанно отказался), long-poll как единственный транспорт |
+| **Layered authentication:** Bearer в macOS Keychain (ACL `-T`, 5 s timeout → 503, Tahoe 26.x guard), TouchID gesture (signed `.app` bundle) на high-blast write, `withTimeline` audit, per-boot auth-source audit line | OAuth device-flow с внешним IdP (нет IdP), mTLS с per-user cert (overkill), token в plaintext (недостаточно) |
+| **v1 answer-delivery loop** = blocking `PreToolUse{AskUserQuestion}` hook long-polling gosleep-core; `allow` + `updatedInput{questions, answers}` на ответ (или fallback `deny` + `permissionDecisionReason`); timeout → benign TUI fallback | `defer` (print-mode only, DROPPED); channels как основной путь (turn-boundary only, v1.1); tmux `send-keys` как основной путь (только последний fallback, free-text) |
+| **Per-agent fleet view** из `agent_sessions` (заполняется `claude agents --json` + `PreToolUse` shim) с контекстом %, current tool, current intent | Собственный agent-runtime; интеграция с не-Claude-Code провайдерами в v1 (seed через `SessionAdapter` только) |
+| **Manifest-rule provenance** на questions (`applied_by`, `applied_rule_ref`) + `POST /actions/questions/apply-manifest` + бейдж в UI | Автоматический синтез manifest-правил из истории ответов (учтёт Learning loop Ф3, здесь не реализуем) |
+| **Defer action** на вопрос: `POST /actions/questions/defer {qid, defer_until?}` + status `'deferred'` | Приоритизация очереди алгоритмически |
+| **Jira reconciler worker** внутри gosleep-core (5-min cadence + `POST /actions/tasks/sync`) + SSE `tasks.updated` | Двусторонний Jira sync (write из UI в Jira — только через существующий MCP путь оркестратора) |
+| **`/metrics` endpoint** (Prometheus text exposition) для локальных дашбордов владельца | Внешний Prometheus scrape (локально, `127.0.0.1` only) |
+| **Channels v1.1 плагин** gosleep-as-channel: permission relay + owner-steer at turn boundaries, за `--dangerously-load-development-channels` | Channels как v1 путь для questions (dialog не relay'ится каналом) |
+| **`SessionAdapter` interface seed** (`packages/runner-adapter/`, один Claude-Code adapter, OpenAI/Codex — `.md` sketch) | Полная multi-provider реализация в v1 (deferred, R7 seed only) |
+| **Первая write-кнопка «Опубликовать»** (`POST /actions/skills/publish` + TouchID e2e); dual-write hooks (`POST /internal/emit`); `answer`/`tick`/`ack`/`resolve` POST-эндпойнты; 5 read-only screens + Questions/Fleet actionable | Live steering через веб (это Ф6 Remote Control); полноценный mobile-клиент (Ф6); replay-then-tail live-стриминг (v1.1) |
+
+**Success criteria фазы.**
+
+- F7-S1. Открыв `http://127.0.0.1:7331`, владелец видит Overview с runway = min(),
+  Timeline с sub-second SSE-обновлениями, Questions с бейджем `kind` (BLOCKER/
+  DECISION/CLARIFY/FYI) и провенансом ответа (`applied_by`, `applied_rule_ref`
+  как hoverable), Fleet с карточкой на каждого агента (context %, current tool,
+  cycle, model), Tasks keyed по Jira с last-sync timestamp, Cost, Skills.
+  (Покрывает R5 + R1 + R4 + R6.)
+- F7-S2. Владелец нажимает опцию в диалоге вопроса (или Custom, или Apply
+  manifest rule, или Defer) → выбор доставляется до агента, который задал вопрос,
+  через `PreToolUse{AskUserQuestion}` hook в течение бюджета long-poll'а (≤ 900 с
+  дефолт); при таймауте вопрос гладко рендерится в TUI. (Покрывает R1 + R2.)
+- F7-S3. Опубликовать скилл через кнопку в UI: click → TouchID prompt на .app
+  bundle → `publish.sh` snapshot + rsync + append CHANGELOG.jsonl → snapshot after,
+  timeline пишет каждый шаг с `actor="web"`. (Покрывает первую write-кнопку.)
+- F7-S4. Ночной сценарий: агент постит BLOCKER-вопрос → hook долгопольнит core →
+  агент не стопорится в производительной работе (`POST /internal/emit` fire-and-
+  forget), просто ждёт следующий tool call; утром владелец видит очередь и
+  отвечает пакетом; ответы доставляются agentам в течение одного tool call'а.
+  (Покрывает R3 + R1.)
+- F7-S5. `packages/runner-adapter/` собирает Claude-Code specifics за одним
+  интерфейсом; `grep -R "claude agents" apps/core/src` не находит прямых
+  обращений — только через adapter (SessionAdapter seed). (Покрывает R7 seed.)
+
+**Требования.**
+
+- **R7.1 — Real-time question window с блокирующим статусом и manifest-rule
+  provenance.** *Owner (`d-2026-08-03-007` + restated 2026-08-06):* «окно вопросов
+  от агентов в реальном времени — новый вопрос виден сразу, со статусом
+  (блокирующий/не блокирующий) и с показом, что ответ дан по манифесту и какой
+  именно правило». *Target:* SSE-обновление в течение секунды после
+  `POST /internal/emit`; в UI бейдж `kind` (BLOCKER/DECISION/CLARIFY/FYI) с
+  визуальным различием; при `applied_by='manifest'` — hoverable rule text из
+  `applied_rule_ref`. *Acceptance:* F7-S1, F7-S4.
+- **R7.2 — Web-ответ на вопрос: pick / custom / defer / apply-manifest + доставка
+  агенту.** *Owner:* «Owner responds from the web UI: pick an offered option,
+  write a custom answer, defer the question, or answer via manifest» — плюс
+  «ответ доходит до агента, который спросил». *Target:* четыре кнопки в диалоге
+  ответа, три POST-эндпойнта (`answer`, `defer`, `apply-manifest`); доставка
+  через blocking `PreToolUse{AskUserQuestion}` hook с fallback на `deny` +
+  `permissionDecisionReason`. *Acceptance:* F7-S2 (в частности, тест
+  «click → agent proceeds within one tool call»).
+- **R7.3 — Night mode: вопросы копятся, агенты не стопорятся.** *Owner:*
+  «questions accumulate in the queue, agents do not stall». *Target:*
+  `POST /internal/emit` — fire-and-forget с точки зрения агента (возврат
+  сразу, не ждёт ответа); ответ прилетает по факту следующего tool call'а.
+  *Acceptance:* F7-S4, smoke assertion в GSL-269.
+- **R7.4 — Fleet view: сколько агентов, что делают, контекст %.** *Owner:*
+  «сколько агентов запущено сейчас, что каждый делает, какой у него контекст».
+  *Target:* `agent_sessions` table (rev-3 addendum §8.1), заполняется
+  `claude agents --json` (роcтер) + `PreToolUse` shim (context %, current tool);
+  `/fleet` эндпойнт + Fleet screen с карточкой на агента. *Acceptance:* F7-S1
+  «Fleet карточки», F7-S2 (когда владелец отвечает конкретному агенту, видно
+  куда доставилось).
+- **R7.5 — Near-second live updates via event stream (не polling).** *Owner:*
+  «обновление близкое к секундному, поток событий, а не опрос по таймеру».
+  *Target:* SSE через `EventEmitter` из SQLite; `Last-Event-ID`,
+  `event: rotate` при UTC-смене; latency = INSERT → SSE ≤ 1 s.
+  *Acceptance:* F7-S1 (Timeline sub-second), GSL-263 acceptance.
+- **R7.6 — Tasks view + Jira sync.** *Owner:* «tasks visible + reflects Jira».
+  *Target:* Jira reconciler worker (rev-3 addendum §9), 5-min cadence +
+  on-demand `POST /actions/tasks/sync`; SSE `tasks.updated` при изменении.
+  *Acceptance:* F7-S1 «Tasks с last-sync timestamp», row-change в Jira → row-
+  change в UI ≤ (interval + 3 s).
+- **R7.7 — Future-proofing: providers beyond Claude Code (SessionAdapter seed).**
+  *Owner:* «Future-proofing: providers other than Claude Code later (abstraction
+  of the agent runner)». *Target:* seed only — `packages/runner-adapter/`
+  с одним рабочим адаптером (`claude-code.ts`) и `.md`-скетчем для OpenAI/
+  Codex; все Claude-Code specifics в `apps/core/` импортируются через adapter.
+  *Acceptance:* F7-S5.
+
+**Задачи (эпик `[Web][Repo] Interactive management web interface (control
+plane)`, [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250)).**
+Существующие GSL-258…GSL-271 покрывают spine (schema, indexer, SSE, security,
+client skeleton, первая write-кнопка, dual-write hooks, POST actions, docs,
+deprecation, финальное переключение) — план из target-architecture раздел 9,
+шаги 1-12. Плюс задачи, созданные reconciliation'ом 2026-08-07 под rev-3 addendum:
+
+1. **GSL-274** (первая исполняемая, linchpin, 30-min timebox) —
+   `[Repo][Web] Answer-loop smoke test: blocking PreToolUse{AskUserQuestion} +
+   allow/updatedInput on a live subscription session`. Разрешает primary/fallback
+   выбор для answer-delivery loop.
+2. **GSL-272** — `[Docs][Web] Architecture rev-3 addendum` (эта серия документов).
+3. **GSL-273** — `[Docs][Web] PRD Phase 7 append` (данный раздел).
+4. Answer-delivery loop production (long-poll shim + `wait` endpoint).
+5. Fleet: `agent_sessions` table + PreToolUse emit + `/fleet` + Fleet screen.
+6. Manifest-rule provenance + `POST /actions/questions/apply-manifest` + бейдж.
+7. Defer action: enum + `POST /actions/questions/defer` + UI кнопка.
+8. Jira reconciler worker + `POST /actions/tasks/sync`.
+9. `/metrics` endpoint (Prometheus exposition).
+10. `SessionAdapter` interface + Claude-Code adapter + OpenAI/Codex `.md` sketch.
+11. Channels v1.1: gosleep-as-channel plugin (dev-flag, permission relay,
+    turn-boundary steer).
+12. Deprecation banner на `docs/reports/web-harness-research-2026-08-03/index.html`.
+13. Расширения существующих GSL-263 (`/metrics` + `/fleet`, transcript
+    enrichment-only), GSL-264 (.app bundle + Keychain hardening), GSL-265
+    (Vite 7), GSL-267 (AskUserQuestion shim + `agent_sessions` coalesce),
+    GSL-268 (defer/apply-manifest выносятся из scope) — трекается комментариями,
+    отсылающими на rev-3 addendum.
+
+**Оценка усилия:** **XL** (30-38 дней одному воркеру с +40% honest buffer,
+target-architecture раздел 11; первая рабочая кнопка — 17-21 день, шаг 7). С двумя
+воркерами в параллель — 22-26 календарных дней. Rev-3 addendum добавляет ~5-7
+дней (fleet schema, answer-loop shim, manifest provenance, /metrics, Jira
+reconciler).
+
+**Зависимости.** Ф3 (question buffer semantics; queue.jsonl schema переходит в
+`questions`-таблицу). Ф4 (docs/lab layout как источник исторического импорта).
+Эпик [GSL-174](https://ainstance-labs.atlassian.net/browse/GSL-174) (skills
+governance) шаг 7 — первая write-кнопка «Publish skill» ждёт `tools/skills/
+publish.sh` + `docs/skills/CHANGELOG.jsonl` (стадии 2-3 GSL-174).
+
+**Non-goals (явно).**
+
+- Полный mobile-клиент — Ф6 (Remote Control + hook→ntfy + Telegram +
+  Tailscale break-glass).
+- Live steering через веб (write-в-TTY интерактивно) — Ф6 Remote Control.
+- Multi-provider runner (SessionAdapter — seed only, не второй адаптер в v1).
+- Vite 8 / Rolldown default bundler — v1.1.
+- Real-time live-стриминг из channels — v1.1 (turn-boundary only через дев-флаг).
+- Prometheus scrape внешним сервисом — `/metrics` только на `127.0.0.1`.
+- Автоматический синтез manifest-правил — Learning loop Ф3.
+
+**Риски (в дополнение к R26-R38 из target-architecture раздел 12).**
+
+- (R) **Primary answer-loop path не работает в interactive mode.** Смягчение:
+  документированный fallback `deny` + `permissionDecisionReason` в GSL-274
+  проверяется тем же 30-min timebox'ом; при провале primary — переключаем
+  GSL-268 контракт на fallback.
+- (R) **Tahoe 26.x регрессия Keychain CLI разбивает production
+  authentication.** Смягчение: rev-3 addendum §5 фиксирует политику (5 s
+  timeout, ASCII-only Base64 shim, per-boot audit line), GSL-264 acceptance
+  включает тест на 26.x-machine.
+- (R) **`.app` bundle signing на новой машине владельца не срабатывает
+  (нет provisioning profile).** Смягчение: ad-hoc `codesign -s -` без
+  provisioning; entitlements plist коммитится; GSL-264 e2e гоняется на
+  реальной машине.
+- (R) **`--dangerously-load-development-channels` full-screen consent
+  dialog на каждый старт сессии.** Смягчение: channels в v1.1, не v1;
+  v1 живёт полностью на hooks, без channels dependency.
+- (R) **`SessionAdapter` seed деградирует в vaporware.** Смягчение: GSL-267
+  и три sibling-tasks (fleet, answer-delivery, manifest) обязаны импортировать
+  через adapter файл даже в v1 — так seam остаётся живой.
+
+**Критерии приёмки фазы + end-check.**
+
+- Gates: `bun --filter='@gosleep/core' test`; `smoke.sh` (rev 2 §5.3
+  правила + новые guard'ы из GSL-269); `install-deps.sh` в чистой машине
+  собирает .app bundle; `plist.sh install` регистрирует launchd.
+- **End-check:** после установки владелец открывает `http://127.0.0.1:7331` из
+  Safari/Chrome на своём MacBook'е, видит live Overview с runway и Fleet,
+  отвечает на реальный агентский вопрос через web (agent видит ответ в
+  течение одного tool call'а), публикует скилл через TouchID prompt, снимает
+  snapshot руками через кнопку. Preact-SSG перестаёт вызываться chronicler'ом
+  (`GOSLEEP_KEEP_STATIC_SITE=0`); `mobile/README.md` продолжает работать через
+  GitHub-рендер (Ф5 archive-mode).
 
 ---
 
