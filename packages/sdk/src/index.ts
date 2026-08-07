@@ -32,6 +32,8 @@ import {
   SseEventData,
   SseRotateData,
   StatusResponse,
+  SyncTasksActionInput,
+  SyncTasksActionResponse,
   TasksResponse,
   TickActionInput,
   TickActionResponse,
@@ -59,6 +61,8 @@ import type {
   SseEventData as SseEventDataT,
   SseRotateData as SseRotateDataT,
   StatusResponse as StatusResponseT,
+  SyncTasksActionInput as SyncTasksActionInputT,
+  SyncTasksActionResponse as SyncTasksActionResponseT,
   TasksResponse as TasksResponseT,
   TickActionInput as TickActionInputT,
   TickActionResponse as TickActionResponseT,
@@ -335,6 +339,19 @@ export class CoreClient {
       idempotencyKey,
     );
   }
+
+  syncTasks(
+    input: SyncTasksActionInputT,
+    idempotencyKey: string,
+  ): Promise<SyncTasksActionResponseT> {
+    return this.postAction(
+      "/actions/tasks/sync",
+      input,
+      SyncTasksActionInput,
+      SyncTasksActionResponse,
+      idempotencyKey,
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -539,6 +556,8 @@ export type {
   SseEventDataT as SseEventData,
   SseRotateDataT as SseRotateData,
   StatusResponseT as StatusResponse,
+  SyncTasksActionInputT as SyncTasksActionInput,
+  SyncTasksActionResponseT as SyncTasksActionResponse,
   TasksResponseT as TasksResponse,
   TickActionInputT as TickActionInput,
   TickActionResponseT as TickActionResponse,

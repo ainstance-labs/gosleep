@@ -31,6 +31,8 @@ import type {
   ResolveActionResponse,
   SkillsResponse,
   StatusResponse,
+  SyncTasksActionInput,
+  SyncTasksActionResponse,
   TasksResponse,
   TickActionInput,
   TickActionResponse,
@@ -240,6 +242,23 @@ export function useDeferQuestion(): UseMutationResult<
       coreClient.deferQuestion(input, newIdempotencyKey()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+// GSL-279: force a Jira reconcile cycle (blocks until the cycle completes; usually <= 3 s).
+export function useSyncTasks(): UseMutationResult<
+  SyncTasksActionResponse,
+  Error,
+  SyncTasksActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SyncTasksActionInput) =>
+      coreClient.syncTasks(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "tasks"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
     },
   });

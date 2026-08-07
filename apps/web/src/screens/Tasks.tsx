@@ -1,15 +1,19 @@
-// @gosleep/web — Tasks screen (GSL-265).
+// @gosleep/web — Tasks screen (GSL-265, GSL-279).
 //
 // Jira-cache projection grouped by epic. Uses `useTasks()` without filters; grouping runs in
-// the client so a change in epic set does not force a refetch.
+// the client so a change in epic set does not force a refetch. The header carries a "Sync now"
+// button that fires `POST /actions/tasks/sync` — the tick reconciles the local `tasks` table
+// against Jira (or the gh mirror as a fallback) and returns the change summary. SSE's
+// `tasks.updated` event then invalidates the query so the table refreshes without a hard reload.
 
 import { useMemo, useState } from "react";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
-import { useTasks } from "../data/queries";
+import { useSyncTasks, useTasks } from "../data/queries";
 import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
 import { TBody, TD, TH, THead, TR, Table } from "../components/ui/Table";
 import { timeAgo } from "../lib/format";
 import type { TaskRow } from "@gosleep/schema";
@@ -26,6 +30,7 @@ const STATUS_TONE: Record<string, Tone> = {
 export function TasksScreen() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const t = useTasks(undefined, statusFilter.length > 0 ? statusFilter : undefined);
+  const sync = useSyncTasks();
 
   const grouped = useMemo(() => {
     const map = new Map<string, TaskRow[]>();
@@ -38,23 +43,40 @@ export function TasksScreen() {
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [t.data]);
 
+  const lastSyncSummary =
+    sync.data?.result !== undefined
+      ? `+${sync.data.result.inserted} / Δ${sync.data.result.updated} of ${sync.data.result.totalSeen} via ${sync.data.result.source}`
+      : null;
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Tasks"
-        subtitle="Cache of Jira issues, keyed on GSL-*. Live-refreshed by the Jira sync worker (GSL-279)."
+        subtitle="Cache of Jira issues, keyed on GSL-*. Reconciled by the jira-sync worker every 5 min; hit Sync now to force a tick."
         right={
-          <select
-            className="surface rounded-md px-2 py-1.5 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.currentTarget.value)}
-          >
-            <option value="">All statuses</option>
-            <option value="To Do">To Do</option>
-            <option value="In Progress">In Progress</option>
-            <option value="In Review">In Review</option>
-            <option value="Done">Done</option>
-          </select>
+          <div className="flex items-center gap-2">
+            {lastSyncSummary !== null ? (
+              <span className="text-muted text-xs mono">{lastSyncSummary}</span>
+            ) : null}
+            <select
+              className="surface rounded-md px-2 py-1.5 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.currentTarget.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="In Review">In Review</option>
+              <option value="Done">Done</option>
+            </select>
+            <Button
+              onClick={() => sync.mutate({})}
+              disabled={sync.isPending}
+              size="sm"
+            >
+              {sync.isPending ? "Syncing…" : "Sync now"}
+            </Button>
+          </div>
         }
       />
 
@@ -63,7 +85,7 @@ export function TasksScreen() {
         error={t.error}
         data={t.data}
         isEmpty={(d) => d.tasks.length === 0}
-        emptyMessage="No tasks cached yet. The Jira sync worker is scheduled for GSL-279."
+        emptyMessage="No tasks cached yet — click Sync now above to run a Jira reconcile cycle."
       >
         {() => (
           <div className="space-y-4">

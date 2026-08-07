@@ -93,7 +93,7 @@ echo "== booting @gosleep/core (dev Bearer, port $PORT, scratch DB + lab) =="
 GOSLEEP_BEARER_TOKEN="$TOKEN" GOSLEEP_OWNER_NAME="smoke-owner" GOSLEEP_CORE_PORT="$PORT" \
   GOSLEEP_DB_PATH="$SCRATCH_DB" GOSLEEP_LAB_DIR="$SCRATCH_LAB" \
   GOSLEEP_INTERNAL_SECRET="$INTERNAL_SECRET" \
-  GOSLEEP_DISABLE_INDEXER=1 GOSLEEP_DISABLE_FLEET_POLL=1 \
+  GOSLEEP_DISABLE_INDEXER=1 GOSLEEP_DISABLE_FLEET_POLL=1 GOSLEEP_DISABLE_JIRA_SYNC=1 \
   bun run "$REPO_ROOT/apps/core/src/serve.ts" \
   > "$WORK/stdout.log" 2> "$WORK/stderr.log" &
 SERVER_PID=$!
@@ -539,6 +539,52 @@ if [ -n "$DEFER_QID" ]; then
   fi
 else
   bad "37. defer flow skipped — internal POST returned no qid"
+fi
+
+echo "== /actions/tasks/sync scenarios (GSL-279) =="
+# 38. POST /actions/tasks/sync without Bearer → 401
+check_status "38. POST /actions/tasks/sync (no auth)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -d '{}' \
+  "http://127.0.0.1:$PORT/actions/tasks/sync"
+
+# 39. POST /actions/tasks/sync with malformed epic → 400
+check_status "39. POST /actions/tasks/sync (bad epic)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"epic":"not-a-key"}' \
+  "http://127.0.0.1:$PORT/actions/tasks/sync"
+
+# 40. POST /actions/tasks/sync (valid, no epic) → 200 + result envelope.
+# The smoke runs against the real gh CLI (authenticated on the operator's box); a network
+# outage in CI would fail this scenario. That is acceptable — the smoke intentionally exercises
+# the real integration since the whole point of GSL-279 is to reach a real Jira/GH source.
+# On systems without gh reachable, run with GOSLEEP_SKIP_SYNC_LIVE=1 to skip 40+41.
+if [ "${GOSLEEP_SKIP_SYNC_LIVE:-0}" != "1" ]; then
+  SYNC_BODY="$WORK/sync-body.json"
+  SYNC_STATUS="$(curl -s -o "$SYNC_BODY" -w '%{http_code}' -X POST \
+    -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: smoke-sync-$(date +%s)" \
+    -d '{}' \
+    "http://127.0.0.1:$PORT/actions/tasks/sync" 2>&1)"
+  if [ "$SYNC_STATUS" = "200" ] && grep -q '"source":' "$SYNC_BODY"; then
+    ok "40. POST /actions/tasks/sync (valid) → 200 + result envelope"
+  else
+    bad "40. POST /actions/tasks/sync (valid) → $SYNC_STATUS body=$(cat "$SYNC_BODY")"
+  fi
+
+  # 41. After the sync tick, the scratch DB's tasks table has rows for real GSL-* issues.
+  # The COUNT depends on the live Jira/GH state; assert only "> 0" which is stable.
+  DB_TASKS_COUNT="$(sqlite3 "$SCRATCH_DB" "SELECT COUNT(*) FROM tasks WHERE key LIKE 'GSL-%'" 2>/dev/null || echo "0")"
+  if [ "$DB_TASKS_COUNT" -gt 0 ]; then
+    ok "41. tasks table now carries $DB_TASKS_COUNT GSL-* rows after sync"
+  else
+    bad "41. tasks table empty after sync — either gh/jira is unreachable or the parser missed"
+  fi
+else
+  ok "40. skipped (GOSLEEP_SKIP_SYNC_LIVE=1)"
+  ok "41. skipped (GOSLEEP_SKIP_SYNC_LIVE=1)"
 fi
 
 echo "== teardown =="

@@ -33,6 +33,7 @@ import { startRotationWatcher, type RotationWatcher } from "./sse/rotation.ts";
 import { writeAuthSourceAudit } from "./security/authSource.ts";
 import { startFleetPoll, type FleetPollController } from "./workers/fleet-poll.ts";
 import { startDeferReopen, type DeferReopenController } from "./workers/defer-reopen.ts";
+import { startJiraSync, type JiraSyncController } from "./workers/jira-sync.ts";
 
 const app = new Hono();
 
@@ -52,6 +53,11 @@ let tail: TailController | null = null;
 let rotation: RotationWatcher | null = null;
 let fleet: FleetPollController | null = null;
 let deferReopen: DeferReopenController | null = null;
+let jiraSync: JiraSyncController | null = null;
+// Exported so `POST /actions/tasks/sync` can trigger an on-demand cycle without a fresh worker.
+export function getJiraSyncController(): JiraSyncController | null {
+  return jiraSync;
+}
 
 // GSL-264 / GSL-280 — per-boot auth-source audit line runs INDEPENDENTLY of the indexer.
 // The audit publishes the effective auth source (`recordAuthSource` → the metrics registry
@@ -128,6 +134,32 @@ if (process.env.GOSLEEP_DISABLE_DEFER_REOPEN !== "1") {
   }
 }
 
+// Jira sync worker (GSL-279). Reconciles the `tasks` table from Jira REST (preferred, when a
+// token is in Keychain under `gosleep-jira-api`) or the gh CLI (fallback — always available).
+// Gated by GOSLEEP_DISABLE_JIRA_SYNC=1 so the core-smoke can boot the server without spawning
+// gh in a hermetic scenario. Interval defaults to 5 min (target-arch Delta 9); override via
+// GOSLEEP_JIRA_SYNC_INTERVAL_S.
+if (process.env.GOSLEEP_DISABLE_JIRA_SYNC !== "1") {
+  try {
+    const intervalS = Number.parseInt(
+      process.env.GOSLEEP_JIRA_SYNC_INTERVAL_S ?? "300",
+      10,
+    );
+    const intervalMs =
+      Number.isFinite(intervalS) && intervalS > 0 ? intervalS * 1000 : 300_000;
+    jiraSync = startJiraSync(getDb(), { intervalMs });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.jira_sync.boot_failed",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
+}
+
 const server = Bun.serve({
   hostname: HOST,
   port: PORT,
@@ -165,6 +197,11 @@ const shutdown = async (signal: string): Promise<void> => {
   }
   try {
     await deferReopen?.stop();
+  } catch {
+    /* ignore */
+  }
+  try {
+    await jiraSync?.stop();
   } catch {
     /* ignore */
   }

@@ -404,6 +404,31 @@ export const DeferActionInput = z.object({
 });
 export type DeferActionInput = z.infer<typeof DeferActionInput>;
 
+// -----------------------------------------------------------------------------
+// sync-tasks action (GSL-279 — POST /actions/tasks/sync)
+//
+// On-demand Jira reconciler tick. Returns the per-cycle summary (inserted / updated / total
+// seen / which source served the snapshot / the changed key list). Optional `epic` scopes the
+// JQL to a single epic subtree.
+// -----------------------------------------------------------------------------
+
+export const SyncTasksActionInput = z.object({
+  epic: z.string().regex(/^GSL-\d+$/).nullable().optional(),
+});
+export type SyncTasksActionInput = z.infer<typeof SyncTasksActionInput>;
+
+export const SyncTasksActionResult = z.object({
+  inserted: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  ended: z.number().int().nonnegative(),
+  totalSeen: z.number().int().nonnegative(),
+  ts: IsoTimestamp,
+  source: z.string(),
+  changedKeys: z.array(z.string()),
+  epic: z.string().nullable(),
+});
+export type SyncTasksActionResult = z.infer<typeof SyncTasksActionResult>;
+
 /** Generic action response — parameterised on the result type. Use the specific `*Response`
  *  aliases below at each call site so schema drift is caught at the SDK boundary. */
 function actionResponse<T extends z.ZodTypeAny>(result: T) {
@@ -434,6 +459,9 @@ export type ApplyManifestActionResponse = z.infer<typeof ApplyManifestActionResp
 
 export const DeferActionResponse = actionResponse(DeferActionResult);
 export type DeferActionResponse = z.infer<typeof DeferActionResponse>;
+
+export const SyncTasksActionResponse = actionResponse(SyncTasksActionResult);
+export type SyncTasksActionResponse = z.infer<typeof SyncTasksActionResponse>;
 
 /** Client-side request bodies — kept minimal and typed so the SDK does not accept arbitrary
  *  extra fields the server will silently drop. */

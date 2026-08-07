@@ -1,11 +1,12 @@
-// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277 + GSL-278).
+// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277 + GSL-278 + GSL-279).
 //
-// Six v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
+// Seven v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
 //
 //   POST /actions/questions/answer          { qid, answer, by?, channel? }             GSL-268
 //   POST /actions/questions/resolve         { qid, applied, early? }                   GSL-268
 //   POST /actions/questions/apply-manifest  { qid, rule_ref, answer? }                 GSL-277
 //   POST /actions/questions/defer           { qid, defer_until? }                      GSL-278
+//   POST /actions/tasks/sync                { epic? }                                  GSL-279
 //   POST /actions/tick                      {}                              (fire-and-forget)
 //   POST /actions/events/ack                { seq, note? }
 //
@@ -46,6 +47,7 @@ import { resolveIntentId, withTimeline } from "../actions/withTimeline.ts";
 import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
 import { questionNotifier } from "../questions/notifier.ts";
 import { loadManifest, type ManifestRule } from "../manifest/parser.ts";
+import { runSyncCycle, type JiraSyncChangeSummary } from "../workers/jira-sync.ts";
 
 export const actionsRoutes = new Hono();
 
@@ -1008,6 +1010,95 @@ actionsRoutes.post("/actions/tick", requireBearer, async (c) => {
     const status = httpStatusFromError(err);
     // Only log unexpected 5xx to stderr — expected 4xx (bad qid, missing field) are ordinary
     // user-input rejections and would spam the audit log if surfaced.
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
+// POST /actions/tasks/sync (GSL-279)
+//
+// On-demand Jira reconciler tick. Runs ONE sync cycle synchronously and returns the change
+// summary — the caller waits (≤ ~3 s typical). Optional `epic` scopes the JQL to a single
+// epic subtree; omitted → full sync.
+// -----------------------------------------------------------------------------
+
+interface SyncTasksInput {
+  epic: string | null;
+}
+
+interface SyncTasksResult extends JiraSyncChangeSummary {
+  epic: string | null;
+}
+
+async function doSyncTasks(input: SyncTasksInput): Promise<SyncTasksResult> {
+  const summary = await runSyncCycle(
+    getDb(),
+    input.epic !== null ? { epic: input.epic } : {},
+  );
+  return { ...summary, epic: input.epic };
+}
+
+actionsRoutes.post("/actions/tasks/sync", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const rawEpic = body.epic;
+  let epic: string | null = null;
+  if (typeof rawEpic === "string" && rawEpic.length > 0) {
+    if (!/^GSL-\d+$/.test(rawEpic)) {
+      return c.json({ ok: false, error: "epic must match /^GSL-\\d+$/" }, 400);
+    }
+    epic = rawEpic;
+  } else if (rawEpic !== null && rawEpic !== undefined) {
+    return c.json({ ok: false, error: "epic must be a string or null" }, 400);
+  }
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.tasks.sync", async () =>
+      withTimeline<SyncTasksResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/tasks/sync",
+          input: { epic },
+        },
+        () => doSyncTasks({ epic }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
     if (status >= 500) {
       // eslint-disable-next-line no-console
       console.error(
