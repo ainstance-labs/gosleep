@@ -1,0 +1,3 @@
+TOOL_USE :: {"questions": [{"question": "Which season do you prefer?", "header": "Season", "options": [{"label": "Summer", "description": "Warm weather, long days, outdoor activities"}, {"label": "Winter", "description": "Cold weather, snow, winter sports and co
+TOOL_RESULT :: "Your questions have been answered: \"Which season do you prefer?\"=\"Winter\". You can now continue with these answers in mind." is_error: None
+TEXT :: ANSWER RECEIVED: Winter

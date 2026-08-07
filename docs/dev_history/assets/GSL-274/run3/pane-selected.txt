@@ -1,0 +1,10 @@
+❯ Use the AskUserQuestion tool to ask me which season I prefer, options Summer and Winter. After you receive my answer, reply with exactly one line: ANSWER RECEIVED: <the season I chose>
+⏺ User answered Claude's questions:
+  ⎿  · Which season do you prefer? → Winter
+⏺ ANSWER RECEIVED: Winter
+✻ Baked for 22s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Haiku 4.5 │ tmp-answer-loop-test ██░░░░░░░░ 24%                                                                                                                                                   /rc
+  ⏸ manual mode on · ← for agents
