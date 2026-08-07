@@ -1,0 +1,22 @@
+{
+  "name": "@gosleep/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "gosleep-core: local Bun+Hono control plane for the gosleep web harness (127.0.0.1:7331)",
+  "scripts": {
+    "dev": "bun run --watch src/serve.ts",
+    "start": "bun run src/serve.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "@hono/zod-validator": "^0.4.0",
+    "zod": "^3.23.0",
+    "pino": "^9.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/bun": "^1.2.0"
+  }
+}

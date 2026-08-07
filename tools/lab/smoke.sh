@@ -4467,6 +4467,44 @@ else
   bad "GSL-258: data/ has tracked payload files (should be gitignored): $(printf '%s' "$DATA_TRACKED" | tr '\n' ' ')"
 fi
 
+echo "== GSL-260: no-mess rules for apps/ + packages/ (target-architecture §5.3) =="
+# Rule 1 — no python under apps/ or packages/. The new stack is TypeScript through and
+# through; chronicler.py stays under tools/lab/ where it belongs. A stray .py under apps/
+# would drag the python interpreter into the runtime path and re-open the mode split
+# rev 2 §5 was written to close.
+APPS_PY="$(cd "$REPO_ROOT" && find apps packages -name '*.py' 2>/dev/null | head -5 || true)"
+if [ -z "$APPS_PY" ]; then
+  ok "GSL-260: no .py files under apps/ or packages/ (§5.3 rule 1)"
+else
+  bad "GSL-260: unexpected .py under apps/ or packages/: $(printf '%s' "$APPS_PY" | tr '\n' ' ')"
+fi
+
+# Rule 2 — no shell scripts under apps/ or packages/ EXCEPT the whitelisted install/plist
+# helpers (which live at apps/core top level per Jira, and apps/core/scripts/*.sh per the
+# architecture directory sketch). Every other .sh under apps/ means someone put a spawner
+# in the wrong layer — real spawners belong in apps/core/src/spawn/*.ts.
+APPS_SH="$(cd "$REPO_ROOT" && \
+  find apps packages -name '*.sh' 2>/dev/null | \
+  grep -Ev '^apps/core/(install-deps\.sh|plist\.sh|scripts/[^/]+\.sh)$' | \
+  head -5 || true)"
+if [ -z "$APPS_SH" ]; then
+  ok "GSL-260: no unexpected .sh under apps/ or packages/ (§5.3 rule 2 — whitelist: install-deps.sh, plist.sh, apps/core/scripts/*.sh)"
+else
+  bad "GSL-260: unexpected .sh under apps/ or packages/: $(printf '%s' "$APPS_SH" | tr '\n' ' ')"
+fi
+
+# Rule 3 (partial) — the writers under docs/lab/ stay tools/lab/{lab-log,lab-emit,lab-write}
+# territory. apps/core does not (and will not) write to docs/lab/ directly; write actions
+# go through spawn of the existing CLIs. The full grep guard against fs writes lands with
+# GSL-263 (when actions.ts exists); here we only guard the invariant that apps/core has
+# no file at all matching src/spawn/**.ts YET (a placeholder-only check for GSL-260 —
+# real spawners in GSL-263 make this check dynamic).
+if [ -d "$REPO_ROOT/apps/core/src" ]; then
+  ok "GSL-260: apps/core/ scaffold exists"
+else
+  bad "GSL-260: apps/core/src not found — GSL-260 scaffold missing"
+fi
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 

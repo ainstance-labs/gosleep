@@ -36,9 +36,15 @@ of the existing tree. The layout is R1 from
 
 ```
 gosleep/                  # workspace root
-├── apps/                 # NEW: gosleep-core, gosleep-web (added in later tasks)
-│   ├── core/             # GSL-260: Bun + Hono API (healthz/version/whoami first)
-│   └── web/              # GSL-265: React 19 + Vite + shadcn client
+├── apps/                 # NEW: gosleep-core (GSL-260), gosleep-web (GSL-265, later)
+│   ├── core/             # GSL-260: Bun + Hono 4 API on 127.0.0.1:7331
+│   │                     #   src/{serve,config}.ts, src/routes/read.ts,
+│   │                     #   src/security/{host,origin,bearer,keychain}.ts,
+│   │                     #   bin/touchid-gate.swift (source only; .app-bundle
+│   │                     #   build is GSL-264 per rev-3 addendum Delta 4),
+│   │                     #   plist/com.gosleep.core.plist + plist.sh install|uninstall|status,
+│   │                     #   install-deps.sh (bun + swiftc check).
+│   └── web/              # GSL-265: React 19 + Vite 7 + shadcn client
 ├── packages/             # NEW: shared TS layers
 │   ├── schema/           # zod + drizzle types, reused by core and web
 │   └── sdk/              # typed fetch/SSE client for apps/web
@@ -52,12 +58,25 @@ gosleep/                  # workspace root
 └── CLAUDE.md
 ```
 
-- **Install:** run `bun install` at the repo root. There is now a single
-  `bun.lockb` at the root; per-package lockfiles under `apps/*` and
-  `packages/*` are a mistake — delete them if they appear.
-- **Run one package:** `bun run --filter='@gosleep/core' dev` (once GSL-260
-  lands the `dev` script). Filter names match the `name` field in each
-  workspace's `package.json`.
+- **Install:** run `bun install` at the repo root. There is a single
+  `bun.lock` (text format under Bun 1.3.x; older docs said `bun.lockb`) at
+  the root; per-package lockfiles under `apps/*` and `packages/*` are a
+  mistake — delete them if they appear.
+- **Run one package:** `bun run --filter='@gosleep/core' dev` starts the
+  core server on `127.0.0.1:7331`. Filter names match the `name` field in
+  each workspace's `package.json`.
+- **Typecheck one package:** `bun x tsc -p apps/core --noEmit` — clean
+  after `bun install` at the root.
+- **Endpoint smoke:** `bash tools/lab/tests/core-smoke.sh` boots
+  `apps/core/src/serve.ts` under a dev-env Bearer, curls the three v1
+  read endpoints across seven scenarios (healthz public, version/whoami
+  need Bearer, wrong Host → 421), kills the server, asserts port clean.
+  Not wired into `gate.sh` (starts a process); run by hand around
+  changes to `apps/core/`.
+- **Launchd:** `apps/core/plist.sh install` renders the plist template,
+  puts the Bearer secret in Keychain (`gosleep-web` service), and
+  bootstraps the agent under `gui/$UID`. `uninstall` boots it out.
+  `status` prints one JSON line (`installed / loaded / healthz / pid`).
 - **`data/` lives out of git:** the runtime SQLite database (`gosleep.db`,
   `-wal`, `-shm`), daily snapshots in `data/snapshots/`, and core logs in
   `data/logs/` are all git-ignored (root `.gitignore` + `data/.gitignore`).
