@@ -26,6 +26,7 @@ import { Hono } from "hono";
 import { SERVER_VERSION, API_VERSIONS, OWNER_NAME } from "../config.ts";
 import { requireBearer } from "../security/bearer.ts";
 import { getDb } from "../db/client.ts";
+import { loadManifest } from "../manifest/parser.ts";
 
 export const readRoutes = new Hono();
 
@@ -125,6 +126,9 @@ interface QuestionRow {
   answer_text: string | null;
   resolved_at: string | null;
   applied: string | null;
+  applied_by: string | null;
+  applied_rule_ref: string | null;
+  defer_until: string | null;
   last_event_seq: number | null;
 }
 
@@ -140,7 +144,7 @@ readRoutes.get("/questions", requireBearer, (c) => {
   const rows = getDb().raw
     .query(
       `SELECT qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-              resolved_at, applied, last_event_seq
+              resolved_at, applied, applied_by, applied_rule_ref, defer_until, last_event_seq
        FROM questions ${where}
        ORDER BY opened_at DESC LIMIT ?`,
     )
@@ -158,10 +162,43 @@ readRoutes.get("/questions", requireBearer, (c) => {
       answer_text: r.answer_text,
       resolved_at: r.resolved_at,
       applied: r.applied,
+      applied_by: r.applied_by,
+      applied_rule_ref: r.applied_rule_ref,
+      defer_until: r.defer_until,
       last_event_seq: r.last_event_seq,
     })),
     count: rows.length,
   });
+});
+
+// -----------------------------------------------------------------------------
+// /manifest — parsed rules for the Questions screen's rule-picker (GSL-277)
+//
+// Reads `docs/lab/decisions/manifest.md` on every hit. The file is small (<10 KB) and the parser
+// is O(lines); no cache. This keeps the picker in sync with owner edits without a server restart.
+// -----------------------------------------------------------------------------
+
+readRoutes.get("/manifest", requireBearer, (c) => {
+  try {
+    const parsed = loadManifest();
+    return c.json({
+      path: parsed.path,
+      bytes: parsed.bytes,
+      mtime: parsed.mtime,
+      count: parsed.rules.length,
+      skipped: parsed.skipped,
+      rules: parsed.rules,
+    });
+  } catch (err) {
+    return c.json(
+      {
+        error: err instanceof Error ? err.message : String(err),
+        rules: [],
+        count: 0,
+      },
+      500,
+    );
+  }
 });
 
 // -----------------------------------------------------------------------------
@@ -417,7 +454,7 @@ readRoutes.get("/bundle", requireBearer, (c) => {
   const questions = db.raw
     .query(
       `SELECT qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-              resolved_at, applied
+              resolved_at, applied, applied_by, applied_rule_ref, defer_until
        FROM questions ORDER BY opened_at DESC LIMIT 200`,
     )
     .all() as QuestionRow[];
@@ -461,6 +498,9 @@ readRoutes.get("/bundle", requireBearer, (c) => {
       answer_text: r.answer_text,
       resolved_at: r.resolved_at,
       applied: r.applied,
+      applied_by: r.applied_by,
+      applied_rule_ref: r.applied_rule_ref,
+      defer_until: r.defer_until,
     })),
     skills: skills.map((r) => ({
       name: r.name,

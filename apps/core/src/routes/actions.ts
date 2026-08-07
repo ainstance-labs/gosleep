@@ -1,12 +1,12 @@
-// @gosleep/core — POST /actions/* write endpoints (GSL-268).
+// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277).
 //
-// Four v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum scope
-// (defer + apply-manifest moved to GSL-278 / GSL-277):
+// Five v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
 //
-//   POST /actions/questions/answer   { qid, answer, by?, channel? }
-//   POST /actions/questions/resolve  { qid, applied, early? }
-//   POST /actions/tick               {}                              (fire-and-forget)
-//   POST /actions/events/ack         { seq, note? }
+//   POST /actions/questions/answer          { qid, answer, by?, channel? }             GSL-268
+//   POST /actions/questions/resolve         { qid, applied, early? }                   GSL-268
+//   POST /actions/questions/apply-manifest  { qid, rule_ref, answer? }                 GSL-277
+//   POST /actions/tick                      {}                              (fire-and-forget)
+//   POST /actions/events/ack                { seq, note? }
 //
 // Every request goes through THREE layers, in order (any layer rejection short-circuits with a
 // proper HTTP status; the ledger only records requests that reached the mutation):
@@ -44,6 +44,7 @@ import { serialize } from "../actions/mutex.ts";
 import { resolveIntentId, withTimeline } from "../actions/withTimeline.ts";
 import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
 import { questionNotifier } from "../questions/notifier.ts";
+import { loadManifest, type ManifestRule } from "../manifest/parser.ts";
 
 export const actionsRoutes = new Hono();
 
@@ -286,6 +287,207 @@ async function doResolve(input: ResolveInput): Promise<ResolveResult> {
   };
 }
 
+// -----------------------------------------------------------------------------
+// GSL-277 — apply-manifest: owner picks a manifest rule, provenance columns record it
+// -----------------------------------------------------------------------------
+
+interface ApplyManifestInput {
+  qid: string;
+  rule_ref: string;
+  answer: string | null;
+  by: string;
+}
+
+interface ApplyManifestResult {
+  qid: string;
+  status: "answered";
+  applied_by: "manifest";
+  applied_rule_ref: string;
+  answered_at: string;
+  answer_text: string;
+  rule: {
+    id: string;
+    section: number;
+    bullet: string;
+    section_title: string;
+    body: string;
+  };
+  labEmit: { rc: number; stdout: string; stderr: string; elapsedMs: number };
+  labDecision: { rc: number; stdout: string; stderr: string; elapsedMs: number };
+}
+
+async function doApplyManifest(input: ApplyManifestInput): Promise<ApplyManifestResult> {
+  const db = getDb();
+  // Guard 1: question must exist and be open. Same shape as doAnswer — a manifest apply is
+  // semantically an answer with provenance, so status transitions match.
+  const row = db.raw
+    .query("SELECT qid, status, task FROM questions WHERE qid = ?")
+    .get(input.qid) as { qid: string; status: string; task: string | null } | null;
+  if (row === null || row === undefined) {
+    const err = new Error(`question not found: ${input.qid}`);
+    (err as Error & { httpStatus?: number }).httpStatus = 404;
+    throw err;
+  }
+  if (row.status !== "open") {
+    const err = new Error(`question ${input.qid} is not open (status=${row.status})`);
+    (err as Error & { httpStatus?: number }).httpStatus = 409;
+    throw err;
+  }
+
+  // Guard 2: rule_ref must resolve against the currently-parsed manifest. The manifest is
+  // read fresh on every apply — the owner may have edited it since core booted, and the whole
+  // point of provenance is to cite what the manifest SAYS today, not what it said at boot.
+  let rule: ManifestRule | undefined;
+  try {
+    const manifest = loadManifest();
+    rule = manifest.index.get(input.rule_ref);
+  } catch (err) {
+    // Manifest missing / unreadable is a 500-shaped failure — the owner can't apply a rule
+    // when we cannot read the file. The error message names the file so operator sees it.
+    const wrapped = new Error(
+      `manifest read failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    (wrapped as Error & { httpStatus?: number }).httpStatus = 500;
+    throw wrapped;
+  }
+  if (rule === undefined) {
+    const err = new Error(
+      `unknown rule_ref: ${input.rule_ref} (expected canonical form "manifest §N.bullet-key")`,
+    );
+    (err as Error & { httpStatus?: number }).httpStatus = 400;
+    throw err;
+  }
+
+  // The effective answer text: caller-supplied wins, otherwise fall back to the rule body.
+  // Rule bodies are already terse ("§2.merge-strategy — regular merge, never squash") so the
+  // fallback is meaningful without needing summarisation.
+  const answer_text = input.answer ?? rule.body;
+
+  // Dual-write step 1: mirror to the JSONL queue via `lab-emit answer --by manifest`.
+  // This makes the answered_by field on the queue record read `"manifest"` and lets the fold
+  // converge to `applied_by='manifest'` on the next tail sweep even if the direct UPDATE were
+  // to fail. Provenance is thus recorded in TWO places (JSONL + DB) so a re-fold is idempotent.
+  const answered_at = nowIso();
+  const emit = await spawnAwait({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-emit.sh`,
+      "answer",
+      "--re",
+      input.qid,
+      "--answer",
+      answer_text,
+      "--by",
+      "manifest",
+      "--channel",
+      "manifest",
+    ],
+    timeoutMs: 10_000,
+  });
+  if (!emit.ok) {
+    throw new Error(
+      `lab-emit answer failed (rc=${emit.code ?? "null"}, timedOut=${emit.timedOut}): ${emit.stderr || emit.stdout}`,
+    );
+  }
+
+  // Dual-write step 2: append a decision-log entry via `lab-emit decision --rule`. This is
+  // separate from the queue write because decisions/log.jsonl is its own append-only ledger
+  // (`docs/lab/decisions/log.jsonl`) — the manifest rule is the "authority" the orchestrator
+  // is citing, so the decision layer needs its own row with `made_by='orchestrator'` and
+  // `rule='manifest §N.bullet'`. This is exactly what the manifest's own preamble asks for
+  // (F3-S3 provenance: "Каждое автономное решение обязано цитировать пункт манифеста").
+  const decision = await spawnAwait({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-emit.sh`,
+      "decision",
+      "--re",
+      input.qid,
+      "--decision",
+      answer_text,
+      "--rule",
+      rule.id,
+      "--by",
+      input.by,
+      "--channel",
+      "web",
+    ],
+    timeoutMs: 10_000,
+  });
+  if (!decision.ok) {
+    // Not fatal — the queue side already carries the answer. Log loudly (the caller will see
+    // the labDecision block below) but do NOT throw: we don't want a decision-log hiccup to
+    // roll back an already-answered question.
+    // eslint-disable-next-line no-console
+    console.warn(
+      JSON.stringify({
+        ts: nowIso(),
+        event: "core.action.apply_manifest.decision_log_warn",
+        qid: input.qid,
+        rc: decision.code,
+        stderr: decision.stderr,
+      }),
+    );
+  }
+
+  // Dual-write step 3: the direct SQLite UPDATE. Provenance columns land here — the projection
+  // layer surfaces them on `/questions` and `/bundle.questions`.
+  const upd = db.raw
+    .query(
+      `UPDATE questions
+         SET status = 'answered',
+             answer_text = ?,
+             answered_at = ?,
+             applied_by = 'manifest',
+             applied_rule_ref = ?
+       WHERE qid = ? AND status = 'open'`,
+    )
+    .run(answer_text, answered_at, rule.id, input.qid);
+  if (upd.changes === 0) {
+    throw new Error(
+      `race: question ${input.qid} changed status between the guard and the UPDATE`,
+    );
+  }
+
+  // Wake long-poll waiters — same reasoning as doAnswer. The agent's PreToolUse hook releases
+  // in ~ms; the SSE fan-out lags this by a tail-indexer sweep, so both paths converge.
+  questionNotifier.notify({
+    qid: input.qid,
+    status: "answered",
+    answer_text,
+    answered_at,
+    answered_by: "manifest",
+  });
+
+  return {
+    qid: input.qid,
+    status: "answered",
+    applied_by: "manifest",
+    applied_rule_ref: rule.id,
+    answered_at,
+    answer_text,
+    rule: {
+      id: rule.id,
+      section: rule.section,
+      bullet: rule.bullet,
+      section_title: rule.section_title,
+      body: rule.body,
+    },
+    labEmit: {
+      rc: emit.code ?? -1,
+      stdout: emit.stdout,
+      stderr: emit.stderr,
+      elapsedMs: emit.elapsedMs,
+    },
+    labDecision: {
+      rc: decision.code ?? -1,
+      stdout: decision.stdout,
+      stderr: decision.stderr,
+      elapsedMs: decision.elapsedMs,
+    },
+  };
+}
+
 interface AckInput {
   seq: number;
   note: string | null;
@@ -501,6 +703,71 @@ actionsRoutes.post("/actions/questions/resolve", requireBearer, async (c) => {
     const status = httpStatusFromError(err);
     // Only log unexpected 5xx to stderr — expected 4xx (bad qid, missing field) are ordinary
     // user-input rejections and would spam the audit log if surfaced.
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
+// POST /actions/questions/apply-manifest (GSL-277)
+// -----------------------------------------------------------------------------
+
+actionsRoutes.post("/actions/questions/apply-manifest", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const qid = stringField(body, "qid");
+  const rule_ref = stringField(body, "rule_ref");
+  if (qid === null) return c.json({ ok: false, error: "qid required" }, 400);
+  if (rule_ref === null) return c.json({ ok: false, error: "rule_ref required" }, 400);
+  const answer = stringField(body, "answer");
+  const by = stringField(body, "by") ?? "owner-web";
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.questions.apply-manifest", async () =>
+      withTimeline<ApplyManifestResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/questions/apply-manifest",
+          input: { qid, rule_ref, answer, by },
+        },
+        () => doApplyManifest({ qid, rule_ref, answer, by }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
     if (status >= 500) {
       // eslint-disable-next-line no-console
       console.error(

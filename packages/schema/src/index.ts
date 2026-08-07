@@ -60,12 +60,25 @@ export type TimelineResponse = z.infer<typeof TimelineResponse>;
 // questions (GET /questions, GET /bundle.questions)
 // -----------------------------------------------------------------------------
 
-export const QuestionStatus = z.enum(["open", "answered", "resolved", "superseded"]);
+// 'deferred' landed with GSL-278 (Delta 8.3); every other value has been in the vocabulary since
+// day one. `applied_by` came in with GSL-277 (Delta 8.2). Both types stay a string union at the
+// wire boundary so a future manifest-added state (e.g. 'awaiting-review') does not break the
+// SDK — server drift becomes a caught SchemaError, not a NaN downstream.
+export const QuestionStatus = z.enum([
+  "open",
+  "answered",
+  "resolved",
+  "superseded",
+  "deferred",
+]);
 export type QuestionStatus = z.infer<typeof QuestionStatus>;
+
+export const AppliedBy = z.enum(["owner", "manifest", "orchestrator"]);
+export type AppliedBy = z.infer<typeof AppliedBy>;
 
 export const QuestionRow = z.object({
   qid: z.string(),
-  status: QuestionStatus.or(z.string()), // tolerate future 'deferred' from GSL-278
+  status: QuestionStatus.or(z.string()),
   kind: z.string(),
   task: z.string().nullable(),
   question: z.string(),
@@ -75,6 +88,11 @@ export const QuestionRow = z.object({
   answer_text: z.string().nullable().optional(),
   resolved_at: IsoTimestamp.nullable().optional(),
   applied: z.unknown().nullable().optional(),
+  // GSL-277 provenance columns — nullable so a legacy row without provenance keeps parsing.
+  applied_by: AppliedBy.or(z.string()).nullable().optional(),
+  applied_rule_ref: z.string().nullable().optional(),
+  // GSL-278 defer field — ISO-8601 or null (no timer).
+  defer_until: IsoTimestamp.nullable().optional(),
   last_event_seq: Seq.nullable().optional(),
 });
 export type QuestionRow = z.infer<typeof QuestionRow>;
@@ -311,6 +329,62 @@ export const TickActionResult = z.object({
 });
 export type TickActionResult = z.infer<typeof TickActionResult>;
 
+// -----------------------------------------------------------------------------
+// manifest (GET /manifest, GSL-277)
+// -----------------------------------------------------------------------------
+
+export const ManifestRule = z.object({
+  id: z.string(), // "manifest §N.bullet"
+  section: z.number().int().positive(),
+  bullet: z.string(),
+  section_title: z.string(),
+  body: z.string(),
+  source_line: z.number().int().positive(),
+});
+export type ManifestRule = z.infer<typeof ManifestRule>;
+
+export const ManifestResponse = z.object({
+  path: z.string(),
+  bytes: z.number().int().nonnegative(),
+  mtime: IsoTimestamp,
+  count: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  rules: z.array(ManifestRule),
+});
+export type ManifestResponse = z.infer<typeof ManifestResponse>;
+
+// -----------------------------------------------------------------------------
+// apply-manifest action (GSL-277 — POST /actions/questions/apply-manifest)
+// -----------------------------------------------------------------------------
+
+export const ApplyManifestActionResult = z.object({
+  qid: z.string(),
+  status: z.literal("answered"),
+  applied_by: z.literal("manifest"),
+  applied_rule_ref: z.string(),
+  answered_at: IsoTimestamp,
+  answer_text: z.string(),
+  rule: ManifestRule.pick({
+    id: true,
+    section: true,
+    bullet: true,
+    section_title: true,
+    body: true,
+  }),
+  labEmit: LabToolTrace,
+  labDecision: LabToolTrace,
+});
+export type ApplyManifestActionResult = z.infer<typeof ApplyManifestActionResult>;
+
+export const ApplyManifestActionInput = z.object({
+  qid: z.string().min(1),
+  rule_ref: z.string().min(1),
+  answer: z.string().optional(),
+  by: z.string().optional(),
+});
+export type ApplyManifestActionInput = z.infer<typeof ApplyManifestActionInput>;
+
+
 /** Generic action response — parameterised on the result type. Use the specific `*Response`
  *  aliases below at each call site so schema drift is caught at the SDK boundary. */
 function actionResponse<T extends z.ZodTypeAny>(result: T) {
@@ -335,6 +409,9 @@ export type AckActionResponse = z.infer<typeof AckActionResponse>;
 
 export const TickActionResponse = actionResponse(TickActionResult);
 export type TickActionResponse = z.infer<typeof TickActionResponse>;
+
+export const ApplyManifestActionResponse = actionResponse(ApplyManifestActionResult);
+export type ApplyManifestActionResponse = z.infer<typeof ApplyManifestActionResponse>;
 
 /** Client-side request bodies — kept minimal and typed so the SDK does not accept arbitrary
  *  extra fields the server will silently drop. */

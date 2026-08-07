@@ -17,9 +17,12 @@ import {
   AckActionResponse,
   AnswerActionInput,
   AnswerActionResponse,
+  ApplyManifestActionInput,
+  ApplyManifestActionResponse,
   BundleResponse,
   CostResponse,
   FleetResponse,
+  ManifestResponse,
   QuestionsResponse,
   ResolveActionInput,
   ResolveActionResponse,
@@ -39,9 +42,12 @@ import type {
   AckActionResponse as AckActionResponseT,
   AnswerActionInput as AnswerActionInputT,
   AnswerActionResponse as AnswerActionResponseT,
+  ApplyManifestActionInput as ApplyManifestActionInputT,
+  ApplyManifestActionResponse as ApplyManifestActionResponseT,
   BundleResponse as BundleResponseT,
   CostResponse as CostResponseT,
   FleetResponse as FleetResponseT,
+  ManifestResponse as ManifestResponseT,
   QuestionsResponse as QuestionsResponseT,
   ResolveActionInput as ResolveActionInputT,
   ResolveActionResponse as ResolveActionResponseT,
@@ -205,6 +211,9 @@ export class CoreClient {
   fleet(): Promise<FleetResponseT> {
     return this.get("/fleet", FleetResponse);
   }
+  manifest(): Promise<ManifestResponseT> {
+    return this.get("/manifest", ManifestResponse);
+  }
 
   // ---- typed POST helper ----------------------------------------------------
   //
@@ -293,6 +302,19 @@ export class CoreClient {
       input,
       TickActionInput,
       TickActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  applyManifestToQuestion(
+    input: ApplyManifestActionInputT,
+    idempotencyKey: string,
+  ): Promise<ApplyManifestActionResponseT> {
+    return this.postAction(
+      "/actions/questions/apply-manifest",
+      input,
+      ApplyManifestActionInput,
+      ApplyManifestActionResponse,
       idempotencyKey,
     );
   }
@@ -485,9 +507,12 @@ export type {
   AckActionResponseT as AckActionResponse,
   AnswerActionInputT as AnswerActionInput,
   AnswerActionResponseT as AnswerActionResponse,
+  ApplyManifestActionInputT as ApplyManifestActionInput,
+  ApplyManifestActionResponseT as ApplyManifestActionResponse,
   BundleResponseT as BundleResponse,
   CostResponseT as CostResponse,
   FleetResponseT as FleetResponse,
+  ManifestResponseT as ManifestResponse,
   QuestionsResponseT as QuestionsResponse,
   ResolveActionInputT as ResolveActionInput,
   ResolveActionResponseT as ResolveActionResponse,

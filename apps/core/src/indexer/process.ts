@@ -539,6 +539,8 @@ interface FoldedQuestion {
   channel: string | null;
   applied: string | null;
   applied_by: string | null;
+  applied_rule_ref: string | null;
+  defer_until: string | null;
   resolved_at: string | null;
   raw_history: Record<string, unknown>[];
 }
@@ -565,6 +567,8 @@ export function foldQuestionRecords(records: Record<string, unknown>[]): Map<str
         channel: null,
         applied: typeof r.applied === "string" ? r.applied : null,
         applied_by: typeof r.applied_by === "string" ? r.applied_by : null,
+        applied_rule_ref: typeof r.applied_rule_ref === "string" ? r.applied_rule_ref : null,
+        defer_until: typeof r.defer_until === "string" ? r.defer_until : null,
         resolved_at: null,
         raw_history: [r],
       });
@@ -587,6 +591,15 @@ export function foldQuestionRecords(records: Record<string, unknown>[]): Map<str
       if (typeof r.channel === "string") s.channel = r.channel;
       if (typeof r.applied === "string") s.applied = r.applied;
       if (typeof r.applied_by === "string") s.applied_by = r.applied_by;
+      if (typeof r.applied_rule_ref === "string") s.applied_rule_ref = r.applied_rule_ref;
+      // `defer_until` may be explicitly cleared on a reopen patch. A patch that carries the
+      // key with an empty string (or an explicit null via JSON) resets the field — the fold
+      // must reflect the erasure, not keep the stale value from an older patch.
+      if ("defer_until" in r) {
+        s.defer_until = typeof r.defer_until === "string" && r.defer_until.length > 0
+          ? r.defer_until
+          : null;
+      }
     }
   }
   return state;
@@ -635,19 +648,22 @@ export async function processQuestions(
   const upsert = db.raw.query(
     `INSERT INTO questions
       (qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-       resolved_at, applied, last_event_seq)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+       resolved_at, applied, applied_by, applied_rule_ref, defer_until, last_event_seq)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
      ON CONFLICT(qid) DO UPDATE SET
-       status       = excluded.status,
-       kind         = excluded.kind,
-       task         = excluded.task,
-       question     = excluded.question,
-       options      = excluded.options,
-       opened_at    = excluded.opened_at,
-       answered_at  = excluded.answered_at,
-       answer_text  = excluded.answer_text,
-       resolved_at  = excluded.resolved_at,
-       applied      = excluded.applied`,
+       status           = excluded.status,
+       kind             = excluded.kind,
+       task             = excluded.task,
+       question         = excluded.question,
+       options          = excluded.options,
+       opened_at        = excluded.opened_at,
+       answered_at      = excluded.answered_at,
+       answer_text      = excluded.answer_text,
+       resolved_at      = excluded.resolved_at,
+       applied          = excluded.applied,
+       applied_by       = excluded.applied_by,
+       applied_rule_ref = excluded.applied_rule_ref,
+       defer_until      = excluded.defer_until`,
   );
 
   let written = 0;
@@ -666,6 +682,9 @@ export async function processQuestions(
         q.answer,
         q.resolved_at,
         q.applied,
+        q.applied_by,
+        q.applied_rule_ref,
+        q.defer_until,
       );
       written += 1;
     }

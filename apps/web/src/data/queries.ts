@@ -18,9 +18,12 @@ import type {
   AckActionResponse,
   AnswerActionInput,
   AnswerActionResponse,
+  ApplyManifestActionInput,
+  ApplyManifestActionResponse,
   BundleResponse,
   CostResponse,
   FleetResponse,
+  ManifestResponse,
   QuestionsResponse,
   ResolveActionInput,
   ResolveActionResponse,
@@ -49,6 +52,7 @@ export const queryKeys = {
     ["core", "tasks", epic ?? "", status ?? ""] as const,
   cost: (limit?: number) => ["core", "cost", limit ?? 60] as const,
   fleet: () => ["core", "fleet"] as const,
+  manifest: () => ["core", "manifest"] as const,
 } as const;
 
 export function useVersion(): UseQueryResult<VersionResponse> {
@@ -118,6 +122,16 @@ export function useCost(limit?: number): UseQueryResult<CostResponse> {
 
 export function useFleet(): UseQueryResult<FleetResponse> {
   return useQuery({ queryKey: queryKeys.fleet(), queryFn: () => coreClient.fleet() });
+}
+
+export function useManifest(): UseQueryResult<ManifestResponse> {
+  return useQuery({
+    queryKey: queryKeys.manifest(),
+    queryFn: () => coreClient.manifest(),
+    // Manifest edits are rare (owner-sovereign file) — poll every 5 min so a hot-edit lands
+    // in the picker without a hard reload.
+    refetchInterval: 5 * 60_000,
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -194,3 +208,21 @@ export function useRunTick(): UseMutationResult<TickActionResponse, Error, TickA
     },
   });
 }
+
+// GSL-277: apply a manifest rule as the answer. Provenance columns light up on the row.
+export function useApplyManifest(): UseMutationResult<
+  ApplyManifestActionResponse,
+  Error,
+  ApplyManifestActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApplyManifestActionInput) =>
+      coreClient.applyManifestToQuestion(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "questions"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+

@@ -1,23 +1,26 @@
-// @gosleep/web — Questions screen (GSL-265 read-only; GSL-268 interactive).
+// @gosleep/web — Questions screen (GSL-265 read-only; GSL-268 answer/resolve;
+// GSL-277 apply-manifest + provenance badge).
 //
-// The folded question queue with two working write actions:
-//   - "Answer" opens a text-field dialog → POST /actions/questions/answer.
-//   - "Mark resolved" opens a text-field dialog → POST /actions/questions/resolve
-//     (v1 always non-early — an early resolve is the tick's job via apply-due, not owner-facing).
+// Three owner-facing actions on each open question:
+//   - "Answer"            → POST /actions/questions/answer          (typed text answer, by='owner-web').
+//   - "Apply manifest"    → POST /actions/questions/apply-manifest  (owner picks a rule from
+//                            docs/lab/decisions/manifest.md; provenance columns record it).
+//   - "Mark resolved"     → POST /actions/questions/resolve         (non-early; final closure).
 //
-// Both actions:
-//   - Bearer + Idempotency-Key (both handled inside CoreClient.postAction).
-//   - Optimistic UX via TanStack Query invalidation on success (SSE fan-out lands within ~1 s).
-//   - Toast on success ("answered {qid}"), error toast on failure.
-//   - Answer button only surfaces on status='open'; Resolve on status ∈ {'open','answered'}.
+// The provenance badge on every answered row names WHO answered the question — 'manifest',
+// 'owner', 'orchestrator', or '(unknown)' for legacy rows without applied_by set. When the
+// row cites a manifest rule (applied_by='manifest'), the badge is clickable and expands into
+// a tooltip showing the parsed rule body from `useManifest()`.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import {
   useAnswerQuestion,
+  useApplyManifest,
+  useManifest,
   useQuestions,
   useResolveQuestion,
 } from "../data/queries";
@@ -49,16 +52,75 @@ interface ResolveDialogState {
   value: string;
 }
 
+interface ApplyManifestDialogState {
+  qid: string;
+  question: string;
+  selectedRuleId: string;
+  answerOverride: string;
+}
+
+// -----------------------------------------------------------------------------
+// provenance badge — small, hoverable, cites the manifest §N.bullet when applicable
+// -----------------------------------------------------------------------------
+
+interface ProvenanceBadgeProps {
+  applied_by: string | null | undefined;
+  applied_rule_ref: string | null | undefined;
+  manifestBody?: string;
+}
+
+function ProvenanceBadge({
+  applied_by,
+  applied_rule_ref,
+  manifestBody,
+}: ProvenanceBadgeProps) {
+  if (!applied_by) return null;
+  if (applied_by === "manifest") {
+    return (
+      <Badge
+        tone="accent"
+        title={
+          manifestBody !== undefined
+            ? `${applied_rule_ref}\n\n${manifestBody}`
+            : (applied_rule_ref ?? "manifest")
+        }
+      >
+        applied by manifest{applied_rule_ref ? ` · ${applied_rule_ref}` : ""}
+      </Badge>
+    );
+  }
+  return (
+    <Badge tone={applied_by === "owner" ? "ok" : "neutral"} title={applied_by}>
+      applied by {applied_by}
+    </Badge>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// screen
+// -----------------------------------------------------------------------------
+
 export function QuestionsScreen() {
   const [status, setStatus] = useState<string>("");
   const q = useQuestions(status.length > 0 ? status : undefined);
+  const manifest = useManifest();
   const { push: pushToast } = useToast();
 
   const [answerDialog, setAnswerDialog] = useState<AnswerDialogState | null>(null);
   const [resolveDialog, setResolveDialog] = useState<ResolveDialogState | null>(null);
+  const [applyDialog, setApplyDialog] = useState<ApplyManifestDialogState | null>(null);
 
   const answerMut = useAnswerQuestion();
   const resolveMut = useResolveQuestion();
+  const applyMut = useApplyManifest();
+
+  const manifestById = useMemo(() => {
+    const map = new Map<string, string>();
+    if (manifest.data !== undefined) {
+      for (const r of manifest.data.rules) map.set(r.id, r.body);
+    }
+    return map;
+  }, [manifest.data]);
 
   const submitAnswer = async (): Promise<void> => {
     if (answerDialog === null) return;
@@ -111,13 +173,41 @@ export function QuestionsScreen() {
     }
   };
 
+  const submitApplyManifest = async (): Promise<void> => {
+    if (applyDialog === null) return;
+    if (applyDialog.selectedRuleId.length === 0) return;
+    try {
+      const res = await applyMut.mutateAsync({
+        qid: applyDialog.qid,
+        rule_ref: applyDialog.selectedRuleId,
+        answer:
+          applyDialog.answerOverride.trim().length > 0
+            ? applyDialog.answerOverride.trim()
+            : undefined,
+        by: "owner-web",
+      });
+      pushToast({
+        title: `Applied ${applyDialog.selectedRuleId}`,
+        description: `qid ${applyDialog.qid} → ${res.result?.applied_rule_ref ?? applyDialog.selectedRuleId}`,
+        tone: "ok",
+      });
+      setApplyDialog(null);
+    } catch (err) {
+      pushToast({
+        title: `Apply-manifest failed for ${applyDialog.qid}`,
+        description: err instanceof Error ? err.message : String(err),
+        tone: "danger",
+      });
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Questions"
-        subtitle="Interactive queue: answer open questions or mark them resolved. Every action lands in server_intents + fans out on SSE."
+        subtitle="Interactive queue: answer, apply a manifest rule, or resolve. Every action lands in server_intents + fans out on SSE."
         right={
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {[
               ["", "All"],
               ["open", "Open"],
@@ -149,8 +239,13 @@ export function QuestionsScreen() {
             {d.questions.map((question) => {
               const tone: StatusTone = TONE[question.status] ?? "neutral";
               const canAnswer = question.status === "open";
+              const canApply = question.status === "open";
               const canResolve =
                 question.status === "open" || question.status === "answered";
+              const provenanceBody =
+                question.applied_rule_ref !== null && question.applied_rule_ref !== undefined
+                  ? manifestById.get(question.applied_rule_ref)
+                  : undefined;
               return (
                 <Card key={question.qid}>
                   <CardHeader>
@@ -163,6 +258,11 @@ export function QuestionsScreen() {
                         </span>
                       ) : null}
                       <Badge tone="neutral">{question.kind}</Badge>
+                      <ProvenanceBadge
+                        applied_by={question.applied_by}
+                        applied_rule_ref={question.applied_rule_ref}
+                        manifestBody={provenanceBody}
+                      />
                     </div>
                     <span className="text-muted text-xs">
                       opened {timeAgo(question.opened_at)}
@@ -203,10 +303,18 @@ export function QuestionsScreen() {
                             answered {timeAgo(question.answered_at)}
                           </p>
                         ) : null}
+                        {question.applied_by === "manifest" &&
+                        question.applied_rule_ref !== null &&
+                        question.applied_rule_ref !== undefined ? (
+                          <p className="mono text-[var(--color-accent)] mt-1 text-xs">
+                            via {question.applied_rule_ref}
+                            {provenanceBody !== undefined ? ` — ${provenanceBody}` : ""}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
 
-                    {(canAnswer || canResolve) ? (
+                    {(canAnswer || canApply || canResolve) ? (
                       <div className="flex flex-wrap gap-2 pt-1">
                         {canAnswer ? (
                           <Button
@@ -223,9 +331,31 @@ export function QuestionsScreen() {
                             Answer
                           </Button>
                         ) : null}
-                        {canResolve ? (
+                        {canApply ? (
                           <Button
                             variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setApplyDialog({
+                                qid: question.qid,
+                                question: question.question,
+                                selectedRuleId: "",
+                                answerOverride: "",
+                              })
+                            }
+                            disabled={manifest.data === undefined}
+                            title={
+                              manifest.data === undefined
+                                ? "manifest not loaded yet"
+                                : "Apply a rule from docs/lab/decisions/manifest.md"
+                            }
+                          >
+                            Apply manifest
+                          </Button>
+                        ) : null}
+                        {canResolve ? (
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() =>
                               setResolveDialog({
@@ -248,6 +378,7 @@ export function QuestionsScreen() {
         )}
       </QueryStatus>
 
+      {/* Answer dialog — unchanged from GSL-268. */}
       <Dialog
         open={answerDialog !== null}
         onOpenChange={(o) => {
@@ -296,6 +427,7 @@ export function QuestionsScreen() {
         </p>
       </Dialog>
 
+      {/* Resolve dialog — unchanged from GSL-268. */}
       <Dialog
         open={resolveDialog !== null}
         onOpenChange={(o) => {
@@ -342,6 +474,108 @@ export function QuestionsScreen() {
           <code className="mono">lab-emit resolve</code> enforces manifest §2 (never before deadline unless <code className="mono">--early</code>);
           this button always resolves without <code className="mono">--early</code>.
         </p>
+      </Dialog>
+
+      {/* Apply-manifest dialog (GSL-277) — rule picker from parsed manifest. */}
+      <Dialog
+        open={applyDialog !== null}
+        onOpenChange={(o) => {
+          if (!o) setApplyDialog(null);
+        }}
+        title={`Apply a manifest rule to ${applyDialog?.qid ?? ""}`}
+        description={applyDialog?.question}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setApplyDialog(null)}
+              disabled={applyMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => void submitApplyManifest()}
+              disabled={
+                applyMut.isPending || (applyDialog?.selectedRuleId ?? "").length === 0
+              }
+            >
+              {applyMut.isPending ? "Applying…" : "Apply rule"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="text-muted text-xs">
+            Rule is cited in the decision log as{" "}
+            <code className="mono">applied_by=manifest</code> +{" "}
+            <code className="mono">applied_rule_ref=&lt;id&gt;</code>. Provenance is recorded in
+            both the DB and <code className="mono">docs/lab/decisions/log.jsonl</code>.
+          </div>
+          <div className="max-h-64 overflow-auto rounded-md border p-2 text-sm">
+            {manifest.data === undefined ? (
+              <p className="text-muted">Loading manifest…</p>
+            ) : manifest.data.rules.length === 0 ? (
+              <p className="text-muted">Manifest has no parseable rules.</p>
+            ) : (
+              <ul className="space-y-1">
+                {manifest.data.rules.map((rule) => {
+                  const selected = applyDialog?.selectedRuleId === rule.id;
+                  return (
+                    <li key={rule.id}>
+                      <label
+                        className={cn(
+                          "flex cursor-pointer gap-2 rounded-md p-2",
+                          selected
+                            ? "bg-[color-mix(in_oklab,var(--color-accent),transparent_85%)]"
+                            : "hover:bg-[color-mix(in_oklab,var(--color-fg),transparent_92%)]",
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="rule"
+                          className="mt-1"
+                          checked={selected}
+                          onChange={() =>
+                            setApplyDialog((prev) =>
+                              prev === null
+                                ? prev
+                                : { ...prev, selectedRuleId: rule.id },
+                            )
+                          }
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="mono text-[var(--color-accent)] text-xs">
+                            {rule.id}
+                          </div>
+                          <div className="text-sm">{rule.body}</div>
+                          {rule.section_title.length > 0 ? (
+                            <div className="text-muted text-xs">
+                              §{rule.section} — {rule.section_title}
+                            </div>
+                          ) : null}
+                        </div>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <textarea
+            className="surface mono w-full rounded-md p-2 text-sm"
+            rows={2}
+            placeholder="Optional: override the answer text (default = the rule body)."
+            value={applyDialog?.answerOverride ?? ""}
+            onChange={(e) =>
+              setApplyDialog((prev) =>
+                prev === null ? prev : { ...prev, answerOverride: e.currentTarget.value },
+              )
+            }
+          />
+        </div>
       </Dialog>
     </div>
   );

@@ -20,11 +20,12 @@
 //     are plain columns without SQL-level FK constraints. The historical JSONL import (GSL-262)
 //     may seed events out of arrival order for compacted files; a hard FK would refuse the load.
 //     Referential integrity is enforced in the tail indexer (GSL-263), not in the schema.
-//   - Deltas the epic tracks separately are NOT here on purpose:
-//       * per-agent fleet table  → landed GSL-276 (this file, `agent_sessions`).
-//       * question provenance    → GSL-277 (applied_by + applied_rule_ref columns)
-//       * `deferred` status enum → GSL-278
-//     GSL-276 adds ONE additive table (`agent_sessions`) — no changes to the original eight.
+//   - Delta history:
+//       * per-agent fleet table  → GSL-276 (this file, `agent_sessions`), migration 0001.
+//       * question provenance    → GSL-277 (applied_by + applied_rule_ref cols), migration 0002.
+//       * defer action           → GSL-278 (defer_until col + 'deferred' status), migration 0002.
+//     Both GSL-277 + GSL-278 share migration 0002 per Jira scope ("shared migration with
+//     Delta 8.1, 8.2 / 8.3"); the SQL adds three nullable TEXT columns, all additive per R28.
 
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
@@ -70,8 +71,19 @@ export const events = sqliteTable(
 /**
  * The question queue folded into one row per `qid`. Chronicler's Python `fold()` and lab-emit's
  * append-only patches (see tools/lab/lab-emit.sh) collapse into these fields; the TS port lives
- * in the GSL-262 importer. `status` is 'open' | 'answered' | 'resolved' | 'superseded'
- * (the 'deferred' state that the addendum names is filed under GSL-278 and NOT added here).
+ * in the GSL-262 importer.
+ *
+ * `status` values (union of the manifest §2 vocabulary and the extensions each delta bought):
+ *   'open' | 'answered' | 'resolved' | 'superseded' | 'auto-resolved' |
+ *   'answered-by-default' | 'noted' | 'deferred' (GSL-278, Delta 8.3).
+ * Enforced as free-form TEXT — the tail indexer's fold is the source of truth; a new value
+ * lands additively without a migration when the queue vocabulary grows.
+ *
+ * Provenance columns landed with GSL-277 (Delta 8.2) + GSL-278 (Delta 8.3), migration 0002:
+ *   `applied_by`        — 'owner' | 'manifest' | 'orchestrator' | NULL (who decided).
+ *   `applied_rule_ref`  — 'manifest §N.bullet' when the decision cited a manifest rule.
+ *   `defer_until`       — ISO-8601 timestamp when the deferred row auto-reopens; NULL means
+ *                         "not now, ask me later" (no timer — owner reopens by hand).
  *
  * `last_event_seq` is a soft back-reference to the events row that last mutated this question —
  * useful for SSE (`event: question.updated` piggybacks on the events broadcaster).
@@ -88,6 +100,9 @@ export const questions = sqliteTable("questions", {
   answer_text: text("answer_text"),
   resolved_at: text("resolved_at"),
   applied: text("applied"),
+  applied_by: text("applied_by"),
+  applied_rule_ref: text("applied_rule_ref"),
+  defer_until: text("defer_until"),
   last_event_seq: integer("last_event_seq"),
 });
 
