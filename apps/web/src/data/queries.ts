@@ -1,18 +1,34 @@
-// @gosleep/web — TanStack Query hooks over CoreClient (GSL-265).
+// @gosleep/web — TanStack Query hooks over CoreClient (GSL-265, GSL-268).
 //
 // One place to name every query key so the SSE provider can invalidate the right buckets
-// on new events. Convention: `["core", "<endpoint>", …params]`.
+// on new events. Convention: `["core", "<endpoint>", …params]`. GSL-268 adds four mutation
+// hooks that wrap the CoreClient's /actions/* POSTs — each mints a fresh Idempotency-Key per
+// invocation so a double-clicked button becomes a server-side replay, not two spawns.
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 
 import type {
+  AckActionInput,
+  AckActionResponse,
+  AnswerActionInput,
+  AnswerActionResponse,
   BundleResponse,
   CostResponse,
   FleetResponse,
   QuestionsResponse,
+  ResolveActionInput,
+  ResolveActionResponse,
   SkillsResponse,
   StatusResponse,
   TasksResponse,
+  TickActionInput,
+  TickActionResponse,
   TimelineResponse,
   VersionResponse,
   WhoamiResponse,
@@ -102,4 +118,79 @@ export function useCost(limit?: number): UseQueryResult<CostResponse> {
 
 export function useFleet(): UseQueryResult<FleetResponse> {
   return useQuery({ queryKey: queryKeys.fleet(), queryFn: () => coreClient.fleet() });
+}
+
+// -----------------------------------------------------------------------------
+// mutation hooks (GSL-268)
+//
+// Each hook mints a fresh Idempotency-Key per invocation via crypto.randomUUID(). A double
+// click on the same button is protected at TWO layers: the button's `disabled={isPending}`
+// prop below AND the server's persistent server_intents replay (see withTimeline.ts).
+//
+// Cache invalidation: on success we invalidate the primary query the action mutated. The
+// SSE fan-out will land shortly (question.answered / question.resolved / ack event / tick
+// ledger events) and re-invalidate more broadly through SseProvider — invalidating here too
+// gives the owner immediate feedback without waiting for the SSE round-trip.
+// -----------------------------------------------------------------------------
+
+function newIdempotencyKey(): string {
+  // crypto.randomUUID lands in every modern browser + Node/Bun. If a test harness stubs a
+  // globalThis without crypto, fall back to timestamp+random — collisions are cosmetic (they
+  // still de-dupe on the server if they happen to coincide).
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function useAnswerQuestion(): UseMutationResult<
+  AnswerActionResponse,
+  Error,
+  AnswerActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AnswerActionInput) =>
+      coreClient.answerQuestion(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "questions"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+export function useResolveQuestion(): UseMutationResult<
+  ResolveActionResponse,
+  Error,
+  ResolveActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ResolveActionInput) =>
+      coreClient.resolveQuestion(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "questions"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+export function useAckEvent(): UseMutationResult<AckActionResponse, Error, AckActionInput> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AckActionInput) => coreClient.ackEvent(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "timeline"] });
+    },
+  });
+}
+
+export function useRunTick(): UseMutationResult<TickActionResponse, Error, TickActionInput> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TickActionInput) => coreClient.runTick(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.status() });
+    },
+  });
 }

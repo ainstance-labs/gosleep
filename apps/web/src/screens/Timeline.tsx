@@ -1,25 +1,63 @@
-// @gosleep/web — Timeline screen (GSL-265).
+// @gosleep/web — Timeline screen (GSL-265 read-only; GSL-268 Ack button).
 //
 // The event stream: filterable by type + task. Each row shows time, type, actor, task,
-// and a truncated JSON payload. Clicking a row toggles a full-payload disclosure.
+// and a truncated JSON payload. Clicking a row toggles a full-payload disclosure. Each
+// EXPANDED row surfaces an "Ack" button that POSTs /actions/events/ack — records an
+// acknowledgment event in the timeline, referencing the acked seq. Sees good use for
+// "the owner has looked at this alarm and it's OK to move on".
 
 import { useMemo, useState } from "react";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
-import { useTimeline } from "../data/queries";
+import { useAckEvent, useTimeline } from "../data/queries";
 import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Dialog } from "../components/ui/Dialog";
+import { useToast } from "../components/ui/Toast";
 import { shortJson, timeOfDay } from "../lib/format";
 import { cn } from "../lib/cn";
+
+interface AckDialogState {
+  seq: number;
+  type: string;
+  note: string;
+}
 
 export function TimelineScreen() {
   const [type, setType] = useState<string>("");
   const [task, setTask] = useState<string>("");
   const [limit, setLimit] = useState<number>(200);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [ackDialog, setAckDialog] = useState<AckDialogState | null>(null);
 
   const timeline = useTimeline(limit, type, task);
+  const ackMut = useAckEvent();
+  const { push: pushToast } = useToast();
+
+  const submitAck = async (): Promise<void> => {
+    if (ackDialog === null) return;
+    try {
+      const res = await ackMut.mutateAsync({
+        seq: ackDialog.seq,
+        note: ackDialog.note.trim().length > 0 ? ackDialog.note.trim() : undefined,
+        by: "owner-web",
+      });
+      pushToast({
+        title: `Acked seq=${ackDialog.seq}`,
+        description: `intent_id=${res.intent_id}`,
+        tone: "ok",
+      });
+      setAckDialog(null);
+    } catch (err) {
+      pushToast({
+        title: `Ack failed for seq=${ackDialog.seq}`,
+        description: err instanceof Error ? err.message : String(err),
+        tone: "danger",
+      });
+    }
+  };
 
   const typeChoices = useMemo(() => {
     const set = new Set<string>();
@@ -31,7 +69,7 @@ export function TimelineScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Timeline"
-        subtitle="Every event the tail indexer has landed. Newest first, live-updated by SSE."
+        subtitle="Every event the tail indexer has landed. Newest first, live-updated by SSE. Expand a row to acknowledge it."
       />
 
       <Card>
@@ -134,9 +172,23 @@ export function TimelineScreen() {
                         </span>
                       </button>
                       {isOpen ? (
-                        <pre className="sunken mono text-muted mt-2 max-h-64 overflow-auto rounded-md p-3 text-xs">
-                          {JSON.stringify(e, null, 2)}
-                        </pre>
+                        <div className="mt-2 space-y-2">
+                          <pre className="sunken mono text-muted max-h-64 overflow-auto rounded-md p-3 text-xs">
+                            {JSON.stringify(e, null, 2)}
+                          </pre>
+                          <div className="flex justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setAckDialog({ seq: e.seq, type: e.type, note: "" });
+                              }}
+                            >
+                              Ack seq {e.seq}
+                            </Button>
+                          </div>
+                        </div>
                       ) : null}
                     </li>
                   );
@@ -146,6 +198,52 @@ export function TimelineScreen() {
           </QueryStatus>
         </CardBody>
       </Card>
+
+      <Dialog
+        open={ackDialog !== null}
+        onOpenChange={(o) => {
+          if (!o) setAckDialog(null);
+        }}
+        title={`Ack event ${ackDialog?.seq ?? ""}`}
+        description={
+          ackDialog !== null ? `Records an "ack" event referencing seq=${ackDialog.seq} (${ackDialog.type}).` : undefined
+        }
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAckDialog(null)}
+              disabled={ackMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => void submitAck()}
+              disabled={ackMut.isPending}
+            >
+              {ackMut.isPending ? "Acking…" : "Confirm ack"}
+            </Button>
+          </>
+        }
+      >
+        <label className="text-secondary flex flex-col gap-1 text-xs">
+          Optional note
+          <input
+            type="text"
+            className="surface rounded-md px-2 py-1.5 text-sm"
+            placeholder="e.g. reviewed; safe to proceed"
+            value={ackDialog?.note ?? ""}
+            onChange={(e) =>
+              setAckDialog((prev) =>
+                prev === null ? prev : { ...prev, note: e.currentTarget.value },
+              )
+            }
+          />
+        </label>
+      </Dialog>
     </div>
   );
 }

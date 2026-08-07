@@ -13,29 +13,45 @@
 //     without knowing anything about the underlying EventSource semantics.
 
 import {
+  AckActionInput,
+  AckActionResponse,
+  AnswerActionInput,
+  AnswerActionResponse,
   BundleResponse,
   CostResponse,
   FleetResponse,
   QuestionsResponse,
+  ResolveActionInput,
+  ResolveActionResponse,
   SkillsResponse,
   SseEventData,
   SseRotateData,
   StatusResponse,
   TasksResponse,
+  TickActionInput,
+  TickActionResponse,
   TimelineResponse,
   VersionResponse,
   WhoamiResponse,
 } from "@gosleep/schema";
 import type {
+  AckActionInput as AckActionInputT,
+  AckActionResponse as AckActionResponseT,
+  AnswerActionInput as AnswerActionInputT,
+  AnswerActionResponse as AnswerActionResponseT,
   BundleResponse as BundleResponseT,
   CostResponse as CostResponseT,
   FleetResponse as FleetResponseT,
   QuestionsResponse as QuestionsResponseT,
+  ResolveActionInput as ResolveActionInputT,
+  ResolveActionResponse as ResolveActionResponseT,
   SkillsResponse as SkillsResponseT,
   SseEventData as SseEventDataT,
   SseRotateData as SseRotateDataT,
   StatusResponse as StatusResponseT,
   TasksResponse as TasksResponseT,
+  TickActionInput as TickActionInputT,
+  TickActionResponse as TickActionResponseT,
   TimelineResponse as TimelineResponseT,
   VersionResponse as VersionResponseT,
   WhoamiResponse as WhoamiResponseT,
@@ -188,6 +204,97 @@ export class CoreClient {
   }
   fleet(): Promise<FleetResponseT> {
     return this.get("/fleet", FleetResponse);
+  }
+
+  // ---- typed POST helper ----------------------------------------------------
+  //
+  // Every /actions/* POST reuses the same envelope: a JSON body, an Idempotency-Key header,
+  // and a validated JSON response through `postAction`. Callers pass a fresh idempotency key
+  // per user-intent (the UI mints a UUID per click) so a double-clicked button is a no-op
+  // replay on the server, not two spawns.
+
+  private async postAction<Input, Output>(
+    path: string,
+    input: Input,
+    inputSchema: ZodType<Input>,
+    outputSchema: ZodType<Output>,
+    idempotencyKey: string,
+  ): Promise<Output> {
+    // Validate the input on the client too — a mis-typed field surfaces here as a caught
+    // ZodError, not as a 400 from the server that we then have to reverse-engineer.
+    const validatedInput = inputSchema.parse(input);
+    const url = `${this.baseUrl}${path}`;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "Idempotency-Key": idempotencyKey,
+    };
+    const token = this.getBearer();
+    if (token !== null && token.length > 0) headers.Authorization = `Bearer ${token}`;
+    const res = await this.fetchFn(url, {
+      method: "POST",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(validatedInput),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new ApiError(res.status, url, body);
+    }
+    const json: unknown = await res.json();
+    const parsed = outputSchema.safeParse(json);
+    if (!parsed.success) {
+      throw new SchemaError(url, parsed.error);
+    }
+    return parsed.data;
+  }
+
+  // ---- v1 action endpoints (GSL-268) ---------------------------------------
+
+  answerQuestion(
+    input: AnswerActionInputT,
+    idempotencyKey: string,
+  ): Promise<AnswerActionResponseT> {
+    return this.postAction(
+      "/actions/questions/answer",
+      input,
+      AnswerActionInput,
+      AnswerActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  resolveQuestion(
+    input: ResolveActionInputT,
+    idempotencyKey: string,
+  ): Promise<ResolveActionResponseT> {
+    return this.postAction(
+      "/actions/questions/resolve",
+      input,
+      ResolveActionInput,
+      ResolveActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  ackEvent(input: AckActionInputT, idempotencyKey: string): Promise<AckActionResponseT> {
+    return this.postAction(
+      "/actions/events/ack",
+      input,
+      AckActionInput,
+      AckActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  runTick(input: TickActionInputT, idempotencyKey: string): Promise<TickActionResponseT> {
+    return this.postAction(
+      "/actions/tick",
+      input,
+      TickActionInput,
+      TickActionResponse,
+      idempotencyKey,
+    );
   }
 }
 
@@ -374,15 +481,23 @@ export function subscribe(handlers: SseHandlers, opts: SseSubscribeOptions): () 
 }
 
 export type {
+  AckActionInputT as AckActionInput,
+  AckActionResponseT as AckActionResponse,
+  AnswerActionInputT as AnswerActionInput,
+  AnswerActionResponseT as AnswerActionResponse,
   BundleResponseT as BundleResponse,
   CostResponseT as CostResponse,
   FleetResponseT as FleetResponse,
   QuestionsResponseT as QuestionsResponse,
+  ResolveActionInputT as ResolveActionInput,
+  ResolveActionResponseT as ResolveActionResponse,
   SkillsResponseT as SkillsResponse,
   SseEventDataT as SseEventData,
   SseRotateDataT as SseRotateData,
   StatusResponseT as StatusResponse,
   TasksResponseT as TasksResponse,
+  TickActionInputT as TickActionInput,
+  TickActionResponseT as TickActionResponse,
   TimelineResponseT as TimelineResponse,
   VersionResponseT as VersionResponse,
   WhoamiResponseT as WhoamiResponse,

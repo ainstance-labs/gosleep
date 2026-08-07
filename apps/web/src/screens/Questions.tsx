@@ -1,17 +1,30 @@
-// @gosleep/web — Questions screen (READ-ONLY, GSL-265).
+// @gosleep/web — Questions screen (GSL-265 read-only; GSL-268 interactive).
 //
-// The full question queue. Read-only in this task; the "answer" button lands with GSL-268.
-// A status pill + a compact card per question so the owner can scan open questions at a
-// glance. Answered / resolved rows go into a lower-density secondary section.
+// The folded question queue with two working write actions:
+//   - "Answer" opens a text-field dialog → POST /actions/questions/answer.
+//   - "Mark resolved" opens a text-field dialog → POST /actions/questions/resolve
+//     (v1 always non-early — an early resolve is the tick's job via apply-due, not owner-facing).
+//
+// Both actions:
+//   - Bearer + Idempotency-Key (both handled inside CoreClient.postAction).
+//   - Optimistic UX via TanStack Query invalidation on success (SSE fan-out lands within ~1 s).
+//   - Toast on success ("answered {qid}"), error toast on failure.
+//   - Answer button only surfaces on status='open'; Resolve on status ∈ {'open','answered'}.
 
 import { useState } from "react";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
-import { useQuestions } from "../data/queries";
+import {
+  useAnswerQuestion,
+  useQuestions,
+  useResolveQuestion,
+} from "../data/queries";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { Dialog } from "../components/ui/Dialog";
+import { useToast } from "../components/ui/Toast";
 import { timeAgo } from "../lib/format";
 import { cn } from "../lib/cn";
 
@@ -24,15 +37,85 @@ const TONE: Record<string, StatusTone> = {
   deferred: "info",
 };
 
+interface AnswerDialogState {
+  qid: string;
+  question: string;
+  value: string;
+}
+
+interface ResolveDialogState {
+  qid: string;
+  question: string;
+  value: string;
+}
+
 export function QuestionsScreen() {
   const [status, setStatus] = useState<string>("");
   const q = useQuestions(status.length > 0 ? status : undefined);
+  const { push: pushToast } = useToast();
+
+  const [answerDialog, setAnswerDialog] = useState<AnswerDialogState | null>(null);
+  const [resolveDialog, setResolveDialog] = useState<ResolveDialogState | null>(null);
+
+  const answerMut = useAnswerQuestion();
+  const resolveMut = useResolveQuestion();
+
+  const submitAnswer = async (): Promise<void> => {
+    if (answerDialog === null) return;
+    const trimmed = answerDialog.value.trim();
+    if (trimmed.length === 0) return;
+    try {
+      const res = await answerMut.mutateAsync({
+        qid: answerDialog.qid,
+        answer: trimmed,
+        by: "owner-web",
+        channel: "web",
+      });
+      pushToast({
+        title: `Answered ${answerDialog.qid}`,
+        description: res.cached === true ? "cached replay (no re-run)" : "sent to lab-emit + DB",
+        tone: "ok",
+      });
+      setAnswerDialog(null);
+    } catch (err) {
+      pushToast({
+        title: `Answer failed for ${answerDialog.qid}`,
+        description: err instanceof Error ? err.message : String(err),
+        tone: "danger",
+      });
+    }
+  };
+
+  const submitResolve = async (): Promise<void> => {
+    if (resolveDialog === null) return;
+    const trimmed = resolveDialog.value.trim();
+    if (trimmed.length === 0) return;
+    try {
+      const res = await resolveMut.mutateAsync({
+        qid: resolveDialog.qid,
+        applied: trimmed,
+        early: false,
+      });
+      pushToast({
+        title: `Resolved ${resolveDialog.qid}`,
+        description: `status → ${res.result?.status ?? "resolved"}`,
+        tone: "ok",
+      });
+      setResolveDialog(null);
+    } catch (err) {
+      pushToast({
+        title: `Resolve failed for ${resolveDialog.qid}`,
+        description: err instanceof Error ? err.message : String(err),
+        tone: "danger",
+      });
+    }
+  };
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Questions"
-        subtitle="The folded question queue. Answer buttons ship with a later task; this view is read-only."
+        subtitle="Interactive queue: answer open questions or mark them resolved. Every action lands in server_intents + fans out on SSE."
         right={
           <div className="flex gap-1">
             {[
@@ -65,13 +148,16 @@ export function QuestionsScreen() {
           <div className="grid grid-cols-1 gap-3">
             {d.questions.map((question) => {
               const tone: StatusTone = TONE[question.status] ?? "neutral";
+              const canAnswer = question.status === "open";
+              const canResolve =
+                question.status === "open" || question.status === "answered";
               return (
                 <Card key={question.qid}>
                   <CardHeader>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={tone}>{question.status}</Badge>
                       <span className="mono text-muted text-xs">{question.qid}</span>
-                      {question.task !== null ? (
+                      {question.task !== null && question.task !== undefined ? (
                         <span className="mono text-[var(--color-accent)] text-xs">
                           {question.task}
                         </span>
@@ -119,6 +205,41 @@ export function QuestionsScreen() {
                         ) : null}
                       </div>
                     ) : null}
+
+                    {(canAnswer || canResolve) ? (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {canAnswer ? (
+                          <Button
+                            variant="solid"
+                            size="sm"
+                            onClick={() =>
+                              setAnswerDialog({
+                                qid: question.qid,
+                                question: question.question,
+                                value: "",
+                              })
+                            }
+                          >
+                            Answer
+                          </Button>
+                        ) : null}
+                        {canResolve ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setResolveDialog({
+                                qid: question.qid,
+                                question: question.question,
+                                value: question.answer_text ?? "",
+                              })
+                            }
+                          >
+                            Mark resolved
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </CardBody>
                 </Card>
               );
@@ -126,6 +247,102 @@ export function QuestionsScreen() {
           </div>
         )}
       </QueryStatus>
+
+      <Dialog
+        open={answerDialog !== null}
+        onOpenChange={(o) => {
+          if (!o) setAnswerDialog(null);
+        }}
+        title={`Answer ${answerDialog?.qid ?? ""}`}
+        description={answerDialog?.question}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAnswerDialog(null)}
+              disabled={answerMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => void submitAnswer()}
+              disabled={
+                answerMut.isPending || (answerDialog?.value.trim().length ?? 0) === 0
+              }
+            >
+              {answerMut.isPending ? "Answering…" : "Send answer"}
+            </Button>
+          </>
+        }
+      >
+        <textarea
+          className="surface mono w-full rounded-md p-2 text-sm"
+          rows={4}
+          autoFocus
+          placeholder="Type the answer for the agent…"
+          value={answerDialog?.value ?? ""}
+          onChange={(e) =>
+            setAnswerDialog((prev) =>
+              prev === null ? prev : { ...prev, value: e.currentTarget.value },
+            )
+          }
+        />
+        <p className="text-muted mt-2 text-xs">
+          Provenance: <code className="mono">owner-web</code> via <code className="mono">web</code> channel.
+          Recorded in <code className="mono">server_intents</code> before the agent reads it.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={resolveDialog !== null}
+        onOpenChange={(o) => {
+          if (!o) setResolveDialog(null);
+        }}
+        title={`Resolve ${resolveDialog?.qid ?? ""}`}
+        description={resolveDialog?.question}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setResolveDialog(null)}
+              disabled={resolveMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => void submitResolve()}
+              disabled={
+                resolveMut.isPending || (resolveDialog?.value.trim().length ?? 0) === 0
+              }
+            >
+              {resolveMut.isPending ? "Resolving…" : "Mark resolved"}
+            </Button>
+          </>
+        }
+      >
+        <textarea
+          className="surface mono w-full rounded-md p-2 text-sm"
+          rows={3}
+          autoFocus
+          placeholder="What was applied to close this out?"
+          value={resolveDialog?.value ?? ""}
+          onChange={(e) =>
+            setResolveDialog((prev) =>
+              prev === null ? prev : { ...prev, value: e.currentTarget.value },
+            )
+          }
+        />
+        <p className="text-muted mt-2 text-xs">
+          <code className="mono">lab-emit resolve</code> enforces manifest §2 (never before deadline unless <code className="mono">--early</code>);
+          this button always resolves without <code className="mono">--early</code>.
+        </p>
+      </Dialog>
     </div>
   );
 }

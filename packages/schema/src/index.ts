@@ -243,3 +243,109 @@ export const SseRotateData = z.object({
   new_day: UtcDay,
 });
 export type SseRotateData = z.infer<typeof SseRotateData>;
+
+// -----------------------------------------------------------------------------
+// action responses (POST /actions/*, GSL-268)
+//
+// Every write endpoint returns a common envelope: {ok, intent_id, cached, result?, error?}.
+// `intent_id` is the persisted Idempotency-Key echoed back so the caller can correlate the
+// eventual SSE fan-out (question.answered / etc.) with the POST that caused it. `cached: true`
+// means a prior POST with the same Idempotency-Key ran the action — the current request was a
+// no-op replay of that outcome.
+// -----------------------------------------------------------------------------
+
+const LabToolTrace = z.object({
+  rc: z.number().int(),
+  stdout: z.string(),
+  stderr: z.string(),
+  elapsedMs: z.number().int().nonnegative(),
+});
+export type LabToolTrace = z.infer<typeof LabToolTrace>;
+
+export const AnswerActionResult = z.object({
+  qid: z.string(),
+  status: z.literal("answered"),
+  answered_at: IsoTimestamp,
+  answered_by: z.string(),
+  channel: z.string(),
+  labEmit: LabToolTrace,
+});
+export type AnswerActionResult = z.infer<typeof AnswerActionResult>;
+
+export const ResolveActionResult = z.object({
+  qid: z.string(),
+  status: z.enum(["resolved", "auto-resolved", "answered-by-default"]).or(z.string()),
+  resolved_at: IsoTimestamp,
+  applied: z.string(),
+  labEmit: LabToolTrace,
+});
+export type ResolveActionResult = z.infer<typeof ResolveActionResult>;
+
+export const AckActionResult = z.object({
+  ack_of_seq: z.number().int().positive(),
+  actor: z.string(),
+  note: z.string().nullable(),
+  labLog: LabToolTrace,
+});
+export type AckActionResult = z.infer<typeof AckActionResult>;
+
+export const TickActionResult = z.object({
+  spawned: z.literal(true),
+  carrier: z.string(),
+  note: z.string(),
+});
+export type TickActionResult = z.infer<typeof TickActionResult>;
+
+/** Generic action response — parameterised on the result type. Use the specific `*Response`
+ *  aliases below at each call site so schema drift is caught at the SDK boundary. */
+function actionResponse<T extends z.ZodTypeAny>(result: T) {
+  return z.object({
+    ok: z.boolean(),
+    intent_id: z.string(),
+    cached: z.boolean().optional(),
+    finished_at: IsoTimestamp.optional(),
+    result: result.optional(),
+    error: z.string().optional(),
+  });
+}
+
+export const AnswerActionResponse = actionResponse(AnswerActionResult);
+export type AnswerActionResponse = z.infer<typeof AnswerActionResponse>;
+
+export const ResolveActionResponse = actionResponse(ResolveActionResult);
+export type ResolveActionResponse = z.infer<typeof ResolveActionResponse>;
+
+export const AckActionResponse = actionResponse(AckActionResult);
+export type AckActionResponse = z.infer<typeof AckActionResponse>;
+
+export const TickActionResponse = actionResponse(TickActionResult);
+export type TickActionResponse = z.infer<typeof TickActionResponse>;
+
+/** Client-side request bodies — kept minimal and typed so the SDK does not accept arbitrary
+ *  extra fields the server will silently drop. */
+export const AnswerActionInput = z.object({
+  qid: z.string().min(1),
+  answer: z.string().min(1),
+  by: z.string().optional(),
+  channel: z.string().optional(),
+});
+export type AnswerActionInput = z.infer<typeof AnswerActionInput>;
+
+export const ResolveActionInput = z.object({
+  qid: z.string().min(1),
+  applied: z.string().min(1),
+  early: z.boolean().optional(),
+});
+export type ResolveActionInput = z.infer<typeof ResolveActionInput>;
+
+export const AckActionInput = z.object({
+  seq: z.number().int().positive(),
+  note: z.string().optional(),
+  by: z.string().optional(),
+});
+export type AckActionInput = z.infer<typeof AckActionInput>;
+
+export const TickActionInput = z.object({
+  carrier: z.string().optional(),
+});
+export type TickActionInput = z.infer<typeof TickActionInput>;

@@ -24,6 +24,7 @@ import { requireLocalOrigin } from "./security/origin.ts";
 import { readRoutes } from "./routes/read.ts";
 import { eventsRoutes } from "./routes/events.ts";
 import { metricsRoutes } from "./routes/metrics.ts";
+import { actionsRoutes } from "./routes/actions.ts";
 import { getDb } from "./db/client.ts";
 import { reconcileCursors } from "./indexer/reconcile.ts";
 import { startTailIndexer, type TailController } from "./indexer/tail.ts";
@@ -37,6 +38,7 @@ app.use("*", requireLocalOrigin);
 app.route("/", readRoutes);
 app.route("/", eventsRoutes);
 app.route("/", metricsRoutes);
+app.route("/", actionsRoutes);
 
 // -----------------------------------------------------------------------------
 // indexer + broadcaster + rotation
