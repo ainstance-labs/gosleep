@@ -27,6 +27,50 @@
   (Legacy pre-GSL history, the TLM-era `docs/dev-history/` folder, was deleted by the owner on
   2026-07-26 as no longer relevant — do not recreate it.)
 
+## Monorepo layout (GSL-258, web control plane)
+
+The web control plane epic (GSL-250) introduces a Bun-workspaces monorepo on top
+of the existing tree. The layout is R1 from
+`docs/reports/web-harness-research-2026-08-03/target-architecture.md` sections
+5.1-5.3.
+
+```
+gosleep/                  # workspace root
+├── apps/                 # NEW: gosleep-core, gosleep-web (added in later tasks)
+│   ├── core/             # GSL-260: Bun + Hono API (healthz/version/whoami first)
+│   └── web/              # GSL-265: React 19 + Vite + shadcn client
+├── packages/             # NEW: shared TS layers
+│   ├── schema/           # zod + drizzle types, reused by core and web
+│   └── sdk/              # typed fetch/SSE client for apps/web
+├── data/                 # NEW: SQLite source of truth, snapshots, logs — NOT in git
+├── tools/                # UNCHANGED: chronicler.sh, lab-emit.sh, gate.sh, smoke.sh
+├── docs/                 # UNCHANGED: lab/, prd/, plans/, handoff/, reports/
+├── skill/                # UNCHANGED
+├── .claude/              # UNCHANGED — hooks and settings survive the migration
+├── package.json          # workspaces: ["apps/*", "packages/*"], private
+├── bunfig.toml           # root Bun config (per-app configs live under apps/*)
+└── CLAUDE.md
+```
+
+- **Install:** run `bun install` at the repo root. There is now a single
+  `bun.lockb` at the root; per-package lockfiles under `apps/*` and
+  `packages/*` are a mistake — delete them if they appear.
+- **Run one package:** `bun run --filter='@gosleep/core' dev` (once GSL-260
+  lands the `dev` script). Filter names match the `name` field in each
+  workspace's `package.json`.
+- **`data/` lives out of git:** the runtime SQLite database (`gosleep.db`,
+  `-wal`, `-shm`), daily snapshots in `data/snapshots/`, and core logs in
+  `data/logs/` are all git-ignored (root `.gitignore` + `data/.gitignore`).
+  Only `.gitkeep` and `.gitignore` are tracked so a fresh clone still has the
+  directory. Never `git add data/gosleep.db`.
+- **Old stays put during the transition:** `tools/lab/`, `chronicler.py`,
+  `.claude/settings.json`, hooks, gates — none of that moves until the final
+  switch (GSL-271). New code goes only under `apps/` and `packages/`.
+- **Smoke guard:** `tools/lab/smoke.sh` enforces that `data/` contains only
+  the `.gitkeep` / `.gitignore` markers. If you need to commit anything under
+  `data/`, you are on the wrong path — that content belongs in a migration,
+  a snapshot script, or the schema package.
+
 ## Gates
 
 No CI yet. After editing `skill/<name>/`, verify by targeted sync of THAT skill only:

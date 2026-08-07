@@ -1,0 +1,8 @@
+# data/ holds the SQLite source of truth (GSL-261+): gosleep.db, WAL/SHM
+# sidecars, snapshots/, and logs/. None of that belongs in git.
+#
+# Only the .gitkeep marker and this .gitignore travel with the repo so the
+# directory shape survives a fresh clone.
+*
+!.gitkeep
+!.gitignore

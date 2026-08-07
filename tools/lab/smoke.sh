@@ -4454,6 +4454,19 @@ grep -q -- '--offline' "$GS" && grep -q 'gates/gate.json' "$GS" \
   && ok "GSL-203: offline is an explicit flag, and the gate leaves its own receipt" \
   || bad "GSL-203: missing --offline flag or gate.json receipt"
 
+echo "== GSL-258: data/ stays out of git — only .gitkeep / .gitignore markers travel =="
+# Web control plane (epic GSL-250) puts the SQLite source of truth under data/.
+# The runtime DB, WAL/SHM, snapshots and core logs must NEVER be committed; only
+# the two markers that keep the directory shape can. A single stray blob under
+# data/ means the .gitignore was bypassed (git add -f, a wrong pattern, or a
+# missed subpath) — catch it here before the branch even reaches review.
+DATA_TRACKED="$(cd "$REPO_ROOT" && git ls-files data/ 2>/dev/null | grep -Ev '^data/(\.gitkeep|\.gitignore)$' || true)"
+if [ -z "$DATA_TRACKED" ]; then
+  ok "GSL-258: data/ contains only the .gitkeep + .gitignore markers"
+else
+  bad "GSL-258: data/ has tracked payload files (should be gitignored): $(printf '%s' "$DATA_TRACKED" | tr '\n' ' ')"
+fi
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 

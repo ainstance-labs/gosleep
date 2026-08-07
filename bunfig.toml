@@ -1,0 +1,8 @@
+# gosleep — Bun workspaces root configuration (GSL-258).
+#
+# Kept intentionally empty at the workspaces root: per-app tuning
+# (test runner, dev entry, install overrides) belongs in
+# apps/<name>/bunfig.toml so that `bun run --filter='@gosleep/<name>'`
+# stays deterministic without leaking flags across packages.
+#
+# See target-architecture.md sections 3.3 and 5.1 for the full layout.
