@@ -51,13 +51,18 @@ let tail: TailController | null = null;
 let rotation: RotationWatcher | null = null;
 let fleet: FleetPollController | null = null;
 
+// GSL-264 / GSL-280 — per-boot auth-source audit line runs INDEPENDENTLY of the indexer.
+// The audit publishes the effective auth source (`recordAuthSource` → the metrics registry
+// → /metrics reads it back) AND, best-effort, writes one event row for the web timeline.
+// Split from the indexer boot so a headless / hermetic run (indexer disabled) still gets a
+// truthful /metrics `gosleep_security_auth_source{source=…} 1` gauge. AWAITed at top level
+// so the metrics registry has the label ready BEFORE Bun.serve binds and starts accepting
+// scrapes — otherwise a fast scrape lands before the audit finishes and reads `source=none 1`.
+await writeAuthSourceAudit(getDb());
+
 if (process.env.GOSLEEP_DISABLE_INDEXER !== "1") {
   try {
     const db = getDb();
-    // 0. Per-boot auth-source audit line (GSL-264, rev-3 addendum Delta 5). Runs BEFORE the
-    //    indexer so a failed reconcile does not swallow the audit line. Best-effort — a failure
-    //    inside writeAuthSourceAudit only logs to stderr; boot proceeds.
-    void writeAuthSourceAudit(db);
     // 1. Reconcile before starting the tail — otherwise a file edited while we were down
     //    would be tail-appended from the OLD cursor and we would miss the corrected prefix.
     reconcileCursors(db);

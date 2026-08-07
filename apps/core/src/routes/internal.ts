@@ -44,6 +44,7 @@ import { requireInternalSecret } from "../security/internalSecret.ts";
 import { questionNotifier } from "../questions/notifier.ts";
 import { getDb } from "../db/client.ts";
 import { spawnAwait, REPO_ROOT } from "../actions/spawn.ts";
+import { observeHookWait } from "../metrics/registry.ts";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -343,15 +344,24 @@ internalRoutes.get("/internal/questions/:qid/answer-wait", requireInternalSecret
     return c.json({ ok: false, error: "qid required" }, 400);
   }
   const timeoutSeconds = parseTimeoutSeconds(c.req.query("timeout_s"));
+  // GSL-280 (metrics): observe how long every wait actually took, labelled `answer-wait`.
+  // Fires once per handler call — early returns (initial-terminal, unknown qid) still count so
+  // p50/p95/etc. include the fast path.
+  const waitStartedAt = Date.now();
+  const observeWait = (): void => {
+    observeHookWait("answer-wait", (Date.now() - waitStartedAt) / 1000);
+  };
 
   // Answer-before-wait: the answer may have already landed between the hook's POST and its
   // long-poll GET (owner is fast; manifest auto-resolve; retry after a network blip). A one-row
   // SELECT is cheaper than the subscribe + wait, so check first.
   const initial = readQuestionRow(qid);
   if (initial === null) {
+    observeWait();
     return c.json({ ok: false, error: `qid ${qid} not found` }, 404);
   }
   if (initial.status === "answered" && initial.answer_text !== null) {
+    observeWait();
     return c.json({ ok: true, ...toAnswerPayload(initial, null, null) });
   }
   // Any other terminal status ('resolved', 'auto-resolved', 'answered-by-default', 'noted',
@@ -365,6 +375,7 @@ internalRoutes.get("/internal/questions/:qid/answer-wait", requireInternalSecret
     "superseded",
   ]);
   if (TERMINAL.has(initial.status)) {
+    observeWait();
     return c.json({ ok: true, ...toAnswerPayload(initial, null, null) });
   }
 
@@ -418,8 +429,10 @@ internalRoutes.get("/internal/questions/:qid/answer-wait", requireInternalSecret
 
   if (result === null) {
     // Timeout OR abort — same wire response. The hook reads 204 as "no answer, render TUI".
+    observeWait();
     return c.body(null, 204);
   }
+  observeWait();
   return c.json({ ok: true, ...result });
 });
 

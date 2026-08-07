@@ -315,6 +315,56 @@ else
   bad "25. POST /internal/agents/tool-observed (valid) → $OBS_STATUS"
 fi
 
+echo "== /metrics scenarios (GSL-280) =="
+# 26. /metrics without Bearer → 401 (same layer as /status).
+check_status "26. GET /metrics (no auth)" "401" "http://127.0.0.1:$PORT/metrics" -H "Host: 127.0.0.1:$PORT"
+# 27. /metrics with valid Bearer → 200 + Prometheus text exposition.
+METRICS_BODY_FILE="$WORK/metrics-body.txt"
+METRICS_STATUS="$(curl -s -o "$METRICS_BODY_FILE" -w '%{http_code}' \
+  -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:$PORT/metrics")"
+if [ "$METRICS_STATUS" = "200" ]; then
+  ok "27. GET /metrics (valid) → 200"
+else
+  bad "27. GET /metrics (valid) → $METRICS_STATUS"
+fi
+# 27b. Content-Type must include the Prometheus exposition version parameter.
+METRICS_CT="$(curl -sI -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:$PORT/metrics" | grep -i '^content-type:' | tr -d '\r')"
+if printf '%s' "$METRICS_CT" | grep -Eqi 'version=0\.0\.4'; then
+  ok "27b. /metrics content-type advertises Prometheus version=0.0.4"
+else
+  bad "27b. /metrics content-type missing 'version=0.0.4': $METRICS_CT"
+fi
+# 27c. Every emitted metric line must be preceded by # HELP + # TYPE headers earlier in the
+# document. A cheap surrogate: assert the required families each have a HELP line.
+required_families=(
+  gosleep_core_uptime_seconds
+  gosleep_events_ingested_total
+  gosleep_sse_subscribers
+  gosleep_hook_wait_seconds
+  gosleep_questions_open
+  gosleep_security_auth_source
+  gosleep_agents_context_pct
+)
+missing=""
+for fam in "${required_families[@]}"; do
+  if ! grep -q "^# HELP $fam " "$METRICS_BODY_FILE"; then
+    missing="$missing $fam"
+  fi
+done
+if [ -z "$missing" ]; then
+  ok "27c. /metrics has # HELP for every required family"
+else
+  bad "27c. /metrics missing # HELP for:$missing"
+fi
+# 27d. Auth source line reflects the dev-env source in this smoke.
+if grep -q '^gosleep_security_auth_source{source="dev-env"} 1$' "$METRICS_BODY_FILE"; then
+  ok "27d. /metrics auth source line = dev-env (matches smoke Bearer bypass)"
+else
+  bad "27d. /metrics missing/wrong auth source line"
+fi
+
 echo "== teardown =="
 kill $SERVER_PID 2>/dev/null || true
 for i in 1 2 3; do

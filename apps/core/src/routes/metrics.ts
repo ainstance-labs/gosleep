@@ -1,41 +1,42 @@
-// @gosleep/core — /metrics stub (GSL-263 wiring; full impl GSL-280 per rev-3 addendum Delta 7).
+// @gosleep/core — /metrics (Prometheus text exposition, GSL-280 / rev-3 addendum Delta 7).
 //
-// Rev-3 addendum Delta 7 filed the full Prometheus exposition — histograms per endpoint,
-// counters per SSE event type, indexer lag gauges — under a separate task (GSL-280). This
-// stub is the ROUTE WIRING only: it exposes `GET /metrics` with a minimal, syntactically
-// valid Prometheus exposition so a scraper configured against this endpoint gets 200 + parseable
-// output instead of a 404 or a permission denial.
+// Local observability without shipping to an external Prometheus. `curl 127.0.0.1:7331/metrics`
+// prints a text exposition the operator can eyeball or point a personal promtail/vmagent at.
+// Bearer'd (same layer as every other data-adjacent read) and bound only to 127.0.0.1 by the
+// app-wide requireLocalHost middleware; the ticket rules out an external scrape design.
 //
-// Auth model: `/metrics` in this stub REQUIRES the Bearer, matching every other data-adjacent
-// read. The rev-3 addendum leaves the auth decision to GSL-280 (per-scraper token, mutual TLS,
-// etc.); the safe default until then is "same as /status".
-//
-// What we emit today:
-//   - `gosleep_up 1` — the process is alive.
-//   - `gosleep_events_total N` — count of rows in the events table (cheap gauge; a scrape every
-//     15 s is fine).
-// The names + HELP + TYPE lines follow the Prometheus exposition spec so a scraper does not
-// choke on them.
+// The exposition itself is built by `metrics/registry.ts::buildPrometheusText` — this route is
+// the thin HTTP layer around it. Split so a unit test can exercise the text builder without
+// booting a server (see `test/metrics.test.ts`), and so a future JSON exposition (or a lower-
+// cardinality shortcut for a dashboard) can share the same aggregation code.
 
 import { Hono } from "hono";
 
 import { requireBearer } from "../security/bearer.ts";
 import { getDb } from "../db/client.ts";
+import { buildPrometheusText, incCounter } from "../metrics/registry.ts";
 
 export const metricsRoutes = new Hono();
 
 metricsRoutes.get("/metrics", requireBearer, (c) => {
-  const eventsRow = getDb().raw.query("SELECT count(*) AS n FROM events").get() as { n: number };
-  const body = [
-    "# HELP gosleep_up 1 if the control-plane process is serving requests.",
-    "# TYPE gosleep_up gauge",
-    "gosleep_up 1",
-    "# HELP gosleep_events_total Row count in the events table.",
-    "# TYPE gosleep_events_total gauge",
-    `gosleep_events_total ${eventsRow.n}`,
-    "# NOTE: GSL-263 wired this route as a stub. Full exposition (per-endpoint histograms,",
-    "# per-type SSE counters, indexer lag) lands with GSL-280.",
-    "",
-  ].join("\n");
-  return c.text(body, 200, { "content-type": "text/plain; version=0.0.4; charset=utf-8" });
+  // Bump a counter on every scrape — cheap self-observability ("did the scraper hit us?").
+  incCounter("gosleep_http_requests_total", {
+    endpoint: "/metrics",
+    method: "GET",
+    status: "200",
+  });
+  const body = buildPrometheusText(getDb());
+  return c.text(body, 200, {
+    // The `version=0.0.4` MIME extension is the Prometheus convention; scrapers that require
+    // it (an old prometheus-cpp for instance) refuse content-types missing the parameter.
+    "content-type": "text/plain; version=0.0.4; charset=utf-8",
+  });
 });
+
+// Re-export the record functions from the registry so peers (security/authSource.ts,
+// routes/internal.ts's long-poll wait) can call them without a deeper import path.
+export {
+  incCounter,
+  observeHookWait,
+  recordAuthSource,
+} from "../metrics/registry.ts";

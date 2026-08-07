@@ -31,6 +31,7 @@ import { readKeychainSecret, type KeychainReadResult } from "./keychain.ts";
 import { decodeSecret } from "./tokenEncoding.ts";
 import { getPlatformInfo } from "./platform.ts";
 import { getTokenFilePath, getDevBearerToken } from "../config.ts";
+import { recordAuthSource } from "../metrics/registry.ts";
 
 export type AuthSourceLabel = "dev-env" | "keychain" | "token-file" | "none";
 
@@ -164,6 +165,9 @@ export async function writeAuthSourceAudit(
 ): Promise<AuthSourceResult> {
   const result = await resolveAuthSource();
   const platform = getPlatformInfo();
+  // GSL-280: publish the currently-active source label to the metrics registry so
+  // `gosleep_security_auth_source{source="<label>"} 1` reads it back on /metrics scrapes.
+  recordAuthSource(result.source);
 
   // stderr line — always. `console.error` because launchd captures it into
   // data/logs/core-stderr.log per the plist template.
