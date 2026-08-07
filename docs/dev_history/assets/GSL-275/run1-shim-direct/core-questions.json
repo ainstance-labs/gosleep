@@ -1,0 +1,30 @@
+{
+    "questions": [
+        {
+            "qid": "q-2026-08-07-001",
+            "status": "answered",
+            "kind": "BLOCKER",
+            "task": "",
+            "question": "Which fruit direct-shim test?",
+            "options": [
+                {
+                    "label": "Apple",
+                    "pros": "red",
+                    "cons": ""
+                },
+                {
+                    "label": "Banana",
+                    "pros": "yellow",
+                    "cons": ""
+                }
+            ],
+            "opened_at": "2026-08-07T20:59:50Z",
+            "answered_at": "2026-08-07T20:59:52Z",
+            "answer_text": "Banana",
+            "resolved_at": null,
+            "applied": null,
+            "last_event_seq": null
+        }
+    ],
+    "count": 1
+}

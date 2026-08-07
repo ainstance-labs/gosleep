@@ -1,0 +1,1 @@
+{"ok":true,"intent_id":"e2e-run2-answer","cached":false,"result":{"qid":"q-2026-08-07-001","status":"answered","answered_at":"2026-08-07T21:00:36.422Z","answered_by":"e2e-owner","channel":"web","labEmit":{"rc":0,"stdout":"answered q-2026-08-07-001","stderr":"","elapsedMs":116}}}

@@ -43,6 +43,7 @@ import { getDb } from "../db/client.ts";
 import { serialize } from "../actions/mutex.ts";
 import { resolveIntentId, withTimeline } from "../actions/withTimeline.ts";
 import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
+import { questionNotifier } from "../questions/notifier.ts";
 
 export const actionsRoutes = new Hono();
 
@@ -170,6 +171,18 @@ async function doAnswer(input: AnswerInput): Promise<AnswerResult> {
     );
   }
 
+  // GSL-275: wake any long-poll waiter for this qid the instant the row flips. NOT reached via
+  // the SSE broadcaster (that path fires later, after the tail indexer re-reads the JSONL); this
+  // in-process EventEmitter fires within the same await frame so the hook shim releases in
+  // ~milliseconds. See src/questions/notifier.ts for the whole rationale.
+  questionNotifier.notify({
+    qid: input.qid,
+    status: "answered",
+    answer_text: input.answer,
+    answered_at,
+    answered_by: input.by,
+  });
+
   return {
     qid: input.qid,
     status: "answered",
@@ -247,6 +260,17 @@ async function doResolve(input: ResolveInput): Promise<ResolveResult> {
        WHERE qid = ?`,
     )
     .run(derivedStatus, resolved_at, input.applied, input.qid);
+
+  // GSL-275: also wake long-poll waiters on resolve — a manifest auto-resolve or an early-default
+  // is a terminal answer from the agent's perspective, and the hook should release rather than
+  // sit until timeout. The wait's TERMINAL set treats these statuses as answered-equivalent.
+  questionNotifier.notify({
+    qid: input.qid,
+    status: derivedStatus,
+    answer_text: input.applied,
+    answered_at: resolved_at,
+    answered_by: "manifest",
+  });
 
   return {
     qid: input.qid,

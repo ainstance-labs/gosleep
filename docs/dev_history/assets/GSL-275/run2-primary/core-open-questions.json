@@ -1,0 +1,30 @@
+{
+    "questions": [
+        {
+            "qid": "q-2026-08-07-001",
+            "status": "open",
+            "kind": "BLOCKER",
+            "task": "",
+            "question": "Which fruit do you prefer?",
+            "options": [
+                {
+                    "label": "Apple",
+                    "pros": "A crisp, versatile red or green fruit",
+                    "cons": ""
+                },
+                {
+                    "label": "Banana",
+                    "pros": "A soft, yellow tropical fruit",
+                    "cons": ""
+                }
+            ],
+            "opened_at": "2026-08-07T21:00:24Z",
+            "answered_at": null,
+            "answer_text": null,
+            "resolved_at": null,
+            "applied": null,
+            "last_event_seq": null
+        }
+    ],
+    "count": 1
+}

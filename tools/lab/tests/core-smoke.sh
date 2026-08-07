@@ -24,6 +24,12 @@
 #   12. POST /actions/tick         (replay same key) → 200 + cached:true
 #   13. POST /actions/events/ack   (unknown seq)     → 404
 #   14. POST /actions/questions/answer (no qid)      → 400
+#   15. GET  /internal/questions/nope/answer-wait (no secret hdr) → 401  (GSL-275)
+#   16. GET  /internal/questions/nope/answer-wait (wrong secret)  → 401
+#   17. GET  /internal/questions/nope/answer-wait (valid secret)  → 404  (unknown qid)
+#   18. POST /internal/questions/post (no secret)                 → 401
+#   19. POST /internal/questions/post (valid secret)              → 200 + qid
+#   20. GET  /internal/questions/<qid>/answer-wait?timeout_s=1    → 204  (timeout, no answer)
 #
 # Not wired into gate.sh — the gate must stay 0-network/0-process; this test intentionally
 # starts a process. Run it BY HAND before committing changes to apps/core/. Exit 0 = pass.
@@ -34,6 +40,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PORT="${GOSLEEP_CORE_PORT:-7331}"
 TOKEN="smoke-token-DO-NOT-USE"
+INTERNAL_SECRET="smoke-internal-secret-DO-NOT-USE"    # GSL-275: /internal/* env-secret
 
 WORK="$REPO_ROOT/.artifacts/core-smoke"
 rm -rf "$WORK"; mkdir -p "$WORK"
@@ -70,6 +77,7 @@ echo "== booting @gosleep/core (dev Bearer, port $PORT, scratch DB + lab) =="
 # directly + spawns the CLI tools.
 GOSLEEP_BEARER_TOKEN="$TOKEN" GOSLEEP_OWNER_NAME="smoke-owner" GOSLEEP_CORE_PORT="$PORT" \
   GOSLEEP_DB_PATH="$SCRATCH_DB" GOSLEEP_LAB_DIR="$SCRATCH_LAB" \
+  GOSLEEP_INTERNAL_SECRET="$INTERNAL_SECRET" \
   GOSLEEP_DISABLE_INDEXER=1 \
   bun run "$REPO_ROOT/apps/core/src/serve.ts" \
   > "$WORK/stdout.log" 2> "$WORK/stderr.log" &
@@ -194,6 +202,70 @@ check_status "14. POST /actions/questions/answer (no qid)" "400" -X POST \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -d '{"answer":"nope"}' \
   "http://127.0.0.1:$PORT/actions/questions/answer"
+
+echo "== /internal/* scenarios (GSL-275) =="
+# 15. GET answer-wait with no X-Internal-Secret → 401 (auth REQUIRED, never silent-unauth)
+check_status "15. GET /internal answer-wait (no secret)" "401" \
+  -H "Host: 127.0.0.1:$PORT" \
+  "http://127.0.0.1:$PORT/internal/questions/q-nope/answer-wait?timeout_s=1"
+
+# 16. GET with wrong secret → 401
+check_status "16. GET /internal answer-wait (wrong secret)" "401" \
+  -H "Host: 127.0.0.1:$PORT" \
+  -H "X-Internal-Secret: definitely-not-the-secret" \
+  "http://127.0.0.1:$PORT/internal/questions/q-nope/answer-wait?timeout_s=1"
+
+# 17. GET with valid secret against unknown qid → 404
+check_status "17. GET /internal answer-wait (unknown qid)" "404" \
+  -H "Host: 127.0.0.1:$PORT" \
+  -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  "http://127.0.0.1:$PORT/internal/questions/q-nope/answer-wait?timeout_s=1"
+
+# 18. POST /internal/questions/post without secret → 401
+check_status "18. POST /internal/questions/post (no secret)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" \
+  -d '{"tool_input":{"questions":[{"question":"?"}]}}' \
+  "http://127.0.0.1:$PORT/internal/questions/post"
+
+# 19. POST /internal/questions/post with valid secret → 200 + qid (writes to SCRATCH_LAB)
+POST_BODY_FILE="$WORK/internal-post.json"
+POST_STATUS="$(curl -s -o "$POST_BODY_FILE" -w '%{http_code}' -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{
+    "session_id": "smoke-session-1",
+    "tool_use_id": "smoke-tool-use-1",
+    "tool_input": {
+      "questions": [
+        { "question": "Smoke check question?",
+          "header": "Smoke", "multiSelect": false,
+          "options": [{"label":"Yes","description":"go"},{"label":"No","description":"stop"}] }
+      ]
+    }
+  }' \
+  "http://127.0.0.1:$PORT/internal/questions/post")"
+if [ "$POST_STATUS" = "200" ] && grep -q '"qid":"q-' "$POST_BODY_FILE"; then
+  ok "19. POST /internal/questions/post (valid) → 200 + qid"
+else
+  bad "19. POST /internal/questions/post (valid) → $POST_STATUS body=$(cat "$POST_BODY_FILE")"
+fi
+SMOKE_QID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("qid",""))' "$POST_BODY_FILE" 2>/dev/null || echo "")"
+
+# 20. GET answer-wait against the fresh qid with timeout_s=1 → 204 (no answer arrives)
+if [ -n "$SMOKE_QID" ]; then
+  WAIT_STATUS="$(curl -s -o /dev/null -w '%{http_code}' \
+    -H "Host: 127.0.0.1:$PORT" \
+    -H "X-Internal-Secret: $INTERNAL_SECRET" \
+    "http://127.0.0.1:$PORT/internal/questions/$SMOKE_QID/answer-wait?timeout_s=1")"
+  if [ "$WAIT_STATUS" = "204" ]; then
+    ok "20. GET /internal answer-wait (timeout) → 204"
+  else
+    bad "20. GET /internal answer-wait (timeout) → $WAIT_STATUS (expected 204)"
+  fi
+else
+  bad "20. skipped — POST did not return a qid"
+fi
 
 echo "== teardown =="
 kill $SERVER_PID 2>/dev/null || true
