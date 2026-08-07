@@ -59,6 +59,9 @@ const WARN: ReadonlySet<string> = new Set([
   "notification.raised",
   "permission.requested",
   "question.posed",
+  // GSL-278: a defer is a soft "not now" the owner ticked — worth surfacing in the timeline
+  // (the row is not answered), but not louder than that.
+  "question.deferred",
   // GSL-218: a wedged verifier is a degradation the orchestrator recovers from
   // (kill the automation, take the partial report) — not a night-ender.
   "verifier.stalled",
@@ -91,6 +94,8 @@ const INFO: ReadonlySet<string> = new Set([
   "question.answered",
   "question.auto_resolved",
   "question.deduped",
+  // GSL-278: auto-reopen worker flipped a deferred row back to open — normal work.
+  "question.reopened",
   "decision.made",
   "verify.verdict",
   "mode.entered",

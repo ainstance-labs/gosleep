@@ -380,7 +380,7 @@ else
   bad "27d. /metrics missing/wrong auth source line"
 fi
 
-echo "== /actions/questions/apply-manifest + /manifest (GSL-277) =="
+echo "== /actions/questions/apply-manifest + /actions/questions/defer + /manifest (GSL-277 + GSL-278) =="
 
 # 28. GET /manifest without Bearer → 401
 check_status "28. GET /manifest (no auth)" "401" "http://127.0.0.1:$PORT/manifest" -H "Host: 127.0.0.1:$PORT"
@@ -422,7 +422,27 @@ check_status "32. POST apply-manifest (unknown qid)" "404" -X POST \
   -d '{"qid":"q-does-not-exist","rule_ref":"manifest §1.reversible-delivery"}' \
   "http://127.0.0.1:$PORT/actions/questions/apply-manifest"
 
-# 33. Full flow: post a fresh question, apply a manifest rule, verify DB provenance columns.
+# 33. POST /actions/questions/defer without Bearer → 401
+check_status "33. POST defer (no auth)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -d '{"qid":"q-nope"}' \
+  "http://127.0.0.1:$PORT/actions/questions/defer"
+
+# 34. POST defer missing qid → 400
+check_status "34. POST defer (no qid)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{}' \
+  "http://127.0.0.1:$PORT/actions/questions/defer"
+
+# 35. POST defer with malformed defer_until → 400
+check_status "35. POST defer (bad defer_until)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"qid":"q-any","defer_until":"tomorrow"}' \
+  "http://127.0.0.1:$PORT/actions/questions/defer"
+
+# 36. Full flow: post a fresh question, apply a manifest rule, verify DB provenance columns.
 # Uses the internal shim (already smoke-authenticated with $INTERNAL_SECRET).
 POST_FLOW_BODY="$WORK/apply-flow-post.json"
 curl -s -o "$POST_FLOW_BODY" -X POST \
@@ -450,9 +470,9 @@ if [ -n "$FLOW_QID" ]; then
     -d '{"qid":"'"$FLOW_QID"'","rule_ref":"manifest §2.merge-strategy"}' \
     "http://127.0.0.1:$PORT/actions/questions/apply-manifest")"
   if [ "$APPLY_STATUS" = "200" ] && grep -q '"applied_by":"manifest"' "$APPLY_BODY"; then
-    ok "33. apply-manifest end-to-end: valid rule applied, applied_by=manifest"
+    ok "36. apply-manifest end-to-end: valid rule applied, applied_by=manifest"
   else
-    bad "33. apply-manifest end-to-end failed: status=$APPLY_STATUS body=$(cat "$APPLY_BODY")"
+    bad "36. apply-manifest end-to-end failed: status=$APPLY_STATUS body=$(cat "$APPLY_BODY")"
   fi
   # Idempotency: replay with the SAME Idempotency-Key → cached:true, no re-run.
   REPLAY_BODY="$WORK/apply-manifest-replay.json"
@@ -463,19 +483,62 @@ if [ -n "$FLOW_QID" ]; then
     -d '{"qid":"'"$FLOW_QID"'","rule_ref":"manifest §2.merge-strategy"}' \
     "http://127.0.0.1:$PORT/actions/questions/apply-manifest" >/dev/null
   if grep -q '"cached":true' "$REPLAY_BODY"; then
-    ok "33b. apply-manifest is idempotent on replay (cached:true)"
+    ok "36b. apply-manifest is idempotent on replay (cached:true)"
   else
-    bad "33b. apply-manifest replay expected cached:true (body: $(cat "$REPLAY_BODY"))"
+    bad "36b. apply-manifest replay expected cached:true (body: $(cat "$REPLAY_BODY"))"
   fi
   # DB-level provenance check: the questions row now carries applied_by='manifest' + the rule ref.
   DB_PROV="$(sqlite3 "$SCRATCH_DB" "SELECT applied_by || '|' || COALESCE(applied_rule_ref,'') FROM questions WHERE qid='$FLOW_QID'" 2>/dev/null || echo "")"
   if [ "$DB_PROV" = "manifest|manifest §2.merge-strategy" ]; then
-    ok "33c. DB provenance columns set: manifest / §2.merge-strategy"
+    ok "36c. DB provenance columns set: manifest / §2.merge-strategy"
   else
-    bad "33c. DB provenance mismatch: got '$DB_PROV'"
+    bad "36c. DB provenance mismatch: got '$DB_PROV'"
   fi
 else
-  bad "33. flow skipped — internal POST returned no qid"
+  bad "36. flow skipped — internal POST returned no qid"
+fi
+
+# 37. Full flow: post a fresh question, defer it with a near-future ISO, verify DB fields.
+POST_DEFER_BODY="$WORK/defer-flow-post.json"
+curl -s -o "$POST_DEFER_BODY" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{
+    "session_id": "smoke-defer-1",
+    "tool_use_id": "smoke-defer-tu-1",
+    "tool_input": {
+      "questions": [
+        { "question": "Defer me?",
+          "header": "DeferSmoke", "multiSelect": false,
+          "options": [{"label":"Yes","description":"y"},{"label":"No","description":"n"}] }
+      ]
+    }
+  }' \
+  "http://127.0.0.1:$PORT/internal/questions/post" >/dev/null
+DEFER_QID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("qid",""))' "$POST_DEFER_BODY" 2>/dev/null || echo "")"
+if [ -n "$DEFER_QID" ]; then
+  DEFER_UNTIL="$(python3 -c 'from datetime import datetime, timezone, timedelta; print((datetime.now(timezone.utc)+timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+  DEFER_BODY="$WORK/defer-flow-post-action.json"
+  DEFER_STATUS="$(curl -s -o "$DEFER_BODY" -w '%{http_code}' -X POST \
+    -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: smoke-defer-$DEFER_QID" \
+    -d '{"qid":"'"$DEFER_QID"'","defer_until":"'"$DEFER_UNTIL"'"}' \
+    "http://127.0.0.1:$PORT/actions/questions/defer")"
+  if [ "$DEFER_STATUS" = "200" ] && grep -q '"status":"deferred"' "$DEFER_BODY"; then
+    ok "37. defer end-to-end: valid, status=deferred, defer_until echoed"
+  else
+    bad "37. defer end-to-end failed: status=$DEFER_STATUS body=$(cat "$DEFER_BODY")"
+  fi
+  # DB check
+  DB_DEFER="$(sqlite3 "$SCRATCH_DB" "SELECT status || '|' || COALESCE(defer_until,'') FROM questions WHERE qid='$DEFER_QID'" 2>/dev/null || echo "")"
+  if [ "$DB_DEFER" = "deferred|$DEFER_UNTIL" ]; then
+    ok "37b. DB row after defer: status=deferred, defer_until=$DEFER_UNTIL"
+  else
+    bad "37b. DB defer mismatch: got '$DB_DEFER' (expected 'deferred|$DEFER_UNTIL')"
+  fi
+else
+  bad "37. defer flow skipped — internal POST returned no qid"
 fi
 
 echo "== teardown =="

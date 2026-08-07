@@ -21,6 +21,8 @@ import {
   ApplyManifestActionResponse,
   BundleResponse,
   CostResponse,
+  DeferActionInput,
+  DeferActionResponse,
   FleetResponse,
   ManifestResponse,
   QuestionsResponse,
@@ -46,6 +48,8 @@ import type {
   ApplyManifestActionResponse as ApplyManifestActionResponseT,
   BundleResponse as BundleResponseT,
   CostResponse as CostResponseT,
+  DeferActionInput as DeferActionInputT,
+  DeferActionResponse as DeferActionResponseT,
   FleetResponse as FleetResponseT,
   ManifestResponse as ManifestResponseT,
   QuestionsResponse as QuestionsResponseT,
@@ -318,6 +322,19 @@ export class CoreClient {
       idempotencyKey,
     );
   }
+
+  deferQuestion(
+    input: DeferActionInputT,
+    idempotencyKey: string,
+  ): Promise<DeferActionResponseT> {
+    return this.postAction(
+      "/actions/questions/defer",
+      input,
+      DeferActionInput,
+      DeferActionResponse,
+      idempotencyKey,
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -511,6 +528,8 @@ export type {
   ApplyManifestActionResponseT as ApplyManifestActionResponse,
   BundleResponseT as BundleResponse,
   CostResponseT as CostResponse,
+  DeferActionInputT as DeferActionInput,
+  DeferActionResponseT as DeferActionResponse,
   FleetResponseT as FleetResponse,
   ManifestResponseT as ManifestResponse,
   QuestionsResponseT as QuestionsResponse,

@@ -384,6 +384,25 @@ export const ApplyManifestActionInput = z.object({
 });
 export type ApplyManifestActionInput = z.infer<typeof ApplyManifestActionInput>;
 
+// -----------------------------------------------------------------------------
+// defer action (GSL-278 — POST /actions/questions/defer)
+// -----------------------------------------------------------------------------
+
+export const DeferActionResult = z.object({
+  qid: z.string(),
+  status: z.literal("deferred"),
+  defer_until: IsoTimestamp.nullable(),
+  deferred_at: IsoTimestamp,
+  labEmit: LabToolTrace,
+});
+export type DeferActionResult = z.infer<typeof DeferActionResult>;
+
+export const DeferActionInput = z.object({
+  qid: z.string().min(1),
+  defer_until: IsoTimestamp.nullable().optional(),
+  by: z.string().optional(),
+});
+export type DeferActionInput = z.infer<typeof DeferActionInput>;
 
 /** Generic action response — parameterised on the result type. Use the specific `*Response`
  *  aliases below at each call site so schema drift is caught at the SDK boundary. */
@@ -412,6 +431,9 @@ export type TickActionResponse = z.infer<typeof TickActionResponse>;
 
 export const ApplyManifestActionResponse = actionResponse(ApplyManifestActionResult);
 export type ApplyManifestActionResponse = z.infer<typeof ApplyManifestActionResponse>;
+
+export const DeferActionResponse = actionResponse(DeferActionResult);
+export type DeferActionResponse = z.infer<typeof DeferActionResponse>;
 
 /** Client-side request bodies — kept minimal and typed so the SDK does not accept arbitrary
  *  extra fields the server will silently drop. */

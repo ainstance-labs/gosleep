@@ -32,6 +32,7 @@ import { startTailIndexer, type TailController } from "./indexer/tail.ts";
 import { startRotationWatcher, type RotationWatcher } from "./sse/rotation.ts";
 import { writeAuthSourceAudit } from "./security/authSource.ts";
 import { startFleetPoll, type FleetPollController } from "./workers/fleet-poll.ts";
+import { startDeferReopen, type DeferReopenController } from "./workers/defer-reopen.ts";
 
 const app = new Hono();
 
@@ -50,6 +51,7 @@ app.route("/", internalRoutes);
 let tail: TailController | null = null;
 let rotation: RotationWatcher | null = null;
 let fleet: FleetPollController | null = null;
+let deferReopen: DeferReopenController | null = null;
 
 // GSL-264 / GSL-280 — per-boot auth-source audit line runs INDEPENDENTLY of the indexer.
 // The audit publishes the effective auth source (`recordAuthSource` → the metrics registry
@@ -106,6 +108,26 @@ if (process.env.GOSLEEP_DISABLE_FLEET_POLL !== "1") {
   }
 }
 
+// Defer-reopen worker (GSL-278). Ticks every 10 s by default; flips `status='deferred' AND
+// defer_until <= now` back to open + clears defer_until, then emits a synthetic SSE event so
+// the web client's Questions screen refreshes without waiting for the tail sweep. Gated by its
+// own env (GOSLEEP_DISABLE_DEFER_REOPEN=1) so a hermetic test can turn it off without touching
+// the indexer or the fleet-poll.
+if (process.env.GOSLEEP_DISABLE_DEFER_REOPEN !== "1") {
+  try {
+    deferReopen = startDeferReopen(getDb());
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.defer_reopen.boot_failed",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
+}
+
 const server = Bun.serve({
   hostname: HOST,
   port: PORT,
@@ -138,6 +160,11 @@ const shutdown = async (signal: string): Promise<void> => {
   }
   try {
     await fleet?.stop();
+  } catch {
+    /* ignore */
+  }
+  try {
+    await deferReopen?.stop();
   } catch {
     /* ignore */
   }

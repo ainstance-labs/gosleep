@@ -1,10 +1,11 @@
-// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277).
+// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277 + GSL-278).
 //
-// Five v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
+// Six v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
 //
 //   POST /actions/questions/answer          { qid, answer, by?, channel? }             GSL-268
 //   POST /actions/questions/resolve         { qid, applied, early? }                   GSL-268
 //   POST /actions/questions/apply-manifest  { qid, rule_ref, answer? }                 GSL-277
+//   POST /actions/questions/defer           { qid, defer_until? }                      GSL-278
 //   POST /actions/tick                      {}                              (fire-and-forget)
 //   POST /actions/events/ack                { seq, note? }
 //
@@ -488,6 +489,114 @@ async function doApplyManifest(input: ApplyManifestInput): Promise<ApplyManifest
   };
 }
 
+// -----------------------------------------------------------------------------
+// GSL-278 — defer: "not now, ask me later" + optional auto-reopen timestamp
+// -----------------------------------------------------------------------------
+
+interface DeferInput {
+  qid: string;
+  defer_until: string | null;
+  by: string;
+}
+
+interface DeferResult {
+  qid: string;
+  status: "deferred";
+  defer_until: string | null;
+  deferred_at: string;
+  labEmit: { rc: number; stdout: string; stderr: string; elapsedMs: number };
+}
+
+/** Minimal ISO-8601 validation — accepts a `YYYY-MM-DDTHH:MM:SS(.sss)Z` shape or `YYYY-MM-DD`.
+ *  We do NOT try to be exhaustive — the auto-reopen worker compares strings, so any value
+ *  that parses through `new Date()` and round-trips is safe. Refusing empty strings here would
+ *  break the "no timer" case; the endpoint layer treats `null` as "no timer" explicitly. */
+export function isValidIsoLike(s: string): boolean {
+  if (s.length === 0) return false;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return false;
+  // Guard the string shape too: something like `"future"` parses on some runtimes and we do
+  // NOT want that on the wire. Require the string to start with a 4-digit year.
+  return /^\d{4}-\d{2}/.test(s);
+}
+
+async function doDefer(input: DeferInput): Promise<DeferResult> {
+  const db = getDb();
+  const row = db.raw
+    .query("SELECT qid, status FROM questions WHERE qid = ?")
+    .get(input.qid) as { qid: string; status: string } | null;
+  if (row === null || row === undefined) {
+    const err = new Error(`question not found: ${input.qid}`);
+    (err as Error & { httpStatus?: number }).httpStatus = 404;
+    throw err;
+  }
+  if (row.status !== "open" && row.status !== "answered") {
+    const err = new Error(
+      `question ${input.qid} cannot be deferred (status=${row.status}) — only open|answered may be deferred`,
+    );
+    (err as Error & { httpStatus?: number }).httpStatus = 409;
+    throw err;
+  }
+
+  // Dual-write step 1: lab-emit defer patch (JSONL side). Passing the empty string here signals
+  // "no timer" — matches the CLI contract, which distinguishes `--defer-until ""` from an unset
+  // flag by treating both the same ("no timer"). The reversible-null form on the wire (`null`)
+  // is normalised here.
+  const emitArgs = [
+    "bash",
+    `${REPO_ROOT}/tools/lab/lab-emit.sh`,
+    "defer",
+    "--re",
+    input.qid,
+    "--by",
+    input.by,
+  ];
+  if (input.defer_until !== null) {
+    emitArgs.push("--defer-until", input.defer_until);
+  }
+  const emit = await spawnAwait({ cmd: emitArgs, timeoutMs: 10_000 });
+  if (!emit.ok) {
+    throw new Error(
+      `lab-emit defer failed (rc=${emit.code ?? "null"}, timedOut=${emit.timedOut}): ${emit.stderr || emit.stdout}`,
+    );
+  }
+
+  // Dual-write step 2: direct UPDATE for immediate consistency. `defer_until` is nullable —
+  // when absent, the row shows `status='deferred'` with no timer and the auto-reopen worker
+  // skips it (worker filters on `defer_until IS NOT NULL AND defer_until <= now`).
+  const deferred_at = nowIso();
+  const upd = db.raw
+    .query(
+      `UPDATE questions
+         SET status = 'deferred', defer_until = ?
+       WHERE qid = ? AND status IN ('open', 'answered')`,
+    )
+    .run(input.defer_until, input.qid);
+  if (upd.changes === 0) {
+    throw new Error(
+      `race: question ${input.qid} changed status between the guard and the UPDATE`,
+    );
+  }
+
+  // Note: no `questionNotifier.notify` here. IMPORTANT — per Jira scope, deferring must NOT
+  // deliver anything back to the asking agent's PreToolUse long-poll; that hook keeps waiting
+  // for a real answer. Waking it now with `status='deferred'` would leak "deferred" to the
+  // agent as if it were an answer and break the semantic contract.
+
+  return {
+    qid: input.qid,
+    status: "deferred",
+    defer_until: input.defer_until,
+    deferred_at,
+    labEmit: {
+      rc: emit.code ?? -1,
+      stdout: emit.stdout,
+      stderr: emit.stderr,
+      elapsedMs: emit.elapsedMs,
+    },
+  };
+}
+
 interface AckInput {
   seq: number;
   note: string | null;
@@ -751,6 +860,81 @@ actionsRoutes.post("/actions/questions/apply-manifest", requireBearer, async (c)
           input: { qid, rule_ref, answer, by },
         },
         () => doApplyManifest({ qid, rule_ref, answer, by }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
+// POST /actions/questions/defer (GSL-278)
+// -----------------------------------------------------------------------------
+
+actionsRoutes.post("/actions/questions/defer", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const qid = stringField(body, "qid");
+  if (qid === null) return c.json({ ok: false, error: "qid required" }, 400);
+  // defer_until is OPTIONAL — treat both "missing" and "explicit null" as "no timer".
+  // Reject an invalid ISO shape here (before ever touching the ledger) so the client sees a
+  // clean 400 instead of a 500 from the shell tool.
+  const rawUntil = body.defer_until;
+  let defer_until: string | null = null;
+  if (typeof rawUntil === "string" && rawUntil.length > 0) {
+    if (!isValidIsoLike(rawUntil)) {
+      return c.json({ ok: false, error: "defer_until must be ISO-8601 (YYYY-MM-DDT…Z)" }, 400);
+    }
+    defer_until = rawUntil;
+  } else if (rawUntil !== null && rawUntil !== undefined) {
+    return c.json({ ok: false, error: "defer_until must be a string or null" }, 400);
+  }
+  const by = stringField(body, "by") ?? "owner-web";
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.questions.defer", async () =>
+      withTimeline<DeferResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/questions/defer",
+          input: { qid, defer_until, by },
+        },
+        () => doDefer({ qid, defer_until, by }),
       ),
     );
     if (outcome.cached && !outcome.ok) {

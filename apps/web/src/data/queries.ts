@@ -22,6 +22,8 @@ import type {
   ApplyManifestActionResponse,
   BundleResponse,
   CostResponse,
+  DeferActionInput,
+  DeferActionResponse,
   FleetResponse,
   ManifestResponse,
   QuestionsResponse,
@@ -226,3 +228,19 @@ export function useApplyManifest(): UseMutationResult<
   });
 }
 
+// GSL-278: defer a question with (optional) auto-reopen timestamp.
+export function useDeferQuestion(): UseMutationResult<
+  DeferActionResponse,
+  Error,
+  DeferActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DeferActionInput) =>
+      coreClient.deferQuestion(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "questions"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
