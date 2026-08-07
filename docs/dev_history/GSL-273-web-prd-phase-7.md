@@ -35,3 +35,37 @@ The traceability matrix (below Phase 7) still lists Phase 5 requirements (Ф5 ·
 - Files touched: `docs/prd/PRD-gosleep-evolution.md` (superseded banner on Phase 5 + new Phase 7 section inserted before the traceability matrix). `docs/dev_history/GSL-273-web-prd-phase-7.md` (this file).
 - Verified by running: none — this is a documentation artefact. Structural check: `grep -c '^## Фаза 7' docs/prd/PRD-gosleep-evolution.md` = 1; `grep 'SUPERSEDED' docs/prd/PRD-gosleep-evolution.md` shows the Phase 5 banner.
 - Links: Jira [GSL-273](https://ainstance-labs.atlassian.net/browse/GSL-273); parent epic [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250); sibling doc [GSL-272](https://ainstance-labs.atlassian.net/browse/GSL-272); sources — `docs/reports/web-harness-research-2026-08-03/target-architecture.md`, `docs/reports/web-harness-research-2026-08-03/target-architecture-rev3-addendum.md`, `docs/reports/web-stack-audit-2026-08-06/coverage.md`, `docs/lab/decisions/log.jsonl` entries `d-2026-08-03-004`/`006`/`007`.
+
+---
+
+## Correction note — GSL-273 rework (2026-08-07, shift 75 cycle 197, worker `web-docs-fix`)
+
+**Why reworked.** The original cycle-195 landing (commit `4197157`) violated two owner rules that were pinned as authoritative on 2026-08-07:
+
+1. **Language rule (owner, 2026-08-07):** ALL work artefacts are ENGLISH — PRDs, technical files, Jira issue texts/comments, GitHub mirrors, handoff and state files. Russian is retained only in human-facing HTML reports. A legacy file's existing language does NOT override this rule — the "PRD monolith is Russian by design" defence encoded in the original dev history "Pitfalls & workarounds" section was wrong.
+2. **PRD file-layout rule (owner, 2026-08-07):** ONE file per phase, named `<NN>-phase<MM>-<slug>.md` (e.g. `28-phase37-tool-surface-config.md`). New phases MUST NOT be appended to the monolith.
+
+**What changed in this follow-up.**
+
+- New per-phase PRD created: `docs/prd/01-phase7-interactive-control-plane.md` — the full Phase 7 content translated 1:1 into English, scope unchanged, structure preserved (Goal / Scope / Success criteria F7-S1..S5 / Requirements R7.1..R7.7 / Tasks / Effort / Dependencies / Non-goals / Risks / Acceptance + end-check / References). Adds a line noting the GSL-274 smoke-test result (PASS, primary primitive = `allow`+`updatedInput{questions, answers}`).
+- The Russian Phase 7 section previously appended to `docs/prd/PRD-gosleep-evolution.md` (lines 665-854 as of `4197157`) was removed and replaced with a 3-line English pointer that names the per-phase file and dates the extraction.
+- The Phase 5 supersede banner (which was previously mixed English + Russian header + inline pointer) is now fully English, and includes a pointer to `01-phase7-interactive-control-plane.md`.
+- `docs/prd/README.md` — English rewrite of the index plus a new "Convention — per-phase PRD files" section documenting the 2026-08-07 owner rule for future contributors.
+- Legacy Phases 1-6 in `PRD-gosleep-evolution.md` are intentionally NOT translated — they remain a Russian historical archive per the mission scope from team-lead. The traceability matrix, risk register, and decision log in that file are likewise left in place unchanged.
+
+**Jira / GitHub sweep.** Cycle 195's own artefacts (epic reconciliation comment on GSL-250, descriptions of GSL-272..283, extension comments on GSL-263/264/265/267/268, GitHub mirror bodies #282..#293) were already English on inspection — no rework needed. Six legacy "Зеркало GitHub: #N" one-liner comments from 2026-08-03 on GSL-250/263/264/265/267/268 were updated to English "Mirrors GH #N" as an incidental cleanup under the same owner language rule.
+
+**Files touched by this correction.**
+
+- `docs/prd/01-phase7-interactive-control-plane.md` (new).
+- `docs/prd/PRD-gosleep-evolution.md` (Phase 5 banner fully English; Russian Phase 7 body replaced with a 3-line English pointer).
+- `docs/prd/README.md` (English index + per-phase convention note).
+- `docs/dev_history/GSL-273-web-prd-phase-7.md` (this correction note).
+- Jira comments 12891/12904/12905/12906/12908/12909 (Russian → English one-liners) — content-level Jira edits, no repo change.
+
+**Owner rules referenced.**
+
+- `/Users/romanlidovskyi/.claude/CLAUDE.md` — "Language of artifacts (ALL projects — owner rule, 2026-08-07)" and the PRD per-phase filename convention.
+- Memory note: `prd-english-per-phase-files` and `terminology-skills-management-system`.
+
+**Verified by.** `grep -n "^## Phase 7\|^## Фаза 7" docs/prd/PRD-gosleep-evolution.md` returns exactly one hit (the English pointer heading). `ls docs/prd/*.md` shows both the monolith and `01-phase7-interactive-control-plane.md`. Structural read confirmed the traceability matrix directly follows the pointer with no orphan block.
