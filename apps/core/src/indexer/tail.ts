@@ -22,8 +22,9 @@
 // have their own single-file watches.
 //
 // Rev-3 addendum Delta 3 (2026-08-07) — TRANSCRIPT TAIL = ENRICHMENT ONLY. This indexer does
-// NOT watch `~/.claude/projects/**/session_*.jsonl`. The transcript is post-hoc context for a
-// separate enrichment worker, never a live SSE signal.
+// NOT walk provider transcripts. Transcripts are reachable via the runner-adapter's
+// `readTranscript(sessionId)` seam (GSL-281) as post-hoc context for a separate enrichment
+// worker, never a live SSE signal.
 
 import { existsSync, mkdirSync, readdirSync, watch, type FSWatcher } from "node:fs";
 import { basename, dirname, join } from "node:path";

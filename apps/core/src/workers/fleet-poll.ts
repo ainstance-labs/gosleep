@@ -1,22 +1,26 @@
-// @gosleep/core — fleet-poll worker (GSL-276 / rev-3 addendum Delta 8.1).
+// @gosleep/core — fleet-poll worker (GSL-276 / rev-3 addendum Delta 8.1; migrated to
+// SessionAdapter seam in GSL-281).
 //
 // Runs on the same Bun.serve process as the read routes. On a fixed cadence (default 4 s,
 // range 3–5 s per the Jira description), it:
 //
-//   1. Calls `@gosleep/runner-adapter#listClaudeAgents` — spawn `claude agents --json`, parse.
+//   1. Calls `sessionAdapter.listSessions()` — the seam that today shells to the Claude Code
+//      CLI via `@gosleep/runner-adapter`. A future provider swap replaces the adapter, not
+//      this worker.
 //   2. Diffs the roster against the `agent_sessions` table:
-//        * new session_id → INSERT (started_at from the CLI's `startedAt` epoch ms, ended_at NULL)
-//        * seen session_id → UPDATE status + updated_at (and any fresh non-null field the CLI
-//          reports; the poller NEVER clears context_pct / current_tool because those come from
-//          the PreToolUse shim, not the CLI).
+//        * new session_id → INSERT (started_at from the adapter's `started_at_epoch_ms`,
+//          ended_at NULL).
+//        * seen session_id → UPDATE status + updated_at (and any fresh non-null field the
+//          adapter reports; the poller NEVER clears context_pct / current_tool because those
+//          come from the PreToolUse shim, not the adapter listing).
 //        * missing session_id (present last tick, absent now) → UPDATE ended_at + status='ended'.
 //   3. Emits a single `agent_sessions.updated` SSE fan-out per change set (INSERT / UPDATE /
 //      END). The broadcaster's normal `event` channel is reused with type='agent_sessions.updated'
 //      so the web client's SseProvider can invalidate the /fleet query without new plumbing.
 //
 // FAILURE MODES.
-//   * `listClaudeAgents` returned ok=false → log ONE line, DO NOT touch the DB. A CLI hiccup
-//     must not fire spurious ended_at across the whole fleet.
+//   * `sessionAdapter.listSessions` returned ok=false → log ONE line, DO NOT touch the DB.
+//     A provider hiccup must not fire spurious ended_at across the whole fleet.
 //   * A row disappears while ended_at is NULL → set ended_at + status='ended'.
 //   * A row re-appears after ended_at was set → the UPSERT overwrites ended_at back to NULL
 //     and stamps a fresh updated_at (the harness DID spawn a new session with a new session_id;
@@ -27,17 +31,19 @@
 // is DB-backed so a restart resumes cleanly. `stop()` clears the interval and awaits any
 // in-flight tick.
 
-import { listClaudeAgents, type ClaudeAgent } from "@gosleep/runner-adapter";
+import type { SessionAdapter, SessionSummary } from "@gosleep/runner-adapter";
+
+import { getSessionAdapter } from "../adapter/session.ts";
 import type { OpenedDb } from "../db/client.ts";
 import { broadcaster } from "../sse/broadcaster.ts";
 
 export interface FleetPollOptions {
   /** Poll interval in ms (default 4000, range 3000-5000 per the Jira scope). */
   intervalMs?: number;
-  /** Override the CLI (test hook — pass a script that prints canned JSON). */
-  claudeBin?: string;
-  /** Test hook: replace the CLI-list function entirely (bypasses spawn). */
-  lister?: () => Promise<{ ok: boolean; agents: ClaudeAgent[]; reason: string }>;
+  /** Override the SessionAdapter (test hook — pass a fake with a canned `listSessions`). */
+  adapter?: SessionAdapter;
+  /** Test hook: replace the listing function entirely, bypassing the adapter. */
+  lister?: () => Promise<{ ok: boolean; agents: SessionSummary[]; reason: string }>;
   /** Emit fan-out on change (default: broadcaster.emit). */
   onChange?: (changes: FleetChangeSummary) => void;
 }
@@ -88,7 +94,7 @@ function parseCycleFromName(name: string): number | null {
  * Apply one poll's roster to the DB. Returns the change summary the caller broadcasts on SSE.
  * Exported for the unit tests — they call it directly with a canned roster.
  */
-export function reconcileRoster(db: OpenedDb, roster: ClaudeAgent[]): FleetChangeSummary {
+export function reconcileRoster(db: OpenedDb, roster: SessionSummary[]): FleetChangeSummary {
   const ts = nowIso();
   const seenIds = new Set(roster.map((a) => a.session_id));
 
@@ -169,13 +175,12 @@ export function reconcileRoster(db: OpenedDb, roster: ClaudeAgent[]): FleetChang
  */
 export function startFleetPoll(db: OpenedDb, opts: FleetPollOptions = {}): FleetPollController {
   const intervalMs = opts.intervalMs ?? 4_000;
+  const adapter = opts.adapter ?? getSessionAdapter();
   const lister =
     opts.lister ??
     (async () => {
-      const r = await listClaudeAgents(
-        opts.claudeBin !== undefined ? { claudeBin: opts.claudeBin } : {},
-      );
-      return { ok: r.ok, agents: r.agents, reason: r.reason };
+      const r = await adapter.listSessions();
+      return { ok: r.ok, agents: r.sessions, reason: r.reason };
     });
 
   let polling = false;

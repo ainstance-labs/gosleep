@@ -18,9 +18,10 @@
 //     leaves the callback undefined (one-shot historical load — no live subscribers exist yet).
 //
 // Rev-3 addendum Delta 3 (2026-08-07) — TRANSCRIPT TAIL = ENRICHMENT ONLY. This module MUST NOT
-// consume Claude Code transcript JSONL (`~/.claude/projects/**/session_*.jsonl`). Live signals
-// come exclusively from lab-log hooks writing docs/lab/events/**. Transcripts are only touched
-// by the post-hoc enrichment worker (a later task), never by tail or SSE broadcast.
+// consume provider transcript JSONL — reachable ONLY via the runner-adapter's
+// `readTranscript(sessionId)` seam (GSL-281). Live signals come exclusively from lab-log hooks
+// writing docs/lab/events/**. Transcripts are only touched by the post-hoc enrichment worker
+// (a later task), never by tail or SSE broadcast.
 
 import { createReadStream, readFileSync, statSync } from "node:fs";
 import { createInterface } from "node:readline";

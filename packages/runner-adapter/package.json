@@ -1,16 +1,17 @@
 {
   "name": "@gosleep/runner-adapter",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Thin adapter over the Claude Code CLI (`claude agents --json`) — the ONLY place the harness process shells to `claude`. Kept out of apps/core so a future runner (a different local agent host, a remote SessionAdapter per rev-3 addendum Delta 10) can be dropped in without touching the control-plane routes. Used by apps/core/src/workers/fleet-poll.ts to project per-agent state into the `agent_sessions` table (GSL-276).",
+  "description": "SessionAdapter interface + the Claude Code adapter (v1) — the ONLY place the harness process shells to `claude` or writes provider-specific settings. Four seams: listSessions, installSessionHooks, deliverAnswer, readTranscript. `apps/core/` talks to a provider through SessionAdapter and never through the CLI directly, per GSL-281 (rev-3 addendum Delta 10). The `contract.md` sibling sketches an OpenAI/Codex adapter as a v2 reference.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {},
   "devDependencies": {

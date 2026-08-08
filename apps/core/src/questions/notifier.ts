@@ -10,7 +10,9 @@
 //   1. POST /actions/questions/answer runs its dual-write (lab-emit + direct UPDATE) inside
 //      apps/core/src/routes/actions.ts::doAnswer.
 //   2. Immediately after the UPDATE lands (same await frame), doAnswer calls
-//      `questionNotifier.notify({ qid, status: 'answered', answer_text, answered_at, answered_by })`.
+//      `sessionAdapter.deliverAnswer({ qid, status: 'answered', answer_text, answered_at,
+//      answered_by })` — the GSL-281 seam. For the Claude Code adapter that call routes
+//      into `questionNotifier.notify(...)` (via the `notify` closure injected at construction).
 //   3. The long-poll route in apps/core/src/routes/internal.ts is subscribed with
 //      `subscribeQid(qid, cb)`; the cb resolves the Promise the HTTP handler is awaiting, the
 //      response ships, the hook shim releases, the agent proceeds.

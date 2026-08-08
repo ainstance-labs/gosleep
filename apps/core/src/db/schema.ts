@@ -192,29 +192,30 @@ export const ingest_state = sqliteTable("ingest_state", {
 });
 
 /**
- * Per-agent fleet state (GSL-276 / rev-3 addendum Delta 8.1). One row per live Claude Code
- * agent session on this host, keyed by the harness's stable `session_id` (UUID from
- * `claude agents --json`). Owner requirement R4: "how many agents are running, what each is
- * doing, what its context %" — the row breaks that scalar heartbeat down per session.
+ * Per-agent fleet state (GSL-276 / rev-3 addendum Delta 8.1). One row per live agent session
+ * on this host, keyed by the harness's stable `session_id` (a UUID from the runner adapter).
+ * Owner requirement R4: "how many agents are running, what each is doing, what its context
+ * %" — the row breaks that scalar heartbeat down per session.
  *
  * SOURCES that write this table:
  *   1. The fleet-poll worker (`apps/core/src/workers/fleet-poll.ts`) calls
- *      `claude agents --json` every 3–5 s through `@gosleep/runner-adapter#listClaudeAgents`,
- *      and UPSERTs each session row (creates on first sighting, updates status/updated_at on
- *      every tick, sets ended_at when a session disappears from the roster).
- *   2. The `POST /internal/agents/tool-observed` shim (fed by the PreToolUse Claude Code hook)
+ *      `sessionAdapter.listSessions()` every 3–5 s through `@gosleep/runner-adapter`
+ *      (GSL-281 seam over the Claude Code CLI wrapper), and UPSERTs each session row (creates
+ *      on first sighting, updates status/updated_at on every tick, sets ended_at when a
+ *      session disappears from the roster).
+ *   2. The `POST /internal/agents/tool-observed` shim (fed by the provider's PreToolUse hook)
  *      updates `current_tool` and (optionally) `context_pct` at 1 s debounce per session.
- *      The hook is the ONLY source for context_pct — the CLI JSON does not carry it.
+ *      The hook is the ONLY source for context_pct — the adapter listing does not carry it.
  *
  * COLUMNS. `session_id` is the primary key (a stable UUID; two consecutive spawns of the same
  * pane get different session_ids). `name` is the harness's human-readable label (e.g.
- * "gosleep-93"). `kind` is `interactive` | `background` per the CLI. `status` mirrors
- * `claude agents --json`'s status field ('busy'|'idle'|'waiting'|...); `ended` is stamped by
- * the poller when a row falls off the roster (that value is not in the CLI, it's an internal
+ * "gosleep-93"). `kind` is `interactive` | `background` per the adapter. `status` mirrors
+ * the adapter's status field ('busy'|'idle'|'waiting'|...); `ended` is stamped by the poller
+ * when a row falls off the roster (that value is not in the adapter listing, it's an internal
  * convention meaning "poll saw the row disappear"). Nullable fields (`pid`, `model`, `cycle`,
  * `context_pct`, `current_tool`, `current_intent`, `ended_at`) may not be populated at INSERT
- * time — the CLI does not surface model/cycle, and the hook may never fire for a short-lived
- * session. The web Fleet screen tolerates every NULL by rendering "—".
+ * time — the adapter does not surface model/cycle, and the hook may never fire for a
+ * short-lived session. The web Fleet screen tolerates every NULL by rendering "—".
  *
  * INDEXES. `ix_agent_sessions_status_updated` supports the /fleet projection's default sort
  * (active-first, latest-updated-first). `ix_agent_sessions_updated` supports "show me the

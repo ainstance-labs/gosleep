@@ -92,12 +92,12 @@ if (process.env.GOSLEEP_DISABLE_INDEXER !== "1") {
   }
 }
 
-// Fleet-poll worker (GSL-276) — INDEPENDENT of the tail indexer. Reads `claude agents --json`
-// via `@gosleep/runner-adapter` and reconciles into `agent_sessions`. Gated by its own env
-// (GOSLEEP_DISABLE_FLEET_POLL=1) so:
+// Fleet-poll worker (GSL-276) — INDEPENDENT of the tail indexer. Enumerates live sessions
+// via `sessionAdapter.listSessions()` (GSL-281 seam over `@gosleep/runner-adapter`) and
+// reconciles into `agent_sessions`. Gated by its own env (GOSLEEP_DISABLE_FLEET_POLL=1) so:
 //   * a headless test run can turn it off without disabling the whole indexer chain.
 //   * the endpoint smoke (GOSLEEP_DISABLE_INDEXER=1 already set) still gets fleet-poll off by
-//     default because the scratch smoke does not want a background CLI spawn.
+//     default because the scratch smoke does not want a background provider spawn.
 // The default cadence is 4 s (range 3-5 s per Jira scope).
 if (process.env.GOSLEEP_DISABLE_FLEET_POLL !== "1") {
   try {

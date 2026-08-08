@@ -1,14 +1,23 @@
-// @gosleep/runner-adapter — Claude Code CLI adapter (GSL-276).
+// @gosleep/runner-adapter — Claude Code CLI adapter (GSL-276; SessionAdapter wrapper GSL-281).
 //
 // The ONE place the harness process shells to `claude`. Kept in packages/runner-adapter so:
-//   1. apps/core/ imports nothing that hard-codes the CLI shape — the day the harness switches
-//      to a different runner (a remote SessionAdapter per rev-3 addendum Delta 10, an in-process
-//      SDK, a different local agent host), only THIS file changes.
-//   2. Unit tests for the fleet-poll worker mock a single import surface (`listClaudeAgents`)
-//      instead of stubbing `Bun.spawn` inside every test.
+//   1. `apps/core/` imports nothing that hard-codes the CLI shape — the day the harness
+//      switches to a different runner (a remote SessionAdapter per rev-3 addendum Delta 10,
+//      an in-process SDK, a different local agent host), only THIS file changes.
+//   2. Unit tests for the fleet-poll worker mock a single import surface
+//      (`listClaudeAgents` today; `SessionAdapter.listSessions()` post-GSL-281) instead of
+//      stubbing `Bun.spawn` inside every test.
 //
-// CONTRACT. `claude agents --json` on a Tahoe-26.x + Claude Code 2.6.x host prints a JSON array
-// of live agent sessions. Each entry carries (verified 2026-08-07 against the running host):
+// LOW-LEVEL: `listClaudeAgents` shells to the CLI and returns the parsed roster verbatim.
+// Kept exported for backward compatibility with tests that already know this shape.
+//
+// HIGH-LEVEL: `createClaudeCodeAdapter()` returns a `SessionAdapter` whose four methods are
+// the seam the rest of the codebase talks to. This is the surface the GSL-281 acceptance
+// tripwire requires — `apps/core/src/**` must never mention `claude agents` directly.
+//
+// CONTRACT for the CLI. `claude agents --json` on a Tahoe-26.x + Claude Code 2.6.x host prints
+// a JSON array of live agent sessions. Each entry carries (verified 2026-08-07 against the
+// running host):
 //
 //   [
 //     {
@@ -34,27 +43,41 @@
 // tick" (better than pretending every session ended, which would fire spurious ended_at).
 
 import { spawn as bunSpawn } from "bun";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, extname, join } from "node:path";
+
+import type {
+  DeliverAnswerInput,
+  DeliverAnswerResult,
+  InstallHooksContext,
+  InstallHooksResult,
+  ListSessionsOptions,
+  ListSessionsResult,
+  QuestionMutation,
+  ReadTranscriptResult,
+  SessionAdapter,
+  SessionSummary,
+  TranscriptEntry,
+} from "./session-adapter.ts";
+
+// -----------------------------------------------------------------------------
+// low-level CLI shell (kept exported for backward compat)
+// -----------------------------------------------------------------------------
 
 /**
- * The row shape `claude agents --json` prints. Only fields we consume are typed; unknown
+ * The row shape the Claude Code CLI prints. Only fields we consume are typed; unknown
  * future fields survive the JSON.parse and are ignored.
+ *
+ * Historical alias: `ClaudeAgent` matches the pre-GSL-281 export name that the fleet-poll
+ * worker + test suite already consume. Kept as-is so this migration touches call-sites, not
+ * their type imports.
  */
-export interface ClaudeAgent {
-  session_id: string;
-  name: string;
-  kind: string;
-  pid: number | null;
-  cwd: string;
-  status: string;
-  /** Epoch ms from CLI. Converted to ISO in the caller — we surface the CLI shape verbatim. */
-  started_at_epoch_ms: number;
-}
+export interface ClaudeAgent extends SessionSummary {}
 
-export interface ListAgentsOptions {
+export interface ListAgentsOptions extends ListSessionsOptions {
   /** Override the `claude` binary path (default: the one on PATH). Test hook. */
   claudeBin?: string;
-  /** Milliseconds after which we give up. Default 5000. */
-  timeoutMs?: number;
 }
 
 export interface ListAgentsResult {
@@ -148,9 +171,9 @@ export async function listClaudeAgents(
 }
 
 /**
- * Exported for unit tests — turns an unknown blob (an array from `claude agents --json`) into
- * a strongly-typed `ClaudeAgent[]`, dropping entries missing required fields (session_id, name,
- * cwd, status). NEVER throws: a malformed row is skipped, not a hard failure.
+ * Exported for unit tests — turns an unknown blob (an array from the Claude Code CLI) into
+ * a strongly-typed `ClaudeAgent[]`, dropping entries missing required fields (session_id,
+ * name, cwd, status). NEVER throws: a malformed row is skipped, not a hard failure.
  */
 export function normaliseAgents(raw: unknown): ClaudeAgent[] {
   if (!Array.isArray(raw)) return [];
@@ -183,4 +206,163 @@ export function normaliseAgents(raw: unknown): ClaudeAgent[] {
     });
   }
   return out;
+}
+
+// -----------------------------------------------------------------------------
+// high-level SessionAdapter implementation
+// -----------------------------------------------------------------------------
+
+export interface CreateClaudeCodeAdapterOptions {
+  /** Injected by `apps/core/` so `deliverAnswer` routes into the in-process notifier.
+   *  Left undefined in tests that only exercise `listSessions()` / `readTranscript()`. */
+  notify?: (mutation: QuestionMutation) => void;
+  /** Override the `claude` binary path (test hook). */
+  claudeBin?: string;
+  /** Override the transcripts root (default: `~/.claude/projects`). Test hook. */
+  transcriptsRoot?: string;
+  /** Override the default list timeout (ms). */
+  listTimeoutMs?: number;
+}
+
+/**
+ * Build a SessionAdapter backed by the Claude Code CLI + the in-process question notifier.
+ * v1 seed — see references in the SessionAdapter interface docstring.
+ */
+export function createClaudeCodeAdapter(
+  opts: CreateClaudeCodeAdapterOptions = {},
+): SessionAdapter {
+  const claudeBin = opts.claudeBin;
+  const listTimeoutMs = opts.listTimeoutMs;
+  const notify = opts.notify;
+  const transcriptsRoot = opts.transcriptsRoot ?? defaultTranscriptsRoot();
+
+  return {
+    id: "claude-code",
+    displayName: "Claude Code CLI",
+
+    async listSessions(callOpts?: ListSessionsOptions): Promise<ListSessionsResult> {
+      const cliOpts: ListAgentsOptions = {};
+      if (claudeBin !== undefined) cliOpts.claudeBin = claudeBin;
+      const timeout = callOpts?.timeoutMs ?? listTimeoutMs;
+      if (timeout !== undefined) cliOpts.timeoutMs = timeout;
+      const r = await listClaudeAgents(cliOpts);
+      return {
+        ok: r.ok,
+        sessions: r.agents,
+        elapsedMs: r.elapsedMs,
+        reason: r.reason,
+      };
+    },
+
+    async installSessionHooks(ctx: InstallHooksContext): Promise<InstallHooksResult> {
+      // v1 seed: the interface is alive, the concrete install body lands in GSL-267 per
+      // the GSL-281 Jira scope. We compute the target path and the matcher list so a caller
+      // can render a "here's what would land" preview without actually writing.
+      const settingsPath = join(ctx.projectDir, ".claude", "settings.json");
+      const hooks = [
+        "PreToolUse{AskUserQuestion}",
+        "PreToolUse{PermissionRequest}",
+        "PreToolUse{tool-observed}",
+      ];
+      return {
+        ok: false,
+        settingsPath,
+        hooks,
+        reason:
+          "install-body deferred to GSL-267 per GSL-281 scope — this v1 seed exposes the seam only",
+      };
+    },
+
+    deliverAnswer(input: DeliverAnswerInput): DeliverAnswerResult {
+      if (notify === undefined) {
+        return {
+          ok: false,
+          channel: "noop",
+          reason: "no notifier injected — construct the adapter with { notify } to enable delivery",
+        };
+      }
+      // The Claude Code delivery mechanism is: in-process EventEmitter wakes the hook's
+      // long-poll GET /internal/questions/:qid/answer-wait (see apps/core/src/routes/internal.ts).
+      // The notifier itself lives in apps/core so the adapter package stays runtime-agnostic;
+      // production wires `notify: (m) => questionNotifier.notify(m)` at construction time.
+      notify({
+        qid: input.qid,
+        status: input.status,
+        answer_text: input.answer_text,
+        answered_at: input.answered_at,
+        answered_by: input.answered_by,
+      });
+      return { ok: true, channel: "in-process-notifier", reason: "" };
+    },
+
+    readTranscript(sessionId: string): ReadTranscriptResult {
+      // ENRICHMENT-ONLY per rev-3 addendum Delta 3. This method is provided so a future
+      // enrichment worker can walk the transcripts on demand; the tail indexer must never
+      // call it (would break the "no transcript on the live path" guarantee).
+      if (sessionId.length === 0) {
+        return { ok: false, session_id: sessionId, entries: [], reason: "empty session id" };
+      }
+      if (!existsSync(transcriptsRoot)) {
+        return {
+          ok: false,
+          session_id: sessionId,
+          entries: [],
+          reason: `transcripts root missing: ${transcriptsRoot}`,
+        };
+      }
+      const entries: TranscriptEntry[] = [];
+      // Two-level scan: `<root>/<project-slug>/<file>.jsonl`. Claude Code names files with
+      // the session UUID as a prefix; we match by substring for robustness against version
+      // drift in the filename format.
+      let projectDirs: string[];
+      try {
+        projectDirs = readdirSync(transcriptsRoot);
+      } catch (err) {
+        return {
+          ok: false,
+          session_id: sessionId,
+          entries: [],
+          reason: `readdir root: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+      for (const projectSlug of projectDirs) {
+        const projectPath = join(transcriptsRoot, projectSlug);
+        let stat;
+        try {
+          stat = statSync(projectPath);
+        } catch {
+          continue;
+        }
+        if (!stat.isDirectory()) continue;
+        let files: string[];
+        try {
+          files = readdirSync(projectPath);
+        } catch {
+          continue;
+        }
+        for (const file of files) {
+          if (extname(file) !== ".jsonl") continue;
+          if (!basename(file).includes(sessionId)) continue;
+          const filePath = join(projectPath, file);
+          try {
+            const fstat = statSync(filePath);
+            entries.push({
+              path: filePath,
+              session_id: sessionId,
+              size_bytes: fstat.size,
+              modified_at_epoch_ms: fstat.mtimeMs,
+            });
+          } catch {
+            /* skip unreadable file */
+          }
+        }
+      }
+      return { ok: true, session_id: sessionId, entries, reason: "" };
+    },
+  };
+}
+
+function defaultTranscriptsRoot(): string {
+  const home = homedir();
+  return join(home, ".claude", "projects");
 }

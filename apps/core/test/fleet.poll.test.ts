@@ -1,9 +1,9 @@
-// @gosleep/core — fleet-poll worker unit tests (GSL-276).
+// @gosleep/core — fleet-poll worker unit tests (GSL-276; SessionAdapter seam GSL-281).
 //
 // The behaviours pinned down here match the acceptance rules the Jira description names:
 //
-//   1. INSERT on first sighting — a session that was never in the DB shows up with the CLI
-//      fields the poller can observe (name, kind, pid, cwd, status). NULL columns
+//   1. INSERT on first sighting — a session that was never in the DB shows up with the fields
+//      the runner adapter can observe (name, kind, pid, cwd, status). NULL columns
 //      (context_pct, current_tool, current_intent, model) stay NULL — the poller is not the
 //      shim, and would clobber a fresher value if it wrote here.
 //   2. UPDATE on subsequent sightings — status + updated_at move; the started_at column
@@ -13,9 +13,9 @@
 //   4. RESURRECTION — a session that came back after ended_at was set is re-INSERTed via the
 //      UPDATE branch (session_id already exists) with ended_at cleared. UUIDs make this
 //      unlikely in practice, but the reconciler must not throw.
-//   5. NO-OP on stale roster — an empty roster (CLI failure elsewhere) reconciles to "end all
-//      live sessions"; but a `listClaudeAgents` failure returns `ok:false` and the caller
-//      SKIPS the reconcile — that path is tested at the worker level.
+//   5. NO-OP on stale roster — an empty roster (provider failure elsewhere) reconciles to
+//      "end all live sessions"; but a `sessionAdapter.listSessions()` failure returns
+//      `ok:false` and the caller SKIPS the reconcile — that path is tested at the worker level.
 
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -23,7 +23,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 
 import * as schema from "../src/db/schema.ts";
 import type { OpenedDb } from "../src/db/client.ts";
-import type { ClaudeAgent } from "@gosleep/runner-adapter";
+import type { SessionSummary } from "@gosleep/runner-adapter";
 import { reconcileRoster, startFleetPoll } from "../src/workers/fleet-poll.ts";
 
 function freshDb(): OpenedDb {
@@ -49,7 +49,7 @@ function freshDb(): OpenedDb {
   return { db, raw, path: ":memory:" };
 }
 
-function agent(overrides: Partial<ClaudeAgent> = {}): ClaudeAgent {
+function agent(overrides: Partial<SessionSummary> = {}): SessionSummary {
   return {
     session_id: "sid-A",
     name: "gosleep-93",

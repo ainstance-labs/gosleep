@@ -45,7 +45,7 @@ import { getDb } from "../db/client.ts";
 import { serialize } from "../actions/mutex.ts";
 import { resolveIntentId, withTimeline } from "../actions/withTimeline.ts";
 import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
-import { questionNotifier } from "../questions/notifier.ts";
+import { getSessionAdapter } from "../adapter/session.ts";
 import { loadManifest, type ManifestRule } from "../manifest/parser.ts";
 import { runSyncCycle, type JiraSyncChangeSummary } from "../workers/jira-sync.ts";
 
@@ -176,10 +176,11 @@ async function doAnswer(input: AnswerInput): Promise<AnswerResult> {
   }
 
   // GSL-275: wake any long-poll waiter for this qid the instant the row flips. NOT reached via
-  // the SSE broadcaster (that path fires later, after the tail indexer re-reads the JSONL); this
-  // in-process EventEmitter fires within the same await frame so the hook shim releases in
-  // ~milliseconds. See src/questions/notifier.ts for the whole rationale.
-  questionNotifier.notify({
+  // the SSE broadcaster (that path fires later, after the tail indexer re-reads the JSONL); the
+  // adapter's in-process delivery fires within the same await frame so the hook shim releases
+  // in ~milliseconds. GSL-281 seam: the SessionAdapter chooses HOW the answer reaches the
+  // paused session (today: in-process notifier; a Codex-style adapter would POST HTTP instead).
+  getSessionAdapter().deliverAnswer({
     qid: input.qid,
     status: "answered",
     answer_text: input.answer,
@@ -268,7 +269,8 @@ async function doResolve(input: ResolveInput): Promise<ResolveResult> {
   // GSL-275: also wake long-poll waiters on resolve — a manifest auto-resolve or an early-default
   // is a terminal answer from the agent's perspective, and the hook should release rather than
   // sit until timeout. The wait's TERMINAL set treats these statuses as answered-equivalent.
-  questionNotifier.notify({
+  // GSL-281 seam: routed via SessionAdapter.deliverAnswer.
+  getSessionAdapter().deliverAnswer({
     qid: input.qid,
     status: derivedStatus,
     answer_text: input.applied,
@@ -454,7 +456,8 @@ async function doApplyManifest(input: ApplyManifestInput): Promise<ApplyManifest
 
   // Wake long-poll waiters — same reasoning as doAnswer. The agent's PreToolUse hook releases
   // in ~ms; the SSE fan-out lags this by a tail-indexer sweep, so both paths converge.
-  questionNotifier.notify({
+  // GSL-281 seam: routed via SessionAdapter.deliverAnswer.
+  getSessionAdapter().deliverAnswer({
     qid: input.qid,
     status: "answered",
     answer_text,
@@ -580,7 +583,7 @@ async function doDefer(input: DeferInput): Promise<DeferResult> {
     );
   }
 
-  // Note: no `questionNotifier.notify` here. IMPORTANT — per Jira scope, deferring must NOT
+  // Note: no `sessionAdapter.deliverAnswer` here. IMPORTANT — per Jira scope, deferring must NOT
   // deliver anything back to the asking agent's PreToolUse long-poll; that hook keeps waiting
   // for a real answer. Waking it now with `status='deferred'` would leak "deferred" to the
   // agent as if it were an answer and break the semantic contract.
