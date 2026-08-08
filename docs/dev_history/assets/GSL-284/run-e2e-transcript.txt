@@ -1,0 +1,22 @@
+== setup ==
+== boot core on 7401 ==
+  core ready on 7401 (pid 60434)
+== path 1: allow ==
+  qid: p-20260808-003229-7397268b
+  decide → 200 {"ok":true,"intent_id":"e2e-allow-p-20260808-003229-7397268b","cached":false,"result":{"qid":"p-20260808-003229-7397268b","status":"answered","decision":"allow","answered_at":"2026-08-08T00:32:29.758Z","answered_by":"owner-web","applied_by":"owner","updated_message":null}}
+  shim stdout: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
+  PASS allow
+== path 2: deny + reason ==
+  qid: p-20260808-003229-ae8ef642
+  decide → 200 {"ok":true,"intent_id":"e2e-deny-p-20260808-003229-ae8ef642","cached":false,"result":{"qid":"p-20260808-003229-ae8ef642","status":"answered","decision":"deny","answered_at":"2026-08-08T00:32:30.380Z","answered_by":"owner-web","applied_by":"owner","updated_message":"E2E — destructive rm rejected"}}
+  shim stdout: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "E2E \u2014 destructive rm rejected"}}
+  PASS deny + reason
+== path 3: fail-open (core down) ==
+  shim exit=0 stdout bytes=0
+  PASS fail-open: exit=0 + empty stdout
+== summary ==
+  ALL 3 PATHS PASS
+  debug log: /tmp/gsl284-e2e/hook-debug.jsonl
+{"ts":"2026-08-08T00:32:29Z","hook":"permission-request","outcome":"decided","qid":"p-20260808-003229-7397268b","elapsed_ms":0}
+{"ts":"2026-08-08T00:32:30Z","hook":"permission-request","outcome":"decided","qid":"p-20260808-003229-ae8ef642","elapsed_ms":1000}
+{"ts":"2026-08-08T00:32:31Z","hook":"permission-request","outcome":"fail_open","qid":"-","elapsed_ms":1000,"reason":"POST /internal/permissions/post rc=000000"}

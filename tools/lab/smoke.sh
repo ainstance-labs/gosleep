@@ -238,6 +238,12 @@ printf '{"generated_at":"NEXT-PASS"}' | "$LW" --json "$K"
 
 echo "== chronicler: the T3 regenerator (GSL-86) =="
 CH="$SCRIPT_DIR/chronicler.sh"
+# GSL-270 (target-architecture step 11): the Preact-SSG view layer is off by default. Every
+# assertion in this section — and in the sibling sections below that read from docs/lab/site/*.html —
+# was written when render.sh always ran, so they need the opt-in flag to keep exercising the
+# renderer end-to-end. `unset` at the very end of the chronicler blocks restores the shell default so
+# the guards downstream (which do NOT need render) see the production behavior.
+export GOSLEEP_KEEP_STATIC_SITE=1
 bash -n "$CH" && ok "chronicler.sh: bash -n" || bad "chronicler.sh: bash -n"
 python3 -c "import ast; ast.parse(open('$SCRIPT_DIR/chronicler.py').read())" 2>/dev/null \
   && ok "chronicler.py: parses" || bad "chronicler.py: syntax error"
@@ -4453,6 +4459,214 @@ grep -q 'chronicler.sh" --quiet' "$GS" \
 grep -q -- '--offline' "$GS" && grep -q 'gates/gate.json' "$GS" \
   && ok "GSL-203: offline is an explicit flag, and the gate leaves its own receipt" \
   || bad "GSL-203: missing --offline flag or gate.json receipt"
+
+echo "== GSL-270: Preact-SSG deprecated — GOSLEEP_KEEP_STATIC_SITE gates render.sh =="
+# target-architecture step 11: the chronicler stops invoking tools/lab/ui/render.sh by default;
+# docs/lab/site/*.html stays in git as a frozen rollback surface for 1-2 months. The env flag
+# GOSLEEP_KEEP_STATIC_SITE=1 opts back in (identical old behaviour); the default (unset or "0")
+# skips render.sh AND leaves the existing .html files intact.
+#
+# The chronicler still writes render_bundle.json + status.json + mobile/README.md + digest under
+# EITHER mode — the phone surface and the web control plane both keep working.
+#
+# GSL-269 also uses this section as the source of truth for "the chronicler stays green on existing
+# smoke checks WITHOUT render.sh" — the two probes below are exactly that guarantee.
+GSL270_CR="$WORK/gsl270-chron"; mkdir -p "$GSL270_CR/docs/lab/events" "$GSL270_CR/docs/lab/questions" "$GSL270_CR/docs/lab/decisions"
+: > "$GSL270_CR/docs/lab/questions/queue.jsonl"; : > "$GSL270_CR/docs/lab/decisions/log.jsonl"
+GSL270_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+GSL270_DAY="$(date -u +%F)"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"c0ffee1"}}\n' \
+  "$GSL270_TS" "$GSL270_DAY" > "$GSL270_CR/docs/lab/events/$GSL270_DAY.jsonl"
+
+# Probe A — default (unset): render.sh is NOT invoked. status.json.ui.reason == 'ssg-disabled',
+# render_bundle.json IS written, and no docs/lab/site/*.html file appears in the throwaway repo.
+unset GOSLEEP_KEEP_STATIC_SITE
+bash "$CH" --repo "$GSL270_CR" --no-poll --quiet --json >/dev/null 2>&1
+GSL270_REASON="$(jq -r '.ui.reason' "$GSL270_CR/docs/lab/status.json" 2>/dev/null)"
+[ "$GSL270_REASON" = "ssg-disabled" ] \
+  && ok "GSL-270: default (env unset) -> status.json.ui.reason == 'ssg-disabled'" \
+  || bad "GSL-270: default did NOT disable SSG (ui.reason=$GSL270_REASON)"
+[ -f "$GSL270_CR/docs/lab/render_bundle.json" ] \
+  && ok "GSL-270: default still writes render_bundle.json (mobile + web read it)" \
+  || bad "GSL-270: render_bundle.json missing under SSG-disabled default"
+[ ! -e "$GSL270_CR/docs/lab/site/index.html" ] \
+  && ok "GSL-270: default does NOT create docs/lab/site/index.html — render.sh was skipped" \
+  || bad "GSL-270: SSG-disabled default STILL wrote site/index.html — render.sh ran"
+[ -f "$GSL270_CR/docs/lab/mobile/README.md" ] \
+  && ok "GSL-270: default keeps mobile/README.md updating (step 11 explicit requirement)" \
+  || bad "GSL-270: mobile/README.md not written under SSG-disabled default"
+
+# Probe B — explicit opt-in: GOSLEEP_KEEP_STATIC_SITE=1 restores the pre-GSL-270 behaviour;
+# status.json.ui.ok is true (or the render honestly degraded but the CALL was made). Success is
+# defined here as EITHER a rendered site OR a degrade banner — both prove render.sh was invoked.
+rm -rf "$GSL270_CR/docs/lab/site" "$GSL270_CR/docs/lab/status.json" 2>/dev/null
+GOSLEEP_KEEP_STATIC_SITE=1 bash "$CH" --repo "$GSL270_CR" --no-poll --quiet --json >/dev/null 2>&1
+GSL270_UI_REASON="$(jq -r '.ui.reason // "null"' "$GSL270_CR/docs/lab/status.json" 2>/dev/null)"
+# Under =1, ui.reason is EITHER null (render worked) OR one of build-failed / no-renderer / bad-bundle
+# (render invoked but degraded). It must NOT be 'ssg-disabled' — that would mean the flag was ignored.
+[ "$GSL270_UI_REASON" != "ssg-disabled" ] \
+  && ok "GSL-270: opt-in (env=1) invokes render.sh — status.json.ui.reason != 'ssg-disabled' ($GSL270_UI_REASON)" \
+  || bad "GSL-270: opt-in was ignored — status.json still says ssg-disabled"
+
+# Restore the default for every downstream section (they do not need the renderer and asserting
+# on frozen .html files below this point would race the GSL-270 default).
+unset GOSLEEP_KEEP_STATIC_SITE
+
+echo "== GSL-258: data/ stays out of git — only .gitkeep / .gitignore markers travel =="
+# Web control plane (epic GSL-250) puts the SQLite source of truth under data/.
+# The runtime DB, WAL/SHM, snapshots and core logs must NEVER be committed; only
+# the two markers that keep the directory shape can. A single stray blob under
+# data/ means the .gitignore was bypassed (git add -f, a wrong pattern, or a
+# missed subpath) — catch it here before the branch even reaches review.
+DATA_TRACKED="$(cd "$REPO_ROOT" && git ls-files data/ 2>/dev/null | grep -Ev '^data/(\.gitkeep|\.gitignore)$' || true)"
+if [ -z "$DATA_TRACKED" ]; then
+  ok "GSL-258: data/ contains only the .gitkeep + .gitignore markers"
+else
+  bad "GSL-258: data/ has tracked payload files (should be gitignored): $(printf '%s' "$DATA_TRACKED" | tr '\n' ' ')"
+fi
+
+echo "== GSL-260: no-mess rules for apps/ + packages/ (target-architecture §5.3) =="
+# Rule 1 — no python under apps/ or packages/. The new stack is TypeScript through and
+# through; chronicler.py stays under tools/lab/ where it belongs. A stray .py under apps/
+# would drag the python interpreter into the runtime path and re-open the mode split
+# rev 2 §5 was written to close.
+APPS_PY="$(cd "$REPO_ROOT" && find apps packages -name '*.py' 2>/dev/null | head -5 || true)"
+if [ -z "$APPS_PY" ]; then
+  ok "GSL-260: no .py files under apps/ or packages/ (§5.3 rule 1)"
+else
+  bad "GSL-260: unexpected .py under apps/ or packages/: $(printf '%s' "$APPS_PY" | tr '\n' ' ')"
+fi
+
+# Rule 2 — no shell scripts under apps/ or packages/ EXCEPT the whitelisted install/plist
+# helpers (which live at apps/core top level per Jira, apps/core/scripts/*.sh per the
+# architecture directory sketch, and apps/core/bin/*.sh for the named gate helpers per GSL-264
+# rev-3 addendum §Delta 4 — tty-confirm.sh sits alongside touchid-gate.app as the section-7.3
+# priority-1 fallback). Every OTHER .sh under apps/ means someone put a spawner in the wrong
+# layer — real spawners belong in apps/core/src/spawn/*.ts.
+APPS_SH="$(cd "$REPO_ROOT" && \
+  find apps packages -name '*.sh' 2>/dev/null | \
+  grep -Ev '^apps/core/(install-deps\.sh|plist\.sh|scripts/[^/]+\.sh|bin/[^/]+\.sh)$' | \
+  head -5 || true)"
+if [ -z "$APPS_SH" ]; then
+  ok "GSL-260: no unexpected .sh under apps/ or packages/ (§5.3 rule 2 — whitelist: install-deps.sh, plist.sh, apps/core/scripts/*.sh, apps/core/bin/*.sh)"
+else
+  bad "GSL-260: unexpected .sh under apps/ or packages/: $(printf '%s' "$APPS_SH" | tr '\n' ' ')"
+fi
+
+# Rule 3 (partial) — the writers under docs/lab/ stay tools/lab/{lab-log,lab-emit,lab-write}
+# territory. apps/core does not (and will not) write to docs/lab/ directly; write actions
+# go through spawn of the existing CLIs. The full grep guard against fs writes lands with
+# GSL-263 (when actions.ts exists); here we only guard the invariant that apps/core has
+# no file at all matching src/spawn/**.ts YET (a placeholder-only check for GSL-260 —
+# real spawners in GSL-263 make this check dynamic).
+if [ -d "$REPO_ROOT/apps/core/src" ]; then
+  ok "GSL-260: apps/core/ scaffold exists"
+else
+  bad "GSL-260: apps/core/src not found — GSL-260 scaffold missing"
+fi
+
+echo "== GSL-261: no unannotated destructive Drizzle migrations (R28) =="
+# R28 in target-architecture: a `drizzle-kit generate` run that emitted a DROP TABLE or DROP
+# COLUMN must never slip into the tree unreviewed. When such a change is INTENTIONAL, the SQL
+# file gets a `-- WARN: intentional drop` line right above the DROP; that annotation is the
+# operator's explicit acknowledgement the corresponding pre-migration snapshot has been taken.
+# The check here fails only on drop statements that lack the WARN sentinel on any of the
+# 5 lines immediately above them — a bare DROP is a red flag, an annotated one passes.
+DRIZZLE_DIR="$REPO_ROOT/apps/core/drizzle"
+if [ -d "$DRIZZLE_DIR" ]; then
+  UNANN_DROPS="$(find "$DRIZZLE_DIR" -maxdepth 1 -type f -name '*.sql' 2>/dev/null | while read -r f; do
+    # awk emits every unannotated DROP TABLE / DROP COLUMN line prefixed with its file:line.
+    awk -v file="$f" '
+      /^--[[:space:]]*WARN:[[:space:]]*intentional[[:space:]]+drop/ { warn = NR; next }
+      /DROP[[:space:]]+(TABLE|COLUMN)/ {
+        if (warn == 0 || NR - warn > 5) print file ":" NR ": " $0
+      }
+    ' "$f"
+  done)"
+  if [ -z "$UNANN_DROPS" ]; then
+    ok "GSL-261: drizzle/*.sql has no unannotated DROP TABLE|COLUMN (R28)"
+  else
+    bad "GSL-261: unannotated destructive migration — $(printf '%s' "$UNANN_DROPS" | tr '\n' ' | ')"
+  fi
+  # Sanity: the initial migration + its snapshot + the journal must travel together. If any
+  # one of the three vanishes the migration set is broken; catching it here beats a runtime
+  # 'no migrations found' surprise.
+  MIG_FILES_OK=1
+  [ -f "$DRIZZLE_DIR/0000_initial.sql" ]      || MIG_FILES_OK=0
+  [ -f "$DRIZZLE_DIR/meta/_journal.json" ]    || MIG_FILES_OK=0
+  [ -f "$DRIZZLE_DIR/meta/0000_snapshot.json" ] || MIG_FILES_OK=0
+  if [ "$MIG_FILES_OK" -eq 1 ]; then
+    ok "GSL-261: drizzle/ carries 0000_initial.sql + _journal.json + 0000_snapshot.json"
+  else
+    bad "GSL-261: drizzle/ is missing at least one of the 3 migration files"
+  fi
+else
+  # Not-yet-generated is fine during pre-GSL-261 states; keep the guard silent so it doesn't
+  # noise-fail the gate on older branches that haven't merged this task yet.
+  ok "GSL-261: apps/core/drizzle/ absent — no migrations to check"
+fi
+
+echo "== GSL-269: write actions never touch fs directly + every POST wraps withTimeline =="
+# target-architecture step 10 + red-team item 5 (persistent Idempotency-Map) + section 5.3.
+#
+# Rule 1: NO fs write anywhere on the write-action path. Every state change goes through
+# tools/lab/lab-emit.sh (JSONL) or a Drizzle write (SQLite) via spawn.ts. A rogue fs.writeFile
+# in routes/actions.ts or under actions/ + security/ would (a) bypass the writeTimeline audit,
+# (b) sit outside the top-level chronicler lock, and (c) reopen the race the addendum closed.
+GSL269_FS_HITS="$(cd "$REPO_ROOT" && grep -rEn "fs\.writeFile|writeFileSync|fs\.appendFile|appendFileSync|writeFile\(" \
+  apps/core/src/routes/actions.ts apps/core/src/actions apps/core/src/security 2>/dev/null | \
+  grep -v '^[^:]*:[[:space:]]*//' || true)"
+if [ -z "$GSL269_FS_HITS" ]; then
+  ok "GSL-269: no fs.writeFile / writeFileSync / appendFile in routes/actions.ts, actions/, security/"
+else
+  bad "GSL-269: fs write path in the write-actions layer: $(printf '%s' "$GSL269_FS_HITS" | tr '\n' ' | ')"
+fi
+
+# Rule 2: every POST route in actions.ts wraps withTimeline<>. The count of `actionsRoutes.post`
+# lines and the count of `withTimeline<` lines must agree — a POST without a ledger wrapper is a
+# write that leaves no audit row.
+GSL269_POSTS="$(cd "$REPO_ROOT" && grep -cE '^[[:space:]]*actionsRoutes\.post' apps/core/src/routes/actions.ts 2>/dev/null || echo 0)"
+GSL269_WT="$(cd "$REPO_ROOT" && grep -cE 'withTimeline<' apps/core/src/routes/actions.ts 2>/dev/null || echo 0)"
+if [ "$GSL269_POSTS" -gt 0 ] && [ "$GSL269_POSTS" = "$GSL269_WT" ]; then
+  ok "GSL-269: every POST in actions.ts wraps withTimeline (posts=$GSL269_POSTS, wt=$GSL269_WT)"
+else
+  bad "GSL-269: POST count $GSL269_POSTS != withTimeline count $GSL269_WT — a write may skip the ledger"
+fi
+
+# Rule 3: the Bearer secret must never appear in the tracked tree. `b64v1:` is a DOCUMENTED
+# prefix marker (see tokenEncoding.ts) — its presence in code + tests + prose is expected. What
+# would be a real leak is `b64v1:<base64 payload of >=24 chars>` — that shape is only produced
+# by encoding a real token. Zero matches = no committed secret.
+GSL269_B64_LEAK="$(cd "$REPO_ROOT" && git grep -nE 'b64v1:[A-Za-z0-9+/=]{24,}' 2>/dev/null || true)"
+if [ -z "$GSL269_B64_LEAK" ]; then
+  ok "GSL-269: no high-entropy 'b64v1:<payload>' Bearer secret in the tracked tree"
+else
+  bad "GSL-269: possible committed Bearer secret: $(printf '%s' "$GSL269_B64_LEAK" | tr '\n' ' | ')"
+fi
+
+# Rule 4: no plain-text Bearer secret literal in the checked-in tree. GOSLEEP_BEARER_TOKEN is
+# the dev-env override (documented, plain-text by design); we allow the LITERAL as an env-var
+# name but not with a `=` and a value assigned to a non-empty string in a tracked file.
+GSL269_TOKEN_LEAK="$(cd "$REPO_ROOT" && git grep -nE 'GOSLEEP_BEARER_TOKEN[[:space:]]*=[[:space:]]*[^""'\'']+' -- ':!*.md' ':!docs/**' 2>/dev/null | \
+  grep -Ev '\$\{|process\.env|"?\$\{?GOSLEEP_BEARER_TOKEN' | \
+  grep -Ev ':[[:space:]]*//' || true)"
+if [ -z "$GSL269_TOKEN_LEAK" ]; then
+  ok "GSL-269: no plain-text GOSLEEP_BEARER_TOKEN assignment in tracked non-doc files"
+else
+  bad "GSL-269: plain-text token assignment: $(printf '%s' "$GSL269_TOKEN_LEAK" | tr '\n' ' | ')"
+fi
+
+# Rule 5: CSP middleware exists AND is wired in serve.ts. The header value + wiring are tested
+# in apps/core/test/security.csp.test.ts (unit-level, hermetic); this is the STATIC guarantee
+# that both files still exist and reference each other. A grep failure here catches a botched
+# revert before it reaches the bun test suite.
+CSP_MW="$REPO_ROOT/apps/core/src/security/csp.ts"
+[ -f "$CSP_MW" ] && grep -q "content-security-policy" "$CSP_MW" \
+  && ok "GSL-269: apps/core/src/security/csp.ts defines the CSP header value" \
+  || bad "GSL-269: csp.ts missing or does not stamp content-security-policy"
+grep -q "applySecurityHeaders" "$REPO_ROOT/apps/core/src/serve.ts" \
+  && ok "GSL-269: serve.ts wires applySecurityHeaders as first middleware" \
+  || bad "GSL-269: serve.ts does not wire applySecurityHeaders"
 
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

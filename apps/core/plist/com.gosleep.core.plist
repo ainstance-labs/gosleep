@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  gosleep-core — launchd job (GSL-260).
+
+  This file is a TEMPLATE. `plist.sh install` copies it to
+    ~/Library/LaunchAgents/com.gosleep.core.plist
+  after substituting @@REPO_ROOT@@ and @@BUN_BIN@@ for the owner's real paths.
+
+  Design notes:
+    - RunAtLoad=true so the agent starts on owner login.
+    - SessionCreate=true so the process runs under a full user session (GUI Keychain access).
+    - KeepAlive.SuccessfulExit=false — restart only on crash, not on clean shutdown (`plist.sh
+      uninstall` shuts cleanly and MUST NOT respawn the agent).
+    - ThrottleInterval=10 to soak up crash loops; if the process dies immediately for a
+      config reason, launchd waits 10s before retrying instead of thrashing.
+    - Logs go under data/logs/core-*.log — same directory as future pino output, git-ignored.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gosleep.core</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@@BUN_BIN@@</string>
+    <string>run</string>
+    <string>@@REPO_ROOT@@/apps/core/src/serve.ts</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>@@REPO_ROOT@@</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>SessionCreate</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>@@REPO_ROOT@@/data/logs/core-stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>@@REPO_ROOT@@/data/logs/core-stderr.log</string>
+</dict>
+</plist>

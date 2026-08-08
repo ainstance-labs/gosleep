@@ -1,0 +1,15 @@
+│                                                    │ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── │
+│                       ▐▛███▜▌                      │ What's new                                                                                                                                      │
+│                      ▝▜█████▛▘                     │ Added self-hosted environments: `claude self-hosted-runner` turns your own machines or containers into a place Claude Code web, mobile, and de… │
+│                        ▘▘ ▝▝                       │ Added `archive` plugin source: install plugins from a zip over HTTPS without git or npm, with optional SHA-256 pinning                          │
+│    Haiku 4.5 · Claude Max · rommxx@gmail.com's     │ Added a cancel-and-confirm step when removing an unavailable paste changes a command's text                                                     │
+│    Organization                                    │ /release-notes for more                                                                                                                         │
+│    ~/…/dev/harness/gosleep/tmp-answer-loop-test    │                                                                                                                                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+❯ Use the AskUserQuestion tool to ask me which color I prefer, options Red and Blue. After you receive my answer, reply with exactly one line: ANSWER RECEIVED: <the color I chose>
+✢ Reticulating… (18s · ↓ 205 tokens)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Haiku 4.5 │ tmp-answer-loop-test ██░░░░░░░░ 24%                                                                                                                                                   /rc
+  ⏸ manual mode on · ← for agents

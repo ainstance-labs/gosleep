@@ -1,0 +1,199 @@
+/*
+ * @gosleep/web — global styles + design tokens (GSL-265).
+ *
+ * Sources:
+ *   - docs/reports/web-harness-research-2026-08-03/design-system.md §4-6
+ *   - Palette: soft-contrast, AA everywhere (§4). Light fg #26272b on #fafafa (13.5:1);
+ *     dark fg #e4e5e8 on #0b0b0d (15.6:1). Muted variants stay ≥ 4.85:1.
+ *   - Typography: Geist Variable (loaded via @fontsource-variable/geist in main.tsx);
+ *     Geist Mono for code + timestamps.
+ *   - Scale: 14 px interface base per §5 (Linear / Vercel / Supabase density).
+ *   - Themes: `prefers-color-scheme: dark` is the default signal; `[data-theme="dark"]`
+ *     and `[data-theme="light"]` from the ThemeProvider override so a manual toggle wins.
+ *
+ * Tailwind v4 reads @theme block below to populate `bg-surface`, `text-fg`, etc. utilities.
+ * shadcn-style components in components/ui/*.tsx compose these tokens via `cn()`.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* size scale */
+  --text-xs: 0.6875rem;
+  --text-sm: 0.75rem;
+  --text-md: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.375rem;
+  --text-3xl: 1.75rem;
+  --text-4xl: 2.25rem;
+
+  /* radii */
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 999px;
+
+  /* palette tokens — Tailwind v4 turns these into `bg-*`/`text-*`/`border-*` classes */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-sunken: #f2f3f5;
+  --color-raised: #ffffff;
+  --color-fg: #26272b;
+  --color-fg-secondary: #4d5058;
+  --color-fg-muted: #6b6f78;
+  --color-border: #e6e7ea;
+  --color-border-subtle: #eeeff2;
+  --color-border-strong: #8d9099;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-fg: #ffffff;
+  --color-ok: #0f7b3d;
+  --color-ok-soft: #e6f5ec;
+  --color-warn: #8a5a00;
+  --color-warn-soft: #fdf1dc;
+  --color-danger: #b02020;
+  --color-danger-soft: #fbeae9;
+  --color-info: #0d6ea8;
+  --color-info-soft: #e6f2fb;
+}
+
+/* --- Root defaults ---------------------------------------------------------
+ * Base font size is 16 px (root); interface base is 0.875 rem = 14 px. Feature
+ * settings turn on Geist's cv11 + ss01 for the tabular "a" and figures — matches
+ * Vercel dashboard, Linear-style typography. */
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-feature-settings: "cv11" on, "ss01" on;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-fg);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  /* GSL-293 — design-system.md §5 rule: UI headings ceiling at 500.
+     600 / 700 remain available for HTML reports; the SPA never goes above 500. */
+  font-weight: 500;
+  margin: 0;
+}
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+h4 { font-size: var(--text-lg); }
+b, strong { font-weight: 500; }
+a { color: var(--color-accent); text-decoration: none; }
+a:hover { color: var(--color-accent-hover); text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+
+/* --- Dark theme ------------------------------------------------------------
+ * `prefers-color-scheme: dark` is the default signal; `[data-theme="dark"]` and
+ * `[data-theme="light"]` from ThemeProvider override so a manual toggle wins.
+ */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #0b0b0d;
+    --color-surface: #141518;
+    --color-sunken: #08080a;
+    --color-raised: #1b1c20;
+    --color-fg: #e4e5e8;
+    --color-fg-secondary: #a4a7ad;
+    --color-fg-muted: #7f838a;
+    --color-border: #2a2b2f;
+    --color-border-subtle: #1c1d20;
+    --color-border-strong: #6a6d74;
+    --color-accent: #7ab0ff;
+    --color-accent-hover: #a5c9ff;
+    --color-accent-fg: #0b0b0d;
+    --color-ok: #5cc57a;
+    --color-ok-soft: #142118;
+    --color-warn: #e8b562;
+    --color-warn-soft: #2a1f10;
+    --color-danger: #ef7a72;
+    --color-danger-soft: #2b1614;
+    --color-info: #7ab0ff;
+    --color-info-soft: #101f2f;
+  }
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0b0b0d;
+  --color-surface: #141518;
+  --color-sunken: #08080a;
+  --color-raised: #1b1c20;
+  --color-fg: #e4e5e8;
+  --color-fg-secondary: #a4a7ad;
+  --color-fg-muted: #7f838a;
+  --color-border: #2a2b2f;
+  --color-border-subtle: #1c1d20;
+  --color-border-strong: #6a6d74;
+  --color-accent: #7ab0ff;
+  --color-accent-hover: #a5c9ff;
+  --color-accent-fg: #0b0b0d;
+  --color-ok: #5cc57a;
+  --color-ok-soft: #142118;
+  --color-warn: #e8b562;
+  --color-warn-soft: #2a1f10;
+  --color-danger: #ef7a72;
+  --color-danger-soft: #2b1614;
+  --color-info: #7ab0ff;
+  --color-info-soft: #101f2f;
+}
+
+/* --- Scrollbars, selection, table defaults --------------------------------
+ * Subdued scrollbars in both themes (Vercel / Linear feel — visible but not loud).
+ */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-border-strong), transparent 55%);
+  border-radius: 999px;
+  border: 2px solid var(--color-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-border-strong), transparent 25%);
+}
+::selection { background: color-mix(in oklab, var(--color-accent), transparent 70%); color: var(--color-fg); }
+
+/* Utility layer — a couple of atoms that shadcn-style helpers reuse.  */
+@layer utilities {
+  .surface { background: var(--color-surface); border: 1px solid var(--color-border); }
+  .sunken  { background: var(--color-sunken);  border: 1px solid var(--color-border-subtle); }
+  .text-muted { color: var(--color-fg-muted); }
+  .text-secondary { color: var(--color-fg-secondary); }
+  .mono { font-family: var(--font-mono); font-feature-settings: "ss01" on, "zero" on; }
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 1px 6px;
+    border: 1px solid var(--color-border);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-fg-secondary);
+  }
+  .rowlink { color: inherit; text-decoration: none; }
+  .rowlink:hover { color: inherit; text-decoration: none; }
+}

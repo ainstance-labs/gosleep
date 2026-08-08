@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- @gosleep/core — TouchID gate entitlements (GSL-264, rev-3 addendum Delta 4).
+
+     Ad-hoc codesign attaches these entitlements to the bundle identity
+     `com.gosleep.touchid-gate`. Sandbox stays OFF — a sandboxed helper could not open the
+     LAContext dialog on our behalf. get-task-allow is left OFF because we do not need to
+     attach a debugger to the shipped helper in production; the build script may re-sign with
+     get-task-allow=true for a debug pass if the owner is inspecting a specific failure.
+     -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+    <key>com.apple.security.get-task-allow</key>
+    <false/>
+</dict>
+</plist>

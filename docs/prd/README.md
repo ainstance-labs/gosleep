@@ -1,10 +1,19 @@
 # PRD index — GoSleep
 
-| Файл | Тип | Status | Одной строкой |
+| File | Type | Status | One-liner |
 |---|---|---|---|
-| [`PRD-gosleep-evolution.md`](./PRD-gosleep-evolution.md) | Инициатива (6 фаз) | Draft — 2026-07-08 | «Оркестратор, при котором владелец спит»: watchdog → self-pulse/night → question-buffer/manifest/digest → laboratory → UI → mobile |
+| [`PRD-gosleep-evolution.md`](./PRD-gosleep-evolution.md) | Initiative (Phases 1-6, historical monolith) | Draft — 2026-07-08 | "Orchestrator that lets the owner sleep": watchdog → self-pulse/night → question-buffer/manifest/digest → laboratory → UI → mobile. Phases 1-6 retained in Russian as archive. |
+| [`01-phase7-interactive-control-plane.md`](./01-phase7-interactive-control-plane.md) | Per-phase PRD (Phase 7) | Draft — 2026-08-07 | Live web control plane at `http://127.0.0.1:7331` (SQLite = source of truth, gosleep-core on Bun+Hono, React+Vite+shadcn client). Supersedes Phase 5 (owner decision `d-2026-08-03-004`). Epic [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250). |
 
-## Глобальная трассируемость
+## Convention — per-phase PRD files (owner rule, 2026-08-07)
+
+All new PRD phases from Phase 7 onward are written as **standalone per-phase files**, named
+`<NN>-phase<MM>-<slug>.md`, in **English only**. The parent `PRD-gosleep-evolution.md` monolith
+carries a short English pointer at the location where the phase used to be appended. Legacy
+phases 1-6 stay in the monolith as a historical Russian archive and are not translated
+retroactively — but every new PRD artefact is English by construction.
+
+## Global traceability
 
 Это единый консолидированный PRD (все 6 фаз в одном файле), поэтому авторитетная
 **сквозная матрица трассируемости** (источник findings → фаза → req-ID → критерий приёмки) и

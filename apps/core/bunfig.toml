@@ -1,0 +1,5 @@
+# @gosleep/core — per-app Bun config (GSL-260).
+#
+# Intentionally minimal: the root bunfig.toml is empty on purpose and per-app tuning lives here
+# so `bun run --filter='@gosleep/core' dev` stays deterministic without cross-workspace leakage.
+# When we add test/build steps in later tasks, their tuning lands in this file, not the root.

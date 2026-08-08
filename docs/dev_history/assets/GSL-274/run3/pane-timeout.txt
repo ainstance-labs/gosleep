@@ -1,0 +1,20 @@
+│                                                    │ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── │
+│                       ▐▛███▜▌                      │ What's new                                                                                                                                      │
+│                      ▝▜█████▛▘                     │ Added self-hosted environments: `claude self-hosted-runner` turns your own machines or containers into a place Claude Code web, mobile, and de… │
+│                        ▘▘ ▝▝                       │ Added `archive` plugin source: install plugins from a zip over HTTPS without git or npm, with optional SHA-256 pinning                          │
+│    Haiku 4.5 · Claude Max · rommxx@gmail.com's     │ Added a cancel-and-confirm step when removing an unavailable paste changes a command's text                                                     │
+│    Organization                                    │ /release-notes for more                                                                                                                         │
+│    ~/…/dev/harness/gosleep/tmp-answer-loop-test    │                                                                                                                                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+❯ Use the AskUserQuestion tool to ask me which season I prefer, options Summer and Winter. After you receive my answer, reply with exactly one line: ANSWER RECEIVED: <the season I chose>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Season
+Which season do you prefer?
+❯ 1. Summer
+     Warm weather, long days, outdoor activities
+  2. Winter
+     Cold weather, snow, winter sports and cozy indoor time
+  3. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+Enter to select · ↑/↓ to navigate · Esc to cancel

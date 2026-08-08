@@ -22,6 +22,20 @@ docs/handoff/.watchdog-*
 # Node
 node_modules/
 
+# Built binaries — apps/core/bin/ carries SIGNED helpers (touchid-gate.app) built
+# by apps/core/scripts/build-touchid-gate.sh at install time (GSL-264 rev-3 addendum
+# Delta 4). The Swift/plist SOURCES are tracked; the .app bundle and its debug
+# symbols are per-host build outputs and stay out of git.
+apps/core/bin/touchid-gate.app/
+apps/core/bin/*.dSYM/
+
+# Runtime data (GSL-258 web control plane): SQLite DB, WAL/SHM sidecars,
+# snapshots, and core logs live under data/. Only the .gitkeep marker and
+# data/.gitignore are tracked so the directory shape survives cloning.
+data/**
+!data/.gitkeep
+!data/.gitignore
+
 # Lab UI build scratch — esbuild's compiled renderer, rebuilt from src/ on every chronicler pass.
 # Derived from committed sources; committing it would be committing a second copy of them.
 tools/lab/ui/.build/
@@ -60,3 +74,6 @@ docs/lab/**/.*.tmp
 # dozens per QA session, all reproducible by looking again. Untracked they only
 # lengthened `git status` for the next agent — and rode along on any `git add -A`.
 .playwright-cli/
+
+# Claude Code local settings (agent-created 2026-08-07, owner directive: Fable-5 workers)
+.claude/settings.local.json

@@ -502,7 +502,23 @@ tasty-lunch wiki → инвариант «никто не правит рука�
 
 ---
 
-## Фаза 5 — UI оркестрации (static HTML v1)
+## Phase 5 — UI orchestration (static HTML v1) — SUPERSEDED
+
+> **Superseded on 2026-08-03 by owner decision `d-2026-08-03-004` (Warren-model,
+> SQLite = source of truth) and formally replaced by Phase 7 "Interactive control
+> plane".** The static HTML dashboard delivered by Phase 5 (chronicler-generated
+> `docs/lab/site/*.html` + 7 screens) is kept as historical context and remains
+> in git as an archive. All new UI work belongs to Phase 7 and epic
+> [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250). The interactive
+> requirements (runway with a binding constraint, live question window with
+> countdowns, per-agent fleet, real-time updates, manifest-rule provenance, first
+> working "Publish skill" button) migrate into Phase 7 R7.\*. Do NOT plan new work
+> against the Phase 5 tasks below.
+>
+> **Phase 7 is maintained as a separate per-phase PRD file (owner language rule,
+> 2026-08-07):** [`docs/prd/01-phase7-interactive-control-plane.md`](./01-phase7-interactive-control-plane.md).
+> The Russian Phase 7 section previously appended to this monolith (commit `4197157`,
+> GSL-273) has been extracted to that file and rewritten in English on 2026-08-07.
 
 **Цель.** Один утренний экран: статический HTML, регенерируемый из `docs/lab/`, никогда не правится
 руками. Autonomy runway, окно вопросов, статусы Jira/GH — «можно ли идти спать» с доказательствами.
@@ -643,6 +659,15 @@ break-glass. **Не строить DIY-transport** — official Remote Control �
   минут пуш приходит на реальный телефон (RC push И/ИЛИ ntfy); владелец отвечает из Telegram/RC →
   ответ появляется в `queue.jsonl` как `answered_by=owner`; при заглушенных «красивых» путях владелец
   делает `tmux attach` через Tailscale+mosh и видит живые панели.
+
+---
+
+## Phase 7 — Interactive control plane (moved to a per-phase file)
+
+Phase 7 is maintained as a separate per-phase PRD file per the owner language rule
+(2026-08-07): [`docs/prd/01-phase7-interactive-control-plane.md`](./01-phase7-interactive-control-plane.md).
+The Russian Phase 7 section previously appended here (commit `4197157`, GSL-273) has
+been extracted to that file and rewritten in English on 2026-08-07 (GSL-273 follow-up).
 
 ---
 

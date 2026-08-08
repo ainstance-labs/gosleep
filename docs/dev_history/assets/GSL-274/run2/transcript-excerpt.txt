@@ -1,0 +1,3 @@
+TOOL_USE :: {"questions": [{"question": "Which animal do you prefer?", "header": "Animal preference", "options": [{"label": "Cat", "description": "The animal cat"}, {"label": "Dog", "description": "The animal dog"}], "multiSelect": false}]}
+TOOL_RESULT :: "OWNER ANSWERED: Dog. The owner already answered this question out-of-band; do not ask again. Proceed as if the user selected: Dog." is_error: True
+TEXT :: ANSWER RECEIVED: Dog

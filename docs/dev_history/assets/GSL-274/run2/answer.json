@@ -1,0 +1,7 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "OWNER ANSWERED: Dog. The owner already answered this question out-of-band; do not ask again. Proceed as if the user selected: Dog."
+  }
+}

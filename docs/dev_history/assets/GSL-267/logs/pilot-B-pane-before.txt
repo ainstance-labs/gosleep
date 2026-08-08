@@ -1,0 +1,50 @@
+
+ ▐▛███▜▌   Claude Code v2.1.226
+▝▜█████▛▘  Haiku 4.5 · Claude Max
+  ▘▘ ▝▝    ~/Documents/dev/harness/gosleep
+
+
+❯ Call the AskUserQuestion tool RIGHT NOW as your very first action. Ask exactly one question: 'GSL-267-pilot-B tmux control: pick fruit'. Provide two options: label 'apple' with description 'a', and
+  label 'pear' with description 'p'. Do NOT run any Bash. Just call AskUserQuestion once.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Choice
+
+GSL-267-pilot-B tmux control: pick fruit
+
+❯ 1. apple
+     a
+  2. pear
+     p
+  3. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

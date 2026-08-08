@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- @gosleep/core — TouchID gate .app bundle Info.plist (GSL-264, rev-3 addendum Delta 4).
+
+     LSUIElement = true → no Dock icon, no menubar entry; the app renders only the LAContext
+     biometric prompt. NSFaceIDUsageDescription is REQUIRED for Face ID hosts (MacBook Pro
+     with Face ID; also Studio Displays with Touch ID cameras); TouchID-only hosts read it
+     but do not display it. CFBundleIdentifier matches the codesign --identifier passed by
+     the build script so the ad-hoc signature and the bundle identity agree.
+     -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>touchid-gate</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.gosleep.touchid-gate</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>gosleep-touchid-gate</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.0.1</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSFaceIDUsageDescription</key>
+    <string>gosleep-core requests owner approval for a high-blast action.</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>

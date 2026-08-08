@@ -1,0 +1,11 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow",
+    "permissionDecisionReason": "GSL-274 smoke: answer injected by hook (simulated gosleep-core)",
+    "updatedInput": {
+      "questions": [{"question":"Which color do you prefer?","header":"Color preference","options":[{"label":"Red","description":"The color red"},{"label":"Blue","description":"The color blue"}],"multiSelect":false}],
+      "answers": {"Which color do you prefer?": "Blue"}
+    }
+  }
+}

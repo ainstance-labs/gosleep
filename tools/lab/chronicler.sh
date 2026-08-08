@@ -58,6 +58,28 @@
 #   --dry-run              compute everything, write nothing
 #   --json                 print the run report as JSON
 #   --quiet                errors only
+#   --mode NAME            provenance stamp for the run ledger (default: shell). Reserved values:
+#                          "shell" (a human ran it), "debounce" (post-emit debounce waiter), "tick"
+#                          (called from tick.sh), "web" (spawned from gosleep-core /actions/*). The
+#                          value lands in .artifacts/lab/chronicler-ledger.jsonl as {"mode":"…"} so
+#                          the debounce waiter, tick, and web writer never draw a double ledger.
+#
+# TOP-LEVEL LOCK (GSL-259). Two parallel chronicler runs used to race — the second one clobbered
+# the first's bundle after the first finished writing, and a "publish"-triggered web run could roll
+# the state BACK to whatever the debounce waiter had already rebuilt seconds earlier (redteam-
+# verdict.md critical #2). We now hold a mkdir-based lock in .artifacts/lab/chronicler.lock around
+# the whole python3 invocation:
+#   1. The FIRST caller creates the lock dir and runs to completion.
+#   2. A SECOND caller arriving while the lock is held POLLS every 1 s for up to 15 s
+#      (GOSLEEP_CHRONICLER_LOCK_WAIT_S).
+#   3. If the lock releases within the window -> the second caller acquires it and runs its own
+#      pass (the ledger records mode + rc + waited_s so the receipt is honest).
+#   4. If the window elapses -> the second caller STAMPS its intent in the ledger with
+#      result="skipped-lock-held" and exits 0. The running pass finishes the work.
+#   5. A lock older than GOSLEEP_CHRONICLER_LOCK_STALE_S (default 900 = 15 min; a healthy run
+#      finishes in seconds) is treated as a corpse and stolen. Modelled on tick.sh:117-131.
+# The lock covers only the python3 process; a --dry-run --json call still takes the lock so a real
+# regen cannot race a plan.
 #
 # Exit: 0 even when a source is unavailable (gh offline, no claude, no heartbeat) -- degraded, never
 # fatal, and every degradation is DATA: it lands in status.json, on the page, and in the digest.
@@ -69,6 +91,91 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export CHRONICLER_REPO_DEFAULT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT_DEFAULT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+export CHRONICLER_REPO_DEFAULT="$REPO_ROOT_DEFAULT"
 
-exec python3 "$SCRIPT_DIR/chronicler.py" "$@"
+# ── shell-only flag parse: strip --mode <name> before handing --... to python ──
+# python's chronicler.py does not know --mode; we filter it out here. Every OTHER flag is passed
+# through unchanged so the python parser owns validation for its own surface.
+MODE="shell"
+PY_ARGS=()
+REPO_FLAG=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --mode)
+      shift
+      MODE="${1:-shell}"
+      ;;
+    --mode=*)
+      MODE="${1#--mode=}"
+      ;;
+    --repo)
+      REPO_FLAG="${2:-}"
+      PY_ARGS+=("$1" "${2:-}")
+      shift
+      ;;
+    --repo=*)
+      REPO_FLAG="${1#--repo=}"
+      PY_ARGS+=("$1")
+      ;;
+    *)
+      PY_ARGS+=("$1")
+      ;;
+  esac
+  shift || true
+done
+
+REPO_ROOT="${REPO_FLAG:-$REPO_ROOT_DEFAULT}"
+
+# ── top-level lock: one chronicler at a time (GSL-259) ─────────────────────────
+LOCK="$REPO_ROOT/.artifacts/lab/chronicler.lock"
+LEDGER="$REPO_ROOT/.artifacts/lab/chronicler-ledger.jsonl"
+LOCK_WAIT_S="${GOSLEEP_CHRONICLER_LOCK_WAIT_S:-15}"
+LOCK_STALE_S="${GOSLEEP_CHRONICLER_LOCK_STALE_S:-900}"
+
+mkdir -p "$(dirname "$LOCK")" 2>/dev/null || true
+
+ledger_line() {  # ledger_line <result> <rc> <waited_s>
+  # No-op if the ledger dir is not writable; a broken telemetry sink must never break the wrapper.
+  mkdir -p "$(dirname "$LEDGER")" 2>/dev/null || return 0
+  printf '{"ts":"%s","mode":"%s","result":"%s","rc":%s,"waited_s":%s,"pid":%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$MODE" "$1" "$2" "$3" "$$" \
+    >> "$LEDGER" 2>/dev/null || true
+}
+
+acquire_lock() {
+  # Try up to LOCK_WAIT_S seconds. Return 0 on acquired, 1 on giving up.
+  local waited=0
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    local now lock_ts
+    now="$(date +%s)"
+    lock_ts="$(stat -f %m "$LOCK" 2>/dev/null || echo "$now")"
+    if [ $((now - lock_ts)) -gt "$LOCK_STALE_S" ]; then
+      # A pass that has been holding for >stale-s is a corpse: steal.
+      rmdir "$LOCK" 2>/dev/null || true
+      continue
+    fi
+    if [ "$waited" -ge "$LOCK_WAIT_S" ]; then
+      return 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  echo "$waited"
+  return 0
+}
+
+T0="$(date +%s)"
+WAITED="$(acquire_lock)" || {
+  # Give-up path: another run is doing the work; stamp intent and exit clean.
+  ledger_line "skipped-lock-held" null "$LOCK_WAIT_S"
+  exit 0
+}
+: "${WAITED:=0}"
+trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT INT TERM
+
+python3 "$SCRIPT_DIR/chronicler.py" "${PY_ARGS[@]}"
+RC=$?
+
+ledger_line "ran" "$RC" "$WAITED"
+exit "$RC"

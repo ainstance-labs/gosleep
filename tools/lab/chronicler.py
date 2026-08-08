@@ -2804,14 +2804,28 @@ def apply_degrade_banner(reason, hint, last_success):
     return stamped
 
 
-SITE_README = """# `docs/lab/site/` — DERIVED. Do not hand-edit.
+SITE_README = """# `docs/lab/site/` — DEPRECATED (GSL-270, target-architecture step 11).
 
-Every file here is overwritten by `tools/lab/chronicler.sh` on its next pass. An edit you make by hand
-survives exactly until then, and in the meantime it is a lie with a `generated_at` stamp on it.
+> **The static Preact-SSG view layer is turned off by default.** The owner now reads live data from
+> the web control plane on `http://127.0.0.1:7331` (gosleep-core, Bun+Hono; source of truth is SQLite).
+> The `.html` files here remain in git as a rollback surface for 1-2 months — they are **frozen** as
+> of the day GSL-270 landed and will no longer regenerate. Every observation below about how a page
+> is built still describes the frozen artifacts, but no chronicler pass rewrites them anymore.
+>
+> **Rollback is one env var away:** re-enable regeneration with `GOSLEEP_KEEP_STATIC_SITE=1` (in the
+> shell that runs `tools/lab/chronicler.sh`, in a launchd plist, or in a debug session). With the
+> flag set the site rebuilds and the degrade-banner logic below reactivates.
+>
+> The phone surface (`docs/lab/mobile/README.md`) keeps updating — the chronicler still renders it
+> from the same `render_bundle.json` regardless of this flag.
+
+Every file here is (was) overwritten by `tools/lab/chronicler.sh` on its next pass. An edit made by
+hand survived exactly until then, and in the meantime it was a lie with a `generated_at` stamp on it.
 
 This is the tasty-lunch-wiki rule (blueprint 05 §1.4-1), and it is the only reason a regenerated hub
-does not rot: **nobody edits it, so nobody has to maintain it.** To change what the page says, change
-what the chronicler *reads* — or change the renderer in `tools/lab/ui/`.
+does not rot: **nobody edits it, so nobody has to maintain it.** To change what the page says (with
+`GOSLEEP_KEEP_STATIC_SITE=1`), change what the chronicler *reads* — or change the renderer in
+`tools/lab/ui/`.
 
 ## How a page is built
 
@@ -3722,24 +3736,48 @@ def main():
         written.append(lab_write("docs/lab/render_bundle.json",
                                  json.dumps(bundle, ensure_ascii=False, indent=2) + "\n", as_json=True))
 
-        # The view layer runs even under --dry-run: rendering is a pure function, and a --dry-run that
-        # skipped it would report "ok" for a pass whose renderer would have failed. It is Python that
-        # withholds the WRITE (lab_write short-circuits), not the renderer that withholds the work.
-        res = render_site(bundle)
-        if res.get("ok"):
-            for name, doc in sorted((res.get("pages") or {}).items()):
-                written.append(lab_write("docs/lab/site/%s" % name, doc))
-            ui = {"ok": True, "reason": None, "renderer": res.get("renderer"),
-                  "screens": res.get("screens") or [], "last_success_at": status["generated_at"]}
+        # GSL-270 (target-architecture step 11): the Preact-SSG view layer is DEPRECATED — the owner
+        # reads live data from the web control plane at http://127.0.0.1:7331. The env flag
+        # GOSLEEP_KEEP_STATIC_SITE governs whether render.sh is invoked at all:
+        #
+        #   * default (env unset or "0")  — SKIP render.sh. docs/lab/site/*.html files remain in git
+        #                                   as an artifact for 1-2 months (rollback surface); they are
+        #                                   NOT regenerated. `ui.reason = 'ssg-disabled'` so the
+        #                                   status file (and the dashboard reading it) tell the truth.
+        #                                   The stale-banner overlay is NOT stamped in this mode:
+        #                                   staleness of frozen files is expected, not a degradation.
+        #   * GOSLEEP_KEEP_STATIC_SITE=1  — opt back in. render.sh runs; every degrade path below
+        #                                   applies. Rollback is one env var away.
+        #
+        # The bundle + mobile README + digest + status.json are ALWAYS written regardless — the web
+        # panel and the phone surface are the primary reader path and cannot depend on this flag.
+        keep_static_site = os.environ.get("GOSLEEP_KEEP_STATIC_SITE", "0") == "1"
+        if not keep_static_site:
+            # SSG disabled — leave every docs/lab/site/*.html as it was, do NOT stamp the degrade
+            # banner (a "site not built" red overlay on files the owner deliberately froze would be
+            # noise), and record the state in status.json so the dashboard reads truth.
+            ui = {"ok": True, "reason": "ssg-disabled", "renderer": None,
+                  "screens": [], "last_success_at": prev_ui_last_success()}
         else:
-            reason, hint = res.get("reason", "build-failed"), res.get("hint", "")
-            degrade("ui", "%s: %s" % (reason, UI_REASONS.get(reason, "?")))
-            last = prev_ui_last_success()
-            ui = {"ok": False, "reason": reason, "hint": str(hint)[:400], "renderer": None,
-                  "screens": [], "last_success_at": last}
-            # Never a false-fresh render: the pages that ARE on disk get told what happened to them.
-            ui["banner_stamped_on"] = apply_degrade_banner(reason, hint, last)
-            log("UI render degraded (%s) — pages left stale under a banner" % reason)
+            # The view layer runs even under --dry-run: rendering is a pure function, and a --dry-run
+            # that skipped it would report "ok" for a pass whose renderer would have failed. It is
+            # Python that withholds the WRITE (lab_write short-circuits), not the renderer that
+            # withholds the work.
+            res = render_site(bundle)
+            if res.get("ok"):
+                for name, doc in sorted((res.get("pages") or {}).items()):
+                    written.append(lab_write("docs/lab/site/%s" % name, doc))
+                ui = {"ok": True, "reason": None, "renderer": res.get("renderer"),
+                      "screens": res.get("screens") or [], "last_success_at": status["generated_at"]}
+            else:
+                reason, hint = res.get("reason", "build-failed"), res.get("hint", "")
+                degrade("ui", "%s: %s" % (reason, UI_REASONS.get(reason, "?")))
+                last = prev_ui_last_success()
+                ui = {"ok": False, "reason": reason, "hint": str(hint)[:400], "renderer": None,
+                      "screens": [], "last_success_at": last}
+                # Never a false-fresh render: the pages that ARE on disk get told what happened to them.
+                ui["banner_stamped_on"] = apply_degrade_banner(reason, hint, last)
+                log("UI render degraded (%s) — pages left stale under a banner" % reason)
 
         written.append(lab_write("docs/lab/site/README.md", SITE_README))
 

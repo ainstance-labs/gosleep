@@ -1,0 +1,2 @@
+{"ts":"2026-08-08T14:21:54.298Z","event":"core.security.auth-source-audit","source":"dev-env","fallback":"none","tahoe":true,"darwin_major":25,"product_version":"26.5","keychain_timeout_ms":null,"keychain_reason":null,"uptime_seconds":984530,"line":"auth-source: dev-env | fallback: none | tahoe=yes"}
+{"ts":"2026-08-08T14:21:55.135Z","event":"core.action.error","intent_id":"6aae8433-c370-42fb-b622-1fe22f4d8281","http_status":500,"message":"race: question q-2026-08-08-002 changed status between the guard and the UPDATE"}

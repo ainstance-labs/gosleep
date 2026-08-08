@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  gosleep-core — daily SQLite snapshot (GSL-261).
+
+  This file is a TEMPLATE. A future install helper (paired with plist.sh) is expected to copy it
+  to ~/Library/LaunchAgents/com.gosleep.snapshot.plist after substituting @@REPO_ROOT@@ for the
+  operator's real repo path.
+
+  Design notes:
+    - StartCalendarInterval fires at 03:00 local time daily. `data/snapshots/daily-<ts>.db`
+      is a WAL-friendly `.backup` written by scripts/snapshot.sh; retention is embedded there.
+    - RunAtLoad=false — snapshots should NOT double-run at login; the daily job is the
+      contract, plus the extra snapshot gosleep-core takes on wake per R33.
+    - AbandonProcessGroup=true so a stuck sqlite3 does not keep the LaunchAgent held.
+    - StandardOutPath / StandardErrorPath under data/logs/ (git-ignored). One JSON line per run
+      lets the operator grep the ledger without extra plumbing.
+    - No KeepAlive — the process is a one-shot; launchd should NOT restart it on exit.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gosleep.snapshot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>@@REPO_ROOT@@/apps/core/scripts/snapshot.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>@@REPO_ROOT@@</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>AbandonProcessGroup</key>
+  <true/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>@@REPO_ROOT@@/data/logs/snapshot-stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>@@REPO_ROOT@@/data/logs/snapshot-stderr.log</string>
+</dict>
+</plist>

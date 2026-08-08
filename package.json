@@ -1,0 +1,8 @@
+{
+  "name": "gosleep",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

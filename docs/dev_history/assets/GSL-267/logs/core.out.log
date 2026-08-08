@@ -1,0 +1,119 @@
+{"ts":"2026-08-08T14:21:54.308Z","event":"reconcile.done","scanned":20,"reset":0,"missing":0,"ok":20,"elapsedMs":9,"mismatches":[]}
+{"ts":"2026-08-08T14:21:54.322Z","event":"tail.started","events_dir":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/lab/events","poll_ms":10000,"static_files":["queue.jsonl","archive.jsonl","log.jsonl","heartbeat.jsonl"]}
+{"ts":"2026-08-08T14:21:54.328Z","event":"fleet.poll.started","interval_ms":4000}
+{"ts":"2026-08-08T14:21:54.329Z","event":"defer_reopen.started","interval_ms":10000}
+{"ts":"2026-08-08T14:21:54.333Z","event":"jira_sync.started","interval_ms":300000}
+{"ts":"2026-08-08T14:21:54.339Z","event":"core.listen","host":"127.0.0.1","port":7331,"indexer_disabled":false}
+{"ts":"2026-08-08T14:21:54.362Z","event":"jira_sync.source_skip","source":"jira-rest","reason":"no jira token in keychain (service=gosleep-jira-api) — falling back"}
+{"ts":"2026-08-08T14:21:54.381Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":84,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":7}
+{"ts":"2026-08-08T14:21:54.660Z","event":"fleet.poll.done","inserted":2,"updated":0,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:21:55.088Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":2,"fromOffset":30804,"toOffset":31018}
+{"ts":"2026-08-08T14:21:55.090Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":2}
+{"ts":"2026-08-08T14:21:55.351Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":31018,"toOffset":31262}
+{"ts":"2026-08-08T14:21:55.352Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":1}
+{"ts":"2026-08-08T14:21:58.638Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:02.639Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:04.354Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":2}
+{"ts":"2026-08-08T14:22:06.636Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:10.635Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:14.337Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":3}
+{"ts":"2026-08-08T14:22:14.637Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:18.636Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:22.654Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:24.346Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":2}
+{"ts":"2026-08-08T14:22:26.674Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:30.664Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:34.349Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":1}
+{"ts":"2026-08-08T14:22:34.661Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:38.659Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:42.677Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:44.372Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":86,"archiveRecords":39,"foldedQids":41,"written":41,"elapsedMs":3}
+{"ts":"2026-08-08T14:22:46.686Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:50.676Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:53.136Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":2,"fromOffset":31262,"toOffset":31605}
+{"ts":"2026-08-08T14:22:53.139Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":87,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":3}
+{"ts":"2026-08-08T14:22:54.349Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":31605,"toOffset":31852}
+{"ts":"2026-08-08T14:22:54.351Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:22:54.386Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:22:54.677Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:22:58.721Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:02.674Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:04.389Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":3}
+{"ts":"2026-08-08T14:23:06.665Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:10.702Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:14.370Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:23:14.665Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:15.298Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":31852,"toOffset":32111}
+{"ts":"2026-08-08T14:23:15.299Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":1}
+{"ts":"2026-08-08T14:23:18.679Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:22.702Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:24.383Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:23:26.673Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:30.672Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:34.402Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:23:34.679Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:38.728Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:42.696Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:44.385Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":3}
+{"ts":"2026-08-08T14:23:46.686Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:50.698Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:54.392Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:23:54.678Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:23:58.680Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:24:00.207Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":2,"fromOffset":32111,"toOffset":32397}
+{"ts":"2026-08-08T14:24:00.209Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:02.728Z","event":"fleet.poll.done","inserted":1,"updated":2,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:04.376Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:06.691Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:10.694Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:14.376Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":88,"archiveRecords":39,"foldedQids":42,"written":42,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:14.699Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:17.900Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":0,"fromOffset":32397,"toOffset":32710}
+{"ts":"2026-08-08T14:24:17.902Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":89,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:18.716Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:22.722Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:24.413Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":89,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:26.733Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:30.717Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:34.067Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":2,"fromOffset":32710,"toOffset":32930}
+{"ts":"2026-08-08T14:24:34.069Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:34.380Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:34.707Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:36.836Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":32930,"toOffset":33218}
+{"ts":"2026-08-08T14:24:36.837Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:24:38.742Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:42.739Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:44.386Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:46.717Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:47.728Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":2,"fromOffset":33218,"toOffset":33547}
+{"ts":"2026-08-08T14:24:47.730Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:24:50.696Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:54.391Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:24:54.731Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:24:58.749Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:02.747Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:03.446Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":33547,"toOffset":33879}
+{"ts":"2026-08-08T14:25:03.448Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:25:04.383Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:25:05.792Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":33879,"toOffset":34165}
+{"ts":"2026-08-08T14:25:05.793Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:25:06.739Z","event":"fleet.poll.done","inserted":1,"updated":2,"ended":1,"totalLive":3}
+{"ts":"2026-08-08T14:25:10.764Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:14.388Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:25:14.763Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:18.738Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:19.769Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":1,"fromOffset":34165,"toOffset":34522}
+{"ts":"2026-08-08T14:25:19.770Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:25:22.737Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:24.388Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}
+{"ts":"2026-08-08T14:25:26.740Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:30.646Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":2,"fromOffset":34522,"toOffset":34811}
+{"ts":"2026-08-08T14:25:30.648Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:25:30.724Z","event":"fleet.poll.done","inserted":0,"updated":3,"ended":0,"totalLive":3}
+{"ts":"2026-08-08T14:25:34.215Z","event":"tail.events.done","file":"events/2026-08-08.jsonl","scanned":1,"parseErrors":0,"inserted":1,"skippedDedup":0,"elapsedMs":0,"fromOffset":34811,"toOffset":35144}
+{"ts":"2026-08-08T14:25:34.218Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":3}
+{"ts":"2026-08-08T14:25:34.392Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":2}
+{"ts":"2026-08-08T14:25:34.739Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":1,"totalLive":2}
+{"ts":"2026-08-08T14:25:38.753Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:25:42.736Z","event":"fleet.poll.done","inserted":0,"updated":2,"ended":0,"totalLive":2}
+{"ts":"2026-08-08T14:25:44.392Z","event":"tail.questions.done","file":"questions/queue.jsonl + archive.jsonl","queueRecords":90,"archiveRecords":39,"foldedQids":43,"written":43,"elapsedMs":1}

@@ -1,0 +1,21 @@
+{
+  "name": "@gosleep/runner-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SessionAdapter interface + the Claude Code adapter (v1) — the ONLY place the harness process shells to `claude` or writes provider-specific settings. Four seams: listSessions, installSessionHooks, deliverAnswer, readTranscript. `apps/core/` talks to a provider through SessionAdapter and never through the CLI directly, per GSL-281 (rev-3 addendum Delta 10). The `contract.md` sibling sketches an OpenAI/Codex adapter as a v2 reference.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,6 @@
+# @gosleep/web — never commit the build output.
+# The dist/ tree is produced by `bun run --filter='@gosleep/web' build`.
+dist/
+node_modules/
+*.log
+.vite/

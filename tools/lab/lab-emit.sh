@@ -83,6 +83,7 @@ SEMANTIC_TYPES = (
     "cycle.started", "cycle.ended",                      # orchestrator: a delivery cycle (PRD R4.2)
     "question.posed", "question.answered",               # question buffer (Phase 3) — auto-mirrored
     "question.auto_resolved", "question.deduped",
+    "question.deferred", "question.reopened",            # GSL-278: defer action + auto-reopen worker
     "decision.made",                                     # decision log (Phase 3) — auto-mirrored
     "verify.verdict",                                    # reviewer/verifier: PASS/FAIL + why (R4.2)
     "handoff.written",                                   # handoff skill (GSL-88) — cycle + resume point
@@ -418,6 +419,61 @@ def cmd_resolve(argv):
                    {"id": qid, "qtype": m.get("type", ""), "answer": a["applied"],
                     "channel": "early-default"}, m.get("task", ""))
 
+def cmd_defer(argv):
+    # GSL-278: "not now, ask me later." Marks the question as deferred and (optionally) sets a
+    # timestamp at which the auto-reopen worker (apps/core/src/workers/defer-reopen.ts) flips it
+    # back to open. Deferring is a status change on the queue record — NOT an answer, NOT a
+    # resolution — the append-only patch carries {status:"deferred", defer_until:<iso|"">}.
+    # Guards:
+    #   * refuse a defer on an already-closed record (append-only C8: closures are terminal).
+    #   * accept empty defer_until = "no timer" (owner reopens by hand).
+    a = parse_flags(argv, {"--re": "re", "--defer-until": "defer_until", "--by": "by"})
+    if not a.get("re"):
+        die("--re is required")
+    now = iso_utc()
+    defer_until = (a.get("defer_until") or "").strip()
+    with QueueLock():
+        state = fold(read_records())
+        qid = a["re"]
+        m = state.get(qid)
+        if not m:
+            die("no record with id %s" % qid)
+        if m.get("status") not in ("open", "answered"):
+            die("%s cannot be deferred (status=%s) — defer is only valid on open|answered "
+                "(a closed record is terminal, a superseded record has already moved on)" %
+                (qid, m.get("status")))
+        patch = {"re": qid, "ts": now, "status": "deferred",
+                 "defer_until": defer_until, "deferred_by": a.get("by", "owner")}
+        append_record(patch)
+        print("deferred %s" % qid)
+    emit_event("question.deferred", a.get("by", "owner"),
+               {"id": qid, "qtype": m.get("type", ""), "defer_until": defer_until},
+               m.get("task", ""))
+
+def cmd_reopen(argv):
+    # GSL-278: the counterpart of `defer` — used by the auto-reopen worker when defer_until has
+    # passed, and by the owner if they want to un-defer manually. Flips status back to `open` and
+    # clears defer_until. Append-only: another patch record, no destructive edit.
+    a = parse_flags(argv, {"--re": "re", "--by": "by"})
+    if not a.get("re"):
+        die("--re is required")
+    with QueueLock():
+        state = fold(read_records())
+        qid = a["re"]
+        m = state.get(qid)
+        if not m:
+            die("no record with id %s" % qid)
+        if m.get("status") != "deferred":
+            die("%s is not deferred (status=%s) — reopen is only meaningful on a deferred row"
+                % (qid, m.get("status")))
+        # Empty defer_until deliberately erases the field on the fold (see indexer/process.ts).
+        patch = {"re": qid, "ts": iso_utc(), "status": "open",
+                 "defer_until": "", "reopened_by": a.get("by", "auto")}
+        append_record(patch)
+        print("reopened %s" % qid)
+    emit_event("question.reopened", a.get("by", "auto"),
+               {"id": qid, "qtype": m.get("type", "")}, m.get("task", ""))
+
 def cmd_apply_due(argv):
     # GSL-200: the executor of expired deadlines (audit finding 49: nothing ever applied them).
     # Idempotent by construction: a candidate is an OPEN DECISION whose auto_apply_at has passed;
@@ -596,6 +652,10 @@ def cmd_help(argv):
   resolve    --re q-ID --applied "..." [--early]
              refuses: a record before its deadline (early pick => --early, recorded as
              answered-by-default), an already-closed record, a BLOCKER (owner-only)
+  defer      --re q-ID [--defer-until ISO-UTC] [--by owner|auto]  # GSL-278: mark deferred; empty
+             defer-until = "not now, ask me later" (no timer, owner reopens by hand)
+  reopen     --re q-ID [--by auto|owner]                          # GSL-278: flip deferred → open,
+             clears defer_until; used by the auto-reopen worker + by the owner
   apply-due  [--dry-run] [--json]     # apply defaults of every OPEN DECISION past its deadline;
              idempotent (2nd run applies 0); the tick (GSL-199) calls this every pass
   list       [--status open|all|...] [--type T] [--task KEY] [--due] [--json] [--count]
@@ -613,12 +673,13 @@ question/answer/resolve/decision also MIRROR themselves into docs/lab/events/ au
 
 def main():
     if len(sys.argv) < 2:
-        die("usage: lab-emit.sh question|answer|resolve|apply-due|list|decision|candidates|event|help ...")
+        die("usage: lab-emit.sh question|answer|resolve|defer|reopen|apply-due|list|decision|candidates|event|help ...")
     cmd, argv = sys.argv[1], sys.argv[2:]
     if cmd in ("-h", "--help"):
         cmd = "help"
     fn = {"question": cmd_question, "answer": cmd_answer,
-          "resolve": cmd_resolve, "apply-due": cmd_apply_due, "list": cmd_list,
+          "resolve": cmd_resolve, "defer": cmd_defer, "reopen": cmd_reopen,
+          "apply-due": cmd_apply_due, "list": cmd_list,
           "decision": cmd_decision, "candidates": cmd_candidates,
           "event": cmd_event, "help": cmd_help}.get(cmd)
     if not fn:

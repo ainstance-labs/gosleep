@@ -217,6 +217,22 @@ note "Notification  — needs a permission prompt / idle prompt"
 note "SubagentStart/Stop, TaskCreated/TaskCompleted — fire in an interactive session; see dev_history"
 say ""
 
+# ── 3. web control plane co-tenancy note (GSL-269, GSL-250 epic) ────────────
+# When gosleep-core (Bun+Hono on 127.0.0.1:7331, from epic GSL-250) is running under launchd,
+# the POST /actions/* endpoints legitimately spawn short-lived processes: `bash lab-emit.sh`
+# for JSONL events, `bash chronicler.sh` on debounce, `python3 tools/lab/tests/*.sh` in
+# smoke leg. Those spawns appear in `ps` / `pgrep` / any process-hygiene sweep this harness
+# might grow, and they are NORMAL — the same tools the fleet uses, called by the web writer
+# instead of by a live agent's Bash tool. A hygiene check that flags them adds noise, never
+# safety; if one is ever added, whitelist parents by bind (127.0.0.1:7331) or by cmd basename
+# (bun, python3, node) — not by counting spawn events, because a busy owner-day can be dozens.
+say "== web control plane co-tenancy (GSL-250) =="
+note "gosleep-core (127.0.0.1:7331) legitimately spawns bash/python3 for lab-emit + chronicler"
+note "on every /actions/* POST. Those spawns are NORMAL when the server is running under launchd."
+note "Any process-hygiene sweep must whitelist the loopback-bound parent — do NOT count spawn"
+note "events (a busy owner-day is dozens) and do NOT alarm on \`bash lab-emit.sh\` under \`bun\`."
+say ""
+
 say "== verdict: $PASS pass, $FAIL fail =="
 [ "$FAIL" -eq 0 ] || say "DEGRADED — a failing hook above is a hook that will silently log NOTHING."
 say "log: $LOG"
