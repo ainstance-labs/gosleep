@@ -16,16 +16,72 @@ import { useToast } from "../components/ui/Toast";
 import { useRunTick, useStatus, useTimeline } from "../data/queries";
 import { timeAgo, timeOfDay } from "../lib/format";
 import { Badge } from "../components/ui/Badge";
+import type { RunwayResult } from "@gosleep/schema";
 
 function KpiTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <Card>
       <CardBody className="py-4">
         <div className="text-muted text-xs uppercase tracking-wide">{label}</div>
-        <div className="mt-1 text-3xl font-semibold tabular-nums text-[var(--color-fg)]">
+        <div className="mt-1 text-3xl font-medium tabular-nums text-[var(--color-fg)]">
           {value}
         </div>
         {hint !== undefined ? <div className="text-muted mt-1 text-xs">{hint}</div> : null}
+      </CardBody>
+    </Card>
+  );
+}
+
+/**
+ * Format the composite runway value. `null` renders as "—" (the honest "no data" state);
+ * huge values (agents freshly booted) render as "> 24h" so the tile doesn't shout a
+ * number the underlying extrapolation cannot support.
+ */
+function formatRunway(hours: number | null): string {
+  if (hours === null) return "—";
+  if (hours < 0) return "0h";
+  if (hours >= 24) return "> 24h";
+  if (hours >= 1) return `${hours.toFixed(1)}h`;
+  const mins = Math.max(0, Math.round(hours * 60));
+  return `${mins}m`;
+}
+
+/**
+ * The Overview's first tile per PRD Phase 7 F7-S1 (GSL-289). Renders the composite runway,
+ * the binding constraint's name + one-line per-clock read-out, and a muted "as of" ts.
+ */
+function RunwayTile({ runway }: { runway: RunwayResult | undefined }) {
+  if (runway === undefined) {
+    return (
+      <Card className="md:col-span-2">
+        <CardBody className="py-4">
+          <div className="text-muted text-xs uppercase tracking-wide">Runway</div>
+          <div className="mt-1 text-3xl font-medium tabular-nums text-[var(--color-fg)]">—</div>
+          <div className="text-muted mt-1 text-xs">no data — server did not report runway</div>
+        </CardBody>
+      </Card>
+    );
+  }
+  const bindingLabel =
+    runway.binding === null ? "no binding constraint" : `binding: ${runway.binding}`;
+  const clockLines = [
+    runway.clocks.context.readout,
+    runway.clocks.blockers.readout,
+    runway.clocks.slots.readout,
+  ].join(" · ");
+  return (
+    <Card className="md:col-span-2">
+      <CardBody className="py-4">
+        <div className="flex items-baseline justify-between">
+          <div className="text-muted text-xs uppercase tracking-wide">Runway</div>
+          <Badge tone={runway.hours_left === 0 ? "danger" : runway.hours_left === null ? "neutral" : "info"}>
+            {bindingLabel}
+          </Badge>
+        </div>
+        <div className="mt-1 text-3xl font-medium tabular-nums text-[var(--color-fg)]">
+          {formatRunway(runway.hours_left)}
+        </div>
+        <div className="text-muted mt-2 mono text-xs">{clockLines}</div>
       </CardBody>
     </Card>
   );
@@ -81,6 +137,9 @@ export function OverviewScreen() {
         >
           {(d) => (
             <>
+              {/* GSL-289 — first tile is the composite runway per PRD F7-S1. It spans two
+                  cells so the readout line has room for all three clock read-outs. */}
+              <RunwayTile runway={d.runway} />
               <KpiTile
                 label="Events"
                 value={String(d.counts.events)}

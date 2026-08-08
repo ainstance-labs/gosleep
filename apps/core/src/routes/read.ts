@@ -27,6 +27,7 @@ import { SERVER_VERSION, API_VERSIONS, OWNER_NAME } from "../config.ts";
 import { requireBearer } from "../security/bearer.ts";
 import { getDb } from "../db/client.ts";
 import { loadManifest } from "../manifest/parser.ts";
+import { computeRunway } from "../runway.ts";
 
 export const readRoutes = new Hono();
 
@@ -101,12 +102,17 @@ readRoutes.get("/status", requireBearer, (c) => {
   const lastIngest = getDb().raw
     .query("SELECT MAX(updated_at) AS ts FROM ingest_state")
     .get() as { ts: string | null };
+  // GSL-289 — runway/binding-constraint composite for the Overview tile. Reads live
+  // agent_sessions + open questions in the same DB in one call; NEVER throws (a DB read
+  // failure inside computeRunway yields the empty-data shape).
+  const runway = computeRunway(getDb());
   return c.json({
     booted_at: BOOTED_AT,
     now: new Date().toISOString(),
     counts,
     max_event_seq: maxSeq(),
     last_ingest_at: lastIngest.ts,
+    runway,
   });
 });
 

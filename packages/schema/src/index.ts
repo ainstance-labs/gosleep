@@ -218,12 +218,41 @@ export const StatusCounts = z.object({
 });
 export type StatusCounts = z.infer<typeof StatusCounts>;
 
+/**
+ * Runway clock (GSL-289 / PRD R5.1). One entry per independent exhaustion clock (context,
+ * blockers, slots today; budget, quota-window, work-remaining land in later tickets). The
+ * `hours_left` field is either the wall-clock hours until this clock exhausts, or null when
+ * the clock has no data yet ("insufficient — do not fabricate").
+ */
+export const RunwayClock = z.object({
+  hours_left: z.number().nullable(),
+  readout: z.string(),
+  extra: z.record(z.string(), z.union([z.number(), z.string(), z.null()])).optional(),
+});
+export type RunwayClock = z.infer<typeof RunwayClock>;
+
+export const RunwayResult = z.object({
+  hours_left: z.number().nullable(),
+  binding: z.string().nullable(),
+  live_agents: z.number().int(),
+  clocks: z.object({
+    context: RunwayClock,
+    blockers: RunwayClock,
+    slots: RunwayClock,
+  }),
+  computed_at: IsoTimestamp,
+});
+export type RunwayResult = z.infer<typeof RunwayResult>;
+
 export const StatusResponse = z.object({
   booted_at: IsoTimestamp,
   now: IsoTimestamp,
   counts: StatusCounts,
   max_event_seq: Seq,
   last_ingest_at: IsoTimestamp.nullable(),
+  // GSL-289 — optional so a v1.0 SDK talking to a mixed fleet doesn't SchemaError; new writers
+  // always set it, older ones (none in tree today) simply omit.
+  runway: RunwayResult.optional(),
 });
 export type StatusResponse = z.infer<typeof StatusResponse>;
 
