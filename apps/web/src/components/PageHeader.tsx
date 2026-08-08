@@ -14,7 +14,7 @@ export function PageHeader({
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-fg)]">
+        <h1 className="text-2xl font-medium tracking-tight text-[var(--color-fg)]">
           {title}
         </h1>
         {subtitle !== undefined ? (

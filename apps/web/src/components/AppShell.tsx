@@ -46,7 +46,7 @@ export function AppShell() {
       <aside className="flex flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="flex h-14 items-center gap-2 border-b border-[var(--color-border)] px-4">
           <span aria-hidden className="text-lg">🌙</span>
-          <span className="text-sm font-semibold tracking-tight">gosleep</span>
+          <span className="text-sm font-medium tracking-tight">gosleep</span>
           <span className="text-muted text-xs">control plane</span>
         </div>
 

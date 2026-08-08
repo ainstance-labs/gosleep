@@ -93,7 +93,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-fg);
   letter-spacing: -0.015em;
   line-height: 1.2;
-  font-weight: 600;
+  /* GSL-293 — design-system.md §5 rule: UI headings ceiling at 500.
+     600 / 700 remain available for HTML reports; the SPA never goes above 500. */
+  font-weight: 500;
   margin: 0;
 }
 h1 { font-size: var(--text-3xl); }

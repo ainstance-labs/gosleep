@@ -113,7 +113,7 @@ export function FleetScreen() {
                   <CardHeader>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <CardTitle className="truncate text-base font-semibold">
+                        <CardTitle className="truncate text-base font-medium">
                           {s.name}
                         </CardTitle>
                         <Badge tone={tone}>{s.status}</Badge>

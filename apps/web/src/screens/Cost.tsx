@@ -92,7 +92,7 @@ export function CostScreen() {
                   <div className="text-muted text-xs uppercase tracking-wide">
                     Total (extracted)
                   </div>
-                  <div className="mt-1 text-3xl font-semibold tabular-nums">
+                  <div className="mt-1 text-3xl font-medium tabular-nums">
                     ${totals.usdTotal.toFixed(2)}
                   </div>
                   <div className="text-muted mt-1 text-xs">
@@ -105,7 +105,7 @@ export function CostScreen() {
                   <div className="text-muted text-xs uppercase tracking-wide">
                     Events observed
                   </div>
-                  <div className="mt-1 text-3xl font-semibold tabular-nums">
+                  <div className="mt-1 text-3xl font-medium tabular-nums">
                     {d.count}
                   </div>
                   <div className="text-muted mt-1 text-xs">
@@ -118,7 +118,7 @@ export function CostScreen() {
                   <div className="text-muted text-xs uppercase tracking-wide">
                     Days spanned
                   </div>
-                  <div className="mt-1 text-3xl font-semibold tabular-nums">
+                  <div className="mt-1 text-3xl font-medium tabular-nums">
                     {dailySeries.length}
                   </div>
                   <div className="text-muted mt-1 text-xs">
