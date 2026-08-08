@@ -4606,6 +4606,68 @@ else
   ok "GSL-261: apps/core/drizzle/ absent — no migrations to check"
 fi
 
+echo "== GSL-269: write actions never touch fs directly + every POST wraps withTimeline =="
+# target-architecture step 10 + red-team item 5 (persistent Idempotency-Map) + section 5.3.
+#
+# Rule 1: NO fs write anywhere on the write-action path. Every state change goes through
+# tools/lab/lab-emit.sh (JSONL) or a Drizzle write (SQLite) via spawn.ts. A rogue fs.writeFile
+# in routes/actions.ts or under actions/ + security/ would (a) bypass the writeTimeline audit,
+# (b) sit outside the top-level chronicler lock, and (c) reopen the race the addendum closed.
+GSL269_FS_HITS="$(cd "$REPO_ROOT" && grep -rEn "fs\.writeFile|writeFileSync|fs\.appendFile|appendFileSync|writeFile\(" \
+  apps/core/src/routes/actions.ts apps/core/src/actions apps/core/src/security 2>/dev/null | \
+  grep -v '^[^:]*:[[:space:]]*//' || true)"
+if [ -z "$GSL269_FS_HITS" ]; then
+  ok "GSL-269: no fs.writeFile / writeFileSync / appendFile in routes/actions.ts, actions/, security/"
+else
+  bad "GSL-269: fs write path in the write-actions layer: $(printf '%s' "$GSL269_FS_HITS" | tr '\n' ' | ')"
+fi
+
+# Rule 2: every POST route in actions.ts wraps withTimeline<>. The count of `actionsRoutes.post`
+# lines and the count of `withTimeline<` lines must agree — a POST without a ledger wrapper is a
+# write that leaves no audit row.
+GSL269_POSTS="$(cd "$REPO_ROOT" && grep -cE '^[[:space:]]*actionsRoutes\.post' apps/core/src/routes/actions.ts 2>/dev/null || echo 0)"
+GSL269_WT="$(cd "$REPO_ROOT" && grep -cE 'withTimeline<' apps/core/src/routes/actions.ts 2>/dev/null || echo 0)"
+if [ "$GSL269_POSTS" -gt 0 ] && [ "$GSL269_POSTS" = "$GSL269_WT" ]; then
+  ok "GSL-269: every POST in actions.ts wraps withTimeline (posts=$GSL269_POSTS, wt=$GSL269_WT)"
+else
+  bad "GSL-269: POST count $GSL269_POSTS != withTimeline count $GSL269_WT — a write may skip the ledger"
+fi
+
+# Rule 3: the Bearer secret must never appear in the tracked tree. `b64v1:` is a DOCUMENTED
+# prefix marker (see tokenEncoding.ts) — its presence in code + tests + prose is expected. What
+# would be a real leak is `b64v1:<base64 payload of >=24 chars>` — that shape is only produced
+# by encoding a real token. Zero matches = no committed secret.
+GSL269_B64_LEAK="$(cd "$REPO_ROOT" && git grep -nE 'b64v1:[A-Za-z0-9+/=]{24,}' 2>/dev/null || true)"
+if [ -z "$GSL269_B64_LEAK" ]; then
+  ok "GSL-269: no high-entropy 'b64v1:<payload>' Bearer secret in the tracked tree"
+else
+  bad "GSL-269: possible committed Bearer secret: $(printf '%s' "$GSL269_B64_LEAK" | tr '\n' ' | ')"
+fi
+
+# Rule 4: no plain-text Bearer secret literal in the checked-in tree. GOSLEEP_BEARER_TOKEN is
+# the dev-env override (documented, plain-text by design); we allow the LITERAL as an env-var
+# name but not with a `=` and a value assigned to a non-empty string in a tracked file.
+GSL269_TOKEN_LEAK="$(cd "$REPO_ROOT" && git grep -nE 'GOSLEEP_BEARER_TOKEN[[:space:]]*=[[:space:]]*[^""'\'']+' -- ':!*.md' ':!docs/**' 2>/dev/null | \
+  grep -Ev '\$\{|process\.env|"?\$\{?GOSLEEP_BEARER_TOKEN' | \
+  grep -Ev ':[[:space:]]*//' || true)"
+if [ -z "$GSL269_TOKEN_LEAK" ]; then
+  ok "GSL-269: no plain-text GOSLEEP_BEARER_TOKEN assignment in tracked non-doc files"
+else
+  bad "GSL-269: plain-text token assignment: $(printf '%s' "$GSL269_TOKEN_LEAK" | tr '\n' ' | ')"
+fi
+
+# Rule 5: CSP middleware exists AND is wired in serve.ts. The header value + wiring are tested
+# in apps/core/test/security.csp.test.ts (unit-level, hermetic); this is the STATIC guarantee
+# that both files still exist and reference each other. A grep failure here catches a botched
+# revert before it reaches the bun test suite.
+CSP_MW="$REPO_ROOT/apps/core/src/security/csp.ts"
+[ -f "$CSP_MW" ] && grep -q "content-security-policy" "$CSP_MW" \
+  && ok "GSL-269: apps/core/src/security/csp.ts defines the CSP header value" \
+  || bad "GSL-269: csp.ts missing or does not stamp content-security-policy"
+grep -q "applySecurityHeaders" "$REPO_ROOT/apps/core/src/serve.ts" \
+  && ok "GSL-269: serve.ts wires applySecurityHeaders as first middleware" \
+  || bad "GSL-269: serve.ts does not wire applySecurityHeaders"
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 

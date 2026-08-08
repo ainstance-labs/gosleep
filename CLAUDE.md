@@ -74,9 +74,25 @@ gosleep/                  # workspace root
   Not wired into `gate.sh` (starts a process); run by hand around
   changes to `apps/core/`.
 - **Launchd:** `apps/core/plist.sh install` renders the plist template,
-  puts the Bearer secret in Keychain (`gosleep-web` service), and
-  bootstraps the agent under `gui/$UID`. `uninstall` boots it out.
-  `status` prints one JSON line (`installed / loaded / healthz / pid`).
+  puts the Bearer secret in Keychain (`gosleep-web` service, account
+  `$USER`, wrapped as `b64v1:<base64>`), and bootstraps the agent under
+  `gui/$UID`. `uninstall` boots it out. `status` prints one JSON line
+  (`installed / loaded / healthz / pid`). Rotate WITHOUT bouncing launchd:
+  `apps/core/plist.sh rotate-secret`. Full setup + troubleshooting flow:
+  `docs/runbooks/gosleep-core.md` (GSL-269).
+- **Read core logs:** `tail -n 50 -f data/logs/core.{out,err}.log | jq -c .`
+  — every line is JSON. Timeline events land in the DB (`sqlite3
+  data/gosleep.db 'select ts, actor, event, seq from events order by seq
+  desc limit 20;'`); Prometheus metrics at `curl -s
+  http://127.0.0.1:7331/metrics` (14 families, GSL-280).
+- **Snapshot by hand:** `bash apps/core/scripts/snapshot.sh` writes
+  `data/snapshots/$(date -u +%F)/gosleep.db + status.json`. The daily
+  launchd cron runs the same script at 04:00 local, retention 30 days.
+- **Preact-SSG is deprecated (GSL-270):** the owner reads live data at
+  `http://127.0.0.1:7331`. `docs/lab/site/*.html` files stay in git as a
+  frozen 1-2 month rollback surface — the chronicler no longer regenerates
+  them by default. Roll back with `GOSLEEP_KEEP_STATIC_SITE=1` if the
+  panel is unreachable.
 - **`data/` lives out of git:** the runtime SQLite database (`gosleep.db`,
   `-wal`, `-shm`), daily snapshots in `data/snapshots/`, and core logs in
   `data/logs/` are all git-ignored (root `.gitignore` + `data/.gitignore`).

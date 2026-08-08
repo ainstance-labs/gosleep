@@ -1,6 +1,9 @@
-// @gosleep/core — server entry (GSL-260, GSL-263).
+// @gosleep/core — server entry (GSL-260, GSL-263, GSL-269).
 //
 // Boots the Hono app on 127.0.0.1:7331 via Bun.serve. Middleware layers (must not be reshuffled):
+//   0. applySecurityHeaders — stamps CSP + nosniff + XFO + Referrer-Policy on EVERY response,
+//                             including the 421/403/401 rejections below (GSL-269). Runs FIRST
+//                             so it wraps every subsequent middleware's response.
 //   1. requireLocalHost   — reject wrong-Host requests (DNS rebinding). App-wide.
 //   2. requireLocalOrigin — CSRF guard for state-changing methods; safe methods bypass. App-wide.
 //   3. requireBearer      — applied per-route inside routes/*.ts; /healthz stays public.
@@ -19,6 +22,7 @@
 import { Hono } from "hono";
 
 import { HOST, PORT } from "./config.ts";
+import { applySecurityHeaders } from "./security/csp.ts";
 import { requireLocalHost } from "./security/host.ts";
 import { requireLocalOrigin } from "./security/origin.ts";
 import { readRoutes } from "./routes/read.ts";
@@ -37,6 +41,7 @@ import { startJiraSync, type JiraSyncController } from "./workers/jira-sync.ts";
 
 const app = new Hono();
 
+app.use("*", applySecurityHeaders);
 app.use("*", requireLocalHost);
 app.use("*", requireLocalOrigin);
 app.route("/", readRoutes);
