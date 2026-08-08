@@ -167,6 +167,9 @@ check_status "5. GET /version (wrong Host)"  "421" "http://127.0.0.1:$PORT/versi
 
 check_status "6. GET /version (valid)"       "200" "http://127.0.0.1:$PORT/version" -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN"
 check_body   "6b. /version body has fields"  '"server_version":"[0-9]+' "http://127.0.0.1:$PORT/version" -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN"
+# GSL-294 — db_schema_version is a 16-hex prefix of a sha256 over drizzle files, never the
+# legacy "unset" placeholder.
+check_body   "6c. /version.db_schema_version is 16-hex hash (GSL-294)"  '"db_schema_version":"[0-9a-f]{16}"' "http://127.0.0.1:$PORT/version" -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN"
 
 check_status "7. GET /whoami (valid)"        "200" "http://127.0.0.1:$PORT/whoami" -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN"
 check_body   "7b. /whoami body owner"        '"owner":"smoke-owner"' "http://127.0.0.1:$PORT/whoami" -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN"

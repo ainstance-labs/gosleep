@@ -28,6 +28,7 @@ import { requireBearer } from "../security/bearer.ts";
 import { getDb } from "../db/client.ts";
 import { loadManifest } from "../manifest/parser.ts";
 import { computeRunway } from "../runway.ts";
+import { getDbSchemaVersion } from "../db/schemaVersion.ts";
 
 export const readRoutes = new Hono();
 
@@ -46,9 +47,12 @@ readRoutes.get("/version", requireBearer, (c) =>
   c.json({
     server_version: SERVER_VERSION,
     api_versions: API_VERSIONS,
-    // The Drizzle journal hash is fed in later (schema-package task); GSL-263 leaves it
-    // deferred — the /version contract already declared "unset" as an honest placeholder.
-    db_schema_version: "unset",
+    // GSL-294 — sha256 hash (first 16 hex chars) over the drizzle journal + every migration
+    // .sql file, computed once at boot. The panel keys cache invalidation off this so a
+    // rolling schema change is observable from the browser (target-arch §12 R34). Returns
+    // "unavailable" when the drizzle dir isn't reachable and "unset" was intentionally
+    // retired — a real value is preferable to the legacy placeholder.
+    db_schema_version: getDbSchemaVersion(),
   }),
 );
 

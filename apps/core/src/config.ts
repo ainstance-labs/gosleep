@@ -51,10 +51,16 @@ export function getTokenFilePath(): string {
   return process.env.GOSLEEP_TOKEN_PATH ?? "";
 }
 
-// Server / API version reported by GET /version. Bumped by hand on breaking changes; the
-// db_schema_version placeholder is filled in a later task (GSL-261 Drizzle schema).
+// Server / API version reported by GET /version. Bumped by hand on breaking changes.
 export const SERVER_VERSION = "0.0.1";
 export const API_VERSIONS = ["v1"] as const;
+
+// GSL-294 — DB schema version reported by GET /version. Computed once at boot from a hash
+// of the drizzle journal + every migration .sql file, so the panel can compare "db shape
+// the server started on" against "db shape my current tab expects" and reload on drift
+// (target-arch §12 R34). Overrideable via `GOSLEEP_DB_SCHEMA_VERSION_OVERRIDE` for tests
+// that want deterministic output. The compute lives in `src/db/schemaVersion.ts` so
+// config.ts stays free of I/O and cyclic imports.
 
 // Keychain wrapper's timeout ceiling, per rev-3 addendum Delta 5 (never silently unauth; return
 // 503 instead). 5 seconds is the hard cap the addendum specifies for macOS Tahoe 26.x, and 5s
