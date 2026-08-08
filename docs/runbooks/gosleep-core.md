@@ -37,6 +37,22 @@ bash apps/core/plist.sh status
 Everything that the panel reads/writes lives under `data/` (SQLite `gosleep.db`, WAL/SHM,
 snapshots, logs). `data/` is git-ignored — the runtime DB never enters git.
 
+**Build the web bundle (GSL-285):** the React SPA is served from `apps/web/dist/` by
+`apps/core/src/routes/spa.ts` — the owner opens `http://127.0.0.1:7331/` and gets the panel
+directly (no separate Vite dev server needed). Build after every clone or web-side change:
+
+```bash
+bun run --filter='@gosleep/web' build
+```
+
+If the bundle is missing (fresh clone before the build ran), the root returns an explicit
+"web bundle is missing — run …" placeholder page instead of a blank 404. Static assets and
+`index.html` are PUBLIC (no Bearer), but every `/status`, `/fleet`, `/events`, `/actions/*`
+etc. remains Bearer-gated as before — an unauthenticated tab loads the shell and every data
+call surfaces the standard "Auth required" banner until the token is set (see § 3, or the
+`?token=` handshake below). Override the dist location for a hermetic smoke:
+`GOSLEEP_WEB_DIST=/tmp/scratch-dist bun run apps/core/src/serve.ts`.
+
 ## 2. Start / stop / status
 
 ```bash

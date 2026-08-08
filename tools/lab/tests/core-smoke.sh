@@ -35,6 +35,7 @@
 #   28-37. /manifest + apply-manifest + defer scenarios            (GSL-277/278)
 #   38-41. /actions/tasks/sync scenarios                            (GSL-279)
 #   42-50. /internal/permissions/post + /actions/permissions/decide (GSL-284)
+#   51-58. SPA static + fallback + API-precedence + CSP             (GSL-285)
 #
 # Not wired into gate.sh — the gate must stay 0-network/0-process; this test intentionally
 # starts a process. Run it BY HAND before committing changes to apps/core/. Exit 0 = pass.
@@ -95,9 +96,21 @@ echo "== booting @gosleep/core (dev Bearer, port $PORT, scratch DB + lab) =="
 # into the scratch lab dir here, and the reconciler would otherwise wake up looking for a
 # real ingest_state row. The write path (GSL-268) does not depend on the tail — it INSERTs
 # directly + spawns the CLI tools.
+# GSL-285: seed a scratch web dist so the SPA-serving tests (51-58 below) hit files that
+# exist regardless of whether apps/web was ever built. The real dist is not touched.
+SCRATCH_DIST="$WORK/web-dist"
+mkdir -p "$SCRATCH_DIST/assets"
+cat > "$SCRATCH_DIST/index.html" <<'HTML'
+<!doctype html><html><head><title>gosleep scratch spa</title></head>
+<body><div id="root">scratch-spa-index</div><script type="module" src="/assets/app.js"></script></body></html>
+HTML
+printf 'console.log("scratch spa asset");\n' > "$SCRATCH_DIST/assets/app.js"
+printf 'body { color: #123456 }\n' > "$SCRATCH_DIST/assets/app.css"
+
 GOSLEEP_BEARER_TOKEN="$TOKEN" GOSLEEP_OWNER_NAME="smoke-owner" GOSLEEP_CORE_PORT="$PORT" \
   GOSLEEP_DB_PATH="$SCRATCH_DB" GOSLEEP_LAB_DIR="$SCRATCH_LAB" \
   GOSLEEP_INTERNAL_SECRET="$INTERNAL_SECRET" \
+  GOSLEEP_WEB_DIST="$SCRATCH_DIST" \
   GOSLEEP_DISABLE_INDEXER=1 GOSLEEP_DISABLE_FLEET_POLL=1 GOSLEEP_DISABLE_JIRA_SYNC=1 \
   bun run "$REPO_ROOT/apps/core/src/serve.ts" \
   > "$WORK/stdout.log" 2> "$WORK/stderr.log" &
@@ -715,6 +728,42 @@ if [ -n "$BLOCKER_QID" ]; then
 else
   bad "50. skipped — could not seed BLOCKER row"
 fi
+
+echo "== GSL-285: SPA static serve + fallback + API precedence =="
+# 51. GET / — SPA fallback → 200 text/html with the scratch index.html body.
+check_status "51. GET / (SPA root)" "200" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/"
+check_body   "51b. / body has scratch marker" "scratch-spa-index" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/"
+
+# 52. GET /overview — deep client-side route falls back to index.html (react-router owns it).
+check_status "52. GET /overview (SPA fallback)" "200" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/overview"
+check_body   "52b. /overview body has scratch marker" "scratch-spa-index" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/overview"
+
+# 53. GET /assets/app.js — real static asset served verbatim.
+check_status "53. GET /assets/app.js (asset)" "200" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/assets/app.js"
+check_body   "53b. asset body" 'scratch spa asset' -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/assets/app.js"
+
+# 54. API precedence: /healthz still wins over the SPA wildcard.
+check_status "54. GET /healthz (API precedence over SPA)" "200" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/healthz"
+check_body   "54b. /healthz still returns JSON" '"ok":true' -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/healthz"
+
+# 55. API precedence: /version stays Bearer-gated even with SPA mounted.
+check_status "55. GET /version (still Bearer-gated)" "401" -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/version"
+
+# 56. CSP still stamped on the SPA fallback response.
+CSP_LINE=$(curl -sI -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/overview" | tr -d '\r' | grep -i '^content-security-policy:')
+if [ -n "$CSP_LINE" ] && echo "$CSP_LINE" | grep -q "default-src 'self'"; then
+  ok "56. CSP stamped on SPA HTML"
+else
+  bad "56. CSP MISSING on SPA HTML: $CSP_LINE"
+fi
+
+# 57. Wrong Host still 421 on SPA path (DNS-rebinding guard active).
+check_status "57. GET / (wrong Host)" "421" -H "Host: attacker.example" "http://127.0.0.1:$PORT/"
+
+# 58. POST to an unknown path is an honest 404 (no SPA rewrite for non-GET).
+check_status "58. POST /nope (honest 404, no SPA rewrite)" "404" -X POST -H "Host: 127.0.0.1:$PORT" \
+  -H "Origin: http://127.0.0.1:$PORT" -H "Content-Type: application/json" -d "{}" \
+  "http://127.0.0.1:$PORT/nope"
 
 echo "== teardown =="
 kill $SERVER_PID 2>/dev/null || true
