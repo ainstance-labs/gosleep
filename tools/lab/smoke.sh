@@ -238,6 +238,12 @@ printf '{"generated_at":"NEXT-PASS"}' | "$LW" --json "$K"
 
 echo "== chronicler: the T3 regenerator (GSL-86) =="
 CH="$SCRIPT_DIR/chronicler.sh"
+# GSL-270 (target-architecture step 11): the Preact-SSG view layer is off by default. Every
+# assertion in this section — and in the sibling sections below that read from docs/lab/site/*.html —
+# was written when render.sh always ran, so they need the opt-in flag to keep exercising the
+# renderer end-to-end. `unset` at the very end of the chronicler blocks restores the shell default so
+# the guards downstream (which do NOT need render) see the production behavior.
+export GOSLEEP_KEEP_STATIC_SITE=1
 bash -n "$CH" && ok "chronicler.sh: bash -n" || bad "chronicler.sh: bash -n"
 python3 -c "import ast; ast.parse(open('$SCRIPT_DIR/chronicler.py').read())" 2>/dev/null \
   && ok "chronicler.py: parses" || bad "chronicler.py: syntax error"
@@ -4453,6 +4459,58 @@ grep -q 'chronicler.sh" --quiet' "$GS" \
 grep -q -- '--offline' "$GS" && grep -q 'gates/gate.json' "$GS" \
   && ok "GSL-203: offline is an explicit flag, and the gate leaves its own receipt" \
   || bad "GSL-203: missing --offline flag or gate.json receipt"
+
+echo "== GSL-270: Preact-SSG deprecated — GOSLEEP_KEEP_STATIC_SITE gates render.sh =="
+# target-architecture step 11: the chronicler stops invoking tools/lab/ui/render.sh by default;
+# docs/lab/site/*.html stays in git as a frozen rollback surface for 1-2 months. The env flag
+# GOSLEEP_KEEP_STATIC_SITE=1 opts back in (identical old behaviour); the default (unset or "0")
+# skips render.sh AND leaves the existing .html files intact.
+#
+# The chronicler still writes render_bundle.json + status.json + mobile/README.md + digest under
+# EITHER mode — the phone surface and the web control plane both keep working.
+#
+# GSL-269 also uses this section as the source of truth for "the chronicler stays green on existing
+# smoke checks WITHOUT render.sh" — the two probes below are exactly that guarantee.
+GSL270_CR="$WORK/gsl270-chron"; mkdir -p "$GSL270_CR/docs/lab/events" "$GSL270_CR/docs/lab/questions" "$GSL270_CR/docs/lab/decisions"
+: > "$GSL270_CR/docs/lab/questions/queue.jsonl"; : > "$GSL270_CR/docs/lab/decisions/log.jsonl"
+GSL270_TS="$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+GSL270_DAY="$(date -u +%F)"
+printf '{"ts":"%s","run_id":"%s","seq":1,"actor":"w","type":"vcs.commit","src":"hook:PostToolUse","data":{"sha":"c0ffee1"}}\n' \
+  "$GSL270_TS" "$GSL270_DAY" > "$GSL270_CR/docs/lab/events/$GSL270_DAY.jsonl"
+
+# Probe A — default (unset): render.sh is NOT invoked. status.json.ui.reason == 'ssg-disabled',
+# render_bundle.json IS written, and no docs/lab/site/*.html file appears in the throwaway repo.
+unset GOSLEEP_KEEP_STATIC_SITE
+bash "$CH" --repo "$GSL270_CR" --no-poll --quiet --json >/dev/null 2>&1
+GSL270_REASON="$(jq -r '.ui.reason' "$GSL270_CR/docs/lab/status.json" 2>/dev/null)"
+[ "$GSL270_REASON" = "ssg-disabled" ] \
+  && ok "GSL-270: default (env unset) -> status.json.ui.reason == 'ssg-disabled'" \
+  || bad "GSL-270: default did NOT disable SSG (ui.reason=$GSL270_REASON)"
+[ -f "$GSL270_CR/docs/lab/render_bundle.json" ] \
+  && ok "GSL-270: default still writes render_bundle.json (mobile + web read it)" \
+  || bad "GSL-270: render_bundle.json missing under SSG-disabled default"
+[ ! -e "$GSL270_CR/docs/lab/site/index.html" ] \
+  && ok "GSL-270: default does NOT create docs/lab/site/index.html — render.sh was skipped" \
+  || bad "GSL-270: SSG-disabled default STILL wrote site/index.html — render.sh ran"
+[ -f "$GSL270_CR/docs/lab/mobile/README.md" ] \
+  && ok "GSL-270: default keeps mobile/README.md updating (step 11 explicit requirement)" \
+  || bad "GSL-270: mobile/README.md not written under SSG-disabled default"
+
+# Probe B — explicit opt-in: GOSLEEP_KEEP_STATIC_SITE=1 restores the pre-GSL-270 behaviour;
+# status.json.ui.ok is true (or the render honestly degraded but the CALL was made). Success is
+# defined here as EITHER a rendered site OR a degrade banner — both prove render.sh was invoked.
+rm -rf "$GSL270_CR/docs/lab/site" "$GSL270_CR/docs/lab/status.json" 2>/dev/null
+GOSLEEP_KEEP_STATIC_SITE=1 bash "$CH" --repo "$GSL270_CR" --no-poll --quiet --json >/dev/null 2>&1
+GSL270_UI_REASON="$(jq -r '.ui.reason // "null"' "$GSL270_CR/docs/lab/status.json" 2>/dev/null)"
+# Under =1, ui.reason is EITHER null (render worked) OR one of build-failed / no-renderer / bad-bundle
+# (render invoked but degraded). It must NOT be 'ssg-disabled' — that would mean the flag was ignored.
+[ "$GSL270_UI_REASON" != "ssg-disabled" ] \
+  && ok "GSL-270: opt-in (env=1) invokes render.sh — status.json.ui.reason != 'ssg-disabled' ($GSL270_UI_REASON)" \
+  || bad "GSL-270: opt-in was ignored — status.json still says ssg-disabled"
+
+# Restore the default for every downstream section (they do not need the renderer and asserting
+# on frozen .html files below this point would race the GSL-270 default).
+unset GOSLEEP_KEEP_STATIC_SITE
 
 echo "== GSL-258: data/ stays out of git — only .gitkeep / .gitignore markers travel =="
 # Web control plane (epic GSL-250) puts the SQLite source of truth under data/.

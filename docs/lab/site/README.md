@@ -1,11 +1,25 @@
-# `docs/lab/site/` — DERIVED. Do not hand-edit.
+# `docs/lab/site/` — DEPRECATED (GSL-270, target-architecture step 11).
 
-Every file here is overwritten by `tools/lab/chronicler.sh` on its next pass. An edit you make by hand
-survives exactly until then, and in the meantime it is a lie with a `generated_at` stamp on it.
+> **The static Preact-SSG view layer is turned off by default.** The owner now reads live data from
+> the web control plane on `http://127.0.0.1:7331` (gosleep-core, Bun+Hono; source of truth is SQLite).
+> The `.html` files here remain in git as a rollback surface for 1-2 months — they are **frozen** as
+> of the day GSL-270 landed and will no longer regenerate. Every observation below about how a page
+> is built still describes the frozen artifacts, but no chronicler pass rewrites them anymore.
+>
+> **Rollback is one env var away:** re-enable regeneration with `GOSLEEP_KEEP_STATIC_SITE=1` (in the
+> shell that runs `tools/lab/chronicler.sh`, in a launchd plist, or in a debug session). With the
+> flag set the site rebuilds and the degrade-banner logic below reactivates.
+>
+> The phone surface (`docs/lab/mobile/README.md`) keeps updating — the chronicler still renders it
+> from the same `render_bundle.json` regardless of this flag.
+
+Every file here is (was) overwritten by `tools/lab/chronicler.sh` on its next pass. An edit made by
+hand survived exactly until then, and in the meantime it was a lie with a `generated_at` stamp on it.
 
 This is the tasty-lunch-wiki rule (blueprint 05 §1.4-1), and it is the only reason a regenerated hub
-does not rot: **nobody edits it, so nobody has to maintain it.** To change what the page says, change
-what the chronicler *reads* — or change the renderer in `tools/lab/ui/`.
+does not rot: **nobody edits it, so nobody has to maintain it.** To change what the page says (with
+`GOSLEEP_KEEP_STATIC_SITE=1`), change what the chronicler *reads* — or change the renderer in
+`tools/lab/ui/`.
 
 ## How a page is built
 
