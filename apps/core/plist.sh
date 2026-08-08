@@ -253,10 +253,65 @@ cmd_status() {
     "$installed" "$loaded" "$healthz" "${pid:-}" "$CORE_HOST" "$CORE_PORT"
 }
 
+cmd_setup_url() {
+  # GSL-291 — mint a one-shot OTP + print the setup URL the owner pastes into a browser.
+  # Flow: POST /internal/setup/otp with GOSLEEP_INTERNAL_SECRET → core returns
+  # {ok, otp, url, expires_at, ttl_s}. The Bearer never leaves the box; the OTP does.
+  #
+  # GOSLEEP_INTERNAL_SECRET must be exported (the same value the running core sees).
+  # If unset, we print the pre-flight check that the owner needs to fix — no partial success.
+  if [ -z "${GOSLEEP_INTERNAL_SECRET:-}" ]; then
+    cat >&2 <<EOM
+error: GOSLEEP_INTERNAL_SECRET is not set in this shell.
+
+The /setup one-shot OTP endpoint sits behind the internal-secret guard (the same guard
+the PreToolUse hook shims use for /internal/questions/*). Set it in this shell to the
+SAME value the running core sees:
+
+  export GOSLEEP_INTERNAL_SECRET='<same value as the core process>'
+  bash apps/core/plist.sh setup-url
+
+If the core does not have GOSLEEP_INTERNAL_SECRET set either, /internal/* returns 503 by
+design (fail-safe). Add it to the plist env before enabling the /setup flow.
+EOM
+    exit 2
+  fi
+  local ttl="${GOSLEEP_SETUP_TTL_S:-300}"
+  local resp
+  resp="$(curl -sf -X POST \
+    -H "Host: ${CORE_HOST}:${CORE_PORT}" \
+    -H "Origin: http://${CORE_HOST}:${CORE_PORT}" \
+    -H "Content-Type: application/json" \
+    -H "X-Internal-Secret: ${GOSLEEP_INTERNAL_SECRET}" \
+    -d "{\"ttl_s\":${ttl}}" \
+    "http://${CORE_HOST}:${CORE_PORT}/internal/setup/otp" 2>/dev/null)" || {
+    echo "error: POST /internal/setup/otp failed (is the core up on ${CORE_HOST}:${CORE_PORT}?)" >&2
+    exit 1
+  }
+  # Prefer jq if available; degrade to python3 otherwise.
+  local url expires
+  if command -v jq >/dev/null 2>&1; then
+    url="$(echo "$resp" | jq -r '.url // empty')"
+    expires="$(echo "$resp" | jq -r '.expires_at // empty')"
+  else
+    url="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("url",""))' <<<"$resp")"
+    expires="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("expires_at",""))' <<<"$resp")"
+  fi
+  if [ -z "$url" ]; then
+    echo "error: response missing 'url' — raw response follows:" >&2
+    echo "$resp" >&2
+    exit 1
+  fi
+  # Print the URL as the last line so shell substitutions work (`URL=$(plist.sh setup-url | tail -1)`).
+  echo "# Setup URL — paste into your browser. Single-use, expires at ${expires}."
+  echo "$url"
+}
+
 case "${1:-}" in
   install)        shift; cmd_install "$@" ;;
   rotate-secret)  shift; cmd_rotate_secret "$@" ;;
   uninstall)      shift; cmd_uninstall "$@" ;;
   status)         cmd_status ;;
-  *) echo "usage: $0 {install [--secret ENV] | rotate-secret [--secret ENV] | uninstall [--purge-secret] | status}" >&2; exit 2 ;;
+  setup-url)      cmd_setup_url ;;
+  *) echo "usage: $0 {install [--secret ENV] | rotate-secret [--secret ENV] | uninstall [--purge-secret] | status | setup-url}" >&2; exit 2 ;;
 esac

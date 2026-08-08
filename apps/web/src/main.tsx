@@ -26,6 +26,12 @@ import { router } from "./router";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { SseProvider } from "./data/SseProvider";
 import { ToastProvider, ToastViewport } from "./components/ui/Toast";
+import { getBearer } from "./data/auth";
+
+// GSL-291 — boot-time consumption of the /setup meta tag. Force one read of `getBearer()`
+// BEFORE the router renders so the Bearer lands in sessionStorage AND the meta tag is
+// removed from the DOM regardless of whether any query fires first.
+getBearer();
 
 const queryClient = new QueryClient({
   defaultOptions: {

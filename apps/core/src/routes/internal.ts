@@ -45,6 +45,8 @@ import { questionNotifier } from "../questions/notifier.ts";
 import { getDb } from "../db/client.ts";
 import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
 import { observeHookWait } from "../metrics/registry.ts";
+import { otpStore, DEFAULT_OTP_TTL_MS } from "../setup/otp-store.ts";
+import { HOST_HEADER } from "../config.ts";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -1078,4 +1080,49 @@ internalRoutes.post("/internal/steer/:sid/drain", requireInternalSecret, async (
   // plugin does not need a client-side feature flag; it can call the drain
   // unconditionally and see empty responses until the queue exists.
   return c.json({ ok: true, messages: [], reserved: true });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-291 — /internal/setup/otp: generate a one-shot OTP for the /setup Bearer-
+// discovery flow. Called by `apps/core/plist.sh setup-url` — the operator has
+// the internal secret via Keychain, so a curl with `X-Internal-Secret` produces
+// a URL like `http://127.0.0.1:7331/setup?tok=<OTP>` that the owner pastes into
+// their browser. On visit, /setup exchanges the OTP for the Bearer and lands it
+// in sessionStorage via a meta tag (never in the URL bar / history).
+//
+// Body: optional `{ ttl_s?: number }` — overrides the default 5-min TTL, capped
+// at 60 min so a stale link cannot linger for hours.
+// -----------------------------------------------------------------------------
+
+const OTP_TTL_MIN_S = 30;
+const OTP_TTL_MAX_S = 3600;
+
+function newSetupOtp(): string {
+  // 32 bytes of entropy → 64 hex chars. Enough to make guessing infeasible even without
+  // the local-Host + internal-secret guards on the wrapping flow.
+  const buf = crypto.getRandomValues(new Uint8Array(32));
+  let hex = "";
+  for (const b of buf) hex += b.toString(16).padStart(2, "0");
+  return hex;
+}
+
+internalRoutes.post("/internal/setup/otp", requireInternalSecret, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+
+  let ttlMs = DEFAULT_OTP_TTL_MS;
+  if (typeof body.ttl_s === "number" && Number.isFinite(body.ttl_s)) {
+    const clamped = Math.min(OTP_TTL_MAX_S, Math.max(OTP_TTL_MIN_S, Math.trunc(body.ttl_s)));
+    ttlMs = clamped * 1000;
+  }
+
+  const otp = newSetupOtp();
+  const expiresAtMs = otpStore.create(otp, ttlMs);
+  return c.json({
+    ok: true,
+    otp,
+    url: `http://${HOST_HEADER}/setup?tok=${otp}`,
+    expires_at: new Date(expiresAtMs).toISOString(),
+    ttl_s: Math.round(ttlMs / 1000),
+  });
 });

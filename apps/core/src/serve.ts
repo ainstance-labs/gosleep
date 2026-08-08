@@ -30,6 +30,7 @@ import { eventsRoutes } from "./routes/events.ts";
 import { metricsRoutes } from "./routes/metrics.ts";
 import { actionsRoutes } from "./routes/actions.ts";
 import { internalRoutes, stopToolObservedFlush } from "./routes/internal.ts";
+import { setupRoutes } from "./routes/setup.ts";
 import { spaRoutes } from "./routes/spa.ts";
 import { getDb } from "./db/client.ts";
 import { reconcileCursors } from "./indexer/reconcile.ts";
@@ -50,9 +51,13 @@ app.route("/", eventsRoutes);
 app.route("/", metricsRoutes);
 app.route("/", actionsRoutes);
 app.route("/", internalRoutes);
-// SPA static (GSL-285) mounts LAST. Every API/SSE/actions/internal route above wins its own
-// path; only unknown paths fall through here, get answered by a static asset if one exists in
-// apps/web/dist, or by index.html as the SPA fallback so react-router owns the client route.
+// Setup (GSL-291) mounts BEFORE the SPA fallback — `GET /setup?tok=...` renders the SPA
+// shell with a Bearer meta tag, so it must beat the generic index.html fallback in spaRoutes.
+app.route("/", setupRoutes);
+// SPA static (GSL-285) mounts LAST. Every API/SSE/actions/internal/setup route above wins its
+// own path; only unknown paths fall through here, get answered by a static asset if one
+// exists in apps/web/dist, or by index.html as the SPA fallback so react-router owns the
+// client route.
 app.route("/", spaRoutes);
 
 // -----------------------------------------------------------------------------

@@ -256,6 +256,36 @@ opt-in shape is the pilot only.
 sessions in-flight fall back to the TUI on the next question. Nothing in `data/`
 needs cleaning up.
 
+## 8.5. /setup Bearer discovery (GSL-291 — browser-native, no devtools)
+
+Getting the Bearer into a browser without hand-editing sessionStorage:
+
+```bash
+# On the host, in a shell where GOSLEEP_INTERNAL_SECRET is exported (the SAME value the
+# running core sees — see § 8 for the pilot pattern):
+bash apps/core/plist.sh setup-url
+#    → prints:
+#      # Setup URL — paste into your browser. Single-use, expires at 2026-08-08T…Z.
+#      http://127.0.0.1:7331/setup?tok=<64-hex-otp>
+```
+
+Paste the URL into any browser on the loopback (including mobile Safari when the phone is
+tunnelled to the host). The `/setup` route:
+
+1. Consumes the OTP (single-use, 5-minute default TTL, clamped to `[30, 3600]` seconds via
+   the optional `GOSLEEP_SETUP_TTL_S` env on `plist.sh setup-url`).
+2. Reads the Bearer from the standard chain (dev-env → Keychain → token-file).
+3. Returns the SPA shell with `<meta name="gosleep-token" content="<Bearer>">` in `<head>`.
+4. The SPA (`apps/web/src/data/auth.ts`) reads the meta at boot, stashes the Bearer in
+   `sessionStorage['gosleep.token']`, and removes the meta tag from the DOM.
+
+The Bearer never appears in the URL bar, browser history, or `Referer`. A refresh does NOT
+re-run setup (the OTP is used); the owner opens a fresh URL. Second visit to the same URL
+returns 400 with an explicit diagnostic page.
+
+If the core has no `GOSLEEP_INTERNAL_SECRET`, `/internal/setup/otp` returns 503 (fail-safe)
+and `plist.sh setup-url` prints a pre-flight message pointing at this section.
+
 ## 9. Channels v1.1 plugin (GSL-282 — dev-flag gated, opt-in per session)
 
 `packages/gosleep-channel/` is a Bun MCP server that publishes the

@@ -36,6 +36,7 @@
 #   38-41. /actions/tasks/sync scenarios                            (GSL-279)
 #   42-50. /internal/permissions/post + /actions/permissions/decide (GSL-284)
 #   51-58. SPA static + fallback + API-precedence + CSP             (GSL-285)
+#   59-66. /setup Bearer-discovery flow                             (GSL-291)
 #
 # Not wired into gate.sh — the gate must stay 0-network/0-process; this test intentionally
 # starts a process. Run it BY HAND before committing changes to apps/core/. Exit 0 = pass.
@@ -764,6 +765,81 @@ check_status "57. GET / (wrong Host)" "421" -H "Host: attacker.example" "http://
 check_status "58. POST /nope (honest 404, no SPA rewrite)" "404" -X POST -H "Host: 127.0.0.1:$PORT" \
   -H "Origin: http://127.0.0.1:$PORT" -H "Content-Type: application/json" -d "{}" \
   "http://127.0.0.1:$PORT/nope"
+
+echo "== GSL-291: /setup Bearer-discovery flow =="
+# 59. POST /internal/setup/otp without secret → 401.
+check_status "59. POST /internal/setup/otp (no secret)" "401" -X POST -H "Host: 127.0.0.1:$PORT" \
+  -H "Origin: http://127.0.0.1:$PORT" -H "Content-Type: application/json" -d "{}" \
+  "http://127.0.0.1:$PORT/internal/setup/otp"
+
+# 60. POST /internal/setup/otp with secret → 200 + {otp, url, expires_at}.
+OTP_BODY="$WORK/setup-otp.json"
+# check_status forces -o /dev/null, so drive curl directly for a body capture.
+curl -s -o "$OTP_BODY" -w '%{http_code}' -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{"ttl_s":60}' "http://127.0.0.1:$PORT/internal/setup/otp" \
+  | grep -q "^200$" && ok "60. POST /internal/setup/otp (valid) → 200" \
+  || bad "60. POST /internal/setup/otp (valid) — expected 200"
+SETUP_OTP="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("otp",""))' "$OTP_BODY" 2>/dev/null || echo "")"
+if [ -n "$SETUP_OTP" ]; then
+  ok "60b. OTP present in response body"
+else
+  bad "60b. OTP missing from /internal/setup/otp response"
+fi
+
+# 61. GET /setup?tok=<OTP> → 200 HTML, body carries the meta-tag with the Bearer.
+if [ -n "$SETUP_OTP" ]; then
+  SETUP_BODY="$WORK/setup-page.html"
+  SETUP_HTTP="$(curl -s -o "$SETUP_BODY" -w '%{http_code}' -H "Host: 127.0.0.1:$PORT" \
+    "http://127.0.0.1:$PORT/setup?tok=$SETUP_OTP")"
+  if [ "$SETUP_HTTP" = "200" ]; then
+    ok "61. GET /setup?tok=<OTP> (valid) → 200"
+  else
+    bad "61. GET /setup?tok=<OTP> (valid) — expected 200, got $SETUP_HTTP"
+  fi
+  if grep -q "meta name=\"gosleep-token\" content=\"$TOKEN\"" "$SETUP_BODY"; then
+    ok "61b. /setup body carries gosleep-token meta tag with the Bearer"
+  else
+    bad "61b. /setup body missing meta tag with Bearer (first 400 bytes: $(head -c 400 "$SETUP_BODY"))"
+  fi
+  # 62. Second GET with the same tok → 400 (single-use).
+  check_status "62. GET /setup?tok=<used OTP> → 400" "400" -H "Host: 127.0.0.1:$PORT" \
+    "http://127.0.0.1:$PORT/setup?tok=$SETUP_OTP"
+else
+  bad "61. skipped — no OTP"
+  bad "61b. skipped — no OTP"
+  bad "62. skipped — no OTP"
+fi
+
+# 63. GET /setup with no tok → 400.
+check_status "63. GET /setup (no tok)" "400" -H "Host: 127.0.0.1:$PORT" \
+  "http://127.0.0.1:$PORT/setup"
+
+# 64. GET /setup with a bogus tok → 400 (unknown OTP).
+check_status "64. GET /setup (unknown tok)" "400" -H "Host: 127.0.0.1:$PORT" \
+  "http://127.0.0.1:$PORT/setup?tok=obviously-not-issued"
+
+# 65. Cache-Control: no-store MUST be stamped on /setup responses (the body carries a secret).
+CACHE_LINE=$(curl -sI -H "Host: 127.0.0.1:$PORT" "http://127.0.0.1:$PORT/setup?tok=zzz" | tr -d '\r' | grep -i '^cache-control:')
+if echo "$CACHE_LINE" | grep -q 'no-store'; then
+  ok "65. /setup response is no-store"
+else
+  bad "65. /setup missing cache-control: no-store (line: $CACHE_LINE)"
+fi
+
+# 66. TTL clamp: passing ttl_s: 5 (below floor 30) should still succeed but clamp — response
+# echoes the ttl_s the store used, which must be >= 30.
+CLAMP_BODY="$WORK/setup-clamp.json"
+curl -s -o "$CLAMP_BODY" -X POST -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{"ttl_s":5}' "http://127.0.0.1:$PORT/internal/setup/otp" >/dev/null
+CLAMPED_TTL="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("ttl_s",""))' "$CLAMP_BODY" 2>/dev/null || echo "")"
+if [ "$CLAMPED_TTL" = "30" ]; then
+  ok "66. ttl_s clamped to 30 s floor (was 5)"
+else
+  bad "66. expected clamped ttl_s=30, got '$CLAMPED_TTL'"
+fi
 
 echo "== teardown =="
 kill $SERVER_PID 2>/dev/null || true
