@@ -1,0 +1,26 @@
+{
+  "name": "@gosleep/channel",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "gosleep-as-channel: v1.1 Bun MCP server that publishes claude/channel/permission (dev-flag gated — see README.md). Skeleton per GSL-282; no live wiring until the owner opts a session in with --dangerously-load-development-channels + GOSLEEP_ENABLE_CHANNELS=1.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "gosleep-channel": "./src/bin/gosleep-channel.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.6.0"
+  }
+}

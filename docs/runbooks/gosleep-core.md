@@ -240,7 +240,65 @@ opt-in shape is the pilot only.
 sessions in-flight fall back to the TUI on the next question. Nothing in `data/`
 needs cleaning up.
 
-## 9. Standing rules for agents touching this engine
+## 9. Channels v1.1 plugin (GSL-282 — dev-flag gated, opt-in per session)
+
+`packages/gosleep-channel/` is a Bun MCP server that publishes the
+`claude/channel/permission` capability so Claude Code can relay `PermissionRequest`
+decisions from the owner's phone back into the local session. The plugin also owns
+the owner-steer path (channel messages delivered at the session's NEXT turn boundary;
+never mid-turn — the fundamental limit of channels).
+
+**Scope reminder** (from rev-3 addendum Delta 2):
+- Covers tool-use approvals only (`Bash`, `Write`, `Edit`). NEVER `AskUserQuestion` —
+  that dialog stays on the hook path from GSL-275 because it must unblock mid-turn,
+  which channels physically cannot do.
+- v1 does not touch channels. This plugin lives to v1.1 and stays behind the dev flag
+  until Anthropic curates the channel allowlist.
+
+**Double guard — both switches MUST be set, otherwise the plugin is inert:**
+
+1. **Session flag** — Claude Code launched with `--dangerously-load-development-channels`.
+   Enforced by Claude Code itself. Every session start shows a **full-screen consent
+   dialog** the owner must dismiss by hand. This is honest friction; the flag name is
+   deliberate.
+2. **Environment guard** — `GOSLEEP_ENABLE_CHANNELS=1` in the plugin process env.
+   Enforced by `packages/gosleep-channel/src/bin/gosleep-channel.ts`. Without it the
+   bin exits `0` immediately, writes a one-line breadcrumb to stderr, and never
+   touches stdout (which would poison the JSON-RPC transport).
+
+Neither switch alone is enough. This second layer is why a `--dangerously-load-development-channels`
+sitting in a shell history cannot accidentally expose the channel to an unrelated
+worker session.
+
+### Enabling in a supervised interactive session (do NOT wire into settings.json)
+
+```bash
+env GOSLEEP_ENABLE_CHANNELS=1 \
+    GOSLEEP_INTERNAL_SECRET="$(security find-generic-password -a "$USER" -s gosleep-web -w \
+                               | sed 's/^b64v1://' | base64 -d)" \
+  claude --dangerously-load-development-channels \
+         --channels 'gosleep=@gosleep/channel'
+```
+
+The plugin then:
+1. Handles `notifications/claude/channel/permission_request` by POSTing to
+   `POST /internal/permission-relay` — the row lands in `questions` with
+   `kind='permission'`, exactly the same shape the hook path uses (GSL-284).
+2. Long-polls `GET /internal/permissions/:qid/decision-wait` for the owner's
+   Allow/Deny click (from the web UI or a future phone client).
+3. Replies to Claude Code with `notifications/claude/channel/permission {allow|deny}`
+   over the same channel; the local TUI dialog auto-closes with the same decision.
+
+Whichever answer arrives first — hook or channel — wins. Both write to the same
+`qid` row (`INSERT OR IGNORE` deduplicates).
+
+### Rollback
+
+Skip the flag on subsequent session starts. The plugin becomes inert immediately;
+nothing under `data/` needs cleaning; existing rows keep working through the hook
+path.
+
+## 10. Standing rules for agents touching this engine
 
 - **SQLite is the source of truth** — JSONL under `docs/lab/` is a historical archive as of
   target-architecture step 8. Write actions go via `POST /actions/*` (which spawns the
@@ -250,3 +308,7 @@ needs cleaning up.
 - **The Preact-SSG site under `docs/lab/site/`** is deprecated as of GSL-270. Owner reads
   live data from the panel, not those `.html` files. `GOSLEEP_KEEP_STATIC_SITE=1` rolls
   back to SSG regeneration.
+- **The channels plugin is dev-flag gated (GSL-282).** Never wire
+  `--dangerously-load-development-channels` or `GOSLEEP_ENABLE_CHANNELS=1` into a
+  worker spawn or into `.claude/settings.json`. It is an owner-supervised interactive
+  path only.

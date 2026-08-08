@@ -835,3 +835,247 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
     debounce_ms: TOOL_OBSERVED_FLUSH_MS,
   });
 });
+
+// -----------------------------------------------------------------------------
+// GSL-282 — channels v1.1 (dev-flag gated, see packages/gosleep-channel/README.md)
+//
+// Three endpoints wire the gosleep-as-channel plugin to core:
+//
+//   POST /internal/permission-relay
+//     Called by `packages/gosleep-channel/src/server.ts` when Claude Code sends
+//     `notifications/claude/channel/permission_request` over the channel. Body:
+//       { request_id, tool_name, description, input_preview, session_id? }
+//     We reduce it into the same PermissionInput shape /internal/permissions/post
+//     accepts, INSERT a `kind='permission'` row into `questions`, and return the
+//     qid — so a channel-relayed PermissionRequest lands in exactly the same DB
+//     row a hook-relayed one would (the web /questions Allow/Deny card handles
+//     both uniformly, no UI branch).
+//
+//   GET  /internal/permissions/:qid/decision-wait?timeout_s=N
+//     Long-poll: held open until the qid's row transitions to `status='answered'`
+//     with `answer_text: "allow" | "deny"`, or `timeout_s` elapses, or the request
+//     is aborted. Same subscribe/notify machinery as the AskUserQuestion answer-
+//     wait — reuses `questionNotifier` since `doDecidePermission` already fires
+//     the same wake mechanism (see `apps/core/src/routes/actions.ts` § doDecidePermission).
+//     Return shape:
+//       200 { ok:true, qid, behavior: "allow"|"deny", answered_at, answered_by? }
+//       204 no body (timeout / abort)
+//       404 { ok:false, error:"unknown qid" }
+//       409 { ok:false, error:"qid is not a permission row" }
+//
+//   POST /internal/steer/:sid/drain
+//     Reserved skeleton — returns `{ok:true, messages:[]}` today. Future work
+//     (a separate ticket, not GSL-282) will back this with a persistent queue
+//     written by `POST /actions/steer/post` from the web UI; the drain is fired
+//     by a Stop/SessionStart hook on the plugin side so channel messages land at
+//     the session's NEXT turn boundary (never mid-turn — the fundamental limit
+//     of channels per channels-reference.md).
+//
+// AUTH: all three sit behind the same requireInternalSecret + local-only guards
+// as the rest of /internal/*. A misconfigured core (no secret) 503s and the
+// channel plugin falls open — its README documents that path.
+// -----------------------------------------------------------------------------
+
+internalRoutes.post("/internal/permission-relay", requireInternalSecret, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+
+  const requestId = typeof body.request_id === "string" ? body.request_id : "";
+  const toolName = typeof body.tool_name === "string" ? body.tool_name : "";
+  const sessionId = typeof body.session_id === "string" ? body.session_id : "";
+  const description = typeof body.description === "string" ? body.description : "";
+  const inputPreview = typeof body.input_preview === "string" ? body.input_preview : "";
+
+  if (requestId.length === 0) {
+    return c.json({ ok: false, error: "request_id required" }, 400);
+  }
+  if (toolName.length === 0) {
+    return c.json({ ok: false, error: "tool_name required" }, 400);
+  }
+
+  const messageParts: string[] = [];
+  if (description.length > 0) messageParts.push(description);
+  if (inputPreview.length > 0) messageParts.push(inputPreview);
+  const permission: PermissionInput = {
+    session_id: sessionId,
+    tool_use_id: requestId,
+    tool_name: toolName,
+    tool_params: null,
+    message: messageParts.length > 0 ? messageParts.join("\n") : null,
+  };
+
+  const qid = newPermissionQid();
+  const openedAt = nowIso();
+  const db = getDb();
+
+  db.raw
+    .query(
+      `INSERT OR IGNORE INTO questions
+         (qid, status, kind, task, question, options, opened_at)
+       VALUES (?, 'open', 'permission', NULL, ?, ?, ?)`,
+    )
+    .run(
+      qid,
+      formatPermissionQuestion(permission),
+      JSON.stringify(PERMISSION_OPTIONS),
+      openedAt,
+    );
+
+  // Same SSE-side event the hook path fires — the payload carries `origin: 'channel'`
+  // so a timeline reader can tell channel-relayed permission posts from hook-relayed
+  // ones without reading the row's schema.
+  const shortSid = sessionId.length > 0 ? sessionId.split("-")[0] ?? sessionId : "channel";
+  const eventData = JSON.stringify({
+    qid,
+    tool: toolName,
+    session_id: sessionId,
+    tool_use_id: requestId,
+    origin: "channel",
+  });
+  spawnDetached({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-log.sh`,
+      "--type",
+      "permission.posed",
+      "--actor",
+      `channel:${shortSid}`,
+      "--src",
+      "emit",
+      "--quiet",
+      "--data-json",
+      eventData,
+    ],
+    timeoutMs: 5_000,
+  });
+
+  return c.json({
+    ok: true,
+    qid,
+    tool: toolName,
+    opened_at: openedAt,
+    origin: "channel",
+  });
+});
+
+/** Convert an "answered" permission row to the DecisionWait wire shape. */
+function toDecisionPayload(row: QuestionRow, answeredBy: string | null): {
+  qid: string;
+  behavior: "allow" | "deny";
+  answered_at: string | null;
+  answered_by: string | null;
+} | null {
+  if (row.answer_text !== "allow" && row.answer_text !== "deny") return null;
+  return {
+    qid: row.qid,
+    behavior: row.answer_text,
+    answered_at: row.answered_at,
+    answered_by: answeredBy,
+  };
+}
+
+internalRoutes.get(
+  "/internal/permissions/:qid/decision-wait",
+  requireInternalSecret,
+  async (c) => {
+    const qid = c.req.param("qid");
+    if (qid === undefined || qid.length === 0) {
+      return c.json({ ok: false, error: "qid required" }, 400);
+    }
+    const timeoutSeconds = parseTimeoutSeconds(c.req.query("timeout_s"));
+    const waitStartedAt = Date.now();
+    const observeWait = (): void => {
+      observeHookWait("permission-decision-wait", (Date.now() - waitStartedAt) / 1000);
+    };
+
+    // Answer-before-wait fast path — same rationale as the AskUserQuestion wait.
+    const initial = readQuestionRow(qid);
+    if (initial === null) {
+      observeWait();
+      return c.json({ ok: false, error: `qid ${qid} not found` }, 404);
+    }
+    if (initial.kind !== "permission") {
+      observeWait();
+      return c.json(
+        { ok: false, error: `qid ${qid} is not a permission row (kind=${initial.kind})` },
+        409,
+      );
+    }
+    if (initial.status !== "open") {
+      const payload = toDecisionPayload(initial, null);
+      observeWait();
+      if (payload !== null) return c.json({ ok: true, ...payload });
+      // Terminal row without a valid decision (e.g. superseded before an owner answered)
+      // — the caller cannot deliver a behavior, and should treat this like a timeout.
+      return c.body(null, 204);
+    }
+
+    const result = await new Promise<
+      ReturnType<typeof toDecisionPayload> | null
+    >((resolve) => {
+      let done = false;
+      const finish = (
+        payload: ReturnType<typeof toDecisionPayload> | null,
+      ): void => {
+        if (done) return;
+        done = true;
+        try {
+          unsubscribe();
+        } catch {
+          /* ignore */
+        }
+        clearTimeout(timer);
+        resolve(payload);
+      };
+
+      const unsubscribe = questionNotifier.subscribeQid(qid, (m) => {
+        if (m.status !== "answered") return;
+        if (m.answer_text !== "allow" && m.answer_text !== "deny") return;
+        const fresh = readQuestionRow(qid);
+        finish(
+          fresh !== null
+            ? toDecisionPayload(fresh, m.answered_by)
+            : {
+                qid,
+                behavior: m.answer_text,
+                answered_at: m.answered_at,
+                answered_by: m.answered_by,
+              },
+        );
+      });
+
+      const timer = setTimeout(() => finish(null), timeoutSeconds * 1000);
+
+      const signal = c.req.raw.signal;
+      if (signal !== undefined && signal !== null) {
+        if (signal.aborted) {
+          finish(null);
+          return;
+        }
+        signal.addEventListener("abort", () => finish(null), { once: true });
+      }
+    });
+
+    if (result === null) {
+      observeWait();
+      return c.body(null, 204);
+    }
+    observeWait();
+    return c.json({ ok: true, ...result });
+  },
+);
+
+internalRoutes.post("/internal/steer/:sid/drain", requireInternalSecret, async (c) => {
+  const sid = c.req.param("sid");
+  if (sid === undefined || sid.length === 0) {
+    return c.json({ ok: false, error: "session id required" }, 400);
+  }
+  // Skeleton — the queue behind this endpoint is future work. Returning an
+  // empty message list is the honest "nothing to deliver" answer; the plugin
+  // handles it silently. When the queue lands, this handler will read+pop
+  // pending rows for `sid` in insertion order, log a `steer.drained` event,
+  // and return them here. Keeping the endpoint live from GSL-282 means the
+  // plugin does not need a client-side feature flag; it can call the drain
+  // unconditionally and see empty responses until the queue exists.
+  return c.json({ ok: true, messages: [], reserved: true });
+});

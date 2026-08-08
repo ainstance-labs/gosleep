@@ -306,6 +306,187 @@ describe("answer-wait carries kind + applied (GSL-284 field surface)", () => {
   });
 });
 
+describe("POST /internal/permission-relay (GSL-282 — channel plugin)", () => {
+  test("channel-shaped payload → inserts kind='permission' row identical to hook path", async () => {
+    const payload = {
+      request_id: "req-channel-1",
+      tool_name: "Bash",
+      description: "run ls",
+      input_preview: "ls -la /etc",
+      session_id: "sid-channel",
+    };
+    const res = await app.request("http://localhost/internal/permission-relay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": SECRET },
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { qid: string; tool: string; origin: string };
+    expect(body.qid).toMatch(/^p-\d{8}-\d{6}-[0-9a-f]{8}$/);
+    expect(body.tool).toBe("Bash");
+    expect(body.origin).toBe("channel");
+    const row = raw
+      .query("SELECT kind, status, question, options FROM questions WHERE qid = ?")
+      .get(body.qid) as { kind: string; status: string; question: string; options: string };
+    expect(row.kind).toBe("permission");
+    expect(row.status).toBe("open");
+    expect(row.question).toContain("Permission request: Bash");
+    expect(row.question).toContain("ls -la /etc");
+    const opts = JSON.parse(row.options) as Array<{ label: string }>;
+    expect(opts.map((o) => o.label)).toEqual(["Allow", "Deny"]);
+  });
+
+  test("missing request_id → 400", async () => {
+    const res = await app.request("http://localhost/internal/permission-relay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": SECRET },
+      body: JSON.stringify({ tool_name: "Bash" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("missing tool_name → 400", async () => {
+    const res = await app.request("http://localhost/internal/permission-relay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": SECRET },
+      body: JSON.stringify({ request_id: "r-x" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("wrong secret → 401", async () => {
+    const res = await app.request("http://localhost/internal/permission-relay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": "nope" },
+      body: JSON.stringify({ request_id: "r-1", tool_name: "Bash" }),
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /internal/permissions/:qid/decision-wait (GSL-282 — channel plugin)", () => {
+  test("answer-before-wait: row already answered 'allow' → 200 immediately with behavior", async () => {
+    raw
+      .query(
+        `INSERT INTO questions (qid, status, kind, task, question, opened_at, answered_at, answer_text)
+         VALUES ('p-wait-1', 'answered', 'permission', NULL, 'Permission request: Bash', ?, ?, 'allow')`,
+      )
+      .run(new Date().toISOString(), new Date().toISOString());
+
+    const started = Date.now();
+    const res = await app.request(
+      "http://localhost/internal/permissions/p-wait-1/decision-wait?timeout_s=10",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    const elapsed = Date.now() - started;
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { qid: string; behavior: string };
+    expect(body.qid).toBe("p-wait-1");
+    expect(body.behavior).toBe("allow");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  test("wait-then-answer: notifier fires 'deny' inside window → 200 with behavior=deny", async () => {
+    raw
+      .query(
+        `INSERT INTO questions (qid, status, kind, task, question, opened_at)
+         VALUES ('p-wait-2', 'open', 'permission', NULL, 'Permission request: Write', ?)`,
+      )
+      .run(new Date().toISOString());
+    setTimeout(() => {
+      raw
+        .query(
+          `UPDATE questions SET status='answered', answer_text='deny', answered_at=? WHERE qid='p-wait-2'`,
+        )
+        .run(new Date().toISOString());
+      questionNotifier.notify({
+        qid: "p-wait-2",
+        status: "answered",
+        answer_text: "deny",
+        answered_at: new Date().toISOString(),
+        answered_by: "owner-phone",
+      });
+    }, 40);
+
+    const started = Date.now();
+    const res = await app.request(
+      "http://localhost/internal/permissions/p-wait-2/decision-wait?timeout_s=5",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    const elapsed = Date.now() - started;
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { behavior: string; answered_by: string | null };
+    expect(body.behavior).toBe("deny");
+    expect(body.answered_by).toBe("owner-phone");
+    expect(elapsed).toBeGreaterThanOrEqual(30);
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  test("timeout: no decision within window → 204", async () => {
+    raw
+      .query(
+        `INSERT INTO questions (qid, status, kind, task, question, opened_at)
+         VALUES ('p-wait-3', 'open', 'permission', NULL, 'Permission request: Bash', ?)`,
+      )
+      .run(new Date().toISOString());
+    const started = Date.now();
+    const res = await app.request(
+      "http://localhost/internal/permissions/p-wait-3/decision-wait?timeout_s=1",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    const elapsed = Date.now() - started;
+    expect(res.status).toBe(204);
+    expect(elapsed).toBeGreaterThanOrEqual(900);
+    expect(elapsed).toBeLessThan(2500);
+  });
+
+  test("unknown qid → 404", async () => {
+    const res = await app.request(
+      "http://localhost/internal/permissions/p-nope/decision-wait?timeout_s=1",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  test("BLOCKER row (not a permission) → 409", async () => {
+    raw
+      .query(
+        `INSERT INTO questions (qid, status, kind, task, question, opened_at)
+         VALUES ('q-wait-blocker', 'open', 'BLOCKER', 'GSL-282', 'Which colour?', ?)`,
+      )
+      .run(new Date().toISOString());
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-wait-blocker/decision-wait?timeout_s=1",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(409);
+  });
+});
+
+describe("POST /internal/steer/:sid/drain (GSL-282 — reserved skeleton)", () => {
+  test("returns empty message list + reserved:true so the plugin can call it unconditionally", async () => {
+    const res = await app.request("http://localhost/internal/steer/sid-1/drain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": SECRET },
+      body: "{}",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; messages: unknown[]; reserved: boolean };
+    expect(body.ok).toBe(true);
+    expect(body.messages).toEqual([]);
+    expect(body.reserved).toBe(true);
+  });
+
+  test("wrong secret → 401", async () => {
+    const res = await app.request("http://localhost/internal/steer/sid-1/drain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Secret": "nope" },
+      body: "{}",
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe("secret required", () => {
   test("unset GOSLEEP_INTERNAL_SECRET → 503 (never silent-unauth)", async () => {
     setSecret("");

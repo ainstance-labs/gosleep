@@ -61,9 +61,23 @@
         "vite": "^7.0.0",
       },
     },
+    "packages/gosleep-channel": {
+      "name": "@gosleep/channel",
+      "version": "0.0.1",
+      "bin": {
+        "gosleep-channel": "./src/bin/gosleep-channel.ts",
+      },
+      "dependencies": {
+        "zod": "^3.23.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.0",
+        "typescript": "^5.6.0",
+      },
+    },
     "packages/runner-adapter": {
       "name": "@gosleep/runner-adapter",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "devDependencies": {
         "@types/bun": "^1.2.0",
         "typescript": "^5.6.0",
@@ -203,6 +217,8 @@
     "@fontsource-variable/geist": ["@fontsource-variable/geist@5.3.0", "", {}, "sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA=="],
 
     "@fontsource-variable/geist-mono": ["@fontsource-variable/geist-mono@5.3.0", "", {}, "sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw=="],
+
+    "@gosleep/channel": ["@gosleep/channel@workspace:packages/gosleep-channel"],
 
     "@gosleep/core": ["@gosleep/core@workspace:apps/core"],
 
