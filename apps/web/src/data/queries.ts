@@ -22,6 +22,8 @@ import type {
   ApplyManifestActionResponse,
   BundleResponse,
   CostResponse,
+  DecidePermissionActionInput,
+  DecidePermissionActionResponse,
   DeferActionInput,
   DeferActionResponse,
   FleetResponse,
@@ -259,6 +261,25 @@ export function useSyncTasks(): UseMutationResult<
       coreClient.syncTasks(input, newIdempotencyKey()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "tasks"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+// GSL-284: owner decides Allow/Deny on a permission-kind question row. The mutation
+// invalidates the questions bucket so the row disappears from the open filter and shows
+// with `answer_text='allow'|'deny'` under the answered filter within the next tick.
+export function useDecidePermission(): UseMutationResult<
+  DecidePermissionActionResponse,
+  Error,
+  DecidePermissionActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DecidePermissionActionInput) =>
+      coreClient.decidePermission(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
     },
   });

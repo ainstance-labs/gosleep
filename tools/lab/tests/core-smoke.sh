@@ -30,6 +30,11 @@
 #   18. POST /internal/questions/post (no secret)                 → 401
 #   19. POST /internal/questions/post (valid secret)              → 200 + qid
 #   20. GET  /internal/questions/<qid>/answer-wait?timeout_s=1    → 204  (timeout, no answer)
+#   21-25. /fleet + /internal/agents/tool-observed                (GSL-276)
+#   26-27. /metrics                                                (GSL-280)
+#   28-37. /manifest + apply-manifest + defer scenarios            (GSL-277/278)
+#   38-41. /actions/tasks/sync scenarios                            (GSL-279)
+#   42-50. /internal/permissions/post + /actions/permissions/decide (GSL-284)
 #
 # Not wired into gate.sh — the gate must stay 0-network/0-process; this test intentionally
 # starts a process. Run it BY HAND before committing changes to apps/core/. Exit 0 = pass.
@@ -585,6 +590,130 @@ if [ "${GOSLEEP_SKIP_SYNC_LIVE:-0}" != "1" ]; then
 else
   ok "40. skipped (GOSLEEP_SKIP_SYNC_LIVE=1)"
   ok "41. skipped (GOSLEEP_SKIP_SYNC_LIVE=1)"
+fi
+
+echo "== /internal/permissions/post + /actions/permissions/decide (GSL-284) =="
+
+# 42. POST /internal/permissions/post without secret → 401
+check_status "42. POST /internal/permissions/post (no secret)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"s","tool_input":{"tool":"Bash"}}' \
+  "http://127.0.0.1:$PORT/internal/permissions/post"
+
+# 43. POST /internal/permissions/post missing tool → 400
+check_status "43. POST /internal/permissions/post (no tool)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{"session_id":"s"}' \
+  "http://127.0.0.1:$PORT/internal/permissions/post"
+
+# 44. POST /internal/permissions/post valid → 200 + p-* qid + kind='permission' row lands.
+PERM_POST_BODY="$WORK/perm-post.json"
+PERM_POST_STATUS="$(curl -s -o "$PERM_POST_BODY" -w '%{http_code}' -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{
+    "session_id": "smoke-perm-sid-1",
+    "tool_use_id": "smoke-perm-tu-1",
+    "tool_input": {
+      "tool": "Bash",
+      "params": {"command": "ls /tmp"},
+      "message": "list tmp for smoke"
+    }
+  }' \
+  "http://127.0.0.1:$PORT/internal/permissions/post")"
+if [ "$PERM_POST_STATUS" = "200" ] && grep -q '"qid":"p-' "$PERM_POST_BODY"; then
+  ok "44. POST /internal/permissions/post (valid) → 200 + p-* qid"
+else
+  bad "44. POST /internal/permissions/post → $PERM_POST_STATUS body=$(cat "$PERM_POST_BODY")"
+fi
+PERM_QID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("qid",""))' "$PERM_POST_BODY" 2>/dev/null || echo "")"
+
+# 44b. DB confirms kind='permission' and canonical Allow/Deny options.
+if [ -n "$PERM_QID" ]; then
+  DB_ROW="$(sqlite3 "$SCRATCH_DB" "SELECT kind || '|' || status || '|' || options FROM questions WHERE qid='$PERM_QID'" 2>/dev/null || echo "")"
+  case "$DB_ROW" in
+    permission\|open\|*Allow*Deny*)
+      ok "44b. DB row has kind=permission + open + Allow/Deny options" ;;
+    *)
+      bad "44b. DB row unexpected: '$DB_ROW'" ;;
+  esac
+else
+  bad "44b. skipped — POST returned no qid"
+fi
+
+# 45. POST /actions/permissions/decide without Bearer → 401
+check_status "45. POST /actions/permissions/decide (no auth)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" \
+  -d '{"qid":"p-nope","decision":"allow"}' \
+  "http://127.0.0.1:$PORT/actions/permissions/decide"
+
+# 46. POST /actions/permissions/decide bad decision → 400
+check_status "46. POST /actions/permissions/decide (bad decision)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"qid":"p-any","decision":"maybe"}' \
+  "http://127.0.0.1:$PORT/actions/permissions/decide"
+
+# 47. POST /actions/permissions/decide against unknown qid → 404
+check_status "47. POST /actions/permissions/decide (unknown qid)" "404" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"qid":"p-does-not-exist","decision":"allow"}' \
+  "http://127.0.0.1:$PORT/actions/permissions/decide"
+
+# 48. Full flow: decide allow on the fresh qid, verify DB state.
+if [ -n "$PERM_QID" ]; then
+  DECIDE_BODY="$WORK/perm-decide-allow.json"
+  DECIDE_STATUS="$(curl -s -o "$DECIDE_BODY" -w '%{http_code}' -X POST \
+    -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: smoke-decide-$PERM_QID" \
+    -d '{"qid":"'"$PERM_QID"'","decision":"allow"}' \
+    "http://127.0.0.1:$PORT/actions/permissions/decide")"
+  if [ "$DECIDE_STATUS" = "200" ] && grep -q '"decision":"allow"' "$DECIDE_BODY"; then
+    ok "48. decide allow → 200 + result.decision=allow"
+  else
+    bad "48. decide allow → $DECIDE_STATUS body=$(cat "$DECIDE_BODY")"
+  fi
+  DB_DEC="$(sqlite3 "$SCRATCH_DB" "SELECT answer_text || '|' || COALESCE(applied_by,'NULL') FROM questions WHERE qid='$PERM_QID'" 2>/dev/null || echo "")"
+  if [ "$DB_DEC" = "allow|owner" ]; then
+    ok "48b. DB row: answer_text=allow, applied_by=owner"
+  else
+    bad "48b. DB row unexpected: '$DB_DEC'"
+  fi
+  # 49. Second decide on the same qid (now status=answered) → 409.
+  check_status "49. POST decide on already-answered permission → 409" "409" -X POST \
+    -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: smoke-decide-second-$PERM_QID" \
+    -d '{"qid":"'"$PERM_QID"'","decision":"deny"}' \
+    "http://127.0.0.1:$PORT/actions/permissions/decide"
+else
+  bad "48. skipped — no PERM_QID"
+  bad "48b. skipped — no PERM_QID"
+  bad "49. skipped — no PERM_QID"
+fi
+
+# 50. Wrong-kind guard: try deciding on a BLOCKER qid → 409.
+BLOCKER_POST_BODY="$WORK/blocker-post-for-perm-guard.json"
+curl -s -o "$BLOCKER_POST_BODY" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "X-Internal-Secret: $INTERNAL_SECRET" \
+  -d '{"session_id":"smoke-guard","tool_use_id":"tu-guard","tool_input":{"questions":[{"question":"blocker for guard?","options":[{"label":"Y"}]}]}}' \
+  "http://127.0.0.1:$PORT/internal/questions/post" >/dev/null
+BLOCKER_QID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("qid",""))' "$BLOCKER_POST_BODY" 2>/dev/null || echo "")"
+if [ -n "$BLOCKER_QID" ]; then
+  check_status "50. POST decide against a BLOCKER qid → 409" "409" -X POST \
+    -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+    -H "Idempotency-Key: smoke-decide-wrong-kind" \
+    -d '{"qid":"'"$BLOCKER_QID"'","decision":"allow"}' \
+    "http://127.0.0.1:$PORT/actions/permissions/decide"
+else
+  bad "50. skipped — could not seed BLOCKER row"
 fi
 
 echo "== teardown =="

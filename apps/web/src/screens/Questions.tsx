@@ -1,13 +1,18 @@
 // @gosleep/web — Questions screen (GSL-265 read-only; GSL-268 answer/resolve;
-// GSL-277 apply-manifest + provenance badge; GSL-278 defer + countdown).
+// GSL-277 apply-manifest + provenance badge; GSL-278 defer + countdown;
+// GSL-284 permission Allow/Deny cards).
 //
-// Four owner-facing actions on each open question:
-//   - "Answer"            → POST /actions/questions/answer          (typed text answer, by='owner-web').
-//   - "Apply manifest"    → POST /actions/questions/apply-manifest  (owner picks a rule from
-//                            docs/lab/decisions/manifest.md; provenance columns record it).
-//   - "Defer"             → POST /actions/questions/defer           (optional auto-reopen ts;
-//                            deferred rows show a countdown when defer_until is set).
-//   - "Mark resolved"     → POST /actions/questions/resolve         (non-early; final closure).
+// Five owner-facing actions on each open question. The row's `kind` field decides which
+// path the card takes:
+//   - kind='permission' (GSL-284):
+//       * "Allow" / "Deny" pair → POST /actions/permissions/decide {qid, decision}.
+//         Free-text answer input is HIDDEN — permission questions have a boolean answer
+//         vocabulary. Optional deny reason lives on a small dialog gated behind Deny.
+//   - kind='BLOCKER' (AskUserQuestion + owner-only queue rows):
+//       * "Answer"            → POST /actions/questions/answer         (typed text answer).
+//       * "Apply manifest"    → POST /actions/questions/apply-manifest (rule id + provenance).
+//       * "Defer"             → POST /actions/questions/defer          (optional auto-reopen).
+//       * "Mark resolved"     → POST /actions/questions/resolve        (non-early).
 //
 // The provenance badge on every answered row names WHO answered the question — 'manifest',
 // 'owner', 'orchestrator', or '(unknown)' for legacy rows without applied_by set. When the
@@ -22,6 +27,7 @@ import { QueryStatus } from "../components/QueryStatus";
 import {
   useAnswerQuestion,
   useApplyManifest,
+  useDecidePermission,
   useDeferQuestion,
   useManifest,
   useQuestions,
@@ -67,6 +73,12 @@ interface ApplyManifestDialogState {
   question: string;
   selectedRuleId: string;
   answerOverride: string;
+}
+
+interface DenyPermissionDialogState {
+  qid: string;
+  question: string;
+  reason: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -195,11 +207,46 @@ export function QuestionsScreen() {
   const [resolveDialog, setResolveDialog] = useState<ResolveDialogState | null>(null);
   const [deferDialog, setDeferDialog] = useState<DeferDialogState | null>(null);
   const [applyDialog, setApplyDialog] = useState<ApplyManifestDialogState | null>(null);
+  const [denyDialog, setDenyDialog] = useState<DenyPermissionDialogState | null>(null);
 
   const answerMut = useAnswerQuestion();
   const resolveMut = useResolveQuestion();
   const deferMut = useDeferQuestion();
   const applyMut = useApplyManifest();
+  const decideMut = useDecidePermission();
+
+  // GSL-284: submit the boolean allow/deny for a permission-kind question row. `Allow`
+  // sends immediately (no confirmation dialog); `Deny` goes through denyDialog so the
+  // owner can supply an optional reason that flows as permissionDecisionReason.
+  const submitDecide = async (
+    qid: string,
+    decision: "allow" | "deny",
+    updated_message: string | null,
+  ): Promise<void> => {
+    try {
+      const res = await decideMut.mutateAsync({
+        qid,
+        decision,
+        updated_message,
+        by: "owner-web",
+      });
+      pushToast({
+        title: `${decision === "allow" ? "Allowed" : "Denied"} ${qid}`,
+        description:
+          res.cached === true
+            ? "cached replay (no re-run)"
+            : `session hook released with ${decision}`,
+        tone: decision === "allow" ? "ok" : "warn",
+      });
+      setDenyDialog(null);
+    } catch (err) {
+      pushToast({
+        title: `${decision === "allow" ? "Allow" : "Deny"} failed for ${qid}`,
+        description: err instanceof Error ? err.message : String(err),
+        tone: "danger",
+      });
+    }
+  };
 
   useTicker(1000); // re-render every second so the defer countdown updates.
 
@@ -355,12 +402,20 @@ export function QuestionsScreen() {
           <div className="grid grid-cols-1 gap-3">
             {d.questions.map((question) => {
               const tone: StatusTone = TONE[question.status] ?? "neutral";
-              const canAnswer = question.status === "open";
-              const canApply = question.status === "open";
+              const isPermission = question.kind === "permission";
+              // GSL-284: permission rows carve out their own action set. Allow/Deny is the
+              // whole vocabulary — we deliberately hide Answer / Apply-manifest / Defer /
+              // Mark-resolved on those rows so the owner cannot accidentally send free
+              // text back through the permission path.
+              const canDecide = isPermission && question.status === "open";
+              const canAnswer = !isPermission && question.status === "open";
+              const canApply = !isPermission && question.status === "open";
               const canDefer =
-                question.status === "open" || question.status === "answered";
+                !isPermission &&
+                (question.status === "open" || question.status === "answered");
               const canResolve =
-                question.status === "open" || question.status === "answered";
+                !isPermission &&
+                (question.status === "open" || question.status === "answered");
               const provenanceBody =
                 question.applied_rule_ref !== null && question.applied_rule_ref !== undefined
                   ? manifestById.get(question.applied_rule_ref)
@@ -450,8 +505,34 @@ export function QuestionsScreen() {
                       </div>
                     ) : null}
 
-                    {(canAnswer || canApply || canDefer || canResolve) ? (
+                    {(canDecide || canAnswer || canApply || canDefer || canResolve) ? (
                       <div className="flex flex-wrap gap-2 pt-1">
+                        {canDecide ? (
+                          <>
+                            <Button
+                              variant="solid"
+                              size="sm"
+                              onClick={() => void submitDecide(question.qid, "allow", null)}
+                              disabled={decideMut.isPending}
+                            >
+                              {decideMut.isPending ? "Sending…" : "Allow"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setDenyDialog({
+                                  qid: question.qid,
+                                  question: question.question,
+                                  reason: "",
+                                })
+                              }
+                              disabled={decideMut.isPending}
+                            >
+                              Deny
+                            </Button>
+                          </>
+                        ) : null}
                         {canAnswer ? (
                           <Button
                             variant="solid"
@@ -802,6 +883,66 @@ export function QuestionsScreen() {
               }
             />
           ) : null}
+        </div>
+      </Dialog>
+
+      {/* GSL-284: Deny dialog for permission questions — collects an optional reason. */}
+      <Dialog
+        open={denyDialog !== null}
+        onOpenChange={(o) => {
+          if (!o) setDenyDialog(null);
+        }}
+        title={`Deny ${denyDialog?.qid ?? ""}`}
+        description={denyDialog?.question}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDenyDialog(null)}
+              disabled={decideMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() =>
+                denyDialog !== null
+                  ? void submitDecide(
+                      denyDialog.qid,
+                      "deny",
+                      denyDialog.reason.trim().length > 0
+                        ? denyDialog.reason.trim()
+                        : null,
+                    )
+                  : undefined
+              }
+              disabled={decideMut.isPending}
+            >
+              {decideMut.isPending ? "Denying…" : "Deny"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <p className="text-muted text-xs">
+            The reason (if provided) travels back to the model as
+            <code className="mono"> permissionDecisionReason</code> so it can adjust its
+            next attempt. Leave blank for a bare deny.
+          </p>
+          <textarea
+            className="surface mono w-full rounded-md p-2 text-sm"
+            rows={3}
+            autoFocus
+            placeholder="Why deny? (optional; sent as permissionDecisionReason)"
+            value={denyDialog?.reason ?? ""}
+            onChange={(e) =>
+              setDenyDialog((prev) =>
+                prev === null ? prev : { ...prev, reason: e.currentTarget.value },
+              )
+            }
+          />
         </div>
       </Dialog>
     </div>

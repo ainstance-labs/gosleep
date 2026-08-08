@@ -463,6 +463,39 @@ export type DeferActionResponse = z.infer<typeof DeferActionResponse>;
 export const SyncTasksActionResponse = actionResponse(SyncTasksActionResult);
 export type SyncTasksActionResponse = z.infer<typeof SyncTasksActionResponse>;
 
+// -----------------------------------------------------------------------------
+// permission decide (GSL-284 — POST /actions/permissions/decide)
+//
+// Owner-facing decision on a permission-kind question row (opened by
+// `POST /internal/permissions/post`). Decision is boolean by contract; optional
+// updated_message becomes the deny-path `permissionDecisionReason` at the shim.
+// -----------------------------------------------------------------------------
+
+export const PermissionDecision = z.enum(["allow", "deny"]);
+export type PermissionDecision = z.infer<typeof PermissionDecision>;
+
+export const DecidePermissionActionInput = z.object({
+  qid: z.string().min(1),
+  decision: PermissionDecision,
+  updated_message: z.string().nullable().optional(),
+  by: z.string().optional(),
+});
+export type DecidePermissionActionInput = z.infer<typeof DecidePermissionActionInput>;
+
+export const DecidePermissionActionResult = z.object({
+  qid: z.string(),
+  status: z.literal("answered"),
+  decision: PermissionDecision,
+  answered_at: IsoTimestamp,
+  answered_by: z.string(),
+  applied_by: z.literal("owner"),
+  updated_message: z.string().nullable(),
+});
+export type DecidePermissionActionResult = z.infer<typeof DecidePermissionActionResult>;
+
+export const DecidePermissionActionResponse = actionResponse(DecidePermissionActionResult);
+export type DecidePermissionActionResponse = z.infer<typeof DecidePermissionActionResponse>;
+
 /** Client-side request bodies — kept minimal and typed so the SDK does not accept arbitrary
  *  extra fields the server will silently drop. */
 export const AnswerActionInput = z.object({

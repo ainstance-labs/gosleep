@@ -43,7 +43,7 @@ import type { Context } from "hono";
 import { requireInternalSecret } from "../security/internalSecret.ts";
 import { questionNotifier } from "../questions/notifier.ts";
 import { getDb } from "../db/client.ts";
-import { spawnAwait, REPO_ROOT } from "../actions/spawn.ts";
+import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
 import { observeHookWait } from "../metrics/registry.ts";
 
 function nowIso(): string {
@@ -289,17 +289,24 @@ internalRoutes.post("/internal/questions/post", requireInternalSecret, async (c)
 interface QuestionRow {
   qid: string;
   status: string;
+  kind: string;
   answer_text: string | null;
   answered_at: string | null;
+  applied: string | null;
+  applied_by: string | null;
 }
 
 interface AnswerPayload {
   qid: string;
   status: string;
+  kind: string;
   answer_text: string;
   answered_at: string | null;
   answered_by: string | null;
   channel: string | null;
+  /** GSL-284: on kind='permission' rows, this carries the optional deny reason (aka
+   *  updated_message) that doDecidePermission stored. Null / absent on kind='BLOCKER'. */
+  applied: string | null;
 }
 
 /**
@@ -311,7 +318,7 @@ interface AnswerPayload {
 function readQuestionRow(qid: string): QuestionRow | null {
   const row = getDb().raw
     .query(
-      `SELECT qid, status, answer_text, answered_at
+      `SELECT qid, status, kind, answer_text, answered_at, applied, applied_by
        FROM questions WHERE qid = ?`,
     )
     .get(qid) as QuestionRow | undefined;
@@ -331,10 +338,12 @@ function toAnswerPayload(
   return {
     qid: row.qid,
     status: row.status,
+    kind: row.kind,
     answer_text: row.answer_text ?? "",
     answered_at: row.answered_at,
     answered_by: answeredBy,
     channel,
+    applied: row.applied,
   };
 }
 
@@ -402,14 +411,25 @@ internalRoutes.get("/internal/questions/:qid/answer-wait", requireInternalSecret
       // the hook with an incomplete answer.
       if (m.status !== "answered" && !TERMINAL.has(m.status)) return;
       if (m.answer_text === null) return;
-      finish({
-        qid,
-        status: m.status,
-        answer_text: m.answer_text,
-        answered_at: m.answered_at,
-        answered_by: m.answered_by,
-        channel: null,
-      });
+      // Re-read the row on wake so the payload carries kind + applied (GSL-284 needs
+      // `applied` to be the deny reason; the notifier mutation is intentionally lean and
+      // does not carry it). A missing row (deleted mid-wait) collapses to a synthetic
+      // payload built from the mutation — that path preserves GSL-275 behaviour verbatim.
+      const fresh = readQuestionRow(qid);
+      finish(
+        fresh !== null
+          ? toAnswerPayload(fresh, null, m.answered_by)
+          : {
+              qid,
+              status: m.status,
+              kind: "BLOCKER",
+              answer_text: m.answer_text,
+              answered_at: m.answered_at,
+              answered_by: m.answered_by,
+              channel: null,
+              applied: null,
+            },
+      );
     });
 
     const timer = setTimeout(() => finish(null), timeoutSeconds * 1000);
@@ -572,6 +592,209 @@ function flushPendingObservations(): void {
     });
   }
 }
+
+// -----------------------------------------------------------------------------
+// POST /internal/permissions/post  (GSL-284)
+//
+// Sister endpoint of `POST /internal/questions/post`, tailored to the PreToolUse
+// {PermissionRequest} hook shape. That hook fires when the model invokes the
+// `PermissionRequest` tool to ask the owner whether another tool (Bash, Write, ...) may
+// proceed. Semantics differ from AskUserQuestion:
+//
+//   * `tool_input` on the hook payload carries `{tool, params, message?}` — NO `questions[]`
+//     array. The row we insert therefore has a permission-shaped question text, and options
+//     collapse to a canonical `[{label: "Allow"}, {label: "Deny"}]` pair (typed as such by
+//     the schema layer; the web permission card ignores free text).
+//   * The answer vocabulary is boolean: `answer_text = "allow" | "deny"`. Optional
+//     `updated_message` from `POST /actions/permissions/decide` becomes the
+//     `permissionDecisionReason` on a deny path (stored in the `applied` column so the
+//     row's permission decision is discoverable without touching the notifier payload).
+//   * Rows are `kind='permission'` (distinct from AskUserQuestion's 'BLOCKER'), so the web
+//     Questions screen renders them with Allow/Deny buttons instead of the free-text field.
+//
+// DUAL-WRITE DIFFERENCE vs the AskUserQuestion path: this endpoint does NOT spawn
+// `lab-emit question --type BLOCKER` — lab-emit's `--type` is restricted to
+// {BLOCKER,DECISION,CLARIFY,FYI}, and a re-fold by the tail indexer would overwrite our
+// `kind='permission'` back to `BLOCKER`. Instead we:
+//   1. Directly INSERT the row into `questions` with kind='permission' + canonical
+//      Allow/Deny options.
+//   2. Fire a fire-and-forget `lab-log --type permission.posed --actor "agent:<sid>"` so
+//      an events.jsonl row exists — the tail indexer folds that into the `events` table
+//      and the broadcaster fans it out on SSE, so the web client sees the pending
+//      permission within one tail tick.
+//
+// Documented in the header of `apps/core/src/routes/internal.ts` (this file) so a reader
+// hitting the permission code sees the shape difference in one place.
+// -----------------------------------------------------------------------------
+
+interface PermissionInput {
+  session_id: string;
+  tool_use_id: string;
+  tool_name: string;
+  /** Raw JSON blob the model handed to the permission-request tool. */
+  tool_params: unknown;
+  /** Optional model-authored explanation of why permission is being requested. */
+  message: string | null;
+}
+
+/**
+ * Compose the human-readable summary that lands in `questions.question`. Never NULL — the
+ * schema demands a non-empty string. Keeps the tool name at the front so the Questions
+ * screen's default label is a discoverable identifier ("Permission: Bash").
+ */
+function formatPermissionQuestion(p: PermissionInput): string {
+  const paramsPreview = summarisePermissionParams(p.tool_params);
+  const parts: string[] = [`Permission request: ${p.tool_name}`];
+  if (p.message !== null && p.message.length > 0) {
+    parts.push(p.message);
+  }
+  if (paramsPreview.length > 0) {
+    parts.push(paramsPreview);
+  }
+  return parts.join("\n\n");
+}
+
+/**
+ * Turn the arbitrary `tool_params` blob into a bounded preview. Bounded means: at most
+ * ~500 chars — enough to see a shell command or a target path, not enough to blow up the
+ * Questions screen with an entire payload. Non-JSON values collapse to a string, and
+ * we escape newlines so the summary lands as ONE line inside `formatPermissionQuestion`.
+ */
+function summarisePermissionParams(raw: unknown): string {
+  if (raw === undefined || raw === null) return "";
+  let text: string;
+  try {
+    text = typeof raw === "string" ? raw : JSON.stringify(raw);
+  } catch {
+    text = String(raw);
+  }
+  const CAP = 500;
+  if (text.length > CAP) text = `${text.slice(0, CAP)}…`;
+  return text;
+}
+
+const PERMISSION_OPTIONS = [
+  { label: "Allow", description: "Approve the tool call" },
+  { label: "Deny", description: "Reject the tool call" },
+];
+
+/**
+ * Generate a permission qid that is stable across restarts and sortable by wall clock.
+ * Format: `p-YYYYMMDD-HHMMSS-<random8>`. Distinct from the `q-*` prefix so a caller
+ * skimming the DB can tell permission rows from AskUserQuestion rows at a glance.
+ */
+function newPermissionQid(): string {
+  const now = new Date();
+  const pad = (n: number, w = 2): string => String(n).padStart(w, "0");
+  const stamp =
+    `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}` +
+    `-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`;
+  // 4 random bytes = 8 hex chars; large enough to avoid same-second collisions across
+  // a fleet of ~dozens of concurrent PermissionRequests without a full UUID's bulk.
+  const rand = crypto.getRandomValues(new Uint8Array(4));
+  let hex = "";
+  for (const b of rand) hex += b.toString(16).padStart(2, "0");
+  return `p-${stamp}-${hex}`;
+}
+
+internalRoutes.post("/internal/permissions/post", requireInternalSecret, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+
+  const sessionId = typeof body.session_id === "string" ? body.session_id : "";
+  const toolUseId = typeof body.tool_use_id === "string" ? body.tool_use_id : "";
+  const toolInputRaw =
+    body.tool_input !== null && typeof body.tool_input === "object" && !Array.isArray(body.tool_input)
+      ? (body.tool_input as Record<string, unknown>)
+      : {};
+  const toolName =
+    typeof toolInputRaw.tool === "string" && toolInputRaw.tool.length > 0
+      ? toolInputRaw.tool
+      : typeof body.tool_name === "string"
+        ? body.tool_name
+        : "";
+  const toolParams = toolInputRaw.params ?? null;
+  const message =
+    typeof toolInputRaw.message === "string" && toolInputRaw.message.length > 0
+      ? toolInputRaw.message
+      : typeof body.message === "string" && body.message.length > 0
+        ? body.message
+        : null;
+
+  if (toolName.length === 0) {
+    return c.json(
+      { ok: false, error: "tool_input.tool (or top-level tool_name) required" },
+      400,
+    );
+  }
+  if (sessionId.length === 0) {
+    return c.json({ ok: false, error: "session_id required" }, 400);
+  }
+
+  const permission: PermissionInput = {
+    session_id: sessionId,
+    tool_use_id: toolUseId,
+    tool_name: toolName,
+    tool_params: toolParams,
+    message,
+  };
+
+  const qid = newPermissionQid();
+  const openedAt = nowIso();
+  const db = getDb();
+
+  // Direct INSERT — see the header comment for why lab-emit BLOCKER dual-write is skipped.
+  // Any duplicate qid is impossible in practice (random suffix), but INSERT OR IGNORE keeps
+  // the endpoint idempotent against a caller that retries with the same qid via a proxy
+  // rewrite (unlikely, but harmless to guard).
+  db.raw
+    .query(
+      `INSERT OR IGNORE INTO questions
+         (qid, status, kind, task, question, options, opened_at)
+       VALUES (?, 'open', 'permission', NULL, ?, ?, ?)`,
+    )
+    .run(
+      qid,
+      formatPermissionQuestion(permission),
+      JSON.stringify(PERMISSION_OPTIONS),
+      openedAt,
+    );
+
+  // Fire the SSE side via a lab-log semantic event: this reaches web clients within one
+  // tail-indexer tick (typically <200 ms) so the Questions screen refreshes without waiting
+  // for a query invalidation timer. Fire-and-forget — the direct DB row is the source of
+  // truth for `/questions`, so a lab-log hiccup is not a hard failure.
+  const shortSid = sessionId.length > 0 ? sessionId.split("-")[0] ?? sessionId : "agent";
+  const eventData = JSON.stringify({
+    qid,
+    tool: toolName,
+    session_id: sessionId,
+    tool_use_id: toolUseId,
+  });
+  spawnDetached({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-log.sh`,
+      "--type",
+      "permission.posed",
+      "--actor",
+      `agent:${shortSid}`,
+      "--src",
+      "emit",
+      "--quiet",
+      "--data-json",
+      eventData,
+    ],
+    timeoutMs: 5_000,
+  });
+
+  return c.json({
+    ok: true,
+    qid,
+    tool: toolName,
+    opened_at: openedAt,
+  });
+});
 
 internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, async (c) => {
   const body = await parseJsonBody(c);

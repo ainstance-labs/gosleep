@@ -1,0 +1,1 @@
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "E2E \u2014 destructive rm rejected"}}

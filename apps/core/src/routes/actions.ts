@@ -1126,6 +1126,188 @@ actionsRoutes.post("/actions/tasks/sync", requireBearer, async (c) => {
 });
 
 // -----------------------------------------------------------------------------
+// GSL-284 — POST /actions/permissions/decide
+//
+// Owner-facing decision for a permission-kind question row (kind='permission', opened by
+// `POST /internal/permissions/post`). Symmetric with `doAnswer` for AskUserQuestion, with
+// three differences:
+//
+//   1. Guard on kind — only permission rows may go through here. Sending a BLOCKER qid
+//      returns 409 so the write endpoint stays strictly typed to its payload.
+//   2. `answer_text` is constrained to the {"allow", "deny"} pair. Anything else → 400.
+//   3. Optional `updated_message` becomes the deny-path `permissionDecisionReason`. Stored
+//      in the `applied` column (semantically: "what was applied when the row closed") so
+//      the shim's `GET /internal/questions/:qid/answer-wait` reads it back from a single
+//      row without a schema addition.
+//
+// Provenance always lands as `applied_by='owner'` on this v1 slice — no manifest auto-
+// approve/deny yet (called out in the Jira non-goals).
+// -----------------------------------------------------------------------------
+
+interface DecidePermissionInput {
+  qid: string;
+  decision: "allow" | "deny";
+  updated_message: string | null;
+  by: string;
+}
+
+interface DecidePermissionResult {
+  qid: string;
+  status: "answered";
+  decision: "allow" | "deny";
+  answered_at: string;
+  answered_by: string;
+  applied_by: "owner";
+  updated_message: string | null;
+}
+
+async function doDecidePermission(
+  input: DecidePermissionInput,
+): Promise<DecidePermissionResult> {
+  const db = getDb();
+  const row = db.raw
+    .query("SELECT qid, status, kind FROM questions WHERE qid = ?")
+    .get(input.qid) as { qid: string; status: string; kind: string } | null;
+  if (row === null || row === undefined) {
+    const err = new Error(`permission question not found: ${input.qid}`);
+    (err as Error & { httpStatus?: number }).httpStatus = 404;
+    throw err;
+  }
+  if (row.kind !== "permission") {
+    const err = new Error(
+      `qid ${input.qid} is not a permission question (kind=${row.kind}) — use /actions/questions/answer instead`,
+    );
+    (err as Error & { httpStatus?: number }).httpStatus = 409;
+    throw err;
+  }
+  if (row.status !== "open") {
+    const err = new Error(
+      `permission question ${input.qid} is not open (status=${row.status})`,
+    );
+    (err as Error & { httpStatus?: number }).httpStatus = 409;
+    throw err;
+  }
+
+  const answered_at = nowIso();
+  const upd = db.raw
+    .query(
+      `UPDATE questions
+         SET status = 'answered',
+             answer_text = ?,
+             answered_at = ?,
+             applied_by = 'owner',
+             applied = ?
+       WHERE qid = ? AND status = 'open' AND kind = 'permission'`,
+    )
+    .run(input.decision, answered_at, input.updated_message, input.qid);
+  if (upd.changes === 0) {
+    throw new Error(
+      `race: permission ${input.qid} changed status between the guard and the UPDATE`,
+    );
+  }
+
+  // GSL-284 wake: the SessionAdapter delivers the decision to the paused hook long-poll.
+  // Same seam as doAnswer; the permission-request shim reads `answer_text` and composes
+  // the `permissionDecision` allow|deny payload for Claude Code.
+  getSessionAdapter().deliverAnswer({
+    qid: input.qid,
+    status: "answered",
+    answer_text: input.decision,
+    answered_at,
+    answered_by: input.by,
+  });
+
+  return {
+    qid: input.qid,
+    status: "answered",
+    decision: input.decision,
+    answered_at,
+    answered_by: input.by,
+    applied_by: "owner",
+    updated_message: input.updated_message,
+  };
+}
+
+actionsRoutes.post("/actions/permissions/decide", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const qid = stringField(body, "qid");
+  const rawDecision = body.decision;
+  if (qid === null) return c.json({ ok: false, error: "qid required" }, 400);
+  if (rawDecision !== "allow" && rawDecision !== "deny") {
+    return c.json(
+      { ok: false, error: "decision must be 'allow' or 'deny'" },
+      400,
+    );
+  }
+  const decision = rawDecision as "allow" | "deny";
+  // updated_message is optional — treat missing / null as "no reason", empty string
+  // as "no reason" too (mirrors the CLI defer contract: an explicit "" collapses to
+  // no-timer). Any other type is a caller bug → 400.
+  const rawMsg = body.updated_message;
+  let updated_message: string | null = null;
+  if (typeof rawMsg === "string" && rawMsg.length > 0) {
+    updated_message = rawMsg;
+  } else if (rawMsg !== null && rawMsg !== undefined && typeof rawMsg !== "string") {
+    return c.json(
+      { ok: false, error: "updated_message must be a string or null" },
+      400,
+    );
+  }
+  const by = stringField(body, "by") ?? "owner-web";
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.permissions.decide", async () =>
+      withTimeline<DecidePermissionResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/permissions/decide",
+          input: { qid, decision, updated_message, by },
+        },
+        () => doDecidePermission({ qid, decision, updated_message, by }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
 // POST /actions/events/ack
 // -----------------------------------------------------------------------------
 

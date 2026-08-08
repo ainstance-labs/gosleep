@@ -21,6 +21,8 @@ import {
   ApplyManifestActionResponse,
   BundleResponse,
   CostResponse,
+  DecidePermissionActionInput,
+  DecidePermissionActionResponse,
   DeferActionInput,
   DeferActionResponse,
   FleetResponse,
@@ -50,6 +52,8 @@ import type {
   ApplyManifestActionResponse as ApplyManifestActionResponseT,
   BundleResponse as BundleResponseT,
   CostResponse as CostResponseT,
+  DecidePermissionActionInput as DecidePermissionActionInputT,
+  DecidePermissionActionResponse as DecidePermissionActionResponseT,
   DeferActionInput as DeferActionInputT,
   DeferActionResponse as DeferActionResponseT,
   FleetResponse as FleetResponseT,
@@ -352,6 +356,20 @@ export class CoreClient {
       idempotencyKey,
     );
   }
+
+  /** GSL-284: owner decides Allow/Deny on a permission-kind question row. */
+  decidePermission(
+    input: DecidePermissionActionInputT,
+    idempotencyKey: string,
+  ): Promise<DecidePermissionActionResponseT> {
+    return this.postAction(
+      "/actions/permissions/decide",
+      input,
+      DecidePermissionActionInput,
+      DecidePermissionActionResponse,
+      idempotencyKey,
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -545,6 +563,8 @@ export type {
   ApplyManifestActionResponseT as ApplyManifestActionResponse,
   BundleResponseT as BundleResponse,
   CostResponseT as CostResponse,
+  DecidePermissionActionInputT as DecidePermissionActionInput,
+  DecidePermissionActionResponseT as DecidePermissionActionResponse,
   DeferActionInputT as DeferActionInput,
   DeferActionResponseT as DeferActionResponse,
   FleetResponseT as FleetResponse,

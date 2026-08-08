@@ -40,6 +40,9 @@ raw.exec(`CREATE TABLE questions (
   answer_text TEXT,
   resolved_at TEXT,
   applied TEXT,
+  applied_by TEXT,
+  applied_rule_ref TEXT,
+  defer_until TEXT,
   last_event_seq INTEGER
 );`);
 const scratchDb = drizzle(raw, { schema });
@@ -181,6 +184,125 @@ describe("GET /internal/questions/:qid/answer-wait — long-poll behaviours", ()
     const body = (await res.json()) as { status: string; answer_text: string };
     expect(body.status).toBe("auto-resolved");
     expect(body.answer_text).toBe("Dark");
+  });
+});
+
+describe("POST /internal/permissions/post (GSL-284)", () => {
+  test("valid PermissionRequest payload → 200, row inserted with kind='permission' and Allow/Deny options", async () => {
+    const payload = {
+      session_id: "sid-42",
+      tool_use_id: "toolu_abc",
+      tool_input: { tool: "Bash", params: { command: "ls" }, message: "read /etc" },
+    };
+    const res = await app.request("http://localhost/internal/permissions/post", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": SECRET,
+      },
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { qid: string; tool: string };
+    expect(body.qid).toMatch(/^p-\d{8}-\d{6}-[0-9a-f]{8}$/);
+    expect(body.tool).toBe("Bash");
+
+    const row = raw
+      .query("SELECT kind, status, question, options FROM questions WHERE qid = ?")
+      .get(body.qid) as { kind: string; status: string; question: string; options: string };
+    expect(row.kind).toBe("permission");
+    expect(row.status).toBe("open");
+    expect(row.question).toContain("Permission request: Bash");
+    expect(row.question).toContain("read /etc");
+    const opts = JSON.parse(row.options) as Array<{ label: string }>;
+    expect(opts.map((o) => o.label)).toEqual(["Allow", "Deny"]);
+  });
+
+  test("missing tool → 400", async () => {
+    const res = await app.request("http://localhost/internal/permissions/post", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": SECRET,
+      },
+      body: JSON.stringify({ session_id: "sid-x", tool_use_id: "u" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("missing session_id → 400", async () => {
+    const res = await app.request("http://localhost/internal/permissions/post", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": SECRET,
+      },
+      body: JSON.stringify({ tool_input: { tool: "Bash", params: {} } }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("wrong secret → 401", async () => {
+    const res = await app.request("http://localhost/internal/permissions/post", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": "nope",
+      },
+      body: JSON.stringify({ session_id: "s", tool_input: { tool: "Bash" } }),
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("answer-wait carries kind + applied (GSL-284 field surface)", () => {
+  test("permission row: wait returns kind='permission' and applied (deny reason)", async () => {
+    // Insert a permission row + close it as denied via a direct UPDATE that also sets
+    // the applied column (as doDecidePermission would).
+    raw
+      .query(
+        `INSERT INTO questions (qid, status, kind, task, question, opened_at)
+         VALUES ('p-fixture-1', 'open', 'permission', NULL, 'Permission request: Bash', ?)`,
+      )
+      .run(new Date().toISOString());
+    raw
+      .query(
+        `UPDATE questions SET
+           status='answered', answer_text='deny', answered_at=?,
+           applied='rm -rf / is destructive', applied_by='owner' WHERE qid='p-fixture-1'`,
+      )
+      .run(new Date().toISOString());
+
+    const res = await app.request(
+      "http://localhost/internal/questions/p-fixture-1/answer-wait?timeout_s=1",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      kind: string;
+      answer_text: string;
+      applied: string | null;
+    };
+    expect(body.kind).toBe("permission");
+    expect(body.answer_text).toBe("deny");
+    expect(body.applied).toBe("rm -rf / is destructive");
+  });
+
+  test("BLOCKER row: wait returns kind='BLOCKER' and applied=null (back-compat)", async () => {
+    raw
+      .query(
+        `INSERT INTO questions (qid, status, kind, task, question, opened_at, answered_at, answer_text)
+         VALUES ('q-fixture-2', 'answered', 'BLOCKER', 'GSL-284', 'Which colour?', ?, ?, 'Blue')`,
+      )
+      .run(new Date().toISOString(), new Date().toISOString());
+    const res = await app.request(
+      "http://localhost/internal/questions/q-fixture-2/answer-wait?timeout_s=1",
+      { method: "GET", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { kind: string; applied: string | null };
+    expect(body.kind).toBe("BLOCKER");
+    expect(body.applied).toBeNull();
   });
 });
 
