@@ -1,11 +1,13 @@
-// @gosleep/core — fleet-poll worker unit tests (GSL-276; SessionAdapter seam GSL-281).
+// @gosleep/core — fleet-poll worker unit tests (GSL-276; SessionAdapter seam GSL-281;
+// model resolver added GSL-290).
 //
 // The behaviours pinned down here match the acceptance rules the Jira description names:
 //
 //   1. INSERT on first sighting — a session that was never in the DB shows up with the fields
-//      the runner adapter can observe (name, kind, pid, cwd, status). NULL columns
-//      (context_pct, current_tool, current_intent, model) stay NULL — the poller is not the
-//      shim, and would clobber a fresher value if it wrote here.
+//      the runner adapter can observe (name, kind, pid, cwd, status) + the model resolved from
+//      the Claude Code settings hierarchy for this cwd (GSL-290). Hook-owned columns
+//      (context_pct, current_tool, current_intent) stay NULL — the poller is not the shim,
+//      and would clobber a fresher value if it wrote them.
 //   2. UPDATE on subsequent sightings — status + updated_at move; the started_at column
 //      never changes (that's the immutable "first observed" timestamp per session).
 //   3. END on disappearance — a session that was in last tick's roster but not this one gets
@@ -103,7 +105,13 @@ describe("fleet-poll reconcileRoster", () => {
     expect(row.context_pct).toBeNull(); // hook-owned
     expect(row.current_tool).toBeNull(); // hook-owned
     expect(row.current_intent).toBeNull();
-    expect(row.model).toBeNull();
+    // GSL-290 — `model` is best-effort resolved from the Claude Code settings hierarchy
+    // (see apps/core/src/adapter/model-resolver.ts). This test's cwd is a fictional
+    // `/home/dev/proj`; on a machine with no `~/.claude/settings.json` the resolver
+    // returns null, but on any developer's box the global config almost always exists
+    // and is picked up as the last-resort fallback. So we don't pin a specific value —
+    // just assert that the field type is honest (string or null) and never `undefined`.
+    expect(row.model === null || typeof row.model === "string").toBe(true);
     expect(row.cycle).toBe(93); // parsed from name
     expect(row.ended_at).toBeNull();
     expect(row.started_at).toBe(new Date(1_786_000_000_000).toISOString());

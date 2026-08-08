@@ -128,9 +128,21 @@ export function FleetScreen() {
                         {s.pid !== null && s.pid !== undefined ? (
                           <span className="mono">pid {s.pid}</span>
                         ) : null}
-                        {s.model !== null && s.model !== undefined ? (
-                          <span className="mono">{s.model}</span>
-                        ) : null}
+                        {/* GSL-290 — render an explicit "unknown" pill when the model
+                            resolver didn't find one; better than a hidden field, and the
+                            operator can then edit `.claude/settings.local.json` to fix it. */}
+                        <span
+                          className="mono"
+                          title={
+                            s.model === null || s.model === undefined
+                              ? "no model found in <cwd>/.claude/settings*.json or ~/.claude/settings.json"
+                              : `model resolved from Claude Code settings hierarchy`
+                          }
+                        >
+                          {s.model !== null && s.model !== undefined
+                            ? s.model
+                            : "model unknown"}
+                        </span>
                         {s.cycle !== null && s.cycle !== undefined ? (
                           <span>cycle {s.cycle}</span>
                         ) : null}
@@ -149,19 +161,37 @@ export function FleetScreen() {
                         Current tool
                       </div>
                       <div className="text-sm text-[var(--color-fg)]">
-                        {s.current_tool ?? <span className="text-muted">—</span>}
+                        {s.current_tool ?? (
+                          // GSL-290 — honest "unknown" state. The tool-observed shim
+                          // (PreToolUse{tool-observed}, see runbook § 8) is the source;
+                          // sessions started without it emit no observations. Tooltip
+                          // names the mechanism so an operator knows what to install.
+                          <span
+                            className="text-muted"
+                            title="no tool-observed observation yet — install the PreToolUse{tool-observed} shim to populate"
+                          >
+                            unknown
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {s.current_intent !== null && s.current_intent !== undefined ? (
-                      <div>
-                        <div className="text-muted mb-0.5 text-xs uppercase tracking-wide">
-                          Intent
-                        </div>
-                        <div className="text-sm text-[var(--color-fg-secondary)]">
-                          {s.current_intent}
-                        </div>
+                    <div>
+                      <div className="text-muted mb-0.5 text-xs uppercase tracking-wide">
+                        Intent
                       </div>
-                    ) : null}
+                      <div className="text-sm text-[var(--color-fg-secondary)]">
+                        {s.current_intent !== null && s.current_intent !== undefined ? (
+                          s.current_intent
+                        ) : (
+                          <span
+                            className="text-muted"
+                            title="no intent observed yet — the tool-observed shim populates this when the agent supplies one"
+                          >
+                            unknown
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <div className="text-muted flex items-center justify-between text-xs">
                       <span title={s.cwd}>
                         {s.cwd.split("/").slice(-2).join("/")}

@@ -34,6 +34,7 @@
 import type { SessionAdapter, SessionSummary } from "@gosleep/runner-adapter";
 
 import { getSessionAdapter } from "../adapter/session.ts";
+import { modelCache } from "../adapter/model-resolver.ts";
 import type { OpenedDb } from "../db/client.ts";
 import { broadcaster } from "../sse/broadcaster.ts";
 
@@ -108,6 +109,11 @@ export function reconcileRoster(db: OpenedDb, roster: SessionSummary[]): FleetCh
   let updated = 0;
   let ended = 0;
 
+  // GSL-290 — clear the per-tick model cache at the top of each reconcile so a mid-day
+  // settings.json edit is picked up on the next tick. The cache is per-cwd; same-cwd
+  // sessions in the roster hit the cache after the first read.
+  modelCache.startTick();
+
   // Wrap the whole reconcile in a transaction so a mid-batch failure rolls back — a partial
   // fleet is worse than a stale one.
   const applyAll = db.raw.transaction(() => {
@@ -115,21 +121,27 @@ export function reconcileRoster(db: OpenedDb, roster: SessionSummary[]): FleetCh
       const existingRow = existingById.get(a.session_id);
       const startedIso = new Date(a.started_at_epoch_ms).toISOString();
       const cycle = parseCycleFromName(a.name);
+      // GSL-290 — best-effort model resolution: read the Claude Code settings hierarchy for
+      // the session's cwd. Null when no candidate declared a model — we don't fabricate; the
+      // Fleet card renders "unknown" and moves on.
+      const resolvedModel = modelCache.get(a.cwd);
       if (existingRow === undefined) {
-        // INSERT. context_pct / current_tool / model / current_intent start NULL — the shim
-        // + a future settings-parse fill them in when they arrive.
+        // INSERT. Model is best-effort; context_pct / current_tool / current_intent start
+        // NULL and are populated later by the PreToolUse shim's tool-observed path (see
+        // `/internal/agents/tool-observed`) when it lands per the runbook § 8.
         db.raw
           .query(
             `INSERT INTO agent_sessions
                (session_id, name, kind, pid, model, cwd, cycle, context_pct,
                 current_tool, current_intent, status, started_at, updated_at, ended_at)
-             VALUES (?, ?, ?, ?, NULL, ?, ?, NULL, NULL, NULL, ?, ?, ?, NULL)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, NULL)`,
           )
           .run(
             a.session_id,
             a.name,
             a.kind,
             a.pid,
+            resolvedModel,
             a.cwd,
             cycle,
             a.status,
@@ -138,16 +150,30 @@ export function reconcileRoster(db: OpenedDb, roster: SessionSummary[]): FleetCh
           );
         inserted += 1;
       } else {
-        // UPDATE. NEVER clear context_pct / current_tool / current_intent / model here — those
-        // come from the shim, not the CLI. The CLI does own status + pid + cwd.
+        // UPDATE. NEVER clear context_pct / current_tool / current_intent here — those come
+        // from the shim, not the CLI. Model gets a COALESCE upgrade: keep whatever the
+        // existing row has if the resolver returned null (a mid-day settings edit that
+        // *removes* the model field must not clobber a good value), but DO overwrite when
+        // the resolver returned a non-null value — the operator may have switched models.
         db.raw
           .query(
             `UPDATE agent_sessions SET
                name = ?, kind = ?, pid = ?, cwd = ?, cycle = COALESCE(?, cycle),
+               model = COALESCE(?, model),
                status = ?, updated_at = ?, ended_at = NULL
              WHERE session_id = ?`,
           )
-          .run(a.name, a.kind, a.pid, a.cwd, cycle, a.status, ts, a.session_id);
+          .run(
+            a.name,
+            a.kind,
+            a.pid,
+            a.cwd,
+            cycle,
+            resolvedModel,
+            a.status,
+            ts,
+            a.session_id,
+          );
         updated += 1;
       }
     }
