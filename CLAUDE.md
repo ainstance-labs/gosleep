@@ -101,6 +101,16 @@ gosleep/                  # workspace root
 - **Old stays put during the transition:** `tools/lab/`, `chronicler.py`,
   `.claude/settings.json`, hooks, gates — none of that moves until the final
   switch (GSL-271). New code goes only under `apps/` and `packages/`.
+- **Web question-loop pilot (GSL-267, opt-in guarded).** `.claude/settings.json`
+  wires `PreToolUse{AskUserQuestion,PermissionRequest}` matchers to the two
+  shims. The shims exit 0 instantly unless the session was launched with
+  `GOSLEEP_WEB_QUESTIONS=1` — so a plain `claude` command is unchanged (TUI
+  dialog as today). Opt a session INTO the pilot with
+  `env GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=<same as running core>
+  claude …`; then `AskUserQuestion` routes to `POST /internal/questions/post`
+  → panel → `POST /actions/questions/answer` → agent proceeds. Full flow +
+  widening + rollback: `docs/runbooks/gosleep-core.md` § 8. Widening to all
+  sessions requires an explicit owner command (owner decision d-2026-08-08-001).
 - **Smoke guard:** `tools/lab/smoke.sh` enforces that `data/` contains only
   the `.gitkeep` / `.gitignore` markers. If you need to commit anything under
   `data/`, you are on the wrong path — that content belongs in a migration,

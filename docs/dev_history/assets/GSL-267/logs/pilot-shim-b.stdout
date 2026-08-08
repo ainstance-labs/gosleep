@@ -1,0 +1,1 @@
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {"questions": [{"question": "GSL-267-pilot shim-direct v2: pick shape", "header": "pilot", "options": [{"label": "circle", "description": "c"}, {"label": "square", "description": "s"}], "multiSelect": false}], "answers": {"GSL-267-pilot shim-direct v2: pick shape": "circle"}}}}

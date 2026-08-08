@@ -166,7 +166,81 @@ Every non-`/healthz` request goes through, in order:
 
 Rebuilding + rotating the touchid-gate signed `.app`: see the rev-3 addendum Delta 4 note.
 
-## 8. Standing rules for agents touching this engine
+## 8. Web question-loop pilot (GSL-267 — guarded, opt-in)
+
+**Status.** As of 2026-08-08 the project's `.claude/settings.json` wires two `PreToolUse`
+matchers into the gosleep-core answer loop:
+
+- `AskUserQuestion` → `tools/hooks/ask-user-question-hook.sh` (body: GSL-275).
+- `PermissionRequest` → `tools/hooks/permission-request-hook.sh` (body: GSL-284).
+
+Both shims are **guarded**: the very first executable line is
+`[ "${GOSLEEP_WEB_QUESTIONS:-0}" = "1" ] || exit 0`. Every `claude` session started
+without that flag hits the matcher and exits 0 in ~400 ms — the TUI dialog renders as
+today, nothing lands in the DB, no long-poll starts. The owner's phone/panel see traffic
+**only** from sessions started with the flag.
+
+### Opt a session INTO the pilot
+
+```bash
+# The core must be up (see § 1-2). GOSLEEP_INTERNAL_SECRET must match what the core
+# has in its env — for a launchd-managed core, put it in the plist and reload once;
+# for a foreground core, just export it in both shells.
+export GOSLEEP_WEB_QUESTIONS=1
+export GOSLEEP_INTERNAL_SECRET='…same secret the running core has…'
+# Optional: tune the long-poll cap the shim sends to the core (default 600 s;
+# the settings.json hook timeout is 3600 s = the day-window ceiling).
+# export GOSLEEP_HOOK_TIMEOUT_S=3600
+# export GOSLEEP_HOOK_DEBUG_LOG=/tmp/gosleep-hook-debug.jsonl
+
+claude   # any model, any prompt. AskUserQuestion / PermissionRequest now route
+         # to the web panel instead of the TUI dialog.
+```
+
+Answer a pending question from the web (or by hand — this is what the Answer button
+does under the hood):
+
+```bash
+BEARER="$(security find-generic-password -s gosleep-web -a "$USER" -w)"
+# BEARER is stored as b64v1:<base64> — decode:
+BEARER="$(echo -n "${BEARER#b64v1:}" | base64 -d)"
+curl -sS -X POST http://127.0.0.1:7331/actions/questions/answer \
+    -H "Host: 127.0.0.1:7331" \
+    -H "Origin: http://127.0.0.1:7331" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER" \
+    -d '{"qid":"q-…","answer":"…","by":"owner","channel":"web"}'
+```
+
+Decide a permission the same way against `POST /actions/permissions/decide` with
+`{qid,decision:"allow"|"deny",updated_message?:"…"}`.
+
+### Control paths (verified 2026-08-08 pilot)
+
+- **Session with the flag:** AskUserQuestion → shim POSTs to
+  `/internal/questions/post` → row lands in `questions` (kind=`BLOCKER`, qid `q-…`)
+  and is visible via `GET /questions` → owner (or curl) POSTs
+  `/actions/questions/answer` → shim's long-poll releases within ~ms → shim emits
+  `hookSpecificOutput.permissionDecision="allow"` + `updatedInput.answers` → agent
+  continues with the injected answer. TUI dialog never rendered.
+- **Session without the flag:** matcher fires, guard returns `exit 0` in <500 ms,
+  TUI dialog renders as today, DB has no row, `/questions` unchanged.
+
+### Widen to all sessions later
+
+Only on an owner command. Widening = flipping the shim guard to opt-out
+(`GOSLEEP_WEB_QUESTIONS=0` disables; anything else enables) OR removing the guard
+entirely and requiring every session to set the flag off explicitly. The current
+opt-in shape is the pilot only.
+
+### Rollback
+
+`git revert` of the commit that added the `PreToolUse` block in
+`.claude/settings.json` is enough — the file watcher unloads the matchers live,
+sessions in-flight fall back to the TUI on the next question. Nothing in `data/`
+needs cleaning up.
+
+## 9. Standing rules for agents touching this engine
 
 - **SQLite is the source of truth** — JSONL under `docs/lab/` is a historical archive as of
   target-architecture step 8. Write actions go via `POST /actions/*` (which spawns the

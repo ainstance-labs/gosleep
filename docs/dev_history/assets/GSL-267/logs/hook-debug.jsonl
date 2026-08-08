@@ -1,0 +1,4 @@
+{"ts":"2026-08-08T14:20:21Z","hook":"ask-user-question","outcome":"fail_open","qid":"-","elapsed_ms":1000,"reason":"wait rc=500"}
+{"ts":"2026-08-08T14:22:54Z","hook":"ask-user-question","outcome":"allow","qid":"q-2026-08-08-003","elapsed_ms":2000}
+{"ts":"2026-08-08T14:23:15Z","hook":"permission-request","outcome":"decided","qid":"p-20260808-142314-1aa4b82d","elapsed_ms":1000}
+{"ts":"2026-08-08T14:24:33Z","hook":"ask-user-question","outcome":"allow","qid":"q-2026-08-08-004","elapsed_ms":16000}

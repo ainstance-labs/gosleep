@@ -95,6 +95,21 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "$comment": "GSL-267 GUARDED PILOT (owner decision d-2026-08-08-001, cycle 211). Both shims exit 0 INSTANTLY when GOSLEEP_WEB_QUESTIONS != '1' — so this matcher is a no-op for every session started without the pilot flag, including this orchestrator. Only a session launched with `env GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=… claude …` reaches the network and long-polls gosleep-core. Timeout 3600s = the day-window agreed with the owner (configurable per-session via env GOSLEEP_HOOK_TIMEOUT_S; shim caps its own long-poll at that value). Widening to all sessions requires an explicit owner command — do NOT drop the guard without one. Rollback: `git revert` of this commit (or delete this PreToolUse block; the file watcher will unload it live). AskUserQuestion shim body: GSL-275. PermissionRequest shim body: GSL-284.",
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/ask-user-question-hook.sh", "timeout": 3600 }
+        ]
+      },
+      {
+        "matcher": "PermissionRequest",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/permission-request-hook.sh", "timeout": 3600 }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "$comment": "ONE hook, no `if`. The `if` field exists (v2.1.85+) and would pre-filter before spawning the process — but a real run on 2.1.207 showed two `if` rules under one matcher BOTH firing on the same call (one action -> two events), and `Bash(git *)` matching a command that only MENTIONED git inside a quoted string. Routing by sub-command prefix inside lab-log.sh is the version we can prove correct; the cost is one process spawn per Bash call.",

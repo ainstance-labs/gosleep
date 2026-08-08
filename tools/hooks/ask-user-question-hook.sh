@@ -55,6 +55,19 @@
 
 set -u -o pipefail
 
+# =============================================================================
+# GSL-267 GUARDED PILOT (owner decision d-2026-08-08-001).
+# The whole loop is opt-in — this hook exits 0 INSTANTLY unless the session was
+# launched with GOSLEEP_WEB_QUESTIONS=1. Fail-open behaviour is preserved
+# because exit 0 with empty stdout tells Claude Code "no decision" → TUI
+# renders normally per hooks.md:223. Only sessions started with the flag hit
+# the network. Widening to all sessions requires an owner command; do NOT
+# remove this guard without that command.
+# =============================================================================
+if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ]; then
+    exit 0
+fi
+
 CORE_URL="${GOSLEEP_CORE_URL:-http://127.0.0.1:7331}"
 INTERNAL_SECRET="${GOSLEEP_INTERNAL_SECRET:-}"
 HOOK_TIMEOUT_S="${GOSLEEP_HOOK_TIMEOUT_S:-600}"
