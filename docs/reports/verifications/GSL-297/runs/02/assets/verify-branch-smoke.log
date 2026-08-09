@@ -1,0 +1,616 @@
+== static gates ==
+  PASS: bash -n (syntax)
+  PASS: 0-LLM (C1): no headless claude calls
+== emit: DECISION (id, status, auto deadline) ==
+  PASS: id format (q-2026-08-09-001)
+  PASS: record fields + auto_apply_at default
+== dedup: same (task, question) -> seen_by patch ==
+  PASS: dedup returns DUPLICATE q-2026-08-09-001
+  PASS: patch appended, no 2nd question
+  PASS: seen_by folded to 2 actors
+== per-type statuses ==
+  PASS: list --count (CLARIFY/FYI not open; lines= census)
+  PASS: CLARIFY -> answered-by-default
+  PASS: FYI -> noted
+== validation ==
+  PASS: DECISION w/o default rejected
+  PASS: bad type rejected
+  PASS: answer to missing id rejected
+== typology guard: irreversible => BLOCKER (never decided by default) ==
+  PASS: DECISION reversibility=low rejected (=> BLOCKER)
+  PASS: CLARIFY reversibility=LOW rejected (case-insensitive)
+  PASS: DECISION w/o --reversibility rejected
+  PASS: bogus reversibility rejected
+  PASS: BLOCKER w/ --default rejected (no default, ever)
+  PASS: rejected questions wrote nothing
+== answer patches (a human act is an answer, never an auto-resolve) ==
+  PASS: answer appended
+  PASS: BLOCKER remediated by owner -> answered
+  PASS: open drained after patches
+  PASS: answer provenance folded
+== --due (expired DECISION deadline) ==
+  PASS: --due surfaces expired DECISION
+  PASS: --due excludes future deadline
+  PASS: resolve (deadline hit -> default applied)
+  PASS: auto-resolved record leaves --due
+== deadline clamp: no default ever applies before 10:00 local (M4) ==
+  PASS: 23:xx DECISION deadline clamped to 10:00 local (not 01:xx, mid-night)
+== decision log (GSL-77) ==
+  PASS: decision id (d-2026-08-09-001)
+  PASS: decision pulls queue context via --re
+  PASS: orchestrator decision w/o --rule rejected
+  PASS: owner decision w/o rule accepted
+== learning loop: candidates (GSL-77) ==
+  PASS: 3× same shape+answer -> candidate
+  PASS: --min respected
+  PASS: candidates --json (shape folds across tasks/#refs)
+== semantic events (GSL-84) ==
+  PASS: question -> question.posed (auto-mirrored)
+  PASS: dedup    -> question.deduped
+  PASS: answer   -> question.answered
+  PASS: resolve -> question.auto_resolved (decided FOR the owner)
+  PASS: decision -> decision.made
+  PASS: event prints the allocated seq (17)
+  PASS: event envelope: src=emit + actor + task + data
+  PASS: typo'd semantic type rejected (an event nobody reads is worse than an error)
+  PASS: event --data-json
+  PASS: help lists the event subcommand
+  PASS: every event line is valid JSON
+  PASS: seq monotonic 1..N across BOTH writers (one allocator)
+== append-only discipline ==
+  PASS: first line never rewritten
+  PASS: locks released
+  PASS: events lock released
+== write discipline under concurrency (GSL-85) ==
+  PASS: 20 concurrent writers -> exactly 20 lines (none lost)
+  PASS: 20 concurrent writers -> no torn line (all valid JSON)
+  PASS: seq unique under concurrency (lock holds)
+  PASS: lab-write writes
+  PASS: atomic: rewrite REPLACES the file (inode 93035791 -> 93035795), never truncates in place
+  PASS: 60 rewrites under a concurrent reader -> 0 torn reads
+  PASS: --json refuses to publish invalid JSON
+  PASS: no temp files left behind
+  PASS: kill -9 mid-write -> target is the WHOLE old file or the WHOLE new one (22 B), never a prefix
+  PASS: the next write sweeps a killed writer's leftover temp
+== chronicler: the T3 regenerator (GSL-86) ==
+  PASS: chronicler.sh: bash -n
+  PASS: chronicler.py: parses
+  PASS: C1/F4-S4: zero API keys in the chronicler
+  PASS: C3/F4-S4: claude -p is bounded (--max-budget-usd) and toolless (--allowedTools empty)
+  PASS: C5: no tmux/spawn — it cannot hold a pane slot
+  PASS: C5-narrow: data.raw.teammate_name (a read-only log key) passes
+  PASS: C5-narrow: the exemption is not a doorway — 'teammate.spawned' still fails
+  PASS: C5-narrow: a bare 'teammate' still fails — only the compound key is exempt
+  PASS: --dry-run writes nothing
+  PASS: status.json is valid JSON
+  PASS: status.json carries generated_at
+  PASS: F4-S3: 20h-old events -> status.json grades itself DEAD
+  PASS: F4-S3: site/index.html shows the DEAD banner
+  PASS: F4-S3: site/index.html's verdict prose is addressable, so it can be re-graded too
+  PASS: F4-S3: site/timeline.html shows the DEAD banner
+  PASS: F4-S3: site/timeline.html's verdict prose is addressable, so it can be re-graded too
+  PASS: F4-S3: site/library.html shows the DEAD banner
+  PASS: F4-S3: site/library.html's verdict prose is addressable, so it can be re-graded too
+  PASS: F4-S3: the DEAD page's verdict PROSE says DEAD — it never reads 'Live' under a red banner (M1)
+  PASS: F4-S3: the prose re-grades on open too (JS rewrites #stale-verdict from all three verdicts)
+  PASS: every page carries generated_at (R4.4)
+  PASS: F4-S3: the page re-grades its own staleness on open (a frozen 'Live' verdict is the failure)
+  PASS: site/ is self-contained (no CDN/font/script fetches)
+  PASS: ⭐ GSL-109: each staleness grade resolves to its OWN colour (a fresh page is not painted amber)
+  PASS: the timeline renders a live event's detail (so the absence-greps below mean something)
+  PASS: GSL-92: render_bundle.json is valid and carries its schema
+  PASS: GSL-99: the bundle carries self_health (mandatory in render/7 — a rotting alarm is no alarm)
+  PASS: GSL-92: status.json records that the view layer built
+  PASS: GSL-92: the renderer touches no file — Python writes every page through lab-write.sh
+  PASS: GSL-92: the good build rendered the event (baseline for the degrade test)
+  PASS: GSL-92: no node -> the chronicler still exits ok (degraded, never fatal)
+  PASS: GSL-92: the reason is named (no-node), not swallowed
+  PASS: GSL-92: every stale page carries the banner AND names its last successful build
+  PASS: GSL-92: the un-rebuilt pages are PRESERVED, not blanked (stale-and-honest beats empty)
+  PASS: GSL-92: the DATA layer is unaffected by a missing node (status.json still regenerated)
+  PASS: GSL-92: node comes back -> the banner is gone (the injection is idempotent both ways)
+  PASS: GSL-92: a never-built clone gets an honest placeholder naming the fix, not a 404
+  PASS: GSL-93/R5.2: all seven screens are generated
+  PASS: GSL-93: every screen links to every other (no dead nav entry)
+  PASS: GSL-93: the bundle carries all seven domains (events/queue/tasks/fleet/cost/library/decisions)
+  PASS: GSL-93: no heartbeat -> the worker count is null (unknown), not 0
+  PASS: GSL-93: the Fleet screen renders the missing count as 'unknown', not as a number
+  PASS: GSL-93: the Fleet screen names its own blind spots (no pane id, no model in the log)
+  PASS: GSL-221: unset env -> the 16,000,000/night default (mode=default), never a null nobody chose
+  PASS: GSL-221: the Cost screen names the per-night unit, in words
+  PASS: GSL-93/221: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING, mode=env)
+  PASS: GSL-98: three named sessions -> three worker cards (the fourth is nameless and gets none)
+  PASS: GSL-98: the card leads with the last-event age (.wk-age is rendered)
+  PASS: GSL-98 ⭐ every age on Fleet carries its own data-age-ts — the ticker can reach it, so 'silent 12m' does not still say 12m three hours later
+  PASS: GSL-98: the Fleet prose check can SEE both doubled suffixes ('silent for 12m old', '12m old ago') — positive control
+  PASS: GSL-98: no doubled temporal suffix on Fleet — the labels are noun phrases and the age says 'old' once
+  PASS: GSL-98: 3h of silence + no pane.ended -> state=silent
+  PASS: GSL-98: a worker heard from 2m ago -> state=active (the positive control)
+  PASS: GSL-98: pane.ended -> state=ended (the one end-of-life the log actually knows)
+  PASS: GSL-98: no card ever says 'dead' — a thinking worker and a killed one are both just silent
+  PASS: GSL-98: the model is read from the session transcript (the same source an audit reads)
+  PASS: GSL-98: both self-reported models ARE in the fixture log (so the absence-greps below mean something)
+  PASS: GSL-98 ⭐ neither self-report is on the page (both workers lied; the card ignored both)
+  PASS: GSL-98 ⭐ no transcript -> model is unknown, even though the worker offered one
+  PASS: GSL-98: a mid-session model switch is kept, not averaged away
+  PASS: GSL-98: every card reads pane=unknown and carries the reason (no hook emits one)
+  PASS: GSL-98: tokens join onto the card by worker name (alpha=1000 from the ledger)
+  PASS: GSL-98: a card with no ledger line reads unknown — a failed join, never a free worker
+  PASS: GSL-98: ledger names that match no card are printed (one worker, two hand-typed names)
+  PASS: GSL-98: a session the log cannot name is counted (no card, but not swept under the rug)
+  PASS: GSL-98: per-model rollup sums the ledger by model (opus: 1000+2000)
+  PASS: GSL-98: an unreadable token field is COUNTED against its model's sum, and the page says so
+  PASS: GSL-98: the trap is armed — the ledger counts 9 cycles and carries per-cycle rows for 4
+  PASS: GSL-98 ⭐ the 5 cycles with no telemetry row are NAMED, and the two counts no longer share one word
+  PASS: GSL-98: the page says which DIRECTION the omission runs — the sums are low, not merely 'partial'
+  PASS: GSL-98: an empty quota section prints the glob it searched, not a shrug
+  PASS: GSL-93: an offset timestamp is normalised to UTC Z before anything compares it
+  PASS: GSL-93: the NEWEST status wins across mixed timestamp formats (the offset one really is later)
+  PASS: GSL-93: the Tasks board knows the AGE of its statuses (a board is only as true as its last poll)
+  PASS: GSL-192: the tile is max(running_total), never the file's last line (9000, not 8000)
+  PASS: GSL-192: the bundle's rows are sorted by cycle (7,8,9 out of a 7,9,8 ledger)
+  PASS: GSL-192: the RENDERED per-cycle table is newest-first by cycle (9,8,7) — sorted, not reverse(file order)
+  PASS: GSL-192: tile >= max running_total of its own table — the headline cannot be refuted by the rows under it
+  PASS: F5-S1: an open BLOCKER drives the runway to 0h and NAMES itself as the binding axis
+  PASS: F5-S1: the trace explains WHY a BLOCKER stops the night (no default, no timer)
+== GSL-226: the BLOCKER render branch on real data ==
+  PASS: GSL-226 ⭐ the Questions screen takes the BLOCKER branch: 'Blocking you (1)', empty-branch text absent
+  PASS: GSL-226: the BLOCKER card carries its semantic tag class AND the no-default sentence
+  PASS: GSL-226 ⭐ the semantic colour RULE ships on the page — BLOCKER paints dead-red, not FYI-grey (GSL-116)
+  PASS: GSL-226: the Overview's Waiting-for-you block carries the BLOCKER, semantically tagged
+  PASS: GSL-226: the morning digest lists the BLOCKER first, with the '!' mark (section 1)
+  PASS: F5-S1: an armed quota window binds the runway and is named
+  PASS: F5-S1: the quota clock reads ~4h — the ETA, not a guess (got 4.0h)
+  PASS: F5-S1: the runway carries the reset ETA itself, not just the hours
+  PASS: F5-S1: the token budget binds when a ceiling exists and the burn rate is measurable
+  PASS: F5-S1: the budget clock reads ~1h (100k left, ~100k/cycle, 1 cycle/h) — got 1.0h
+  PASS: F5-S1: context at/over the ceiling reads as EXHAUSTED
+  PASS: F5-S1: a DEGRADING clock at 0h does not drive the headline — a forced roll is not a reason to wake you
+  PASS: F5-S1: ...and the roll is still SHOWN as the next event — excluded from the headline, never hidden
+  PASS: F5-S1: no heartbeat (so no burn rate) -> the runway says 'unknown', not a comfortable number
+  PASS: F5-S1: the unreadable stopping clocks are NAMED, not silently dropped
+  PASS: F5-S1: the page SAYS it cannot see, and says why that is not a green light
+  PASS: ⭐ GSL-109: an unreadable runway gets its OWN tone, not the warning grade's
+  PASS: F5-S1: a counting clock + an unreadable one = an UPPER bound (≤), never an estimate (≈)
+  PASS: F5-S1: the page renders ≤, and names the clocks that made it a bound
+  PASS: F5-S1: every stopping clock readable, none counting -> 'clear' (evidence of absence, not absence of evidence)
+  PASS: F5-S1: a ledger that is not growing is 'clear' (not spending), never 'unknown' (cannot read)
+  PASS: F5-S1: a distant-but-real ceiling gives an EXACT runway, not a shrug
+  PASS: F5-S1: all seven clocks are always reported — a missing source produces 'unknown', not a gap
+  PASS: F5-S1: the reasoning trace carries one line per axis (evidence, not vibes — R5.1)
+== GSL-224: overdue DECISIONs + unarmed mechanisms ==
+  PASS: GSL-224: overdue DECISION + live pulse -> clear WITH the caveat (the orchestrator can still act)
+  PASS: GSL-224: a live pulse keeps the decisions clock off the headline
+  PASS: GSL-224 ⭐ overdue DECISION + stale pulse -> 0h and BINDS: a stopper wearing a timer's clothes
+  PASS: GSL-224: the trace names the reason — the pulse is stale, nothing alive applies defaults
+  PASS: GSL-224: overdue DECISION + unreadable pulse -> unknown, NAMED in unknown_axes (bounds the answer)
+  PASS: GSL-224 ⭐ over the ceiling with NO armed watchdog -> unknown WITH the reason, never a promised roll
+== GSL-225: supervision trace archived before truncation ==
+  PASS: GSL-225: first pass archives every live line (2 pulses + 1 ledger line) into docs/lab/supervision/
+  PASS: GSL-225 ⭐ after the live file truncated, the dropped pulse SURVIVES in the archive (3 lines, oldest first)
+  PASS: GSL-225: a third pass adds nothing — the archive is idempotent (dedup by exact line)
+  PASS: GSL-225: docs/lab/supervision/ is tracked by git — the supervision trace finally has history
+== GSL-221: token ceiling — default / override / unlimited (d-2026-07-28-007) ==
+  PASS: GSL-221: first build of the day anchors night spend at the ledger total (spend 0, base 1,000,000)
+  PASS: GSL-221: the second pass keeps the day's anchor — night spend 250,000, not re-zeroed
+  PASS: GSL-221 ⭐ GOSLEEP_TOKEN_CEILING=unlimited -> mode=unlimited, ceiling null by CHOICE, not by absence
+  PASS: GSL-221 ⭐ the budget clock reads CLEAR in unlimited mode — never unknown, never an alarm
+  PASS: GSL-221 ⭐ an unlimited night with no blocker reads RUNWAY clear — the mode is first-class end to end
+  PASS: GSL-221: the Cost screen renders unlimited as a plain fact ('Unlimited mode.')
+  PASS: GSL-221: the morning digest says 'unlimited' in the money section, as a choice
+  PASS: GSL-221 ⭐ a synthetic excess drives the budget clock to 0h and binds the runway (finding 58 armed)
+  PASS: GSL-221: the exhausted clock names BUDGET_EXCEEDED (manifest section 3.budget), not a vague warning
+  PASS: GSL-221: used_pct is of TONIGHT's ceiling (200%), not of all history
+  PASS: GSL-221: a misconfigured value falls back to the default ceiling — never to unlimited
+  PASS: GSL-221: the fallback is LOUD — the misconfiguration lands in degraded[], on the record
+== GSL-222: autonomy metric 1 − asks/shipped (rolling 7d) ==
+  PASS: GSL-222 ⭐ 1 ask over 2 shipped (GSL-901 Done twice counts ONCE) -> 0.5 in status.json
+  PASS: GSL-222: the honest frame travels with the number in status.json (not_claimed, 4+ items)
+  PASS: GSL-222: the digest prints the metric AND its frame side by side (section 5)
+  PASS: GSL-222 ⭐ zero shipped -> value null + why_unknown — unmeasured, not a fake 1.0/0.0
+  PASS: C8: superseded event folded out of the counts (3 lines -> 2 events)
+  PASS: C8: superseded event is not shown on the timeline
+  PASS: morning digest has all 7 canonical sections
+  PASS: digest states its own staleness
+  PASS: retention: a 45-day-old event log is pruned
+  PASS: retention: today's log is untouched
+  PASS: missing sources -> still exits ok (degraded, not dead)
+  PASS: the missing sources are reported, not swallowed
+  PASS: the page names its blind spots
+  PASS: C3: the default pass is 0-LLM (narrator is --narrate opt-in)
+  PASS: a non-empty queue is folded into status.json (JSONL, not an array)
+  PASS: the open question is shown in 'Waiting for you'
+  PASS: the open question leads section 1 of the digest
+  PASS: GSL-191: archived == closed (3 of 3) — the archive keeps every closed question
+  PASS: GSL-191: all three closing paths (answered / auto-resolved / answered-by-default) are IN the archive
+  PASS: a day with no activity produces no digest
+== poll-fill: reconcile-don't-trust (GSL-87) ==
+  PASS: poll-fill.sh: bash -n
+  PASS: poll-fill.py: parses
+  PASS: C1: zero API keys in poll-fill
+  PASS: poll-fill is 0-LLM (pure reconcile)
+  PASS: poll-fill writes only through lab-log.sh (the one writer)
+  PASS: --dry-run writes nothing
+  PASS: R4.2 acceptance: a PR merged outside the CLI reaches the timeline
+  PASS: reconciled events are tagged src=poll-fill, never src=hook:*
+  PASS: each backfilled event carries data.occurred_at (since GSL-89 also its ts; logged_at = when we learned it)
+== GSL-223: poll-fill auto-detects the cycle-boundary Jira dump ==
+  PASS: GSL-223 ⭐ the dump is found with NO flag, and the report names the feed AND its age
+  PASS: GSL-223: both dumped issues reached the timeline as tracker.issue.updated, src=poll-fill
+  PASS: GSL-223: a second pass over the same dump adds zero lines (idempotent — the GSL-87 criterion holds)
+  PASS: GSL-223: an explicit --jira-json wins over the scratch dump (a flag is a decision)
+  PASS: idempotent: a second pass adds 0 lines (65 -> 65)
+  PASS: a commit the hook already logged is not re-logged (dedup across producers)
+  PASS: pre-history is counted, not silently dropped
+  PASS: a Jira feed that is absent is reported as skipped, not passed off as clean
+  PASS: an unreachable source is never counted as checked
+  PASS: a supplied Jira feed lands as tracker.issue.updated (a state, not a claimed transition)
+  PASS: chronicler runs poll-fill as step 0 (a gap is reconciled and rendered in one pass)
+  PASS: status.json separates reconciled facts from hook-witnessed ones (by_src)
+== lab-log --ts / --supersedes: a backfill lands where it HAPPENED (GSL-89) ==
+  PASS: lab-log.sh: bash -n (the writer every hook calls)
+  PASS: no --ts: ts = now, no logged_at (nothing was learned late)
+  PASS: --ts = when it happened, logged_at = when we learned it, --supersedes qualified by day
+  PASS: --ts back-dates the event, never the FILE (no past day reopened)
+  PASS: offset forms (+02:00, +0300 w/ millis) normalize to one UTC instant
+  PASS: --ts garbage -> loud failure
+  PASS: --supersedes garbage -> loud failure
+== lab-log: the hook fires on the COMMAND, not on its SUCCESS (REVIEW-gsl81 C1) ==
+  PASS: C1: failed commit, hour-old HEAD -> sha-less line (no stale sha laundered)
+  PASS: C1: failed commit right after a real one -> sha-less (HEAD must be its OWN, not just fresh)
+  PASS: GSL-83 preserved: a REAL quiet commit still recovers its sha (98c7e2f)
+  PASS: the message is read from -am too (a cluster is still the subject git got)
+  PASS: m1: [deadbee 1a2b3c4] -> the sha (1a2b3c4), not the hex-looking branch
+  PASS: m1: the root-commit echo still parses ([main (root-commit) 9fceb02])
+== fold: a cross-day correction retires the right line — and ONLY it (GSL-89) ==
+  PASS: both forms fold: 4 commit lines -> 2 events (cross-day AND same-day)
+  PASS: the bystander holding the same seq in another file SURVIVES
+  PASS: cross-day: the retired line is gone
+  PASS: same-day (bare seq) fold still works
+  PASS: a back-dated line sits in today's FILE but not in today's COUNT (a day is keyed on ts)
+  PASS: poll-fill backfills at occurred_at, and still records when it learned it
+== GSL-95 / F5-S2: the deadline countdown re-grades when the page is opened ==
+  PASS: F5-S2: a deadline 3h gone renders PAST DUE at BUILD time (the no-JS reader is not lied to)
+  PASS: F5-S2: the expired countdown is visually marked (.past-due), not merely worded
+  PASS: F5-S2: a live deadline renders the PRD's own phrasing (auto-applies in Xh Ym)
+  PASS: F5-S2: a deadline still in the future is NOT marked past-due
+  PASS: F5-S2: a DECISION with no deadline says 'No deadline' — absent is not expired
+  PASS: F5-S2: exactly 2 countdowns for 3 DECISIONs — the clockless one was given no clock
+  PASS: F5-S2 ⭐ opened 5h after the build, a deadline that has since passed re-grades itself to PAST DUE
+  PASS: F5-S2: a browser clock 5h SLOW buys the deadline no extra time (never lengthens; max(now, built))
+  PASS: F5-S3: a merged epic rolls up the tasks its merge commit carried (mc^1..mc^2)
+  PASS: F5-S3: an epic in flight rolls up the branch the trunk does not carry yet
+  PASS: F5-S3: the epic shows its PR and the PR's state
+  PASS: F5-S3: an epic with no PR says 'no PR' — it does not dress its issue number as one
+  PASS: F5-S3 ⭐ a task with a commit and no poll stays 'unknown' — a commit is not a Jira status
+  PASS: F5-S3: GH issue links come from the mirror; a key absent from it gets a dash, not a guess
+  PASS: F5-S3: every epic->task anchor lands on a row that exists (no link leads nowhere)
+  PASS: F5-S3: at build time the status age is honest for generated_at (the no-JS reader is not lied to)
+  PASS: F5-S3 ⭐ opened 5h after the build, a 2h-old status re-grades to 7h old — the age keeps aging
+  PASS: F5-S3: a browser clock 5h SLOW cannot make the tracker look fresher than the build knew
+  PASS: GSL-97: the inlined island describes exactly the rows the page rendered (signal/actor/type/severity/src)
+  PASS: GSL-97 ⭐ the api.failure row is marked an incident in the HTML itself — no script required
+  PASS: GSL-97 ⭐ a type the severity table does not know grades as 'unknown' — not as 'info'
+  PASS: GSL-97 ⭐ every event type the emitters can write is graded in severity.ts (no silent lag)
+  PASS: GSL-97: the src provenance colour survives the port to TS (hook / emit / poll-fill all render)
+  PASS: GSL-97: with JS off the full feed is already on the page, and the dead filter bar is hidden
+  PASS: GSL-97: the filter bar wires to ids that exist and is revealed only once it can actually filter
+  PASS: GSL-97 ⭐ severity=incident narrows to the one incident row, and the page says '4 hidden'
+  PASS: GSL-97 ⭐⭐ a filter that hides EVERY row says so loudly — an empty table is never left to speak for itself
+  PASS: GSL-97: clear puts every row back and the count says so
+  PASS: GSL-97 ⭐ a row the island does not describe survives the filter — hiding it would subtract in silence
+  PASS: GSL-97: the cross-index covers reviews, research and the incident post-mortems (PRD R5.2)
+  PASS: GSL-97: an incident REPORT resolves to its index.html and is shelved once, under RCA
+  PASS: GSL-97: every artifact the cross-index links to is a file that exists (no forgotten shelves)
+  PASS: GSL-97: every shelf prints the glob it was built from — an empty shelf proves it looked
+  PASS: GSL-193: a verification run nested three levels down IS on the Reports shelf
+  PASS: GSL-193: an audit file inside a docs/reviews subdirectory IS on the Reviews shelf
+  PASS: GSL-193: the Skills shelf exists and lists the project's own skill/
+  PASS: GSL-193: every shelf's printed count equals what its printed glob found
+  PASS: GSL-97 ⭐ the Library filter narrows to one shelf and names the 8 artifacts it is hiding
+  PASS: GSL-99 ⭐ the missing dev_history is named (GSL-502, GSL-503), not summed
+  PASS: GSL-99: the documented task IS counted as covered (the positive control — otherwise 'missing' is vacuous)
+  PASS: GSL-99: every missing key reaches the PAGE by name, not just the bundle
+  PASS: GSL-99: the fixture really does carry an uncommitted GSL-502 history (so the test below means something)
+  PASS: GSL-99 ⭐ an UNCOMMITTED dev_history does not count as coverage — and is listed as lost, not as done
+  PASS: GSL-99 ⭐ an epic git cannot attribute reads unknown, not 100% — zero-of-zero is not a clean bill of health
+  PASS: GSL-99 ⭐ no cycle boundary in the log -> handoff debt is unknown, even though a handoff exists
+  PASS: GSL-99: the unknown handoff meter says so ON THE PAGE (dashed + muted, never a green tick)
+  PASS: GSL-99 ⭐ with no events at all, the data age is unknown — never a fresh-looking 0s
+  PASS: GSL-99 ⭐ the page carries BOTH ages — the build's (live, re-aged on open) and the data's (frozen at build)
+  PASS: GSL-99: the trap is armed — the state file is committed after the handoff AND a handoff.written event names it
+  PASS: GSL-99 ⭐ ORCHESTRATION-STATE.md is not a handoff — the live state file cannot fake freshness
+  PASS: GSL-99 ⭐ three cycles closed with no handoff -> the PRD's alarm fires, and the page shows the count
+  PASS: GSL-99: a handoff written and never committed is listed as LOST — not silently counted as written
+  PASS: GSL-99 ⭐ both meters print the exact source they read (index glob, boundary event, exclusion)
+  PASS: GSL-99: the prose check can actually SEE a doubled suffix across a tag boundary (positive control)
+  PASS: GSL-99: no page doubles the age suffix (the one prose defect 246 mechanism-tests could not see)
+  PASS: GSL-99: the trap is armed — the only handoff is committed AFTER the last cycle boundary (the order production always produces)
+  PASS: GSL-99 ⭐ a handoff committed after the last boundary documents the running cycle — no phantom debt, no false alarm
+  PASS: GSL-99: the trap is armed — four pane closes in the log, three of them seconds apart in one teardown
+  PASS: GSL-99 ⭐ four pane closes -> TWO cycle boundaries: the meter counts cycles, which is the word it prints
+  PASS: GSL-99 ⭐ the seconds-wide phantom cycles are gone, so the handoff that documented the cycle counts
+  PASS: GSL-99 ⭐ the page prints the raw pane count, the cycle count and the window — and names which way the error runs
+  PASS: GSL-100: the nav-wrap detector rejects the pre-fix stylesheet (positive control)
+  PASS: GSL-100: the mono-wrap detector rejects the pre-fix stylesheet (positive control)
+  PASS: GSL-100 ⭐ the nav wraps — seven links cannot strand Cost and Library off a phone screen
+  PASS: GSL-100 ⭐ long unbreakable tokens wrap — a mono card cannot clip the note it is quoting
+  PASS: GSL-124: the bare-ink detector rejects a composite-only stylesheet (positive control)
+  PASS: GSL-124 ⭐ bare .ok/.warn/.dead carry their own ink — a Self-health warning cannot print in body colour
+  PASS: GSL-121: the trap is armed — the fixture detail is 140 chars, past the 90 the view used to cut at
+  PASS: GSL-121 ⭐ a 140-character detail reaches the page whole — the silent 90-char cut is gone
+  PASS: GSL-126: at the build instant the banner age is honest (7s) — the no-JS reader is not lied to (positive control)
+  PASS: GSL-126 ⭐ opened 20m after the build and still fresh, the banner reads 20m — the age ticks inside the window, not only on a grade drop
+  PASS: GSL-126: 4h on, the verdict still re-grades to DEAD — the never-soften guard is intact (positive control)
+  PASS: GSL-129: with the live count unknown the bridge is absent — it appears only when two numbers exist to reconcile (positive control)
+  PASS: GSL-129 ⭐ '2 live workers' over ended cards no longer reads as one set — a bridge above the first card names the two as different questions
+  PASS: GSL-115: the noscript detector rejects the pre-fix banner (positive control)
+  PASS: GSL-115 ⭐ the staleness banner carries a <noscript> — a no-JS reader is told the age is frozen, not left under a permanent 'right now'
+== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is ==
+  PASS: GSL-104: rc-preflight.sh present and executable
+  PASS: GSL-104: bash -n (syntax)
+  PASS: GSL-104: the SURFACE block really names the flag (positive control — the absence greps below are not vacuous)
+  PASS: GSL-104: the SURFACE block really names the actions-required key (positive control)
+  PASS: GSL-104: the hard-coding detector flags a file that pins the flag (positive control)
+  PASS: GSL-104 ⭐ an absent actions-required key reads as OFF and never yields a ready verdict
+  PASS: GSL-104 ⭐ an explicitly false toggle also blocks a ready verdict
+  PASS: GSL-104 ⭐ both toggles on yields ready — the check discriminates, it is not pinned to degraded
+  PASS: GSL-104 ⭐ the research-preview surface is named in tools/rc only — when Anthropic renames a flag, one block changes
+  PASS: GSL-104: the comment-stripper preserves real invocations (positive control — the two checks below still have input)
+  PASS: GSL-104 ⭐ 0-LLM (C1): preflight shells out to no model
+  PASS: GSL-104 ⭐ preflight only inspects (--version/--help): it reports on the phone path, never starts a session
+
+== GSL-108 / F5-S4c: the phone page — the one surface GitHub agrees to render ==
+  PASS: GSL-108: the phone page exists and carries its 7 sections (positive control — the checks below have input)
+  PASS: GSL-108 ⭐ the page is docs/lab/mobile/README.md — opening the directory renders it, and the URL carries no date
+  PASS: GSL-108 ⭐ the page carries THIS pass's generated_at — it is regenerated, not a document someone maintains
+  PASS: GSL-108 ⭐ no .html link on the phone page — every link resolves to something GitHub will render
+  PASS: GSL-108 ⭐ 'Latest decisions' lists the newest first — the caption and the list agree
+  PASS: GSL-108 ⭐ decisions print what was decided, not an id pointing at another id
+  PASS: GSL-108: the no-node fixture really did lose the renderer (control for the check below)
+  PASS: GSL-108 ⭐ with node gone the HTML degrades but the phone page is still written, and current
+  PASS: GSL-108 ⭐ and it SAYS the seven screens are stale — the reader is told which of the two they hold
+  PASS: GSL-113 ⭐ the grade is stamped 'at build' — the page says when its verdict was true, not that it is true now
+  PASS: GSL-113 ⭐ no 'X ago' on the phone page — the event age carries an absolute anchor instead
+  PASS: GSL-113: the page carries the caveat its HTML sibling carries four of — it warns it cannot re-grade itself
+  PASS: GSL-113 ⭐ it prints the absolute moment it turns DEAD (2026-08-10T00:27:15Z) — the reader compares it against the clock in his hand
+  PASS: GSL-113: the stale fixture really did grade stale (control — the guard check below has a subject)
+  PASS: GSL-113 ⭐ an already-STALE page prints only its DEAD moment — the grade may fall further, never recover
+
+== GSL-137 / F5-S4c: the phone projection speaks the redesign's language, within Markdown ==
+  PASS: GSL-137: the fixture built a page with a next runway event, known task states, a non-alarm question and six decisions (positive control — the checks below have input)
+  PASS: GSL-137 ⭐ the next runway event prints the absolute moment it is due (2026-08-09T21:27:28Z) — the reader compares it to the clock in his hand
+  PASS: GSL-137 ⭐ no relative 'in **N**' on the runway line — the deadline is an instant, not an offset from a NOW this file cannot read
+  PASS: GSL-137: the BLOCKER carries its alarm 🛑 (positive control — the discipline is not 'strip every icon')
+  PASS: GSL-137 ⭐ the DECISION waits without an icon — the emoji channel is reserved for the verdict that has one
+  PASS: GSL-137 ⭐ the decisions list names the two it did not show — the trim is declared, not silent
+  PASS: GSL-137 ⭐ the Tasks section is a table with a right-aligned count column — the number the reader scans is aligned to compare
+
+== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best ==
+  PASS: GSL-107: bg-preflight.sh present and executable
+  PASS: GSL-107: bash -n (syntax)
+  PASS: GSL-107: a complete chain does yield ready (positive control — the not-ready checks below discriminate)
+  PASS: GSL-107 ⭐ tailnet up + mosh installed + NO ssh transport never reads ready — mosh would have nothing to bootstrap over
+  PASS: GSL-107 ⭐ an unreadable ssh-transport probe reads unknown and never yields ready — it is not rounded up
+  PASS: GSL-107 ⭐ Remote Login as the only transport is reported WITH its exposure (:22 on every interface)
+  PASS: GSL-107: the comment-stripper preserves the real tailscale invocations (positive control — the mutation greps below have input)
+  PASS: GSL-107: the mutation detector fires on a real `tailscale up` (positive control — the check below is not vacuous)
+  PASS: GSL-107 ⭐ preflight only inspects: it never brings up a VPN, opens sshd, or touches a pane
+  PASS: GSL-107 ⭐ 0-LLM (C1): preflight shells out to no model
+  PASS: GSL-107: the runbook is complete (8 sections — positive control for the content checks below)
+  PASS: GSL-107 ⭐ the runbook names `kill-pane -a` and forbids it outright
+  PASS: GSL-107 ⭐ the runbook explains WHY only %id is safe — positional addresses renumber under a phone-lag delay
+  PASS: GSL-107: the runbook really does spell out attach commands (3 — positive control for the check below)
+  PASS: GSL-107 ⭐ every copyable attach command carries -f ignore-size — a 4am attach cannot reshape the desktop fleet
+  PASS: GSL-107 ⭐ the runbook still states F6-S4 is NOT closed — a written path is not a proven one
+== GSL-110 / phase acceptance: a verdict table is only worth the runs behind it ==
+  PASS: GSL-110: the acceptance really does carry per-criterion rows (8 — positive control for the checks below)
+  PASS: GSL-110 ⭐ F6-S2 is still recorded as НЕ ДОСТАВЛЕН — an unwritten feature cannot be an accepted one
+  PASS: GSL-110 ⭐ F6-S3 is still recorded as НЕ ДОСТАВЛЕН — an unwritten feature cannot be an accepted one
+  PASS: GSL-110 ⭐ F6-S4 is still marked НЕ ПРОВЕРЕН — a written runbook is not an exercised path
+  PASS: GSL-110 ⭐ the acceptance still states the score plainly: 0 of 4 criteria closed
+  PASS: GSL-110 ⭐ the acceptance still distinguishes 'not verified' from 'not implemented' in words
+  PASS: GSL-110 ⭐ the positive controls are recorded — the empty greps are proven to be able to find things
+  PASS: GSL-110 ⭐ GSL-105 is still named as the binding constraint holding two of four criteria
+  PASS: GSL-110 ⭐ every landed Phase 6 task owns a dev_history file (6) — the GSL-103 hole stays closed
+  PASS: GSL-114 ⭐ both summary tables sit in a scroll wrapper, not a card that clips their count at 390px
+  PASS: GSL-114: the count column is right-aligned and tabular (section 6.4), not the left mono it had
+  PASS: GSL-114 control: the feed table's wrapper is detected — a green control proving the probe can see one
+  PASS: GSL-128 ⭐ a question the owner answered lands in 'Decided by you' — the authorship the by column already prints
+  PASS: GSL-128 control: a night-auto-resolved question stays in 'Decided without you' — the bucket that is now honest
+
+== GSL-136 / T4: honest truncation in the DATA layer — Library files & titles, Cost cycles, PR de-dup ==
+  PASS: GSL-127 ⭐ the dev_history files count is what was FOUND (43), not the old 40-item cutoff
+  PASS: GSL-127 ⭐ all 43 dev_history artifacts reach the searchable cross-index — none silently dropped past 40
+  PASS: GSL-127 control: a sub-cap shelf (handoffs, 4 files) reports exactly what is on disk — the metric reads reality, not a constant
+  PASS: GSL-131 ⭐ a 140-char heading is stored whole in the bundle — no 110-char mid-word cut in the data
+  PASS: GSL-131 control: a short heading is stored whole and unchanged (23 chars) — removing the cut lengthened nothing
+  PASS: GSL-123 ⭐ every titleless document (all 2, and only those) renders an unknown marker, not a blank cell
+  PASS: GSL-123 control: filled titles still render their heading text — the marker did not replace real titles
+  PASS: GSL-123 ⭐ (built artifact) every cross-index row in docs/lab/site/library.html carries a title or the unknown marker — no blank cell shipped
+  PASS: GSL-120 ⭐ every cycle with a telemetry row is on the page (45 rows == 45 in data) — the slice is gone
+  PASS: GSL-120 control: the heading counts the same cycles the data holds (45 == 45) — heading and table now agree
+  PASS: GSL-130 ⭐ (root) a PR keyed in title AND branch lands on the row once, not twice — no #NN#NN in the data
+  PASS: GSL-130 control: the PR still reaches its row (#555 present) — de-dup removed the copy, not the link
+  PASS: GSL-132 ⭐ (Cost) the ceiling note states its reason once — the echoed lead is gone
+  PASS: GSL-132 control: the ceiling card states its per-night fact once (GSL-221 lead)
+  PASS: GSL-132 ⭐ (Cost) the quota note no longer echoes its lead
+  PASS: GSL-132 control: the on-screen quota lead is untouched
+  PASS: GSL-118 ⭐ the gauge spells the relation — '60% (rolls at 80%)': a level and its ceiling, not a product
+  PASS: GSL-118 control: the context gauge is present with its 60% level — so the ⭐ tests a real gauge, not an absent one
+  PASS: GSL-122 ⭐ the caption prints the computed hook share (60% here), not the word 'half'
+  PASS: GSL-122 control: the rest of the caption survived — only the share wording changed
+  PASS: GSL-132 ⭐ (Tasks) the banner says 'Last polled … ago' — the verb slot got its adverb
+  PASS: GSL-132 control: the banner carries the fixture's real 8-day age — a live Age element, not pasted prose
+  PASS: GSL-132 control: the grammar rides the element (data-age-suffix) — the ticker cannot repaint 'ago' back into 'old'
+  PASS: GSL-132 ⭐ (two ages) max_event_age_s == generated_at − latest_event_ts even with slow collectors — one clock reading for the stamp and the age
+  PASS: GSL-132 control: the drift fixture still grades (fresh, age ≥ 40s) — the ⭐ compared two real numbers
+  PASS: GSL-146: the KPI label selector excludes span.unknown — the value is not a caption
+  PASS: GSL-146: the worker-field grid retired with the card (GSL-207) — no generic label selector is left on Fleet to swallow span.unknown
+  PASS: GSL-146 control: the fixture Fleet page really renders span.unknown (the greps above bite)
+  PASS: GSL-147: Done wears --ok (spec 7.2: задачи)
+  PASS: GSL-147: To Do wears --warn
+  PASS: GSL-147: In Progress wears --info (the lone informational badge 7.2 allows)
+  PASS: GSL-147 control: a status 7.2 does not list (In Review) stays neutral — colour is earned
+  PASS: GSL-147 guard: no bare .tag.info rule — sev=info on the timeline stays neutral (7.2 caveat)
+  PASS: GSL-148: doc_title decodes entities — the bundle carries the ampersand, not its encoding
+  PASS: GSL-148: the built Library cell escapes the decoded title exactly once
+  PASS: GSL-148: no double escape anywhere on the built Library page
+  PASS: GSL-149: severity options are worst-first (incident,warn,info,unknown) despite a benign-first feed
+  PASS: GSL-151: cost.tsx no longer references .wk-models — the borrowed name went home
+  PASS: GSL-151: the partial-sums cell wears its own role class on the built Cost page
+  PASS: GSL-151: no Cost markup wears the worker-card class (the shared stylesheet may define it)
+  PASS: GSL-151 control: the stylesheet defines .partial-note — the cell is actually painted
+  PASS: GSL-152: no runway.tsx comment sells the banned dashed edge as current behaviour
+  PASS: GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)
+  PASS: GSL-156: the absence marker's colour+cursor rule is scoped to span.unknown
+  PASS: GSL-156: no bare .unknown rule — a container class cannot repaint its children
+  PASS: GSL-156 control: the fixture really renders a container wearing the class (the guard above bites)
+  PASS: GSL-157: at grade=dead the Freshness meter wears .sh-m.dead — it agrees with the banner
+  PASS: GSL-157: Freshness no longer answers a read verdict with the cannot-read state
+  PASS: GSL-157 control: the fixture build really grades itself dead (status.json is the witness)
+  PASS: GSL-158: the Tasks absence dash is painted muted (spec 6.5), same as Cost and Library
+  PASS: GSL-158: no dim-painted absence dash remains on the board
+  PASS: GSL-158 control: the built board's stylesheet defines .muted — the glyph is actually painted
+  PASS: GSL-159: .runway-bind.ok carries the full ok triple (spec 7.1) in the built stylesheet
+  PASS: GSL-159 control: runway.tsx really emits class runway-bind ok on the clear branch (the rule has a customer)
+  PASS: GSL-160: fleet.tsx no longer marks up with .filter-count — the borrowed name went home
+  PASS: GSL-160: cost.tsx no longer marks up with .filter-count
+  PASS: GSL-160: the Cost gap-note keeps its data-cycle-gap contract on the new role class
+  PASS: GSL-160: questions.tsx no longer dresses the flag in the type badge's class (comments may name it in refusals — the grep holds the MARKUP form, the GSL-152 lesson)
+  PASS: GSL-160: the high-impact flag wears its own role class
+  PASS: GSL-160: the built Fleet page marks its caption with the new role class
+  PASS: GSL-160 control: the stylesheet defines .scope-note — the caption is actually painted
+  PASS: GSL-160 control: the stylesheet defines .tag.high-impact with dead's triple by value
+  PASS: GSL-160 control: the live filter counter keeps its own rule — the rename took nothing from it
+== GSL-205: one identifier -> link, on every screen ==
+  PASS: GSL-205: the bundle carries a jira_base — the view never spells the tracker's host itself
+  PASS: GSL-205: gh_base is read off the git remote, normalised (no .git suffix)
+  PASS: GSL-205: Timeline prints 1 linked identifier(s) — it printed 114 unlinked ones before
+  PASS: GSL-205: Questions prints 1 linked identifier(s) — it had 7 links against Tasks' 796
+  PASS: GSL-205: the queue item's key resolves at the tracker, not at a plausible-looking guess
+  PASS: GSL-205: a detail whose FIELD is sha becomes a commit link (never a bare 7-hex lookalike)
+  PASS: GSL-205 control: a non-GitHub remote -> gh_base is null, not a guessed org
+  PASS: GSL-205 control: the absent base says WHY, the way every other absence on these screens does
+  PASS: GSL-205 control: with no GitHub base the sha stays text (a wrong link is worse than none)
+  PASS: GSL-205 control: the Jira half is independent — a missing GitHub base does not silence it
+== GSL-208: normalised paths, a view mode, and honest columns ==
+  PASS: GSL-208: not one absolute /Users/ path survives into timeline.html
+  PASS: GSL-208: a path inside the repo is said as a repo-relative location, whole and uncut
+  PASS: GSL-208: a path outside the repo keeps its shape and loses only the account name
+  PASS: GSL-208: Timeline offers the meaningful/routine view mode
+  PASS: GSL-208: every feed row carries a view mode, and meaningful is offered first
+  PASS: GSL-208: with no summary anywhere the column is replaced by the reason it is missing
+  PASS: GSL-208: the summary header is gone with its column, not left hanging over nothing
+  PASS: GSL-208: the key column asks for its own width, so a key never wraps mid-token at 1280px
+  PASS: GSL-208 control: the stylesheet actually defines .key-col — the class has a customer
+== GSL-207: the hygiene fold, and the fleet as a table ==
+  PASS: GSL-207: the self-health detail is folded, not deleted and not left 1200px tall
+  PASS: GSL-207: all three meter verdicts stay on screen as chips — the fold costs no information
+  PASS: GSL-207: on a fresh page the fold stays shut and the KPI tiles come up the screen
+  PASS: GSL-207 ⭐ on a DEAD page the fold opens itself — the evidence is in the way, before the numbers
+  PASS: GSL-207 control: the stylesheet paints the fold summary — the class has a customer
+  PASS: GSL-207: Fleet renders its workers as one table, not as a card per worker
+  PASS: GSL-207: three named workers -> three table rows, each still carrying its state class
+  PASS: GSL-207: silent is still AMBER on the row — the table did not earn the right to say dead
+== GSL-206: the supervisor tile and the gates strip ==
+  PASS: GSL-206: with no launchd agent installed the supervisor reads NOT ARMED — a fact, not a shrug
+  PASS: GSL-206: a supervisor that never woke says so, with the file it looked for
+  PASS: GSL-206: the half that was NOT measured (launchctl) is stated out loud, not implied by silence
+  PASS: GSL-206: all four declared gates get a tile (armed-check joined in GSL-211) — a gate that stopped writing cannot vanish
+  PASS: GSL-206: with no receipts every gate reads unknown AND names the command that fills it
+  PASS: GSL-206: Overview renders the supervisor tile with its state on the element
+  PASS: GSL-206: three gate tiles render unknown rather than a plausible green
+  PASS: GSL-206 ⭐ a green receipt reads pass, with the run's own timestamp
+  PASS: GSL-206 ⭐ a receipt recording a failure keeps saying fail until a passing run replaces it
+  PASS: GSL-206 ⭐ the gate with no receipt stays unknown while its neighbours are graded
+  PASS: GSL-206: the built page paints the passing gate on the element, not only in the bundle
+  PASS: GSL-206 control: unknown keeps its own hue off the green-amber-red axis — the rule exists
+  PASS: GSL-206 control: both gate runners write their own receipt (the reader has a writer)
+== GSL-209: a theme switch, one search, and a reason you can reach without a mouse ==
+  PASS: GSL-209: all seven screens carry the search box and the theme switch
+  PASS: GSL-209: the controls ship hidden — with JS off the reader never sees a dead control
+  PASS: GSL-209: the chosen theme is persisted, so it survives the reload
+  PASS: GSL-209 control: the stylesheet honours an explicit data-theme in BOTH directions
+  PASS: GSL-209: an unknown value is focusable, so its reason is reachable by Tab and by tap
+  PASS: GSL-209 ⭐ the reason is IN THE DOM as text — page search finds it, a screen reader reads it
+  PASS: GSL-209 control: the stylesheet reveals the reason on FOCUS, not only on hover
+  PASS: GSL-209: the island filter and the page search AND their two verdicts through one function
+== GSL-198: chronicler-debounce — the returned PostToolUse trigger ==
+  PASS: debounce: bash -n (syntax)
+  PASS: debounce: 0-LLM (C1)
+  PASS: debounce: non-lab write refused (no stamp)
+  PASS: debounce: tool_response mention refused (no phantom trigger)
+  PASS: debounce: GOSLEEP_DEBOUNCE_DISABLE=1 is a true kill switch
+  PASS: debounce: lab write arms the stamp
+  PASS: debounce: three writes collapse into ONE chronicler run
+  PASS: debounce: the run left its one ledger line (mode=debounce)
+  PASS: debounce: waiter lock released after the run
+== GSL-200: apply-due + resolve refuses early and double closes ==
+  PASS: GSL-200: resolve refuses to close before auto_apply_at
+  PASS: GSL-200: the refused record is still open (refusal wrote nothing)
+  PASS: GSL-200: resolve refuses a BLOCKER (owner-only closure)
+  PASS: GSL-200: apply-due --dry-run names exactly the overdue DECISION
+  PASS: GSL-200: dry-run wrote nothing
+  PASS: GSL-200: apply-due applied the one overdue default
+  PASS: GSL-200: the closure carries applied= the default text and applied_by=apply-due
+  PASS: GSL-200: future DECISION and BLOCKER are untouched (still the 2 open)
+  PASS: GSL-200: apply-due is idempotent — second run applies 0, appends 0
+  PASS: GSL-200: resolve refuses a double close
+  PASS: GSL-200: resolve --early records answered-by-default (the veto window is not faked)
+  PASS: GSL-200: apply-due mirrored question.auto_resolved (actor=apply-due) into the timeline
+== GSL-199: tick.sh — the idempotent safety tick ==
+  PASS: tick: bash -n (syntax)
+  PASS: tick: 0-LLM (C1) — a tick spends no tokens and opens no quota window
+  PASS: GSL-199: first tick exits 0 (degraded sources are data, not failure)
+  PASS: GSL-199: exactly ONE ledger line per run
+  PASS: GSL-199: ledger line carries carrier/applied=1/chronicler=ran + armed_check rc (GSL-211 ended the absent era)
+  PASS: GSL-199 ⭐ a synthetic overdue DECISION was applied with ZERO agent sessions (the epic's done-criterion)
+  PASS: GSL-199: the tick rebuilt the derived surfaces (bundle exists in the fixture)
+  PASS: GSL-199: second tick exits 0
+  PASS: GSL-199: second tick appended NOTHING to the queue (idempotent)
+  PASS: GSL-199: second tick: applied=0, chronicler skipped-fresh (the debounce window is honoured)
+  PASS: GSL-199: a concurrent tick skips with a ledger line, exit 0
+  PASS: GSL-199: unknown flag exits 2 (a misconfigured carrier is heard, not swallowed)
+== GSL-202: the idle gate — don't wake anything when there is no work ==
+  PASS: GSL-202: fresh bundle + nothing due -> result=idle, exit 0 (the quiet run is on the record)
+  PASS: GSL-202: the idle tick polled NOTHING (event count unchanged)
+  PASS: GSL-202: the idle tick rebuilt NOTHING (bundle untouched)
+  PASS: GSL-202: an overdue deadline defeats the idle gate — the tick woke and applied it
+  PASS: GSL-202: --force overrides the idle gate (full pass on a fresh system)
+== GSL-201: carrier preflight — launchd vs Claude Desktop, prepared for the owner ==
+  PASS: GSL-201: the launchd plist template parses (plutil -lint)
+  PASS: GSL-201: the plist fires tick.sh with carrier=launchd (the ledger can tell carriers apart)
+  PASS: GSL-201: arm/disarm scripts parse (owner-run, agent-prepared)
+  PASS: GSL-201: __REPO__ renders into a lintable, placeholder-free plist (what arm installs)
+  PASS: GSL-201: the report reads a synthetic night into the right per-carrier verdict (night YES/NO, gaps, idle)
+  PASS: GSL-201: the report is 0-LLM and read-only (C1)
+== GSL-203: the shift gate is code, and its standard path POLLS ==
+  PASS: GSL-203: gate.sh parses
+  PASS: GSL-203: exactly ONE --no-poll in the gate — inside the declared-offline branch
+  PASS: GSL-203: the standard path runs the chronicler WITH the poll-fill reconcile
+  PASS: GSL-203: offline is an explicit flag, and the gate leaves its own receipt
+== GSL-270: Preact-SSG deprecated — GOSLEEP_KEEP_STATIC_SITE gates render.sh ==
+  PASS: GSL-270: default (env unset) -> status.json.ui.reason == 'ssg-disabled'
+  PASS: GSL-270: default still writes render_bundle.json (mobile + web read it)
+  PASS: GSL-270: default does NOT create docs/lab/site/index.html — render.sh was skipped
+  PASS: GSL-270: default keeps mobile/README.md updating (step 11 explicit requirement)
+  PASS: GSL-270: opt-in (env=1) invokes render.sh — status.json.ui.reason != 'ssg-disabled' (null)
+== GSL-258: data/ stays out of git — only .gitkeep / .gitignore markers travel ==
+  PASS: GSL-258: data/ contains only the .gitkeep + .gitignore markers
+== GSL-260: no-mess rules for apps/ + packages/ (target-architecture §5.3) ==
+  PASS: GSL-260: no .py files under apps/ or packages/ (§5.3 rule 1)
+  PASS: GSL-260: no unexpected .sh under apps/ or packages/ (§5.3 rule 2 — whitelist: install-deps.sh, plist.sh, apps/core/scripts/*.sh, apps/core/bin/*.sh)
+  PASS: GSL-260: apps/core/ scaffold exists
+== GSL-261: no unannotated destructive Drizzle migrations (R28) ==
+  PASS: GSL-261: drizzle/*.sql has no unannotated DROP TABLE|COLUMN (R28)
+  PASS: GSL-261: drizzle/ carries 0000_initial.sql + _journal.json + 0000_snapshot.json
+== GSL-269: write actions never touch fs directly + every POST wraps withTimeline ==
+  PASS: GSL-269: no fs.writeFile / writeFileSync / appendFile in routes/actions.ts, actions/, security/
+  PASS: GSL-269: every POST in actions.ts wraps withTimeline (posts=9, wt=9)
+  PASS: GSL-269: no high-entropy 'b64v1:<payload>' Bearer secret in the tracked tree
+  PASS: GSL-269: no plain-text GOSLEEP_BEARER_TOKEN assignment in tracked non-doc files
+  PASS: GSL-269: apps/core/src/security/csp.ts defines the CSP header value
+  PASS: GSL-269: serve.ts wires applySecurityHeaders as first middleware
+
+RESULT: PASS=562 FAIL=0

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>GSL-297 · Аудит независимого верификатора (run 02)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-alt: #f8f9fa;
+    --border: #e4e7eb;
+    --fg: #0f172a;
+    --fg-muted: #475569;
+    --accent: #7c3aed;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120;
+      --bg-alt: #111a2e;
+      --border: #1e293b;
+      --fg: #e2e8f0;
+      --fg-muted: #94a3b8;
+      --accent: #a78bfa;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.6; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 24px 96px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px; }
+  h1 { font-weight: 500; font-size: 26px; margin: 0 0 6px; }
+  h2 { font-weight: 500; font-size: 19px; margin: 28px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+  .subtitle { color: var(--fg-muted); font-size: 14px; }
+  .verdict { background: var(--bg-alt); border-left: 4px solid var(--accent); padding: 14px 18px; margin: 20px 0; border-radius: 4px; }
+  .verdict .score { font-size: 30px; font-weight: 500; color: var(--accent); }
+  .verdict .label { color: var(--fg-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-left: 8px; }
+  .verdict .recommend { display: inline-block; margin-top: 8px; padding: 4px 12px; background: var(--ok); color: var(--bg); border-radius: 4px; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; }
+  .verdict p { margin: 10px 0 0; }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-alt); padding: 1px 5px; border-radius: 3px; }
+  .status-ok { color: var(--ok); font-weight: 500; }
+  .status-warn { color: var(--warn); font-weight: 500; }
+  ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  a { color: var(--accent); }
+  a:hover { text-decoration: underline; }
+  .lang-toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: var(--fg-muted); margin-bottom: 12px; }
+  .lang-toggle a { text-decoration: none; padding: 3px 8px; border: 1px solid var(--border); border-radius: 3px; }
+  .lang-toggle a[aria-current="true"] { background: var(--bg-alt); color: var(--fg); border-color: var(--accent); }
+  .foot { color: var(--fg-muted); font-size: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="lang-toggle">
+      <span>Language:</span>
+      <a href="../index.html">English</a>
+      <a href="#" aria-current="true">Русский</a>
+    </div>
+    <h1>GSL-297 · Аудит независимого верификатора (run 02)</h1>
+    <p class="subtitle">2026-08-09 · verifier-297 (независимый, адверсариальный, за один ход)</p>
+    <p class="subtitle">Проверено HEAD: <code>de06582</code> на ветке <code>GSL-297-web-feature-complete</code>. Базовая линия main запинена на <code>56f57d1</code>. Исходный дошье: <a href="../../01/index.html">GSL-297 run 01</a>.</p>
+  </header>
+
+  <section class="verdict">
+    <div><span class="score">96</span><span class="label">FEATURE-COMPLETE — только minor</span></div>
+    <div class="recommend">МЕРЖИТЬ</div>
+    <p>Независимая верификация подтверждает основные claim'ы run-01. Все шесть тасков GSL-298..303 приложили обещанный код, доказательства и гейты. Гейты зелёные: <code>tsc-core</code> чист, <code>tsc-web</code> чист, <code>bun test</code> 191/0, <code>.claude/settings.json</code> байт-в-байт совпадает с main. Разбор lab-smoke: ветка = <strong>562 pass / 0 fail</strong>; закреплённое main-wt на <code>56f57d1</code> = <strong>406 pass / 160 fail</strong> — все 160 фейлов в одной секции <em>chronicler: the T3 regenerator (GSL-86)</em> (старые запиненные <code>docs/lab/site/*.html</code> не соответствуют контракту T3 self-re-grade). <strong>Ноль фейлов внесены этой веткой.</strong> «6 фейлов», которые видел билдер (556/6), были временным состоянием общего дерева — живой chronicler за это время перерендерил html. Два minor spec-mismatch пережили верификацию (GSL-298 плоский layout snapshot вместо date-subdir из Jira; GSL-300 shim-direct вместо real-subordinate из Jira) — оба честно названы в dev history. Оценка снижена со 100 до 96 из-за одного реального Jira-vs-ship отклонения и трёх doc-consistency / spec-mismatch minor.</p>
+  </section>
+
+  <h2>Ключевые цифры</h2>
+  <ul>
+    <li><strong>Гейты:</strong> tsc-core clean · tsc-web clean · bun test 191/0 · <code>.claude/settings.json</code> diff = 0 строк.</li>
+    <li><strong>Lab-smoke:</strong> ветка 562/0, main-wt 406/160 (все 160 — pre-existing в одной секции).</li>
+    <li><strong>Задачи:</strong> все 6 (GSL-298..303) в статусе In Review в Jira; 6 GH mirror issue открыты; dev_history/README.md обновлён.</li>
+    <li><strong>Findings:</strong> 0 critical, 0 major, 4 minor (все либо честно названы в dev history, либо тривиальные doc-consistency).</li>
+  </ul>
+
+  <h2>Итог</h2>
+  <p><strong class="status-ok">МЕРЖИТЬ</strong> — с высокой уверенностью. Полный EN отчёт со списком M1..M4 и вердиктами по каждой задаче: <a href="../index.html">../index.html</a> · машиночитаемая нагрузка: <a href="../payload.json">payload.json</a>.</p>
+
+  <div class="foot">
+    Полный английский отчёт (первичный): <a href="../index.html">../index.html</a> · это оффлайн-документ (<code>file://</code> load, без внешних ассетов).
+  </div>
+</main>
+</body>
+</html>

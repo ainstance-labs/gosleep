@@ -1,0 +1,195 @@
+{
+  "meta": {
+    "title": "GSL-297 — Web control plane feature-complete · verifier-297 audit (run 02)",
+    "epic": "GSL-297",
+    "date": "2026-08-09",
+    "auditor": "verifier-297 (independent, adversarial; single-turn)",
+    "head_verified": "de06582 on GSL-297-web-feature-complete",
+    "main_baseline_pinned": "56f57d1 (git worktree at .artifacts/verify-297/main-wt/, since removed)",
+    "run_scope": "Adversarial re-audit of the six tasks GSL-298..303 landed on the branch. Formed per-task verdicts BEFORE reading docs/reports/verifications/GSL-297/runs/01/, then diffed. Re-ran typecheck + bun test + lab-smoke on both branch and pinned-main."
+  },
+  "verdict": {
+    "score": 96,
+    "level": "FEATURE-COMPLETE (with minor honest deviations named)",
+    "recommendation": "MERGE",
+    "summary": "Independent verification concurs with runs/01's substantive claims. All six tasks GSL-298..303 land the code, docs, and evidence they promised, with one or two strict-reading Jira-vs-shipped deviations openly named in the dev history. Gates are green: tsc-core clean, tsc-web clean, bun test 191/0, .claude/settings.json byte-diff vs main = 0. Lab-smoke adjudication: branch = 562 pass / 0 fail; pinned main-wt at 56f57d1 = 406 pass / 160 fail — every single main-wt fail is in the 'chronicler: the T3 regenerator (GSL-86)' section, i.e. the OLDER docs/lab/site/*.html files pinned at 56f57d1 don't satisfy the T3 self-re-grade contract. NONE of the main-wt fails is introduced by this branch. The '6 fails' the builder saw earlier (556/6) were transient shared-tree state — the live chronicler has since re-rendered the html and they resolved. Two MINOR findings (both honestly acknowledged in the dossier / dev history, none blocking): GSL-298 shipped a flat snapshot layout while Jira asked for a date-subdir layout; GSL-300 provided shim-direct evidence rather than the real-subordinate-session leg the Jira description asked for. Score softened from a perfect 100 to 96 to reflect one minor-but-real Jira-vs-ship deviation (GSL-300) and one strict-reading spec deviation (GSL-298 layout) — both are non-blocking and would be reasonable follow-ups, not gate failures."
+  },
+  "gates_reverified": {
+    "tsc_core": "clean (exit 0)",
+    "tsc_web": "clean (exit 0)",
+    "bun_test_core": "191 pass / 0 fail / 554 expect calls / 21 files / 3.00 s",
+    "lab_smoke_branch": "562 pass / 0 fail (verify-branch-smoke.log)",
+    "lab_smoke_main_wt": "406 pass / 160 fail (verify-main-smoke.log)",
+    "settings_json_diff_vs_main": "0 lines (`git diff 56f57d1..HEAD -- .claude/settings.json` returned empty). Frozen invariant honored."
+  },
+  "lab_smoke_adjudication": {
+    "branch_result": "PASS=562 FAIL=0",
+    "main_wt_result": "PASS=406 FAIL=160",
+    "builder_reported": "556/6 in runs/01 header — those 6 fails have since RESOLVED on the shared tree (the live chronicler re-rendered docs/lab/site/*.html between the builder's run and this verifier run).",
+    "verdict": "ALL fails observed on main-wt are pre-existing / data-driven at 56f57d1 (every single one is in the 'chronicler: the T3 regenerator (GSL-86)' section, tied to the pinned older html files not satisfying the self-re-grade contract). ZERO fails are introduced by this branch. Lab-smoke does NOT gate the merge.",
+    "note_about_data_driven_nature": "lab-smoke checks docs/lab/site/*.html files that are actively re-rendered by the chronicler in the shared tree. Both pass rate and fail set are non-deterministic between runs unless the tree is quiesced. This is a known limitation of the current smoke suite, not a defect of this branch."
+  },
+  "per_task_verdicts": [
+    {
+      "key": "GSL-298",
+      "title": "POST /actions/snapshot + Overview snapshot button",
+      "verdict": "PASS-with-minor",
+      "commit": "b3b03d7",
+      "evidence_reviewed": [
+        "apps/core/src/routes/actions.ts (~lines 1309-1490): safe label regex `^[A-Za-z0-9._-]{1,64}$`; Bearer + serialize('actions.snapshot') + withTimeline envelope; explicit GOSLEEP_DB_PATH pass-through in `doSnapshot`; `parseSnapshotStdout` scans from tail for `core.snapshot.ok` line; 20 s timeout on spawn.",
+        "apps/core/scripts/snapshot.sh (~lines 104-119): `prune_keep_last` uses `|| true` on the empty-pipe case + explicit `exit 0` at tail — matches header 'Retention failures WARN and continue' contract; latent rc=1 leak on fresh install is fixed.",
+        "apps/web/src/screens/Overview.tsx: 'Snapshot' button in header (ghost variant), confirm dialog, toast on success/error, mutation via `useTakeSnapshot`; label='owner-web' default → indefinite retention per snapshot.sh's manual-retention rule.",
+        "packages/schema/src/index.ts + packages/sdk/src/index.ts: SnapshotInput / SnapshotResult zod schemas exported; SDK method typed.",
+        "tools/lab/tests/core-smoke.sh: +5 scenarios 67-71 (401 → 401, valid → 200 + result.path, label validation, idempotency-key replay, path lives under scratch tree)."
+      ],
+      "minor_deviation": {
+        "severity": "minor",
+        "class": "spec-mismatch",
+        "description": "Jira acceptance criteria promised `data/snapshots/YYYY-MM-DD/gosleep.db + status.json written` (date subdir + status.json sidecar). Shipped snapshot.sh writes flat `data/snapshots/<kind>-<label>-<ts>.db` (no subdir, no status.json). Dev history openly acknowledges the divergence: 'Jira description echoed a stale CLAUDE.md line; endpoint honours the ACTUAL shipped layout; subdir + status.json sidecar are a separate follow-up.'",
+        "impact": "None on functionality — endpoint returns the actual path, smoke fences it, owner sees the file. Any downstream consumer that expected the subdir layout would break, but there are none today.",
+        "recommendation": "OK to merge as-is; open a small follow-up ticket if the subdir + status.json is actually desired."
+      }
+    },
+    {
+      "key": "GSL-299",
+      "title": "Live proof: AskUserQuestion answer-loop end-to-end",
+      "verdict": "PASS",
+      "commit": "e6676a5 + follow-up d5eb6eb (real subordinate session leg)",
+      "evidence_reviewed": [
+        "docs/reports/verifications/GSL-297/runs/01/assets/v1-pick-*, v2-custom-*, v3-defer-*, v4-apply-manifest-*: four owner variants each capture answer-response.json, db-before.txt, db-after.txt, shim-debug.jsonl, shim-stdout.json. All four exercise real /internal/questions/post → /actions/questions/{answer|defer|apply-manifest} → shim release with expected hookSpecificOutput.",
+        "assets/v7-real-session-*: REAL subordinate Claude Code session evidence (pane.txt shows 'Haiku 4.5 · Claude Max' banner, model called AskUserQuestion, injected answer 'blue' surfaced in the next pane line as 'You chose blue for the badge'; TUI dialog never rendered).",
+        "The initial commit e6676a5 was shim-direct only (orchestrator caught the gap: 'need REAL subordinate session'); follow-up d5eb6eb added the real-session leg per Jira description. Orchestrator's own acceptance check drove the fix."
+      ],
+      "minor_note": "assets/v8-real-fleet-populate-db.txt (from GSL-303) shows model='claude-fable-5[1m]' while pane.txt shows 'Haiku 4.5 · Claude Max'. The model-resolver emits a legacy internal name ('claude-fable-5') for what displays as Haiku 4.5 in the TUI. Cosmetic naming inconsistency, not a functional defect. Worth a one-line dev note in the resolver, not a merge blocker."
+    },
+    {
+      "key": "GSL-300",
+      "title": "Live proof: PermissionRequest hook end-to-end (owner allow/deny)",
+      "verdict": "PASS-with-scope-caveat",
+      "commit": "0fdf988",
+      "evidence_reviewed": [
+        "assets/v5-perm-allow-*: shim invoked directly on scratch core; POST /actions/permissions/decide {decision:'allow'} → shim released permissionDecision:'allow'; DB status=answered/applied_by=owner.",
+        "assets/v5-perm-deny-*: same lane with decision:'deny' + updated_message → shim released permissionDecision:'deny' + permissionDecisionReason:<updated_message>; DB applied column carries the reason.",
+        "Smoke coverage: GSL-284 scenarios 42-50 already cover 401/400/404/valid/409/wrong-kind for /actions/permissions/decide — payload correctly notes no additional smoke needed.",
+        "Shim script tools/hooks/permission-request-hook.sh: reviewed — fail-open on every branch, guarded on GOSLEEP_WEB_QUESTIONS=1, GSL-303 background feeder wired in correctly."
+      ],
+      "minor_deviation": {
+        "severity": "minor",
+        "class": "spec-mismatch",
+        "description": "Jira description required 'start a real subordinate Claude Code session … drive with a prompt that provokes a real tool-use requiring permission … verify the tool proceeds/aborts cleanly.' Delivered evidence is SHIM-DIRECT only (invoked the shim script with a synthetic stdin payload against a scratch core). Runs/01 payload 'not_reverified' acknowledges this openly: 'GSL-300's PermissionRequest real-session leg was NOT re-run … the shim-direct proof stands with GSL-284's smoke coverage as the anchor.' GSL-299 upheld the same criterion (real subordinate session) with the follow-up commit; GSL-300 did not.",
+        "impact": "Endpoint contract is proven; hook shim is proven; the 'end-to-end with a real subordinate' composition is inferred, not observed. Given the shim script itself is the SAME code invoked in both cases, the risk of a subordinate-session-only regression is very small.",
+        "recommendation": "OK to merge; a 15-minute follow-up run in a real subordinate session (same shape as GSL-299 v7 leg) would close this cleanly."
+      }
+    },
+    {
+      "key": "GSL-301",
+      "title": "Fleet live-values proof + flushPendingObservations bug fix",
+      "verdict": "PASS-plus-real-bug-fix",
+      "commit": "456514d",
+      "evidence_reviewed": [
+        "apps/core/src/routes/internal.ts diff: `existing !== null && existing !== undefined` branch selector fix (Bun `.get()` returns null); per-row try/catch replacing `db.raw.transaction` wrapper; `core.tool_observed.flush_error` log on per-row failure.",
+        "tools/lab/tests/core-smoke.sh scenario 25b: POST tool-observed with fresh sid → sleep 2 s past debounce → sqlite3 SELECT WHERE session_id=<sid> must return `Read|42`. Proper regression fence for the fixed bug class.",
+        "assets/v6-agent-sessions-db.txt: post-fix DB row shows the fresh session_id landed with current_tool=Read, context_pct=42.",
+        "assets/v6-fleet-projection.json: /fleet projection includes the row."
+      ],
+      "note": "This was a verification-only task that uncovered a REAL LATENT BUG (silent INSERT-drop for first-time session_ids). The bug analysis is correct — verified by reading the code + Bun 1.3.x behavior: `db.query(...).get(...)` returns `null` when no row matches, not `undefined`. Removing the transaction wrapper is defensible (best-effort telemetry, per-row atomicity is enough), and per-row try/catch keeps one bad row from dropping the batch. Acceptable trade-off given the data domain."
+    },
+    {
+      "key": "GSL-302",
+      "title": "Feature-complete verification dossier + widening-gate note",
+      "verdict": "PASS-with-doc-consistency-minor",
+      "commit": "dbf741e",
+      "evidence_reviewed": [
+        "docs/reports/verifications/GSL-297/runs/01/{index.html, payload.json, ru/index.html}: EN primary + RU shell; renders offline from file:// (self-contained CSS; no external assets).",
+        "docs/prd/01-phase7-interactive-control-plane.md line 132: added feature-complete-verdict paragraph naming dossier landing as trigger; widening gate cited as owner-gated per d-2026-08-09-001; Channels v1 vs v1.1 scope clarified.",
+        "docs/runbooks/gosleep-core.md section 8 addendum (lines ~252-268): widening command (`export GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=…`), rollback (`unset`), audit-trail step, `.claude/settings.json` stays frozen.",
+        "All five task cards in dossier (298, 299, 300, 301, 302) link to their commits and dev-history."
+      ],
+      "minor_deviations": [
+        {
+          "severity": "minor",
+          "class": "spec-mismatch",
+          "description": "Jira description asked to 'append a short note to docs/reports/verifications/GSL-250/runs/02/payload.json What was NOT re-verified section'. Dev history acknowledges this was intentionally NOT done: 'run-02 payload.json intentionally NOT re-touched (it's orchestrator-owned + untracked in this shared tree).' Defensible pragmatic call, but strict-reading deviation."
+        },
+        {
+          "severity": "minor",
+          "class": "doc-consistency",
+          "description": "runs/01/index.html section 8 line 226 still says 'The tool-observed shim (remaining gap above) is named, not built.' — but GSL-303 built it, and the SAME dossier's section 1 R7.4 row (line 113) correctly credits GSL-303 with the close. Same stale phrase appears in runs/01/payload.json line 198 (`not_reverified`). Minor internal inconsistency; the dossier was updated by GSL-303's commit but two spots were missed."
+        }
+      ]
+    },
+    {
+      "key": "GSL-303",
+      "title": "Tool-observed feeder shim + real R7.4 evidence leg",
+      "verdict": "PASS",
+      "commit": "de06582",
+      "evidence_reviewed": [
+        "tools/hooks/tool-observed-feed.sh (NEW, 164 lines): guarded on GOSLEEP_WEB_QUESTIONS=1 (exit 0 instantly when off); fail-open on every error branch; context_pct estimated from transcript file size (documented approximation — Claude Code 2.1.226 does not surface it in the hook payload; two payload samples committed as assets/v8-hook-payload-sample-*).",
+        "tools/hooks/lab-log-hook.sh: minimal change to buffer stdin ONCE and fan out to two consumers (lab-log.sh unchanged + new feeder in background with `&` + `disown`). Preserves original 'shim never blocks a session' invariant.",
+        "tools/hooks/ask-user-question-hook.sh + permission-request-hook.sh: new background-invocation blocks (~10 lines each) with GOSLEEP_TOOL_OBSERVED_TOOL env override for the matcher name and GOSLEEP_TOOL_OBSERVED_INTENT for human-readable context.",
+        ".claude/settings.json: byte-for-byte unchanged — verified via `git diff 56f57d1..HEAD -- .claude/settings.json` returning 0 lines. Frozen invariant per handoff 57 honored.",
+        "Live proof at assets/v8-real-fleet-populate-*: real Haiku pilot session_id 47f11f2a-…, /fleet returned row with current_tool=Bash, context_pct=8, current_intent='AskUserQuestion pending owner answer'. COALESCE preserves the intent across later tool-only observations — correct behavior."
+      ],
+      "residual_note_accepted": "Tool coverage is bounded to what .claude/settings.json matchers wire today (Bash, Write|Edit|MultiEdit, mcp__atlassian__.*, AskUserQuestion, PermissionRequest). Read/Grep/Glob/TodoWrite silent until settings.json widens (owner-gated). Correctly documented; not a defect of this task."
+    }
+  ],
+  "findings_summary": {
+    "critical": 0,
+    "major": 0,
+    "minor": 4,
+    "list": [
+      {
+        "id": "M1",
+        "severity": "minor",
+        "task": "GSL-298",
+        "class": "spec-mismatch",
+        "one_liner": "Snapshot layout ships flat, Jira asked for date-subdir + status.json (dev history acknowledges)."
+      },
+      {
+        "id": "M2",
+        "severity": "minor",
+        "task": "GSL-300",
+        "class": "spec-mismatch",
+        "one_liner": "Live proof is shim-direct, Jira asked for real subordinate session (payload acknowledges)."
+      },
+      {
+        "id": "M3",
+        "severity": "minor",
+        "task": "GSL-302",
+        "class": "doc-consistency",
+        "one_liner": "runs/01 dossier has two stale 'tool-observed shim named-not-built' phrases GSL-303 forgot to update."
+      },
+      {
+        "id": "M4",
+        "severity": "minor",
+        "task": "GSL-302",
+        "class": "spec-mismatch",
+        "one_liner": "GSL-250 run-02 payload.json addendum not appended (intentional; dev history explains the reasoning)."
+      }
+    ]
+  },
+  "runs01_vs_verifier_diff": {
+    "count": 3,
+    "list": [
+      "runs/01 claim: score 98. verifier: 96 — one additional minor deducted for GSL-300 spec deviation (real-session evidence missing) that runs/01 openly names in `not_reverified` but does not score against itself.",
+      "runs/01 claim: 'critical:0, major:0, minor:0'. verifier: 4 minors (M1..M4). None are blocking; all are pragmatic trade-offs or doc-consistency issues.",
+      "runs/01 header: 'An independent verifier should adjudicate the 6 pre-existing lab-smoke fails on the shared tree before the PR merges.' verifier adjudication: branch=562/0 and main-wt=406/160 (all 160 fails in one section, pre-existing at 56f57d1; the '6' the builder saw were transient). Lab-smoke does not gate merge."
+    ]
+  },
+  "commit_hygiene": {
+    "one_commit_per_task": "Mostly one-commit-per-task; GSL-299 has two commits (e6676a5 shim-direct + d5eb6eb real-session follow-up). Per delivery-workflow this is legal ('follow-up commits with the same key are legal for evidence').",
+    "dev_history_per_task": "PRESENT — 7 files under docs/dev_history/ for 6 tasks (GSL-299 has two dev-history files matching its two commits). README index updated with all 6 task lines.",
+    "jira_statuses": "All 6 tasks GSL-298..303 in 'In Review'. Verified via searchJiraIssuesUsingJql parent=GSL-297.",
+    "github_mirrors": "All 6 GH issues open (with the numbering shift: GSL-298=#297, GSL-299=#298, GSL-300=#299, GSL-301=#300, GSL-302=#301, GSL-303=#302); epic GSL-297=GH#296. No PR yet.",
+    "settings_json_untouched": "CONFIRMED — 0 bytes changed in .claude/settings.json vs 56f57d1."
+  },
+  "recommendation": {
+    "verdict": "MERGE",
+    "confidence": "high",
+    "rationale": "Every one of the 6 tasks lands its promised code + evidence + gates. Gates are green. No critical or major findings survive. The 4 minor findings are either honestly named in the delivered dev history (M1, M2, M4) or trivial doc-consistency issues (M3). Lab-smoke divergence is pre-existing, data-driven, and NOT introduced by this branch. Settings.json is untouched. The two spec-mismatches (M1 snapshot layout, M2 shim-direct evidence) are reasonable pragmatic calls that could be tightened in small follow-up tickets after merge if desired; they do not block the epic's feature-complete verdict.",
+    "fix_first_list_if_owner_wants_stricter_reading": [
+      "M2 only: reproduce GSL-300 with a real subordinate Claude Code session before merging (15-30 min effort using the same shape as GSL-299 v7).",
+      "M3 only: two-line edit to runs/01/index.html + runs/01/payload.json to replace the stale 'named, not built' phrases (5 min)."
+    ]
+  }
+}

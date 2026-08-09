@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GSL-297 · Independent verifier audit (run 02)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-alt: #f8f9fa;
+    --border: #e4e7eb;
+    --fg: #0f172a;
+    --fg-muted: #475569;
+    --accent: #7c3aed;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120;
+      --bg-alt: #111a2e;
+      --border: #1e293b;
+      --fg: #e2e8f0;
+      --fg-muted: #94a3b8;
+      --accent: #a78bfa;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.55; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 24px 96px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px; }
+  h1 { font-weight: 500; font-size: 28px; margin: 0 0 6px; }
+  h2 { font-weight: 500; font-size: 20px; margin: 32px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3 { font-weight: 500; font-size: 16px; margin: 20px 0 8px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .subtitle { color: var(--fg-muted); font-size: 14px; }
+  .verdict { background: var(--bg-alt); border-left: 4px solid var(--accent); padding: 16px 20px; margin: 24px 0; border-radius: 4px; }
+  .verdict .score { font-size: 32px; font-weight: 500; color: var(--accent); }
+  .verdict .label { color: var(--fg-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-left: 8px; }
+  .verdict .recommend { display: inline-block; margin-top: 8px; padding: 4px 12px; background: var(--ok); color: var(--bg); border-radius: 4px; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; }
+  .verdict p { margin: 12px 0 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-alt); font-weight: 500; color: var(--fg-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-alt); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--bg-alt); padding: 12px 16px; border-radius: 4px; overflow-x: auto; font-family: var(--mono); font-size: 12px; }
+  .status-pass, .status-ok { color: var(--ok); font-weight: 500; }
+  .status-minor, .status-warn { color: var(--warn); font-weight: 500; }
+  .status-major, .status-critical, .status-danger { color: var(--danger); font-weight: 500; }
+  .status-muted { color: var(--fg-muted); font-style: italic; }
+  ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  a { color: var(--accent); }
+  a:hover { text-decoration: underline; }
+  .lang-toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: var(--fg-muted); margin-bottom: 12px; }
+  .lang-toggle a { text-decoration: none; padding: 3px 8px; border: 1px solid var(--border); border-radius: 3px; }
+  .lang-toggle a[aria-current="true"] { background: var(--bg-alt); color: var(--fg); border-color: var(--accent); }
+  .finding-block { background: var(--bg-alt); border-left: 4px solid var(--warn); padding: 12px 16px; border-radius: 4px; margin: 12px 0; }
+  .finding-block .finding-id { display: inline-block; background: var(--warn); color: var(--bg); padding: 1px 8px; border-radius: 3px; font-weight: 600; font-family: var(--mono); font-size: 12px; margin-right: 8px; }
+  .gate-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 12px 0 24px; }
+  .gate-tile { background: var(--bg-alt); padding: 10px 14px; border-radius: 4px; border: 1px solid var(--border); }
+  .gate-tile .gate-name { font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .gate-tile .gate-value { font-size: 14px; margin-top: 2px; font-family: var(--mono); }
+  .foot { color: var(--fg-muted); font-size: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="lang-toggle" role="navigation" aria-label="Language">
+      <span>Language:</span>
+      <a href="#" aria-current="true">English</a>
+      <a href="ru/index.html">Русский</a>
+    </div>
+    <h1>GSL-297 · Independent verifier audit (run 02)</h1>
+    <p class="subtitle">2026-08-09 · verifier-297 (independent, adversarial, single-turn)</p>
+    <p class="subtitle">HEAD verified: <code>de06582</code> on branch <code>GSL-297-web-feature-complete</code>. Main baseline pinned at <code>56f57d1</code> in <code>.artifacts/verify-297/main-wt/</code> (removed after use). Baseline dossier: <a href="../01/index.html">GSL-297 run 01</a>.</p>
+  </header>
+
+  <section class="verdict" role="status">
+    <div><span class="score">96</span><span class="label">FEATURE-COMPLETE — MINOR ONLY</span></div>
+    <div class="recommend">MERGE</div>
+    <p>Independent verification concurs with runs/01's substantive claims. All six tasks GSL-298..303 land the code, docs, and evidence they promised. Gates are green: <code>tsc-core</code> clean, <code>tsc-web</code> clean, <code>bun test</code> 191/0, <code>.claude/settings.json</code> byte-diff vs main = 0. Lab-smoke adjudication: branch = <strong>562 pass / 0 fail</strong>; pinned main-wt at <code>56f57d1</code> = <strong>406 pass / 160 fail</strong> — every one of those 160 fails is in the single <em>chronicler: the T3 regenerator (GSL-86)</em> section (older pinned <code>docs/lab/site/*.html</code> files don't satisfy the T3 self-re-grade contract). <strong>Zero fails introduced by this branch.</strong> The '6 fails' the builder saw earlier (556/6) were transient shared-tree state — the live chronicler re-rendered the html and they resolved. Two minor spec-mismatches survive verification (GSL-298 flat snapshot layout vs Jira's date-subdir; GSL-300 shim-direct vs Jira's real-subordinate) — both are honestly named in the delivered dev history. Score softened from 100 to 96 to account for one minor-but-real Jira-vs-ship deviation and three doc-consistency / spec-mismatch minors.</p>
+  </section>
+
+  <h2>1. Gates re-verified in this run</h2>
+  <div class="gate-strip">
+    <div class="gate-tile"><div class="gate-name">tsc apps/core</div><div class="gate-value status-ok">clean (exit 0)</div></div>
+    <div class="gate-tile"><div class="gate-name">tsc apps/web</div><div class="gate-value status-ok">clean (exit 0)</div></div>
+    <div class="gate-tile"><div class="gate-name">bun test apps/core</div><div class="gate-value status-ok">191 / 0 · 3.00 s</div></div>
+    <div class="gate-tile"><div class="gate-name">lab-smoke (branch)</div><div class="gate-value status-ok">562 / 0</div></div>
+    <div class="gate-tile"><div class="gate-name">lab-smoke (main-wt @ 56f57d1)</div><div class="gate-value status-warn">406 / 160</div></div>
+    <div class="gate-tile"><div class="gate-name">.claude/settings.json diff</div><div class="gate-value status-ok">0 lines</div></div>
+  </div>
+
+  <h2>2. Per-task verdicts (GSL-298..303)</h2>
+  <table>
+    <thead><tr><th>Key</th><th>Title</th><th>Verdict</th><th>Commit</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/GSL-298"><code>GSL-298</code></a></td>
+        <td>POST /actions/snapshot + Overview button</td>
+        <td class="status-pass">PASS + minor</td>
+        <td><code>b3b03d7</code></td>
+        <td>Safe label regex, Bearer + serialize + withTimeline, explicit GOSLEEP_DB_PATH pass-through, snapshot.sh empty-pipe rc=1 leak fixed. <strong>M1</strong>: layout ships flat (<code>data/snapshots/&lt;kind&gt;-&lt;label&gt;-&lt;ts&gt;.db</code>) vs Jira's date-subdir + status.json — honestly named in dev history.</td>
+      </tr>
+      <tr>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/GSL-299"><code>GSL-299</code></a></td>
+        <td>AskUserQuestion answer-loop live proof</td>
+        <td class="status-pass">PASS</td>
+        <td><code>e6676a5</code> + <code>d5eb6eb</code></td>
+        <td>Four owner variants (v1-v4) via shim-direct + one REAL subordinate session leg (v7). Model called AskUserQuestion, injected answer surfaced in pane, TUI dialog never rendered. Two-commit pattern is legal per delivery-workflow.</td>
+      </tr>
+      <tr>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/GSL-300"><code>GSL-300</code></a></td>
+        <td>PermissionRequest allow/deny live proof</td>
+        <td class="status-pass">PASS + minor</td>
+        <td><code>0fdf988</code></td>
+        <td>Both lanes (allow / deny) via shim-direct, DB rows correct, permissionDecisionReason threaded on deny. <strong>M2</strong>: shim-direct only, no real-subordinate-session leg — Jira description asked for one. Openly named in runs/01 <code>not_reverified</code>. Contrast with GSL-299's follow-up commit that closed the same criterion.</td>
+      </tr>
+      <tr>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/GSL-301"><code>GSL-301</code></a></td>
+        <td>Fleet live-values + flushPendingObservations fix</td>
+        <td class="status-pass">PASS + real bug fix</td>
+        <td><code>456514d</code></td>
+        <td>Verification-only ticket that surfaced a real latent bug: Bun's <code>db.query().get()</code> returns <code>null</code>, not <code>undefined</code> — old branch selector took UPDATE on fresh session_ids and silently dropped INSERTs. Fix + per-row try/catch + core-smoke scenario 25b regression fence.</td>
+      </tr>
+      <tr>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/GSL-302"><code>GSL-302</code></a></td>
+        <td>Feature-complete dossier + widening-gate</td>
+        <td class="status-pass">PASS + doc-consistency minor</td>
+        <td><code>dbf741e</code></td>
+        <td>Dossier renders offline; EN+RU shells; PRD + runbook updated with widening-gate paragraphs. <strong>M3</strong>: two stale 'named, not built' phrases (index.html §8 line 226 + payload.json <code>not_reverified</code>) GSL-303 forgot to update. <strong>M4</strong>: GSL-250 run-02 payload.json addendum not appended (intentional per dev history).</td>
+      </tr>
+      <tr>
+        <td><a href="https://ainstance-labs.atlassian.net/browse/GSL-303"><code>GSL-303</code></a></td>
+        <td>Tool-observed feeder + real R7.4 evidence leg</td>
+        <td class="status-pass">PASS</td>
+        <td><code>de06582</code></td>
+        <td>Feeder script guarded on <code>GOSLEEP_WEB_QUESTIONS=1</code>, fail-open, background invocation preserves shim's non-blocking discipline. <code>.claude/settings.json</code> untouched (0-line diff vs main). Real Haiku pilot session populated <code>/fleet</code> row with <code>current_tool=Bash</code>, <code>context_pct=8</code>, <code>current_intent="AskUserQuestion pending owner answer"</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Lab-smoke adjudication (the merge-gating question)</h2>
+  <table>
+    <thead><tr><th>Tree</th><th>Result</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Branch (this run, shared tree with live-chronicler modifications to <code>docs/lab/site/*.html</code>)</td>
+        <td class="status-ok">PASS = 562 · FAIL = 0</td>
+        <td class="status-pass">CLEAN — no fails introduced by this branch</td>
+      </tr>
+      <tr>
+        <td>Pinned main worktree at <code>56f57d1</code> (created via <code>git worktree add</code>, removed after use)</td>
+        <td class="status-warn">PASS = 406 · FAIL = 160</td>
+        <td class="status-muted">PRE-EXISTING · every fail is in the <em>chronicler: the T3 regenerator (GSL-86)</em> section (older pinned <code>docs/lab/site/*.html</code> files don't satisfy T3 self-re-grade)</td>
+      </tr>
+      <tr>
+        <td>Builder claim in runs/01 header ("556/6 by the builder")</td>
+        <td class="status-warn">6 fails</td>
+        <td class="status-muted">TRANSIENT — the shared-tree html files change frequently under the live chronicler; the 6 fails the builder saw have resolved by the time of this verifier run</td>
+      </tr>
+    </tbody>
+  </table>
+  <p><strong>Adjudication:</strong> lab-smoke does NOT gate this merge. All 160 fails on main-wt are pre-existing / data-driven at 56f57d1; zero fails on the branch. The suite's non-determinism against a live shared tree is a known limitation, not a defect of this epic.</p>
+
+  <h2>4. Findings (4 minor · 0 major · 0 critical)</h2>
+
+  <div class="finding-block">
+    <p><span class="finding-id">M1</span><strong>GSL-298 · snapshot layout ships flat, Jira asked for date-subdir</strong></p>
+    <p><strong>Where:</strong> <code>apps/core/scripts/snapshot.sh</code> writes <code>data/snapshots/&lt;kind&gt;-&lt;label&gt;-&lt;ts&gt;.db</code>. Jira acceptance criteria said <code>data/snapshots/YYYY-MM-DD/gosleep.db + status.json</code>.</p>
+    <p><strong>Impact:</strong> None on functionality — endpoint returns the actual path, smoke fences it, owner sees the file open on click. Any downstream consumer that expected the subdir + status.json sidecar would break; none exist today.</p>
+    <p><strong>Dev history acknowledges:</strong> "Jira description echoed a stale CLAUDE.md line; endpoint honours the ACTUAL shipped layout; subdir + status.json sidecar are a separate follow-up." Reasonable pragmatic call.</p>
+    <p><strong>Fix suggestion:</strong> open a small follow-up ticket if the subdir + status.json is actually desired; otherwise update Jira description to match reality.</p>
+  </div>
+
+  <div class="finding-block">
+    <p><span class="finding-id">M2</span><strong>GSL-300 · shim-direct evidence only, Jira asked for real subordinate session</strong></p>
+    <p><strong>Where:</strong> <code>assets/v5-perm-{allow,deny}-*</code> are all shim-direct invocations against a scratch core. No <code>assets/v?-perm-real-session-*</code> exists. GSL-299 delivered the equivalent real-session leg in a follow-up commit; GSL-300 did not.</p>
+    <p><strong>Impact:</strong> Endpoint contract is proven; hook shim is proven; the "end-to-end with a real subordinate" composition is inferred, not observed. Given the shim script itself is the SAME code invoked in both cases, the risk of a subordinate-session-only regression is very small.</p>
+    <p><strong>Runs/01 acknowledges:</strong> "GSL-300's PermissionRequest real-session leg was NOT re-run — the shim-direct proof stands with GSL-284's smoke coverage as the anchor."</p>
+    <p><strong>Fix suggestion:</strong> reproduce GSL-300 in a real subordinate Claude Code session (same shape as GSL-299's v7 leg) — a 15-30 minute add-on that would close this cleanly.</p>
+  </div>
+
+  <div class="finding-block">
+    <p><span class="finding-id">M3</span><strong>GSL-302 · stale "named, not built" phrases in the dossier after GSL-303 landed</strong></p>
+    <p><strong>Where:</strong> <code>docs/reports/verifications/GSL-297/runs/01/index.html</code> section 8 line 226 ("The tool-observed shim (remaining gap above) is named, not built."); same phrase in <code>runs/01/payload.json</code> <code>not_reverified</code> array line ~198.</p>
+    <p><strong>Impact:</strong> Internal inconsistency in the dossier. The R7.4 row in the same file (index.html line 113) correctly credits GSL-303 with closing the gap, and the payload's <code>remaining_gaps</code> block is also updated. Two spots were missed during GSL-303's dossier-update commit.</p>
+    <p><strong>Fix suggestion:</strong> two-line edit to update or remove the stale phrases (5 min).</p>
+  </div>
+
+  <div class="finding-block">
+    <p><span class="finding-id">M4</span><strong>GSL-302 · GSL-250 run-02 payload.json addendum not appended (intentional deviation)</strong></p>
+    <p><strong>Where:</strong> Jira description asked to "append a short note to <code>docs/reports/verifications/GSL-250/runs/02/payload.json</code> 'What was NOT re-verified' section". The file was not touched.</p>
+    <p><strong>Dev history explains:</strong> "run-02 payload.json intentionally NOT re-touched (it's orchestrator-owned + untracked in this shared tree, and the run-02 addendum concept is captured in the run-01 payload's baseline + not_reverified fields)." Reasonable pragmatic call.</p>
+    <p><strong>Fix suggestion:</strong> optional — accept the deviation, or add a two-line addendum to run-02 payload if the audit trail is genuinely needed.</p>
+  </div>
+
+  <h2>5. Runs/01 vs verifier discrepancies</h2>
+  <table>
+    <thead><tr><th>Runs/01 claim</th><th>Verifier finding</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Score 98</td>
+        <td>Score 96 — additional minor deducted for GSL-300 spec deviation that runs/01 openly names in <code>not_reverified</code> but does not score against itself.</td>
+      </tr>
+      <tr>
+        <td>Findings: critical 0 / major 0 / minor 0</td>
+        <td>Findings: critical 0 / major 0 / minor <strong>4</strong> — see M1..M4 above. None blocking.</td>
+      </tr>
+      <tr>
+        <td>"An independent verifier should adjudicate the 6 pre-existing lab-smoke fails."</td>
+        <td>Adjudicated: branch=562/0, main-wt=406/160 (160 fails all in one section, pre-existing at 56f57d1). The 6 the builder saw were transient. Lab-smoke does not gate merge.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6. Commit hygiene</h2>
+  <ul>
+    <li><strong>One commit per task:</strong> mostly — GSL-299 has two commits (<code>e6676a5</code> shim-direct + <code>d5eb6eb</code> real-session follow-up). Per delivery-workflow this is legal ("follow-up commits with the same key are legal for evidence").</li>
+    <li><strong>Dev history:</strong> present for all 6 tasks (7 files, one per commit). <code>docs/dev_history/README.md</code> index updated.</li>
+    <li><strong>Jira statuses:</strong> all 6 tasks GSL-298..303 in "In Review" (verified via JQL).</li>
+    <li><strong>GitHub mirrors:</strong> all 6 GH issues open (GSL-298=<code>#297</code>, GSL-299=<code>#298</code>, GSL-300=<code>#299</code>, GSL-301=<code>#300</code>, GSL-302=<code>#301</code>, GSL-303=<code>#302</code>); epic GSL-297=<code>#296</code>. No PR yet.</li>
+    <li><strong><code>.claude/settings.json</code>:</strong> byte-for-byte unchanged (<code>git diff 56f57d1..HEAD -- .claude/settings.json</code> returned empty). Frozen invariant honored.</li>
+  </ul>
+
+  <h2>7. Recommendation</h2>
+  <p><strong class="status-pass">MERGE</strong> — high confidence. Every one of the 6 tasks lands its promised code + evidence + gates. Gates are green. No critical or major findings survive independent verification. The 4 minor findings are either honestly named in the delivered dev history (M1, M2, M4) or trivial doc-consistency issues (M3). Lab-smoke divergence is pre-existing, data-driven, and NOT introduced by this branch. Settings.json is untouched.</p>
+  <p>If the owner prefers a stricter reading, the smallest fix-first list would be:</p>
+  <ul>
+    <li><strong>M2</strong>: reproduce GSL-300 in a real subordinate Claude Code session (15-30 min).</li>
+    <li><strong>M3</strong>: two-line edit to <code>runs/01/index.html</code> + <code>runs/01/payload.json</code> to replace the stale "named, not built" phrases (5 min).</li>
+  </ul>
+  <p>Neither is a merge blocker in the verifier's judgement.</p>
+
+  <div class="foot">
+    Machine-readable payload: <a href="payload.json"><code>payload.json</code></a> · smoke logs: <a href="assets/verify-branch-smoke.log"><code>verify-branch-smoke.log</code></a>, <a href="assets/verify-main-smoke.log"><code>verify-main-smoke.log</code></a> · run 01: <a href="../01/index.html"><code>../01/</code></a> · this document is offline-friendly (<code>file://</code> load, no external assets).
+  </div>
+</main>
+</body>
+</html>

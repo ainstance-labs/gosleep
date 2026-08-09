@@ -195,7 +195,7 @@
   "not_reverified": [
     "Run-02's 11 findings are treated as still-holding baselines (this dossier does not re-audit them; the fix-confirmation lens of run-02 is authoritative).",
     "GSL-299 has BOTH shim-direct evidence (4 variants) AND one REAL subordinate haiku session leg (interactive tmux, GOSLEEP_WEB_QUESTIONS=1, --dangerously-skip-permissions). Attempted `claude --print --allowedTools AskUserQuestion` first — headless mode disables AskUserQuestion in the CLI regardless of --allowedTools, model refuses to call it; switched to interactive tmux (same shape GSL-267 used). GSL-300's PermissionRequest live-leg was NOT re-run against a real subordinate session — the shim-direct proof stands with GSL-284's smoke coverage (scenarios 42-50) as the anchor; the real-session equivalent would require a Bash/Write tool call that triggers PermissionRequest, which is orthogonal to the endpoint's contract.",
-    "The tool-observed shim (remaining gap above) is named, not built; a separate ticket will land it under the pilot flag.",
+    "The tool-observed shim (remaining gap above) was subsequently closed by GSL-303 (commit de06582): a pilot-gated feeder wired into three existing shims, .claude/settings.json untouched, live-proven on a real Haiku 4.5 pilot session (session_id 47f11f2a-…, /fleet returned current_tool=Bash + context_pct=8 + preserved current_intent).",
     "Web UI visual verification (Safari / Chrome pixel rendering of the new 'Snapshot' button) was verified from source (Overview.tsx + tsc + vite build) rather than from a browser screenshot in this run — the button is a shadcn Button + Dialog composition already covered by design-system audits in run-02."
   ]
 }
