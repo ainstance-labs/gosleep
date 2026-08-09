@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gosleep.local/schema/skills/changelog.schema.json",
+  "title": "Skills management CHANGELOG row",
+  "description": "One record per skill publish. Governance plan `docs/plans/skills-governance-plan.md` section 6; PRD `docs/prd/02-phase8-skills-management.md` R8.5. Validator: `tools/skills/validate-changelog.sh`. This is a JSONL row schema — the file `docs/skills/CHANGELOG.jsonl` is one JSON object per line.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "skill", "task", "commit", "lesson", "status"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp of the publish (moment publish.sh appended the row, NOT the source commit).",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    },
+    "skill": {
+      "type": "string",
+      "description": "The skill directory name under `skill/` (also the folder name under `~/.claude/skills/`). Extended additively when a new skill is added.",
+      "enum": [
+        "orchestrating-delivery-agents",
+        "delivery-workflow",
+        "handoff",
+        "using-jira",
+        "writing-prds",
+        "remote-control",
+        "tmux-agents-orchestration"
+      ]
+    },
+    "task": {
+      "type": "string",
+      "description": "Jira Task key whose commit is being published.",
+      "pattern": "^GSL-[0-9]+$"
+    },
+    "commit": {
+      "type": "string",
+      "description": "Full 40-character git SHA of the development-copy commit under `skill/<name>/`.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "lesson": {
+      "type": "string",
+      "description": "Root-cause lesson (free text). Empty allowed but discouraged.",
+      "minLength": 0,
+      "maxLength": 4096
+    },
+    "status": {
+      "type": "string",
+      "description": "Row status. publish.sh writes 'published' on a successful publish; 'draft' and 'reviewed' may be appended by hand for audit.",
+      "enum": ["draft", "reviewed", "published"]
+    },
+    "intent_id": {
+      "description": "server_intents.intent_id from POST /actions/skills/publish; null when written from the CLI without going through the web endpoint. Used by the production test-guard (T10) to correlate a filesystem mutation with a legitimate publish.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[\\x21-\\x7e]+$"
+        },
+        { "type": "null" }
+      ]
+    }
+  }
+}

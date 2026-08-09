@@ -4668,6 +4668,39 @@ grep -q "applySecurityHeaders" "$REPO_ROOT/apps/core/src/serve.ts" \
   && ok "GSL-269: serve.ts wires applySecurityHeaders as first middleware" \
   || bad "GSL-269: serve.ts does not wire applySecurityHeaders"
 
+# GSL-252 (T1): skills management CHANGELOG registry — schema validation.
+# Opt-in tonight (GOSLEEP_SKILLS_GUARD=1); becomes always-on after stage 1
+# (GSL-251) reverse-syncs the drift and the publish flow is live. On a fresh
+# clone with an empty (or absent) CHANGELOG.jsonl the validator exits 0
+# silently — see tools/skills/validate-changelog.sh header.
+if [[ "${GOSLEEP_SKILLS_GUARD:-0}" == "1" ]]; then
+  echo "== GSL-252: skills management CHANGELOG registry validates =="
+  VALIDATE="$REPO_ROOT/tools/skills/validate-changelog.sh"
+  SCHEMA="$REPO_ROOT/tools/skills/schema/changelog.schema.json"
+  CHLOG="$REPO_ROOT/docs/skills/CHANGELOG.jsonl"
+  if [ -x "$VALIDATE" ] && [ -f "$SCHEMA" ]; then
+    if bash "$VALIDATE" >/tmp/skills-validate.$$.log 2>&1; then
+      ok "GSL-252: CHANGELOG.jsonl passes schema validation"
+    else
+      bad "GSL-252: CHANGELOG.jsonl fails validation — $(head -c 400 /tmp/skills-validate.$$.log | tr '\n' ' ')"
+    fi
+    # Prove the validator is actually looking at the file: feed it a known-bad
+    # mutant and assert non-zero. A validator that always returns 0 is a green
+    # light wired to nothing — this catches the case where the script silently
+    # short-circuits.
+    MUTANT="$WORK/skills-mutant.jsonl"
+    printf '{"ts":"2026-08-10T01:00:00Z","skill":"unknown","task":"GSL-1","commit":"deadbeef","lesson":"","status":"published"}\n' > "$MUTANT"
+    if CHANGELOG_PATH="$MUTANT" bash "$VALIDATE" >/dev/null 2>&1; then
+      bad "GSL-252: validator accepted a bad-mutant row (skill enum bypass?)"
+    else
+      ok "GSL-252: validator rejects a bad-mutant row"
+    fi
+    rm -f /tmp/skills-validate.$$.log "$MUTANT" 2>/dev/null
+  else
+    bad "GSL-252: validate-changelog.sh or schema missing"
+  fi
+fi
+
 echo
 echo "RESULT: PASS=$PASS FAIL=$FAIL"
 
