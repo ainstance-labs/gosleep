@@ -1,0 +1,4 @@
+manifest §1.reversible-delivery — in-repo delivery: code, docs, branches, gates.
+manifest §1.small-scale-preferred — smaller code paths win over sprawl.
+manifest §2.merge-strategy — strategy at a merge fork → regular merge, NEVER squash (preserves one-commit-per-task history).
+manifest §2.color-choice — dark colors preferred where owner does not care.

@@ -1,0 +1,3 @@
+qid               status    answer_text                                                                                      applied_by  applied_rule_ref            answered_at             
+----------------  --------  -----------------------------------------------------------------------------------------------  ----------  --------------------------  ------------------------
+q-2026-08-09-005  answered  strategy at a merge fork → regular merge, NEVER squash (preserves one-commit-per-task history).  manifest    manifest §2.merge-strategy  2026-08-09T20:15:12.312Z
