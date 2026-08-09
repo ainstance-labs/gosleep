@@ -29,6 +29,34 @@ PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 
+# GSL-254 T10 — production test-guard: baseline capture at start.
+# Opt-in tonight (GOSLEEP_SKILLS_GUARD=1); becomes always-on after stage 1 (GSL-251).
+# Baseline captures:
+#   * SHA-256 of every file under ~/.claude/skills/ (path\thash lines, sorted).
+#   * The set of intent_ids present in docs/skills/CHANGELOG.jsonl at start.
+# Compared at the end (below the RESULT line's neighbours) — see the T10 block.
+if [[ "${GOSLEEP_SKILLS_GUARD:-0}" == "1" ]]; then
+  SKILLS_GUARD_BASELINE="$WORK/skills-guard-baseline.txt"
+  SKILLS_GUARD_INTENTS_BASELINE="$WORK/skills-guard-intents-baseline.txt"
+  mkdir -p "$WORK"
+  # Capture per-file sha256sums under ~/.claude/skills. `find ... -exec sha256sum` is portable;
+  # sort to stabilize output for a later `diff`.
+  if [ -d "$HOME/.claude/skills" ]; then
+    (cd "$HOME/.claude/skills" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) \
+      > "$SKILLS_GUARD_BASELINE" 2>/dev/null || true
+  else
+    : > "$SKILLS_GUARD_BASELINE"
+  fi
+  # Snapshot intent_ids from CHANGELOG (may be missing/empty; both are OK).
+  if [ -f "$REPO_ROOT/docs/skills/CHANGELOG.jsonl" ] && command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys;
+[print(r.get("intent_id","")) for r in (json.loads(l) for l in open(sys.argv[1]) if l.strip()) if r.get("intent_id")]' \
+      "$REPO_ROOT/docs/skills/CHANGELOG.jsonl" 2>/dev/null | LC_ALL=C sort -u > "$SKILLS_GUARD_INTENTS_BASELINE" || true
+  else
+    : > "$SKILLS_GUARD_INTENTS_BASELINE"
+  fi
+fi
+
 echo "== static gates =="
 bash -n "$LE" && ok "bash -n (syntax)" || bad "bash -n (syntax)"
 grep -qE 'claude( -p|\b--print)' "$LE" && bad "0-LLM (C1)" || ok "0-LLM (C1): no headless claude calls"
@@ -4667,6 +4695,71 @@ CSP_MW="$REPO_ROOT/apps/core/src/security/csp.ts"
 grep -q "applySecurityHeaders" "$REPO_ROOT/apps/core/src/serve.ts" \
   && ok "GSL-269: serve.ts wires applySecurityHeaders as first middleware" \
   || bad "GSL-269: serve.ts does not wire applySecurityHeaders"
+
+# GSL-254 (T10): production test-guard — compare `~/.claude/skills/` end-of-run vs baseline
+# taken at the start (see the setup block near line 30). Any file whose hash changed OR any
+# added/removed file must be accompanied by a NEW `published` CHANGELOG row with a NEW
+# intent_id whose `skill` field matches the changed dir. Missing correlation → FAIL.
+# Keying on intent_id (plan risk 3) prevents the race where an in-flight publish's baseline
+# was captured before it landed.
+if [[ "${GOSLEEP_SKILLS_GUARD:-0}" == "1" ]]; then
+  echo "== GSL-254 T10: production test-guard (baseline diff, intent_id correlation) =="
+  SKILLS_GUARD_NOW="$WORK/skills-guard-now.txt"
+  SKILLS_GUARD_INTENTS_NOW="$WORK/skills-guard-intents-now.txt"
+  if [ -d "$HOME/.claude/skills" ]; then
+    (cd "$HOME/.claude/skills" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) \
+      > "$SKILLS_GUARD_NOW" 2>/dev/null || true
+  else
+    : > "$SKILLS_GUARD_NOW"
+  fi
+  if [ -f "$REPO_ROOT/docs/skills/CHANGELOG.jsonl" ] && command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys;
+[print("{}\t{}".format(r.get("intent_id",""), r.get("skill",""))) for r in (json.loads(l) for l in open(sys.argv[1]) if l.strip()) if r.get("intent_id") and r.get("status") == "published"]' \
+      "$REPO_ROOT/docs/skills/CHANGELOG.jsonl" 2>/dev/null | LC_ALL=C sort -u > "$SKILLS_GUARD_INTENTS_NOW" || true
+  else
+    : > "$SKILLS_GUARD_INTENTS_NOW"
+  fi
+  # Which files (and thus which skills) changed?
+  # `diff` output prefix `>` = added-in-now, `<` = removed-since-baseline; both count as changes.
+  CHANGED_LINES="$(diff "${SKILLS_GUARD_BASELINE:-/dev/null}" "$SKILLS_GUARD_NOW" 2>/dev/null | awk '/^[<>]/{print}')"
+  # sha256sum output: `<hash>  <path>` — the last whitespace-separated field is the path
+  # (`./<skill>/…`). Grab the last field, split on `/`, take the skill dir name (field 2).
+  CHANGED_SKILLS="$(printf '%s\n' "$CHANGED_LINES" | awk '{print $NF}' | awk -F/ '{print $2}' | LC_ALL=C sort -u | sed '/^$/d')"
+  # Which intent_ids appeared during this run (in NOW but not in BASELINE)? Extract the
+  # skills of those NEW rows. The NOW file has `intent_id\tskill` lines; BASELINE has plain
+  # intent_ids. Join in shell would tangle on the two shapes — use python for a robust set
+  # difference + skill projection.
+  NEW_INTENTS_SKILLS=""
+  if command -v python3 >/dev/null 2>&1; then
+    NEW_INTENTS_SKILLS="$(python3 -c '
+import sys
+base = set(l.strip() for l in open(sys.argv[1]) if l.strip())
+seen = set()
+for l in open(sys.argv[2]):
+    l = l.rstrip("\n")
+    if not l:
+        continue
+    parts = l.split("\t")
+    if len(parts) < 2:
+        continue
+    intent, skill = parts[0], parts[1]
+    if intent not in base and skill:
+        seen.add(skill)
+for s in sorted(seen):
+    print(s)
+' "$SKILLS_GUARD_INTENTS_BASELINE" "$SKILLS_GUARD_INTENTS_NOW" 2>/dev/null)"
+  fi
+  # For each changed skill, require it to appear in the new-intent skills set. Anything left
+  # over is a bypass and fails the guard.
+  UNCORRELATED="$(comm -23 <(printf '%s\n' "$CHANGED_SKILLS" | LC_ALL=C sort -u) <(printf '%s\n' "$NEW_INTENTS_SKILLS" | LC_ALL=C sort -u) 2>/dev/null | sed '/^$/d')"
+  if [ -z "$CHANGED_SKILLS" ]; then
+    ok "GSL-254 T10: no files under ~/.claude/skills/ changed during the run"
+  elif [ -z "$UNCORRELATED" ]; then
+    ok "GSL-254 T10: every changed skill ($(printf '%s ' $CHANGED_SKILLS)) has a matching NEW CHANGELOG row"
+  else
+    bad "GSL-254 T10: changed skills without a matching new CHANGELOG intent_id: $(printf '%s ' $UNCORRELATED)"
+  fi
+fi
 
 # GSL-252 (T1): skills management CHANGELOG registry — schema validation.
 # Opt-in tonight (GOSLEEP_SKILLS_GUARD=1); becomes always-on after stage 1
