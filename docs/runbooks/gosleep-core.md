@@ -184,11 +184,19 @@ Rebuilding + rotating the touchid-gate signed `.app`: see the rev-3 addendum Del
 
 ## 8. Web question-loop pilot (GSL-267 — guarded, opt-in)
 
-**Status.** As of 2026-08-08 the project's `.claude/settings.json` wires two `PreToolUse`
-matchers into the gosleep-core answer loop:
+**Status.** As of 2026-08-10 the project's `.claude/settings.json` wires two hook events
+into the gosleep-core answer loop:
 
-- `AskUserQuestion` → `tools/hooks/ask-user-question-hook.sh` (body: GSL-275).
-- `PermissionRequest` → `tools/hooks/permission-request-hook.sh` (body: GSL-284).
+- `PreToolUse[matcher:"AskUserQuestion"]` → `tools/hooks/ask-user-question-hook.sh`
+  (body: GSL-275).
+- `PermissionRequest[matcher:".*"]` → `tools/hooks/permission-request-hook.sh` (body:
+  GSL-284, real-event wiring by GSL-304). NOTE: `PermissionRequest` is a **dedicated
+  top-level event** — a peer of `PreToolUse`, not a matcher value on it. The matcher
+  matches `tool_name`, so `.*` intercepts every prompting tool. The earlier
+  `PreToolUse[matcher:"PermissionRequest"]` wiring (GSL-284, GSL-297 evidence) never
+  fired: no tool is literally named `PermissionRequest`. See
+  `docs/reports/verifications/GSL-304/runs/01/` for the real-session allow + deny +
+  AskUserQuestion regression proof.
 
 Both shims are **guarded**: the very first executable line is
 `[ "${GOSLEEP_WEB_QUESTIONS:-0}" = "1" ] || exit 0`. Every `claude` session started
@@ -233,12 +241,26 @@ Decide a permission the same way against `POST /actions/permissions/decide` with
 
 ### Control paths (verified 2026-08-08 pilot)
 
-- **Session with the flag:** AskUserQuestion → shim POSTs to
+- **Session with the flag — AskUserQuestion:** shim POSTs to
   `/internal/questions/post` → row lands in `questions` (kind=`BLOCKER`, qid `q-…`)
   and is visible via `GET /questions` → owner (or curl) POSTs
   `/actions/questions/answer` → shim's long-poll releases within ~ms → shim emits
   `hookSpecificOutput.permissionDecision="allow"` + `updatedInput.answers` → agent
   continues with the injected answer. TUI dialog never rendered.
+- **Session with the flag — PermissionRequest (GSL-304):** the real event fires when
+  CC would otherwise render the permission modal; shim POSTs to
+  `/internal/permissions/post` → row lands (kind=`permission`, qid `p-…`) → owner or
+  curl POSTs `/actions/permissions/decide` → shim's long-poll releases → shim emits
+  `hookSpecificOutput.decision.behavior="allow"|"deny"` (the CC-documented shape
+  for `PermissionRequest`, distinct from `PreToolUse`'s `permissionDecision`) → CC
+  applies the decision. NOTE: CC's TUI modal renders briefly WHILE the shim is
+  long-polling, then is superseded when the shim returns (agent sees
+  "Allowed by PermissionRequest hook" / "Denied by PermissionRequest hook"). The
+  optional `updated_message` on a deny lands in the DB `applied` column for audit,
+  but CC 2.1.226 does not surface a per-decision `reason` string to the model —
+  the deny itself is honored either way. Real-session evidence:
+  `docs/reports/verifications/GSL-304/runs/01/assets/v1-perm-*` +
+  `v2-perm-*`.
 - **Session without the flag:** matcher fires, guard returns `exit 0` in <500 ms,
   TUI dialog renders as today, DB has no row, `/questions` unchanged.
 
@@ -268,10 +290,10 @@ which shell when.
 
 ### Rollback
 
-`git revert` of the commit that added the `PreToolUse` block in
-`.claude/settings.json` is enough — the file watcher unloads the matchers live,
-sessions in-flight fall back to the TUI on the next question. Nothing in `data/`
-needs cleaning up.
+`git revert` of the commit that added the `PreToolUse` + `PermissionRequest` blocks
+in `.claude/settings.json` is enough — the file watcher unloads the matchers live,
+sessions in-flight fall back to the TUI on the next question or permission prompt.
+Nothing in `data/` needs cleaning up.
 
 ## 8.5. /setup Bearer discovery (GSL-291 — browser-native, no devtools)
 

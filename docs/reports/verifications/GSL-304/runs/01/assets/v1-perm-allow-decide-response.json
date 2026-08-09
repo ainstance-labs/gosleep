@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "intent_id": "6874e80c-f26b-4472-b118-e9541e21139a",
+  "cached": false,
+  "result": {
+    "qid": "p-20260809-223524-60bd06f6",
+    "status": "answered",
+    "decision": "allow",
+    "answered_at": "2026-08-09T22:35:55.201Z",
+    "answered_by": "owner-web",
+    "applied_by": "owner",
+    "updated_message": null
+  }
+}

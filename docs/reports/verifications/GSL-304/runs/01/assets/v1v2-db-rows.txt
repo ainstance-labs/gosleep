@@ -1,0 +1,2 @@
+p-20260809-223524-60bd06f6|permission|answered|Permission request: Bash|allow||2026-08-09T22:35:24.775Z|2026-08-09T22:35:55.201Z
+p-20260809-223625-cf0fa77c|permission|answered|Permission request: Bash|deny|blocked by night-autonomy policy: destructive rm -rf without dry-run|2026-08-09T22:36:25.287Z|2026-08-09T22:36:36.235Z

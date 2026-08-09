@@ -97,14 +97,17 @@
     ],
     "PreToolUse": [
       {
-        "$comment": "GSL-267 GUARDED PILOT (owner decision d-2026-08-08-001, cycle 211). Both shims exit 0 INSTANTLY when GOSLEEP_WEB_QUESTIONS != '1' — so this matcher is a no-op for every session started without the pilot flag, including this orchestrator. Only a session launched with `env GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=… claude …` reaches the network and long-polls gosleep-core. Timeout 3600s = the day-window agreed with the owner (configurable per-session via env GOSLEEP_HOOK_TIMEOUT_S; shim caps its own long-poll at that value). Widening to all sessions requires an explicit owner command — do NOT drop the guard without one. Rollback: `git revert` of this commit (or delete this PreToolUse block; the file watcher will unload it live). AskUserQuestion shim body: GSL-275. PermissionRequest shim body: GSL-284.",
+        "$comment": "GSL-267 GUARDED PILOT (owner decision d-2026-08-08-001, cycle 211). Both shims exit 0 INSTANTLY when GOSLEEP_WEB_QUESTIONS != '1' — so this matcher is a no-op for every session started without the pilot flag, including this orchestrator. Only a session launched with `env GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=… claude …` reaches the network and long-polls gosleep-core. Timeout 3600s = the day-window agreed with the owner (configurable per-session via env GOSLEEP_HOOK_TIMEOUT_S; shim caps its own long-poll at that value). Widening to all sessions requires an explicit owner command — do NOT drop the guard without one. Rollback: `git revert` of this commit (or delete this PreToolUse block; the file watcher will unload it live). AskUserQuestion shim body: GSL-275. PermissionRequest wiring: NOT here — see the top-level `PermissionRequest` event below (GSL-304 real-session fix). The old PreToolUse{matcher:'PermissionRequest'} entry never fired (matcher matches on tool_name, and no tool is literally named 'PermissionRequest' — GSL-297 runs/01 v9 evidence).",
         "matcher": "AskUserQuestion",
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/ask-user-question-hook.sh", "timeout": 3600 }
         ]
-      },
+      }
+    ],
+    "PermissionRequest": [
       {
-        "matcher": "PermissionRequest",
+        "$comment": "GSL-304 real-event wiring. Claude Code fires PermissionRequest exactly when a tool call needs a permission decision (i.e. when the TUI modal would otherwise render). This event is a peer of PreToolUse — NOT a matcher value on it. Matcher matches on tool_name; `.*` intercepts every prompting tool. The shim is guarded on GOSLEEP_WEB_QUESTIONS=1 (unchanged since GSL-284/GSL-267): every non-pilot session hits `exit 0` in < 1 ms and the TUI modal renders as before. The shim's stdout returns hookSpecificOutput.decision.behavior='allow'|'deny' — the CC-documented shape for this event, distinct from PreToolUse's `permissionDecision`. Widening to all sessions still requires an owner command (owner decision d-2026-08-08-001). Rollback: delete this block; file watcher unloads live.",
+        "matcher": ".*",
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/permission-request-hook.sh", "timeout": 3600 }
         ]

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GSL-304 runs/02 — Independent verification</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0b0d10; --fg: #e6e8ec; --muted: #98a1ad; --card: #14181d;
+    --line: #23272f; --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
+    --link: #7aa2f7; --accent: #7dd3fc;
+    font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#fafbfc; --fg:#0b0d10; --muted:#4b5563; --card:#ffffff; --line:#e5e7eb; --link:#1d4ed8; --accent:#0369a1; }
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); margin:0; padding: 32px 20px 96px; }
+  main { max-width: 920px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
+  h2 { margin: 28px 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  h3 { margin: 18px 0 6px; font-size: 14px; }
+  p, li { line-height: 1.55; font-size: 14px; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .verdict { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .score { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; color: var(--ok); line-height: 1; }
+  .score small { font-size: 16px; color: var(--muted); font-weight: 500; }
+  .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+  .badge.merge { background: rgba(34,197,94,0.15); color: var(--ok); border: 1px solid rgba(34,197,94,0.35); }
+  .badge.fix   { background: rgba(239,68,68,0.15); color: var(--bad); border: 1px solid rgba(239,68,68,0.35); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 10px; margin-top: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .card .k { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.06em; }
+  .card .v { font-size: 15px; margin-top: 4px; font-weight: 600; }
+  .card .v.ok  { color: var(--ok); }
+  .card .v.warn{ color: var(--warn); }
+  .card .v.bad { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; background: var(--card); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; border: 1px solid var(--line); }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  .findings li { margin: 8px 0; }
+  .sev { display: inline-block; min-width: 20px; text-align: center; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; margin-right: 8px; }
+  .sev.C { background: rgba(239,68,68,0.15); color: var(--bad); border: 1px solid rgba(239,68,68,0.35); }
+  .sev.M { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.35); }
+  .sev.m { background: rgba(122,162,247,0.15); color: var(--link); border: 1px solid rgba(122,162,247,0.35); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <h1>GSL-304 — Independent verification (runs/02)</h1>
+  <div class="subtitle">verifier-304 · night-autonomy shift · 2026-08-10 · adversarial audit of commit <code>cf9c65f</code> on branch <code>GSL-304-permreq-fix</code> · PR <a href="https://github.com/ainstance-labs/gosleep/pull/306">#306</a> OPEN/CLEAN.</div>
+
+  <div class="verdict">
+    <div class="score">96<small>/100</small></div>
+    <div style="flex:1;">
+      <div class="badge merge">MERGE</div>
+      <div style="margin-top:6px; font-size: 13px;">All hard gates pass, evidence chain internally consistent, hooks docs confirm the fix's premise, settings.json diff is surgical. 0 critical / 1 medium / 3 minor findings — none block merge.</div>
+    </div>
+  </div>
+
+  <h2>Scoreboard</h2>
+  <div class="grid">
+    <div class="card"><div class="k">tsc apps/core</div><div class="v ok">clean</div></div>
+    <div class="card"><div class="k">bun test</div><div class="v ok">191 / 0</div></div>
+    <div class="card"><div class="k">core-smoke</div><div class="v ok">96 / 0</div></div>
+    <div class="card"><div class="k">bash -n hooks</div><div class="v ok">4 / 4 pass</div></div>
+    <div class="card"><div class="k">jq settings.json</div><div class="v ok">valid</div></div>
+    <div class="card"><div class="k">settings.json diff</div><div class="v ok">surgical</div></div>
+    <div class="card"><div class="k">hooks docs cross-check</div><div class="v ok">confirmed</div></div>
+    <div class="card"><div class="k">evidence lanes</div><div class="v ok">3 / 3</div></div>
+  </div>
+
+  <h2>Settings.json surgical-diff verdict</h2>
+  <p><strong>Surgical: YES.</strong> Six independent structural checks:</p>
+  <ul>
+    <li>Full <code>git diff origin/main...HEAD -- .claude/settings.json</code> is +4 / −1 lines plus in-place <code>$comment</code> rewrites; every other byte is untouched.</li>
+    <li>Hook event key set diff vs main: exactly one addition — <code>PermissionRequest</code>. Every other event key present in main is present in HEAD.</li>
+    <li><code>jq -c '.hooks | del(.PreToolUse, .PermissionRequest)'</code> on HEAD is byte-identical to <code>jq -c '.hooks | del(.PreToolUse)'</code> on main — proves no unrelated event block moved a single byte.</li>
+    <li><code>PreToolUse</code> shrank from 2 entries → 1; the surviving entry is the working <code>AskUserQuestion</code> matcher (command / timeout unchanged).</li>
+    <li>New <code>PermissionRequest</code> event has matcher <code>".*"</code> → <code>tools/hooks/permission-request-hook.sh</code>, timeout 3600s — matches the runbook § 8 and the shim header block verbatim.</li>
+    <li>Shim guard (<code>[ "${GOSLEEP_WEB_QUESTIONS:-0}" = "1" ] || exit 0</code>) still present at line 78 of the shim — every non-pilot session hits an instant no-op, per owner decision <code>d-2026-08-08-001</code>.</li>
+  </ul>
+
+  <h2>Hooks docs cross-check</h2>
+  <p><strong>Confirmed.</strong> Fresh WebFetch of <a href="https://code.claude.com/docs/en/hooks">code.claude.com/docs/en/hooks</a> (after 301 redirect from the docs.claude.com URL the team originally cited) returns:</p>
+  <ul>
+    <li><code>PermissionRequest</code> is a top-level hook event, listed as a peer of <code>PreToolUse</code> in the lifecycle table; fires "When a tool call needs a permission decision".</li>
+    <li><code>PreToolUse.matcher</code> filters on <strong>tool name</strong> — confirmed via the matcher table. The team's premise ("no tool is literally named <code>PermissionRequest</code>") is therefore correct.</li>
+    <li>Documented output shape: <code>hookSpecificOutput.decision.behavior = "allow" | "deny"</code>, with an optional <code>decision.updatedInput</code>. The shim's emitted JSON matches this shape.</li>
+  </ul>
+  <p>See m3 in Findings for the one honest doc-vs-shim delta the team already flagged in the caveat.</p>
+
+  <h2>Evidence audit — runs/01</h2>
+  <p>10 asset files, 6.3 kB total, internally consistent:</p>
+  <table>
+    <tr><th>Lane</th><th>qid</th><th>Panel decision</th><th>Shim outcome (debug log)</th><th>Model-visible signal</th></tr>
+    <tr><td>allow</td><td><code>p-20260809-223524-60bd06f6</code></td><td>allow</td><td><code>decided</code>, elapsed_ms=31000</td><td>"Allowed by PermissionRequest hook" → command ran</td></tr>
+    <tr><td>deny</td><td><code>p-20260809-223625-cf0fa77c</code></td><td>deny + reason</td><td><code>decided</code>, elapsed_ms=11000</td><td>"Denied by PermissionRequest hook" → rm blocked</td></tr>
+    <tr><td>AUQ regression</td><td><code>q-2026-08-09-001</code></td><td>"blue"</td><td><code>allow</code>, elapsed_ms=26000</td><td>"You chose blue for the badge."</td></tr>
+  </table>
+  <p><strong>Timing coherence:</strong> DB <code>answered_at</code> timestamps (22:35:55.201, 22:36:36.235, 22:38:24.778 Z) match the shim debug log outcome stamps to the second; POST/wait deltas fit within the 3600s hook timeout ceiling. <strong>Payload dumps</strong>: both <code>v1-perm-allow-payload.json</code> and <code>v2-perm-deny-payload.json</code> carry the top-level <code>"hook_event_name": "PermissionRequest"</code> attribute — hard proof that CC 2.1.226 fires the dedicated event, not a <code>PreToolUse</code> variant. Bonus: both payloads expose the undocumented <code>permission_suggestions[]</code> array the team correctly noted.</p>
+  <p><strong>Live re-run:</strong> skipped. The scratch pilot core (<code>.artifacts/permreq-fix/</code>) is still up (<code>pid.txt</code> holds a live process; WAL was updated 2026-08-10 00:38); interrupting it risks destabilising the owner's scratch environment without adding signal beyond the four independent evidence channels above (payload dumps + debug log + DB row snapshot + pane captures) already agreeing.</p>
+
+  <h2>Findings — 0 critical / 1 medium / 3 minor</h2>
+  <ol class="findings">
+    <li><span class="sev M">M1</span><strong>GSL-305 Jira status is <code>To Do</code>, not <code>In Review</code>.</strong> Task assignment expected "GSL-305 In Review with owner assignee". Commit landed, PR is open (which is the de-facto review state) and the assignee is correct, but the Jira transition to 31 (In Review) never fired. Fix in-place: <code>transitionJiraIssue</code> with <code>transition.id = 31</code> at merge time. Non-blocking for merge; hygiene-only.</li>
+    <li><span class="sev m">m1</span><strong>PR body's Tasks checklist item for GSL-305 is checked <code>[x]</code>.</strong> Convention keeps Task items unchecked until merge — this is a tiny house-style deviation, not a correctness issue. Test-plan section is correctly unchecked (verifier boxes).</li>
+    <li><span class="sev m">m2</span><strong>Scratch pilot core still running under <code>.artifacts/permreq-fix/</code>.</strong> <code>pid.txt</code> + WAL activity indicate the evidence-capture core is still up. Fine for the fix's correctness, but the owner may want a <code>launch-pilot.sh stop</code> or equivalent kill step after the PR merges so port 7332 is released.</li>
+    <li><span class="sev m">m3</span><strong>Shim emits <code>decision.reason</code> on deny, but the documented <code>PermissionRequest</code> schema lists only <code>{behavior, updatedInput?}</code> inside <code>decision</code>.</strong> The team named this exact caveat in the commit body, the dev-history file, the PRD flip bullet, and the runbook. CC accepts unknown fields silently (verified — the deny lane is honored end-to-end); the field lands in the DB <code>applied</code> column for audit either way. Would only matter if a future CC release turns the schema strict — worth a follow-up ticket to periodically re-check the docs.</li>
+  </ol>
+
+  <h2>Hygiene checklist</h2>
+  <ul>
+    <li><strong>Commit message key-prefixed:</strong> yes — <code>GSL-305 [Core] Real-event wiring for PermissionRequest …</code>.</li>
+    <li><strong>Dev-history file:</strong> <code>docs/dev_history/GSL-305-phase7-permreq-real-session-fix.md</code> exists (165 lines, Story + Technical Reference sections).</li>
+    <li><strong>Dev-history README:</strong> new "Epic GSL-304 — PermissionRequest real-session interception fix" section added with the GSL-305 bullet in the expected format.</li>
+    <li><strong>Jira GSL-304:</strong> Epic, In Progress, assignee Roman L, label <code>epic</code> — as expected.</li>
+    <li><strong>Jira GSL-305:</strong> Task, To Do (see M1), assignee Roman L, label <code>task</code>, parent GSL-304 — parent linkage correct.</li>
+    <li><strong>GH mirrors:</strong> #304 (epic label), #305 (task label) — both OPEN, titles are <code>[GSL-…]</code>-prefixed.</li>
+    <li><strong>PR #306:</strong> title <code>GSL-304 PermissionRequest real-session interception fix</code>, body has <code>Implements GSL-304.</code>, Tasks checklist, <code>Mirrors GH #304.</code>, <code>Closes #304.</code> + <code>Closes #305.</code> — all conventions honoured.</li>
+    <li><strong>Runbook § 8:</strong> flipped correctly — event name updated, new PermissionRequest control-path bullet added, rollback covers both matchers.</li>
+    <li><strong>PRD limitation:</strong> flipped correctly — new "PermissionRequest known-limitation FIXED (GSL-304, 2026-08-10)" bullet under the feature-complete section links to <code>runs/01/</code>.</li>
+  </ul>
+
+  <h2>Gate output excerpts</h2>
+  <pre>bun x tsc -p apps/core --noEmit → exit 0
+bun test (apps/core) → 191 pass, 0 fail, 554 expect() calls, 21 files, 2.88s
+bash tools/lab/tests/core-smoke.sh → pass=96 fail=0; core-smoke: ALL PASS
+bash -n permission-request-hook.sh / ask-user-question-hook.sh / tool-observed-feed.sh / lab-log-hook.sh → all OK
+jq . .claude/settings.json → valid</pre>
+
+  <hr>
+  <div class="meta">
+    verifier-304, one-shot session, ≤ 30 min budget, English only, no section-sign glyph. Report not committed; teammate report already sent via SendMessage.
+  </div>
+</main>
+</body>
+</html>

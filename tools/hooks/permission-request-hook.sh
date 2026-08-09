@@ -1,39 +1,50 @@
 #!/usr/bin/env bash
 # =============================================================================
-# gosleep — PreToolUse{PermissionRequest} hook shim (GSL-284).
+# gosleep — PermissionRequest hook shim (GSL-284, real-event wiring by GSL-304).
 #
 # Sibling of `ask-user-question-hook.sh` (GSL-275). Wire this into a supervised session's
-# `.claude/settings.json` under:
-#   hooks.PreToolUse[].matcher = "PermissionRequest"
-#   hooks.PreToolUse[].hooks[].command = "$CLAUDE_PROJECT_DIR/tools/hooks/permission-request-hook.sh"
+# `.claude/settings.json` under the DEDICATED top-level `PermissionRequest` event
+# (GSL-304 real-session diagnosis — see docs/reports/verifications/GSL-304/runs/01/):
+#   hooks.PermissionRequest[].matcher = ".*"           (matches on tool_name)
+#   hooks.PermissionRequest[].hooks[].command = "$CLAUDE_PROJECT_DIR/tools/hooks/permission-request-hook.sh"
 #
-# The stdin payload Claude Code hands us for a PermissionRequest matcher looks like:
+# History: GSL-284 originally wired this shim under `PreToolUse[matcher:"PermissionRequest"]`.
+# That never fired: `PreToolUse.matcher` matches on `tool_name` (Bash, Edit, …) — no tool is
+# literally named `PermissionRequest`. GSL-297 runs/01 assets/v9-perm-real-attempt-note.md
+# documented the empty debug log; GSL-304 (this rewrite) moves the wiring to the dedicated
+# top-level `PermissionRequest` event that fires exactly when a tool call needs a permission
+# decision — and adapts the output shape below.
+#
+# The stdin payload Claude Code hands us for a real PermissionRequest event looks like:
 #   { session_id: "<uuid>",
-#     tool_use_id: "<toolu_...>",
-#     tool_name: "PermissionRequest",
-#     tool_input: { tool: "Bash", params: {...}, message?: "…" } }
+#     transcript_path: "…",
+#     cwd: "…",
+#     permission_mode: "default"|"acceptEdits"|…,
+#     hook_event_name: "PermissionRequest",
+#     tool_use_id: "<toolu_…>",
+#     tool_name: "Bash"|"Edit"|…,
+#     tool_input: { command: "…" }|{ file_path: "…", … } }
 #
 # We POST that to `POST /internal/permissions/post` on gosleep-core, receive `{qid}`, then
 # LONG-POLL `GET /internal/questions/:qid/answer-wait?timeout_s=N` — the SAME long-poll
 # endpoint the AskUserQuestion shim uses. Symmetry is deliberate: one wait mechanism, one
-# in-process notifier, one Bearer secret. The permission variant differs only in the
-# request payload shape and in how the returned `answer_text` maps to the hookSpecificOutput.
+# in-process notifier, one Bearer secret.
 #
 # The wait's 200 body carries `{answer_text: "allow"|"deny", ..., applied: "<reason?>"}`
 # — this shim reads answer_text as the decision and, when the row's `applied` column is
-# non-empty on a deny, emits it as `permissionDecisionReason`.
+# non-empty on a deny, forwards it as the `decision.reason` context field.
 #
-# Emits (on 200):
-#   allow → { hookSpecificOutput: { hookEventName: "PreToolUse",
-#                                    permissionDecision: "allow" } }
-#   deny  → { hookSpecificOutput: { hookEventName: "PreToolUse",
-#                                    permissionDecision: "deny",
-#                                    permissionDecisionReason: "<updated_message>" } }
+# Emits (on 200) — the PermissionRequest event's documented shape:
+#   allow → { hookSpecificOutput: { hookEventName: "PermissionRequest",
+#                                    decision: { behavior: "allow" } } }
+#   deny  → { hookSpecificOutput: { hookEventName: "PermissionRequest",
+#                                    decision: { behavior: "deny",
+#                                                reason:   "<updated_message>" } } }
 #
 # Every non-happy branch (missing secret, connect refused, 401/503/500, python parse
 # error, empty stdin, wait timeout) routes to `fail_open` which exits 0 with no stdout
-# — same discipline as the AskUserQuestion shim: never exit 2, never modal, never
-# emit noise to stdout.
+# — same discipline as the AskUserQuestion shim: never exit 2 (would DENY), never modal,
+# never emit noise to stdout.
 #
 # Env inputs mirror ask-user-question-hook.sh:
 #   GOSLEEP_CORE_URL           default http://127.0.0.1:7331
@@ -41,9 +52,13 @@
 #   GOSLEEP_HOOK_TIMEOUT_S     default 600 (hooks.md documented command default)
 #   GOSLEEP_HOOK_CONNECT_S     default 2 (hard cap on connect phase)
 #   GOSLEEP_HOOK_DEBUG_LOG     optional; each call appends one JSON line for post-mortems
+#   GOSLEEP_PERM_REQ_DUMP      GSL-304 diagnostic: when set to a path prefix, appends the
+#                              raw stdin payload as `<prefix>.<epoch-ns>` (mirrors the
+#                              GSL-303 GOSLEEP_TOOL_OBSERVED_DUMP pattern). Used once to
+#                              capture v1-perm-req-* evidence; fail-open on write failure.
 #
 # CRITICAL invariants:
-#   * NEVER exit 2 unless we mean to BLOCK the tool call. Every error routes to fail_open.
+#   * NEVER exit 2 unless we mean to DENY the permission. Every error routes to fail_open.
 #   * NEVER emit stdout noise — the stdout JSON is the whole contract with Claude Code.
 #   * NEVER echo the secret. curl reads it from env; we do not `set -x`; debug log
 #     records no auth values.
@@ -114,6 +129,14 @@ cat > "$STDIN_FILE" 2>/dev/null || true
 if [ ! -s "$STDIN_FILE" ]; then
     rm -f "$STDIN_FILE" 2>/dev/null || true
     fail_open "empty stdin (not a valid hook invocation)"
+fi
+
+# ---- 0a. GSL-304 diagnostic: dump the raw stdin when GOSLEEP_PERM_REQ_DUMP set
+# Path-prefix pattern mirrors GSL-303's GOSLEEP_TOOL_OBSERVED_DUMP: we append a nanosecond
+# timestamp so successive prompts land in distinct files. Never fatal — write failures are
+# swallowed so the shim keeps running.
+if [ -n "${GOSLEEP_PERM_REQ_DUMP:-}" ]; then
+    cp "$STDIN_FILE" "${GOSLEEP_PERM_REQ_DUMP}.$(date +%s%N)" 2>/dev/null || true
 fi
 
 # ---- 0b. GSL-303: fire the Fleet tool-observed feeder in background ----------
@@ -228,8 +251,10 @@ fi
 # answer_text is the decision ('allow' | 'deny'). The optional deny reason is carried in
 # the wait response's `applied` field when the doDecidePermission handler stored one
 # (added to the /internal/questions/:qid/answer-wait payload as `applied` at the core
-# side). The python composer reads it and only sets permissionDecisionReason when it's a
-# non-empty string.
+# side). The python composer reads it and only sets decision.reason when it's a non-empty
+# string. Shape per the PermissionRequest event contract (GSL-304):
+#   { hookSpecificOutput: { hookEventName: "PermissionRequest",
+#                           decision: { behavior: "allow"|"deny", reason?: "…" } } }
 OUT="$(python3 - "$WAIT_STDOUT" <<'PY'
 import json, sys
 try:
@@ -244,15 +269,17 @@ if decision not in ("allow", "deny"):
     print("UNKNOWN_DECISION:%s" % decision, file=sys.stderr)
     sys.exit(1)
 
-hookOut = {
-    "hookEventName":     "PreToolUse",
-    "permissionDecision": decision,
-}
+dec = { "behavior": decision }
 reason = answer.get("applied")
 if decision == "deny" and isinstance(reason, str) and len(reason) > 0:
-    hookOut["permissionDecisionReason"] = reason
+    dec["reason"] = reason
 
-json.dump({"hookSpecificOutput": hookOut}, sys.stdout)
+json.dump({
+    "hookSpecificOutput": {
+        "hookEventName": "PermissionRequest",
+        "decision":       dec,
+    },
+}, sys.stdout)
 PY
 )"
 
