@@ -4,6 +4,7 @@
 |---|---|---|---|
 | [`PRD-gosleep-evolution.md`](./PRD-gosleep-evolution.md) | Initiative (Phases 1-6, historical monolith) | Draft — 2026-07-08 | "Orchestrator that lets the owner sleep": watchdog → self-pulse/night → question-buffer/manifest/digest → laboratory → UI → mobile. Phases 1-6 retained in Russian as archive. |
 | [`01-phase7-interactive-control-plane.md`](./01-phase7-interactive-control-plane.md) | Per-phase PRD (Phase 7) | Draft — 2026-08-07 | Live web control plane at `http://127.0.0.1:7331` (SQLite = source of truth, gosleep-core on Bun+Hono, React+Vite+shadcn client). Supersedes Phase 5 (owner decision `d-2026-08-03-004`). Epic [GSL-250](https://ainstance-labs.atlassian.net/browse/GSL-250). |
+| [`02-phase8-skills-management.md`](./02-phase8-skills-management.md) | Per-phase PRD (Phase 8) | Draft — 2026-08-10 | Skills management system — development in `skill/<name>/`, publish by owner via one button. Four-layer defense (CLAUDE.md rule, `publish.sh` owner check, production test-guard, `install.sh` guard). Governance-plan source is `docs/plans/skills-governance-plan.md` (Russian, superseded as spec by this PRD). Epic [GSL-174](https://ainstance-labs.atlassian.net/browse/GSL-174). |
 
 ## Convention — per-phase PRD files (owner rule, 2026-08-07)
 

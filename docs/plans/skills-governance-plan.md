@@ -1,7 +1,12 @@
 # План: система работы со скиллами — репозиторий развивает, владелец публикует
 
-**Статус: ПРЕДЛОЖЕНИЕ на согласование владельцу (2026-08-03).** План описывает будущий
-процесс. Ничего из перечисленного не выполняется до команды владельца.
+**Статус: ПРЕДЛОЖЕНИЕ на согласование владельцу (2026-08-03) — согласовано владельцем
+2026-08-03 (`d-2026-08-03-003`).** План описывает будущий процесс.
+
+> **English spec now lives at `docs/prd/02-phase8-skills-management.md`** (owner language rule
+> 2026-08-07). This Russian document stays as a historical design reference; the English PRD
+> is the working spec that maps the plan to Jira keys and code contact points. Epic
+> [GSL-174](https://ainstance-labs.atlassian.net/browse/GSL-174).
 
 ## 0. Терминология
 
