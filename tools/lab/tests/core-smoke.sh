@@ -342,15 +342,29 @@ check_status "24. POST /internal/agents/tool-observed (missing session_id)" "400
 
 # 25. POST /internal/agents/tool-observed with valid secret + valid body → 200
 #     The write is queued (1 s debounce); we only prove the endpoint accepts the shape.
+OBS_SID="smoke-sid-obs-$(date +%s)"
 OBS_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
   -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
   -H "X-Internal-Secret: $INTERNAL_SECRET" -H "Content-Type: application/json" \
-  -d '{"session_id":"smoke-sid","tool":"Read","ts":"2026-08-07T00:00:00Z","context_pct":42}' \
+  -d "{\"session_id\":\"$OBS_SID\",\"tool\":\"Read\",\"ts\":\"2026-08-07T00:00:00Z\",\"context_pct\":42}" \
   "http://127.0.0.1:$PORT/internal/agents/tool-observed")"
 if [ "$OBS_STATUS" = "200" ]; then
   ok "25. POST /internal/agents/tool-observed (valid) → 200"
 else
   bad "25. POST /internal/agents/tool-observed (valid) → $OBS_STATUS"
+fi
+
+# 25b. GSL-301 regression: wait past the 1 s debounce and assert the row PERSISTED via a
+#      direct DB query. The prior implementation silently dropped the INSERT for a fresh
+#      session_id (Bun's `db.query().get()` returns `null`, not `undefined`, so the branch
+#      selector took the UPDATE path and UPDATE'd 0 rows). This scenario catches that class
+#      of regression without needing the /fleet projection layer.
+sleep 2
+OBS_DB_ROW="$(sqlite3 "$SCRATCH_DB" "SELECT current_tool || '|' || context_pct FROM agent_sessions WHERE session_id='$OBS_SID'" 2>/dev/null || echo "")"
+if [ "$OBS_DB_ROW" = "Read|42" ]; then
+  ok "25b. tool-observed row persisted (current_tool=Read, context_pct=42) — GSL-301 regression"
+else
+  bad "25b. tool-observed row missing (got '$OBS_DB_ROW') — GSL-301 regression: flush dropped the INSERT"
 fi
 
 echo "== /metrics scenarios (GSL-280) =="

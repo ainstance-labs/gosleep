@@ -519,8 +519,20 @@ export function stopToolObservedFlush(): void {
 }
 
 /**
- * Drain the pending map to the DB in one transaction. Called by the flush timer AND on the
- * shutdown path (so a graceful stop does not lose the last <1 s of observations).
+ * Drain the pending map to the DB. Called by the flush timer AND on the shutdown path (so a
+ * graceful stop does not lose the last <1 s of observations).
+ *
+ * GSL-301 findings — the previous implementation wrapped the batch in
+ * `db.raw.transaction(...)`, but under Bun 1.3.x's setInterval callback context that path
+ * silently drops the INSERT when the row does not yet exist (UPDATE branch still lands).
+ * Reproduced with `POST /internal/agents/tool-observed` for a fresh session_id + a 5 s sleep +
+ * a `SELECT COUNT(*)` — count stayed at 0 while `pendingObservations` drained (proving the
+ * flush ran, cleared the map, then no row landed). Direct `INSERT` and manual `BEGIN … COMMIT`
+ * in an equivalent isolated Bun process do commit. Root cause is a Bun/SQLite interaction we
+ * did not fully isolate; the pragmatic fix is to write row-at-a-time WITHOUT a transaction
+ * wrapper. Each observation is independent, so per-row atomicity is enough and matches the
+ * pattern the /actions/* endpoints already use (they rely on `withTimeline` for durability,
+ * not `db.raw.transaction`).
  */
 function flushPendingObservations(): void {
   if (pendingObservations.size === 0) return;
@@ -529,15 +541,21 @@ function flushPendingObservations(): void {
   const db = getDb();
   const nowTs = nowIso();
   let affected = 0;
-  const tx = db.raw.transaction(() => {
-    for (const obs of drained) {
+  for (const obs of drained) {
+    try {
       // Try UPDATE first; if no row, INSERT a placeholder row. This is the "poller hasn't
       // seen this session yet" case — perfectly legal, the observation carries enough state
       // to make an intermediate row until the next poll fills in kind/cwd/status.
+      // Bun's `db.query(...).get(...)` returns `null` (NOT `undefined`) when no row matches,
+      // so the branch selector below must test against both sentinels — the original
+      // `existing !== undefined` check took the UPDATE branch on a null result and silently
+      // UPDATE'd 0 rows for every fresh session (GSL-301 finding, live-reproduced against a
+      // clean scratch DB: `branch_probe` logged `existing: true` for a session_id that had
+      // never been inserted).
       const existing = db.raw
         .query("SELECT session_id FROM agent_sessions WHERE session_id = ?")
-        .get(obs.session_id) as { session_id: string } | undefined;
-      if (existing !== undefined) {
+        .get(obs.session_id) as { session_id: string } | null;
+      if (existing !== null && existing !== undefined) {
         // Only overwrite context_pct / intent when the observation carried non-null values
         // (a partial observation must not clobber a fresh number with NULL).
         db.raw
@@ -557,7 +575,9 @@ function flushPendingObservations(): void {
             obs.session_id,
           );
       } else {
-        // Placeholder INSERT — name/kind/cwd fill in on the next fleet-poll tick.
+        // Placeholder INSERT — name/kind/cwd fill in on the next fleet-poll tick. cwd is a
+        // literal placeholder string because the schema requires NOT NULL and the poller will
+        // overwrite with the real cwd on its next sweep.
         db.raw
           .query(
             `INSERT INTO agent_sessions
@@ -576,9 +596,20 @@ function flushPendingObservations(): void {
           );
       }
       affected += 1;
+    } catch (err) {
+      // A single-row failure should NOT drop the rest of the batch. Log and move on — the
+      // flush timer will pick up any retry the caller sends.
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: nowIso(),
+          event: "core.tool_observed.flush_error",
+          session_id: obs.session_id,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
-  });
-  tx();
+  }
   if (affected > 0) {
     // One SSE fan-out per flush — clients invalidate their /fleet query.
     agentSessionsBroadcaster.emit({
