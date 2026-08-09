@@ -1,0 +1,3 @@
+qid                         status    answer_text  applied_by  applied                                                         answered_at             
+--------------------------  --------  -----------  ----------  --------------------------------------------------------------  ------------------------
+p-20260809-201659-6ae33310  answered  deny         owner       GSL-300 deny lane: destructive command — declined by owner-web  2026-08-09T20:17:01.394Z
