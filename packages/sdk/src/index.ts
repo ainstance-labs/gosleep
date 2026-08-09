@@ -31,6 +31,7 @@ import {
   ResolveActionInput,
   ResolveActionResponse,
   SkillsResponse,
+  SkillDiffResponse,
   SnapshotActionInput,
   SnapshotActionResponse,
   SseEventData,
@@ -64,6 +65,7 @@ import type {
   ResolveActionInput as ResolveActionInputT,
   ResolveActionResponse as ResolveActionResponseT,
   SkillsResponse as SkillsResponseT,
+  SkillDiffResponse as SkillDiffResponseT,
   SnapshotActionInput as SnapshotActionInputT,
   SnapshotActionResponse as SnapshotActionResponseT,
   SseEventData as SseEventDataT,
@@ -198,6 +200,10 @@ export class CoreClient {
   }
   skills(): Promise<SkillsResponseT> {
     return this.get("/skills", SkillsResponse);
+  }
+  // T6 (GSL-255) — full diff dump for the Skills-screen details drawer.
+  skillDiff(name: string): Promise<SkillDiffResponseT> {
+    return this.get(`/skills/${encodeURIComponent(name)}/diff`, SkillDiffResponse);
   }
   timeline(params?: {
     limit?: number;
@@ -593,6 +599,7 @@ export type {
   ResolveActionInputT as ResolveActionInput,
   ResolveActionResponseT as ResolveActionResponse,
   SkillsResponseT as SkillsResponse,
+  SkillDiffResponseT as SkillDiffResponse,
   SnapshotActionInputT as SnapshotActionInput,
   SnapshotActionResponseT as SnapshotActionResponse,
   SseEventDataT as SseEventData,

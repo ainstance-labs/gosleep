@@ -114,6 +114,13 @@ export const SkillRow = z.object({
   last_published_at: IsoTimestamp.nullable().optional(),
   last_published_by: z.string().nullable().optional(),
   changelog: z.unknown(),
+  // T6 (GSL-255) — filesystem-derived enrichment. Optional for backwards compat with any
+  // consumer that pinned to an older schema version.
+  has_changes: z.boolean().optional(),
+  local_exists: z.boolean().optional(),
+  prod_exists: z.boolean().optional(),
+  hash_local: z.string().optional(),
+  hash_prod: z.string().optional(),
 });
 export type SkillRow = z.infer<typeof SkillRow>;
 
@@ -122,6 +129,22 @@ export const SkillsResponse = z.object({
   count: z.number().int(),
 });
 export type SkillsResponse = z.infer<typeof SkillsResponse>;
+
+// T6 (GSL-255) — GET /skills/:name/diff full drawer payload.
+export const SkillDiffResponse = z.object({
+  name: z.string(),
+  hasChanges: z.boolean(),
+  diffText: z.string(),
+  diffBytes: z.number().int(),
+  truncated: z.boolean(),
+  hashLocal: z.string(),
+  hashProd: z.string(),
+  localExists: z.boolean(),
+  prodExists: z.boolean(),
+  computedAt: IsoTimestamp,
+  changelog: z.unknown(),
+});
+export type SkillDiffResponse = z.infer<typeof SkillDiffResponse>;
 
 // -----------------------------------------------------------------------------
 // tasks (GET /tasks, GET /bundle.tasks)
