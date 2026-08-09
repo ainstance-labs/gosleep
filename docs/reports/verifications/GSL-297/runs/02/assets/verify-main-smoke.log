@@ -1,0 +1,994 @@
+== static gates ==
+  PASS: bash -n (syntax)
+  PASS: 0-LLM (C1): no headless claude calls
+== emit: DECISION (id, status, auto deadline) ==
+  PASS: id format (q-2026-08-09-001)
+  PASS: record fields + auto_apply_at default
+== dedup: same (task, question) -> seen_by patch ==
+  PASS: dedup returns DUPLICATE q-2026-08-09-001
+  PASS: patch appended, no 2nd question
+  PASS: seen_by folded to 2 actors
+== per-type statuses ==
+  PASS: list --count (CLARIFY/FYI not open; lines= census)
+  PASS: CLARIFY -> answered-by-default
+  PASS: FYI -> noted
+== validation ==
+  PASS: DECISION w/o default rejected
+  PASS: bad type rejected
+  PASS: answer to missing id rejected
+== typology guard: irreversible => BLOCKER (never decided by default) ==
+  PASS: DECISION reversibility=low rejected (=> BLOCKER)
+  PASS: CLARIFY reversibility=LOW rejected (case-insensitive)
+  PASS: DECISION w/o --reversibility rejected
+  PASS: bogus reversibility rejected
+  PASS: BLOCKER w/ --default rejected (no default, ever)
+  PASS: rejected questions wrote nothing
+== answer patches (a human act is an answer, never an auto-resolve) ==
+  PASS: answer appended
+  PASS: BLOCKER remediated by owner -> answered
+  PASS: open drained after patches
+  PASS: answer provenance folded
+== --due (expired DECISION deadline) ==
+  PASS: --due surfaces expired DECISION
+  PASS: --due excludes future deadline
+  PASS: resolve (deadline hit -> default applied)
+  PASS: auto-resolved record leaves --due
+== deadline clamp: no default ever applies before 10:00 local (M4) ==
+  PASS: 23:xx DECISION deadline clamped to 10:00 local (not 01:xx, mid-night)
+== decision log (GSL-77) ==
+  PASS: decision id (d-2026-08-09-001)
+  PASS: decision pulls queue context via --re
+  PASS: orchestrator decision w/o --rule rejected
+  PASS: owner decision w/o rule accepted
+== learning loop: candidates (GSL-77) ==
+  PASS: 3× same shape+answer -> candidate
+  PASS: --min respected
+  PASS: candidates --json (shape folds across tasks/#refs)
+== semantic events (GSL-84) ==
+  PASS: question -> question.posed (auto-mirrored)
+  PASS: dedup    -> question.deduped
+  PASS: answer   -> question.answered
+  PASS: resolve -> question.auto_resolved (decided FOR the owner)
+  PASS: decision -> decision.made
+  PASS: event prints the allocated seq (17)
+  PASS: event envelope: src=emit + actor + task + data
+  PASS: typo'd semantic type rejected (an event nobody reads is worse than an error)
+  PASS: event --data-json
+  PASS: help lists the event subcommand
+  PASS: every event line is valid JSON
+  PASS: seq monotonic 1..N across BOTH writers (one allocator)
+== append-only discipline ==
+  PASS: first line never rewritten
+  PASS: locks released
+  PASS: events lock released
+== write discipline under concurrency (GSL-85) ==
+  PASS: 20 concurrent writers -> exactly 20 lines (none lost)
+  PASS: 20 concurrent writers -> no torn line (all valid JSON)
+  PASS: seq unique under concurrency (lock holds)
+  PASS: lab-write writes
+  PASS: atomic: rewrite REPLACES the file (inode 93035787 -> 93035790), never truncates in place
+  PASS: 60 rewrites under a concurrent reader -> 0 torn reads
+  PASS: --json refuses to publish invalid JSON
+  PASS: no temp files left behind
+  PASS: kill -9 mid-write -> target is the WHOLE old file or the WHOLE new one (22 B), never a prefix
+  PASS: the next write sweeps a killed writer's leftover temp
+== chronicler: the T3 regenerator (GSL-86) ==
+  PASS: chronicler.sh: bash -n
+  PASS: chronicler.py: parses
+  PASS: C1/F4-S4: zero API keys in the chronicler
+  PASS: C3/F4-S4: claude -p is bounded (--max-budget-usd) and toolless (--allowedTools empty)
+  PASS: C5: no tmux/spawn — it cannot hold a pane slot
+  PASS: C5-narrow: data.raw.teammate_name (a read-only log key) passes
+  PASS: C5-narrow: the exemption is not a doorway — 'teammate.spawned' still fails
+  PASS: C5-narrow: a bare 'teammate' still fails — only the compound key is exempt
+  PASS: --dry-run writes nothing
+  PASS: status.json is valid JSON
+  PASS: status.json carries generated_at
+  PASS: F4-S3: 20h-old events -> status.json grades itself DEAD
+  FAIL: F4-S3: site/index.html hides its staleness
+  FAIL: F4-S3: site/index.html bakes its verdict prose (a DEAD banner over 'Live' text)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+  FAIL: F4-S3: site/timeline.html hides its staleness
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+  FAIL: F4-S3: site/timeline.html bakes its verdict prose (a DEAD banner over 'Live' text)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+  FAIL: F4-S3: site/library.html hides its staleness
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+  FAIL: F4-S3: site/library.html bakes its verdict prose (a DEAD banner over 'Live' text)
+  FAIL: F4-S3: the page contradicts itself — DEAD banner, 'Live' prose
+  FAIL: F4-S3: the JS re-grades the banner but leaves the prose frozen at build time
+  FAIL: page has no generated_at
+  FAIL: F4-S3: page cannot re-grade itself (no id="staleness")
+  FAIL: F4-S3: page cannot re-grade itself (no data-generated-at)
+  FAIL: F4-S3: page cannot re-grade itself (no data-event-age-s)
+  FAIL: F4-S3: page cannot re-grade itself (no <script>)
+  FAIL: F4-S3: the verdict freezes at build time
+  PASS: site/ is self-contained (no CDN/font/script fetches)
+  FAIL: ⭐ GSL-109: a grade rule bleeds across grades — got [fresh=NONE stale=NONE dead=NONE]
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+  FAIL: the timeline renders no event details at all — every 'superseded event is gone' test above is vacuous
+  PASS: GSL-92: render_bundle.json is valid and carries its schema
+  PASS: GSL-99: the bundle carries self_health (mandatory in render/7 — a rotting alarm is no alarm)
+  FAIL: GSL-92: status.json does not record the render outcome (ui.ok=false)
+  PASS: GSL-92: the renderer touches no file — Python writes every page through lab-write.sh
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-92: the baseline build rendered nothing
+  PASS: GSL-92: no node -> the chronicler still exits ok (degraded, never fatal)
+  PASS: GSL-92: the reason is named (no-node), not swallowed
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-92: a page that could not be rebuilt does not say so (a false-fresh page is the failure)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-92: the degrade path destroyed the pages it could not rebuild
+  PASS: GSL-92: the DATA layer is unaffected by a missing node (status.json still regenerated)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-nonode/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-92: the degrade banner outlived the degradation
+  PASS: GSL-92: a never-built clone gets an honest placeholder naming the fix, not a 404
+  FAIL: GSL-93/R5.2: a screen listed in the nav was never built
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-93: the nav points at a page that does not exist
+  PASS: GSL-93: the bundle carries all seven domains (events/queue/tasks/fleet/cost/library/decisions)
+  PASS: GSL-93: no heartbeat -> the worker count is null (unknown), not 0
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-93: the Fleet screen invented a number it does not have
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-93: the Fleet screen hides what it cannot see
+  PASS: GSL-221: unset env -> the 16,000,000/night default (mode=default), never a null nobody chose
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-221: the Cost screen does not say what the ceiling is per
+  PASS: GSL-93/221: a ceiling IS honoured when one is supplied (GOSLEEP_TOKEN_CEILING, mode=env)
+  PASS: GSL-98: three named sessions -> three worker cards (the fourth is nameless and gets none)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-98: the card does not render the age element — the headline field of the screen is missing
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html'
+  FAIL: GSL-98 ⭐ an age on Fleet is frozen at build time — tickAges cannot select it ()
+  PASS: GSL-98: the Fleet prose check can SEE both doubled suffixes ('silent for 12m old', '12m old ago') — positive control
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html'
+  PASS: GSL-98: no doubled temporal suffix on Fleet — the labels are noun phrases and the age says 'old' once
+  PASS: GSL-98: 3h of silence + no pane.ended -> state=silent
+  PASS: GSL-98: a worker heard from 2m ago -> state=active (the positive control)
+  PASS: GSL-98: pane.ended -> state=ended (the one end-of-life the log actually knows)
+  PASS: GSL-98: no card ever says 'dead' — a thinking worker and a killed one are both just silent
+  PASS: GSL-98: the model is read from the session transcript (the same source an audit reads)
+  PASS: GSL-98: both self-reported models ARE in the fixture log (so the absence-greps below mean something)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  PASS: GSL-98 ⭐ neither self-report is on the page (both workers lied; the card ignored both)
+  PASS: GSL-98 ⭐ no transcript -> model is unknown, even though the worker offered one
+  PASS: GSL-98: a mid-session model switch is kept, not averaged away
+  PASS: GSL-98: every card reads pane=unknown and carries the reason (no hook emits one)
+  PASS: GSL-98: tokens join onto the card by worker name (alpha=1000 from the ledger)
+  PASS: GSL-98: a card with no ledger line reads unknown — a failed join, never a free worker
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-98: the ledger's unmatched names are silently dropped
+  PASS: GSL-98: a session the log cannot name is counted (no card, but not swept under the rug)
+  PASS: GSL-98: per-model rollup sums the ledger by model (opus: 1000+2000)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-98: a cycle with an unreadable token field was silently dropped from the rollup
+  PASS: GSL-98: the trap is armed — the ledger counts 9 cycles and carries per-cycle rows for 4
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-98 ⭐ Cost still prints two different numbers under one label, with the gap named nowhere
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html'
+  FAIL: GSL-98: the gap is counted but its direction is not stated, so a reader cannot tell which way to distrust the table
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-98: the quota section is empty and cannot say where it looked
+  PASS: GSL-93: an offset timestamp is normalised to UTC Z before anything compares it
+  PASS: GSL-93: the NEWEST status wins across mixed timestamp formats (the offset one really is later)
+  PASS: GSL-93: the Tasks board knows the AGE of its statuses (a board is only as true as its last poll)
+  PASS: GSL-192: the tile is max(running_total), never the file's last line (9000, not 8000)
+  PASS: GSL-192: the bundle's rows are sorted by cycle (7,8,9 out of a 7,9,8 ledger)
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/cost-order/docs/lab/site/cost.html'
+  FAIL: GSL-192: the rendered per-cycle table is out of cycle order (got: nothing)
+  PASS: GSL-192: tile >= max running_total of its own table — the headline cannot be refuted by the rows under it
+  PASS: F5-S1: an open BLOCKER drives the runway to 0h and NAMES itself as the binding axis
+  PASS: F5-S1: the trace explains WHY a BLOCKER stops the night (no default, no timer)
+== GSL-226: the BLOCKER render branch on real data ==
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/rw-blocker/docs/lab/site/questions.html: No such file or directory
+  FAIL: GSL-226 ⭐ the BLOCKER did not reach the Blocking-you section of questions.html
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/rw-blocker/docs/lab/site/questions.html: No such file or directory
+  FAIL: GSL-226: the BLOCKER card is missing its tag class or its no-default explanation
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/rw-blocker/docs/lab/site/questions.html: No such file or directory
+  FAIL: GSL-226 ⭐ .tag.BLOCKER has no colour rule on the rendered page
+  FAIL: GSL-226: the BLOCKER never reached the Overview's Waiting-for-you block
+  PASS: GSL-226: the morning digest lists the BLOCKER first, with the '!' mark (section 1)
+  PASS: F5-S1: an armed quota window binds the runway and is named
+  PASS: F5-S1: the quota clock reads ~4h — the ETA, not a guess (got 4.0h)
+  PASS: F5-S1: the runway carries the reset ETA itself, not just the hours
+  PASS: F5-S1: the token budget binds when a ceiling exists and the burn rate is measurable
+  PASS: F5-S1: the budget clock reads ~1h (100k left, ~100k/cycle, 1 cycle/h) — got 1.0h
+  PASS: F5-S1: context at/over the ceiling reads as EXHAUSTED
+  PASS: F5-S1: a DEGRADING clock at 0h does not drive the headline — a forced roll is not a reason to wake you
+  PASS: F5-S1: ...and the roll is still SHOWN as the next event — excluded from the headline, never hidden
+  PASS: F5-S1: no heartbeat (so no burn rate) -> the runway says 'unknown', not a comfortable number
+  PASS: F5-S1: the unreadable stopping clocks are NAMED, not silently dropped
+  FAIL: F5-S1: the page rendered an absence of evidence as evidence of absence
+  FAIL: ⭐ GSL-109: 'I cannot see' was painted as 'it is getting late'
+  PASS: F5-S1: a counting clock + an unreadable one = an UPPER bound (≤), never an estimate (≈)
+  FAIL: F5-S1: the page presented an upper bound as an estimate
+  PASS: F5-S1: every stopping clock readable, none counting -> 'clear' (evidence of absence, not absence of evidence)
+  PASS: F5-S1: a ledger that is not growing is 'clear' (not spending), never 'unknown' (cannot read)
+  PASS: F5-S1: a distant-but-real ceiling gives an EXACT runway, not a shrug
+  PASS: F5-S1: all seven clocks are always reported — a missing source produces 'unknown', not a gap
+  PASS: F5-S1: the reasoning trace carries one line per axis (evidence, not vibes — R5.1)
+== GSL-224: overdue DECISIONs + unarmed mechanisms ==
+  PASS: GSL-224: overdue DECISION + live pulse -> clear WITH the caveat (the orchestrator can still act)
+  PASS: GSL-224: a live pulse keeps the decisions clock off the headline
+  PASS: GSL-224 ⭐ overdue DECISION + stale pulse -> 0h and BINDS: a stopper wearing a timer's clothes
+  PASS: GSL-224: the trace names the reason — the pulse is stale, nothing alive applies defaults
+  PASS: GSL-224: overdue DECISION + unreadable pulse -> unknown, NAMED in unknown_axes (bounds the answer)
+  PASS: GSL-224 ⭐ over the ceiling with NO armed watchdog -> unknown WITH the reason, never a promised roll
+== GSL-225: supervision trace archived before truncation ==
+  PASS: GSL-225: first pass archives every live line (2 pulses + 1 ledger line) into docs/lab/supervision/
+  PASS: GSL-225 ⭐ after the live file truncated, the dropped pulse SURVIVES in the archive (3 lines, oldest first)
+  PASS: GSL-225: a third pass adds nothing — the archive is idempotent (dedup by exact line)
+  PASS: GSL-225: docs/lab/supervision/ is tracked by git — the supervision trace finally has history
+== GSL-221: token ceiling — default / override / unlimited (d-2026-07-28-007) ==
+  PASS: GSL-221: first build of the day anchors night spend at the ledger total (spend 0, base 1,000,000)
+  PASS: GSL-221: the second pass keeps the day's anchor — night spend 250,000, not re-zeroed
+  PASS: GSL-221 ⭐ GOSLEEP_TOKEN_CEILING=unlimited -> mode=unlimited, ceiling null by CHOICE, not by absence
+  PASS: GSL-221 ⭐ the budget clock reads CLEAR in unlimited mode — never unknown, never an alarm
+  PASS: GSL-221 ⭐ an unlimited night with no blocker reads RUNWAY clear — the mode is first-class end to end
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/rw-ceiling-unlimited/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-221: the Cost screen hides or alarms on unlimited
+  PASS: GSL-221: the morning digest says 'unlimited' in the money section, as a choice
+  PASS: GSL-221 ⭐ a synthetic excess drives the budget clock to 0h and binds the runway (finding 58 armed)
+  PASS: GSL-221: the exhausted clock names BUDGET_EXCEEDED (manifest section 3.budget), not a vague warning
+  PASS: GSL-221: used_pct is of TONIGHT's ceiling (200%), not of all history
+  PASS: GSL-221: a misconfigured value falls back to the default ceiling — never to unlimited
+  PASS: GSL-221: the fallback is LOUD — the misconfiguration lands in degraded[], on the record
+== GSL-222: autonomy metric 1 − asks/shipped (rolling 7d) ==
+  PASS: GSL-222 ⭐ 1 ask over 2 shipped (GSL-901 Done twice counts ONCE) -> 0.5 in status.json
+  PASS: GSL-222: the honest frame travels with the number in status.json (not_claimed, 4+ items)
+  PASS: GSL-222: the digest prints the metric AND its frame side by side (section 5)
+  PASS: GSL-222 ⭐ zero shipped -> value null + why_unknown — unmeasured, not a fake 1.0/0.0
+  PASS: C8: superseded event folded out of the counts (3 lines -> 2 events)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/timeline.html: No such file or directory
+  PASS: C8: superseded event is not shown on the timeline
+  PASS: morning digest has all 7 canonical sections
+  PASS: digest states its own staleness
+  PASS: retention: a 45-day-old event log is pruned
+  PASS: retention: today's log is untouched
+  PASS: missing sources -> still exits ok (degraded, not dead)
+  PASS: the missing sources are reported, not swallowed
+  FAIL: the page hides its blind spots
+  PASS: C3: the default pass is 0-LLM (narrator is --narrate opt-in)
+  PASS: a non-empty queue is folded into status.json (JSONL, not an array)
+  FAIL: the dashboard swallowed the question
+  PASS: the open question leads section 1 of the digest
+  PASS: GSL-191: archived == closed (3 of 3) — the archive keeps every closed question
+  PASS: GSL-191: all three closing paths (answered / auto-resolved / answered-by-default) are IN the archive
+  PASS: a day with no activity produces no digest
+== poll-fill: reconcile-don't-trust (GSL-87) ==
+  PASS: poll-fill.sh: bash -n
+  PASS: poll-fill.py: parses
+  PASS: C1: zero API keys in poll-fill
+  PASS: poll-fill is 0-LLM (pure reconcile)
+  PASS: poll-fill writes only through lab-log.sh (the one writer)
+  PASS: --dry-run writes nothing
+  PASS: R4.2 acceptance: a PR merged outside the CLI reaches the timeline
+  PASS: reconciled events are tagged src=poll-fill, never src=hook:*
+  PASS: each backfilled event carries data.occurred_at (since GSL-89 also its ts; logged_at = when we learned it)
+== GSL-223: poll-fill auto-detects the cycle-boundary Jira dump ==
+  PASS: GSL-223 ⭐ the dump is found with NO flag, and the report names the feed AND its age
+  PASS: GSL-223: both dumped issues reached the timeline as tracker.issue.updated, src=poll-fill
+  PASS: GSL-223: a second pass over the same dump adds zero lines (idempotent — the GSL-87 criterion holds)
+  PASS: GSL-223: an explicit --jira-json wins over the scratch dump (a flag is a decision)
+  PASS: idempotent: a second pass adds 0 lines (65 -> 65)
+  PASS: a commit the hook already logged is not re-logged (dedup across producers)
+  PASS: pre-history is counted, not silently dropped
+  PASS: a Jira feed that is absent is reported as skipped, not passed off as clean
+  PASS: an unreachable source is never counted as checked
+  PASS: a supplied Jira feed lands as tracker.issue.updated (a state, not a claimed transition)
+  PASS: chronicler runs poll-fill as step 0 (a gap is reconciled and rendered in one pass)
+  PASS: status.json separates reconciled facts from hook-witnessed ones (by_src)
+== lab-log --ts / --supersedes: a backfill lands where it HAPPENED (GSL-89) ==
+  PASS: lab-log.sh: bash -n (the writer every hook calls)
+  PASS: no --ts: ts = now, no logged_at (nothing was learned late)
+  PASS: --ts = when it happened, logged_at = when we learned it, --supersedes qualified by day
+  PASS: --ts back-dates the event, never the FILE (no past day reopened)
+  PASS: offset forms (+02:00, +0300 w/ millis) normalize to one UTC instant
+  PASS: --ts garbage -> loud failure
+  PASS: --supersedes garbage -> loud failure
+== lab-log: the hook fires on the COMMAND, not on its SUCCESS (REVIEW-gsl81 C1) ==
+  PASS: C1: failed commit, hour-old HEAD -> sha-less line (no stale sha laundered)
+  PASS: C1: failed commit right after a real one -> sha-less (HEAD must be its OWN, not just fresh)
+  PASS: GSL-83 preserved: a REAL quiet commit still recovers its sha (cf2841b)
+  PASS: the message is read from -am too (a cluster is still the subject git got)
+  PASS: m1: [deadbee 1a2b3c4] -> the sha (1a2b3c4), not the hex-looking branch
+  PASS: m1: the root-commit echo still parses ([main (root-commit) 9fceb02])
+== fold: a cross-day correction retires the right line — and ONLY it (GSL-89) ==
+  PASS: both forms fold: 4 commit lines -> 2 events (cross-day AND same-day)
+  PASS: the bystander holding the same seq in another file SURVIVES
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fold-repo/docs/lab/site/timeline.html: No such file or directory
+  PASS: cross-day: the retired line is gone
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fold-repo/docs/lab/site/timeline.html: No such file or directory
+  PASS: same-day (bare seq) fold still works
+  PASS: a back-dated line sits in today's FILE but not in today's COUNT (a day is keyed on ts)
+  PASS: poll-fill backfills at occurred_at, and still records when it learned it
+== GSL-95 / F5-S2: the deadline countdown re-grades when the page is opened ==
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s2/docs/lab/site/questions.html'
+  FAIL: F5-S2: an expired deadline does not say so at build time ()
+  FAIL: F5-S2: expired deadline carries no .past-due class ()
+  FAIL: F5-S2: the countdown prose is not 'auto-applies in Xh Ym' ()
+  FAIL: F5-S2: a live deadline is dressed as overdue ()
+  FAIL: F5-S2: a DECISION without a deadline renders no explanation (0h 0m by omission)
+  FAIL: F5-S2: countdown count wrong () — a deadline was invented or dropped
+  FAIL: F5-S2 ⭐ the countdown is FROZEN at build time — a page opened at 04:00 still promises the 2h it had at 23:00 (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s2/docs/lab/site/questions.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/regrade.mjs:3:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s2/docs/lab/site/questions.html'
+}
+
+Node.js v24.13.1)
+  FAIL: F5-S2: a slow browser clock lengthened the countdown — the page argued itself out of a deadline (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s2/docs/lab/site/questions.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/regrade.mjs:3:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s2/docs/lab/site/questions.html'
+}
+
+Node.js v24.13.1)
+  PASS: F5-S3: a merged epic rolls up the tasks its merge commit carried (mc^1..mc^2)
+  PASS: F5-S3: an epic in flight rolls up the branch the trunk does not carry yet
+  PASS: F5-S3: the epic shows its PR and the PR's state
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+  FAIL: F5-S3: the PR-less epic either stays silent or invented a pull-request link ()
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+  FAIL: F5-S3 ⭐ the board INFERRED a status from a commit — the tasty-lunch default ()
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html: No such file or directory
+  FAIL: F5-S3: the GH column is missing, or it invented an issue number for GSL-702
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+  FAIL: F5-S3: the rollup links to a task row that is not on the page ()
+  FAIL: F5-S3: the build-time status age is wrong ()
+  FAIL: F5-S3 ⭐ the status age is FROZEN at build time — a page read at 04:00 still calls a stale poll fresh (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/ages.mjs:3:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+}
+
+Node.js v24.13.1)
+  FAIL: F5-S3: a slow browser clock SHRANK the age — the page argued itself back to freshness (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/ages.mjs:3:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html'
+}
+
+Node.js v24.13.1)
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+  FAIL: GSL-97: the island and the rendered table disagree, or a facet is missing ()
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+  FAIL: GSL-97 ⭐ the incident marker is missing from the build-time markup ()
+  FAIL: GSL-97 ⭐ an unclassified event type was coloured as routine ()
+  PASS: GSL-97 ⭐ every event type the emitters can write is graded in severity.ts (no silent lag)
+Traceback (most recent call last):
+  File "<stdin>", line 3, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+  FAIL: GSL-97: a provenance class is missing from the feed — the three kinds of true look alike ()
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+  FAIL: GSL-97: the no-JS page is not the whole list, or it offers a control that cannot work ()
+  FAIL: GSL-97: the filter never came alive — its island, table or count element is not where it points (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/filters.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+}
+
+Node.js v24.13.1)
+  FAIL: GSL-97 ⭐ the filter did not narrow to the incident, or it hid rows without saying so (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/filters.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+}
+
+Node.js v24.13.1)
+  FAIL: GSL-97 ⭐⭐ the filter emptied the table SILENTLY — a forgotten filter now reads as a quiet night (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/filters.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+}
+
+Node.js v24.13.1)
+  FAIL: GSL-97: clear did not restore the full list (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/filters.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+}
+
+Node.js v24.13.1)
+  FAIL: GSL-97 ⭐ a row missing from the island was hidden — the filter subtracts rows it cannot classify (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/filters.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+}
+
+Node.js v24.13.1)
+  PASS: GSL-97: the cross-index covers reviews, research and the incident post-mortems (PRD R5.2)
+  PASS: GSL-97: an incident REPORT resolves to its index.html and is shelved once, under RCA
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/library.html'
+  FAIL: GSL-97: the Library links to something that is not there ()
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-97: a Library section does not say where it looked, so an empty one proves nothing
+  PASS: GSL-193: a verification run nested three levels down IS on the Reports shelf
+  PASS: GSL-193: an audit file inside a docs/reviews subdirectory IS on the Reviews shelf
+  PASS: GSL-193: the Skills shelf exists and lists the project's own skill/
+  PASS: GSL-193: every shelf's printed count equals what its printed glob found
+  FAIL: GSL-97 ⭐ the Library filter does not narrow, or hides artifacts without saying so (node:fs:439
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/library.html'
+    at readFileSync (node:fs:439:20)
+    at file:///Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/filters.mjs:7:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/library.html'
+}
+
+Node.js v24.13.1)
+  PASS: GSL-99 ⭐ the missing dev_history is named (GSL-502, GSL-503), not summed
+  PASS: GSL-99: the documented task IS counted as covered (the positive control — otherwise 'missing' is vacuous)
+  FAIL: GSL-99: the page does not print the names of the undocumented tasks
+  PASS: GSL-99: the fixture really does carry an uncommitted GSL-502 history (so the test below means something)
+  PASS: GSL-99 ⭐ an UNCOMMITTED dev_history does not count as coverage — and is listed as lost, not as done
+  FAIL: GSL-99 ⭐ an unattributable epic was scored as covered (state=unknown)
+  PASS: GSL-99 ⭐ no cycle boundary in the log -> handoff debt is unknown, even though a handoff exists
+  FAIL: GSL-99: an unknown handoff meter does not render as unknown
+  FAIL: GSL-99 ⭐ an empty log rendered as a fresh data age (CELL=absent)
+  FAIL: GSL-99 ⭐ the page does not carry two independently-sourced ages (gen=2026-08-09T21:26:43Z data=601)
+  PASS: GSL-99: the trap is armed — the state file is committed after the handoff AND a handoff.written event names it
+  PASS: GSL-99 ⭐ ORCHESTRATION-STATE.md is not a handoff — the live state file cannot fake freshness
+  FAIL: GSL-99 ⭐ the cycle-debt run is miscounted (got 3, want 3)
+  PASS: GSL-99: a handoff written and never committed is listed as LOST — not silently counted as written
+  FAIL: GSL-99 ⭐ a self-health meter cannot say where it looked
+  PASS: GSL-99: the prose check can actually SEE a doubled suffix across a tag boundary (positive control)
+  PASS: GSL-99: no page doubles the age suffix (the one prose defect 246 mechanism-tests could not see)
+  PASS: GSL-99: the trap is armed — the only handoff is committed AFTER the last cycle boundary (the order production always produces)
+  PASS: GSL-99 ⭐ a handoff committed after the last boundary documents the running cycle — no phantom debt, no false alarm
+  PASS: GSL-99: the trap is armed — four pane closes in the log, three of them seconds apart in one teardown
+  PASS: GSL-99 ⭐ four pane closes -> TWO cycle boundaries: the meter counts cycles, which is the word it prints
+  PASS: GSL-99 ⭐ the seconds-wide phantom cycles are gone, so the handoff that documented the cycle counts
+  FAIL: GSL-99 ⭐ the debounce is invisible on the page: a reader cannot tell panes from cycles
+  PASS: GSL-100: the nav-wrap detector rejects the pre-fix stylesheet (positive control)
+  PASS: GSL-100: the mono-wrap detector rejects the pre-fix stylesheet (positive control)
+  FAIL: GSL-100 ⭐ nav cannot wrap: at 390px the last links leave the viewport, unreachable
+  FAIL: GSL-100 ⭐ .mono lacks overflow-wrap: raw JSON clips mid-token and the reader loses text
+  PASS: GSL-124: the bare-ink detector rejects a composite-only stylesheet (positive control)
+  FAIL: GSL-124 ⭐ bare status classes still have no rule ( ok warn dead ): the warning is drawn as ordinary prose
+  PASS: GSL-121: the trap is armed — the fixture detail is 140 chars, past the 90 the view used to cut at
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f6-detail/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-121 ⭐ the detail cell is still truncated: everything past character 90 is absent from the DOM
+  FAIL: GSL-126: the build-instant banner age is wrong ()
+  FAIL: GSL-126 ⭐ the banner age is FROZEN inside the fresh window (still 7s at +20m): 
+  FAIL: GSL-126: the re-grade to dead broke ()
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+  FAIL: GSL-129: the bridge prints even with no live count — it is unconditional, so it proves nothing ()
+  FAIL: GSL-129 ⭐ the KPI and the cards stand adjacent with no reconciliation ()
+  PASS: GSL-115: the noscript detector rejects the pre-fix banner (positive control)
+  FAIL: GSL-115 ⭐ the banner has no <noscript>: with JS off the build-time 'Live … right now' stands unbounded
+== GSL-104 / F6-S1: Remote Control preflight — the phone path never reports better than it is ==
+  PASS: GSL-104: rc-preflight.sh present and executable
+  PASS: GSL-104: bash -n (syntax)
+  PASS: GSL-104: the SURFACE block really names the flag (positive control — the absence greps below are not vacuous)
+  PASS: GSL-104: the SURFACE block really names the actions-required key (positive control)
+  PASS: GSL-104: the hard-coding detector flags a file that pins the flag (positive control)
+  PASS: GSL-104 ⭐ an absent actions-required key reads as OFF and never yields a ready verdict
+  PASS: GSL-104 ⭐ an explicitly false toggle also blocks a ready verdict
+  PASS: GSL-104 ⭐ both toggles on yields ready — the check discriminates, it is not pinned to degraded
+  PASS: GSL-104 ⭐ the research-preview surface is named in tools/rc only — when Anthropic renames a flag, one block changes
+  PASS: GSL-104: the comment-stripper preserves real invocations (positive control — the two checks below still have input)
+  PASS: GSL-104 ⭐ 0-LLM (C1): preflight shells out to no model
+  PASS: GSL-104 ⭐ preflight only inspects (--version/--help): it reports on the phone path, never starts a session
+
+== GSL-108 / F5-S4c: the phone page — the one surface GitHub agrees to render ==
+  PASS: GSL-108: the phone page exists and carries its 7 sections (positive control — the checks below have input)
+  PASS: GSL-108 ⭐ the page is docs/lab/mobile/README.md — opening the directory renders it, and the URL carries no date
+  PASS: GSL-108 ⭐ the page carries THIS pass's generated_at — it is regenerated, not a document someone maintains
+  PASS: GSL-108 ⭐ no .html link on the phone page — every link resolves to something GitHub will render
+  PASS: GSL-108 ⭐ 'Latest decisions' lists the newest first — the caption and the list agree
+  PASS: GSL-108 ⭐ decisions print what was decided, not an id pointing at another id
+  PASS: GSL-108: the no-node fixture really did lose the renderer (control for the check below)
+  PASS: GSL-108 ⭐ with node gone the HTML degrades but the phone page is still written, and current
+  PASS: GSL-108 ⭐ and it SAYS the seven screens are stale — the reader is told which of the two they hold
+  PASS: GSL-113 ⭐ the grade is stamped 'at build' — the page says when its verdict was true, not that it is true now
+  PASS: GSL-113 ⭐ no 'X ago' on the phone page — the event age carries an absolute anchor instead
+  PASS: GSL-113: the page carries the caveat its HTML sibling carries four of — it warns it cannot re-grade itself
+  PASS: GSL-113 ⭐ it prints the absolute moment it turns DEAD (2026-08-10T00:26:52Z) — the reader compares it against the clock in his hand
+  PASS: GSL-113: the stale fixture really did grade stale (control — the guard check below has a subject)
+  PASS: GSL-113 ⭐ an already-STALE page prints only its DEAD moment — the grade may fall further, never recover
+
+== GSL-137 / F5-S4c: the phone projection speaks the redesign's language, within Markdown ==
+  PASS: GSL-137: the fixture built a page with a next runway event, known task states, a non-alarm question and six decisions (positive control — the checks below have input)
+  PASS: GSL-137 ⭐ the next runway event prints the absolute moment it is due (2026-08-09T21:27:05Z) — the reader compares it to the clock in his hand
+  PASS: GSL-137 ⭐ no relative 'in **N**' on the runway line — the deadline is an instant, not an offset from a NOW this file cannot read
+  PASS: GSL-137: the BLOCKER carries its alarm 🛑 (positive control — the discipline is not 'strip every icon')
+  PASS: GSL-137 ⭐ the DECISION waits without an icon — the emoji channel is reserved for the verdict that has one
+  PASS: GSL-137 ⭐ the decisions list names the two it did not show — the trim is declared, not silent
+  PASS: GSL-137 ⭐ the Tasks section is a table with a right-aligned count column — the number the reader scans is aligned to compare
+
+== GSL-107 / F6-S4: break-glass — the chain reports its WEAKEST link, not its best ==
+  PASS: GSL-107: bg-preflight.sh present and executable
+  PASS: GSL-107: bash -n (syntax)
+  PASS: GSL-107: a complete chain does yield ready (positive control — the not-ready checks below discriminate)
+  PASS: GSL-107 ⭐ tailnet up + mosh installed + NO ssh transport never reads ready — mosh would have nothing to bootstrap over
+  PASS: GSL-107 ⭐ an unreadable ssh-transport probe reads unknown and never yields ready — it is not rounded up
+  PASS: GSL-107 ⭐ Remote Login as the only transport is reported WITH its exposure (:22 on every interface)
+  PASS: GSL-107: the comment-stripper preserves the real tailscale invocations (positive control — the mutation greps below have input)
+  PASS: GSL-107: the mutation detector fires on a real `tailscale up` (positive control — the check below is not vacuous)
+  PASS: GSL-107 ⭐ preflight only inspects: it never brings up a VPN, opens sshd, or touches a pane
+  PASS: GSL-107 ⭐ 0-LLM (C1): preflight shells out to no model
+  PASS: GSL-107: the runbook is complete (8 sections — positive control for the content checks below)
+  PASS: GSL-107 ⭐ the runbook names `kill-pane -a` and forbids it outright
+  PASS: GSL-107 ⭐ the runbook explains WHY only %id is safe — positional addresses renumber under a phone-lag delay
+  PASS: GSL-107: the runbook really does spell out attach commands (3 — positive control for the check below)
+  PASS: GSL-107 ⭐ every copyable attach command carries -f ignore-size — a 4am attach cannot reshape the desktop fleet
+  PASS: GSL-107 ⭐ the runbook still states F6-S4 is NOT closed — a written path is not a proven one
+== GSL-110 / phase acceptance: a verdict table is only worth the runs behind it ==
+  PASS: GSL-110: the acceptance really does carry per-criterion rows (8 — positive control for the checks below)
+  PASS: GSL-110 ⭐ F6-S2 is still recorded as НЕ ДОСТАВЛЕН — an unwritten feature cannot be an accepted one
+  PASS: GSL-110 ⭐ F6-S3 is still recorded as НЕ ДОСТАВЛЕН — an unwritten feature cannot be an accepted one
+  PASS: GSL-110 ⭐ F6-S4 is still marked НЕ ПРОВЕРЕН — a written runbook is not an exercised path
+  PASS: GSL-110 ⭐ the acceptance still states the score plainly: 0 of 4 criteria closed
+  PASS: GSL-110 ⭐ the acceptance still distinguishes 'not verified' from 'not implemented' in words
+  PASS: GSL-110 ⭐ the positive controls are recorded — the empty greps are proven to be able to find things
+  PASS: GSL-110 ⭐ GSL-105 is still named as the binding constraint holding two of four criteria
+  PASS: GSL-110 ⭐ every landed Phase 6 task owns a dev_history file (6) — the GSL-103 hole stays closed
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t3-timeline/docs/lab/site/timeline.html'
+  FAIL: GSL-114 ⭐ a summary table is still bare in a card — its count column is unreachable on a phone ()
+  FAIL: GSL-114: the count column did not take the numeric column ()
+  FAIL: GSL-114 control: the feed-table wrapper probe failed, so the check above proves nothing ()
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t3-questions/docs/lab/site/questions.html'
+  FAIL: GSL-128 ⭐ an owner-answered question is filed away from its author, still under decided-without-you ()
+  FAIL: GSL-128 control: the without-you bucket lost the question that truly belongs to it ()
+
+== GSL-136 / T4: honest truncation in the DATA layer — Library files & titles, Cost cycles, PR de-dup ==
+  PASS: GSL-127 ⭐ the dev_history files count is what was FOUND (43), not the old 40-item cutoff
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-127 ⭐ the cross-index is missing dev_history rows past the cap (got 0, want 43)
+  PASS: GSL-127 control: a sub-cap shelf (handoffs, 4 files) reports exactly what is on disk — the metric reads reality, not a constant
+  PASS: GSL-131 ⭐ a 140-char heading is stored whole in the bundle — no 110-char mid-word cut in the data
+  PASS: GSL-131 control: a short heading is stored whole and unchanged (23 chars) — removing the cut lengthened nothing
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/library.html'
+  FAIL: GSL-123 ⭐ a titleless row is blank or the marker leaked (untitled-in-data=2, markers=)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-123 control: a filled title vanished from the page
+  PASS: GSL-123 ⭐ (built artifact) every cross-index row in docs/lab/site/library.html carries a title or the unknown marker — no blank cell shipped
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/cost.html: No such file or directory
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/cost.html'
+  FAIL: GSL-120 ⭐ the per-cycle table hides rows (rows=, data=45)
+  FAIL: GSL-120 control: the heading number () does not match the data (45)
+  PASS: GSL-130 ⭐ (root) a PR keyed in title AND branch lands on the row once, not twice — no #NN#NN in the data
+  PASS: GSL-130 control: the PR still reaches its row (#555 present) — de-dup removed the copy, not the link
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/cost.html: No such file or directory
+  PASS: GSL-132 ⭐ (Cost) the ceiling note states its reason once — the echoed lead is gone
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-132 control: the ceiling lead itself went missing
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/cost.html: No such file or directory
+  PASS: GSL-132 ⭐ (Cost) the quota note no longer echoes its lead
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-132 control: the quota lead itself went missing
+  FAIL: GSL-118 ⭐ the gauge neither misreads as 'N% of M%' nor spells '60% (rolls at 80%)' — it went missing
+  FAIL: GSL-118 control: the context gauge did not render (no 60%) — the ⭐ above proves nothing
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-122 ⭐ the caption neither says 'half' nor prints the computed 60% share — the sentence went missing or the share is wrong
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-122 control: the caption's tail sentence vanished from the page
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/tasks.html'
+  FAIL: GSL-132 ⭐ (Tasks) the 'Last polled' sentence did not render (got: )
+  FAIL: GSL-132 control: the 8d age went missing from the banner ()
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/t4-lib-cost/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-132 control: no data-age-suffix on the page — the first client repaint will undo the wording
+  PASS: GSL-132 ⭐ (two ages) max_event_age_s == generated_at − latest_event_ts even with slow collectors — one clock reading for the stamp and the age
+  PASS: GSL-132 control: the drift fixture still grades (fresh, age ≥ 40s) — the ⭐ compared two real numbers
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-146: .kpi span swallows span.unknown — an unknown KPI renders as two captions
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+  PASS: GSL-146: the worker-field grid retired with the card (GSL-207) — no generic label selector is left on Fleet to swallow span.unknown
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/chron-repo/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-146 control: no span.unknown on the fixture Fleet page — the checks above are vacuous
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-status-tones/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-147: Done renders neutral — the judgement channel is silent
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-status-tones/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-147: To Do renders neutral
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-status-tones/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-147: In Progress renders neutral
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-status-tones/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-147 control: an unlisted status was coloured, or the neutral chip form changed
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-status-tones/docs/lab/site/tasks.html: No such file or directory
+  PASS: GSL-147 guard: no bare .tag.info rule — sev=info on the timeline stays neutral (7.2 caveat)
+  PASS: GSL-148: doc_title decodes entities — the bundle carries the ampersand, not its encoding
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-amp/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-148: the once-escaped title form is missing from the built Library page
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/fw2-amp/docs/lab/site/library.html: No such file or directory
+  PASS: GSL-148: no double escape anywhere on the built Library page
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-timeline/docs/lab/site/timeline.html'
+  FAIL: GSL-149: severity options follow appearance order, not SEVERITIES ()
+  PASS: GSL-151: cost.tsx no longer references .wk-models — the borrowed name went home
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-151: no .partial-note cell on the fixture Cost page (its ledger has partial=1)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html: No such file or directory
+  PASS: GSL-151: no Cost markup wears the worker-card class (the shared stylesheet may define it)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/cost.html: No such file or directory
+  FAIL: GSL-151 control: .partial-note has no rule — a role class nobody paints
+  PASS: GSL-152: no runway.tsx comment sells the banned dashed edge as current behaviour
+  PASS: GSL-152 guard: the built stylesheet declares no dashed border (comments may mention the word)
+  FAIL: GSL-156: no span-scoped .unknown colour rule in the built stylesheet — the marker lost its ink or the scope
+  PASS: GSL-156: no bare .unknown rule — a container class cannot repaint its children
+  FAIL: GSL-156 control: no container carries class unknown on the fixture Overview — the guard is vacuous
+  FAIL: GSL-157: the dead-graded Freshness meter does not wear .sh-m.dead
+  PASS: GSL-157: Freshness no longer answers a read verdict with the cannot-read state
+  PASS: GSL-157 control: the fixture build really grades itself dead (status.json is the witness)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-158: the Tasks gh-column dash is not the muted absence glyph
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html: No such file or directory
+  PASS: GSL-158: no dim-painted absence dash remains on the board
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5s3/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-158 control: .muted has no rule on the built board — a role class nobody paints
+  FAIL: GSL-159: no ok-triple rule for the clear-state runway badge — it will ship half-painted
+  PASS: GSL-159 control: runway.tsx really emits class runway-bind ok on the clear branch (the rule has a customer)
+  PASS: GSL-160: fleet.tsx no longer marks up with .filter-count — the borrowed name went home
+  PASS: GSL-160: cost.tsx no longer marks up with .filter-count
+  PASS: GSL-160: the Cost gap-note keeps its data-cycle-gap contract on the new role class
+  PASS: GSL-160: questions.tsx no longer dresses the flag in the type badge's class (comments may name it in refusals — the grep holds the MARKUP form, the GSL-152 lesson)
+  PASS: GSL-160: the high-impact flag wears its own role class
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-160: no .scope-note caption on the fixture Fleet page (its workers exist, the caption must render)
+  FAIL: GSL-160 control: .scope-note has no rule — a role class nobody paints
+  FAIL: GSL-160 control: .tag.high-impact has no rule — the flag lost its colour in the rename
+  FAIL: GSL-160 control: the .filter-count rule vanished — the rename broke the live counter
+== GSL-205: one identifier -> link, on every screen ==
+  PASS: GSL-205: the bundle carries a jira_base — the view never spells the tracker's host itself
+  PASS: GSL-205: gh_base is read off the git remote, normalised (no .git suffix)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/questions.html: No such file or directory
+  FAIL: GSL-205: Timeline has no data-idlink anchor (its detail column went back to dead text)
+  FAIL: GSL-205: Questions has no data-idlink anchor (every queue item carries a key)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/questions.html: No such file or directory
+  FAIL: GSL-205: the queue item's key is not an anchor to its Jira issue
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-205: the sha detail on Timeline is not linked to its commit
+  PASS: GSL-205 control: a non-GitHub remote -> gh_base is null, not a guessed org
+  PASS: GSL-205 control: the absent base says WHY, the way every other absence on these screens does
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-nogh/docs/lab/site/timeline.html: No such file or directory
+  PASS: GSL-205 control: with no GitHub base the sha stays text (a wrong link is worse than none)
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-nogh/docs/lab/site/questions.html: No such file or directory
+  FAIL: GSL-205 control: the Jira link vanished because the GitHub base was absent
+== GSL-208: normalised paths, a view mode, and honest columns ==
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+  PASS: GSL-208: not one absolute /Users/ path survives into timeline.html
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-208: the in-repo path was not rewritten to a repo-relative one
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-208: a path under HOME but outside the repo was not shortened to ~/
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-208: no view-mode control on Timeline
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html'
+  FAIL: GSL-208: the view-mode index is incomplete or ordered by appearance
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-208: the always-empty summary column is still drawn with no explanation
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  PASS: GSL-208: the summary header is gone with its column, not left hanging over nothing
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-208: the key column lost its min-width class
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-208 control: .key-col is marked up but never painted
+== GSL-207: the hygiene fold, and the fleet as a table ==
+  FAIL: GSL-207: no fold on the self-health panel
+  FAIL: GSL-207: expected 3 verdict chips in the fold summary, found 0
+  PASS: GSL-207: on a fresh page the fold stays shut and the KPI tiles come up the screen
+  FAIL: GSL-207 ⭐ a dead page folded its own rot report away. That is the defect this panel exists to prevent.
+  FAIL: GSL-207 control: .sh-fold has no rule
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-207: Fleet is still a stack of cards
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-207: expected 3 worker rows on the fixture Fleet, found 0
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/f5-fleet/docs/lab/site/fleet.html: No such file or directory
+  FAIL: GSL-207: the silent worker lost its amber when the card became a row
+== GSL-206: the supervisor tile and the gates strip ==
+  PASS: GSL-206: with no launchd agent installed the supervisor reads NOT ARMED — a fact, not a shrug
+  PASS: GSL-206: a supervisor that never woke says so, with the file it looked for
+  PASS: GSL-206: the half that was NOT measured (launchctl) is stated out loud, not implied by silence
+  PASS: GSL-206: all four declared gates get a tile (armed-check joined in GSL-211) — a gate that stopped writing cannot vanish
+  PASS: GSL-206: with no receipts every gate reads unknown AND names the command that fills it
+  FAIL: GSL-206: no supervisor tile on Overview
+  FAIL: GSL-206: expected 3 unknown gate tiles on the fixture Overview, found 0
+  PASS: GSL-206 ⭐ a green receipt reads pass, with the run's own timestamp
+  PASS: GSL-206 ⭐ a receipt recording a failure keeps saying fail until a passing run replaces it
+  PASS: GSL-206 ⭐ the gate with no receipt stays unknown while its neighbours are graded
+  FAIL: GSL-206: the gate state did not reach the rendered tile
+  FAIL: GSL-206 control: .kpi.gate.unknown has no rule, so 'never ran' would paint like 'failed'
+  PASS: GSL-206 control: both gate runners write their own receipt (the reader has a writer)
+== GSL-209: a theme switch, one search, and a reason you can reach without a mouse ==
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/questions.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/fleet.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/cost.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/library.html: No such file or directory
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/library.html: No such file or directory
+  FAIL: GSL-209: a screen is missing one of the two page controls
+  FAIL: GSL-209: the control band is visible before anything has wired it
+  FAIL: GSL-209: nothing persists the theme — every open would revert to the OS setting
+  FAIL: GSL-209 control: no data-theme rules — the toggle would move an attribute nothing reads
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-209: the unknown marker is still pointer-only
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-209 ⭐ the reason still lives only in a title attribute
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/tasks.html: No such file or directory
+  FAIL: GSL-209 control: .unk-why is revealed on hover alone — a pointer feature again
+grep: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke/gsl205-links/docs/lab/site/timeline.html: No such file or directory
+  FAIL: GSL-209: search and filter each set hidden directly — one will silently undo the other
+== GSL-198: chronicler-debounce — the returned PostToolUse trigger ==
+  PASS: debounce: bash -n (syntax)
+  PASS: debounce: 0-LLM (C1)
+  PASS: debounce: non-lab write refused (no stamp)
+  PASS: debounce: tool_response mention refused (no phantom trigger)
+  PASS: debounce: GOSLEEP_DEBOUNCE_DISABLE=1 is a true kill switch
+  PASS: debounce: lab write arms the stamp
+  PASS: debounce: three writes collapse into ONE chronicler run
+  PASS: debounce: the run left its one ledger line (mode=debounce)
+  PASS: debounce: waiter lock released after the run
+== GSL-200: apply-due + resolve refuses early and double closes ==
+  PASS: GSL-200: resolve refuses to close before auto_apply_at
+  PASS: GSL-200: the refused record is still open (refusal wrote nothing)
+  PASS: GSL-200: resolve refuses a BLOCKER (owner-only closure)
+  PASS: GSL-200: apply-due --dry-run names exactly the overdue DECISION
+  PASS: GSL-200: dry-run wrote nothing
+  PASS: GSL-200: apply-due applied the one overdue default
+  PASS: GSL-200: the closure carries applied= the default text and applied_by=apply-due
+  PASS: GSL-200: future DECISION and BLOCKER are untouched (still the 2 open)
+  PASS: GSL-200: apply-due is idempotent — second run applies 0, appends 0
+  PASS: GSL-200: resolve refuses a double close
+  PASS: GSL-200: resolve --early records answered-by-default (the veto window is not faked)
+  PASS: GSL-200: apply-due mirrored question.auto_resolved (actor=apply-due) into the timeline
+== GSL-199: tick.sh — the idempotent safety tick ==
+  PASS: tick: bash -n (syntax)
+  PASS: tick: 0-LLM (C1) — a tick spends no tokens and opens no quota window
+  PASS: GSL-199: first tick exits 0 (degraded sources are data, not failure)
+  PASS: GSL-199: exactly ONE ledger line per run
+  PASS: GSL-199: ledger line carries carrier/applied=1/chronicler=ran + armed_check rc (GSL-211 ended the absent era)
+  PASS: GSL-199 ⭐ a synthetic overdue DECISION was applied with ZERO agent sessions (the epic's done-criterion)
+  PASS: GSL-199: the tick rebuilt the derived surfaces (bundle exists in the fixture)
+  PASS: GSL-199: second tick exits 0
+  PASS: GSL-199: second tick appended NOTHING to the queue (idempotent)
+  PASS: GSL-199: second tick: applied=0, chronicler skipped-fresh (the debounce window is honoured)
+  PASS: GSL-199: a concurrent tick skips with a ledger line, exit 0
+  PASS: GSL-199: unknown flag exits 2 (a misconfigured carrier is heard, not swallowed)
+== GSL-202: the idle gate — don't wake anything when there is no work ==
+  PASS: GSL-202: fresh bundle + nothing due -> result=idle, exit 0 (the quiet run is on the record)
+  PASS: GSL-202: the idle tick polled NOTHING (event count unchanged)
+  PASS: GSL-202: the idle tick rebuilt NOTHING (bundle untouched)
+  PASS: GSL-202: an overdue deadline defeats the idle gate — the tick woke and applied it
+  PASS: GSL-202: --force overrides the idle gate (full pass on a fresh system)
+== GSL-201: carrier preflight — launchd vs Claude Desktop, prepared for the owner ==
+  PASS: GSL-201: the launchd plist template parses (plutil -lint)
+  PASS: GSL-201: the plist fires tick.sh with carrier=launchd (the ledger can tell carriers apart)
+  PASS: GSL-201: arm/disarm scripts parse (owner-run, agent-prepared)
+  PASS: GSL-201: __REPO__ renders into a lintable, placeholder-free plist (what arm installs)
+  PASS: GSL-201: the report reads a synthetic night into the right per-carrier verdict (night YES/NO, gaps, idle)
+  PASS: GSL-201: the report is 0-LLM and read-only (C1)
+== GSL-203: the shift gate is code, and its standard path POLLS ==
+  PASS: GSL-203: gate.sh parses
+  PASS: GSL-203: exactly ONE --no-poll in the gate — inside the declared-offline branch
+  PASS: GSL-203: the standard path runs the chronicler WITH the poll-fill reconcile
+  PASS: GSL-203: offline is an explicit flag, and the gate leaves its own receipt
+== GSL-270: Preact-SSG deprecated — GOSLEEP_KEEP_STATIC_SITE gates render.sh ==
+  PASS: GSL-270: default (env unset) -> status.json.ui.reason == 'ssg-disabled'
+  PASS: GSL-270: default still writes render_bundle.json (mobile + web read it)
+  PASS: GSL-270: default does NOT create docs/lab/site/index.html — render.sh was skipped
+  PASS: GSL-270: default keeps mobile/README.md updating (step 11 explicit requirement)
+  PASS: GSL-270: opt-in (env=1) invokes render.sh — status.json.ui.reason != 'ssg-disabled' (no-deps)
+== GSL-258: data/ stays out of git — only .gitkeep / .gitignore markers travel ==
+  PASS: GSL-258: data/ contains only the .gitkeep + .gitignore markers
+== GSL-260: no-mess rules for apps/ + packages/ (target-architecture §5.3) ==
+  PASS: GSL-260: no .py files under apps/ or packages/ (§5.3 rule 1)
+  PASS: GSL-260: no unexpected .sh under apps/ or packages/ (§5.3 rule 2 — whitelist: install-deps.sh, plist.sh, apps/core/scripts/*.sh, apps/core/bin/*.sh)
+  PASS: GSL-260: apps/core/ scaffold exists
+== GSL-261: no unannotated destructive Drizzle migrations (R28) ==
+  PASS: GSL-261: drizzle/*.sql has no unannotated DROP TABLE|COLUMN (R28)
+  PASS: GSL-261: drizzle/ carries 0000_initial.sql + _journal.json + 0000_snapshot.json
+== GSL-269: write actions never touch fs directly + every POST wraps withTimeline ==
+  PASS: GSL-269: no fs.writeFile / writeFileSync / appendFile in routes/actions.ts, actions/, security/
+  PASS: GSL-269: every POST in actions.ts wraps withTimeline (posts=8, wt=8)
+  PASS: GSL-269: no high-entropy 'b64v1:<payload>' Bearer secret in the tracked tree
+  PASS: GSL-269: no plain-text GOSLEEP_BEARER_TOKEN assignment in tracked non-doc files
+  PASS: GSL-269: apps/core/src/security/csp.ts defines the CSP header value
+  PASS: GSL-269: serve.ts wires applySecurityHeaders as first middleware
+
+RESULT: PASS=406 FAIL=160
+(artifacts kept at /Users/romanlidovskyi/Documents/dev/harness/gosleep/.artifacts/verify-297/main-wt/.artifacts/lab-smoke)

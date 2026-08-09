@@ -1,0 +1,1 @@
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {"questions": [{"question": "Which color should we use for the badge?", "header": "Color", "multiSelect": false, "options": [{"label": "blue"}, {"label": "green"}]}], "answers": {"Which color should we use for the badge?": "blue"}}}}

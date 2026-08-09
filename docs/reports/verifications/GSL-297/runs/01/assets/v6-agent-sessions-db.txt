@@ -1,0 +1,3 @@
+session_id       current_tool  context_pct  current_intent                                        status    started_at                updated_at              
+---------------  ------------  -----------  ----------------------------------------------------  --------  ------------------------  ------------------------
+gsl301-verified  Write         50           reading manifest.md before answering AskUserQuestion  observed  2026-08-09T20:28:57.109Z  2026-08-09T20:29:00.116Z

@@ -1,0 +1,7 @@
+qid                         kind        status  question                                  options                                                                                                        
+--------------------------  ----------  ------  ----------------------------------------  ---------------------------------------------------------------------------------------------------------------
+p-20260809-201639-e487aed3  permission  open    Permission request: Bash                  [{"label":"Allow","description":"Approve the tool call"},{"label":"Deny","description":"Reject the tool call"}]
+                                                                                                                                                                                                         
+                                                run a harmless echo — GSL-300 allow lane                                                                                                                 
+                                                                                                                                                                                                         
+                                                {"command":"echo hello from bash"}                                                                                                                       

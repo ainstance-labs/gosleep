@@ -116,6 +116,15 @@ if [ ! -s "$STDIN_FILE" ]; then
     fail_open "empty stdin (not a valid hook invocation)"
 fi
 
+# ---- 0b. GSL-303: fire the Fleet tool-observed feeder in background ----------
+# Same rationale as ask-user-question-hook.sh: lab-log-hook.sh's fan-out does not cover
+# PreToolUse{PermissionRequest}, so Fleet would never see a permission ask without this call.
+# Background + fail-open by construction.
+GOSLEEP_TOOL_OBSERVED_TOOL="PermissionRequest" \
+GOSLEEP_TOOL_OBSERVED_INTENT="PermissionRequest pending owner decision" \
+    "$(dirname "$0")/tool-observed-feed.sh" < "$STDIN_FILE" >/dev/null 2>&1 &
+disown 2>/dev/null || true
+
 # ---- 1. secret / core reachability guards ------------------------------------
 if [ -z "$INTERNAL_SECRET" ]; then
     fail_open "GOSLEEP_INTERNAL_SECRET unset"

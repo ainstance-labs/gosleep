@@ -37,6 +37,7 @@
 #   42-50. /internal/permissions/post + /actions/permissions/decide (GSL-284)
 #   51-58. SPA static + fallback + API-precedence + CSP             (GSL-285)
 #   59-66. /setup Bearer-discovery flow                             (GSL-291)
+#   67-71. POST /actions/snapshot                                    (GSL-298)
 #
 # Not wired into gate.sh — the gate must stay 0-network/0-process; this test intentionally
 # starts a process. Run it BY HAND before committing changes to apps/core/. Exit 0 = pass.
@@ -341,15 +342,29 @@ check_status "24. POST /internal/agents/tool-observed (missing session_id)" "400
 
 # 25. POST /internal/agents/tool-observed with valid secret + valid body → 200
 #     The write is queued (1 s debounce); we only prove the endpoint accepts the shape.
+OBS_SID="smoke-sid-obs-$(date +%s)"
 OBS_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
   -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
   -H "X-Internal-Secret: $INTERNAL_SECRET" -H "Content-Type: application/json" \
-  -d '{"session_id":"smoke-sid","tool":"Read","ts":"2026-08-07T00:00:00Z","context_pct":42}' \
+  -d "{\"session_id\":\"$OBS_SID\",\"tool\":\"Read\",\"ts\":\"2026-08-07T00:00:00Z\",\"context_pct\":42}" \
   "http://127.0.0.1:$PORT/internal/agents/tool-observed")"
 if [ "$OBS_STATUS" = "200" ]; then
   ok "25. POST /internal/agents/tool-observed (valid) → 200"
 else
   bad "25. POST /internal/agents/tool-observed (valid) → $OBS_STATUS"
+fi
+
+# 25b. GSL-301 regression: wait past the 1 s debounce and assert the row PERSISTED via a
+#      direct DB query. The prior implementation silently dropped the INSERT for a fresh
+#      session_id (Bun's `db.query().get()` returns `null`, not `undefined`, so the branch
+#      selector took the UPDATE path and UPDATE'd 0 rows). This scenario catches that class
+#      of regression without needing the /fleet projection layer.
+sleep 2
+OBS_DB_ROW="$(sqlite3 "$SCRATCH_DB" "SELECT current_tool || '|' || context_pct FROM agent_sessions WHERE session_id='$OBS_SID'" 2>/dev/null || echo "")"
+if [ "$OBS_DB_ROW" = "Read|42" ]; then
+  ok "25b. tool-observed row persisted (current_tool=Read, context_pct=42) — GSL-301 regression"
+else
+  bad "25b. tool-observed row missing (got '$OBS_DB_ROW') — GSL-301 regression: flush dropped the INSERT"
 fi
 
 echo "== /metrics scenarios (GSL-280) =="
@@ -842,6 +857,79 @@ if [ "$CLAMPED_TTL" = "30" ]; then
   ok "66. ttl_s clamped to 30 s floor (was 5)"
 else
   bad "66. expected clamped ttl_s=30, got '$CLAMPED_TTL'"
+fi
+
+echo "== GSL-298: POST /actions/snapshot =="
+# 67. without Bearer → 401
+check_status "67. POST /actions/snapshot (no auth)" "401" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -d '{}' \
+  "http://127.0.0.1:$PORT/actions/snapshot"
+
+# 68. Label with illegal characters → 400 (guards the filename that snapshot.sh embeds).
+check_status "68. POST /actions/snapshot (bad label)" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"label":"bad label with spaces"}' \
+  "http://127.0.0.1:$PORT/actions/snapshot"
+
+# 69. Valid → 200, result carries kind + path, and the file exists on disk.
+SNAP_BODY="$WORK/snap-body.json"
+SNAP_KEY="smoke-snap-$(date +%s)"
+SNAP_STATUS="$(curl -s -o "$SNAP_BODY" -w '%{http_code}' -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $SNAP_KEY" \
+  -d '{"label":"smoke"}' \
+  "http://127.0.0.1:$PORT/actions/snapshot")"
+if [ "$SNAP_STATUS" = "200" ] && grep -q '"kind":"manual"' "$SNAP_BODY"; then
+  ok "69. POST /actions/snapshot (valid) → 200 + result.kind=manual"
+else
+  bad "69. POST /actions/snapshot (valid) → $SNAP_STATUS body=$(cat "$SNAP_BODY")"
+fi
+
+# 69b. The reported path exists on disk and lives under the scratch DB's snapshots dir.
+SNAP_PATH="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(((d.get("result") or {}).get("path")) or "")' "$SNAP_BODY" 2>/dev/null || echo "")"
+if [ -n "$SNAP_PATH" ] && [ -f "$SNAP_PATH" ]; then
+  case "$SNAP_PATH" in
+    "$WORK"/*|"$SCRATCH_LAB"/*|"$(dirname "$SCRATCH_DB")"/*)
+      ok "69b. snapshot path exists under scratch tree: $SNAP_PATH" ;;
+    *)
+      # Not fatal, but flag: the snapshot landed OUTSIDE the scratch tree — the env
+      # pass-through would be broken and the real DB might have been touched.
+      bad "69b. snapshot path exists but is NOT under scratch tree: $SNAP_PATH"
+      ;;
+  esac
+else
+  bad "69b. snapshot path missing or file not found: '$SNAP_PATH'"
+fi
+
+# 70. Replay same Idempotency-Key → 200 + cached:true, same intent_id.
+REPLAY_BODY="$WORK/snap-replay.json"
+curl -s -o "$REPLAY_BODY" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $SNAP_KEY" \
+  -d '{"label":"smoke"}' \
+  "http://127.0.0.1:$PORT/actions/snapshot" >/dev/null
+if grep -q '"cached":true' "$REPLAY_BODY"; then
+  ok "70. snapshot idempotent on replay (cached:true)"
+else
+  bad "70. snapshot replay expected cached:true (body: $(cat "$REPLAY_BODY"))"
+fi
+
+# 71. No label → 200 + result.kind=daily (matches the launchd cron shape).
+DAILY_BODY="$WORK/snap-daily.json"
+DAILY_STATUS="$(curl -s -o "$DAILY_BODY" -w '%{http_code}' -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: smoke-snap-daily-$(date +%s)" \
+  -d '{}' \
+  "http://127.0.0.1:$PORT/actions/snapshot")"
+if [ "$DAILY_STATUS" = "200" ] && grep -q '"kind":"daily"' "$DAILY_BODY"; then
+  ok "71. POST /actions/snapshot (no label) → 200 + result.kind=daily"
+else
+  bad "71. POST /actions/snapshot (no label) → $DAILY_STATUS body=$(cat "$DAILY_BODY")"
 fi
 
 echo "== teardown =="

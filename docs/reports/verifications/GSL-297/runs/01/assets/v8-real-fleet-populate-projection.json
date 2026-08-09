@@ -1,0 +1,59 @@
+{
+    "sessions": [
+        {
+            "session_id": "3a3df69e-3642-4012-bbe7-0bac49c457cd",
+            "name": "\ud83d\udfe0 Tasty. \u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430 \u0431\u043b\u044e\u0434. \u041e\u0440\u043a\u0435\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u0444\u0430\u0437\u044b 43: \u0432\u043e\u043b\u043d\u044b \u0434\u0430\u043d\u043d\u044b\u0445 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0430 tasty-lunch",
+            "kind": "interactive",
+            "pid": 18375,
+            "model": "claude-fable-5[1m]",
+            "cwd": "/Users/romanlidovskyi/Documents/dev/tasty/tasty-lunch",
+            "cycle": null,
+            "context_pct": null,
+            "current_tool": null,
+            "current_intent": null,
+            "status": "busy",
+            "started_at": "2026-08-08T08:33:00.970Z",
+            "updated_at": "2026-08-09T21:11:59.241Z",
+            "ended_at": null
+        },
+        {
+            "session_id": "e1cdd90d-bb02-4302-9b86-8dcc76f2f652",
+            "name": "gosleep-44",
+            "kind": "interactive",
+            "pid": 51011,
+            "model": "claude-fable-5[1m]",
+            "cwd": "/Users/romanlidovskyi/Documents/dev/harness/gosleep",
+            "cycle": 44,
+            "context_pct": null,
+            "current_tool": null,
+            "current_intent": null,
+            "status": "busy",
+            "started_at": "2026-08-09T19:27:46.744Z",
+            "updated_at": "2026-08-09T21:11:59.241Z",
+            "ended_at": null
+        },
+        {
+            "session_id": "47f11f2a-879a-4a16-a86e-87301ed10403",
+            "name": "gosleep-4c",
+            "kind": "interactive",
+            "pid": 88244,
+            "model": "claude-fable-5[1m]",
+            "cwd": "/Users/romanlidovskyi/Documents/dev/harness/gosleep",
+            "cycle": null,
+            "context_pct": 8,
+            "current_tool": "Bash",
+            "current_intent": "AskUserQuestion pending owner answer",
+            "status": "idle",
+            "started_at": "2026-08-09T21:09:27.010Z",
+            "updated_at": "2026-08-09T21:11:59.241Z",
+            "ended_at": null
+        }
+    ],
+    "count": 3,
+    "totals": {
+        "agents_total": 3,
+        "agents_live": 3,
+        "agents_busy": 2,
+        "heartbeat_context_pct": null
+    }
+}

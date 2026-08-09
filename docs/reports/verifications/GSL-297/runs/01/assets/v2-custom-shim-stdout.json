@@ -1,0 +1,1 @@
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {"questions": [{"question": "What should the button label say?", "header": "Label", "multiSelect": false, "options": [{"label": "Ship it"}]}], "answers": {"What should the button label say?": "Take a snapshot NOW"}}}}
