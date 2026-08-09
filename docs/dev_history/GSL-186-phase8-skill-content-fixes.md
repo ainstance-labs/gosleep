@@ -7,7 +7,7 @@ Root-cause fix for three cheap discrepancies audit-flagged as findings 72, 73, 7
 ## What landed
 
 - `skill/handoff/SKILL.md` quick-paths table (line 107): "Where it goes" cell now names `docs/handoff/<NN>-<YYYY-MM-DD>-handoff-<topic>.md` with `<NN>` explicit and a one-liner on how to compute it (`ls docs/handoff/ | grep -oE '^[0-9]+' | sort -n | tail -1` + 1). Matches the top-of-file spec at line 10 — the quick-paths table was previously missing `<NN>`, so a fresh cold-start following the table produced non-ordinal filenames that a docs-anchor checker mis-parses.
-- `skill/delivery-workflow/SKILL.md` §3:
+- `skill/delivery-workflow/SKILL.md` section 3:
   - Path spec (line 67): `docs/dev_history/<TASK-KEY>-<phase>-<slug>.md` — matches `CLAUDE.md` verbatim. Cycles (`-cycle<N>-`) are documented as an OPTIONAL insertion between phase and slug for projects that use them (TLM-era); explicit note that gosleep is cycle-less, so the tight `GSL-N-phaseM-slug.md` form applies.
   - Wiki bullet (line 89): rewritten from "If the project keeps an LLM wiki…" to a stronger "IF AND ONLY IF" with explicit "gosleep does NOT" and "do NOT create the directory on the fly". Removes the pre-existing implicit "if" ambiguity that pushed some agents to try to touch `docs/wiki/` in gosleep.
   - Close-out step (line 112): dev-history index update stays unconditional; wiki update is explicitly conditional on the wiki existing.
