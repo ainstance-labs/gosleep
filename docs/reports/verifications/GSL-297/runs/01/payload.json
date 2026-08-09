@@ -32,9 +32,9 @@
       "title": "Web answer: pick / custom / defer / apply-manifest + delivery to the agent",
       "status": "DELIVERED",
       "was": "PARTIAL (shipped + unit-verified)",
-      "flip_reason": "GSL-299 live-proved all four owner variants against a real shim + real core + real long-poll. Composed with GSL-274's transcript-identical acceptance verdict, this closes the live-verification gap.",
-      "evidence": "assets/v{1..4}-*.{txt,json,jsonl}",
-      "run": "GSL-299 in this run"
+      "flip_reason": "GSL-299 live-proved all four owner variants against a real shim + real core + real long-poll (assets/v{1..4}-*). One anchor leg re-runs against a REAL subordinate Claude Code session (Haiku 4.5, interactive tmux, GOSLEEP_WEB_QUESTIONS=1) — model called AskUserQuestion, shim intercepted, curl-POST answered, agent's next line surfaced 'You chose blue for the badge' with the injected answer, TUI dialog never rendered (assets/v7-real-session-*).",
+      "evidence": "assets/v{1..4}-*.{txt,json,jsonl} + assets/v7-real-session-*.{txt,json,jsonl}",
+      "run": "GSL-299 in this run (shim-direct + real subordinate session)"
     },
     {
       "id": "R7.3",
@@ -194,7 +194,7 @@
   },
   "not_reverified": [
     "Run-02's 11 findings are treated as still-holding baselines (this dossier does not re-audit them; the fix-confirmation lens of run-02 is authoritative).",
-    "Live subordinate `claude -p` sessions were not spent on GSL-299/300 — the shim-direct proof is composed with GSL-274's transcript-identical acceptance verdict + GSL-267 dev history's 5-lane live-subordinate proof to argue equivalent coverage without burning fresh model tokens.",
+    "GSL-299 has BOTH shim-direct evidence (4 variants) AND one REAL subordinate haiku session leg (interactive tmux, GOSLEEP_WEB_QUESTIONS=1, --dangerously-skip-permissions). Attempted `claude --print --allowedTools AskUserQuestion` first — headless mode disables AskUserQuestion in the CLI regardless of --allowedTools, model refuses to call it; switched to interactive tmux (same shape GSL-267 used). GSL-300's PermissionRequest live-leg was NOT re-run against a real subordinate session — the shim-direct proof stands with GSL-284's smoke coverage (scenarios 42-50) as the anchor; the real-session equivalent would require a Bash/Write tool call that triggers PermissionRequest, which is orthogonal to the endpoint's contract.",
     "The tool-observed shim (remaining gap above) is named, not built; a separate ticket will land it under the pilot flag.",
     "Web UI visual verification (Safari / Chrome pixel rendering of the new 'Snapshot' button) was verified from source (Overview.tsx + tsc + vite build) rather than from a browser screenshot in this run — the button is a shadcn Button + Dialog composition already covered by design-system audits in run-02."
   ]
