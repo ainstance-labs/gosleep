@@ -130,6 +130,17 @@ if [ ! -s "$STDIN_FILE" ]; then
     fail_open "empty stdin (not a valid hook invocation)"
 fi
 
+# ---- 0b. GSL-303: fire the Fleet tool-observed feeder in background ----------
+# `.claude/settings.json` only wires lab-log-hook.sh on PostToolUse{Bash|Write|Edit|MultiEdit|
+# mcp__atlassian__.*} — AskUserQuestion is not in that fan-out. Without this call, Fleet would
+# never see the moment an AskUserQuestion opens. The feeder is guarded on GOSLEEP_WEB_QUESTIONS=1
+# (which we're already inside) and fail-open by construction. Runs in the background with `&` so
+# a slow feeder POST cannot delay the shim's own POST + long-poll below.
+GOSLEEP_TOOL_OBSERVED_TOOL="AskUserQuestion" \
+GOSLEEP_TOOL_OBSERVED_INTENT="AskUserQuestion pending owner answer" \
+    "$(dirname "$0")/tool-observed-feed.sh" < "$STDIN_FILE" >/dev/null 2>&1 &
+disown 2>/dev/null || true
+
 # ---- 1. secret / core reachability guards ------------------------------------
 if [ -z "$INTERNAL_SECRET" ]; then
     fail_open "GOSLEEP_INTERNAL_SECRET unset"

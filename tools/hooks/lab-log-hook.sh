@@ -15,5 +15,21 @@
 # =============================================================================
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 mkdir -p "$ROOT/.artifacts/lab" 2>/dev/null
-"$ROOT/tools/lab/lab-log.sh" 2>>"$ROOT/.artifacts/lab/lab-log.err"
+
+# GSL-303: buffer stdin ONCE so both lab-log.sh (primary) and the pilot-gated Fleet feeder
+# (secondary, background) can consume it. Under the pilot flag we fan the payload out;
+# without it, we behave exactly as before (feeder script exits 0 in <1 ms via its own guard).
+# The feeder is fired with `&` so a slow POST never adds latency to the hook return path —
+# preserving the shim's "never blocks a session" invariant that this file exists to protect.
+STDIN_BUF="$(cat)"
+printf '%s' "$STDIN_BUF" | "$ROOT/tools/lab/lab-log.sh" 2>>"$ROOT/.artifacts/lab/lab-log.err"
+
+if [ "${GOSLEEP_WEB_QUESTIONS:-0}" = "1" ]; then
+  # Background invocation, output redirected → hook returns immediately regardless of core
+  # reachability. The feeder itself is fail-open (see tools/hooks/tool-observed-feed.sh).
+  printf '%s' "$STDIN_BUF" | \
+    "$ROOT/tools/hooks/tool-observed-feed.sh" \
+      >>"$ROOT/.artifacts/lab/tool-observed-feed.err" 2>&1 &
+  disown 2>/dev/null || true
+fi
 exit 0

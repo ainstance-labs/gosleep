@@ -1,0 +1,3 @@
+session_id                            name        kind         model               current_tool  context_pct  current_intent                        status  updated_at              
+------------------------------------  ----------  -----------  ------------------  ------------  -----------  ------------------------------------  ------  ------------------------
+47f11f2a-879a-4a16-a86e-87301ed10403  gosleep-4c  interactive  claude-fable-5[1m]  Bash          8            AskUserQuestion pending owner answer  idle    2026-08-09T21:11:59.241Z
