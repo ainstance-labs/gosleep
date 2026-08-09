@@ -11,6 +11,7 @@
 //   POST /actions/tick                      {}                              (fire-and-forget)
 //   POST /actions/events/ack                { seq, note? }
 //   POST /actions/snapshot                  { label? }                                 GSL-298
+//   POST /actions/skills/publish            { skill, lesson?, task? }                  T5 GSL-286
 //
 // Every request goes through THREE layers, in order (any layer rejection short-circuits with a
 // proper HTTP status; the ledger only records requests that reached the mutation):
@@ -47,6 +48,7 @@ import { getDb } from "../db/client.ts";
 import { serialize } from "../actions/mutex.ts";
 import { resolveIntentId, withTimeline } from "../actions/withTimeline.ts";
 import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
+import { performPublish, type PublishResult } from "../actions/publish.ts";
 import { getSessionAdapter } from "../adapter/session.ts";
 import { loadManifest, type ManifestRule } from "../manifest/parser.ts";
 import { runSyncCycle, type JiraSyncChangeSummary } from "../workers/jira-sync.ts";
@@ -701,10 +703,12 @@ function doTick(input: { carrier: string }): TickResult {
 // route wiring — every POST goes through parseJsonBody → serialize → withTimeline
 // -----------------------------------------------------------------------------
 
-function httpStatusFromError(err: unknown): 400 | 404 | 409 | 500 {
+function httpStatusFromError(err: unknown): 400 | 403 | 404 | 409 | 500 {
   if (err instanceof Error) {
     const status = (err as Error & { httpStatus?: number }).httpStatus;
-    if (status === 400 || status === 404 || status === 409 || status === 500) return status;
+    if (status === 400 || status === 403 || status === 404 || status === 409 || status === 500) {
+      return status;
+    }
   }
   return 500;
 }
@@ -1534,6 +1538,91 @@ actionsRoutes.post("/actions/events/ack", requireBearer, async (c) => {
     const status = httpStatusFromError(err);
     // Only log unexpected 5xx to stderr — expected 4xx (bad qid, missing field) are ordinary
     // user-input rejections and would spam the audit log if surfaced.
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
+// T5 (GSL-286 + GSL-266 partial) — POST /actions/skills/publish
+//
+// Payload: { skill: string, lesson?: string, task?: "GSL-N" }
+//   `skill` is required and must match KNOWN_SKILLS in apps/core/src/actions/publish.ts.
+//   `lesson` is optional free text; empty allowed.
+//   `task` optional; publish.sh derives one from the latest commit under skill/<name> if unset.
+//
+// Three-layer envelope (identical to snapshot / answer / etc):
+//   1. requireBearer (already on the router).
+//   2. serialize("actions.skills.publish", ...) — per-endpoint mutex so a burst of clicks
+//      does not spawn two publish.sh runs concurrently.
+//   3. withTimeline(...) — persistent Idempotency-Key + server_intents audit ledger. A repeat
+//      POST with the same key returns the ORIGINAL result without re-running publish.sh.
+//
+// The spawner passes the withTimeline intentId into publish.sh as --intent-id so the
+// CHANGELOG row keys back to the audit ledger (plan risk 3: production test-guard keys on
+// intent_id, not "any published row in this run").
+// -----------------------------------------------------------------------------
+
+actionsRoutes.post("/actions/skills/publish", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const skill = stringField(body, "skill");
+  if (skill === null) return c.json({ ok: false, error: "skill required" }, 400);
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(skill)) {
+    return c.json({ ok: false, error: "skill name shape /^[a-z0-9][a-z0-9-]{0,63}$/" }, 400);
+  }
+  const lesson = stringField(body, "lesson") ?? "";
+  const task = stringField(body, "task");
+  if (task !== null && !/^GSL-\d+$/.test(task)) {
+    return c.json({ ok: false, error: "task must match /^GSL-\\d+$/" }, 400);
+  }
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.skills.publish", async () =>
+      withTimeline<PublishResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/skills/publish",
+          input: { skill, lesson, task },
+        },
+        () => performPublish({ skill, lesson, task, intentId }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
     if (status >= 500) {
       // eslint-disable-next-line no-console
       console.error(

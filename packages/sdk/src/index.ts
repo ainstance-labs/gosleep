@@ -34,6 +34,8 @@ import {
   SkillDiffResponse,
   SnapshotActionInput,
   SnapshotActionResponse,
+  PublishSkillActionInput,
+  PublishSkillActionResponse,
   SseEventData,
   SseRotateData,
   StatusResponse,
@@ -68,6 +70,8 @@ import type {
   SkillDiffResponse as SkillDiffResponseT,
   SnapshotActionInput as SnapshotActionInputT,
   SnapshotActionResponse as SnapshotActionResponseT,
+  PublishSkillActionInput as PublishSkillActionInputT,
+  PublishSkillActionResponse as PublishSkillActionResponseT,
   SseEventData as SseEventDataT,
   SseRotateData as SseRotateDataT,
   StatusResponse as StatusResponseT,
@@ -383,6 +387,22 @@ export class CoreClient {
     );
   }
 
+  /** T5 (GSL-286 + GSL-266 partial): publish a single named skill from dev → production.
+   *  Spawns publish.sh with a per-request env-nonce so the CLI's owner-gate opens on the
+   *  endpoint path. Returns the parsed skills.publish.done event. */
+  publishSkill(
+    input: PublishSkillActionInputT,
+    idempotencyKey: string,
+  ): Promise<PublishSkillActionResponseT> {
+    return this.postAction(
+      "/actions/skills/publish",
+      input,
+      PublishSkillActionInput,
+      PublishSkillActionResponse,
+      idempotencyKey,
+    );
+  }
+
   /** GSL-284: owner decides Allow/Deny on a permission-kind question row. */
   decidePermission(
     input: DecidePermissionActionInputT,
@@ -601,7 +621,9 @@ export type {
   SkillsResponseT as SkillsResponse,
   SkillDiffResponseT as SkillDiffResponse,
   SnapshotActionInputT as SnapshotActionInput,
+  PublishSkillActionInputT as PublishSkillActionInput,
   SnapshotActionResponseT as SnapshotActionResponse,
+  PublishSkillActionResponseT as PublishSkillActionResponse,
   SseEventDataT as SseEventData,
   SseRotateDataT as SseRotateData,
   StatusResponseT as StatusResponse,
