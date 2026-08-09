@@ -6,6 +6,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import {
   ActivitySquare,
+  BookText,
   Clock3,
   HelpCircle,
   ListChecks,
@@ -31,6 +32,8 @@ const NAV = [
   { to: "/questions", label: "Questions", icon: HelpCircle },
   { to: "/tasks", label: "Tasks", icon: ListChecks },
   { to: "/cost", label: "Cost", icon: Receipt },
+  // T7 (GSL-255 + GSL-287) — Skills management system.
+  { to: "/skills", label: "Skills", icon: BookText },
 ] as const;
 
 export function AppShell() {

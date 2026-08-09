@@ -13,6 +13,7 @@ import { QuestionsScreen } from "./screens/Questions";
 import { TasksScreen } from "./screens/Tasks";
 import { CostScreen } from "./screens/Cost";
 import { FleetScreen } from "./screens/Fleet";
+import { SkillsScreen } from "./screens/Skills";
 import { NotFoundScreen } from "./screens/NotFound";
 import { RouteError } from "./components/RouteError";
 
@@ -29,6 +30,11 @@ export const router = createBrowserRouter([
       { path: "questions", element: <QuestionsScreen /> },
       { path: "tasks", element: <TasksScreen /> },
       { path: "cost", element: <CostScreen /> },
+      // T7 (GSL-255 + closes GSL-287) — Skills management screen. Until this landed the
+      // /skills path fell through to NotFoundScreen (GSL-295's wildcard). The screen reads
+      // GET /skills + GET /skills/:name/diff and wires the publish mutation for the moment
+      // TouchID unpauses (button is currently disabled per d-2026-08-09-001).
+      { path: "skills", element: <SkillsScreen /> },
       // GSL-295 — unknown routes land on an honest "route not found" screen instead of
       // silently redirecting to /overview. The old wildcard hid missing surfaces (e.g.
       // /skills before the skills-management ticket lands); this makes the gap visible.

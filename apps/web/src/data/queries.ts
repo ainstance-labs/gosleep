@@ -28,9 +28,12 @@ import type {
   DeferActionResponse,
   FleetResponse,
   ManifestResponse,
+  PublishSkillActionInput,
+  PublishSkillActionResponse,
   QuestionsResponse,
   ResolveActionInput,
   ResolveActionResponse,
+  SkillDiffResponse,
   SkillsResponse,
   SnapshotActionInput,
   SnapshotActionResponse,
@@ -54,6 +57,7 @@ export const queryKeys = {
   bundle: () => ["core", "bundle"] as const,
   questions: (status?: string) => ["core", "questions", status ?? "all"] as const,
   skills: () => ["core", "skills"] as const,
+  skillDiff: (name: string) => ["core", "skills", "diff", name] as const,
   timeline: (limit?: number, type?: string, task?: string) =>
     ["core", "timeline", limit ?? 100, type ?? "", task ?? ""] as const,
   tasks: (epic?: string, status?: string) =>
@@ -92,6 +96,16 @@ export function useQuestions(status?: string): UseQueryResult<QuestionsResponse>
 
 export function useSkills(): UseQueryResult<SkillsResponse> {
   return useQuery({ queryKey: queryKeys.skills(), queryFn: () => coreClient.skills() });
+}
+
+// T6 (GSL-255) — full diff dump for the Skills-screen details drawer. Only fetches when a
+// row is selected (enabled: name !== null) to avoid seven prefetches on mount.
+export function useSkillDiff(name: string | null): UseQueryResult<SkillDiffResponse> {
+  return useQuery({
+    queryKey: queryKeys.skillDiff(name ?? "__none__"),
+    queryFn: () => coreClient.skillDiff(name!),
+    enabled: name !== null && name.length > 0,
+  });
 }
 
 export function useTimeline(
@@ -282,6 +296,27 @@ export function useTakeSnapshot(): UseMutationResult<
       coreClient.takeSnapshot(input, newIdempotencyKey()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.status() });
+      qc.invalidateQueries({ queryKey: ["core", "timeline"] });
+    },
+  });
+}
+
+// T5 (GSL-286 + GSL-266 partial): publish a single named skill via the web endpoint. The
+// button on the Skills screen stays DISABLED with a tooltip pointing at the CLI while
+// TouchID is paused (d-2026-08-09-001) — this hook exists so the wiring is in place for the
+// moment the pause lifts (flipping one boolean on the button re-activates the flow).
+export function usePublishSkill(): UseMutationResult<
+  PublishSkillActionResponse,
+  Error,
+  PublishSkillActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PublishSkillActionInput) =>
+      coreClient.publishSkill(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.skills() });
+      qc.invalidateQueries({ queryKey: ["core", "skills", "diff"] });
       qc.invalidateQueries({ queryKey: ["core", "timeline"] });
     },
   });
