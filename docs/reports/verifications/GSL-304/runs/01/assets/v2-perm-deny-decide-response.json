@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "intent_id": "e0c405e3-e27b-4a90-a998-cfb645130d6d",
+  "cached": false,
+  "result": {
+    "qid": "p-20260809-223625-cf0fa77c",
+    "status": "answered",
+    "decision": "deny",
+    "answered_at": "2026-08-09T22:36:36.235Z",
+    "answered_by": "owner-web",
+    "applied_by": "owner",
+    "updated_message": "blocked by night-autonomy policy: destructive rm -rf without dry-run"
+  }
+}
