@@ -104,7 +104,7 @@ State the truth across all three trackers (Jira, GitHub, the doc) — they must 
 | Need | Do |
 |---|---|
 | Filename date | `date +%F` (shell), never the model's guess |
-| Where it goes | `docs/handoff/<YYYY-MM-DD>-handoff-<topic>.md` |
+| Where it goes | `docs/handoff/<NN>-<YYYY-MM-DD>-handoff-<topic>.md` — `<NN>` is the next zero-padded ordinal (find with `ls docs/handoff/ \| grep -oE '^[0-9]+' \| sort -n \| tail -1`; increment by 1). Same format as the top-of-file spec — keep the ordinal or cold-start ordering breaks. |
 | Resume point | exact next task key + branch + commands — the section a new agent reads first |
 | Blocked items | a dedicated section naming exactly what the human must provide |
 | Secrets | names + location only, never values |

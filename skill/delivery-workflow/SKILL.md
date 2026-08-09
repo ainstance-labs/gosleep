@@ -64,10 +64,13 @@ commit lands, while the details are fresh. This is the project's real engineerin
 agent (or the owner) debugging something runs through these files task-by-task to see what was
 actually built, what hurt, and where the bodies are buried.
 
-- **Path:** `docs/dev_history/<TASK-KEY>-<phase>-<cycle>-<slug>.md` — the task key COMES FIRST and
-  is ALWAYS UPPERCASE exactly as in Jira; then the phase, then the delivery cycle if the project
-  runs orchestrated cycles (e.g. `TLM-82-phase9-cycle6-constructor-grid.md`, never `tlm-82`).
-  Key-first keeps the directory sorted by task and greppable by key.
+- **Path:** `docs/dev_history/<TASK-KEY>-<phase>-<slug>.md` — the task key COMES FIRST and is
+  ALWAYS UPPERCASE exactly as in Jira; then the phase; then a short slug. When a project runs
+  orchestrated cycles, an optional `-cycle<N>-` may appear between `<phase>` and `<slug>` (e.g.
+  `TLM-82-phase9-cycle6-constructor-grid.md`); when the project does NOT use cycles (gosleep
+  today), the format is the tighter `GSL-N-phaseM-slug.md` — matches the project's `CLAUDE.md`
+  and the existing `docs/dev_history/` history. Key-first keeps the directory sorted by task
+  and greppable by key.
 - **Structure — Part 1, plain developer's language (the point of the file).** Five headings,
   written like the developer telling a teammate what happened — accessible sentences, "I built
   the grid component and wired it to the placement actions, so now dragging a dish into a day
@@ -83,8 +86,11 @@ actually built, what hurt, and where the bodies are buried.
   touched, migrations, new use-cases/actions, how it was **verified by running something**
   (gates + in-browser checks), links (Jira key, GH issue, review report if any).
 - Keep `docs/dev_history/README.md` (the index) current — group entries by phase/epic.
-- If the project keeps an LLM wiki (`docs/wiki/`), update its **status page** (epics, progress, PRs,
-  commits) and the **dev-history index** so the wiki never goes stale.
+- **Optional — LLM wiki.** If AND ONLY IF the project keeps an LLM wiki at `docs/wiki/`
+  (many do not — for example gosleep does not), update its **status page** (epics, progress,
+  PRs, commits) and the **dev-history index** so the wiki never goes stale. Projects without
+  `docs/wiki/` skip this bullet entirely — do NOT create the directory on the fly, and do NOT
+  fail a task because the wiki is absent.
 - **Only real landed work** goes in dev history — never future plans, never unlanded code.
 
 ## 4. Per-epic playbook
@@ -103,7 +109,9 @@ actually built, what hurt, and where the bodies are buried.
 5. **Green CI**, then **merge** (regular merge preserves the per-task commits; squash collapses them —
    prefer regular merge to keep one-commit-per-task history). Delete the branch.
 6. **Close out**: close the Epic + Task GitHub issues; transition the Epic → *Done*; update
-   `docs/wiki/status.html` + dev-history index. Pull `main`; start the next Epic from step 1.
+   the dev-history index (`docs/dev_history/README.md`). If the project keeps an LLM wiki
+   (`docs/wiki/status.html`), update the status page there too — otherwise skip it. Pull
+   `main`; start the next Epic from step 1.
 
 ## 5. Guardrails
 
