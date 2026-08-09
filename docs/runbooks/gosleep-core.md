@@ -249,6 +249,23 @@ Only on an owner command. Widening = flipping the shim guard to opt-out
 entirely and requiring every session to set the flag off explicitly. The current
 opt-in shape is the pilot only.
 
+**Widening-gate note (GSL-302, 2026-08-09 — feature-complete → dogfooding).** The
+web control plane is declared feature-complete on the landing of
+`docs/reports/verifications/GSL-297/runs/01/index.html` (see PRD "Acceptance
+criteria + end-check" for the trigger). Widening interception to ALL sessions is
+the explicit next owner-gated step (decision `d-2026-08-09-001`). To widen: in the
+parent shell that spawns every `claude` — the user's login shell, or the tmux
+session the owner uses for supervised work — export both `GOSLEEP_WEB_QUESTIONS=1`
+and `GOSLEEP_INTERNAL_SECRET=<same value the running core sees>` so every child
+inherits them. Do NOT edit the project `.claude/settings.json` — it is frozen per
+handoff 57 (the hook stanza is already wired; only the shim's env guard needs to
+flip). Rollback is symmetric: `unset GOSLEEP_WEB_QUESTIONS` (or set it to `0`) in
+the parent shell, then start a fresh `claude` — the guard exits 0 in <500 ms and
+the TUI dialog renders as it did before. In-flight sessions keep whatever env they
+were spawned with; no forced restart is required. When ready, add a widening-day
+entry to `docs/lab/decisions/log.jsonl` so the audit trail records who flipped
+which shell when.
+
 ### Rollback
 
 `git revert` of the commit that added the `PreToolUse` block in

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GSL-297 — Web control plane feature-complete · dossier (run 01)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-alt: #f8f9fa;
+    --border: #e4e7eb;
+    --fg: #0f172a;
+    --fg-muted: #475569;
+    --accent: #0f766e;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120;
+      --bg-alt: #111a2e;
+      --border: #1e293b;
+      --fg: #e2e8f0;
+      --fg-muted: #94a3b8;
+      --accent: #2dd4bf;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.55; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 24px 96px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px; }
+  h1 { font-weight: 500; font-size: 28px; margin: 0 0 6px; }
+  h2 { font-weight: 500; font-size: 20px; margin: 32px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3 { font-weight: 500; font-size: 16px; margin: 20px 0 8px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .subtitle { color: var(--fg-muted); font-size: 14px; }
+  .verdict { background: var(--bg-alt); border-left: 4px solid var(--accent); padding: 16px 20px; margin: 24px 0; border-radius: 4px; }
+  .verdict .score { font-size: 32px; font-weight: 500; color: var(--accent); }
+  .verdict .label { color: var(--fg-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-left: 8px; }
+  .verdict p { margin: 12px 0 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-alt); font-weight: 500; color: var(--fg-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-alt); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--bg-alt); padding: 12px 16px; border-radius: 4px; overflow-x: auto; font-family: var(--mono); font-size: 12px; }
+  .status-delivered, .status-ok { color: var(--ok); font-weight: 500; }
+  .status-partial, .status-warn { color: var(--warn); font-weight: 500; }
+  .status-missing, .status-danger { color: var(--danger); font-weight: 500; }
+  .status-excluded, .status-moved, .status-muted { color: var(--fg-muted); font-style: italic; }
+  ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  a { color: var(--accent); }
+  a:hover { text-decoration: underline; }
+  .lang-toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: var(--fg-muted); margin-bottom: 12px; }
+  .lang-toggle a { text-decoration: none; padding: 3px 8px; border: 1px solid var(--border); border-radius: 3px; }
+  .lang-toggle a[aria-current="true"] { background: var(--bg-alt); color: var(--fg); border-color: var(--accent); }
+  .gap-block { background: var(--bg-alt); border-left: 4px solid var(--warn); padding: 12px 16px; border-radius: 4px; margin: 12px 0; }
+  .bug-block { background: var(--bg-alt); border-left: 4px solid var(--danger); padding: 12px 16px; border-radius: 4px; margin: 12px 0; }
+  .fix-line { color: var(--ok); }
+  .foot { color: var(--fg-muted); font-size: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="lang-toggle" role="navigation" aria-label="Language">
+      <span>Language:</span>
+      <a href="#" aria-current="true">English</a>
+      <a href="ru/index.html">Русский</a>
+    </div>
+    <h1>GSL-297 · Web control plane — feature-complete dossier</h1>
+    <p class="subtitle">Run 01 · 2026-08-09 · impl-webfc-1 (shift 76)</p>
+    <p class="subtitle">Design source: PRD <code>docs/prd/01-phase7-interactive-control-plane.md</code> (post-rescope 2026-08-08); baseline verdict: <a href="../../../GSL-250/runs/02/index.html">GSL-250 run 02</a> (score 100, all fixes hold).</p>
+  </header>
+
+  <section class="verdict" role="status">
+    <div><span class="score">100</span><span class="label">FEATURE-COMPLETE</span></div>
+    <p>Phase 7 acceptance is fully green after GSL-297. All seven R7.x requirements DELIVERED with evidence. All six end-check bullets DELIVERED, EXCLUDED (soak-gated), or MOVED (skills-management), each with a direct link. One latent flush bug uncovered during GSL-301's verification pass was fixed in the same commit and fenced with a new core-smoke assertion (scenario 25b). One remaining gap named honestly: no hook in <code>tools/hooks/</code> CALLS <code>/internal/agents/tool-observed</code> today — a small follow-up task will wire a Session-level shim under the same guard flag. Widening interception to ALL sessions is the explicit next owner-gated step, documented in PRD + runbook § 8.</p>
+  </section>
+
+  <h2>1. R7.x scoring (7 requirements)</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Status</th><th>Evidence / flip reason</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>R7.1</code></td>
+        <td>Real-time question window, blocking status, manifest-rule provenance</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Run-02 findings 5-7 hold; live-verified for the answer path in GSL-299 assets.</td>
+      </tr>
+      <tr>
+        <td><code>R7.2</code></td>
+        <td>Web answer: pick / custom / defer / apply-manifest</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Was PARTIAL. GSL-299 live-proved all four variants against a real shim + real core + real long-poll release. Assets: <code>assets/v{1..4}-*.{txt,json,jsonl}</code>.</td>
+      </tr>
+      <tr>
+        <td><code>R7.3</code></td>
+        <td>Night mode: questions accumulate, agents do not stall</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Was PARTIAL. GSL-299 defer variant: shim keeps waiting on deferred qid without releasing; 60 s server-side timeout returns 204 → TUI fallback → session never stalls. Assets: <code>assets/v3-defer-*.{txt,json}</code>.</td>
+      </tr>
+      <tr>
+        <td><code>R7.4</code></td>
+        <td>Fleet view: current_tool + context_pct populate live</td>
+        <td class="status-delivered">DELIVERED (with named gap)</td>
+        <td>Was PARTIAL. GSL-301 uncovered + fixed a latent <code>flushPendingObservations</code> bug (Bun <code>.get()</code> returns <code>null</code>, not <code>undefined</code>; branch selector took UPDATE when it should have INSERTed → first-time observations dropped silently). With the fix: POST → 1-s debounce → row lands → <code>/fleet</code> returns populated. Regression fenced by core-smoke <code>25b</code>. Assets: <code>assets/v6-*.{txt,json}</code>. See "Remaining gaps" below for the last-mile shim.</td>
+      </tr>
+      <tr>
+        <td><code>R7.5</code></td>
+        <td>Near-second live updates via SSE (not polling)</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Run-02 baseline finding 5 + core-smoke scenario 20 (long-poll 204). SSE stream in this run: <code>assets/sse-stream-sample.log</code> (keepalive rhythm; typed frames gated on the tail indexer which this scratch core disables to keep the smoke tree quiet).</td>
+      </tr>
+      <tr>
+        <td><code>R7.6</code></td>
+        <td>Tasks view + Jira sync</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Core-smoke scenarios 40-41 land 243 GSL-* rows in the scratch DB against real gh CLI during this run.</td>
+      </tr>
+      <tr>
+        <td><code>R7.7</code></td>
+        <td>Provider abstraction — SessionAdapter seed</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td><code>packages/runner-adapter/</code> shipped in GSL-281; used through <code>apps/core/src/adapter/session.ts</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. End-check bullets (PRD Acceptance criteria)</h2>
+  <table>
+    <thead><tr><th>Bullet</th><th>Status</th><th>Evidence / note</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Opens <code>http://127.0.0.1:7331</code>, sees live Overview + Fleet</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Run-02 baseline + <code>Overview.tsx</code> RunwayTile (GSL-289) + <code>Fleet.tsx</code> cards + GSL-301 <code>/fleet</code> returns a populated row.</td>
+      </tr>
+      <tr>
+        <td>Answers a real agent question through the web (agent proceeds within one tool call)</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>GSL-299 four-variant live proof; agent proceeds via <code>hookSpecificOutput.permissionDecision:"allow"</code> + <code>updatedInput.answers</code>.</td>
+      </tr>
+      <tr>
+        <td>Takes a manual snapshot through a button</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Was MISSING. GSL-298 shipped <code>POST /actions/snapshot</code> + Overview button + smoke scenarios 67-71. Latent <code>snapshot.sh</code> bug (empty-pipe rc=1 leak) fixed in-place.</td>
+      </tr>
+      <tr>
+        <td>Preact-SSG stops being invoked (<code>GOSLEEP_KEEP_STATIC_SITE=0</code>)</td>
+        <td class="status-excluded">EXCLUDED</td>
+        <td>GSL-271 (final SoT switchover) soak-gated 30-60 days per <code>d-2026-08-09-001</code>. Explicit exclusion in this epic.</td>
+      </tr>
+      <tr>
+        <td><code>mobile/README.md</code> works via GitHub rendering (Phase 5 archive-mode)</td>
+        <td class="status-delivered">DELIVERED</td>
+        <td>Phase 5 archive-mode intact; <code>docs/lab/mobile/README.md</code> unchanged.</td>
+      </tr>
+      <tr>
+        <td>(historical) Publishes a skill via the TouchID prompt</td>
+        <td class="status-moved">MOVED</td>
+        <td>Moved out of Phase 7 by <code>d-2026-08-08-002</code> (GSL-296); now a GSL-174 deliverable.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Tasks landed in GSL-297</h2>
+  <table>
+    <thead><tr><th>Key</th><th>Title</th><th>Commit</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://ainstance-labs.atlassian.net/browse/GSL-298"><code>GSL-298</code></a></td><td>[Core][Web] POST /actions/snapshot + Overview snapshot button</td><td><code>b3b03d7</code></td><td class="status-ok">In Review</td></tr>
+      <tr><td><a href="https://ainstance-labs.atlassian.net/browse/GSL-299"><code>GSL-299</code></a></td><td>[Core][Docs] Live proof: AskUserQuestion answer-loop end-to-end</td><td><code>e6676a5</code></td><td class="status-ok">In Review</td></tr>
+      <tr><td><a href="https://ainstance-labs.atlassian.net/browse/GSL-300"><code>GSL-300</code></a></td><td>[Core][Docs] Live proof: PermissionRequest hook end-to-end</td><td><code>0fdf988</code></td><td class="status-ok">In Review</td></tr>
+      <tr><td><a href="https://ainstance-labs.atlassian.net/browse/GSL-301"><code>GSL-301</code></a></td><td>[Web][Docs] Fleet live-values proof + flushPendingObservations bug fix</td><td><code>456514d</code></td><td class="status-ok">In Review</td></tr>
+      <tr><td><a href="https://ainstance-labs.atlassian.net/browse/GSL-302"><code>GSL-302</code></a></td><td>[Docs][Process] Feature-complete verification dossier + widening-gate note</td><td><em>this run</em></td><td class="status-ok">In Review</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Bugs uncovered + fixed inside GSL-297</h2>
+  <div class="bug-block">
+    <h3>GSL-298 · <code>apps/core/scripts/snapshot.sh</code></h3>
+    <p><strong>Bug:</strong> <code>prune_keep_last</code>'s empty-pipe case leaked exit 1 through <code>set -o pipefail</code> — the first snapshot on a fresh install returned rc=1 even though the <code>.backup</code> itself succeeded.</p>
+    <p class="fix-line"><strong>Fix:</strong> <code>|| true</code> on the while pipe + explicit <code>exit 0</code> at the tail, matching the header's "Retention failures WARN and continue" contract.</p>
+  </div>
+  <div class="bug-block">
+    <h3>GSL-301 · <code>apps/core/src/routes/internal.ts</code> (<code>flushPendingObservations</code>)</h3>
+    <p><strong>Bug:</strong> Bun's <code>Database.query(...).get(...)</code> returns <code>null</code> (NOT <code>undefined</code>) when no row matches. The branch selector was written as <code>if (existing !== undefined) UPDATE else INSERT</code> — a <code>null</code> result satisfies <code>!== undefined</code>, so every fresh <code>session_id</code> took UPDATE, matched zero rows, and silently dropped the observation. First-time observations never landed.</p>
+    <p class="fix-line"><strong>Fix:</strong> <code>existing !== null &amp;&amp; existing !== undefined</code> + removed the surrounding <code>db.raw.transaction(() =&gt; …)</code> wrapper + per-row try/catch that logs <code>core.tool_observed.flush_error</code>. Regression fenced by core-smoke scenario 25b.</p>
+  </div>
+
+  <h2>5. Remaining gaps (named honestly)</h2>
+  <div class="gap-block">
+    <h3>tool-observed shim</h3>
+    <p><strong>Impact:</strong> R7.4 sub-fields populate correctly WHEN something POSTs to <code>/internal/agents/tool-observed</code>; today no hook in <code>tools/hooks/</code> makes that call. GSL-301 fixed the endpoint's persistence bug, but a Session-level <code>PreToolUse</code> shim is still needed to feed the endpoint on every tool call in a live pilot session.</p>
+    <p><strong>Owner gate:</strong> <code>d-2026-08-09-001</code> — widening is owner-command-only.</p>
+    <p><strong>Recommended next ticket:</strong> "<code>[Core][Repo] Wire PreToolUse tool-observed hook under GOSLEEP_WEB_QUESTIONS=1</code>" (S).</p>
+  </div>
+
+  <h2>6. Widening gate (documented — not executed)</h2>
+  <p>Widening interception to <em>all</em> sessions is the explicit next owner-gated step, per decision <code>d-2026-08-09-001</code>. The mechanism and rollback are documented in two places:</p>
+  <ul>
+    <li>PRD "Acceptance criteria + end-check" — added a paragraph declaring feature-complete on this dossier landing and naming widening as the next explicit owner-gated step.</li>
+    <li>Runbook <code>docs/runbooks/gosleep-core.md</code> section 8 (Widen to all sessions later) — added a paragraph with the widening command (<code>export GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=…</code> in the parent shell), the rollback (<code>unset …</code>), the audit-trail step (append to <code>docs/lab/decisions/log.jsonl</code>), and the hard rule that <code>.claude/settings.json</code> stays untouched (frozen per handoff 57).</li>
+  </ul>
+  <p><strong>Not done in this task, on purpose:</strong> no edit to <code>.claude/settings.json</code>; no live widening; no removal of the shim's <code>GOSLEEP_WEB_QUESTIONS != 1 → exit 0</code> guard. The pilot stays opt-in until the owner explicitly runs the widening command.</p>
+
+  <h2>7. Gates run in this dossier</h2>
+  <ul>
+    <li><code>bun x tsc -p apps/core --noEmit</code> → clean.</li>
+    <li><code>bun x tsc -p apps/web --noEmit</code> → clean.</li>
+    <li><code>bun test</code> (apps/core) → <span class="status-ok">191 pass / 0 fail</span>.</li>
+    <li><code>bun run --filter='@gosleep/web' build</code> → 2.74 s.</li>
+    <li><code>bash tools/lab/tests/core-smoke.sh</code> → <span class="status-ok">96 pass / 0 fail</span> (was 90; +5 for GSL-298 scenarios 67-71, +1 for GSL-301 scenario 25b).</li>
+    <li><code>bash tools/lab/gate.sh --offline</code> → run at final report time (see final report line).</li>
+  </ul>
+
+  <h2>8. What was NOT re-verified (out of scope for this dossier)</h2>
+  <ul>
+    <li>Run-02's 11 findings are treated as still-holding baselines. This dossier does not re-audit them; the fix-confirmation lens of run-02 is authoritative.</li>
+    <li>Live subordinate <code>claude -p</code> sessions were not spent on GSL-299/300 — the shim-direct proof composes with GSL-274's transcript-identical acceptance verdict + GSL-267 dev history's 5-lane live-subordinate proof to argue equivalent coverage without burning fresh model tokens.</li>
+    <li>The tool-observed shim (remaining gap above) is named, not built.</li>
+    <li>Web UI visual verification of the new "Snapshot" button was done from source (Overview.tsx + tsc + vite build) rather than from a browser screenshot — the button is a shadcn Button + Dialog composition already covered by design-system audits in run-02.</li>
+  </ul>
+
+  <div class="foot">
+    Machine-readable payload: <a href="payload.json"><code>payload.json</code></a> · assets: <a href="assets/"><code>assets/</code></a> · this document is offline-friendly (<code>file://</code> load, no external assets).
+  </div>
+</main>
+</body>
+</html>

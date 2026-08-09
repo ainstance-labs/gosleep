@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>GSL-297 — Веб-панель управления, feature-complete · досье (запуск 01)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../style.css" onerror="this.remove()">
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --bg-alt:#f8f9fa; --border:#e4e7eb; --fg:#0f172a; --fg-muted:#475569; --accent:#0f766e; --ok:#16a34a; --warn:#d97706; --danger:#dc2626; --mono: ui-monospace, monospace; --sans: system-ui, sans-serif; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0b1120; --bg-alt:#111a2e; --border:#1e293b; --fg:#e2e8f0; --fg-muted:#94a3b8; --accent:#2dd4bf; --ok:#4ade80; --warn:#fbbf24; --danger:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:var(--sans); line-height:1.6; }
+  main { max-width:960px; margin:0 auto; padding:32px 24px 96px; }
+  h1 { font-weight:500; font-size:28px; margin:0 0 6px; }
+  h2 { font-weight:500; font-size:20px; margin:32px 0 12px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  code { font-family:var(--mono); font-size:0.92em; background:var(--bg-alt); padding:1px 5px; border-radius:3px; }
+  .subtitle { color:var(--fg-muted); font-size:14px; }
+  .verdict { background:var(--bg-alt); border-left:4px solid var(--accent); padding:16px 20px; margin:24px 0; border-radius:4px; }
+  .verdict .score { font-size:32px; font-weight:500; color:var(--accent); }
+  .verdict .label { color:var(--fg-muted); font-size:12px; text-transform:uppercase; letter-spacing:0.08em; margin-left:8px; }
+  a { color: var(--accent); }
+  .lang-toggle { display:inline-flex; gap:8px; align-items:center; font-size:12px; color:var(--fg-muted); margin-bottom:12px; }
+  .lang-toggle a { text-decoration:none; padding:3px 8px; border:1px solid var(--border); border-radius:3px; }
+  .lang-toggle a[aria-current="true"] { background:var(--bg-alt); color:var(--fg); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <div class="lang-toggle" role="navigation" aria-label="Язык">
+    <span>Язык:</span>
+    <a href="../index.html">English</a>
+    <a href="index.html" aria-current="true">Русский</a>
+  </div>
+  <h1>GSL-297 · Веб-панель управления — досье feature-complete</h1>
+  <p class="subtitle">Запуск 01 · 2026-08-09 · impl-webfc-1 (смена 76)</p>
+  <p class="subtitle">Источник дизайна: PRD <code>docs/prd/01-phase7-interactive-control-plane.md</code> (после re-scope 2026-08-08). Базовая линия: <a href="../../../GSL-250/runs/02/index.html">GSL-250 запуск 02</a> (счёт 100, все исправления держатся).</p>
+
+  <section class="verdict">
+    <div><span class="score">100</span><span class="label">FEATURE-COMPLETE</span></div>
+    <p>Приёмка фазы 7 полностью зелёная после GSL-297. Все семь требований R7.x DELIVERED со ссылками на доказательства. Все шесть пунктов end-check либо DELIVERED, либо EXCLUDED (отложено soak), либо MOVED (в скилл-менеджмент), каждый со ссылкой. Один скрытый баг во flushPendingObservations, вскрытый при проверке GSL-301, исправлен в том же коммите и защищён новым сценарием core-smoke (25b). Один остающийся зазор назван честно: сегодня ни один хук в <code>tools/hooks/</code> не вызывает <code>/internal/agents/tool-observed</code> — маленькая следующая задача проведёт Session-level шим под тем же guard-флагом. Расширение перехвата на ВСЕ сессии — следующий явный шаг, гейтится решением владельца (см. PRD + runbook раздел 8).</p>
+  </section>
+
+  <h2>Полная (английская) версия документа</h2>
+  <p>Полная английская редакция со всеми таблицами (R7.x, end-check, задачи, баги, зазоры, гейты) — на странице <a href="../index.html">../index.html</a>. Машинно-читаемая структура — <a href="../payload.json"><code>payload.json</code></a>. Ассеты живых прогонов — <a href="../assets/"><code>assets/</code></a>.</p>
+
+  <h2>Кратко по-русски (для быстрого чтения владельцем)</h2>
+  <p><strong>Что закрыто.</strong> Четыре задачи GSL-297 (298 → 301) плюс это досье (302). Кнопка «Snapshot» на Overview работает, отвечает JSON с путём файла; live-доказательства кнопочных вариантов ответа (pick / custom / defer / apply-manifest) собраны против настоящей связки shim + core + long-poll в изолированной scratch-песочнице (порт 7332, отдельная база <code>.artifacts/gsl297-live/gosleep.db</code>, продовая система не тронута); PermissionRequest прошёл allow и deny так же честно. Fleet-поля <code>current_tool</code> / <code>context_pct</code> начали приземляться в базу после исправления бага (Bun возвращает <code>null</code> вместо <code>undefined</code> при пустом запросе — селектор ветки промахивался, INSERT молча дропался).</p>
+  <p><strong>Что осталось.</strong> Никакого хука сегодня не вызывает эндпоинт <code>/internal/agents/tool-observed</code>, поэтому в реальной пилотной сессии Fleet-поля пока не заполняются — эндпоинт готов, но его никто не кормит. Отдельный небольшой тикет проведёт Session-level шим под тем же guard-флагом. Расширение перехвата на все сессии — явный следующий шаг, только по команде владельца (см. PRD + runbook §8).</p>
+  <p><strong>Что не трогали.</strong> <code>.claude/settings.json</code> (frozen по handoff 57), TouchID (пауза по <code>d-2026-08-09-001</code>), GSL-271 (soak-gated), Channels v1.1 supervised proof (это v1.1-эпик, не Phase 7 feature-complete).</p>
+
+  <p class="subtitle">Досье открывается офлайн из <code>file://</code>. Внешних ассетов нет.</p>
+</main>
+</body>
+</html>
