@@ -1,6 +1,7 @@
-// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277 + GSL-278 + GSL-279).
+// @gosleep/core — POST /actions/* write endpoints (GSL-268, extended GSL-277 + GSL-278 + GSL-279
+// + GSL-298).
 //
-// Seven v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
+// Eight v1 write endpoints per target-architecture rev-2 section 6.2 + rev-3 addendum:
 //
 //   POST /actions/questions/answer          { qid, answer, by?, channel? }             GSL-268
 //   POST /actions/questions/resolve         { qid, applied, early? }                   GSL-268
@@ -9,6 +10,7 @@
 //   POST /actions/tasks/sync                { epic? }                                  GSL-279
 //   POST /actions/tick                      {}                              (fire-and-forget)
 //   POST /actions/events/ack                { seq, note? }
+//   POST /actions/snapshot                  { label? }                                 GSL-298
 //
 // Every request goes through THREE layers, in order (any layer rejection short-circuits with a
 // proper HTTP status; the ledger only records requests that reached the mutation):
@@ -1267,6 +1269,187 @@ actionsRoutes.post("/actions/permissions/decide", requireBearer, async (c) => {
           input: { qid, decision, updated_message, by },
         },
         () => doDecidePermission({ qid, decision, updated_message, by }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
+// GSL-298 — POST /actions/snapshot
+//
+// The last live-write in the Phase 7 acceptance the owner has to click during dogfooding
+// (PRD "Acceptance criteria + end-check" bullet: "takes a manual snapshot through a button").
+//
+// Runs `apps/core/scripts/snapshot.sh` synchronously — the script is `sqlite3 .backup` +
+// retention prune, normally <200 ms on a warm DB and bounded by SPAWN_TIMEOUT below. The
+// stdout is a single JSON line the script emits on success:
+//   {"ts":"…Z","event":"core.snapshot.ok","kind":"…","path":"…"}
+// We parse that line to lift `kind` and `path` into the response envelope so the caller has
+// the artifact location without having to `ls` afterwards.
+//
+// Modes:
+//   * `label` omitted → kind=daily, filename `daily-<utc-ts>.db` (matches the launchd cron).
+//   * `label` present → kind=manual, filename `manual-<label>-<utc-ts>.db` (retained
+//     indefinitely per snapshot.sh header — the label is the operator's promise to future-
+//     self). Empty string is rejected so the retention semantics stay honest.
+//
+// Bearer + Origin + Idempotency-Key layers are enforced by the existing middleware +
+// withTimeline; TouchID intentionally NOT wired here — the write path only creates files
+// under `data/snapshots/`, never mutates the primary DB (gap-analysis Gap 1 blast section).
+//
+// Env pass-through: `GOSLEEP_DB_PATH` propagates from the server process so the snapshot
+// hits the SAME database the server is serving. Without this, the smoke would snapshot the
+// real data/gosleep.db instead of its scratch DB — a leak we already saw when writing this.
+// -----------------------------------------------------------------------------
+
+interface SnapshotInput {
+  label: string | null;
+}
+
+interface SnapshotResult {
+  kind: string;
+  path: string;
+  ts: string;
+  labSnapshot: { rc: number; stdout: string; stderr: string; elapsedMs: number };
+}
+
+/** The final non-empty stdout line snapshot.sh prints is `{"event":"core.snapshot.ok",…}`. */
+function parseSnapshotStdout(stdout: string): { kind: string; path: string; ts: string } {
+  const lines = stdout.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!.trim();
+    if (!line.startsWith("{")) continue;
+    try {
+      const parsed = JSON.parse(line) as Record<string, unknown>;
+      if (parsed.event === "core.snapshot.ok") {
+        const kind = typeof parsed.kind === "string" ? parsed.kind : "unknown";
+        const path = typeof parsed.path === "string" ? parsed.path : "";
+        const ts = typeof parsed.ts === "string" ? parsed.ts : nowIso();
+        if (path.length === 0) {
+          throw new Error("snapshot.sh returned an ok event with empty path");
+        }
+        return { kind, path, ts };
+      }
+    } catch {
+      // fall through to next line
+    }
+  }
+  throw new Error("snapshot.sh produced no core.snapshot.ok line");
+}
+
+async function doSnapshot(input: SnapshotInput): Promise<SnapshotResult> {
+  const cmd: string[] = ["bash", `${REPO_ROOT}/apps/core/scripts/snapshot.sh`];
+  if (input.label !== null) {
+    cmd.push("--kind", "manual", "--label", input.label);
+  }
+  // Propagate GOSLEEP_DB_PATH explicitly — spawnAwait's default sanitised env only auto-
+  // forwards GOSLEEP_LAB_DIR and GOSLEEP_RUN_ID. Without this the smoke would target the
+  // real data/gosleep.db instead of the scratch DB.
+  const env: Record<string, string> = {};
+  if (
+    typeof process.env.GOSLEEP_DB_PATH === "string"
+    && process.env.GOSLEEP_DB_PATH.length > 0
+  ) {
+    env.GOSLEEP_DB_PATH = process.env.GOSLEEP_DB_PATH;
+  }
+  const spawn = await spawnAwait({
+    cmd,
+    timeoutMs: 20_000, // sqlite3 .backup + retention on a healthy laptop is <1 s
+    env,
+  });
+  if (!spawn.ok) {
+    const reason = spawn.timedOut
+      ? `snapshot.sh timed out after ${spawn.elapsedMs} ms`
+      : `snapshot.sh exited rc=${spawn.code}; stderr: ${spawn.stderr}`;
+    const err = new Error(reason);
+    (err as Error & { httpStatus?: number }).httpStatus = 500;
+    throw err;
+  }
+  const { kind, path, ts } = parseSnapshotStdout(spawn.stdout);
+  return {
+    kind,
+    path,
+    ts,
+    labSnapshot: {
+      rc: spawn.code ?? 0,
+      stdout: spawn.stdout,
+      stderr: spawn.stderr,
+      elapsedMs: spawn.elapsedMs,
+    },
+  };
+}
+
+actionsRoutes.post("/actions/snapshot", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const rawLabel = body.label;
+  let label: string | null = null;
+  if (typeof rawLabel === "string") {
+    if (rawLabel.length === 0) {
+      return c.json({ ok: false, error: "label must be a non-empty string when provided" }, 400);
+    }
+    // Filename safety — snapshot.sh embeds the label into a filename and shells out around it.
+    // Reject anything outside [A-Za-z0-9._-]; a length cap keeps ls output human-readable.
+    if (!/^[A-Za-z0-9._-]{1,64}$/.test(rawLabel)) {
+      return c.json(
+        {
+          ok: false,
+          error: "label must match [A-Za-z0-9._-]{1,64}",
+        },
+        400,
+      );
+    }
+    label = rawLabel;
+  } else if (rawLabel !== null && rawLabel !== undefined) {
+    return c.json({ ok: false, error: "label must be a string or null" }, 400);
+  }
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.snapshot", async () =>
+      withTimeline<SnapshotResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/snapshot",
+          input: { label },
+        },
+        () => doSnapshot({ label }),
       ),
     );
     if (outcome.cached && !outcome.ok) {

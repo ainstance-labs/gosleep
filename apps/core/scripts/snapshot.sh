@@ -95,14 +95,25 @@ find "$SNAP_DIR" -maxdepth 1 -type f -name 'daily-*.db' -mtime +30 -print -delet
   echo "snapshot: warn: daily-retention prune failed" >&2
 
 # keep the N most recent by mtime; delete the rest. Portable macOS/GNU form via `ls -1t`.
+# The trailing `|| true` matches this script's header contract ("Retention failures WARN and
+# continue — a full disk should never eat the primary DB") and also masks the harmless exit=1
+# a POSIX `while read` returns when the pipe is empty (no files match the glob, e.g. the very
+# first snapshot on a fresh install). Without it, `set -o pipefail` propagates that exit code
+# up to the script's own exit, and callers such as POST /actions/snapshot (GSL-298) surface it
+# as a spurious rc=1 even though the backup itself succeeded.
 prune_keep_last() {  # prune_keep_last <glob> <keep>
   local pattern="$1"
   local keep="$2"
   # shellcheck disable=SC2012  # ls sorting is fine here; filenames come from us.
   ls -1t "$SNAP_DIR"/$pattern 2>/dev/null | tail -n +"$((keep + 1))" | while read -r f; do
     rm -f -- "$f" || echo "snapshot: warn: could not prune $f" >&2
-  done
+  done || true
 }
 prune_keep_last "pre-*.db"         5
 prune_keep_last "pre-publish-*.db" 5
 # manual-*.db is retained indefinitely — the label is a promise the operator made to future-self.
+
+# Explicit success — the retention block above may have set $? to a non-zero warning code
+# even though the snapshot itself is safe on disk. The script contract is: rc=0 means the
+# `.backup` succeeded, rc!=0 means the backup failed. Any retention warning is a stderr line.
+exit 0

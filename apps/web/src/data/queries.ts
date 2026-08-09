@@ -32,6 +32,8 @@ import type {
   ResolveActionInput,
   ResolveActionResponse,
   SkillsResponse,
+  SnapshotActionInput,
+  SnapshotActionResponse,
   StatusResponse,
   SyncTasksActionInput,
   SyncTasksActionResponse,
@@ -262,6 +264,25 @@ export function useSyncTasks(): UseMutationResult<
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "tasks"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+// GSL-298: fire a manual DB snapshot. Success invalidates the status + timeline caches so
+// the "Live pulse" tile on Overview shows the freshly-emitted `core.action.finished` line
+// without waiting for the SSE round-trip.
+export function useTakeSnapshot(): UseMutationResult<
+  SnapshotActionResponse,
+  Error,
+  SnapshotActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SnapshotActionInput) =>
+      coreClient.takeSnapshot(input, newIdempotencyKey()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.status() });
+      qc.invalidateQueries({ queryKey: ["core", "timeline"] });
     },
   });
 }

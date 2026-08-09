@@ -493,6 +493,33 @@ export const SyncTasksActionResponse = actionResponse(SyncTasksActionResult);
 export type SyncTasksActionResponse = z.infer<typeof SyncTasksActionResponse>;
 
 // -----------------------------------------------------------------------------
+// snapshot action (GSL-298 — POST /actions/snapshot)
+//
+// Runs `apps/core/scripts/snapshot.sh` and returns the emitted path + kind. Label omitted →
+// kind=daily (matches the launchd cron); label present → kind=manual (retained indefinitely).
+// -----------------------------------------------------------------------------
+
+export const SnapshotActionInput = z.object({
+  label: z
+    .string()
+    .regex(/^[A-Za-z0-9._-]{1,64}$/)
+    .nullable()
+    .optional(),
+});
+export type SnapshotActionInput = z.infer<typeof SnapshotActionInput>;
+
+export const SnapshotActionResult = z.object({
+  kind: z.string(),
+  path: z.string(),
+  ts: IsoTimestamp,
+  labSnapshot: LabToolTrace,
+});
+export type SnapshotActionResult = z.infer<typeof SnapshotActionResult>;
+
+export const SnapshotActionResponse = actionResponse(SnapshotActionResult);
+export type SnapshotActionResponse = z.infer<typeof SnapshotActionResponse>;
+
+// -----------------------------------------------------------------------------
 // permission decide (GSL-284 — POST /actions/permissions/decide)
 //
 // Owner-facing decision on a permission-kind question row (opened by

@@ -31,6 +31,8 @@ import {
   ResolveActionInput,
   ResolveActionResponse,
   SkillsResponse,
+  SnapshotActionInput,
+  SnapshotActionResponse,
   SseEventData,
   SseRotateData,
   StatusResponse,
@@ -62,6 +64,8 @@ import type {
   ResolveActionInput as ResolveActionInputT,
   ResolveActionResponse as ResolveActionResponseT,
   SkillsResponse as SkillsResponseT,
+  SnapshotActionInput as SnapshotActionInputT,
+  SnapshotActionResponse as SnapshotActionResponseT,
   SseEventData as SseEventDataT,
   SseRotateData as SseRotateDataT,
   StatusResponse as StatusResponseT,
@@ -357,6 +361,22 @@ export class CoreClient {
     );
   }
 
+  /** GSL-298: fire a manual DB snapshot (`snapshot.sh` under the hood). Returns the
+   *  path + kind the script wrote. `label` omitted → daily; label present → manual (kept
+   *  indefinitely per snapshot.sh retention). */
+  takeSnapshot(
+    input: SnapshotActionInputT,
+    idempotencyKey: string,
+  ): Promise<SnapshotActionResponseT> {
+    return this.postAction(
+      "/actions/snapshot",
+      input,
+      SnapshotActionInput,
+      SnapshotActionResponse,
+      idempotencyKey,
+    );
+  }
+
   /** GSL-284: owner decides Allow/Deny on a permission-kind question row. */
   decidePermission(
     input: DecidePermissionActionInputT,
@@ -573,6 +593,8 @@ export type {
   ResolveActionInputT as ResolveActionInput,
   ResolveActionResponseT as ResolveActionResponse,
   SkillsResponseT as SkillsResponse,
+  SnapshotActionInputT as SnapshotActionInput,
+  SnapshotActionResponseT as SnapshotActionResponse,
   SseEventDataT as SseEventData,
   SseRotateDataT as SseRotateData,
   StatusResponseT as StatusResponse,

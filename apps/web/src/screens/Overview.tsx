@@ -1,9 +1,14 @@
-// @gosleep/web — Overview screen (GSL-265 read-only; GSL-268 "Run tick" button).
+// @gosleep/web — Overview screen (GSL-265 read-only; GSL-268 "Run tick" button; GSL-298
+// "Snapshot" button).
 //
-// Hero KPIs + live pulse + one interactive control:
+// Hero KPIs + live pulse + two interactive controls:
 //   - "Run tick" fires POST /actions/tick with `carrier: "web"`. Fire-and-forget on the server
 //     (tick.sh spawns detached); the button surfaces the intent_id in a toast, and the tick's
 //     own ledger + child events arrive shortly via SSE.
+//   - "Snapshot" fires POST /actions/snapshot with a `label` (owner-web is the default label,
+//     so the file lands under `data/snapshots/manual-owner-web-<ts>.db` and is retained
+//     indefinitely per snapshot.sh's manual-retention rule). Response body carries the path;
+//     the toast description surfaces it so the operator can `open $(dirname …)` if they want.
 
 import { useState } from "react";
 
@@ -13,7 +18,7 @@ import { QueryStatus } from "../components/QueryStatus";
 import { Dialog } from "../components/ui/Dialog";
 import { Button } from "../components/ui/Button";
 import { useToast } from "../components/ui/Toast";
-import { useRunTick, useStatus, useTimeline } from "../data/queries";
+import { useRunTick, useStatus, useTakeSnapshot, useTimeline } from "../data/queries";
 import { timeAgo, timeOfDay } from "../lib/format";
 import { Badge } from "../components/ui/Badge";
 import type { RunwayResult } from "@gosleep/schema";
@@ -91,8 +96,10 @@ export function OverviewScreen() {
   const status = useStatus();
   const timeline = useTimeline(12);
   const tickMut = useRunTick();
+  const snapshotMut = useTakeSnapshot();
   const { push: pushToast } = useToast();
   const [confirmTick, setConfirmTick] = useState(false);
+  const [confirmSnapshot, setConfirmSnapshot] = useState(false);
 
   const runTick = async (): Promise<void> => {
     try {
@@ -112,20 +119,52 @@ export function OverviewScreen() {
     }
   };
 
+  const takeSnapshot = async (): Promise<void> => {
+    try {
+      // GSL-298 — always tag owner-clicked snapshots as `manual` so retention is indefinite
+      // (the launchd cron owns the `daily` slot with its own 30-day prune).
+      const res = await snapshotMut.mutateAsync({ label: "owner-web" });
+      const path = res.result?.path ?? "(path unavailable)";
+      const cached = res.cached === true ? " (cached replay)" : "";
+      pushToast({
+        title: "Snapshot written",
+        description: `${path}${cached}`,
+        tone: "ok",
+      });
+      setConfirmSnapshot(false);
+    } catch (err) {
+      pushToast({
+        title: "Snapshot failed",
+        description: err instanceof Error ? err.message : String(err),
+        tone: "danger",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Overview"
         subtitle="Live snapshot of the gosleep control plane. Updates streamed via SSE."
         right={
-          <Button
-            variant="solid"
-            size="sm"
-            onClick={() => setConfirmTick(true)}
-            disabled={tickMut.isPending}
-          >
-            {tickMut.isPending ? "Ticking…" : "Run tick"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmSnapshot(true)}
+              disabled={snapshotMut.isPending}
+            >
+              {snapshotMut.isPending ? "Snapshotting…" : "Snapshot"}
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => setConfirmTick(true)}
+              disabled={tickMut.isPending}
+            >
+              {tickMut.isPending ? "Ticking…" : "Run tick"}
+            </Button>
+          </div>
         }
       />
 
@@ -225,6 +264,39 @@ export function OverviewScreen() {
         <p className="text-secondary text-sm">
           The tick returns immediately with an <code className="mono">intent_id</code>. Its
           ledger entry + child events arrive on the timeline via SSE within a few seconds.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={confirmSnapshot}
+        onOpenChange={setConfirmSnapshot}
+        title="Take a snapshot"
+        description="Runs apps/core/scripts/snapshot.sh (sqlite3 .backup, WAL-friendly and atomic) and writes a manual-labelled copy under data/snapshots/. Retained indefinitely."
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmSnapshot(false)}
+              disabled={snapshotMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => void takeSnapshot()}
+              disabled={snapshotMut.isPending}
+            >
+              {snapshotMut.isPending ? "Snapshotting…" : "Confirm"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-secondary text-sm">
+          The snapshot returns synchronously (usually under a second). The response body
+          carries the file path — it is surfaced in the success toast so you can locate
+          the file with <code className="mono">open $(dirname …)</code>.
         </p>
       </Dialog>
     </div>
