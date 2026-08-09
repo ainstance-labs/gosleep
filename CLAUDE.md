@@ -154,3 +154,12 @@ using `rsync -a --delete`. Sync direction is always **local → global**.
 **Before running `./install.sh`:** ensure `skill/` is not behind the global copy. If you suspect
 the global is newer, reverse-sync first: `rsync -a "$HOME/.claude/skills/<name>/" "skill/<name>/"`
 and commit before running the installer.
+
+**Editing a skill IS a shift-closing item (GSL-189, root treatment for R5 "learning loop has
+no executor").** Every shift-closing agent runs the three-item checklist codified in
+`skill/handoff/SKILL.md` Procedure step 7 before writing the handoff: (a) skim for a lesson
+worth recording into an authoritative skill; (b) if there is one, file a `[Skill]`-tagged GSL
+Task, edit the appropriate copy, publish via `tools/skills/publish.sh <name>` (never bypass
+it); (c) link the lesson-to-Task in the handoff's "Comments" section. Silence must be
+explicit ("no skill lessons this shift"), not implicit — a handoff missing the checklist is
+incomplete regardless of how good the rest reads.

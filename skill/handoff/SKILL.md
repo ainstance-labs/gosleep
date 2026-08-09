@@ -48,6 +48,23 @@ Do NOT use for a quick status reply in chat (just answer). Use this when the out
    hook already records *that a file under `docs/handoff/` was written*; what it cannot know is **which**
    handoff, on **what**, and **where the next agent resumes** — that is the whole content of this line.
 6. **Never put secrets in it.** Reference env var *names* and where they live; never the values.
+7. **Shift-closing checklist — verify BEFORE writing the handoff (root treatment for R5, the
+   "learning loop has no executor" defect).** The lesson-to-skill loop only closes when the
+   shift-closing agent actively runs these items — treat them as mandatory as the handoff itself:
+   - **a.** Skim the shift's own transcript / dev-history / decisions for a lesson worth
+     re-recording into an authoritative skill (`orchestrating-delivery-agents`, `handoff`,
+     `delivery-workflow`, `using-jira`, `writing-prds`, `remote-control`,
+     `tmux-agents-orchestration`). If none, say so in the handoff's "Comments" section
+     ("no skill lessons this shift") — silence is not the same as absence.
+   - **b.** If there IS a lesson: open a GSL Task with `[Skill]` tag, edit the appropriate
+     copy (repo `skill/<name>/` for non-authoritative skills; the owner's global copy for
+     `orchestrating-delivery-agents` per the authority-inversion rule `d-2026-07-20`), then
+     publish via the sanctioned path — `tools/skills/publish.sh <name>` for the CLI path or
+     the Skills web page for the UI path once TouchID unpauses. Never bypass `publish.sh`.
+   - **c.** Record the lesson-to-Task link in the handoff's "Comments & recent decisions"
+     section so the next shift can see what improved and where.
+   Skipping these three items is what stalled the learning loop for 30 days — the handoff
+   without them is incomplete regardless of how good the rest of the file reads.
 
 ## Document structure (sections, in order)
 
