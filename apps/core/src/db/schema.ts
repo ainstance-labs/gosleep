@@ -104,6 +104,12 @@ export const questions = sqliteTable("questions", {
   applied_rule_ref: text("applied_rule_ref"),
   defer_until: text("defer_until"),
   last_event_seq: integer("last_event_seq"),
+  /** GSL-320 — for `kind='permission'` rows: the JSON-encoded `tool_input` (the actual command
+   *  or file path being approved). NULL for non-permission rows. Populated by
+   *  `POST /internal/permissions/post` and rendered as a monospace block on the panel card so
+   *  the owner sees WHAT is being approved, not just the tool name. Truncated to ~4 KB before
+   *  insert. */
+  tool_input: text("tool_input"),
 });
 
 /**

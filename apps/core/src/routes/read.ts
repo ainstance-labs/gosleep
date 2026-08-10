@@ -140,6 +140,9 @@ interface QuestionRow {
   applied_rule_ref: string | null;
   defer_until: string | null;
   last_event_seq: number | null;
+  // GSL-320 — populated for `kind='permission'` rows with the JSON-encoded tool_input
+  // (the actual command / file path being approved). Null on non-permission rows.
+  tool_input: string | null;
 }
 
 readRoutes.get("/questions", requireBearer, (c) => {
@@ -154,7 +157,8 @@ readRoutes.get("/questions", requireBearer, (c) => {
   const rows = getDb().raw
     .query(
       `SELECT qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-              resolved_at, applied, applied_by, applied_rule_ref, defer_until, last_event_seq
+              resolved_at, applied, applied_by, applied_rule_ref, defer_until, last_event_seq,
+              tool_input
        FROM questions ${where}
        ORDER BY opened_at DESC LIMIT ?`,
     )
@@ -176,6 +180,10 @@ readRoutes.get("/questions", requireBearer, (c) => {
       applied_rule_ref: r.applied_rule_ref,
       defer_until: r.defer_until,
       last_event_seq: r.last_event_seq,
+      // GSL-320 — the JSON string is passed through parseJsonSafe so the panel can render it
+      // as structured data (Bash → {command}, Edit → {file_path, old_string, …}) without a
+      // client-side JSON.parse. Legacy pre-GSL-320 rows have NULL and simply omit the block.
+      tool_input: parseJsonSafe(r.tool_input),
     })),
     count: rows.length,
   });
@@ -464,7 +472,7 @@ readRoutes.get("/bundle", requireBearer, (c) => {
   const questions = db.raw
     .query(
       `SELECT qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-              resolved_at, applied, applied_by, applied_rule_ref, defer_until
+              resolved_at, applied, applied_by, applied_rule_ref, defer_until, tool_input
        FROM questions ORDER BY opened_at DESC LIMIT 200`,
     )
     .all() as QuestionRow[];
@@ -511,6 +519,9 @@ readRoutes.get("/bundle", requireBearer, (c) => {
       applied_by: r.applied_by,
       applied_rule_ref: r.applied_rule_ref,
       defer_until: r.defer_until,
+      // GSL-320 — same shape as /questions above; SPA renders permission cards with a
+      // monospace preview of the actual command / tool input.
+      tool_input: parseJsonSafe(r.tool_input),
     })),
     skills: skills.map((r) => ({
       name: r.name,

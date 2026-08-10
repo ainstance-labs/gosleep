@@ -49,7 +49,7 @@ function freshDb(): OpenedDb {
     qid TEXT PRIMARY KEY, status TEXT NOT NULL, kind TEXT NOT NULL,
     task TEXT, question TEXT NOT NULL, options TEXT, opened_at TEXT NOT NULL,
     answered_at TEXT, answer_text TEXT, resolved_at TEXT, applied TEXT,
-    last_event_seq INTEGER
+    last_event_seq INTEGER, tool_input TEXT
   );`);
   raw.exec(`CREATE TABLE agent_sessions (
     session_id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL,

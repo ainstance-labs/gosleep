@@ -671,6 +671,63 @@ interface PermissionInput {
 }
 
 /**
+ * GSL-320 — reconcile two hook payload shapes into a common `tool_params` blob.
+ *
+ * Historically the endpoint expected the MCP-style shape (`{ tool, params, message }`) — that
+ * matched the old model-driven `PermissionRequest` tool. But the current wiring runs off
+ * Claude Code's real `PermissionRequest` event (GSL-304), where `tool_input` is the tool call's
+ * ARGUMENTS directly:
+ *   - Bash → `{ "command": "gh pr create …", "description": "…" }`
+ *   - Edit → `{ "file_path": "…", "old_string": "…", "new_string": "…" }`
+ *   - Write → `{ "file_path": "…", "content": "…" }`
+ * `.params` is absent, so the previous `toolInputRaw.params ?? null` collapsed to null and the
+ * card ended up as a bare `Permission request: Bash` with zero context (finding #1 in the run 06
+ * verification report).
+ *
+ * Rule: if the payload declares the MCP shape (either `.tool` or `.params` key present), we
+ * take `.params`. Otherwise the whole object IS the tool arguments; we strip the reserved
+ * metadata keys (`tool`, `message`) and return the rest. An empty object collapses back to
+ * null so the summary rendering can still skip the trailing preview when appropriate.
+ */
+export function flattenToolInput(
+  toolInputRaw: Record<string, unknown>,
+): unknown {
+  const isCanonical =
+    Object.prototype.hasOwnProperty.call(toolInputRaw, "params") ||
+    Object.prototype.hasOwnProperty.call(toolInputRaw, "tool");
+  if (isCanonical) {
+    return toolInputRaw.params ?? null;
+  }
+  const rest: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(toolInputRaw)) {
+    if (k === "tool" || k === "message") continue;
+    rest[k] = v;
+  }
+  return Object.keys(rest).length > 0 ? rest : null;
+}
+
+/** Cap the persisted `tool_input` JSON at ~4 KB. Long Edit payloads (a whole file body) would
+ *  otherwise bloat the row and slow the SPA render. The cap is applied after JSON serialisation
+ *  so the truncation point is byte-accurate; consumers see a suffix marker in place of trailing
+ *  content. */
+const TOOL_INPUT_CAP_BYTES = 4096;
+export function encodeToolInputForStorage(raw: unknown): string | null {
+  if (raw === undefined || raw === null) return null;
+  let text: string;
+  try {
+    text = JSON.stringify(raw);
+  } catch {
+    text = String(raw);
+  }
+  if (text.length === 0) return null;
+  if (text.length > TOOL_INPUT_CAP_BYTES) {
+    // Preserve a "…" marker so the panel can hint truncation to the reader.
+    text = `${text.slice(0, TOOL_INPUT_CAP_BYTES - 1)}…`;
+  }
+  return text;
+}
+
+/**
  * Compose the human-readable summary that lands in `questions.question`. Never NULL — the
  * schema demands a non-empty string. Keeps the tool name at the front so the Questions
  * screen's default label is a discoverable identifier ("Permission: Bash").
@@ -746,7 +803,10 @@ internalRoutes.post("/internal/permissions/post", requireInternalSecret, async (
       : typeof body.tool_name === "string"
         ? body.tool_name
         : "";
-  const toolParams = toolInputRaw.params ?? null;
+  // GSL-320 — accept BOTH the MCP-style shape (`{tool, params, message}`) AND Claude Code's
+  // real PermissionRequest payload where `tool_input` IS the tool's arguments (`{command: …}`
+  // for Bash). See `flattenToolInput` for the reconciliation rule.
+  const toolParams = flattenToolInput(toolInputRaw);
   const message =
     typeof toolInputRaw.message === "string" && toolInputRaw.message.length > 0
       ? toolInputRaw.message
@@ -780,17 +840,23 @@ internalRoutes.post("/internal/permissions/post", requireInternalSecret, async (
   // Any duplicate qid is impossible in practice (random suffix), but INSERT OR IGNORE keeps
   // the endpoint idempotent against a caller that retries with the same qid via a proxy
   // rewrite (unlikely, but harmless to guard).
+  //
+  // GSL-320 — persist the flattened tool_input alongside the question text so the panel card
+  // can render a dedicated monospace preview (not just the summary shoved into the question
+  // string). NULL on the row when the caller sent no params — the SPA hides the preview slot.
+  const toolInputJson = encodeToolInputForStorage(permission.tool_params);
   db.raw
     .query(
       `INSERT OR IGNORE INTO questions
-         (qid, status, kind, task, question, options, opened_at)
-       VALUES (?, 'open', 'permission', NULL, ?, ?, ?)`,
+         (qid, status, kind, task, question, options, opened_at, tool_input)
+       VALUES (?, 'open', 'permission', NULL, ?, ?, ?, ?)`,
     )
     .run(
       qid,
       formatPermissionQuestion(permission),
       JSON.stringify(PERMISSION_OPTIONS),
       openedAt,
+      toolInputJson,
     );
 
   // Fire the SSE side via a lab-log semantic event: this reaches web clients within one

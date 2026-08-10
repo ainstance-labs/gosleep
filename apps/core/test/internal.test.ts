@@ -43,7 +43,8 @@ raw.exec(`CREATE TABLE questions (
   applied_by TEXT,
   applied_rule_ref TEXT,
   defer_until TEXT,
-  last_event_seq INTEGER
+  last_event_seq INTEGER,
+  tool_input TEXT
 );`);
 const scratchDb = drizzle(raw, { schema });
 const openedDb: OpenedDb = { db: scratchDb, raw, path: ":memory:" };
