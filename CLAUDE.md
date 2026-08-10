@@ -126,7 +126,7 @@ generators and the eval runner per README "Use" (fix stale ROOT paths first — 
 
 ## Skill source of truth
 
-`skill/` is the source of truth for **all 5 owned skills**, each in its own named subfolder:
+`skill/` is the source of truth for **all 7 owned skills**, each in its own named subfolder:
 
 ```
 skill/
@@ -135,6 +135,8 @@ skill/
   handoff/                         # SKILL.md
   using-jira/                      # SKILL.md
   writing-prds/                    # SKILL.md
+  remote-control/                  # SKILL.md
+  tmux-agents-orchestration/       # SKILL.md
 ```
 
 `./install.sh` installs **every subfolder** under `skill/` into `~/.claude/skills/<name>/`

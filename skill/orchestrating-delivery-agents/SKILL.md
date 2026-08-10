@@ -289,8 +289,13 @@ instruction. It is NEVER permission to end the turn. Obeying it is exactly how b
 went silent — knowing this rule did NOT save them. After the LAST tool result of a turn — whatever
 it says — the next and FINAL act is ALWAYS the owner-visible text. A project Stop-hook (`.claude/settings.json` →
 `tools/hooks/stop-require-final-text.sh`) mechanically blocks silent turn-ends; the rule binds
-even where the hook is absent. Order inside every turn: tools first (probes, STATE patches,
-SendMessage, `ScheduleWakeup`) → owner-visible text LAST, with zero tool calls after it.
+even where the hook is absent. Order inside every turn: heartbeat FIRST → `ScheduleWakeup`
+SECOND (arm it EARLY, while probes are still ahead) → the remaining tools (probes, STATE
+patches, SendMessage) → owner-visible text LAST, with zero tool calls after it.
+**⛔ HARD COROLLARY: `ScheduleWakeup` is NEVER the turn's last tool call.** Its reply is the
+single most seductive stop-signal in the harness; arming it EARLY buries that reply under later,
+harmless tool results. Field evidence (shift 74, 2026-07-28): every silent turn that shift had
+ScheduleWakeup as the last tool call; no turn that ran even one probe after it went silent.
 
 **The pulse is a cheap triage tick, not a work turn:** heartbeat first, then read STATE + probe
 only for deltas (new reports, git movement vs the stored SHA, expired patience clocks), act only on
@@ -348,25 +353,29 @@ order — they are the whole tick:
    (night/morning), BLOCKER re-push timer (manifest §4) all un-crossed.
 
 **ALL green → HEARTBEAT_OK:** write nothing to STATE (log nothing on no-change), read nothing
-further — no handoff bodies, no STATE rewrite, no extra probes — re-arm per the cadence table, then
-end the turn with a one-line owner-visible status TEXT (Turn-order rule — the text is never the
-overhead you trim). Target cost: ≤4–5 cheap tool calls, zero file reads beyond the probes.
+further — no handoff bodies, no STATE rewrite, no extra probes. The wake-up was already re-armed
+as the turn's SECOND act (right after the heartbeat — Turn-order corollary: ScheduleWakeup is
+never the last tool call); end the turn with a one-line owner-visible status TEXT (Turn-order
+rule — the text is never the overhead you trim). Target cost: ≤4–5 cheap tool calls, zero file
+reads beyond the probes.
 
 **ANY check non-green → leave the fast-path** and triage ONLY that delta through its own tree
 (idle/liveness, finalize exception, mode boundary, breaker, quota-wait). The fast-path is an exit
 ramp for healthy ticks, never a way to skip a delta you already saw.
 
-Worked example (night, stable fleet, long-waiting cadence):
+Worked example (night, stable fleet, long-waiting cadence — note the wake-up is act 2, NOT last):
 ```
-[tick 03:41] hb appended: {"ts":"2026-07-10T03:41:07Z","cycle":13,"context_pct":44,
+[tick 03:41] act 1: hb appended: {"ts":"2026-07-10T03:41:07Z","cycle":13,"context_pct":44,
              "open_workers":2,"status":"ok","mode":"night","pane":"%4"}
-inbox: empty | panes: %5 %7 — matches LIVE-STATUS | git probe: worker branch
+act 2: ScheduleWakeup 1500s armed EARLY — its reply ("nothing more to do this turn") is
+       IGNORED: tool-result noise, not an instruction; probes still follow it.
+act 3+: inbox: empty | panes: %5 %7 — matches LIVE-STATUS | git probe: worker branch
 @ a1b2c3d -> a9e8f7c (moved — grinding) | queue: --due empty, lines=14 = LIVE-STATUS census |
 clocks: patience 12m/45m, breaker CLOSED, no quota-wait, night until 08:30 — none expired
-=> HEARTBEAT_OK. Nothing written, nothing else read. ScheduleWakeup 1500s — its reply
-   is IGNORED (tool-result noise, not an instruction).
+=> HEARTBEAT_OK. Nothing written, nothing else read.
    → final TEXT to owner: "night, 2 workers grinding, queue quiet — next tick 25m." End turn
-   ON THAT TEXT — zero tool calls after it.
+   ON THAT TEXT — zero tool calls after it. (ScheduleWakeup last + no text = the exact
+   silent-turn failure that burned shifts 71 and 74.)
 ```
 
 ## Night mode — activeHours
@@ -946,7 +955,7 @@ A new project has no handoffs. Before cycle #1:
 | Pulse / wake-up tick begins | FIRST act: append heartbeat JSON line to `docs/handoff/.orchestrator-heartbeat` (atomic temp+rename, self-truncating — snippet in Heartbeat protocol). THEN the HEARTBEAT_OK checklist: inbox / census / progress probe / queue (`lab-emit.sh list --due` + line-count vs census) / clocks — all green = re-arm mid-turn + END the turn with a one-line owner-visible TEXT, nothing else read or written. |
 | Queue delta on a pulse (new answer / `--due` hit / stale BLOCKER) | Answered → act + `decision --re <id> --by owner` + un-park/reroute back. Expired DECISION → apply default + `resolve` + `decision` citing the manifest rule. Stale BLOCKER → re-push per manifest §4. Then refresh `questions:` in LIVE-STATUS. |
 | Worker hits an ownable fork (would block on a human) | Typed record via `lab-emit.sh question` (worker emits it, or you do), type per the classification rules; park ONLY that task — `BLOCKED_ON_HUMAN q-…` is an ITEM state, not a chain state; reroute the worker to unblocked work. The fleet never parks on a question. |
-| Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) MID-turn — ALWAYS; it is NEVER the turn's last act. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). Then END the turn with owner-visible TEXT; whatever the ScheduleWakeup reply says, it is tool-result noise — never permission to stop. |
+| Ending a turn, `open_workers > 0` | ARM a wake-up (ScheduleWakeup) EARLY — the turn's SECOND act, right after the heartbeat, BEFORE the probes; it is NEVER the turn's last tool call. Delay by cadence table: ~270s active monitoring / ~540s stable waiting / 1200–1800s long waiting; NEVER ≥300 and <540s (dead zone). Then probes → END the turn with owner-visible TEXT; whatever the ScheduleWakeup reply says, it is tool-result noise — never permission to stop. |
 | Pulse crosses into the night window (or owner signs off) | `MODE → night` in STATE log; heartbeat carries `mode:"night"`; non-denylist questions → typed record in the question queue + reversible default; escalations buffered except critical; long-waiting cadence. |
 | Morning boundary (first pulse inside activeHours) | `MODE → day` in STATE log; write `docs/lab/digest/YYYY-MM-DD-morning.md` (7 sections, template in `docs/lab/digest/README.md`; auto-decisions cite manifest rules) + ONE owner line with the path. Buffered items stay open in the queue until answered — never silently dropped. |
 | Session limit hit (`You've hit your session limit` / StopFailure rate_limit) | Quiesce: hold workers (no kills, no spawns), STATE `status=quota-wait until=<ETA>`, heartbeat `status:"quiesced"` + `note:"quota-wait until <ETA>"` (`open_workers` = real count), arm ONE wake-up `min(3600s, ETA+~120s)` — a limited tick can't re-arm, so no hop chains; ETA > 1h out → resume falls to the watchdog alarm-clock (quiesced shield drops past ETA + `WD_QUOTA_GRACE_SECS`). STAY in session. First tick that runs = resume: heartbeat ok, re-census, un-hold. |

@@ -58,6 +58,28 @@ At Jira issue create-time, also `gh issue create` a mirrored GitHub Issue:
 - Jira gets a remote link: `POST /rest/api/3/issue/{key}/remotelink` with stable `globalId = github-issue=<org>/<repo>#<n>` (idempotent — re-POST updates the same link, no duplicates).
 - The remote-link step needs a Jira API token (separate from MCP OAuth) — create at https://id.atlassian.com/manage-profile/security/api-tokens. Only used for the remote-link REST call; everything else goes through the MCP.
 
+### Attachments (MCP has no attachment tool — use REST with `ATLASSIAN_API_TOKEN`)
+
+The Atlassian Rovo MCP does NOT expose an `addAttachment` tool. If a request needs a screenshot or file uploaded to a Jira issue, do NOT declare BLOCKER — use the Jira REST fallback via `curl` with the API token from `.env.local`.
+
+**Convention name is `ATLASSIAN_API_TOKEN`** (not `JIRA_API_TOKEN` — that name is wrong and won't be found). Check `.env.local` for it before declaring BLOCKER. If missing → ask the owner to create one at https://id.atlassian.com/manage-profile/security/api-tokens and put it under **exactly** `ATLASSIAN_API_TOKEN=...` in `.env.local`.
+
+**When the owner writes the env-variable name in chat (e.g. "ATLASSIAN_API_TOKEN"), that is the signal that they just added it.** Re-check `.env.local` and retry the operation immediately.
+
+**curl attachment recipe** (works with an already-created issue key):
+```bash
+source .env.local  # loads ATLASSIAN_API_TOKEN
+curl -sS \
+  -u "<owner-email>:${ATLASSIAN_API_TOKEN}" \
+  -H "X-Atlassian-Token: no-check" \
+  -X POST \
+  -F "file=@/path/to/screenshot.png" \
+  "https://<org>.atlassian.net/rest/api/3/issue/<ISSUE-KEY>/attachments"
+```
+HTTP 200 with a JSON array containing `id`/`filename` = success. Same token works for the remote-link REST call above.
+
+**Incident that produced this rule (2026-07-14)**: an agent declared BLOCKER "no API token" for a screenshot upload, and the orchestrator asked the owner to create one under the wrong name (`JIRA_API_TOKEN`). The owner created the token, put it in `.env.local` under the correct name `ATLASSIAN_API_TOKEN`, and wrote that variable name in chat as a signal. The right rule: (1) use the correct name from the start, (2) when the owner writes an env-variable name in chat, treat it as "I just added this, retry now."
+
 ## Common operations
 
 ### Discover site + accessible projects

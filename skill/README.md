@@ -13,6 +13,8 @@ local → global (`~/.claude/skills/<name>/`) using `rsync -a --delete`.
 | `handoff/` | Session-boundary handoff protocol — produces dated handoff docs, preserves orchestration state across orchestrator rollovers |
 | `using-jira/` | Jira interaction conventions — creating, updating, transitioning, and querying issues via the Atlassian Rovo MCP |
 | `writing-prds/` | PRD authoring guidance — structuring product requirements documents for this team's process |
+| `remote-control/` | Remote-control pairing — reach a live Claude Code session from a phone (steer orchestrator, approve permissions, monitor overnight) |
+| `tmux-agents-orchestration/` | Practical tmux pane discipline for orchestrator/teammate spawn/kill lifecycles (session caps, cleanup, incident lessons) |
 
 ## How install.sh works
 
