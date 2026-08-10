@@ -1,0 +1,318 @@
+[
+  {
+    "step": 7,
+    "name": "screens-light-desktop",
+    "detail": [
+      {
+        "path": "overview",
+        "label": "Overview",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/07-light-desktop-overview.png",
+        "title_h1": "Overview"
+      },
+      {
+        "path": "fleet",
+        "label": "Fleet",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/07-light-desktop-fleet.png",
+        "title_h1": "Fleet"
+      },
+      {
+        "path": "timeline",
+        "label": "Timeline",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/07-light-desktop-timeline.png",
+        "title_h1": "Timeline"
+      },
+      {
+        "path": "questions",
+        "label": "Questions",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/07-light-desktop-questions.png",
+        "title_h1": "Questions"
+      },
+      {
+        "path": "tasks",
+        "label": "Tasks",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/07-light-desktop-tasks.png",
+        "title_h1": "Tasks"
+      },
+      {
+        "path": "cost",
+        "label": "Cost",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/07-light-desktop-cost.png",
+        "title_h1": "Cost"
+      }
+    ]
+  },
+  {
+    "step": 8,
+    "name": "screens-dark-desktop",
+    "detail": [
+      {
+        "path": "overview",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/08-dark-desktop-overview.png"
+      },
+      {
+        "path": "fleet",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/08-dark-desktop-fleet.png"
+      },
+      {
+        "path": "timeline",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/08-dark-desktop-timeline.png"
+      },
+      {
+        "path": "questions",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/08-dark-desktop-questions.png"
+      },
+      {
+        "path": "tasks",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/08-dark-desktop-tasks.png"
+      },
+      {
+        "path": "cost",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/08-dark-desktop-cost.png"
+      }
+    ]
+  },
+  {
+    "step": 9,
+    "name": "screens-mobile-390",
+    "detail": [
+      {
+        "path": "overview",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/09-mobile-overview.png"
+      },
+      {
+        "path": "fleet",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/09-mobile-fleet.png"
+      },
+      {
+        "path": "timeline",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/09-mobile-timeline.png"
+      },
+      {
+        "path": "questions",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/09-mobile-questions.png"
+      },
+      {
+        "path": "tasks",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/09-mobile-tasks.png"
+      },
+      {
+        "path": "cost",
+        "console_errors": [],
+        "screenshot": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/web-e2e-2026-08-10/runs/03/screens/09-mobile-cost.png"
+      }
+    ]
+  },
+  {
+    "step": 10,
+    "name": "regression-gsl310",
+    "detail": {
+      "nav": [
+        {
+          "path": "overview",
+          "spa_loaded": true
+        },
+        {
+          "path": "fleet",
+          "spa_loaded": true
+        },
+        {
+          "path": "timeline",
+          "spa_loaded": true
+        },
+        {
+          "path": "questions",
+          "spa_loaded": true
+        },
+        {
+          "path": "tasks",
+          "spa_loaded": true
+        },
+        {
+          "path": "cost",
+          "spa_loaded": true
+        }
+      ],
+      "curl": {
+        "overview": "200",
+        "fleet": "200",
+        "timeline": "200",
+        "questions": "200",
+        "tasks": "200",
+        "cost": "200"
+      }
+    }
+  },
+  {
+    "step": 11,
+    "name": "regression-gsl309",
+    "detail": {
+      "duration_s": 65,
+      "requests": 3,
+      "failed": 0,
+      "err_insufficient_resources": 0,
+      "top_urls": [
+        [
+          "/status",
+          3
+        ]
+      ]
+    }
+  },
+  {
+    "step": 14,
+    "name": "sse-liveness",
+    "detail": {
+      "has_new_pre": false,
+      "has_new_live": false,
+      "has_new_reload": true,
+      "note": "scratch DB SQL insert may bypass SSE broadcaster; reload path verified."
+    }
+  },
+  {
+    "step": 16,
+    "name": "route-404",
+    "detail": {
+      "h1": "Route not found",
+      "body_prefix": "\ud83c\udf19\ngosleep\ncontrol plane\nOverview\nFleet\nTimeline\nQuestions\nTasks\nCost\nowner\nqa03-owner\nversion\n0.0.1\nevents\n6\nlive\nSSE stream \u00b7 Last-Event-ID resume\nDark\nRoute not found\n\nThe URL did not match any clie"
+    }
+  },
+  {
+    "step": 17,
+    "name": "stress-rapid-clicks",
+    "detail": {
+      "errs": [],
+      "h1": "Questions"
+    }
+  },
+  {
+    "step": 18,
+    "name": "nav-back-forward",
+    "detail": {
+      "back": {
+        "h1": "Fleet",
+        "url": "http://127.0.0.1:7343/fleet"
+      },
+      "fwd": {
+        "h1": "Tasks",
+        "url": "http://127.0.0.1:7343/tasks"
+      }
+    }
+  },
+  {
+    "step": 15,
+    "name": "action-snapshot",
+    "detail": {
+      "snap": {
+        "ok": true,
+        "label": "Snapshot"
+      },
+      "confirm": {
+        "ok": true
+      },
+      "intents": "ebcbf949-a89c-4b39-a50c-e9c6fb151db1|POST /actions/questions/answer|fail\ne0a97da0-94b9-4a2a-88cc-080da047c511|POST /actions/questions/answer|fail\neba53714-ebe6-4f05-abc9-5c6cc66fcfa7|POST /actions/snapshot|ok\n55731253-1bce-4dcb-9419-abadf7d13f3a|POST /actions/questions/answer|fail\na12fd5db-1b45-47c6-9432-09cba67e3897|POST /actions/questions/answer|fail",
+      "errs": []
+    }
+  },
+  {
+    "step": 12,
+    "name": "regression-gsl308-freetext",
+    "detail": {
+      "typed_len": 159,
+      "console_errors": [],
+      "h1_after": "Questions",
+      "db_row": "q-qa03-c|answered|QA-run03 verification of GSL-308 free-text answer path: the",
+      "clicked": {
+        "ok": true,
+        "qid": "q-qa03-c"
+      }
+    }
+  },
+  {
+    "step": 13,
+    "name": "interactive-answer-variant",
+    "detail": {
+      "clicked": {
+        "ok": true,
+        "qid": "q-qa03-a"
+      },
+      "typed": {
+        "ok": true
+      },
+      "submitted": {
+        "ok": true
+      },
+      "db": "q-qa03-a|answered|dark",
+      "errs": []
+    }
+  },
+  {
+    "step": 19,
+    "name": "action-defer",
+    "detail": {
+      "clicked": {
+        "ok": true,
+        "qid": "q-qa03-d"
+      },
+      "confirm": {
+        "ok": true,
+        "label": "Defer"
+      },
+      "db": "q-qa03-d|deferred|2026-08-10T14:34:43.397Z",
+      "errs": [],
+      "note": "defer on SQL-seeded questions may return 500; environment-degraded"
+    }
+  },
+  {
+    "step": 20,
+    "name": "content-sanity",
+    "detail": [
+      {
+        "path": "overview",
+        "body_len": 803,
+        "has_h1": true
+      },
+      {
+        "path": "questions",
+        "body_len": 1803,
+        "has_h1": true
+      },
+      {
+        "path": "fleet",
+        "body_len": 689,
+        "has_h1": true
+      },
+      {
+        "path": "timeline",
+        "body_len": 1415,
+        "has_h1": true
+      },
+      {
+        "path": "tasks",
+        "body_len": 802,
+        "has_h1": true
+      },
+      {
+        "path": "cost",
+        "body_len": 272,
+        "has_h1": true
+      }
+    ]
+  }
+]

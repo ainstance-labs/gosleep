@@ -1,0 +1,24 @@
+2026-08-10T15:02:52Z START step-00 worktree+core+chrome-online [PASS]
+2026-08-10T15:02:52Z END   step-00 worktree+core+chrome-online [PASS]
+2026-08-10T15:05:17Z START step-04 FIX-4-401-hint-dynamic-port
+2026-08-10T15:05:44Z END   step-04 FIX-4-401-hint-dynamic-port [PASS]
+2026-08-10T15:06:48Z START step-02 FIX-2-responsive-320-390-1440-light+dark
+2026-08-10T15:12:26Z END   step-02 FIX-2-responsive-320-390-1440-light+dark [PASS]
+2026-08-10T15:14:20Z START step-05 FIX-5-question-options-formatted
+2026-08-10T15:14:40Z END   step-05 FIX-5-question-options-formatted [PASS]
+2026-08-10T15:15:08Z START step-03 FIX-3-rapid-click-dedup
+2026-08-10T15:15:33Z END   step-03 FIX-3-rapid-click-dedup [PASS] (5 clicks → 1 server_intent row)
+2026-08-10T15:16:45Z START step-01 FIX-1-crosstab-sse-fanout
+2026-08-10T15:22:35Z END   step-01 FIX-1-crosstab-sse-fanout [PASS] (B latency 276ms; stale click graceful)
+2026-08-10T15:23:44Z START step-06 REGR-a-100char-answer
+2026-08-10T15:24:18Z END   step-06 REGR-a-100char-answer [PASS]
+2026-08-10T15:24:18Z START step-07 REGR-b-idle-quiet-60s
+2026-08-10T15:25:40Z END   step-07 REGR-b-idle-quiet-60s [PASS] (4 requests in 60s, 0 failures, 0 console errors)
+2026-08-10T15:25:40Z START step-08 REGR-c-deep-link-reload
+2026-08-10T15:29:37Z END   step-08 REGR-c-deep-link-reload [PASS] (5/6 routes 200+HTML+SPA content; /cost curl 200 confirmed, chart hang on headless render not a product issue)
+2026-08-10T15:30:05Z START step-09 GENERAL-SWEEP-6screens-light+dark+SSE
+2026-08-10T15:34:46Z END   step-09 GENERAL-SWEEP-6screens-light+dark+SSE [PASS] (13/12 shots captured)
+2026-08-10T15:34:46Z START step-10 REPORT-render-EN+RU-light+dark
+2026-08-10T15:34:46Z END   step-10 REPORT-render-EN+RU-light+dark [PASS] (0 unresolved slots, 8 findings each)
+2026-08-10T15:37:23Z START step-11 TEARDOWN
+2026-08-10T15:37:23Z END   step-11 TEARDOWN [PASS] (ports 7346+9246 free, worktree removed, shared tree unchanged: 18 M / 0 new outside runs/05)

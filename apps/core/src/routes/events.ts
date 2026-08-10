@@ -134,9 +134,24 @@ eventsRoutes.get("/events", requireBearer, async (c) => {
     // Buffered subscription: only messages STRICTLY AFTER the backfill cursor go on the wire
     // (a race is possible where the tail commits a row between our SELECT and our subscribe;
     // suppressing seq <= cursor removes the duplicate).
+    //
+    // GSL-312 (hotfix 2) — the suppression MUST NOT touch synthetic events (`seq: 0`) that
+    // the action layer + workers/fleet-poll emit for UI-invalidation only. Real events-table
+    // rows have `seq >= 1` (SQLite AUTOINCREMENT); `seq <= 0` unambiguously marks a synthetic
+    // broadcast that has no corresponding events row and therefore CANNOT be a duplicate of
+    // the backfill. Pre-fix, `0 <= cursor (0)` always fired → synthetic events were silently
+    // dropped for every fresh SSE subscriber, which is exactly why cross-tab decide fan-out
+    // (QA run 04 MAJOR#1) never reached the browser.
     const unsubscribe = broadcaster.subscribe((msg) => {
       if (stream.aborted || stream.closed) return;
-      if (msg.kind === "event" && typeof msg.id === "number" && msg.id <= cursor) return;
+      if (
+        msg.kind === "event" &&
+        typeof msg.id === "number" &&
+        msg.id > 0 &&
+        msg.id <= cursor
+      ) {
+        return;
+      }
       push(msg);
     });
 
@@ -153,6 +168,16 @@ eventsRoutes.get("/events", requireBearer, async (c) => {
 
     // --- 4. Live loop --------------------------------------------------------
     // Never resolve while the client is still connected (Hono #2050): loop until aborted.
+    //
+    // GSL-312 (hotfix 2) — emit an initial keepalive comment so `await fetch('/events')`
+    // resolves promptly in Chromium. Chrome buffers `fetch()` and won't resolve until at
+    // least one body byte lands; without this initial write, a fresh subscriber with an
+    // empty backfill (and thus zero written bytes) waited the full HEARTBEAT_MS window
+    // before its Promise settled, which showed up as the SSE badge stuck on "reconnecting"
+    // for 20 s — a spurious signal that also delayed onOpen/onEvent by that long.
+    if (!stream.aborted && !stream.closed) {
+      await stream.write(`: connected ${new Date().toISOString()}\n\n`);
+    }
     try {
       while (!stream.aborted && !stream.closed) {
         // Drain queued messages first.

@@ -1,0 +1,130 @@
+{
+  "meta": {
+    "title": "gosleep-web — adversarial QA run 04",
+    "subtitle": "Independent skeptic hunt against merged main @ dfe8448",
+    "epic": "GSL-QA04",
+    "date": "2026-08-10",
+    "auditor": "webqa-4 (independent adversarial verifier)",
+    "shipped_at": "dfe8448",
+    "lang": "en"
+  },
+  "verdict": {
+    "score": 78,
+    "level": "READY-WITH-FOLLOWUPS",
+    "band": "warning",
+    "counts": { "critical": 0, "major": 2, "minor": 3 }
+  },
+  "findings": [
+    {
+      "number": 1,
+      "jira": "GSL-QA04",
+      "severity": "MAJOR",
+      "area": "SSE cross-tab consistency",
+      "lane": "functionality",
+      "title": "Permission decisions do not fan out cross-tab — second tab shows stale status until manual refresh",
+      "description": "The `/actions/permissions/decide` handler writes only to the SQLite `questions` table (and wakes the paused CLI hook via SessionAdapter.deliverAnswer). It never writes to the JSONL event log, so the tail indexer/SSE broadcaster never sees the state change. Because `useQuestions` in `apps/web/src/data/queries.ts` has no `refetchInterval`, a second tab viewing /questions keeps rendering the row as `open` — with the Allow/Deny buttons still active — after another tab clicked Allow. Repro (verified in run 04): open /questions in tab A and tab B, POST a fresh permission via `/internal/permissions/post` (tab B sees it appear — new-row insert path DOES fan out), click Allow in tab A (DB row flips to `answered/allow`, applied_by=owner), tab B keeps rendering the same permission as `open` for the entire 6+ seconds we watched, only refreshing after a full page reload. Contrast with the docs comment at `queries.ts:151-155` promising SSE fan-out; that fan-out relies on `question.answered` events which the decide path never emits.",
+      "shipped_ref": "apps/core/src/routes/actions.ts:1233-1310 (doDecidePermission)",
+      "prototype_ref": "apps/web/src/data/queries.ts:86-91 (useQuestions has no refetchInterval)",
+      "screenshots": [
+        { "caption": "Tab B (before): fresh permission appeared via SSE — insert path DOES fan out", "src": "assets/21-tab2-questions-see-new-perm.png" },
+        { "caption": "Tab B (after Tab A clicked Allow): still rendering the row as OPEN with Allow/Deny active", "src": "assets/22-tab2-sees-tab1-allow.png" }
+      ]
+    },
+    {
+      "number": 2,
+      "jira": "GSL-QA04",
+      "severity": "MAJOR",
+      "area": "Responsive layout",
+      "lane": "design",
+      "title": "SPA layout overflows horizontally at narrow viewports (320px = 114px scroll)",
+      "description": "The root grid `grid-cols-[240px_1fr]` in `apps/web/src/main.tsx`/router shell renders a fixed 240px sidebar and never collapses. Measured at 320×640 viewport: `document.documentElement.scrollWidth = 424`, `clientWidth = 310`, i.e. a 114px horizontal scrollbar. The content beside the sidebar is squeezed under 80px, cards overlap the sidebar, and horizontal-swipe becomes required to reach any button. This is a control-plane app designed for desktop, but the panel is served on 127.0.0.1 which the owner reaches from a phone during on-call — the phone view is broken. Either drop the sidebar to a hamburger under a `md` breakpoint, or explicitly refuse below 640px with a friendly \"open on desktop\" message.",
+      "shipped_ref": "apps/web/src/main.tsx + router.tsx (root grid is unconditional 240px+1fr)",
+      "screenshots": [
+        { "caption": "320×640 viewport: horizontal scroll appears, cards clipped under sidebar", "src": "assets/14-viewport-320x640.png" },
+        { "caption": "2560×1080 (control): renders wide, comfortable, no defects", "src": "assets/15-viewport-2560x1080.png" }
+      ]
+    },
+    {
+      "number": 3,
+      "jira": "GSL-QA04",
+      "severity": "MINOR",
+      "area": "Client-side action dedup",
+      "lane": "functionality",
+      "title": "Per-click random Idempotency-Key + client `isPending` race lets 5 rapid clicks send 5 server requests",
+      "description": "`newIdempotencyKey()` in `apps/web/src/data/queries.ts` mints a fresh `crypto.randomUUID()` per invocation, so the server-side `server_intents.intent_id` replay cache can never collapse a double-click — each click is a distinct intent. The only client protection is `disabled={isPending}` on the button, which flips via `useMutation`, which flips via a React state update, which is asynchronous. When 5 clicks land in the same JS microtask, all 5 fire before React re-renders. Verified in run 04: 5 synchronous JS clicks on Allow for `p-qa04-perm` fired 5 POSTs to `/actions/permissions/decide`; the server logged 1 `ok` and 4 `fail` (409, correct — the SQL `WHERE status='open'` guard held), leaving 5 rows in `server_intents`. State stayed correct (no data corruption) but the ledger fills with duplicate error rows and the UI's error-toast plumbing gets 4 negative responses to swallow. Fix: derive Idempotency-Key from `(qid, decision, session-nonce)` so a rapid replay collapses server-side.",
+      "shipped_ref": "apps/web/src/data/queries.ts:158-165 (newIdempotencyKey) and the ActionRow buttons",
+      "screenshots": [
+        { "caption": "After 5 rapid Allow clicks — UI reflects the single accepted decision, but…", "src": "assets/08-post-allow-quintuple-click.png" }
+      ]
+    },
+    {
+      "number": 4,
+      "jira": "GSL-QA04",
+      "severity": "MINOR",
+      "area": "Error UX",
+      "lane": "design",
+      "title": "401 recovery hint hardcodes port 7331 even when the SPA runs on a different port",
+      "description": "When the SPA loses its Bearer (sessionStorage cleared, wrong ?token=), the error surface renders: `HTTP 401 from http://127.0.0.1:<port>/…` followed by `Check that gosleep-core is running on 127.0.0.1:7331 and the Bearer token in sessionStorage is current.` The hint is hardcoded to port 7331. In this QA run the SPA runs on 127.0.0.1:7344; the same string ships. Dev/QA/staging deployments (or the exact `GOSLEEP_CORE_PORT` env override the app already reads) will show a misleading diagnostic that points at the wrong port. Trivial fix: template the port from the actual runtime origin.",
+      "shipped_ref": "apps/web/src/components/QueryStatus.tsx:~50 (hint string)",
+      "screenshots": [
+        { "caption": "Cleared sessionStorage → 401 hint hardcodes :7331 while we're on :7344", "src": "assets/13-sessionstorage-cleared-navigate-fleet.png" }
+      ]
+    },
+    {
+      "number": 5,
+      "jira": "GSL-QA04",
+      "severity": "MINOR",
+      "area": "Questions rendering",
+      "lane": "design",
+      "title": "Question `options` shown as raw JSON in a `<pre>` block instead of clickable choices",
+      "description": "For every non-permission question, the Questions card renders the `options` array as raw pretty-printed JSON inside a `.mono` `<pre>`, then offers only a free-text `textarea` in the Answer dialog. Permission cards correctly render Allow/Deny as buttons. For a regular AskUserQuestion this means: the owner reads the label/description JSON (with quotes, brackets, indentation), then TYPES the answer literally into the free-text field. Nothing enforces that the answer matches an option `label`, so `Da\\nNyet\\nMaybe` all reach the agent unchecked. Either render options as radio/toggle buttons (mirroring the CLI-native AskUserQuestion picker), or drop the JSON dump and only surface the labels.",
+      "shipped_ref": "apps/web/src/screens/QuestionsScreen.tsx (options rendered as JSON <pre>)",
+      "screenshots": [
+        { "caption": "Question card shows the options array as raw JSON debug output", "src": "assets/03-questions-list.png" },
+        { "caption": "Answer dialog offers only free-text — no option chooser", "src": "assets/05-answer-dialog-open.png" }
+      ]
+    }
+  ],
+  "architecture_notes": [
+    {
+      "title": "Regression matrix — the three 2026-08-10 hotfixes all held",
+      "body": "The web hotfix branch (`GSL-307-web-hotfix`) merged three fixes today. Run 04 re-exercised each under stress: **GSL-308** (free-text answer must not crash the app) — typed a 10,000-character string into the Answer textarea; no exception, `sameAsSent=true`, dialog stayed responsive. **GSL-309** (idle request count must be small) — 60s idle on /questions issued 4 requests (all /status polls at 15s), 0 failures, no ERR_INSUFFICIENT_RESOURCES; a 60s window with the core killed mid-session issued 15 requests total (bounded backoff ~4s cycle, no storm). **GSL-310** (hard-reload of deep links must return the SPA, not 401) — curl-tested `/questions`, `/fleet`, `/timeline`, `/tasks`, `/cost`, `/overview` with `Accept: text/html`: all six returned 200 SPA HTML. `/nope-xyz` also returns the SPA which then routes to `Route not found` — graceful, not a broken page. All three regressions PASS."
+    },
+    {
+      "title": "Attack surfaces that held clean under skeptic pressure",
+      "body": "**Injection/XSS:** questions seeded with `<script>alert(1)</script>`, `<img src=x onerror=...>`, RTL Arabic/Hebrew, emoji, markdown syntax, and a 10K-char blob all render as text — no script execution (`window.__xss_pwned = not-executed`), no stray `<img[onerror]>` nodes injected. **API auth:** wrong Bearer → 401, no Bearer → 401 (both correct). **Deep-link 404:** `/nope-xyz` returns SPA index.html which renders 'Route not found' — no broken shell. **Browser back with an open dialog:** history.back closes the dialog and navigates as expected. **SSE reconnection:** after killing the core process mid-session and restarting it 60s later, the SPA reconnected within ~10s and status flipped from `reconnecting` back to `live`; the events counter carried the DB state through the outage."
+    },
+    {
+      "title": "Environment notes — NOT product defects (scratch harness artifacts)",
+      "body": "Three behaviours flagged and dismissed as harness-only: (1) `POST /actions/questions/answer` returned 500 with `lab-emit: no record with id q-qa04-rtl` — the scratch DB was seeded by direct SQL INSERT which bypasses the JSONL archive that lab-emit patches; explicitly called out in the run brief. (2) `POST /actions/tick` returned 200 but wrote nothing to `events` — `GOSLEEP_DISABLE_INDEXER=1` means the tail indexer never re-reads the JSONL. Same reason: SSE `question.answered` fan-out for the ANSWER path could not be positively tested end-to-end (only the DECIDE path — which is the finding #1 defect). (3) `GET /manifest` returned 500 with `ENOENT` until we hand-seeded `.artifacts/qa-run04/lab/decisions/manifest.md`; expected, the smoke test does the same seeding."
+    }
+  ],
+  "translations": {
+    "ru": {
+      "meta.title": "gosleep-web — состязательный QA-прогон 04",
+      "meta.subtitle": "Независимый скептический прогон против смёрдженного main @ dfe8448",
+      "verdict.description": "78/100 — READY-WITH-FOLLOWUPS. Ноль критических, две находки уровня MAJOR (cross-tab SSE и адаптивная вёрстка), три уровня MINOR. Все три регресс-теста от 2026-08-10 держатся под нагрузкой.",
+      "findings[1].area": "SSE кросс-табная согласованность",
+      "findings[1].title": "Решения по разрешениям не рассылаются между вкладками — вторая вкладка показывает устаревший статус до ручного refresh",
+      "findings[1].description": "Обработчик `/actions/permissions/decide` пишет только в SQLite-таблицу `questions` (и будит приостановленный CLI-hook через SessionAdapter.deliverAnswer). Он никогда не пишет в JSONL-лог событий, поэтому tail-индексер и SSE-broadcaster не видят смену состояния. Так как `useQuestions` в `apps/web/src/data/queries.ts` не имеет `refetchInterval`, вторая вкладка на /questions продолжает рендерить строку как `open` — с активными кнопками Allow/Deny — после того, как в другой вкладке нажали Allow. Воспроизведение (прогон 04): открыть /questions во вкладках A и B, POST свежий permission через `/internal/permissions/post` (вкладка B видит его появление — путь insert рассылается), нажать Allow в A (в БД строка становится `answered/allow`, applied_by=owner), вкладка B в течение 6+ секунд рендерит permission как `open`; обновляется только после полной перезагрузки.",
+      "findings[2].area": "Адаптивная вёрстка",
+      "findings[2].title": "SPA переполняется по горизонтали на узких viewport (320px = 114px скролла)",
+      "findings[2].description": "Root-grid `grid-cols-[240px_1fr]` рендерит фиксированный 240px sidebar и никогда не коллапсирует. Замер при 320×640: `scrollWidth = 424`, `clientWidth = 310` — 114px горизонтальный скролл. Контент рядом с sidebar сжат до 80px, карточки перекрывают sidebar, для доступа к кнопкам нужен горизонтальный свайп. Панель управления живёт на 127.0.0.1 и владелец заходит с телефона в дежурном режиме — телефонный вид сломан. Решение: свернуть sidebar в hamburger под `md` breakpoint, либо явно отказать под 640px с сообщением «откройте на десктопе».",
+      "findings[3].area": "Клиентская защита от дублей действий",
+      "findings[3].title": "Random Idempotency-Key на клик + client `isPending` race позволяют 5 быстрым кликам отправить 5 запросов",
+      "findings[3].description": "`newIdempotencyKey()` в `apps/web/src/data/queries.ts` генерит свежий `crypto.randomUUID()` на каждый вызов, поэтому серверный replay-кэш `server_intents.intent_id` не может слить double-click. Единственная защита клиента — `disabled={isPending}`, а `isPending` переключается через React-state update, который асинхронный. Когда 5 кликов приходят в одном JS-микротаске, все 5 стреляют до re-render. Проверено: 5 синхронных JS-кликов на Allow отправили 5 POST — сервер записал 1 ok и 4 fail (409, корректно — SQL-гвард `WHERE status='open'` удержал). Состояние осталось правильным, но ledger заполняется дублями. Fix: производить Idempotency-Key из `(qid, decision, session-nonce)`.",
+      "findings[4].area": "UX ошибок",
+      "findings[4].title": "Подсказка 401 хардкодит порт 7331 даже когда SPA работает на другом порту",
+      "findings[4].description": "Когда SPA теряет Bearer, error-поверхность рендерит `HTTP 401 from http://127.0.0.1:<port>/…` и подсказку `Check that gosleep-core is running on 127.0.0.1:7331 …`. В прогоне 04 SPA идёт на 127.0.0.1:7344 — подсказка вводит в заблуждение. Тривиальный fix: подставить порт из runtime origin.",
+      "findings[5].area": "Рендеринг вопросов",
+      "findings[5].title": "`options` вопросов отображаются как raw JSON в `<pre>` вместо кликабельных вариантов",
+      "findings[5].description": "Для non-permission вопросов Questions карточка рендерит массив `options` как pretty-printed JSON внутри `.mono` `<pre>`, затем предлагает только free-text `textarea` в диалоге Answer. Permission-карточки корректно рендерят Allow/Deny кнопками. Для обычного AskUserQuestion владелец читает JSON (со скобками и отступами), потом вручную набирает ответ. Ничто не гарантирует, что ответ совпадёт с `label` варианта. Рендерить options как radio/toggle-кнопки (как CLI-native AskUserQuestion picker), либо убрать JSON-дамп и показать только labels.",
+      "architecture_notes[0].title": "Регресс-матрица — три хотфикса от 2026-08-10 все держатся",
+      "architecture_notes[0].body": "Веб-хотфикс ветка (`GSL-307-web-hotfix`) сегодня смёрджила три фикса. Прогон 04 перепрогнал каждый под нагрузкой: **GSL-308** — набор 10 000-символьного free-text answer в textarea, без исключений, `sameAsSent=true`, диалог отвечает. **GSL-309** — 60с idle на /questions: 4 запроса (только /status polls каждые 15с), 0 ошибок, никаких ERR_INSUFFICIENT_RESOURCES; 60с окно с убитым core: 15 запросов (bounded backoff ~4с цикл, без шторма). **GSL-310** — hard-reload на deep-link `/questions /fleet /timeline /tasks /cost /overview` с `Accept: text/html`: все шесть вернули 200 SPA HTML. `/nope-xyz` тоже возвращает SPA, который рендерит `Route not found` — плавно, не сломанный экран. Все три регрессии PASS.",
+      "architecture_notes[1].title": "Поверхности атак, устоявшие под скептик-давлением",
+      "architecture_notes[1].body": "**Injection/XSS:** вопросы, засеянные `<script>alert(1)</script>`, `<img src=x onerror=...>`, RTL арабским/ивритом, emoji, markdown-синтаксисом и 10K-символьным блобом — все рендерятся как текст (никакого выполнения скрипта, `window.__xss_pwned = not-executed`, нет инъекций `<img[onerror]>`). **API auth:** wrong Bearer → 401, no Bearer → 401 (корректно). **Deep-link 404:** `/nope-xyz` возвращает SPA index.html который роутит на `Route not found` — не сломанный shell. **Browser back с открытым диалогом:** history.back закрывает диалог и навигацирует. **SSE reconnection:** после kill core в середине сессии и рестарта через 60с SPA переподключился за ~10с; статус вернулся из `reconnecting` в `live`; счётчик events удержал состояние БД.",
+      "architecture_notes[2].title": "Заметки среды — НЕ продуктовые дефекты (артефакты harness)",
+      "architecture_notes[2].body": "Три поведения отмечены и списаны как harness-only: (1) `POST /actions/questions/answer` вернул 500 с `lab-emit: no record with id q-qa04-rtl` — scratch DB засеяна прямым SQL INSERT, минуя JSONL-архив, который патчит lab-emit; явно прописано в брифе. (2) `POST /actions/tick` вернул 200, но ничего не написал в `events` — `GOSLEEP_DISABLE_INDEXER=1` означает, что tail-индексер не перечитывает JSONL. По той же причине end-to-end SSE `question.answered` для ANSWER-пути не удалось положительно проверить (только DECIDE-путь, это как раз дефект #1). (3) `GET /manifest` возвращал 500 с `ENOENT` пока не засеяли вручную `.artifacts/qa-run04/lab/decisions/manifest.md`; ожидаемо, smoke-тест делает то же засевание."
+    }
+  }
+}
