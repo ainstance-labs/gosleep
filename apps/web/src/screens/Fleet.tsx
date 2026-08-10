@@ -14,7 +14,7 @@ import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import { Badge } from "../components/ui/Badge";
 import { useFleet } from "../data/queries";
-import { timeAgo } from "../lib/format";
+import { formatModelLabel, timeAgo } from "../lib/format";
 import { cn } from "../lib/cn";
 
 type StatusTone = "info" | "ok" | "warn" | "neutral" | "danger" | "accent";
@@ -132,17 +132,20 @@ export function FleetScreen() {
                             session). Renders an explicit "unknown" pill when neither source
                             produced a value; a wrong-but-confident value would be worse
                             (run 06 finding #3: a `--model haiku` session showed the global
-                            `fable-5` because the transcript reader did not exist). */}
+                            `fable-5` because the transcript reader did not exist).
+                            GSL-327: raw ids like `claude-fable-5` render as the friendly
+                            marketing label; sentinels `unknown` / `starting` pass through;
+                            the raw id stays available on hover via `title`. */}
                         <span
                           className="mono"
                           title={
                             s.model === null || s.model === undefined
                               ? "no assistant turn in the transcript yet, and no `model` in <cwd>/.claude/settings*.json or ~/.claude/settings.json"
-                              : "model read from the session transcript (falls back to Claude Code settings hierarchy)"
+                              : `raw model id: ${s.model} — read from the session transcript (falls back to Claude Code settings hierarchy)`
                           }
                         >
                           {s.model !== null && s.model !== undefined
-                            ? s.model
+                            ? formatModelLabel(s.model)
                             : "model unknown"}
                         </span>
                         {s.cycle !== null && s.cycle !== undefined ? (

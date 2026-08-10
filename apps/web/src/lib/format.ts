@@ -54,3 +54,99 @@ export function shortJson(v: unknown, cap = 120): string {
   const s = typeof v === "string" ? v : JSON.stringify(v);
   return s.length > cap ? `${s.slice(0, cap - 1)}…` : s;
 }
+
+// -----------------------------------------------------------------------------
+// GSL-327 — friendly model label.
+//
+// Fleet renders `s.model` which arrives from the model-resolver as a raw
+// Claude Code model id (`claude-opus-4-8`, `claude-fable-5`,
+// `claude-haiku-4-5-20251001`, …). Live-fire E2E run 08 flagged those as
+// unreadable ("claude-fable-5" instead of the marketing "Fable 5"). This is a
+// pure UI mapper — the resolver stays untouched, the wire shape stays
+// untouched, and the raw id is still available on hover via the existing
+// `title` attribute.
+//
+// Rules:
+//   - Known-family match on the CANONICAL prefix, so future dated suffixes
+//     (`claude-opus-4-7-20260101`) map correctly without a table update.
+//   - The two sentinels emitted by the resolver (GSL-321 transcript-first,
+//     GSL-325 boot-window fallback) — `"unknown"` and `"starting"` — pass
+//     through verbatim. The Fleet already colours them as "no model yet"
+//     hints; a friendly label would be actively misleading here.
+//   - Unknown ids fall back to a cleaned label (`claude-` prefix stripped +
+//     trailing YYYYMMDD suffix stripped + TitleCase), NEVER an empty string
+//     or a throw — an unrecognised id must still render something readable.
+//   - Empty / whitespace-only input → `"unknown"` so the Fleet's caller pill
+//     stays consistent; `null` / `undefined` is left to the call-site
+//     (Fleet.tsx renders "model unknown" for those).
+// -----------------------------------------------------------------------------
+
+interface ModelFamily {
+  /** Canonical prefix — matched with `startsWith` so dated suffixes work. */
+  prefix: string;
+  /** Human-facing label. */
+  label: string;
+}
+
+// Ordered longest-prefix-first so `claude-haiku-4-5` wins over a hypothetical
+// `claude-haiku-4`. Add new families here, not at the call-sites.
+const MODEL_FAMILIES: readonly ModelFamily[] = [
+  { prefix: "claude-opus-4-8", label: "Opus 4.8" },
+  { prefix: "claude-opus-4-7", label: "Opus 4.7" },
+  { prefix: "claude-opus-4-5", label: "Opus 4.5" },
+  { prefix: "claude-opus-4-1", label: "Opus 4.1" },
+  { prefix: "claude-opus-4", label: "Opus 4" },
+  { prefix: "claude-sonnet-5", label: "Sonnet 5" },
+  { prefix: "claude-sonnet-4-5", label: "Sonnet 4.5" },
+  { prefix: "claude-sonnet-4", label: "Sonnet 4" },
+  { prefix: "claude-sonnet-3-7", label: "Sonnet 3.7" },
+  { prefix: "claude-fable-5", label: "Fable 5" },
+  { prefix: "claude-haiku-4-5", label: "Haiku 4.5" },
+  { prefix: "claude-haiku-4", label: "Haiku 4" },
+  { prefix: "claude-haiku-3-5", label: "Haiku 3.5" },
+];
+
+/** Sentinels emitted by apps/core/src/routes/read.ts model-resolver — leave alone. */
+const MODEL_SENTINELS: ReadonlySet<string> = new Set(["unknown", "starting"]);
+
+/** Strip a trailing `-YYYYMMDD` date suffix (Claude Code snapshot suffix). */
+function stripDateSuffix(s: string): string {
+  return s.replace(/-\d{8}$/, "");
+}
+
+/** Best-effort humanisation for an unrecognised model id. */
+function fallbackModelLabel(id: string): string {
+  const withoutClaude = id.startsWith("claude-") ? id.slice("claude-".length) : id;
+  const withoutDate = stripDateSuffix(withoutClaude);
+  if (withoutDate.length === 0) return id;
+  return withoutDate
+    .split("-")
+    .filter((part) => part.length > 0)
+    .map((part) => (part[0] ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+/**
+ * Map a raw model id to a friendly UI label.
+ *
+ * Contract:
+ *   - `null` / `undefined` → `"unknown"` (a safe never-empty sentinel; the
+ *     Fleet call-site guards these before calling and renders its own copy).
+ *   - Empty or whitespace-only input → `"unknown"`.
+ *   - Known family → the marketing label (`"Opus 4.8"`, `"Fable 5"`, …).
+ *   - `"unknown"` / `"starting"` sentinels → returned verbatim.
+ *   - Unknown id → a cleaned fallback label (never breaks the UI).
+ */
+export function formatModelLabel(id: string | null | undefined): string {
+  if (id === null || id === undefined) return "unknown";
+  const trimmed = id.trim();
+  if (trimmed.length === 0) return "unknown";
+  if (MODEL_SENTINELS.has(trimmed)) return trimmed;
+  for (const fam of MODEL_FAMILIES) {
+    if (trimmed === fam.prefix || trimmed.startsWith(`${fam.prefix}-`)) {
+      return fam.label;
+    }
+  }
+  return fallbackModelLabel(trimmed);
+}
+
