@@ -194,6 +194,116 @@ function ProvenanceBadge({
 }
 
 // -----------------------------------------------------------------------------
+// QuestionOptions — formatted options list (GSL-314, hotfix 2 minor#3)
+//
+// AskUserQuestion payloads carry `options: Array<{label, description?, pros?[], cons?[]}>`
+// per the CLI contract. The pre-fix panel just dumped `JSON.stringify(options, null, 2)`
+// into a `<pre>` block; the owner had to read the raw JSON with quotes / brackets, then type
+// the answer verbatim into the free-text field. This component renders each option as its
+// own card row: label bold, description muted, pros/cons on separate lines with iconic
+// prefixes. Unknown / non-array shapes fall back to the original JSON dump so the panel
+// never hides data it does not know how to structure.
+// -----------------------------------------------------------------------------
+
+interface OptionShape {
+  label?: unknown;
+  description?: unknown;
+  pros?: unknown;
+  cons?: unknown;
+}
+
+function looksLikeOptionArray(v: unknown): v is OptionShape[] {
+  if (!Array.isArray(v)) return false;
+  if (v.length === 0) return false;
+  for (const item of v) {
+    if (item === null || typeof item !== "object") return false;
+    const label = (item as OptionShape).label;
+    if (typeof label !== "string" || label.length === 0) return false;
+  }
+  return true;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string" && v.length > 0);
+}
+
+function QuestionOptions({ options }: { options: unknown }) {
+  if (typeof options === "string" && options.length > 0) {
+    return (
+      <div className="sunken rounded-md p-3">
+        <div className="text-muted mb-1 text-xs uppercase tracking-wide">Options</div>
+        <p className="text-sm text-[var(--color-fg)]">{options}</p>
+      </div>
+    );
+  }
+  if (!looksLikeOptionArray(options)) {
+    return (
+      <div className="sunken rounded-md p-3">
+        <div className="text-muted mb-1 text-xs uppercase tracking-wide">Options</div>
+        <pre className="mono text-secondary max-h-40 overflow-auto text-xs">
+          {typeof options === "string"
+            ? options
+            : JSON.stringify(options, null, 2)}
+        </pre>
+      </div>
+    );
+  }
+  return (
+    <div className="sunken rounded-md p-3">
+      <div className="text-muted mb-2 text-xs uppercase tracking-wide">
+        Options ({options.length})
+      </div>
+      <ul className="flex flex-col gap-2">
+        {options.map((opt, idx) => {
+          const label = typeof opt.label === "string" ? opt.label : String(opt.label ?? "");
+          const description =
+            typeof opt.description === "string" && opt.description.length > 0
+              ? opt.description
+              : null;
+          const pros = stringList(opt.pros);
+          const cons = stringList(opt.cons);
+          return (
+            <li
+              key={`${idx}-${label}`}
+              className="rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-2.5"
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="text-muted mono text-xs">{idx + 1}.</span>
+                <span className="text-sm font-medium text-[var(--color-fg)]">{label}</span>
+              </div>
+              {description !== null ? (
+                <p className="text-secondary mt-1 text-xs">{description}</p>
+              ) : null}
+              {pros.length > 0 ? (
+                <ul className="text-secondary mt-1.5 flex flex-col gap-0.5 text-xs">
+                  {pros.map((p, i) => (
+                    <li key={`pro-${i}`} className="flex gap-1.5">
+                      <span aria-hidden className="text-[var(--color-ok)]">+</span>
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {cons.length > 0 ? (
+                <ul className="text-secondary mt-1 flex flex-col gap-0.5 text-xs">
+                  {cons.map((cItem, i) => (
+                    <li key={`con-${i}`} className="flex gap-1.5">
+                      <span aria-hidden className="text-[var(--color-warn)]">−</span>
+                      <span>{cItem}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // screen
 // -----------------------------------------------------------------------------
 
@@ -446,16 +556,7 @@ export function QuestionsScreen() {
                     <CardTitle>{question.question}</CardTitle>
 
                     {question.options !== null && question.options !== undefined ? (
-                      <div className="sunken rounded-md p-3">
-                        <div className="text-muted mb-1 text-xs uppercase tracking-wide">
-                          Options
-                        </div>
-                        <pre className="mono text-secondary max-h-40 overflow-auto text-xs">
-                          {typeof question.options === "string"
-                            ? question.options
-                            : JSON.stringify(question.options, null, 2)}
-                        </pre>
-                      </div>
+                      <QuestionOptions options={question.options} />
                     ) : null}
 
                     {question.answer_text !== null &&

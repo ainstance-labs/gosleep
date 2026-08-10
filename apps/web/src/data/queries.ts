@@ -143,26 +143,71 @@ export function useManifest(): UseQueryResult<ManifestResponse> {
 }
 
 // -----------------------------------------------------------------------------
-// mutation hooks (GSL-268)
+// mutation hooks (GSL-268, GSL-314)
 //
-// Each hook mints a fresh Idempotency-Key per invocation via crypto.randomUUID(). A double
-// click on the same button is protected at TWO layers: the button's `disabled={isPending}`
-// prop below AND the server's persistent server_intents replay (see withTimeline.ts).
+// GSL-314 (hotfix 2) — Idempotency-Key is now DERIVED from the mutation call, not minted
+// fresh per invocation. QA run 04 minor#1: 5 rapid clicks on Allow generated 5 different
+// UUIDs → 5 separate server intents → 4 wasted 409s + ledger pollution. With `stableKey`,
+// the burst collapses to ONE key → server_intents replay returns the cached ok response
+// for clicks 2..5 (see withTimeline.ts). A 2-second time bucket is baked in so a deliberate
+// re-click after the window still gets a fresh intent.
+//
+// Key format: `web-<sessionNonce>-<action>-<inputHash>-<Math.round(Date.now()/2000)>`.
+//   - sessionNonce: per-tab (crypto.randomUUID slice); prevents cross-tab collisions.
+//   - action: hook name ("decide", "answer", "tick", …); keeps the ledger row greppable.
+//   - inputHash: djb2 hex of stable-key-order JSON of the mutation input; deterministic.
+//   - time bucket: 2 s ceiling on how long two identical calls collapse into one.
+// The key is capped at 128 ASCII printable chars (withTimeline's resolveIntentId contract).
 //
 // Cache invalidation: on success we invalidate the primary query the action mutated. The
 // SSE fan-out will land shortly (question.answered / question.resolved / ack event / tick
-// ledger events) and re-invalidate more broadly through SseProvider — invalidating here too
-// gives the owner immediate feedback without waiting for the SSE round-trip.
+// ledger events, plus the new GSL-312 synthetic question.answered on permission decide) and
+// re-invalidate more broadly through SseProvider — invalidating here too gives the owner
+// immediate feedback without waiting for the SSE round-trip.
 // -----------------------------------------------------------------------------
 
-function newIdempotencyKey(): string {
-  // crypto.randomUUID lands in every modern browser + Node/Bun. If a test harness stubs a
-  // globalThis without crypto, fall back to timestamp+random — collisions are cosmetic (they
-  // still de-dupe on the server if they happen to coincide).
+const SESSION_NONCE = (() => {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+    return crypto.randomUUID().slice(0, 8);
   }
-  return `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+})();
+
+/** 2-second bucket keeps rapid-fire clicks collapsing while a deliberate re-click gets
+ *  a fresh key. Exported for tests. */
+export const IDEMPOTENCY_BUCKET_MS = 2000;
+
+/** Stable JSON.stringify with sorted keys — same input yields the same hash regardless of
+ *  property order at the call site. */
+function stableSerialize(value: unknown): string {
+  if (value === undefined) return "u";
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort((a, b) =>
+    a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0,
+  );
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableSerialize(v)}`).join(",")}}`;
+}
+
+/** djb2 — small, fast, deterministic, no crypto import required. Returns 8 hex chars. */
+function djb2Hex(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i += 1) {
+    h = ((h * 33) ^ s.charCodeAt(i)) & 0xffffffff;
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+export function stableIdempotencyKey(
+  action: string,
+  input: unknown,
+  now: number = Date.now(),
+): string {
+  const bucket = Math.round(now / IDEMPOTENCY_BUCKET_MS);
+  const hash = djb2Hex(stableSerialize(input));
+  const raw = `web-${SESSION_NONCE}-${action}-${hash}-${bucket}`;
+  // withTimeline.resolveIntentId trims + validates ASCII printable + ≤ 128 chars.
+  return raw.length > 128 ? raw.slice(0, 128) : raw;
 }
 
 export function useAnswerQuestion(): UseMutationResult<
@@ -173,7 +218,7 @@ export function useAnswerQuestion(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: AnswerActionInput) =>
-      coreClient.answerQuestion(input, newIdempotencyKey()),
+      coreClient.answerQuestion(input, stableIdempotencyKey("answer", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
@@ -189,7 +234,7 @@ export function useResolveQuestion(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ResolveActionInput) =>
-      coreClient.resolveQuestion(input, newIdempotencyKey()),
+      coreClient.resolveQuestion(input, stableIdempotencyKey("resolve", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
@@ -200,7 +245,8 @@ export function useResolveQuestion(): UseMutationResult<
 export function useAckEvent(): UseMutationResult<AckActionResponse, Error, AckActionInput> {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: AckActionInput) => coreClient.ackEvent(input, newIdempotencyKey()),
+    mutationFn: (input: AckActionInput) =>
+      coreClient.ackEvent(input, stableIdempotencyKey("ack", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "timeline"] });
     },
@@ -210,7 +256,8 @@ export function useAckEvent(): UseMutationResult<AckActionResponse, Error, AckAc
 export function useRunTick(): UseMutationResult<TickActionResponse, Error, TickActionInput> {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: TickActionInput) => coreClient.runTick(input, newIdempotencyKey()),
+    mutationFn: (input: TickActionInput) =>
+      coreClient.runTick(input, stableIdempotencyKey("tick", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.status() });
     },
@@ -226,7 +273,10 @@ export function useApplyManifest(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ApplyManifestActionInput) =>
-      coreClient.applyManifestToQuestion(input, newIdempotencyKey()),
+      coreClient.applyManifestToQuestion(
+        input,
+        stableIdempotencyKey("applyManifest", input),
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
@@ -243,7 +293,7 @@ export function useDeferQuestion(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: DeferActionInput) =>
-      coreClient.deferQuestion(input, newIdempotencyKey()),
+      coreClient.deferQuestion(input, stableIdempotencyKey("defer", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
@@ -260,7 +310,7 @@ export function useSyncTasks(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SyncTasksActionInput) =>
-      coreClient.syncTasks(input, newIdempotencyKey()),
+      coreClient.syncTasks(input, stableIdempotencyKey("syncTasks", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "tasks"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
@@ -279,7 +329,7 @@ export function useTakeSnapshot(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SnapshotActionInput) =>
-      coreClient.takeSnapshot(input, newIdempotencyKey()),
+      coreClient.takeSnapshot(input, stableIdempotencyKey("snapshot", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.status() });
       qc.invalidateQueries({ queryKey: ["core", "timeline"] });
@@ -298,7 +348,7 @@ export function useDecidePermission(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: DecidePermissionActionInput) =>
-      coreClient.decidePermission(input, newIdempotencyKey()),
+      coreClient.decidePermission(input, stableIdempotencyKey("decide", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
