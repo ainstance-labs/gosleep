@@ -29,6 +29,13 @@
       "when": 1786399200000,
       "tag": "0003_permission_tool_input",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786399260000,
+      "tag": "0004_agent_pr_url",
+      "breakpoints": true
     }
   ]
 }

@@ -194,6 +194,31 @@ export function FleetScreen() {
                         )}
                       </div>
                     </div>
+                    {/* GSL-319 — per-session PR chip. Populated by the extractor in
+                        /internal/agents/tool-observed as soon as `gh pr create`
+                        (or a later `gh pr view <URL>`) fires. Hidden when the session has
+                        not touched a PR yet. */}
+                    {s.last_pr_url !== null && s.last_pr_url !== undefined ? (
+                      <div>
+                        <div className="text-muted mb-0.5 text-xs uppercase tracking-wide">
+                          Latest PR
+                        </div>
+                        <a
+                          href={s.last_pr_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mono block break-all text-sm text-[var(--color-accent)] hover:underline"
+                          data-testid="fleet-pr-link"
+                          title={
+                            s.last_pr_at !== null && s.last_pr_at !== undefined
+                              ? `observed ${timeAgo(s.last_pr_at)}`
+                              : "observed just now"
+                          }
+                        >
+                          {s.last_pr_url}
+                        </a>
+                      </div>
+                    ) : null}
                     <div className="text-muted flex items-center justify-between text-xs">
                       <span title={s.cwd}>
                         {s.cwd.split("/").slice(-2).join("/")}

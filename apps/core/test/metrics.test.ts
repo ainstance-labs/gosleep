@@ -56,7 +56,7 @@ function freshDb(): OpenedDb {
     pid INTEGER, model TEXT, cwd TEXT NOT NULL, cycle INTEGER,
     context_pct INTEGER, current_tool TEXT, current_intent TEXT,
     status TEXT NOT NULL, started_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-    ended_at TEXT
+    ended_at TEXT, last_pr_url TEXT, last_pr_at TEXT
   );`);
   const db = drizzle(raw, { schema });
   return { db, raw, path: ":memory:" };

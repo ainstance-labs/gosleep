@@ -118,6 +118,39 @@ body = {"session_id": session_id, "tool": tool}
 if intent:
     body["intent"] = intent[:200]  # keep the intent short — Fleet card is one line.
 
+# GSL-319 — attach short previews of the tool's stdin (command / arguments) and stdout so
+# the core-side PR-URL extractor can spot `https://github.com/<org>/<repo>/pull/<n>` the
+# moment `gh pr create` / `gh pr view` returns. Both fields are optional and independently
+# capped at 600 chars — long payloads (a big diff, a full file body) never bloat the POST.
+# The core scans command_preview + response_preview + intent for the PR URL pattern and
+# UPSERTs it as `agent_sessions.last_pr_url`, which then flows through /fleet + /bundle
+# and lands on Overview's "Latest PR" card.
+try:
+    tool_input = d.get("tool_input") or {}
+    if isinstance(tool_input, dict):
+        # Bash → {"command": "…", "description": "…"}. Others → serialise the whole blob.
+        cmd = tool_input.get("command")
+        if isinstance(cmd, str) and cmd:
+            body["command_preview"] = cmd[:600]
+        else:
+            # Fallback: dump the tool_input JSON so an Edit/Write/mcp payload that mentions
+            # a PR URL in a description still surfaces.
+            body["command_preview"] = json.dumps(tool_input)[:600]
+    # Look at both `tool_response` (PostToolUse contract) shapes: {output: "…"} for text
+    # tools and {stdout: "…", stderr: "…"} for Bash. Whichever is present, we take the
+    # first 600 chars.
+    tool_response = d.get("tool_response")
+    if isinstance(tool_response, dict):
+        for key in ("stdout", "output"):
+            val = tool_response.get(key)
+            if isinstance(val, str) and val:
+                body["response_preview"] = val[:600]
+                break
+    elif isinstance(tool_response, str) and tool_response:
+        body["response_preview"] = tool_response[:600]
+except Exception:
+    pass  # never fail-close on preview extraction; the PR URL is a nice-to-have.
+
 # Approximate context_pct from transcript file size.
 try:
     transcript_path = d.get("transcript_path") or ""

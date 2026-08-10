@@ -489,6 +489,27 @@ interface ToolObservation {
   ts: string;
   context_pct: number | null;
   intent: string | null;
+  /** GSL-319 — most-recent GitHub PR URL found in the observed command / response / intent
+   *  text on this observation (null when the extractor found nothing). */
+  pr_url: string | null;
+}
+
+// GSL-319 — extract the FIRST canonical GitHub PR URL from any string. Deliberately narrow:
+// only the `https://github.com/<owner>/<repo>/pull/<n>` form (no gitlab, no gh: refs, no /issues
+// mistakes). Owner + repo segments allow dots, dashes, underscores, alphanumerics; number is
+// digits. Returns the URL as a plain string with no trailing punctuation.
+const PR_URL_PATTERN =
+  /https?:\/\/github\.com\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/pull\/(\d+)/;
+export function extractPrUrl(...sources: Array<string | null | undefined>): string | null {
+  for (const s of sources) {
+    if (typeof s !== "string" || s.length === 0) continue;
+    const m = s.match(PR_URL_PATTERN);
+    if (m !== null) {
+      // Rebuild the canonical form (no query, no fragment, no trailing punctuation).
+      return `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}`;
+    }
+  }
+  return null;
 }
 
 /** Per-session pending observation — replaced on every POST, drained by the flush timer. */
@@ -556,14 +577,18 @@ function flushPendingObservations(): void {
         .query("SELECT session_id FROM agent_sessions WHERE session_id = ?")
         .get(obs.session_id) as { session_id: string } | null;
       if (existing !== null && existing !== undefined) {
-        // Only overwrite context_pct / intent when the observation carried non-null values
-        // (a partial observation must not clobber a fresh number with NULL).
+        // Only overwrite context_pct / intent / pr_url when the observation carried non-null
+        // values (a partial observation must not clobber a fresh value with NULL).
+        // GSL-319 — `last_pr_url` upserted here; timestamp on the same row so Overview can
+        // pick the newest URL across the fleet.
         db.raw
           .query(
             `UPDATE agent_sessions SET
                current_tool = ?,
                context_pct = COALESCE(?, context_pct),
                current_intent = COALESCE(?, current_intent),
+               last_pr_url = COALESCE(?, last_pr_url),
+               last_pr_at = CASE WHEN ? IS NULL THEN last_pr_at ELSE ? END,
                updated_at = ?
              WHERE session_id = ?`,
           )
@@ -571,6 +596,9 @@ function flushPendingObservations(): void {
             obs.tool,
             obs.context_pct,
             obs.intent,
+            obs.pr_url,
+            obs.pr_url,
+            obs.ts,
             nowTs,
             obs.session_id,
           );
@@ -582,8 +610,9 @@ function flushPendingObservations(): void {
           .query(
             `INSERT INTO agent_sessions
                (session_id, name, kind, pid, model, cwd, cycle, context_pct,
-                current_tool, current_intent, status, started_at, updated_at, ended_at)
-             VALUES (?, ?, 'unknown', NULL, NULL, '?', NULL, ?, ?, ?, 'observed', ?, ?, NULL)`,
+                current_tool, current_intent, status, started_at, updated_at, ended_at,
+                last_pr_url, last_pr_at)
+             VALUES (?, ?, 'unknown', NULL, NULL, '?', NULL, ?, ?, ?, 'observed', ?, ?, NULL, ?, ?)`,
           )
           .run(
             obs.session_id,
@@ -593,6 +622,8 @@ function flushPendingObservations(): void {
             obs.intent,
             obs.ts,
             nowTs,
+            obs.pr_url,
+            obs.pr_url !== null ? obs.ts : null,
           );
       }
       affected += 1;
@@ -915,6 +946,26 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
   const intent =
     typeof body.intent === "string" && body.intent.length > 0 ? body.intent : null;
 
+  // GSL-319 — the feeder can attach short previews of the tool's stdin / stdout so the
+  // extractor spots a PR URL the moment `gh pr create` completes. Both fields are optional
+  // and independently capped in the shim; we scan up to ~600 chars per field here.
+  const commandPreview =
+    typeof body.command_preview === "string" && body.command_preview.length > 0
+      ? body.command_preview.slice(0, 600)
+      : null;
+  const responsePreview =
+    typeof body.response_preview === "string" && body.response_preview.length > 0
+      ? body.response_preview.slice(0, 600)
+      : null;
+  // An explicitly attached pr_url wins (a caller may already have parsed it); otherwise the
+  // extractor scans the three preview strings for the canonical GitHub PR URL pattern.
+  const explicitPrUrl =
+    typeof body.pr_url === "string" && body.pr_url.length > 0 ? body.pr_url : null;
+  const prUrl =
+    explicitPrUrl !== null
+      ? extractPrUrl(explicitPrUrl) // still validate the shape
+      : extractPrUrl(commandPreview, responsePreview, intent);
+
   // Overwrite any pending observation for the same session — the debounce is COALESCE, not
   // FIFO. The last observation is the one we want to reflect.
   pendingObservations.set(sessionId, {
@@ -923,6 +974,7 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
     ts,
     context_pct: contextPct,
     intent,
+    pr_url: prUrl,
   });
   ensureFlushTimer();
 
@@ -930,6 +982,7 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
     ok: true,
     session_id: sessionId,
     tool,
+    pr_url_detected: prUrl,
     pending: pendingObservations.size,
     debounce_ms: TOOL_OBSERVED_FLUSH_MS,
   });

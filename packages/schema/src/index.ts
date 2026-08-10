@@ -189,6 +189,11 @@ export const FleetSession = z.object({
   started_at: IsoTimestamp,
   updated_at: IsoTimestamp,
   ended_at: IsoTimestamp.nullable().optional(),
+  // GSL-319 — most-recent GitHub PR URL observed for this session (and when). Null when the
+  // session has not touched a PR yet. The Overview panel picks the newest across all live
+  // sessions for its "Latest PR" card; Fleet renders it as a per-row chip.
+  last_pr_url: z.string().nullable().optional(),
+  last_pr_at: IsoTimestamp.nullable().optional(),
 });
 export type FleetSession = z.infer<typeof FleetSession>;
 

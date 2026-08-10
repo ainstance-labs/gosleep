@@ -244,6 +244,15 @@ export const agent_sessions = sqliteTable(
     started_at: text("started_at").notNull(),
     updated_at: text("updated_at").notNull(),
     ended_at: text("ended_at"),
+    /** GSL-319 — most-recent GitHub PR URL observed for this session. Populated by the
+     *  `/internal/agents/tool-observed` handler when the extractor spots a
+     *  `https://github.com/<org>/<repo>/pull/<n>` in the observed command / response / intent
+     *  text. Rendered as the "Latest PR" card on Overview + a per-row chip on Fleet. NULL
+     *  when the session never touched a PR (e.g. read-only exploration). */
+    last_pr_url: text("last_pr_url"),
+    /** GSL-319 — timestamp of the observation that produced `last_pr_url`. Used by the panel
+     *  to pick the newest URL across the fleet (Overview shows the freshest). */
+    last_pr_at: text("last_pr_at"),
   },
   (t) => [
     index("ix_agent_sessions_status_updated").on(t.status, t.updated_at),

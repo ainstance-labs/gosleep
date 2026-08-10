@@ -405,6 +405,10 @@ interface AgentSessionRow {
   started_at: string;
   updated_at: string;
   ended_at: string | null;
+  // GSL-319 — most-recent GitHub PR URL observed on this session; null when the session
+  // never touched a PR. Timestamped so Overview can pick the newest URL across the fleet.
+  last_pr_url: string | null;
+  last_pr_at: string | null;
 }
 
 readRoutes.get("/fleet", requireBearer, (c) => {
@@ -416,7 +420,8 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   const rows = getDb().raw
     .query(
       `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
-              current_intent, status, started_at, updated_at, ended_at
+              current_intent, status, started_at, updated_at, ended_at,
+              last_pr_url, last_pr_at
        FROM agent_sessions
        ORDER BY (ended_at IS NULL) DESC, updated_at DESC
        LIMIT 200`,
@@ -457,6 +462,10 @@ readRoutes.get("/fleet", requireBearer, (c) => {
       started_at: r.started_at,
       updated_at: r.updated_at,
       ended_at: r.ended_at,
+      // GSL-319 — the most-recent PR URL this session touched (+ observation timestamp).
+      // Null when the session never opened / viewed a PR.
+      last_pr_url: r.last_pr_url,
+      last_pr_at: r.last_pr_at,
     })),
     count: rows.length,
     totals,
@@ -553,7 +562,8 @@ readRoutes.get("/bundle", requireBearer, (c) => {
       sessions: (getDb().raw
         .query(
           `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
-                  current_intent, status, started_at, updated_at, ended_at
+                  current_intent, status, started_at, updated_at, ended_at,
+                  last_pr_url, last_pr_at
            FROM agent_sessions
            ORDER BY (ended_at IS NULL) DESC, updated_at DESC
            LIMIT 200`,
@@ -573,6 +583,10 @@ readRoutes.get("/bundle", requireBearer, (c) => {
         started_at: r.started_at,
         updated_at: r.updated_at,
         ended_at: r.ended_at,
+        // GSL-319 — parity with /fleet above so the bundle-consuming code path renders the
+        // PR link as well.
+        last_pr_url: r.last_pr_url,
+        last_pr_at: r.last_pr_at,
       })),
     },
   });
