@@ -59,7 +59,33 @@ route with a mocked DB + a stubbed `SessionAdapter` and subscribes to the real
 
 **Live proof.** Captured in `assets/GSL-312/` — a two-page CDP session on the scratch
 core (127.0.0.1:7345, seeded DB under `.artifacts/hotfix2-live/`), Allow clicked in tab
-A, tab B refetch completed in < 400 ms. Details in Part 2.
+A, tab B refetch completed in **508 ms** (well under the 2-second acceptance threshold).
+The M2 responsive layout evidence in `assets/GSL-313/` was captured in the same run.
+Details in Part 2.
+
+**Followup — two plumbing bugs that blocked the fan-out from reaching browsers.** The
+initial commit (99ee66d) emitted the synthetic event correctly, but the live-verification
+harness never observed cross-tab propagation. Chasing that surfaced two latent bugs in
+the SSE stack that predate this hotfix but had been masked (fleet-poll's synthetic emit
+had the same shape and was silently no-op'd for every fresh subscriber). Both are fixed
+in the followup commit against `apps/core/src/routes/events.ts`:
+
+1. **Suppression filter dropped synthetic events.** The backfill-deduper on the /events
+   route was `msg.id <= cursor`. Real events have `seq >= 1` (SQLite AUTOINCREMENT);
+   synthetic events use `seq: 0`. With `cursor` starting at 0 for any fresh subscriber,
+   `0 <= 0` → the synthetic event was silently dropped. Fix: guard the filter with
+   `msg.id > 0` so the dedup only applies to persistent rows. Synthetic broadcasts have
+   no events-table row and therefore cannot be duplicates of the backfill by
+   construction.
+
+2. **First-byte gap made Chrome's `await fetch('/events')` hang.** `streamSSE` never
+   wrote a byte until the 20-second heartbeat window elapsed (empty backfill + no
+   messages queued). Chrome buffers `fetch()` and does not resolve the Promise until at
+   least one body byte arrives; without an initial write the SseProvider stayed on
+   "reconnecting" for the full HEARTBEAT_MS window on every fresh page load. Fix: write
+   a single `: connected <iso>\n\n` comment right after the backfill loop, before
+   entering the wait. curl was unaffected because it prints header lines as they arrive
+   independently of the body — that hid the bug from the smoke test.
 
 ## Part 2 — technical reference
 
