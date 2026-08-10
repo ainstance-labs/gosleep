@@ -194,6 +194,85 @@ function ProvenanceBadge({
 }
 
 // -----------------------------------------------------------------------------
+// ToolInputPreview — the command / file path attached to a permission-kind question
+// (GSL-320, fix for run 06 finding #1).
+//
+// Without this block the permission card read only "Permission request: Bash" with an
+// Allow / Deny pair, and the owner had no way to see what would actually run — during run 06
+// the dev-agent tried `cd /Users/…/gosleep && git checkout -b …` (a HARD-BANNED write into
+// the shared tree) and the panel gave zero context. The core now persists `tool_input` on the
+// row; this component renders it for the reader:
+//   - Bash tool_input `{ command, description? }` → primary line = command (monospace, wrap),
+//     description as a small caption underneath if present.
+//   - Edit tool_input `{ file_path, old_string, new_string }` → show file_path prominently
+//     plus a compact diff-like block for the two strings (truncated).
+//   - Write tool_input `{ file_path, content }` → file_path + a short content preview.
+//   - MCP-style `{ tool, params, message? }` → dumps params as JSON.
+//   - Anything else → JSON.stringify pretty-printed (fallback, never crashes).
+// The label above the block names the shape ("Command", "File edit", "File write", "Tool
+// arguments") so the reader can tell at a glance what class of action is being approved.
+// -----------------------------------------------------------------------------
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** Label shown above the preview block on a permission card. */
+export function formatToolInputLabel(input: unknown): string {
+  if (!isRecord(input)) return "Tool input";
+  if (typeof input.command === "string") return "Command";
+  if (typeof input.file_path === "string" && "old_string" in input) return "File edit";
+  if (typeof input.file_path === "string" && "content" in input) return "File write";
+  if (typeof input.file_path === "string") return "File path";
+  if (typeof input.tool === "string") return "Tool arguments";
+  return "Tool input";
+}
+
+/** Body text shown inside the preview block. Kept as plain text so the panel renders it in a
+ *  wrap-preserving `<pre>` block; JSON.stringify indentation carries structure without React
+ *  needing to know each schema. */
+export function formatToolInputBody(input: unknown): string {
+  if (input === null || input === undefined) return "";
+  if (typeof input === "string") return input;
+  if (isRecord(input)) {
+    // Bash — one line is the whole story. Show the command verbatim, then optional description.
+    if (typeof input.command === "string") {
+      const desc =
+        typeof input.description === "string" && input.description.length > 0
+          ? `\n\n# ${input.description}`
+          : "";
+      return `${input.command}${desc}`;
+    }
+    // Edit / Write — file_path first, so the reader knows the target before any content.
+    if (typeof input.file_path === "string") {
+      const parts: string[] = [String(input.file_path)];
+      if ("old_string" in input || "new_string" in input) {
+        const oldS = typeof input.old_string === "string" ? input.old_string : "";
+        const newS = typeof input.new_string === "string" ? input.new_string : "";
+        parts.push("");
+        parts.push(`- ${oldS.slice(0, 400)}${oldS.length > 400 ? "…" : ""}`);
+        parts.push(`+ ${newS.slice(0, 400)}${newS.length > 400 ? "…" : ""}`);
+      } else if ("content" in input) {
+        const content = typeof input.content === "string" ? input.content : "";
+        parts.push("");
+        parts.push(`${content.slice(0, 800)}${content.length > 800 ? "…" : ""}`);
+      }
+      return parts.join("\n");
+    }
+    // MCP-style — dump params.
+    if (typeof input.tool === "string" && "params" in input) {
+      const params = (input as { params?: unknown }).params;
+      return JSON.stringify(params ?? null, null, 2);
+    }
+  }
+  try {
+    return JSON.stringify(input, null, 2);
+  } catch {
+    return String(input);
+  }
+}
+
+// -----------------------------------------------------------------------------
 // QuestionOptions — formatted options list (GSL-314, hotfix 2 minor#3)
 //
 // AskUserQuestion payloads carry `options: Array<{label, description?, pros?[], cons?[]}>`
@@ -554,6 +633,26 @@ export function QuestionsScreen() {
                   </CardHeader>
                   <CardBody className="space-y-3">
                     <CardTitle>{question.question}</CardTitle>
+
+                    {/* GSL-320 — permission cards render the actual command / file path being
+                        approved. Without this block the owner saw only "Permission request:
+                        Bash" with no context (run 06 finding #1). Only shown for
+                        kind='permission' rows that have a non-null tool_input. */}
+                    {isPermission &&
+                    question.tool_input !== null &&
+                    question.tool_input !== undefined ? (
+                      <div className="sunken rounded-md p-3">
+                        <div className="text-muted mb-1 text-xs uppercase tracking-wide">
+                          {formatToolInputLabel(question.tool_input)}
+                        </div>
+                        <pre
+                          className="mono text-secondary max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs"
+                          data-testid="permission-tool-input"
+                        >
+                          {formatToolInputBody(question.tool_input)}
+                        </pre>
+                      </div>
+                    ) : null}
 
                     {question.options !== null && question.options !== undefined ? (
                       <QuestionOptions options={question.options} />

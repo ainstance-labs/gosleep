@@ -1,0 +1,18 @@
+2026-08-10T19:28:55.3NZ : connected 2026-08-10T19:28:55.831Z
+2026-08-10T19:28:55.3NZ 
+2026-08-10T19:28:55.3NZ event: agent_sessions.updated
+2026-08-10T19:28:55.3NZ data: {"seq":0,"day":"2026-08-10","ts":"2026-08-10T19:28:55.879Z","src":"core","actor":"fleet-poll","task":null,"type":"agent_sessions.updated","payload":{"inserted":0,"updated":3,"ended":0,"totalLive":3}}
+2026-08-10T19:28:55.3NZ id: 0
+2026-08-10T19:28:55.3NZ 
+2026-08-10T19:28:59.3NZ event: agent_sessions.updated
+2026-08-10T19:28:59.3NZ data: {"seq":0,"day":"2026-08-10","ts":"2026-08-10T19:28:59.882Z","src":"core","actor":"fleet-poll","task":null,"type":"agent_sessions.updated","payload":{"inserted":0,"updated":3,"ended":0,"totalLive":3}}
+2026-08-10T19:28:59.3NZ id: 0
+2026-08-10T19:28:59.3NZ 
+2026-08-10T19:29:03.3NZ event: agent_sessions.updated
+2026-08-10T19:29:03.3NZ data: {"seq":0,"day":"2026-08-10","ts":"2026-08-10T19:29:03.886Z","src":"core","actor":"fleet-poll","task":null,"type":"agent_sessions.updated","payload":{"inserted":0,"updated":3,"ended":0,"totalLive":3}}
+2026-08-10T19:29:03.3NZ id: 0
+2026-08-10T19:29:03.3NZ 
+2026-08-10T19:29:07.3NZ event: agent_sessions.updated
+2026-08-10T19:29:07.3NZ data: {"seq":0,"day":"2026-08-10","ts":"2026-08-10T19:29:07.886Z","src":"core","actor":"fleet-poll","task":null,"type":"agent_sessions.updated","payload":{"inserted":0,"updated":3,"ended":0,"totalLive":3}}
+2026-08-10T19:29:07.3NZ id: 0
+2026-08-10T19:29:07.3NZ 

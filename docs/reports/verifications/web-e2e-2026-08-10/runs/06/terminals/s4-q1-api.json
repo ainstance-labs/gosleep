@@ -1,0 +1,26 @@
+{
+  "qid": "q-2026-08-10-001",
+  "status": "open",
+  "kind": "BLOCKER",
+  "task": null,
+  "question": "Какой объём функционала вам нужен?",
+  "options": [
+    {
+      "label": "Базовый: добавить/отметить/удалить (Recommended)",
+      "description": "Простое добавление задач, отметка как выполненные и удаление. Без фильтров, без сохранения."
+    },
+    {
+      "label": "Расширенный: плюс фильтры и localStorage",
+      "description": "Все вышеуказанное, плюс фильтрация по статусу (все/активные/выполненные) и сохранение в localStorage."
+    }
+  ],
+  "opened_at": "2026-08-10T17:59:11.569Z",
+  "answered_at": null,
+  "answer_text": null,
+  "resolved_at": null,
+  "applied": null,
+  "applied_by": null,
+  "applied_rule_ref": null,
+  "defer_until": null,
+  "last_event_seq": null
+}

@@ -1,0 +1,10 @@
+: connected 2026-08-10T18:15:05.662Z
+
+event: agent_sessions.updated
+data: {"seq":0,"day":"2026-08-10","ts":"2026-08-10T18:15:05.663Z","src":"core","actor":"fleet-poll","task":null,"type":"agent_sessions.updated","payload":{"inserted":0,"updated":3,"ended":0,"totalLive":3}}
+id: 0
+
+event: agent_sessions.updated
+data: {"seq":0,"day":"2026-08-10","ts":"2026-08-10T18:15:09.663Z","src":"core","actor":"fleet-poll","task":null,"type":"agent_sessions.updated","payload":{"inserted":0,"updated":3,"ended":0,"totalLive":3}}
+id: 0
+

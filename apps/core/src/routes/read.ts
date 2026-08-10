@@ -140,6 +140,9 @@ interface QuestionRow {
   applied_rule_ref: string | null;
   defer_until: string | null;
   last_event_seq: number | null;
+  // GSL-320 — populated for `kind='permission'` rows with the JSON-encoded tool_input
+  // (the actual command / file path being approved). Null on non-permission rows.
+  tool_input: string | null;
 }
 
 readRoutes.get("/questions", requireBearer, (c) => {
@@ -154,7 +157,8 @@ readRoutes.get("/questions", requireBearer, (c) => {
   const rows = getDb().raw
     .query(
       `SELECT qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-              resolved_at, applied, applied_by, applied_rule_ref, defer_until, last_event_seq
+              resolved_at, applied, applied_by, applied_rule_ref, defer_until, last_event_seq,
+              tool_input
        FROM questions ${where}
        ORDER BY opened_at DESC LIMIT ?`,
     )
@@ -176,6 +180,10 @@ readRoutes.get("/questions", requireBearer, (c) => {
       applied_rule_ref: r.applied_rule_ref,
       defer_until: r.defer_until,
       last_event_seq: r.last_event_seq,
+      // GSL-320 — the JSON string is passed through parseJsonSafe so the panel can render it
+      // as structured data (Bash → {command}, Edit → {file_path, old_string, …}) without a
+      // client-side JSON.parse. Legacy pre-GSL-320 rows have NULL and simply omit the block.
+      tool_input: parseJsonSafe(r.tool_input),
     })),
     count: rows.length,
   });
@@ -397,6 +405,10 @@ interface AgentSessionRow {
   started_at: string;
   updated_at: string;
   ended_at: string | null;
+  // GSL-319 — most-recent GitHub PR URL observed on this session; null when the session
+  // never touched a PR. Timestamped so Overview can pick the newest URL across the fleet.
+  last_pr_url: string | null;
+  last_pr_at: string | null;
 }
 
 readRoutes.get("/fleet", requireBearer, (c) => {
@@ -408,7 +420,8 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   const rows = getDb().raw
     .query(
       `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
-              current_intent, status, started_at, updated_at, ended_at
+              current_intent, status, started_at, updated_at, ended_at,
+              last_pr_url, last_pr_at
        FROM agent_sessions
        ORDER BY (ended_at IS NULL) DESC, updated_at DESC
        LIMIT 200`,
@@ -449,6 +462,10 @@ readRoutes.get("/fleet", requireBearer, (c) => {
       started_at: r.started_at,
       updated_at: r.updated_at,
       ended_at: r.ended_at,
+      // GSL-319 — the most-recent PR URL this session touched (+ observation timestamp).
+      // Null when the session never opened / viewed a PR.
+      last_pr_url: r.last_pr_url,
+      last_pr_at: r.last_pr_at,
     })),
     count: rows.length,
     totals,
@@ -464,7 +481,7 @@ readRoutes.get("/bundle", requireBearer, (c) => {
   const questions = db.raw
     .query(
       `SELECT qid, status, kind, task, question, options, opened_at, answered_at, answer_text,
-              resolved_at, applied, applied_by, applied_rule_ref, defer_until
+              resolved_at, applied, applied_by, applied_rule_ref, defer_until, tool_input
        FROM questions ORDER BY opened_at DESC LIMIT 200`,
     )
     .all() as QuestionRow[];
@@ -511,6 +528,9 @@ readRoutes.get("/bundle", requireBearer, (c) => {
       applied_by: r.applied_by,
       applied_rule_ref: r.applied_rule_ref,
       defer_until: r.defer_until,
+      // GSL-320 — same shape as /questions above; SPA renders permission cards with a
+      // monospace preview of the actual command / tool input.
+      tool_input: parseJsonSafe(r.tool_input),
     })),
     skills: skills.map((r) => ({
       name: r.name,
@@ -542,7 +562,8 @@ readRoutes.get("/bundle", requireBearer, (c) => {
       sessions: (getDb().raw
         .query(
           `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
-                  current_intent, status, started_at, updated_at, ended_at
+                  current_intent, status, started_at, updated_at, ended_at,
+                  last_pr_url, last_pr_at
            FROM agent_sessions
            ORDER BY (ended_at IS NULL) DESC, updated_at DESC
            LIMIT 200`,
@@ -562,6 +583,10 @@ readRoutes.get("/bundle", requireBearer, (c) => {
         started_at: r.started_at,
         updated_at: r.updated_at,
         ended_at: r.ended_at,
+        // GSL-319 — parity with /fleet above so the bundle-consuming code path renders the
+        // PR link as well.
+        last_pr_url: r.last_pr_url,
+        last_pr_at: r.last_pr_at,
       })),
     },
   });
