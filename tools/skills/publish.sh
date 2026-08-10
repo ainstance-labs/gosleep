@@ -172,6 +172,27 @@ if ! VERBOSE=1 "$VERIFY" "$SKILL" >&2; then
   exit 1
 fi
 
+# ---- DB preflight (GSL-254, verifier GSL-174-night M1 fix) -------------------
+#
+# The publish flow's last step folds CHANGELOG.jsonl into the `skills` table (via
+# record-publish.ts). If that table is missing (fresh clone, corrupted DB, migration
+# skipped), the fold used to fail AFTER the rsync + JSONL write had already landed,
+# leaving a half-published state (filesystem + JSONL ahead of the DB, orphaned
+# "published" row in the JSONL, endpoint returned 500).
+#
+# Preflight closes that gap: probe the DB read-only BEFORE any mutation. Failure here
+# means NOTHING was written — no backup, no rsync, no CHANGELOG row.
+#
+# The launchd-managed core migrates the DB at boot; a bare CLI invocation on a fresh
+# checkout must run `bun run apps/core/scripts/migrate.ts` first. See
+# docs/runbooks/gosleep-core.md section 10 for the operator flow.
+if ! (cd "$REPO_ROOT" && bun run "$RECORD" check) >&2; then
+  echo "publish: DB preflight FAILED — the 'skills' table is missing." >&2
+  echo "publish:   Fix: bun run apps/core/scripts/migrate.ts (or bounce launchd, which migrates at boot)." >&2
+  echo "publish:   NO filesystem changes were made — backup + CHANGELOG untouched." >&2
+  exit 1
+fi
+
 # ---- diff (informational; the actual gate is verify-local + backup) ---------
 UTC_TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 FILENAME_TS="$(date -u +%Y%m%dT%H%M%SZ)"

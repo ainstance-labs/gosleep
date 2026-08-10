@@ -265,7 +265,7 @@ export function appendRow(path: string, row: ChangelogRow): void {
 // -----------------------------------------------------------------------------
 
 interface CliArgs {
-  mode: "fold" | "write";
+  mode: "fold" | "write" | "check";
   skill?: string;
   task?: string;
   commit?: string;
@@ -275,9 +275,10 @@ interface CliArgs {
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  if (argv.length === 0) throw new Error("usage: record-publish.ts fold | write --skill … --task … --commit … --lesson …");
+  if (argv.length === 0) throw new Error("usage: record-publish.ts fold | write --skill … --task … --commit … --lesson … | check");
   const mode = argv[0];
   if (mode === "fold") return { mode: "fold" };
+  if (mode === "check") return { mode: "check" };
   if (mode !== "write") throw new Error(`unknown mode: ${mode}`);
   const out: CliArgs = { mode: "write" };
   for (let i = 1; i < argv.length; i++) {
@@ -313,6 +314,38 @@ async function main(): Promise<void> {
     ? resolve(process.env.GOSLEEP_CHANGELOG_PATH)
     : DEFAULT_CHANGELOG_PATH;
   const args = parseArgs(process.argv.slice(2));
+
+  // `check` — read-only preflight used by publish.sh (GSL-254 M1 finding, verifier
+  // GSL-174-night). Verifies the target DB is migrated (the `skills` table exists)
+  // BEFORE publish.sh performs any rsync or CHANGELOG append. Never mutates state.
+  // Exits 0 when the table is present, 1 otherwise. The launchd-managed core migrates
+  // at boot; a bare CLI invocation on a fresh checkout needs `bun run apps/core/scripts/migrate.ts`
+  // first.
+  if (args.mode === "check") {
+    const opened = openDatabase();
+    try {
+      opened.raw.query("SELECT 1 FROM skills LIMIT 1").get();
+      console.log(
+        JSON.stringify({
+          event: "skills.record-publish.check.ok",
+          db: opened.path,
+        }),
+      );
+      opened.raw.close();
+      return;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(
+        JSON.stringify({
+          event: "skills.record-publish.check.fail",
+          db: opened.path,
+          error: message,
+        }),
+      );
+      opened.raw.close();
+      process.exit(1);
+    }
+  }
 
   if (args.mode === "write") {
     const row: ChangelogRow = {
