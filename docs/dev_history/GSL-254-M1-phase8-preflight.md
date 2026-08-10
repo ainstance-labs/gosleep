@@ -80,3 +80,14 @@ the first refusal — an agent-in-pipe context still bounces at step 3 with
 - **Sanctioned autonomy per owner rule 2026-08-10 (night autonomy + unfreeze).**
   Fix + smoke landed without owner review; happy path unchanged; verifier finding
   addressed at the strongest reasonable layer.
+
+## Runbook follow-up (verifier punch-list item 4, separate commit)
+
+Added a new **section 10 — Skills publishing (`publish.sh` — GSL-254 / GSL-306)**
+to `docs/runbooks/gosleep-core.md` (shifting the former section 10 "Standing
+rules" to 11). The section names the "standalone use must migrate first" rule
+explicitly, gives the two-line operator command (`bun run apps/core/scripts/migrate.ts`
+then `bash tools/skills/publish.sh <name>`), and points at
+`tools/skills/tests/preflight-smoke.sh` as the assertion. English, no
+section-sign glyph (project rule 2026-07-20 — only the three pre-existing
+`§` occurrences elsewhere in the runbook remain, untouched).

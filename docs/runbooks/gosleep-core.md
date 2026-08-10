@@ -383,7 +383,35 @@ Skip the flag on subsequent session starts. The plugin becomes inert immediately
 nothing under `data/` needs cleaning; existing rows keep working through the hook
 path.
 
-## 10. Standing rules for agents touching this engine
+## 10. Skills publishing (`publish.sh` — GSL-254 / GSL-306)
+
+`tools/skills/publish.sh` is the ONLY sanctioned path from a development copy under
+`skill/<name>/` to the production copy at `~/.claude/skills/<name>/`. It performs
+`rsync --delete` scoped to ONE named skill, keeps a pre-rsync backup under
+`docs/skills/backups/`, and folds a `docs/skills/CHANGELOG.jsonl` row into the
+`skills` table via `apps/core/scripts/record-publish.ts`.
+
+**The DB must be migrated BEFORE `publish.sh` runs.** The last step of the flow
+folds the CHANGELOG row into the `skills` table; a missing table would leave a
+half-published state (rsync landed, JSONL row appended, DB fold failed).
+`publish.sh` now runs a read-only preflight (`record-publish.ts check`) that aborts
+early with `rc=1` and no filesystem mutation if the `skills` table is absent.
+
+The launchd-managed core (section 1) migrates the DB at boot, so the endpoint path
+(`POST /actions/skills/publish`, which spawns `publish.sh` with a per-request
+`GOSLEEP_WEB_TOKEN` nonce) is always safe. **Standalone or dev use on a fresh
+checkout must migrate first:**
+
+```bash
+bun run apps/core/scripts/migrate.ts   # creates data/gosleep.db + all tables
+bash tools/skills/publish.sh <name>    # then publish; preflight passes
+```
+
+Assert the guard with `bash tools/skills/tests/preflight-smoke.sh` — it points
+`publish.sh` at an empty scratch DB and confirms the early-fail path leaves the
+backups dir + CHANGELOG.jsonl + production skill dir untouched.
+
+## 11. Standing rules for agents touching this engine
 
 - **SQLite is the source of truth** — JSONL under `docs/lab/` is a historical archive as of
   target-architecture step 8. Write actions go via `POST /actions/*` (which spawns the
