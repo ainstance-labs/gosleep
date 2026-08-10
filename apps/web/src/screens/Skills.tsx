@@ -167,6 +167,14 @@ export function SkillsScreen() {
                       >
                         View diff + history
                       </Button>
+                      {/* When TouchID lifts (d-2026-08-09-001 unpaused, GSL-266 + GSL-288
+                          land together): DO NOT just flip `disabled` — this button also needs
+                          `onClick={() => submitPublish(row)}` wired here. The full two-part
+                          change per verifier GSL-174-night m2: (a) drop `disabled` +
+                          `aria-disabled` + tooltip, (b) add the onClick that calls
+                          submitPublish (already defined above at line 68). Both parts must
+                          land in one commit — the TS mutation hook exists but is dormant
+                          until an onClick invokes it. */}
                       <Button
                         variant="solid"
                         size="sm"
