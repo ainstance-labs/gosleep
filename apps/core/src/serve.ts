@@ -31,6 +31,7 @@ import { metricsRoutes } from "./routes/metrics.ts";
 import { actionsRoutes } from "./routes/actions.ts";
 import { internalRoutes, stopToolObservedFlush } from "./routes/internal.ts";
 import { setupRoutes } from "./routes/setup.ts";
+import { spaNavigationRoutes } from "./routes/spaNavigation.ts";
 import { spaRoutes } from "./routes/spa.ts";
 import { getDb } from "./db/client.ts";
 import { reconcileCursors } from "./indexer/reconcile.ts";
@@ -46,6 +47,12 @@ const app = new Hono();
 app.use("*", applySecurityHeaders);
 app.use("*", requireLocalHost);
 app.use("*", requireLocalOrigin);
+// GSL-310 — SPA browser-navigation guard. MUST be mounted BEFORE readRoutes: for a browser
+// hard-reload of /fleet /timeline /questions /tasks /cost /overview /skills (SPA client
+// routes that collide with same-named JSON API handlers), return the SPA shell instead of
+// falling into the Bearer-gated read route and 401'ing. Any XHR/SDK call sends
+// `Accept: application/json` and skips the guard — the API path is unchanged.
+app.route("/", spaNavigationRoutes);
 app.route("/", readRoutes);
 app.route("/", eventsRoutes);
 app.route("/", metricsRoutes);

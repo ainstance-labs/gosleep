@@ -784,6 +784,42 @@ check_status "58. POST /nope (honest 404, no SPA rewrite)" "404" -X POST -H "Hos
   -H "Origin: http://127.0.0.1:$PORT" -H "Content-Type: application/json" -d "{}" \
   "http://127.0.0.1:$PORT/nope"
 
+echo "== GSL-310: SPA browser-navigation guard on API-colliding paths =="
+# The guard (apps/core/src/routes/spaNavigation.ts, mounted BEFORE readRoutes) turns a browser
+# hard-reload of /fleet /timeline /questions /tasks /cost /skills /overview into a 200 index.html
+# — the Bearer-gated JSON call to the same path (Accept: application/json) still 401s without a
+# token and still returns JSON with the valid Bearer. Pre-fix: a browser reload of /questions
+# hit the Bearer-gated GET /questions handler, 401'd with body "unauthorized", and the SPA
+# never booted.
+
+# 58a. Browser GET of /questions (Accept: text/html) → 200 SPA shell.
+check_status "58a. GET /questions Accept:text/html (browser) → 200 SPA" "200" \
+  -H "Host: 127.0.0.1:$PORT" -H "Accept: text/html,application/xhtml+xml" \
+  "http://127.0.0.1:$PORT/questions"
+check_body   "58a-b. /questions browser body has scratch marker" "scratch-spa-index" \
+  -H "Host: 127.0.0.1:$PORT" -H "Accept: text/html,application/xhtml+xml" \
+  "http://127.0.0.1:$PORT/questions"
+
+# 58b. SDK GET of /questions (Accept: application/json, no Bearer) → still 401 (guard skipped).
+check_status "58b. GET /questions Accept:application/json (no Bearer) → 401" "401" \
+  -H "Host: 127.0.0.1:$PORT" -H "Accept: application/json" \
+  "http://127.0.0.1:$PORT/questions"
+
+# 58c. SDK GET of /questions with the valid Bearer → 200 JSON (API path unchanged).
+check_status "58c. GET /questions Accept:application/json + Bearer → 200 JSON" "200" \
+  -H "Host: 127.0.0.1:$PORT" -H "Accept: application/json" -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:$PORT/questions"
+
+# 58d. Same-family collision — /fleet browser reload also lands on the SPA shell.
+check_status "58d. GET /fleet Accept:text/html (browser) → 200 SPA" "200" \
+  -H "Host: 127.0.0.1:$PORT" -H "Accept: text/html" \
+  "http://127.0.0.1:$PORT/fleet"
+
+# 58e. Nested child path (/questions/GSL-1) — react-router owns it, SPA shell served.
+check_status "58e. GET /questions/GSL-1 Accept:text/html → 200 SPA" "200" \
+  -H "Host: 127.0.0.1:$PORT" -H "Accept: text/html" \
+  "http://127.0.0.1:$PORT/questions/GSL-1"
+
 echo "== GSL-291: /setup Bearer-discovery flow =="
 # 59. POST /internal/setup/otp without secret → 401.
 check_status "59. POST /internal/setup/otp (no secret)" "401" -X POST -H "Host: 127.0.0.1:$PORT" \

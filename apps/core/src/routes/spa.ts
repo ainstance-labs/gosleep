@@ -115,8 +115,11 @@ function placeholderHtml(): string {
  * can render the requested client-side route. Reads index.html lazily on every hit; the file is
  * <1 KB gzipped and the OS page cache does the heavy lifting. Explicit ONLY on GET — a POST or
  * PUT to an unknown path is a real 404, not a mis-routed SPA nav.
+ *
+ * Exported (GSL-310) so the SPA-navigation guard mounted BEFORE the API read routes can reuse
+ * the exact same body when it intercepts a browser reload of /fleet, /questions, etc.
  */
-async function serveSpaFallback(): Promise<Response> {
+export async function serveSpaFallback(): Promise<Response> {
   if (WEB_DIST_ROOT === null) {
     return new Response(placeholderHtml(), {
       status: 200,
