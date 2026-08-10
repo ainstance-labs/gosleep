@@ -138,7 +138,31 @@ export function pickLatestPr(
   return best;
 }
 
-function LatestPrCard({ pr }: { pr: PrObservation }) {
+function LatestPrCard({ pr }: { pr: PrObservation | null }) {
+  // GSL-328 — empty-state variant. Live-fire run 08 flagged that the tile
+  // vanished entirely on a pristine Overview (no session had emitted
+  // `last_pr_url` yet), so the operator could not tell if the surface was
+  // missing or just quiet. Now the card is always present; when there is no
+  // observation, the body renders a muted "No pull requests yet" line
+  // consistent with the other Overview tiles (Runway / KPI) that keep their
+  // frame when empty.
+  if (pr === null) {
+    return (
+      <Card data-testid="latest-pr-card-empty">
+        <CardHeader>
+          <CardTitle>Latest PR</CardTitle>
+          <span className="text-muted text-xs">no PRs observed yet</span>
+        </CardHeader>
+        <CardBody>
+          <p className="text-muted text-sm">
+            No pull requests yet. The card populates as soon as a fleet
+            session runs <code className="mono">gh pr create</code> (or
+            <code className="mono"> gh pr view &lt;url&gt;</code>).
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardHeader>
@@ -270,12 +294,13 @@ export function OverviewScreen() {
         </QueryStatus>
       </div>
 
-      {/* GSL-319 — the "Latest PR" surface. Hidden entirely when the fleet has never
-          touched a PR so the Overview stays quiet on non-shipping sessions. */}
+      {/* GSL-319 — the "Latest PR" surface. GSL-328 (run 08 minor): always render
+          the card so the surface is discoverable; `LatestPrCard` swaps to an
+          empty-state variant when `pickLatestPr()` returns null. */}
       {(() => {
         const pr =
           fleet.data !== undefined ? pickLatestPr(fleet.data.sessions) : null;
-        return pr === null ? null : <LatestPrCard pr={pr} />;
+        return <LatestPrCard pr={pr} />;
       })()}
 
       <Card>
