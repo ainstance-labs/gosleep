@@ -648,11 +648,17 @@ export function QuestionsScreen() {
           autoFocus
           placeholder="Type the answer for the agent…"
           value={answerDialog?.value ?? ""}
-          onChange={(e) =>
+          onChange={(e) => {
+            // GSL-308 — capture the string synchronously. React 19 is free to invoke the
+            // state-updater outside the synchronous handler window; by the time the updater
+            // runs, the SyntheticEvent is recycled and `e.currentTarget` is null → TypeError
+            // that the router boundary catches, blanking the entire /questions route until a
+            // full reload. Reading `value` before entering the updater fixes the class of bug.
+            const v = e.currentTarget.value;
             setAnswerDialog((prev) =>
-              prev === null ? prev : { ...prev, value: e.currentTarget.value },
-            )
-          }
+              prev === null ? prev : { ...prev, value: v },
+            );
+          }}
         />
         <p className="text-muted mt-2 text-xs">
           Provenance: <code className="mono">owner-web</code> via <code className="mono">web</code> channel.
@@ -697,11 +703,13 @@ export function QuestionsScreen() {
           autoFocus
           placeholder="What was applied to close this out?"
           value={resolveDialog?.value ?? ""}
-          onChange={(e) =>
+          onChange={(e) => {
+            // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+            const v = e.currentTarget.value;
             setResolveDialog((prev) =>
-              prev === null ? prev : { ...prev, value: e.currentTarget.value },
-            )
-          }
+              prev === null ? prev : { ...prev, value: v },
+            );
+          }}
         />
         <p className="text-muted mt-2 text-xs">
           <code className="mono">lab-emit resolve</code> enforces manifest §2 (never before deadline unless <code className="mono">--early</code>);
@@ -802,11 +810,13 @@ export function QuestionsScreen() {
             rows={2}
             placeholder="Optional: override the answer text (default = the rule body)."
             value={applyDialog?.answerOverride ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+              const v = e.currentTarget.value;
               setApplyDialog((prev) =>
-                prev === null ? prev : { ...prev, answerOverride: e.currentTarget.value },
-              )
-            }
+                prev === null ? prev : { ...prev, answerOverride: v },
+              );
+            }}
           />
         </div>
       </Dialog>
@@ -876,11 +886,13 @@ export function QuestionsScreen() {
               className="surface mono w-full rounded-md p-2 text-sm"
               placeholder="YYYY-MM-DDTHH:MM:SSZ (empty = no timer)"
               value={deferDialog?.customIso ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+                const v = e.currentTarget.value;
                 setDeferDialog((prev) =>
-                  prev === null ? prev : { ...prev, customIso: e.currentTarget.value },
-                )
-              }
+                  prev === null ? prev : { ...prev, customIso: v },
+                );
+              }}
             />
           ) : null}
         </div>
@@ -937,11 +949,13 @@ export function QuestionsScreen() {
             autoFocus
             placeholder="Why deny? (optional; sent as permissionDecisionReason)"
             value={denyDialog?.reason ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+              const v = e.currentTarget.value;
               setDenyDialog((prev) =>
-                prev === null ? prev : { ...prev, reason: e.currentTarget.value },
-              )
-            }
+                prev === null ? prev : { ...prev, reason: v },
+              );
+            }}
           />
         </div>
       </Dialog>
