@@ -14,7 +14,7 @@ import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import { Badge } from "../components/ui/Badge";
 import { useFleet } from "../data/queries";
-import { formatModelLabel, timeAgo } from "../lib/format";
+import { formatModelLabel, formatPrLabel, timeAgo } from "../lib/format";
 import { cn } from "../lib/cn";
 
 type StatusTone = "info" | "ok" | "warn" | "neutral" | "danger" | "accent";
@@ -200,7 +200,10 @@ export function FleetScreen() {
                     {/* GSL-319 — per-session PR chip. Populated by the extractor in
                         /internal/agents/tool-observed as soon as `gh pr create`
                         (or a later `gh pr view <URL>`) fires. Hidden when the session has
-                        not touched a PR yet. */}
+                        not touched a PR yet. GSL-329: visible text is the compact `#N`
+                        parsed from the URL; `href` still points at the full URL (click
+                        behaviour unchanged) and `title` prefixes the raw URL so the
+                        operator's clipboard workflow is unaffected. */}
                     {s.last_pr_url !== null && s.last_pr_url !== undefined ? (
                       <div>
                         <div className="text-muted mb-0.5 text-xs uppercase tracking-wide">
@@ -210,15 +213,15 @@ export function FleetScreen() {
                           href={s.last_pr_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mono block break-all text-sm text-[var(--color-accent)] hover:underline"
+                          className="mono inline-block text-sm text-[var(--color-accent)] hover:underline"
                           data-testid="fleet-pr-link"
                           title={
                             s.last_pr_at !== null && s.last_pr_at !== undefined
-                              ? `observed ${timeAgo(s.last_pr_at)}`
-                              : "observed just now"
+                              ? `${s.last_pr_url} — observed ${timeAgo(s.last_pr_at)}`
+                              : `${s.last_pr_url} — observed just now`
                           }
                         >
-                          {s.last_pr_url}
+                          {formatPrLabel(s.last_pr_url)}
                         </a>
                       </div>
                     ) : null}

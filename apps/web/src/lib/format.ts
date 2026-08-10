@@ -150,3 +150,42 @@ export function formatModelLabel(id: string | null | undefined): string {
   return fallbackModelLabel(trimmed);
 }
 
+// -----------------------------------------------------------------------------
+// GSL-329 — friendly PR chip label.
+//
+// GSL-319 shipped the Latest-PR card + Fleet PR chip as clickable anchors
+// whose visible text was the FULL URL (e.g.
+// `https://github.com/ainstance-labs/gosleep/pull/9`). Live-fire E2E run 08
+// flagged that as noisy on a small chip — the convention on other panels is
+// the compact `#N`.
+//
+// Pure URL parser. The anchor's `href` stays the full URL; call-sites keep
+// the URL in `title` too so the operator can still copy it.
+//
+// Rules:
+//   - Any URL containing `/pull/N` → `#N`. Works for github.com, forks, and
+//     private mirrors — the parser cares about the path shape, not the host.
+//   - Query strings, fragments, trailing slashes, whitespace are all
+//     tolerated.
+//   - Unparseable (bare hostname, empty, garbage, `null`, `undefined`) →
+//     `"PR"`. Never the raw URL (that would defeat the whole point).
+// -----------------------------------------------------------------------------
+
+/**
+ * Parse a PR URL into a compact `#N` label.
+ *
+ * Falls back to the short label `"PR"` when the URL has no `/pull/<digits>`
+ * segment — the raw URL is never rendered as the anchor text (call-sites
+ * keep it in `href` and `title` for the operator's clipboard).
+ */
+export function formatPrLabel(url: string | null | undefined): string {
+  if (url === null || url === undefined) return "PR";
+  const trimmed = url.trim();
+  if (trimmed.length === 0) return "PR";
+  const match = trimmed.match(/\/pull\/(\d+)/);
+  if (match !== null && match[1] !== undefined) {
+    return `#${match[1]}`;
+  }
+  return "PR";
+}
+

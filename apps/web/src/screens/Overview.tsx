@@ -25,7 +25,7 @@ import {
   useTakeSnapshot,
   useTimeline,
 } from "../data/queries";
-import { timeAgo, timeOfDay } from "../lib/format";
+import { formatPrLabel, timeAgo, timeOfDay } from "../lib/format";
 import { Badge } from "../components/ui/Badge";
 import type { RunwayResult } from "@gosleep/schema";
 
@@ -172,14 +172,18 @@ function LatestPrCard({ pr }: { pr: PrObservation | null }) {
         </span>
       </CardHeader>
       <CardBody className="space-y-2">
+        {/* GSL-329 — anchor text is the compact `#N`; `href` still points at
+            the full URL (click behaviour unchanged), `title` prefixes the raw
+            URL so the operator can still hover to see and copy it. */}
         <a
           href={pr.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mono block break-all text-sm text-[var(--color-accent)] hover:underline"
+          className="mono inline-block text-sm text-[var(--color-accent)] hover:underline"
           data-testid="latest-pr-link"
+          title={pr.url}
         >
-          {pr.url}
+          {formatPrLabel(pr.url)}
         </a>
         <p className="text-muted text-xs">
           opened by <code className="mono">{pr.session_name}</code>
