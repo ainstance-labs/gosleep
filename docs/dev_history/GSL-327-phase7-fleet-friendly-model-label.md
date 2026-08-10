@@ -64,6 +64,29 @@ so a future consumer picks it up without a rewrite.
   pass on the worktree-local scratch DB.
 - `bun run --filter='@gosleep/web' build` — clean.
 
+## Live proof
+
+`.artifacts/live-proof/screenshots/s2-fleet-friendly-labels.png`
+(copied to `docs/dev_history/assets/GSL-327/s2-fleet-friendly-labels.png`).
+
+Playwright driver (`tools/e2e/scenarios/gsl-326/run.mjs`) hit the
+worktree-local scratch core (127.0.0.1:7352) seeded with sessions in
+every family:
+
+| model id (raw)                    | rendered label |
+|-----------------------------------|----------------|
+| `claude-fable-5`                  | `Fable 5` × 2  |
+| `claude-opus-4-7`                 | `Opus 4.7`     |
+| `claude-opus-4-8`                 | `Opus 4.8` × 2 |
+| `claude-sonnet-5`                 | `Sonnet 5`     |
+| `claude-haiku-4-5-20251001`       | `Haiku 4.5`    |
+| `claude-nova-9` (unknown family)  | `Nova 9`       |
+| `unknown` (sentinel)              | `unknown`      |
+| `starting` (sentinel)             | `starting`     |
+
+Driver also asserted the negative: `page.locator("text=/^claude-fable-5$/").count()`
+returned **0** — no raw id leaked to the UI.
+
 ## Files touched
 
 - `apps/web/src/lib/format.ts` — `formatModelLabel` + `MODEL_FAMILIES`

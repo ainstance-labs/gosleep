@@ -59,6 +59,24 @@ Wired at both surfaces:
 - `bun test apps/web` — 58 pass (28 GSL-327 + 22 new + 8 existing).
 - `bun run --filter='@gosleep/web' build` — clean.
 
+## Live proof
+
+Playwright driver (`tools/e2e/scenarios/gsl-326/run.mjs` step 3): seeded
+`last_pr_url = https://github.com/ainstance-labs/gosleep/pull/326` on
+session `s-fable` via `POST /internal/agents/tool-observed`
+(`pr_url_detected` echoed on the response), waited 2.5 s for the 1 s
+debounce + SSE fan-out, then re-scanned both surfaces.
+
+| surface  | data-testid           | anchor text | href                                                    |
+|----------|-----------------------|-------------|---------------------------------------------------------|
+| Overview | `latest-pr-link`      | `#326`      | `https://github.com/ainstance-labs/gosleep/pull/326`    |
+| Fleet    | `fleet-pr-link`       | `#326`      | `https://github.com/ainstance-labs/gosleep/pull/326`    |
+
+Screenshots:
+
+- `docs/dev_history/assets/GSL-329/s3a-overview-with-pr-hash-label.png`
+- `docs/dev_history/assets/GSL-329/s3b-fleet-with-pr-hash-label.png`
+
 ## Files touched
 
 - `apps/web/src/lib/format.ts` — new `formatPrLabel` helper + block

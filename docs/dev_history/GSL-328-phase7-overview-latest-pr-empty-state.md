@@ -47,6 +47,24 @@ consistent without any theme-specific overrides.
 - `bun x tsc -p apps/web --noEmit` — clean.
 - `bun run --filter='@gosleep/web' build` — clean.
 
+## Live proof
+
+`docs/dev_history/assets/GSL-328/s1-overview-empty-state.png` — pristine
+Overview on the worktree-local scratch core (127.0.0.1:7352); no seeded
+session had `last_pr_url` populated. The card is visible with the muted
+empty-state copy.
+
+Playwright driver assertions (`tools/e2e/scenarios/gsl-326/run.mjs`
+step 1):
+
+| assertion                                                | count |
+|----------------------------------------------------------|-------|
+| `[data-testid="latest-pr-card-empty"]`                   |   1   |
+| `text=/No pull requests yet/`                            |   1   |
+| `text=/Latest PR/` (card title still present)            |   1   |
+
+All three were `0` on `main` @ 394cc6e (run 08 baseline S1).
+
 ## Files touched
 
 - `apps/web/src/screens/Overview.tsx` — `LatestPrCard` prop widen +
