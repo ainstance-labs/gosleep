@@ -155,21 +155,30 @@ describe("modelCache (GSL-290)", () => {
     modelCache.startTick();
   });
 
-  test("reads the file once per (cwd, home) key until startTick clears the cache", () => {
+  // GSL-321 — modelCache.get now takes (session_id, cwd, opts) with a transcript-first
+  // resolution. The tests below hand in an empty `listTranscripts` so the settings-hierarchy
+  // fallback runs; that keeps the coverage story (file cached per key, distinct keys don't
+  // collide) while matching the new signature.
+  test("reads the file once per (session_id, cwd, home) key until startTick clears the cache", () => {
     let reads = 0;
     const read = fakeFs({ [P_LOCAL]: JSON.stringify({ model: "cached-model" }) });
     const trackingRead = (p: string) => {
       reads += 1;
       return read(p);
     };
-    const m1 = modelCache.get(CWD, { home: HOME, readFile: trackingRead });
-    const m2 = modelCache.get(CWD, { home: HOME, readFile: trackingRead });
+    const opts = {
+      home: HOME,
+      readFile: trackingRead,
+      listTranscripts: () => [],
+    };
+    const m1 = modelCache.get("S", CWD, opts);
+    const m2 = modelCache.get("S", CWD, opts);
     expect(m1).toBe("cached-model");
     expect(m2).toBe("cached-model");
     expect(reads).toBe(1); // only one file read — second call is served from cache
 
     modelCache.startTick();
-    const m3 = modelCache.get(CWD, { home: HOME, readFile: trackingRead });
+    const m3 = modelCache.get("S", CWD, opts);
     expect(m3).toBe("cached-model");
     expect(reads).toBe(2); // cache cleared → file re-read
   });
@@ -181,10 +190,19 @@ describe("modelCache (GSL-290)", () => {
     const readB = fakeFs({
       [join("/b", ".claude", "settings.local.json")]: JSON.stringify({ model: "b" }),
     });
-    expect(modelCache.get("/a", { home: HOME, readFile: readA })).toBe("a");
-    expect(modelCache.get("/b", { home: HOME, readFile: readB })).toBe("b");
+    const noTranscripts = { listTranscripts: () => [] as never[] };
+    expect(
+      modelCache.get("S", "/a", { home: HOME, readFile: readA, ...noTranscripts }),
+    ).toBe("a");
+    expect(
+      modelCache.get("S", "/b", { home: HOME, readFile: readB, ...noTranscripts }),
+    ).toBe("b");
     // Repeat both — still correct (cache doesn't leak across cwds).
-    expect(modelCache.get("/a", { home: HOME, readFile: readA })).toBe("a");
-    expect(modelCache.get("/b", { home: HOME, readFile: readB })).toBe("b");
+    expect(
+      modelCache.get("S", "/a", { home: HOME, readFile: readA, ...noTranscripts }),
+    ).toBe("a");
+    expect(
+      modelCache.get("S", "/b", { home: HOME, readFile: readB, ...noTranscripts }),
+    ).toBe("b");
   });
 });

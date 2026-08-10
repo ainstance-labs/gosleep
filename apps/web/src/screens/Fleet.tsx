@@ -128,15 +128,17 @@ export function FleetScreen() {
                         {s.pid !== null && s.pid !== undefined ? (
                           <span className="mono">pid {s.pid}</span>
                         ) : null}
-                        {/* GSL-290 — render an explicit "unknown" pill when the model
-                            resolver didn't find one; better than a hidden field, and the
-                            operator can then edit `.claude/settings.local.json` to fix it. */}
+                        {/* GSL-290 (settings hierarchy) + GSL-321 (transcript-first per
+                            session). Renders an explicit "unknown" pill when neither source
+                            produced a value; a wrong-but-confident value would be worse
+                            (run 06 finding #3: a `--model haiku` session showed the global
+                            `fable-5` because the transcript reader did not exist). */}
                         <span
                           className="mono"
                           title={
                             s.model === null || s.model === undefined
-                              ? "no model found in <cwd>/.claude/settings*.json or ~/.claude/settings.json"
-                              : `model resolved from Claude Code settings hierarchy`
+                              ? "no assistant turn in the transcript yet, and no `model` in <cwd>/.claude/settings*.json or ~/.claude/settings.json"
+                              : "model read from the session transcript (falls back to Claude Code settings hierarchy)"
                           }
                         >
                           {s.model !== null && s.model !== undefined

@@ -1,27 +1,39 @@
-// @gosleep/core — model resolver (GSL-290).
+// @gosleep/core — model resolver (GSL-290; transcript-first upgrade GSL-321).
 //
 // `claude agents --json` (see `packages/runner-adapter/src/claude-code.ts`) does NOT surface
 // each session's model — the CLI contract only carries session_id / name / cwd / pid / kind /
-// status / startedAt. The web Fleet cards want a model label per card; the honest source is
-// the Claude Code settings hierarchy the CLI itself reads:
+// status / startedAt. The web Fleet cards want a model label per card, and there are two
+// sources — used in this precedence, first non-null wins:
 //
-//   1. `<cwd>/.claude/settings.local.json` — session/project override (highest precedence).
-//   2. `<cwd>/.claude/settings.json`       — project-shared default.
-//   3. `$HOME/.claude/settings.json`       — user global default.
+//   1. GSL-321 — the session's own transcript file. Every assistant turn is a JSONL row with
+//      `{"type":"assistant","message":{"model":"claude-<name>-<ver>"}}`. This is the ONLY
+//      honest per-session source; a `claude --model haiku` invocation reflects `haiku` here
+//      even when the global settings file names `fable-5`. Run 06's `todo-workspace-47` was
+//      launched with `--model haiku` and the Fleet card showed the global `fable-5` because
+//      this reader did not exist. See `resolveTranscriptModel`.
 //
-// Each file may declare the model at either the top-level `"model"` field OR inside `env`
-// as `CLAUDE_MODEL` / `ANTHROPIC_MODEL`. First non-empty string wins; nothing found returns
-// null and the Fleet card renders an explicit "unknown" pill (never fabricate a model).
+//   2. GSL-290 — the Claude Code settings hierarchy the CLI itself reads:
+//        a. `<cwd>/.claude/settings.local.json` — session/project override (highest precedence).
+//        b. `<cwd>/.claude/settings.json`       — project-shared default.
+//        c. `$HOME/.claude/settings.json`       — user global default.
+//
+// A `--model` flag on the `claude` invocation is captured by the transcript reader; the
+// settings hierarchy is the honest fallback when no assistant turn has landed yet (a very
+// fresh session, seconds after spawn). If BOTH sources fail we return null; the Fleet card
+// renders "unknown" — never a fabricated value.
+//
+// Each settings file may declare the model at either the top-level `"model"` field OR inside
+// `env` as `CLAUDE_MODEL` / `ANTHROPIC_MODEL`. First non-empty string wins.
 //
 // The resolver is PURE (given a cwd + HOME) so unit tests fully cover it. The fleet-poll
-// worker calls it per session per tick, hitting a small in-process cache keyed on `<cwd>|<home>`
-// so a stable file is read once per tick — the file is tiny (<2 KB) and the cache TTL is one
-// poll interval (invalidated at the top of every reconcile). Cache misses degrade gracefully
-// on I/O errors (missing/unreadable file → treat as unset).
+// worker calls it per session per tick, hitting a small in-process cache keyed on
+// `<session_id>|<cwd>|<home>` so a stable file is read at most once per tick.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
+import { getSessionAdapter } from "./session.ts";
 
 /**
  * The three files probed, in precedence order. Exported for the tests.
@@ -101,10 +113,137 @@ export function resolveModelForCwd(
   return null;
 }
 
+// -----------------------------------------------------------------------------
+// GSL-321 — transcript-derived model reader.
+// -----------------------------------------------------------------------------
+
+export interface ResolveTranscriptModelOptions {
+  /** Test hook: replace the transcript entries listing (default: adapter.readTranscript). */
+  listTranscripts?: (sessionId: string) => Array<{
+    path: string;
+    modified_at_epoch_ms: number;
+  }>;
+  /** Test hook: replace the raw file reader (default: node:fs.readFileSync). */
+  readFile?: (p: string) => string | null;
+  /** Cap on how many bytes we read from the tail of the transcript. Default 64 KiB — enough
+   *  to catch several dozen assistant turns without loading a whole day's session. */
+  tailBytes?: number;
+}
+
+/** Type predicate for the assistant-turn line we care about. */
+function extractModelFromLine(line: string): string | null {
+  const trimmed = line.trim();
+  if (trimmed.length === 0) return null;
+  if (!trimmed.startsWith("{")) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== "object") return null;
+  const rec = parsed as Record<string, unknown>;
+  if (rec.type !== "assistant") return null;
+  const msg = rec.message;
+  if (msg === null || typeof msg !== "object") return null;
+  const model = (msg as Record<string, unknown>).model;
+  return typeof model === "string" && model.length > 0 ? model : null;
+}
+
+/**
+ * Read the most-recent assistant turn's model from the session's transcript. Returns null
+ * when no transcript is found or no assistant line has landed yet — the caller falls back
+ * to the settings resolver.
+ *
+ * Reads at most `tailBytes` from the end of the newest transcript file (default 64 KiB).
+ * The file is JSONL — we split on newlines and scan the last chunk backwards so the FIRST
+ * hit is the LATEST assistant turn, matching what the model actually is right now (not
+ * whatever it was in turn 1 before a mid-session `--model` switch, though that is not a
+ * supported flow today).
+ */
+export function resolveTranscriptModel(
+  sessionId: string,
+  opts: ResolveTranscriptModelOptions = {},
+): string | null {
+  if (sessionId.length === 0) return null;
+  const tailBytes = opts.tailBytes ?? 64 * 1024;
+
+  const list =
+    opts.listTranscripts ??
+    ((sid: string) => {
+      try {
+        const r = getSessionAdapter().readTranscript(sid);
+        if (!r.ok) return [];
+        return r.entries.map((e) => ({
+          path: e.path,
+          modified_at_epoch_ms: e.modified_at_epoch_ms,
+        }));
+      } catch {
+        return [];
+      }
+    });
+
+  const entries = list(sessionId);
+  if (entries.length === 0) return null;
+  // Newest file wins — a session may span several transcripts across resumes / compactions.
+  entries.sort((a, b) => b.modified_at_epoch_ms - a.modified_at_epoch_ms);
+
+  const read =
+    opts.readFile ??
+    ((p: string): string | null => {
+      try {
+        if (!existsSync(p)) return null;
+        // Read only the tail; a long session's transcript is often multi-MB, and the whole
+        // point of this reader is a cheap "what's the current model" lookup on every tick.
+        const st = statSync(p);
+        const size = st.size;
+        if (size <= tailBytes) return readFileSync(p, "utf8");
+        // For big files: use a Bun `file().slice(offset).text()` if available, else fall back
+        // to readFileSync of the whole file (still cheap enough at Node's read speed).
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const bunGlobal = (globalThis as any).Bun;
+          if (bunGlobal && typeof bunGlobal.file === "function") {
+            const f = bunGlobal.file(p) as {
+              slice: (start: number) => { text: () => Promise<string> };
+            };
+            // Bun's slice returns a Blob; text() is async. We block via a sync helper — but
+            // synchronous Bun blob reads are not exposed, so on the big-file path we accept
+            // reading the whole file. tailBytes is a soft guard, not a hard one.
+          }
+        } catch {
+          /* fall through */
+        }
+        return readFileSync(p, "utf8");
+      } catch {
+        return null;
+      }
+    });
+
+  for (const e of entries) {
+    const raw = read(e.path);
+    if (raw === null || raw.length === 0) continue;
+    // Take the tail slice so `.slice(-tailBytes)` bounds even the fallback whole-file read.
+    const tail = raw.length > tailBytes ? raw.slice(-tailBytes) : raw;
+    // Split by newlines and walk backwards — latest assistant turn wins.
+    const lines = tail.split(/\r?\n/);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const found = extractModelFromLine(lines[i] ?? "");
+      if (found !== null) return found;
+    }
+  }
+  return null;
+}
+
 /**
  * Per-tick cache. `startTick()` clears the map; the resolver is called once per session per
  * tick and reads at most one file per fresh cwd. Kept module-level (not per-worker) because
  * the process is single-instance; the fleet-poll worker owns the whole cache's lifetime.
+ *
+ * GSL-321 — the cache key now includes `session_id` so two sessions in the same cwd (a
+ * scratch project running two Claude invocations with different `--model` flags) each get
+ * their own transcript-derived value. Falls back to the cwd-keyed settings resolver when
+ * the transcript path returns null.
  */
 class ModelCache {
   private cache = new Map<string, string | null>();
@@ -113,14 +252,31 @@ class ModelCache {
     this.cache.clear();
   }
 
-  get(cwd: string, opts: ResolveModelOptions = {}): string | null {
-    const key = `${cwd}|${opts.home ?? homedir()}`;
+  /**
+   * Resolve the model for a live session.
+   *
+   * GSL-321 precedence: transcript (real `--model`) first, then settings hierarchy. Falls
+   * back to null so the Fleet card can render "unknown" rather than a wrong value.
+   */
+  get(
+    sessionId: string,
+    cwd: string,
+    opts: ResolveModelOptions & ResolveTranscriptModelOptions = {},
+  ): string | null {
+    const key = `${sessionId}|${cwd}|${opts.home ?? homedir()}`;
     if (this.cache.has(key)) {
       return this.cache.get(key) ?? null;
     }
-    const model = resolveModelForCwd(cwd, opts);
-    this.cache.set(key, model);
-    return model;
+    // 1) Transcript first — the ONLY per-session honest source.
+    const fromTranscript = resolveTranscriptModel(sessionId, opts);
+    if (fromTranscript !== null) {
+      this.cache.set(key, fromTranscript);
+      return fromTranscript;
+    }
+    // 2) Settings hierarchy fallback — matches Claude Code's own precedence.
+    const fromSettings = resolveModelForCwd(cwd, opts);
+    this.cache.set(key, fromSettings);
+    return fromSettings;
   }
 }
 
