@@ -1,0 +1,8 @@
+S0 core-up 7349 pid=11001 2026-08-10T19:12:44Z
+S1 baseline shots taken 2026-08-10T19:13:36Z latest-pr-hidden-because-no-PR-yet (expected)
+S2 permission-probe FIX-A visible-on-panel 2026-08-10T19:16:24Z
+S3 fleet fix-B model=claude-fable-5[1m] on panel 2026-08-10T19:18:42Z
+S5 Q1 answered variant clicked 2026-08-10T19:21:36Z
+S6 Q2 answered freetext 2026-08-10T19:22:26Z
+S8 PR captured; S9 FIX-C confirmed both surfaces 2026-08-10T19:28:37Z
+S10 dev-agent exited 2026-08-10T19:29:55Z, wind-down shots taken

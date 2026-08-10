@@ -1,0 +1,98 @@
+
+romanlidovskyi@romans-macbook-pro todo-workspac
+e % export GOSLEEP_WEB_QUESTIONS=1
+romanlidovskyi@romans-macbook-pro todo-workspac
+e % export GOSLEEP_INTERNAL_SECRET=e2e-run06-in
+ternal-secret-DO-NOT-USE
+romanlidovskyi@romans-macbook-pro todo-workspac
+e % export GOSLEEP_CORE_URL=http://127.0.0.1:73
+47
+romanlidovskyi@romans-macbook-pro todo-workspac
+e % export GOSLEEP_HOOK_DEBUG_LOG=/Users/romanl
+idovskyi/Documents/dev/harness/gosleep/.claude/
+worktrees/e2e-run06/.artifacts/e2e-run06/logs/h
+ook-debug.log
+romanlidovskyi@romans-macbook-pro todo-workspac
+e % env | grep -E "GOSLEEP_(WEB_QUESTIONS|INTER
+NAL_SECRET|CORE_URL|HOOK_DEBUG)" | wc -l
+       4
+romanlidovskyi@romans-macbook-pro todo-workspac
+e % clear
+
+
+╭─ Claude Code ───────────────────────────────╮
+│                                             │
+│               Welcome back R!               │
+│                                             │
+│                   ▐▛███▜▌                   │
+│                  ▝▜█████▛▘                  │
+│                    ▘▘ ▝▝                    │
+│                                             │
+│                  Haiku 4.5                  │
+│                 Claude Max                  │
+│   ~/…/.artifacts/e2e-run06/todo-workspace   │
+│                                             │
+╰─────────────────────────────────────────────╯
+
+ ⚠ Your login expires in 3 days · run /login to
+   renew
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────
+❯ 
+───────────────────────────────────────────────
+  Haiku 4.5 │ todo-workspace
+  ⏵⏵ accept edits on (shift+tab to cycle) · ←…

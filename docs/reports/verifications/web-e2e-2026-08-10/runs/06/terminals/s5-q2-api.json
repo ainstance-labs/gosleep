@@ -1,0 +1,26 @@
+{
+  "qid": "p-20260810-180419-1b704bec",
+  "status": "open",
+  "kind": "permission",
+  "task": null,
+  "question": "Permission request: mcp__atlassian__createJiraIssue",
+  "options": [
+    {
+      "label": "Allow",
+      "description": "Approve the tool call"
+    },
+    {
+      "label": "Deny",
+      "description": "Reject the tool call"
+    }
+  ],
+  "opened_at": "2026-08-10T18:04:19.441Z",
+  "answered_at": null,
+  "answer_text": null,
+  "resolved_at": null,
+  "applied": null,
+  "applied_by": null,
+  "applied_rule_ref": null,
+  "defer_until": null,
+  "last_event_seq": null
+}

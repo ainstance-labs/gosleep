@@ -1,0 +1,10 @@
+import { openPanel, teardown } from '../../lib/panel.mjs';
+const { browser, ctx, page } = await openPanel('/questions');
+await page.waitForTimeout(2000);
+const html = await page.content();
+console.log('---HTML---');
+console.log(html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<link[^>]*>/g, '').slice(0, 8000));
+const btns = await page.locator('button').allTextContents();
+console.log('---BUTTONS---');
+console.log(btns.join('\n'));
+await teardown(browser, ctx);

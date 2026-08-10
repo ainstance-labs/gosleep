@@ -1,0 +1,28 @@
+2026-08-10T17:56:43Z START step-01 overview + fleet-before
+2026-08-10T17:56:47Z END step-01 overview + fleet-before [PASS]
+2026-08-10T17:57:19Z START step-02 dev-agent session boot + Fleet check
+2026-08-10T17:58:14Z END step-02 dev-agent boot + Fleet check [PASS]
+2026-08-10T17:58:52Z START step-03 pose task via send-keys
+2026-08-10T17:59:42Z START step-04 question 1 -> panel click variant
+2026-08-10T18:00:04Z END step-04 question 1 answered from panel [PASS]
+2026-08-10T18:00:46Z START step-04b question 1 -> panel answer (variant text)
+2026-08-10T18:01:20Z END step-04b question 1 answered [PASS]
+2026-08-10T18:03:49Z START step-04 question 1 -> panel variant answer
+2026-08-10T18:03:57Z END step-04 question 1 answered [PASS]
+2026-08-10T18:05:22Z START step-06-deny first permission -> panel DENY
+2026-08-10T18:05:33Z END step-06-deny permission denied from panel [PASS]
+2026-08-10T18:07:02Z START step-06-deny top permission -> deny w/ reason
+2026-08-10T18:07:10Z END step-06-deny top perm denied [PASS]
+2026-08-10T18:09:24Z START step-07 timeline+cost+questions-history screens
+2026-08-10T18:09:37Z END step-07 panel screens captured [PASS]
+2026-08-10T18:10:29Z START step-06-allow next Bash -> panel ALLOW
+2026-08-10T18:10:42Z END step-06-allow allowed [PASS]
+2026-08-10T18:12:01Z START step-05 question 2 free-text (synth) -> panel
+2026-08-10T18:12:09Z END step-05 free-text answer [PASS-SIMULATED]
+2026-08-10T18:15:05Z START step-10 SSE liveness snapshot
+2026-08-10T18:15:13Z END step-10 SSE trace captured [PASS]
+2026-08-10T18:18:39Z START step-08 gh pr view + panel Tasks screen
+2026-08-10T18:18:40Z END step-08 PR opened as #3 [PASS]
+2026-08-10T18:18:59Z START step-09 S9 PR-link scan across every screen
+2026-08-10T18:19:09Z END step-09 PR link scan (expected NONE — verify in output) [PASS]
+2026-08-10T18:26:58Z END teardown + report generated [PASS]
