@@ -18,9 +18,15 @@
 //        c. `$HOME/.claude/settings.json`       — user global default.
 //
 // A `--model` flag on the `claude` invocation is captured by the transcript reader; the
-// settings hierarchy is the honest fallback when no assistant turn has landed yet (a very
-// fresh session, seconds after spawn). If BOTH sources fail we return null; the Fleet card
-// renders "unknown" — never a fabricated value.
+// settings hierarchy is the honest fallback ONLY when the transcript reader reports
+// `absent` (no transcript file at all matches this session_id — a fresh session with no
+// journaling yet). If a transcript file DOES exist but no assistant line has landed yet
+// (the boot window, seconds after spawn), the reader reports `starting` and the resolver
+// returns null (Fleet renders "unknown"). See `readTranscriptModelState` — GSL-321's boot-
+// window race follow-up (run 07 finding): settings-fallback during the boot window
+// fabricated a wrong-but-confident model for delegated `--model X` sessions.
+// If ALL sources fail we return null; the Fleet card renders "unknown" — never a
+// fabricated value.
 //
 // Each settings file may declare the model at either the top-level `"model"` field OR inside
 // `env` as `CLAUDE_MODEL` / `ANTHROPIC_MODEL`. First non-empty string wins.
@@ -151,21 +157,40 @@ function extractModelFromLine(line: string): string | null {
 }
 
 /**
- * Read the most-recent assistant turn's model from the session's transcript. Returns null
- * when no transcript is found or no assistant line has landed yet — the caller falls back
- * to the settings resolver.
+ * Discriminated result of `readTranscriptModelState`. Three cases:
  *
- * Reads at most `tailBytes` from the end of the newest transcript file (default 64 KiB).
- * The file is JSONL — we split on newlines and scan the last chunk backwards so the FIRST
- * hit is the LATEST assistant turn, matching what the model actually is right now (not
- * whatever it was in turn 1 before a mid-session `--model` switch, though that is not a
- * supported flow today).
+ *   - `found`: at least one assistant turn was scanned successfully; `model` is what the
+ *     session's most recent turn recorded.
+ *   - `starting`: a transcript file for this session_id EXISTS on disk, but no assistant
+ *     line has landed yet (the session is booting / mid-first-turn) — or every candidate
+ *     file was unreadable. The Fleet must render "unknown", NOT the global settings default:
+ *     a delegated `claude --model sonnet` session must not read as "fable-5" for the boot
+ *     window just because the global setting says so (GSL-321 boot-window race follow-up).
+ *   - `absent`: no transcript file at all matches this session_id. The settings-hierarchy
+ *     resolver is the honest fallback — this is a fresh session with no journaling yet.
  */
-export function resolveTranscriptModel(
+export type TranscriptModelState =
+  | { kind: "found"; model: string }
+  | { kind: "starting" }
+  | { kind: "absent" };
+
+/**
+ * Rich-state transcript reader (GSL-321 boot-window race follow-up).
+ *
+ * The GSL-321 initial implementation returned `null` for BOTH "no transcript file at all"
+ * and "transcript file exists but has no assistant line yet". The caller (modelCache) then
+ * fell back to the settings hierarchy in both cases. That is wrong for the middle case:
+ * while a session is booting, its transcript file has already been created but its first
+ * assistant turn has not yet been journaled — so a delegated `--model sonnet` session
+ * showed up as the global default (e.g. "fable-5") for the first several seconds. This
+ * function distinguishes the two so the modelCache can skip the settings fallback while
+ * the session is starting up.
+ */
+export function readTranscriptModelState(
   sessionId: string,
   opts: ResolveTranscriptModelOptions = {},
-): string | null {
-  if (sessionId.length === 0) return null;
+): TranscriptModelState {
+  if (sessionId.length === 0) return { kind: "absent" };
   const tailBytes = opts.tailBytes ?? 64 * 1024;
 
   const list =
@@ -184,7 +209,7 @@ export function resolveTranscriptModel(
     });
 
   const entries = list(sessionId);
-  if (entries.length === 0) return null;
+  if (entries.length === 0) return { kind: "absent" };
   // Newest file wins — a session may span several transcripts across resumes / compactions.
   entries.sort((a, b) => b.modified_at_epoch_ms - a.modified_at_epoch_ms);
 
@@ -229,10 +254,27 @@ export function resolveTranscriptModel(
     const lines = tail.split(/\r?\n/);
     for (let i = lines.length - 1; i >= 0; i--) {
       const found = extractModelFromLine(lines[i] ?? "");
-      if (found !== null) return found;
+      if (found !== null) return { kind: "found", model: found };
     }
   }
-  return null;
+  // Transcript file(s) exist for this session_id — booting / mid-first-turn / unreadable.
+  return { kind: "starting" };
+}
+
+/**
+ * Backwards-compatible wrapper. Returns the assistant model when a transcript scan yielded
+ * one, otherwise `null` (whether the transcript is absent or merely empty of assistant
+ * lines — callers that need to tell the two apart use `readTranscriptModelState` directly).
+ * The `modelCache` is the ONLY production caller that needs the distinction (to skip the
+ * settings fallback while the session is booting); this wrapper keeps existing unit tests
+ * and any future single-boolean callers unchanged.
+ */
+export function resolveTranscriptModel(
+  sessionId: string,
+  opts: ResolveTranscriptModelOptions = {},
+): string | null {
+  const state = readTranscriptModelState(sessionId, opts);
+  return state.kind === "found" ? state.model : null;
 }
 
 /**
@@ -255,8 +297,23 @@ class ModelCache {
   /**
    * Resolve the model for a live session.
    *
-   * GSL-321 precedence: transcript (real `--model`) first, then settings hierarchy. Falls
-   * back to null so the Fleet card can render "unknown" rather than a wrong value.
+   * GSL-321 precedence (three cases from the transcript reader):
+   *
+   *   1. `found` — the transcript has at least one assistant turn. Return that model; it
+   *      is the ONLY per-session honest source (a `claude --model haiku` invocation shows
+   *      up here as `claude-haiku-*` even when settings.json says `fable-5`).
+   *   2. `starting` — a transcript file exists but no assistant line has landed yet (the
+   *      session is booting / mid-first-turn). Return null so the Fleet card renders
+   *      "unknown". The GSL-321 boot-window race follow-up: we MUST NOT fall back to the
+   *      settings hierarchy here, because a delegated `claude --model sonnet` session
+   *      would render as the global default (e.g. "fable-5") for the first several
+   *      seconds until its first assistant turn lands. "Wrong-but-confident is worse than
+   *      unknown" is GSL-321's stated design intent — the initial commit honored it only
+   *      for the absent case.
+   *   3. `absent` — no transcript file at all matches this session_id. Fall back to the
+   *      settings-hierarchy resolver: the session was just started and nothing is
+   *      journaled yet, so the shared/global default is the best honest guess. Still may
+   *      be null → Fleet renders "unknown".
    */
   get(
     sessionId: string,
@@ -267,13 +324,19 @@ class ModelCache {
     if (this.cache.has(key)) {
       return this.cache.get(key) ?? null;
     }
-    // 1) Transcript first — the ONLY per-session honest source.
-    const fromTranscript = resolveTranscriptModel(sessionId, opts);
-    if (fromTranscript !== null) {
-      this.cache.set(key, fromTranscript);
-      return fromTranscript;
+    const state = readTranscriptModelState(sessionId, opts);
+    if (state.kind === "found") {
+      this.cache.set(key, state.model);
+      return state.model;
     }
-    // 2) Settings hierarchy fallback — matches Claude Code's own precedence.
+    if (state.kind === "starting") {
+      // Boot-window: transcript file exists but no assistant line yet. Do NOT fall back
+      // to the settings hierarchy — it would fabricate a wrong-but-confident value for a
+      // delegated `--model` session. Cache null so the tick does not re-scan.
+      this.cache.set(key, null);
+      return null;
+    }
+    // state.kind === "absent" — settings hierarchy is the honest fallback.
     const fromSettings = resolveModelForCwd(cwd, opts);
     this.cache.set(key, fromSettings);
     return fromSettings;

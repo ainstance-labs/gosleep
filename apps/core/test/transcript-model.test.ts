@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 import {
   modelCache,
+  readTranscriptModelState,
   resolveTranscriptModel,
 } from "../src/adapter/model-resolver.ts";
 
@@ -126,6 +127,63 @@ describe("resolveTranscriptModel (GSL-321)", () => {
   });
 });
 
+// GSL-321 boot-window race follow-up (run 07 finding). Direct coverage of the discriminated
+// return: `found` when an assistant line is present, `starting` when a transcript file
+// exists but no assistant line has landed yet (session mid-first-turn), `absent` when no
+// transcript file matches the session_id at all.
+describe("readTranscriptModelState (GSL-321 boot-window race)", () => {
+  test("empty session id → absent", () => {
+    expect(
+      readTranscriptModelState("", {
+        listTranscripts: () => [],
+        readFile: () => null,
+      }),
+    ).toEqual({ kind: "absent" });
+  });
+
+  test("empty listing → absent", () => {
+    expect(
+      readTranscriptModelState(SESSION_ID, {
+        listTranscripts: () => [],
+        readFile: () => null,
+      }),
+    ).toEqual({ kind: "absent" });
+  });
+
+  test("transcript exists with an assistant line → found", () => {
+    const raw = '{"type":"assistant","message":{"model":"claude-real"}}';
+    expect(
+      readTranscriptModelState(SESSION_ID, {
+        listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+        readFile: fakeRead({ [TRANSCRIPT]: raw }),
+      }),
+    ).toEqual({ kind: "found", model: "claude-real" });
+  });
+
+  test("transcript exists but no assistant line yet → starting", () => {
+    // Boot window — user turn was journaled but the first assistant response has not landed.
+    const raw = '{"type":"user","message":{"content":"hi"}}';
+    expect(
+      readTranscriptModelState(SESSION_ID, {
+        listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+        readFile: fakeRead({ [TRANSCRIPT]: raw }),
+      }),
+    ).toEqual({ kind: "starting" });
+  });
+
+  test("transcript file listed but unreadable → starting (NOT absent, NOT found)", () => {
+    // A rotate/permission race: the listing saw the file but the reader returned null. The
+    // session IS journaled; we treat this as `starting` so modelCache does not silently
+    // fabricate a settings-hierarchy value.
+    expect(
+      readTranscriptModelState(SESSION_ID, {
+        listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+        readFile: () => null,
+      }),
+    ).toEqual({ kind: "starting" });
+  });
+});
+
 describe("modelCache composition — transcript-first, settings fallback (GSL-321)", () => {
   test("transcript hit wins over settings hierarchy", () => {
     modelCache.startTick();
@@ -161,6 +219,62 @@ describe("modelCache composition — transcript-first, settings fallback (GSL-32
       home: HOME,
       listTranscripts: fakeFsList([]),
       readFile: fakeRead({}),
+    });
+    expect(m).toBeNull();
+  });
+
+  // GSL-321 boot-window race follow-up (run 07 finding). Precedence bug: when a transcript
+  // file EXISTED for a delegated `claude --model sonnet` session but no assistant line had
+  // landed yet, the resolver fell through to the global settings hierarchy and reported the
+  // shared default (e.g. "claude-fable-5[1m]") for the first several seconds. That violates
+  // GSL-321's own design intent ("show 'unknown' rather than a wrong-but-confident value").
+  // The fix distinguishes three states in the transcript reader — `found` / `starting` /
+  // `absent` — and reserves the settings fallback for `absent` only.
+  test("boot-window race: transcript exists but no assistant line yet → null, NOT settings fallback", () => {
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      // Transcript file EXISTS (session_id is journaled) but the file contains only a user
+      // turn — the first assistant response has not yet been written.
+      listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+      readFile: fakeRead({
+        [TRANSCRIPT]: '{"type":"user","message":{"content":"hi"}}',
+        // The GLOBAL default is "wrong-but-confident" fable-5. Settings-fallback here would
+        // reproduce the bug — the delegated `--model sonnet` session must NOT show fable-5.
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
+    });
+    expect(m).toBeNull();
+  });
+
+  test("boot-window race: empty transcript file (session just spawned) → null, NOT settings fallback", () => {
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+      readFile: fakeRead({
+        [TRANSCRIPT]: "",
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
+    });
+    expect(m).toBeNull();
+  });
+
+  test("boot-window race: unreadable transcript file → null, NOT settings fallback", () => {
+    // A transcript file matched the session_id in the listing, but the reader returned null
+    // (permission error, race with rotation, etc). The session IS journaled, so settings-
+    // fallback would still fabricate; safer to show "unknown".
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+      readFile: fakeRead({
+        // TRANSCRIPT not in the map → fakeRead returns null → treated as unreadable.
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
     });
     expect(m).toBeNull();
   });
