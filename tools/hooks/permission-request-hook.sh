@@ -247,10 +247,16 @@ if [ "$WAIT_STATUS" = "204" ]; then
     # transitions to `status='timed-out'` and the panel disables the buttons. Fail-open by
     # construction: any failure (network, 4xx, 5xx) is silently swallowed — the shim is
     # ALREADY in its "TUI takes over" branch and must not delay the return.
+    # GSL-333 followup: the expire endpoint sits behind requireLocalOrigin CSRF
+    # middleware (all /internal/* mutating routes do). Missing the Origin header
+    # here bounces the request 403 and the row stays open — which was the whole
+    # bug we were trying to fix. Mirror the header shape used by the /post curl
+    # above; any other divergence is a bug (see run-10 C3 for the full trace).
     EXPIRE_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
         --connect-timeout "$CONNECT_TIMEOUT_S" --max-time "$((CONNECT_TIMEOUT_S + 3))" \
         -X POST \
         -H "Host: $HOST_HEADER" \
+        -H "Origin: $ORIGIN_HEADER" \
         -H "X-Internal-Secret: $INTERNAL_SECRET" \
         "$CORE_URL/internal/permissions/$QID/expire" 2>/dev/null || echo "000")"
     log_debug "timeout" "$QID" "\"expire_status\":\"$EXPIRE_STATUS\""

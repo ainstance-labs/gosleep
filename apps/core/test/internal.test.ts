@@ -677,3 +677,134 @@ describe("POST /internal/permissions/:qid/expire (GSL-333)", () => {
     expect([400, 404]).toContain(res.status);
   });
 });
+
+// -----------------------------------------------------------------------------
+// GSL-333 followup — Origin/CSRF gating on POST /internal/permissions/:qid/expire.
+//
+// Run-10 C3 blocker: the shim's expire curl was missing `-H "Origin: …"`, so the
+// requireLocalOrigin middleware bounced it 403. The GSL-333 tests above mount ONLY
+// `internalRoutes`, which bypasses the app-wide CSRF layer — so they were happily
+// green while the real path was broken. This describe block re-wires the same
+// middleware chain serve.ts uses (`requireLocalOrigin` app-wide) and pins down
+// both the negative (no Origin → 403, row untouched) and the positive
+// (Origin: SELF → 200, row transitioned) behaviours the shim depends on.
+// -----------------------------------------------------------------------------
+const { requireLocalOrigin } = await import("../src/security/origin.ts");
+const { HOST_HEADER } = await import("../src/config.ts");
+const SELF_ORIGIN = `http://${HOST_HEADER}`;
+
+const originGuardedApp = new Hono();
+originGuardedApp.use("*", requireLocalOrigin);
+originGuardedApp.route("/", internalRoutes);
+
+describe("POST /internal/permissions/:qid/expire — CSRF gating (GSL-333 followup)", () => {
+  test("no Origin/Referer → 403 and row STAYS open (the run-10 C3 bug)", async () => {
+    insertOpenPermission("q-perm-csrf-1", "Permission request: Bash");
+    const res = await originGuardedApp.request(
+      "http://localhost/internal/permissions/q-perm-csrf-1/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(403);
+    // The whole point: the row must NOT have transitioned. If it did, the panel would
+    // silently swallow real answers — precisely what GSL-333 exists to prevent.
+    const row = raw
+      .query("SELECT status, applied_by FROM questions WHERE qid = 'q-perm-csrf-1'")
+      .get() as { status: string; applied_by: string | null };
+    expect(row.status).toBe("open");
+    expect(row.applied_by).toBeNull();
+  });
+
+  test("Origin: http://<HOST_HEADER> → 200 transitioned (the fixed shim path)", async () => {
+    insertOpenPermission("q-perm-csrf-2", "Permission request: Edit");
+    const res = await originGuardedApp.request(
+      "http://localhost/internal/permissions/q-perm-csrf-2/expire",
+      {
+        method: "POST",
+        headers: {
+          "X-Internal-Secret": SECRET,
+          Origin: SELF_ORIGIN,
+        },
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { transitioned: boolean; status: string };
+    expect(body.transitioned).toBe(true);
+    expect(body.status).toBe("timed-out");
+    const row = raw
+      .query(
+        "SELECT status, applied_by FROM questions WHERE qid = 'q-perm-csrf-2'",
+      )
+      .get() as { status: string; applied_by: string };
+    expect(row.status).toBe("timed-out");
+    expect(row.applied_by).toBe("shim-timeout");
+  });
+
+  test("cross-site Origin → 403, row untouched (defense in depth)", async () => {
+    insertOpenPermission("q-perm-csrf-3", "Permission request: Write");
+    const res = await originGuardedApp.request(
+      "http://localhost/internal/permissions/q-perm-csrf-3/expire",
+      {
+        method: "POST",
+        headers: {
+          "X-Internal-Secret": SECRET,
+          Origin: "http://evil.example.com",
+        },
+      },
+    );
+    expect(res.status).toBe(403);
+    const row = raw
+      .query("SELECT status FROM questions WHERE qid = 'q-perm-csrf-3'")
+      .get() as { status: string };
+    expect(row.status).toBe("open");
+  });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-333 followup — shim-source regression: assert the expire curl carries the
+// Origin header. Belt-and-suspenders on top of the CSRF unit tests above — the
+// exact class of regression this task exists to fix was "the endpoint is right,
+// the shim forgot the header". A grep against the shim source pins that down
+// deterministically.
+// -----------------------------------------------------------------------------
+const { readFileSync } = await import("node:fs");
+const { resolve } = await import("node:path");
+
+describe("permission-request-hook.sh — expire curl carries Origin (GSL-333 followup)", () => {
+  const shimPath = resolve(
+    import.meta.dir,
+    "..",
+    "..",
+    "..",
+    "tools",
+    "hooks",
+    "permission-request-hook.sh",
+  );
+  const source = readFileSync(shimPath, "utf8");
+
+  test("expire block includes `-H \"Origin: $ORIGIN_HEADER\"` alongside the endpoint URL", () => {
+    // Slice from the EXPIRE_STATUS assignment to the endpoint URL so we compare the
+    // right curl (post/decide curls also have Origin; only expire regressed).
+    const start = source.indexOf("EXPIRE_STATUS=");
+    expect(start).toBeGreaterThan(-1);
+    const end = source.indexOf("/expire\"", start);
+    expect(end).toBeGreaterThan(-1);
+    const block = source.slice(start, end);
+    expect(block).toContain("Origin: $ORIGIN_HEADER");
+    expect(block).toContain("X-Internal-Secret: $INTERNAL_SECRET");
+    expect(block).toContain("Host: $HOST_HEADER");
+  });
+
+  test("every authenticated POST in the shim carries the Origin header", () => {
+    // Split on `curl` occurrences; for each block that also mentions a POST verb and
+    // an X-Internal-Secret header, assert Origin: $ORIGIN_HEADER is present.
+    const chunks = source.split(/curl /);
+    for (let i = 1; i < chunks.length; i += 1) {
+      const block = chunks[i]!;
+      const isPost = /"POST"|-X POST/.test(block);
+      const isAuthed = block.includes("X-Internal-Secret: $INTERNAL_SECRET");
+      if (isPost && isAuthed) {
+        expect(block).toContain("Origin: $ORIGIN_HEADER");
+      }
+    }
+  });
+});
