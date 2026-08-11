@@ -28,15 +28,69 @@ where the owner clicked Allow in the panel between the shim's expire POST landin
 tab's SSE refresh — the decide returns 409 with the explanatory `status=timed-out` in the
 error text.
 
-8 new tests total: 7 in `internal.test.ts` (open→timed-out; idempotent already-terminal;
+8 tests total (initial): 7 in `internal.test.ts` (open→timed-out; idempotent already-terminal;
 second expire on already-expired; wrong-kind → 409; unknown qid → 404; missing bearer/secret
 → 401; blank qid → 400/404), 1 in `actions.decidePermission.sse.test.ts` (decide on
 timed-out row → 409, row unchanged).
 
-Live proof: `.artifacts/live-proof-major3/` — scratch core on 127.0.0.1:7354, six-step
+Live proof (major3): `.artifacts/live-proof-major3/` — scratch core on 127.0.0.1:7354, six-step
 end-to-end sequence (post permission → /questions status=open → expire → /questions
 status=timed-out with applied_by=shim-timeout → decide returns 409 → second expire returns
 transitioned:false). Core torn down; port 7354 clean.
+
+## FOLLOWUP (2026-08-11, run-10 C3 blocker)
+
+The initial land was **incomplete**. Verification run-10 caught it: the shim's expire curl
+was missing `-H "Origin: $ORIGIN_HEADER"`, so the `requireLocalOrigin` CSRF middleware
+bounced every real-path expire attempt with 403 — the row stayed `open`, the panel kept
+Allow/Deny live, and the run-09 orphan-answer bug persisted on the actual dev-agent path.
+
+Fix (commit `77bdb3d`): add `-H "Origin: $ORIGIN_HEADER"` to the expire curl in
+`tools/hooks/permission-request-hook.sh`, mirroring the header shape the sibling
+`/internal/permissions/post` curl already uses ten lines above. One-line surgical change +
+5-line comment naming the trap for the next reader.
+
+Also plugged the test-bench gap that let this ship: the original GSL-333 tests mounted
+`internalRoutes` directly and bypassed the app-wide `requireLocalOrigin` layer. Added
+5 new tests in `apps/core/test/internal.test.ts`:
+
+- **CSRF gating on expire** (3): no Origin → 403 row untouched (the run-10 C3 bug);
+  Origin: SELF → 200 transitioned; cross-site Origin → 403 row untouched.
+- **Shim-source regression** (2): expire curl block contains `Origin: $ORIGIN_HEADER`
+  and `X-Internal-Secret` and `Host`; every authenticated POST in the shim carries Origin.
+
+Total after followup: **13 new tests** across the two files.
+
+### Followup live proof (`.artifacts/live-c3/`)
+
+Scratch core on **127.0.0.1:7356** (DB, snapshots, and logs under
+`.artifacts/live-c3/`; never touched port 7331 or `data/gosleep.db`). Env: dev-mode Bearer =
+GOSLEEP_INTERNAL_SECRET. Sandbox at `$HOME/e2e-workspaces/todo-fix4` (clone of
+`ainstance-labs/gosleep-e2e-todo`) with `.claude/settings.json` wiring
+`PermissionRequest` to the WORKTREE's `permission-request-hook.sh` (so the FIXED shim was
+exercised, not the shared-tree's old one).
+
+Real `claude --model sonnet` session in tmux pane `%309` (visible, non-bypass, Sonnet 5 with
+xhigh effort, verified by the banner "Sonnet 5 │ todo-fix4"). Session id:
+`19a98d95-ed15-4c59-90a5-53b29c40d9c2`. Prompt: run a bash command that Claude Code would
+gate — `curl -sS https://example.com/robots.txt | head -c 40`. Owner never answered.
+
+Result on the DB row **`p-20260811-130703-d91502ae`** (captured verbatim, the actual command
+the LIVE Sonnet asked about):
+
+| Checkpoint | Result | Evidence |
+|---|---|---|
+| Shim's `PermissionRequest` hook fired at prompt time | YES | `hook-debug.log` line for this qid, elapsed_ms=30000 |
+| Long-poll returned 204 after `GOSLEEP_HOOK_TIMEOUT_S=30` | YES | `hook-debug.log` `outcome:"timeout"` |
+| Shim's expire POST returned **2xx** (would have been 403 pre-fix) | **200** | `hook-debug.log` `expire_status:"200"` |
+| Row transitioned to `status='timed-out'`, `applied_by='shim-timeout'` | YES | `sqlite3 gosleep.db` selects |
+| `answer_text` stayed NULL (no orphan owner-answer landed after shim died) | YES | `answer_text: null` in `/questions` read |
+| Subsequent `POST /actions/permissions/decide` on the row → **409** | **409** | body: `permission question p-20260811-130703-d91502ae is not open (status=timed-out)` |
+| `GET /questions` (what the panel screen renders) shows the row as `timed-out` | YES | `applied_by:"shim-timeout"`, no `answer_text`; badge is `neutral`, Allow/Deny gone per `canDecide` guard |
+
+Artifacts under `.artifacts/live-c3/`: `secret.txt`, `hook-debug.log`, `core.out`,
+`core.err`, `gosleep.db`, `panel-setup.png` (setup shell — panel served on :7356 as
+expected).
 
 ## Problems solved
 
@@ -46,6 +100,10 @@ transitioned:false). Core torn down; port 7354 clean.
   DEAD and CC had already moved on. Post-fix the panel is not tempted: buttons are gone,
   the badge is `timed-out`, an explanatory note names the reason. Belt and braces: even
   if a race lands the panel click first, the decide endpoint returns 409.
+- **Run 10 C3 (followup):** the fix above was intended to close the bug but shipped
+  without the Origin header on the expire curl, so on the real path the expire was
+  rejected 403 and the row stayed `open`. Post-followup: expire returns 200 on the real
+  path, verified with a real Sonnet 5 session (not in-process, not synthesized).
 - Symmetry with the existing terminal states: `timed-out` behaves like `superseded` for the
   panel (neutral, no action) but names its provenance in `applied_by` so a future audit /
   runbook can tell them apart.
@@ -70,6 +128,11 @@ transitioned:false). Core torn down; port 7354 clean.
   — didn't rename it (a rename would touch every emit call in the file).
 - The web `timed-out` note appears only for `kind==='permission'` rows to avoid confusing
   a future BLOCKER row that might use the same status name for a different reason.
+- **Trap the followup exposed:** the GSL-333 unit tests mount `internalRoutes` directly
+  and bypass the app-wide `requireLocalOrigin` layer. Any future shim endpoint on
+  `/internal/*` MUST have at least one test that exercises the CSRF middleware chain, or
+  a regression exactly like this one can ship green. The `originGuardedApp` block in
+  `internal.test.ts` is the pattern to copy.
 
 ## What didn't make it
 
@@ -84,22 +147,30 @@ transitioned:false). Core torn down; port 7354 clean.
 
 ## Technical reference
 
-- Commit: (added at land)
-- Files touched:
+- Commit (initial): `179bb42`.
+- Commit (followup): `77bdb3d` — expire curl was missing Origin header.
+- Files touched (initial):
   - `apps/core/src/routes/internal.ts` — new `POST /internal/permissions/:qid/expire`.
   - `tools/hooks/permission-request-hook.sh` — best-effort expire POST on wait-204.
   - `apps/web/src/screens/Questions.tsx` — `timed-out` badge tone + non-actionable note.
   - `apps/core/test/internal.test.ts` — 7 new tests.
   - `apps/core/test/actions.decidePermission.sse.test.ts` — 1 new test (decide-on-timed-out → 409).
   - `.artifacts/live-proof-major3/` — end-to-end scratch-core proof + logs (worktree-only, not committed).
+- Files touched (followup):
+  - `tools/hooks/permission-request-hook.sh` — added `-H "Origin: $ORIGIN_HEADER"` to the expire curl.
+  - `apps/core/test/internal.test.ts` — 5 new tests (3 CSRF-gated expire + 2 shim-source regression).
+  - `.artifacts/live-c3/` — followup live proof (worktree-only, not committed).
 - New endpoint / migration: **new endpoint `POST /internal/permissions/:qid/expire`**; **no new schema column** — reuses `status`, `answered_at`, `applied_by`.
-- Verified by running:
+- Verified by running (followup):
   - `bash -n tools/hooks/permission-request-hook.sh` — clean.
-  - `bun x tsc -p apps/core --noEmit` + `apps/web --noEmit` — clean.
-  - `bun test apps/core` — 287/287 (+8 new).
-  - Live proof: 6-step scratch-core sequence completed as expected; port 7354 clean.
-  - Web build clean.
+  - `apps/core/node_modules/.bin/tsc -p apps/core --noEmit` — clean.
+  - `apps/web/node_modules/.bin/tsc -p apps/web --noEmit` — clean.
+  - `bun test apps/core` — **292/292** (was 287; +5 followup tests).
+  - `bash tools/lab/tests/core-smoke.sh` — 102/102.
+  - `bun run --filter='@gosleep/web' build` — clean.
+  - Live proof (real Sonnet 5 session id `19a98d95-ed15-4c59-90a5-53b29c40d9c2`): expire 200, row `timed-out+shim-timeout`, decide 409, panel non-actionable.
 - Links:
   - Jira: <https://ainstance-labs.atlassian.net/browse/GSL-333>
   - GH issue: <https://github.com/ainstance-labs/gosleep/issues/334>
   - Run 09 finding #7: `docs/reports/verifications/web-e2e-2026-08-10/runs/09/index.html`
+  - Run 10 C3 blocker: caught by orchestrator during PR #335 review; this followup closes it.
