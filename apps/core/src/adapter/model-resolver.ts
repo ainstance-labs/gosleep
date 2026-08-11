@@ -278,6 +278,53 @@ export function resolveTranscriptModel(
 }
 
 /**
+ * Extra knobs `modelCache.get` accepts beyond the plain resolver + transcript options.
+ *
+ * GSL-331 (run 09 finding #6 follow-up on GSL-321/325). A fresh `claude --model sonnet`
+ * session has NO transcript file yet — for the first several seconds after spawn,
+ * `readTranscriptModelState` returns `{kind: "absent"}` and the caller falls back to the
+ * settings-hierarchy resolver. That fallback fabricates the GLOBAL settings default (e.g.
+ * `claude-fable-5[1m]`) for a session that was explicitly delegated to `sonnet` — the exact
+ * bug GSL-321 was written to eliminate, just at the absent-vs-starting boundary the initial
+ * fix did not distinguish. The Fleet's own regression showed this: run 09 saw a real Sonnet
+ * session labelled "Fable 5[1m]" for ~1 minute before the transcript's first assistant turn
+ * finally landed and let the reader override the wrong value.
+ *
+ * The fix: fleet-poll passes the session's `started_at_epoch_ms` on every tick's resolve
+ * call. When the transcript is `absent` AND the session is younger than `bootGraceMs`
+ * (default 60 s), the resolver treats it as `starting` — returns null (Fleet renders
+ * `unknown`) rather than the settings fallback. Only sessions old enough that "no transcript
+ * yet" cannot be a boot-window artefact fall through to the settings hierarchy.
+ */
+/**
+ * Modeled as an intersection because `ResolveModelOptions.readFile` returns
+ * `string | null | undefined` (missing / unreadable both collapse to null) while
+ * `ResolveTranscriptModelOptions.readFile` narrows to `string | null` — an `extends`
+ * chain fails on conflicting return types; the intersection lets the caller pass a
+ * single readFile whose result satisfies both.
+ */
+export type ModelCacheGetOptions = ResolveModelOptions &
+  ResolveTranscriptModelOptions & {
+    /** Session's `started_at_epoch_ms` from the SessionAdapter roster. When present, an
+     *  ABSENT transcript within `bootGraceMs` of this time returns null (starting) rather
+     *  than falling back to the settings hierarchy. Optional so unit tests that don't care
+     *  about the boot-window path can omit it (they behave as the pre-GSL-331 code did:
+     *  absent → settings fallback). */
+    startedAtEpochMs?: number;
+    /** Boot-window grace period in ms. Default 60_000 (one minute). A session younger than
+     *  this whose transcript is `absent` is treated as `starting`. Tests override to shrink
+     *  or expand the window without waiting real seconds. Ignored when `startedAtEpochMs`
+     *  is not supplied. */
+    bootGraceMs?: number;
+    /** Test hook: replace the `Date.now()` clock so the boot-window arithmetic is
+     *  deterministic. Default: `Date.now`. Ignored when `startedAtEpochMs` is not
+     *  supplied. */
+    now?: () => number;
+  };
+
+const DEFAULT_BOOT_GRACE_MS = 60_000;
+
+/**
  * Per-tick cache. `startTick()` clears the map; the resolver is called once per session per
  * tick and reads at most one file per fresh cwd. Kept module-level (not per-worker) because
  * the process is single-instance; the fleet-poll worker owns the whole cache's lifetime.
@@ -310,15 +357,20 @@ class ModelCache {
    *      seconds until its first assistant turn lands. "Wrong-but-confident is worse than
    *      unknown" is GSL-321's stated design intent — the initial commit honored it only
    *      for the absent case.
-   *   3. `absent` — no transcript file at all matches this session_id. Fall back to the
-   *      settings-hierarchy resolver: the session was just started and nothing is
-   *      journaled yet, so the shared/global default is the best honest guess. Still may
-   *      be null → Fleet renders "unknown".
+   *   3. `absent` — no transcript file at all matches this session_id.
+   *      GSL-331 refinement: if the caller supplied `startedAtEpochMs` and the session is
+   *      younger than `bootGraceMs` (default 60 s), the settings-hierarchy fallback is
+   *      SKIPPED — a boot-window artefact (transcript file not yet materialised on disk)
+   *      is indistinguishable from a fresh session that just has no transcript, and
+   *      wrong-but-confident is worse than unknown. Only older sessions with a truly
+   *      absent transcript fall through to `resolveModelForCwd`. Callers that don't pass
+   *      `startedAtEpochMs` (all pre-GSL-331 callers + most unit tests) behave as before:
+   *      absent → settings fallback.
    */
   get(
     sessionId: string,
     cwd: string,
-    opts: ResolveModelOptions & ResolveTranscriptModelOptions = {},
+    opts: ModelCacheGetOptions = {},
   ): string | null {
     const key = `${sessionId}|${cwd}|${opts.home ?? homedir()}`;
     if (this.cache.has(key)) {
@@ -336,7 +388,26 @@ class ModelCache {
       this.cache.set(key, null);
       return null;
     }
-    // state.kind === "absent" — settings hierarchy is the honest fallback.
+    // state.kind === "absent".
+    //
+    // GSL-331 — if the caller supplied `startedAtEpochMs` and the session is younger than
+    // `bootGraceMs`, the "absent" state is almost certainly a boot-window artefact (Claude
+    // Code has not yet flushed its first transcript line to disk). Treat as `starting` and
+    // return null so Fleet renders "unknown" rather than the global settings default.
+    if (typeof opts.startedAtEpochMs === "number" && Number.isFinite(opts.startedAtEpochMs)) {
+      const grace = opts.bootGraceMs ?? DEFAULT_BOOT_GRACE_MS;
+      const now = (opts.now ?? Date.now)();
+      const ageMs = now - opts.startedAtEpochMs;
+      // A negative age (started_at drifts ahead of `now` under clock skew / NTP corrections
+      // across launchd restarts) is treated as "in grace": "unknown" is always safer than a
+      // fabricated settings-default label for a session that might have been delegated.
+      if (ageMs < grace) {
+        this.cache.set(key, null);
+        return null;
+      }
+    }
+    // Session is old enough that a missing transcript is unlikely to be a boot-window
+    // artefact — settings hierarchy is the honest fallback.
     const fromSettings = resolveModelForCwd(cwd, opts);
     this.cache.set(key, fromSettings);
     return fromSettings;
