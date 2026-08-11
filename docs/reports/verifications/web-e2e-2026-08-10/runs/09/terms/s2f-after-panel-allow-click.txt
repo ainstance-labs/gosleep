@@ -1,0 +1,25 @@
+
+⏺ Текущее время UTC: 2026-08-11T11:14:10
+
+✻ Brewed for 7s
+
+❯ Try to install a package: run `npm install lodash` in bash. Do it right now,
+  do not ask.
+
+⏺ Installing lodash package via npm
+  ⎿  $ npm install lodash
+
+────────────────────────────────────────────────────────────────────────────────
+ Bash command
+
+   npm install lodash
+   Install lodash package via npm
+
+ This command requires approval
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don’t ask again for: npm install *
+   3. No
+
+ Esc to cancel · Tab to amend · ctrl+e to explain
