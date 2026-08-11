@@ -128,7 +128,14 @@ export function reconcileRoster(db: OpenedDb, roster: SessionSummary[]): FleetCh
       // whatever cached settings.json value the last same-cwd session ended up with. The
       // resolver tries the session transcript first (honest per-session `--model` result)
       // and falls back to the settings hierarchy only when no assistant turn has landed.
-      const resolvedModel = modelCache.get(a.session_id, a.cwd);
+      // GSL-331 — pass `started_at_epoch_ms` so the resolver skips the settings fallback for
+      // a session that is still inside the boot-window (transcript not yet on disk). Without
+      // this a delegated `claude --model sonnet` renders the global default (e.g. "fable-5")
+      // for the ~1 minute the CLI takes to journal its first assistant turn — the exact
+      // regression run 09 finding #6 caught.
+      const resolvedModel = modelCache.get(a.session_id, a.cwd, {
+        startedAtEpochMs: a.started_at_epoch_ms,
+      });
       if (existingRow === undefined) {
         // INSERT. Model is best-effort; context_pct / current_tool / current_intent start
         // NULL and are populated later by the PreToolUse shim's tool-observed path (see

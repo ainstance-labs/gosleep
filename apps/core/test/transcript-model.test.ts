@@ -305,3 +305,132 @@ describe("modelCache composition — transcript-first, settings fallback (GSL-32
     expect(m2).toBe("model-for-s2");
   });
 });
+
+// GSL-331 (run 09 finding #6 — follow-up on GSL-321/325). GSL-325 fixed the "transcript
+// exists but no assistant line yet" boot-window case (`starting`), but a fresh CLI session's
+// transcript FILE is ABSENT for the first several seconds until Claude Code flushes its
+// first assistant turn to disk. Under the pre-GSL-331 rule that meant `absent` →
+// settings-hierarchy fallback → fabricated wrong-but-confident label (e.g. "Fable 5[1m]"
+// for a delegated `claude --model sonnet` session). This suite pins the boot-window grace
+// period: absent + fresh session ⇒ null (Fleet renders "unknown"), absent + old session ⇒
+// settings fallback (unchanged pre-GSL-331 behavior).
+describe("modelCache boot-window grace period (GSL-331)", () => {
+  const NOW_MS = 1_800_000_000_000; // stable "now" so age arithmetic is deterministic.
+  const clock = () => NOW_MS;
+
+  test("absent transcript + fresh session (< 60 s old) → null, NOT settings fallback", () => {
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      // No transcript file at all matches this session_id — the state the pre-GSL-331 code
+      // classified as `absent` and fell back on.
+      listTranscripts: fakeFsList([]),
+      readFile: fakeRead({
+        // Global settings default WOULD be returned by the fallback if we let it run — but
+        // the session was launched with `--model sonnet`, so this label is a lie.
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
+      startedAtEpochMs: NOW_MS - 5_000, // 5 s ago — well inside the default 60 s grace.
+      now: clock,
+    });
+    expect(m).toBeNull();
+  });
+
+  test("absent transcript + old session (>= 60 s old) → settings fallback (pre-GSL-331 behavior)", () => {
+    // Older sessions with a truly missing transcript are unlikely to be boot-window artefacts
+    // — the settings hierarchy is the best guess we have. Preserved so a long-lived session
+    // that never wrote a transcript (misconfigured provider, weird env) still gets a value.
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([]),
+      readFile: fakeRead({
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
+      startedAtEpochMs: NOW_MS - 120_000, // 120 s ago — outside the 60 s window.
+      now: clock,
+    });
+    expect(m).toBe("claude-fable-5");
+  });
+
+  test("absent transcript + no startedAtEpochMs → settings fallback (opt-in guard)", () => {
+    // A caller that hasn't been updated to pass startedAtEpochMs must behave like the
+    // pre-GSL-331 code — the grace period is opt-in. Keeps all pre-existing unit tests
+    // valid without a bulk rewrite.
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([]),
+      readFile: fakeRead({
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
+    });
+    expect(m).toBe("claude-fable-5");
+  });
+
+  test("absent transcript + fresh session + explicit bootGraceMs override", () => {
+    // Shrink the grace to 100 ms to exercise the boundary without waiting real seconds.
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const inGrace = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([]),
+      readFile: fakeRead({ [settingsPath]: JSON.stringify({ model: "claude-fable-5" }) }),
+      startedAtEpochMs: NOW_MS - 50,
+      bootGraceMs: 100,
+      now: clock,
+    });
+    expect(inGrace).toBeNull();
+
+    modelCache.startTick(); // fresh tick so the cache doesn't return the null we just set.
+    const past = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([]),
+      readFile: fakeRead({ [settingsPath]: JSON.stringify({ model: "claude-fable-5" }) }),
+      startedAtEpochMs: NOW_MS - 200,
+      bootGraceMs: 100,
+      now: clock,
+    });
+    expect(past).toBe("claude-fable-5");
+  });
+
+  test("transcript FOUND wins even during the boot window (--model sonnet + assistant line already landed)", () => {
+    // A session that DID land an assistant turn quickly should still resolve to the honest
+    // per-session model; the grace period only affects the ABSENT branch.
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([{ path: TRANSCRIPT, modified_at_epoch_ms: 1 }]),
+      readFile: fakeRead({
+        [TRANSCRIPT]: '{"type":"assistant","message":{"model":"claude-sonnet-5"}}',
+        [settingsPath]: JSON.stringify({ model: "claude-fable-5" }),
+      }),
+      startedAtEpochMs: NOW_MS - 3_000,
+      now: clock,
+    });
+    expect(m).toBe("claude-sonnet-5");
+  });
+
+  test("clock skew (startedAtEpochMs in the future) does not enable settings fallback prematurely", () => {
+    // If somehow the roster's started_at drifts ahead of our clock (odd but not impossible
+    // across launchd restarts / NTP corrections), we still treat the session as fresh and
+    // skip the settings fallback. Belt-and-braces safety: the grace path also treats negative
+    // age as "in grace" so we never fabricate a wrong-but-confident label on a skewed clock.
+    modelCache.startTick();
+    const settingsPath = join(HOME, ".claude", "settings.json");
+    const m = modelCache.get(SESSION_ID, CWD, {
+      home: HOME,
+      listTranscripts: fakeFsList([]),
+      readFile: fakeRead({ [settingsPath]: JSON.stringify({ model: "claude-fable-5" }) }),
+      startedAtEpochMs: NOW_MS + 30_000, // "started 30 s in the future"
+      now: clock,
+    });
+    // Design choice: unknown is safer than fabricated. If age is negative we still return
+    // null — the settings fallback would otherwise mislabel a delegated session.
+    expect(m).toBeNull();
+  });
+});

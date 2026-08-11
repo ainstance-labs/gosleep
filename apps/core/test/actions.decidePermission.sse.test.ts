@@ -185,4 +185,43 @@ describe("POST /actions/permissions/decide — SSE fan-out (GSL-312)", () => {
       cap.stop();
     }
   });
+
+  // GSL-333 (run 09 finding #7). The expire endpoint transitions an orphaned permission
+  // row from `open` to `timed-out`; the existing decide guard (`status !== 'open'`) must
+  // then refuse a subsequent panel Allow / Deny so the shim-timeout path never gets
+  // silently overwritten. This test pins the composition end to end.
+  test("timed-out row rejects a subsequent /actions/permissions/decide (409)", async () => {
+    insertOpenPermission("p-decide-sse-3");
+    // Simulate the shim's expire POST landing FIRST.
+    raw
+      .query(
+        `UPDATE questions
+           SET status = 'timed-out', answered_at = ?, applied_by = 'shim-timeout'
+         WHERE qid = 'p-decide-sse-3'`,
+      )
+      .run(new Date().toISOString());
+
+    // Owner then clicked Allow in the panel (race the fix exists to catch). Must NOT
+    // silently overwrite the shim-timeout state.
+    const res = await app.request("http://localhost/actions/permissions/decide", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${BEARER}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "test-decide-sse-3",
+      },
+      body: JSON.stringify({ qid: "p-decide-sse-3", decision: "allow" }),
+    });
+    expect(res.status).toBe(409);
+
+    // Row unchanged.
+    const row = raw
+      .query(
+        "SELECT status, applied_by, answer_text FROM questions WHERE qid = 'p-decide-sse-3'",
+      )
+      .get() as { status: string; applied_by: string; answer_text: string | null };
+    expect(row.status).toBe("timed-out");
+    expect(row.applied_by).toBe("shim-timeout");
+    expect(row.answer_text).toBeNull();
+  });
 });
