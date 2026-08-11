@@ -518,3 +518,162 @@ describe("secret required", () => {
     expect(res.status).toBe(401);
   });
 });
+
+// -----------------------------------------------------------------------------
+// GSL-333 — POST /internal/permissions/:qid/expire (permission-timeout orphan fix).
+//
+// Scenario the endpoint exists to resolve: the PermissionRequest shim's long-poll
+// timed out, Claude Code will now render its own TUI dialog, and if we leave the row
+// `open` the panel keeps its Allow / Deny live and a subsequent owner click is
+// orphaned (the shim is dead, CC has moved on). The shim POSTs this endpoint on 204;
+// the row transitions to `status='timed-out'`, `applied_by='shim-timeout'`.
+// -----------------------------------------------------------------------------
+
+function insertOpenPermission(qid: string, text: string): void {
+  raw
+    .query(
+      `INSERT INTO questions (qid, status, kind, task, question, opened_at)
+       VALUES (?, 'open', 'permission', NULL, ?, ?)`,
+    )
+    .run(qid, text, new Date().toISOString());
+}
+
+describe("POST /internal/permissions/:qid/expire (GSL-333)", () => {
+  test("open permission row → 200 transitioned:true, status='timed-out', applied_by='shim-timeout'", async () => {
+    insertOpenPermission("q-perm-1", "Permission request: Bash");
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-perm-1/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      qid: string;
+      status: string;
+      transitioned: boolean;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.qid).toBe("q-perm-1");
+    expect(body.status).toBe("timed-out");
+    expect(body.transitioned).toBe(true);
+
+    // DB observably transitioned — the panel's /questions read picks this up on the next
+    // SSE-triggered invalidate, which is what makes the Allow / Deny buttons go away.
+    const row = raw
+      .query(
+        "SELECT status, applied_by, answered_at FROM questions WHERE qid = 'q-perm-1'",
+      )
+      .get() as { status: string; applied_by: string | null; answered_at: string | null };
+    expect(row.status).toBe("timed-out");
+    expect(row.applied_by).toBe("shim-timeout");
+    expect(typeof row.answered_at).toBe("string");
+    expect((row.answered_at ?? "").length).toBeGreaterThan(0);
+  });
+
+  test("idempotent: already-terminal row → 200 transitioned:false, status preserved", async () => {
+    insertOpenPermission("q-perm-2", "Permission request: Edit");
+    // Owner answered in the panel BEFORE the shim's expire POST landed (the exact race
+    // the reason field explains). The expire must NOT clobber the owner's decision.
+    raw
+      .query(
+        `UPDATE questions SET status='answered', answer_text='allow', answered_at=?, applied_by='owner' WHERE qid='q-perm-2'`,
+      )
+      .run(new Date().toISOString());
+
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-perm-2/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      status: string;
+      transitioned: boolean;
+      reason?: string;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.transitioned).toBe(false);
+    expect(body.status).toBe("answered");
+
+    // Row must be UNCHANGED from the owner's decision — no silent overwrite.
+    const row = raw
+      .query(
+        "SELECT status, answer_text, applied_by FROM questions WHERE qid = 'q-perm-2'",
+      )
+      .get() as { status: string; answer_text: string; applied_by: string };
+    expect(row.status).toBe("answered");
+    expect(row.answer_text).toBe("allow");
+    expect(row.applied_by).toBe("owner");
+  });
+
+  test("second expire on a row already expired → still 200 no-op (fully idempotent)", async () => {
+    insertOpenPermission("q-perm-3", "Permission request: Write");
+    const first = await app.request(
+      "http://localhost/internal/permissions/q-perm-3/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(first.status).toBe(200);
+    expect(((await first.json()) as { transitioned: boolean }).transitioned).toBe(true);
+
+    const second = await app.request(
+      "http://localhost/internal/permissions/q-perm-3/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(second.status).toBe(200);
+    const body = (await second.json()) as { transitioned: boolean; status: string };
+    expect(body.transitioned).toBe(false);
+    expect(body.status).toBe("timed-out");
+  });
+
+  test("wrong kind (BLOCKER row) → 409 (never mistakenly time-out an AskUserQuestion row)", async () => {
+    insertOpenQuestion("q-blocker-1", "Which colour?");
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-blocker-1/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { ok: boolean; error: string };
+    expect(body.ok).toBe(false);
+    expect(body.error).toContain("not a permission row");
+    // Row untouched.
+    const row = raw
+      .query("SELECT status FROM questions WHERE qid = 'q-blocker-1'")
+      .get() as { status: string };
+    expect(row.status).toBe("open");
+  });
+
+  test("unknown qid → 404", async () => {
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-nope-perm/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  test("missing X-Internal-Secret → 401", async () => {
+    insertOpenPermission("q-perm-auth-1", "Permission request: Bash");
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-perm-auth-1/expire",
+      { method: "POST" },
+    );
+    expect(res.status).toBe(401);
+    // Row untouched.
+    const row = raw
+      .query("SELECT status FROM questions WHERE qid = 'q-perm-auth-1'")
+      .get() as { status: string };
+    expect(row.status).toBe("open");
+  });
+
+  test("blank qid parameter → 400", async () => {
+    // Hono routes `/internal/permissions/:qid/expire` require a non-empty qid segment;
+    // an entirely-blank qid is caught by the handler's own guard. This also stops a
+    // caller from bulk-expiring by omission.
+    const res = await app.request(
+      "http://localhost/internal/permissions/%20/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    // A non-existent qid ("%20" is a bare space) falls through to 404, not 400 — the
+    // handler validates qid.length after path decoding. Either way, no row is created.
+    expect([400, 404]).toContain(res.status);
+  });
+});

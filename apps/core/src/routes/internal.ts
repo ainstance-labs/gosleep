@@ -1217,6 +1217,115 @@ internalRoutes.get(
   },
 );
 
+// -----------------------------------------------------------------------------
+// GSL-333 (run 09 finding #7) — POST /internal/permissions/:qid/expire
+//
+// When the PermissionRequest hook long-poll times out (`GOSLEEP_HOOK_TIMEOUT_S`), the shim
+// exits 0 and Claude Code falls back to the TUI dialog. Pre-GSL-333 the row stayed
+// `status='open'` in the DB, so the panel kept rendering active Allow/Deny buttons; a
+// subsequent owner click landed as `answered`, but the shim was DEAD and CC had already
+// moved on — the answer was orphaned. Run 09 captured the exact sequence.
+//
+// The shim now POSTs THIS endpoint on the 204 timeout branch. The row transitions to
+// `status='timed-out'` (a NEW terminal state) with `applied_by='shim-timeout'`; the panel
+// reads the status and disables Allow/Deny with an explanatory label ("answered in
+// terminal — hook timed out"). Idempotent: an already-terminal row (a race where the owner
+// clicked Allow at the same instant the shim gave up) is a 200 no-op that leaks nothing.
+//
+// Auth: internal-secret only. Never returns the row's payload — the caller only needs
+// success / failure to move on.
+// -----------------------------------------------------------------------------
+internalRoutes.post(
+  "/internal/permissions/:qid/expire",
+  requireInternalSecret,
+  async (c) => {
+    const qid = c.req.param("qid");
+    if (qid === undefined || qid.length === 0) {
+      return c.json({ ok: false, error: "qid required" }, 400);
+    }
+    const db = getDb();
+    const row = db.raw
+      .query("SELECT qid, status, kind FROM questions WHERE qid = ?")
+      .get(qid) as { qid: string; status: string; kind: string } | null;
+    if (row === null || row === undefined) {
+      return c.json({ ok: false, error: `qid ${qid} not found` }, 404);
+    }
+    if (row.kind !== "permission") {
+      return c.json(
+        {
+          ok: false,
+          error: `qid ${qid} is not a permission row (kind=${row.kind})`,
+        },
+        409,
+      );
+    }
+    // Idempotent: if the row is already terminal, return ok with the observed status.
+    // This covers the race where the owner clicked Allow between the shim's wait giving
+    // up and the shim's expire POST landing — we do NOT want the expire to overwrite an
+    // owner's decision, and we do NOT want the shim's fail-open flow to hit an error.
+    if (row.status !== "open") {
+      return c.json({
+        ok: true,
+        qid,
+        status: row.status,
+        transitioned: false,
+        reason: "row was already terminal — no-op",
+      });
+    }
+    const expiredAt = nowIso();
+    const upd = db.raw
+      .query(
+        `UPDATE questions
+           SET status = 'timed-out',
+               answered_at = ?,
+               applied_by = 'shim-timeout'
+         WHERE qid = ? AND status = 'open' AND kind = 'permission'`,
+      )
+      .run(expiredAt, qid);
+    if (upd.changes === 0) {
+      // Racy loss to a concurrent /actions/permissions/decide — re-read and report the
+      // winning status; still a 200 (the shim's fail-open flow only needs "did it work
+      // or move-on, either way don't block").
+      const fresh = db.raw
+        .query("SELECT status FROM questions WHERE qid = ?")
+        .get(qid) as { status: string } | null;
+      return c.json({
+        ok: true,
+        qid,
+        status: fresh?.status ?? "unknown",
+        transitioned: false,
+        reason: "race — row transitioned concurrently, expire was a no-op",
+      });
+    }
+    // Broadcast the transition so the panel invalidates its Questions query in real time
+    // — same seam GSL-312 hotfix 2 used from doDecidePermission. Without this the panel
+    // would keep the "Allow / Deny" buttons live for up to the SseProvider poll interval.
+    agentSessionsBroadcaster.emit({
+      seq: 0,
+      day: expiredAt.slice(0, 10),
+      ts: expiredAt,
+      src: "core",
+      actor: "internal.permissions.expire",
+      task: null,
+      type: "question.expired",
+      payload: {
+        qid,
+        kind: "permission",
+        status: "timed-out",
+        expired_at: expiredAt,
+      },
+      ingested_from: null,
+    });
+    return c.json({
+      ok: true,
+      qid,
+      status: "timed-out",
+      transitioned: true,
+      expired_at: expiredAt,
+    });
+  },
+);
+
 internalRoutes.post("/internal/steer/:sid/drain", requireInternalSecret, async (c) => {
   const sid = c.req.param("sid");
   if (sid === undefined || sid.length === 0) {

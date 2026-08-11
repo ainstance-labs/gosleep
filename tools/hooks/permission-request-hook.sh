@@ -239,7 +239,21 @@ if [ "$WAIT_STATUS" = "000" ]; then
 fi
 if [ "$WAIT_STATUS" = "204" ]; then
     rm -f "$WAIT_STDOUT" 2>/dev/null || true
-    log_debug "timeout" "$QID" ""
+    # GSL-333 (run 09 finding #7): the hook long-poll timed out. Claude Code will now render
+    # its own TUI permission dialog (the fallback path per hooks.md:223). If we leave the DB
+    # row `status='open'`, the panel keeps its Allow / Deny buttons live and a subsequent
+    # owner click lands as `answered` while the shim is DEAD and CC has moved on — the
+    # answer is orphaned. Best-effort POST to /internal/permissions/:qid/expire so the row
+    # transitions to `status='timed-out'` and the panel disables the buttons. Fail-open by
+    # construction: any failure (network, 4xx, 5xx) is silently swallowed — the shim is
+    # ALREADY in its "TUI takes over" branch and must not delay the return.
+    EXPIRE_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
+        --connect-timeout "$CONNECT_TIMEOUT_S" --max-time "$((CONNECT_TIMEOUT_S + 3))" \
+        -X POST \
+        -H "Host: $HOST_HEADER" \
+        -H "X-Internal-Secret: $INTERNAL_SECRET" \
+        "$CORE_URL/internal/permissions/$QID/expire" 2>/dev/null || echo "000")"
+    log_debug "timeout" "$QID" "\"expire_status\":\"$EXPIRE_STATUS\""
     exit 0
 fi
 if [ "$WAIT_STATUS" != "200" ]; then

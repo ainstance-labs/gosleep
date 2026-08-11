@@ -47,6 +47,10 @@ const TONE: Record<string, StatusTone> = {
   resolved: "accent",
   superseded: "neutral",
   deferred: "info",
+  // GSL-333 — a permission row transitions to this terminal state when the shim's
+  // long-poll timed out (Claude Code fell back to the TUI dialog). Same neutral tone as
+  // 'superseded' — the row is settled but from a fallback path, not from the panel.
+  "timed-out": "neutral",
 };
 
 interface AnswerDialogState {
@@ -702,6 +706,21 @@ export function QuestionsScreen() {
                     ) : question.status === "deferred" ? (
                       <div className="text-muted text-xs">
                         deferred, no timer — reopen by hand
+                      </div>
+                    ) : null}
+
+                    {/* GSL-333 — permission row that transitioned via the shim-timeout path.
+                        The Allow / Deny buttons are already gone (canDecide guards on
+                        status === "open") but a plain "answered" badge would falsely imply
+                        someone answered here in the panel. Spell out where the decision
+                        actually happened so the operator understands why this row is inert. */}
+                    {isPermission && question.status === "timed-out" ? (
+                      <div
+                        className="text-muted text-xs"
+                        data-testid="permission-timed-out-note"
+                      >
+                        answered in terminal — hook long-poll timed out; the TUI dialog
+                        took over. No panel action available.
                       </div>
                     ) : null}
 
