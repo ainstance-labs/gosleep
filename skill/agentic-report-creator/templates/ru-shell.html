@@ -1,0 +1,112 @@
+<!doctype html>
+<!--
+  agentic-report-creator — Russian translation shell (ru/index.html).
+  Identical structure to dashboard.html; only the UI CHROME is Russian. The data
+  slots ({{TITLE}}, {{SUMMARY_HTML}}, {{FINDINGS_HTML}}, …) are filled with the
+  Russian-translated content when translations.ru provides it, else the English
+  fallback per string (so the shell always renders — never a broken page).
+
+  IMPORTANT: {{ASSETS_PATH}} must be "../assets/" here (ru/ is one level down);
+  the language switch points back up to ../index.html. Assets are SHARED with the
+  English root — do not duplicate screenshots or CSS/JS into ru/.
+
+  HARD RULE — severity terminology is NEVER translated. The classification terms are
+  English constants in EVERY locale, including this Russian shell:
+
+      severity : CRITICAL · MAJOR · MINOR
+      lane     : architecture · functionality · design
+      status   : LANDED · PARTIAL · NOT-LANDED
+
+  They are terms of art, not words. A badge's visible text equals its own
+  data-severity attribute here exactly as in the English report. NEVER emit
+  Критично / Существенно / Незначительно — not in a badge, not in a count tile, not
+  in a heading, not in prose. Translating a term forks the vocabulary away from the
+  payload, the data-severity attribute, the Jira labels and the fix agent's JQL.
+
+  Translate the free prose AROUND the terms:
+    "2 CRITICAL findings block the release"
+      -> "2 findings уровня CRITICAL блокируют релиз"   <- sentence RU, token EN
+  The non-term count-tile label Total -> Всего still translates, and findings[N].area
+  is free prose that translates too. See SKILL.md section 9 + references/i18n-workflow.md.
+-->
+<html lang="{{LANG}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <link rel="stylesheet" href="{{ASSETS_PATH}}styles.css">
+  <script>
+    /* Тема выставляется до первой отрисовки, затем вешается обработчик переключателя. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">{{TITLE}}</span>
+        <span class="subtitle">{{SUBTITLE}}</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">{{EPIC}}</span>
+        <span class="hbtn" aria-label="Дата">{{DATE}}</span>
+        <!-- Переключение языка: русская версия -> английский корень -->
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Общая сводка -->
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Общая сводка</h2>
+      {{SUMMARY_HTML}}
+    </section>
+
+    <!-- Находки -->
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Находки</h2>
+      <div class="findings">
+        {{FINDINGS_HTML}}
+      </div>
+    </section>
+
+    <!-- Заметки по архитектуре (необязательно) -->
+    {{ARCHITECTURE_HTML}}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Сгенерировано: <strong>{{AUDITOR}}</strong> · {{GENERATED_AT}}</span>
+      <span>Проверенная сборка <code>{{SHIPPED_AT}}</code></span>
+    </div>
+  </footer>
+
+  <script src="{{ASSETS_PATH}}lightbox.js" defer></script>
+</body>
+</html>

@@ -126,17 +126,27 @@ generators and the eval runner per README "Use" (fix stale ROOT paths first — 
 
 ## Skill source of truth
 
-`skill/` is the source of truth for **all 7 owned skills**, each in its own named subfolder:
+`skill/` holds a **redundancy copy** of **12 owned skills** (7 dev copies + 5 rescued orphans,
+per GSL-334 Phase 0 and GSL-174 Phase 8), each in its own named subfolder. **Global
+(`~/.claude/skills/<name>/`) remains authoritative** for all owned skills per the standing
+rule (owner directive 2026-07-20 for `orchestrating-delivery-agents`, effectively extended
+to the whole owned set during the current transition). The repo copy exists so a single
+`rm` on the global tree is not a permanent-loss event — it is **not** a source-of-truth flip.
 
 ```
 skill/
-  orchestrating-delivery-agents/   # SKILL.md + references/
-  delivery-workflow/               # SKILL.md
-  handoff/                         # SKILL.md
-  using-jira/                      # SKILL.md
-  writing-prds/                    # SKILL.md
-  remote-control/                  # SKILL.md
-  tmux-agents-orchestration/       # SKILL.md
+  orchestrating-delivery-agents/   # SKILL.md + references/    (dev copy)
+  delivery-workflow/               # SKILL.md                  (dev copy)
+  handoff/                         # SKILL.md                  (dev copy)
+  remote-control/                  # SKILL.md                  (dev copy)
+  using-jira/                      # SKILL.md                  (dev copy)
+  writing-prds/                    # SKILL.md                  (dev copy)
+  tmux-agents-orchestration/       # SKILL.md                  (dev copy, GSL-174)
+  agentic-report-creator/          # SKILL.md + references/ + templates/   (rescued GSL-334)
+  agentic-scenario-runner/         # SKILL.md + references/    (rescued GSL-334)
+  efficient-agent-evals/           # SKILL.md                  (rescued GSL-334)
+  extra-usage/                     # SKILL.md                  (rescued GSL-334)
+  verifier-skeptic/                # SKILL.md + references/    (rescued GSL-334)
 ```
 
 `./install.sh` installs **every subfolder** under `skill/` into `~/.claude/skills/<name>/`
