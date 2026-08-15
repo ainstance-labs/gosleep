@@ -126,16 +126,30 @@ generators and the eval runner per README "Use" (fix stale ROOT paths first — 
 
 ## Skill source of truth
 
-`skill/` is the source of truth for **all 5 owned skills**, each in its own named subfolder:
+`skill/` holds a **redundancy copy** of **11 owned skills** (6 dev copies + 5 rescued orphans,
+per GSL-334 Phase 0), each in its own named subfolder. **Global (`~/.claude/skills/<name>/`)
+remains authoritative** for all owned skills per the standing rule (owner directive 2026-07-20
+for `orchestrating-delivery-agents`, effectively extended to the whole owned set during the
+current transition). The repo copy exists so a single `rm` on the global tree is not a
+permanent-loss event — it is **not** a source-of-truth flip.
 
 ```
 skill/
-  orchestrating-delivery-agents/   # SKILL.md + references/
-  delivery-workflow/               # SKILL.md
-  handoff/                         # SKILL.md
-  using-jira/                      # SKILL.md
-  writing-prds/                    # SKILL.md
+  orchestrating-delivery-agents/   # SKILL.md + references/    (dev copy)
+  delivery-workflow/               # SKILL.md                  (dev copy)
+  handoff/                         # SKILL.md                  (dev copy)
+  remote-control/                  # SKILL.md                  (dev copy)
+  using-jira/                      # SKILL.md                  (dev copy)
+  writing-prds/                    # SKILL.md                  (dev copy)
+  agentic-report-creator/          # SKILL.md + references/ + templates/   (rescued GSL-334)
+  agentic-scenario-runner/         # SKILL.md + references/    (rescued GSL-334)
+  efficient-agent-evals/           # SKILL.md                  (rescued GSL-334)
+  extra-usage/                     # SKILL.md                  (rescued GSL-334)
+  verifier-skeptic/                # SKILL.md + references/    (rescued GSL-334)
 ```
+
+The count reaches **12** once `GSL-174-skills-management` lands the 7th dev copy
+(`tmux-agents-orchestration`).
 
 `./install.sh` installs **every subfolder** under `skill/` into `~/.claude/skills/<name>/`
 using `rsync -a --delete`. Sync direction is always **local → global**.
