@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "title": "Suppliers V4 — pixel-perfect audit",
+    "subtitle": "shipped vs reference/prototype_v3",
+    "epic": "TLM-360",
+    "date": "2026-07-15",
+    "auditor": "verifier-skeptic",
+    "shipped_at": "6b680ff",
+    "prototype_source": "reference/prototype_v3/",
+    "lang": "en"
+  },
+  "verdict": {
+    "score": 73,
+    "level": "MINOR-POLISH",
+    "band": "warning",
+    "counts": { "critical": 2, "major": 11, "minor": 7 }
+  },
+  "findings": [
+    {
+      "number": 1,
+      "jira": "TLM-432",
+      "severity": "CRITICAL",
+      "area": "Plan navigation",
+      "lane": "functionality",
+      "labels": ["verifier", "functionality"],
+      "title": "Stage-nav shell absent from suppliers layout",
+      "description": "The prototype renders a persistent 01–04 stage rail across every Suppliers surface. The shipped layout drops it entirely, so a user on the Plan step has no way to see or jump between stages. The rail is not hidden behind a breakpoint — it never mounts.",
+      "prototype_ref": "reference/prototype_v3/suppliers-v4.jsx (Sv4Plan, lines 88–140)",
+      "shipped_ref": "src/app/(app)/suppliers/plan/page.tsx:55-78",
+      "screenshots": [
+        { "caption": "Shipped Plan header — no rail", "src": "assets/plan-shipped-light.png" },
+        { "caption": "Prototype Plan header — 01–04 rail visible", "src": "assets/plan-prototype-light.png" },
+        { "caption": "Shipped Plan header — dark", "src": "assets/plan-shipped-dark.png" }
+      ]
+    },
+    {
+      "number": 2,
+      "jira": "TLM-433",
+      "severity": "CRITICAL",
+      "area": "Supplier card",
+      "lane": "design",
+      "labels": ["verifier", "pixel-perfect"],
+      "title": "Card radius and elevation diverge from the design system",
+      "description": "Supplier cards ship with an 8px radius and a hard 1px border; the prototype uses a 14px radius with a soft shadow and no border. The delta reads clearly at a glance and breaks visual rhythm with adjacent DS surfaces.",
+      "prototype_ref": "reference/prototype_v3/suppliers-v4.jsx (SupplierCard)",
+      "shipped_ref": "src/components/suppliers/SupplierCard.tsx:22-31",
+      "screenshots": [
+        { "caption": "Shipped card", "src": "assets/card-shipped-light.png" },
+        { "caption": "Prototype card", "src": "assets/card-prototype-light.png" }
+      ]
+    },
+    {
+      "number": 3,
+      "jira": "TLM-441",
+      "severity": "MAJOR",
+      "area": "Empty state",
+      "lane": "functionality",
+      "labels": ["verifier", "functionality"],
+      "title": "No empty state when a supplier has zero orders",
+      "description": "Navigating to a supplier with no orders shows a blank table with header rows only — no illustration, copy, or CTA. The prototype specifies an empty state with a `Create first order` action.",
+      "prototype_ref": "reference/prototype_v3/suppliers-v4.jsx (OrdersEmpty)",
+      "shipped_ref": "src/app/(app)/suppliers/[id]/orders/page.tsx:104",
+      "screenshots": [
+        { "caption": "Shipped — blank table", "src": "assets/orders-empty-shipped.png" }
+      ]
+    },
+    {
+      "number": 4,
+      "jira": "TLM-448",
+      "severity": "MINOR",
+      "area": "Typography",
+      "lane": "design",
+      "labels": ["verifier", "pixel-perfect"],
+      "title": "Section labels use Title Case instead of the prototype's UPPERCASE tracking",
+      "description": "Prototype section labels are 11px uppercase with 0.08em tracking. Shipped labels are 13px Title Case, no tracking. Low impact but breaks the DS label convention used elsewhere.",
+      "prototype_ref": "reference/prototype_v3/tokens.css (.section-label)",
+      "shipped_ref": "src/components/suppliers/SectionLabel.tsx:8",
+      "screenshots": []
+    }
+  ],
+  "architecture_notes": [
+    {
+      "title": "Stage state lives in three places instead of one",
+      "body": "The design implies a single source of truth for the active stage (URL segment). The shipped code duplicates it into React context AND a Zustand store, which drift when the user navigates via the browser back button.",
+      "diagram_mermaid": "graph LR\n  URL[URL segment] --> Ctx[React context]\n  URL --> Store[Zustand store]\n  Ctx -. drifts .- Store"
+    }
+  ],
+  "translations": {
+    "ru": {
+      "meta.title": "Suppliers V4 — pixel-perfect аудит",
+      "meta.subtitle": "реализация против reference/prototype_v3",
+      "verdict.level": "МЕЛКАЯ ПОЛИРОВКА",
+      "findings[1].title": "В layout Suppliers отсутствует rail этапов 01–04",
+      "findings[1].area": "Навигация по плану",
+      "findings[1].description": "Прототип показывает постоянный rail этапов 01–04 на всех экранах Suppliers. В реализации он полностью отсутствует — пользователь на шаге «План» не видит этапы и не может между ними переключаться. Rail не спрятан за breakpoint — он вообще не монтируется.",
+      "findings[1].screenshots[0].caption": "Реализация, шапка «План» — rail отсутствует",
+      "findings[1].screenshots[1].caption": "Прототип, шапка «План» — виден rail 01–04",
+      "findings[2].title": "Радиус и тень карточки расходятся с дизайн-системой",
+      "findings[2].area": "Карточка поставщика",
+      "findings[3].title": "Нет пустого состояния, когда у поставщика ноль заказов",
+      "findings[3].area": "Пустое состояние",
+      "findings[4].title": "Метки секций в Title Case вместо UPPERCASE с трекингом из прототипа",
+      "findings[4].area": "Типографика",
+      "architecture_notes[0].title": "Состояние этапа хранится в трёх местах вместо одного"
+    }
+  }
+}
