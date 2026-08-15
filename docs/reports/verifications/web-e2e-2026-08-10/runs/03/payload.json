@@ -1,0 +1,327 @@
+{
+  "meta": {
+    "title": "gosleep web control plane — QA run 03",
+    "subtitle": "Independent functional verification (fresh eyes) of origin/main @ dfe8448",
+    "epic": "GSL-250",
+    "date": "2026-08-10",
+    "auditor": "webqa-3",
+    "shipped_at": "dfe8448",
+    "lang": "en",
+    "summary": "Independent QA sweep from scratch against a scratch core on 127.0.0.1:7343 + a headless Chrome instance in a pinned git worktree. 20 steps executed covering every SPA screen in light + dark + 390 px mobile, three interactive write actions (answer variant, answer with 150 chars of free text, snapshot, defer), the three merged hotfix regressions (GSL-308, GSL-309, GSL-310), and skeptical probing (rapid clicks, back/forward, 404). Zero product defects observed; the regression trio holds; UI is READY-FOR-OWNER."
+  },
+  "verdict": {
+    "score": 96,
+    "level": "READY-FOR-OWNER",
+    "band": "good",
+    "counts": {
+      "critical": 0,
+      "major": 0,
+      "minor": 3
+    }
+  },
+  "findings": [
+    {
+      "number": 1,
+      "jira": "GSL-308",
+      "severity": "MINOR",
+      "area": "Answer dialog — free text",
+      "lane": "functionality",
+      "title": "GSL-308 regression HOLDS — 150-char free text answer submits cleanly, no dialog/page crash",
+      "description": "Reproduction (worktree pinned at dfe8448):\n\n1. Boot scratch core on 127.0.0.1:7343 with a scratch DB + scratch lab. Seed one BLOCKER-kind free-form question `q-qa03-c` in both DB and queue.jsonl.\n2. Open `/questions` in a headless Chrome with the Bearer injected into sessionStorage.\n3. Click Answer on q-qa03-c.\n4. Programmatically set the textarea value to a 159-character string (native setter + input event) and click Send answer.\n\nExpected (per PR #312 fix `apps/web/src/screens/Questions.tsx` — read `e.currentTarget.value` synchronously before entering the state updater): dialog closes, page stays alive, DB row flips to `answered` with the full 159-char body persisted.\n\nObserved: dialog closed, `<h1>` still 'Questions', 0 console errors, DB row updated to `answered` with the 159-char answer captured verbatim. No React-19 SyntheticEvent recycling error, no route-error boundary. Regression fix HOLDS.",
+      "shipped_ref": "apps/web/src/screens/Questions.tsx (onChange in the Answer dialog textarea)",
+      "screenshots": [
+        {
+          "caption": "Step 1 — Answer dialog opened for the free-form question",
+          "src": "12-answer-dialog-open-freeform.png"
+        },
+        {
+          "caption": "Step 2 — 159 characters typed into textarea",
+          "src": "12-answer-dialog-typed.png"
+        },
+        {
+          "caption": "Step 3 — dialog dismissed cleanly after submit, page intact",
+          "src": "12-answer-dialog-submitted.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "jira": "GSL-309",
+      "severity": "MINOR",
+      "area": "Idle network activity",
+      "lane": "functionality",
+      "title": "GSL-309 regression HOLDS — no request storm at idle (3 requests in 65 s, zero ERR_INSUFFICIENT_RESOURCES)",
+      "description": "Reproduction:\n\n1. Navigate to `/overview` and reset the CDP network + console counters.\n2. Idle for 65 seconds, letting Chrome DevTools Protocol accumulate every request and every console entry.\n\nThreshold (from mission brief): healthy = a handful of requests over 60 s; failure = hundreds; ZERO `ERR_INSUFFICIENT_RESOURCES` must appear in console.\n\nObserved: 3 requests total over 65 s (all three were `GET /status` — the app's health poll), 0 failed, 0 `ERR_INSUFFICIENT_RESOURCES`, 0 console errors of any kind. No accidental long-polling loop, no runaway refetch, no bounded fetch that keeps re-issuing. Regression fix HOLDS.",
+      "screenshots": [
+        {
+          "caption": "Console errors: 0; ERR_INSUFFICIENT_RESOURCES: 0 across the 65 s idle window",
+          "src": "07-light-desktop-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "jira": "GSL-310",
+      "severity": "MINOR",
+      "area": "SPA deep-link reload",
+      "lane": "functionality",
+      "title": "GSL-310 regression HOLDS — hard reload of every deep link returns the SPA (HTTP 200), never 401",
+      "description": "Reproduction:\n\n1. For each of `/overview /fleet /timeline /questions /tasks /cost`, hit the URL with `curl -H 'Accept: text/html,application/xhtml+xml,…'` (browser-shaped negotiation).\n2. For each of the same six paths, hard-navigate the browser and assert the SPA root `#root` mounts.\n\nExpected (per PR #312 `apps/core/src/routes/spaNavigation.ts`): the SPA navigation guard mounts BEFORE `readRoutes` and returns `index.html` for any `text/html`-preferring GET to a client-router path, so browser hard-reloads never fall into the Bearer-gated JSON handler.\n\nObserved: all 6 curl calls returned HTTP 200 with the SPA shell body; the browser hard-reload path successfully mounts `#root` on all 6 routes. The parallel bare `GET /questions` without a `Accept: text/html` header correctly still returns 401 — the API path is unchanged. Regression fix HOLDS.",
+      "shipped_ref": "apps/core/src/routes/spaNavigation.ts (mounted before readRoutes)",
+      "screenshots": [
+        {
+          "caption": "Overview page after hard-reload — SPA mounted",
+          "src": "07-light-desktop-overview.png"
+        },
+        {
+          "caption": "Questions page after hard-reload — SPA mounted",
+          "src": "07-light-desktop-questions.png"
+        },
+        {
+          "caption": "Cost page after hard-reload — SPA mounted",
+          "src": "07-light-desktop-cost.png"
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "jira": "GSL-268",
+      "severity": "MINOR",
+      "area": "Interactive write — variant question",
+      "lane": "functionality",
+      "title": "Answering a variant-kind question via the Answer dialog persists to DB (freetext lane, since UI has one lane)",
+      "description": "The UI does not render per-variant option buttons; every question kind uses the same free-text Answer dialog. Typing `dark` into the dialog for `q-qa03-a` (which advertises options {dark,light,system}) succeeded end-to-end: dialog dismissed, DB row flipped to `status=answered, answer_text='dark'`, 0 console errors.",
+      "screenshots": [
+        {
+          "caption": "Variant question — Answer dialog with the option key typed",
+          "src": "13-variant-dialog.png"
+        },
+        {
+          "caption": "After submit — dialog dismissed, question list refreshed",
+          "src": "13-variant-final.png"
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "jira": "GSL-298",
+      "severity": "MINOR",
+      "area": "Snapshot action",
+      "lane": "functionality",
+      "title": "Snapshot button → confirmation dialog → intent row `POST /actions/snapshot status=ok` persisted",
+      "description": "Overview page 'Snapshot' button opens a confirmation dialog; clicking Confirm posts `/actions/snapshot` (via idempotency-key). The `server_intents` row is written with `status=ok`, no console errors.",
+      "screenshots": [
+        {
+          "caption": "Confirmation dialog",
+          "src": "15-snapshot-dialog.png"
+        },
+        {
+          "caption": "After success — toast + dialog closed",
+          "src": "15-snapshot.png"
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "jira": "GSL-278",
+      "severity": "MINOR",
+      "area": "Defer action",
+      "lane": "functionality",
+      "title": "Defer flow reaches the DB — `status=deferred, defer_until=…` persisted (with JSONL seed)",
+      "description": "The mission brief calls out that defer against SQL-only seeds can 500 (server reads JSONL). When the same qid is seeded into both the DB and `queue.jsonl` with the lab-emit schema, the flow succeeds: `q-qa03-d` transitioned to `status=deferred, defer_until=2026-08-10T14:34Z`, 0 console errors.",
+      "screenshots": [
+        {
+          "caption": "Defer dialog for q-qa03-d",
+          "src": "19-defer-dialog.png"
+        },
+        {
+          "caption": "After defer — question row shows deferred state",
+          "src": "19-defer-after.png"
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "jira": "GSL-295",
+      "severity": "MINOR",
+      "area": "Unknown route",
+      "lane": "functionality",
+      "title": "Unknown route lands on an honest 'Route not found' screen (per GSL-295 wildcard fix)",
+      "description": "Navigating to `/does-not-exist` no longer silently redirects to `/overview`; the SPA shows a dedicated Not Found screen, `<h1>` = 'Route not found'. This is the intended GSL-295 behavior — missing surfaces (e.g. `/skills` before GSL-174 lands) stay visible instead of being hidden.",
+      "screenshots": [
+        {
+          "caption": "/does-not-exist — honest 404",
+          "src": "16-not-found.png"
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "jira": "GSL-265",
+      "severity": "MINOR",
+      "area": "Cross-screen consistency",
+      "lane": "design",
+      "title": "All 6 SPA screens render in light + dark + 390 px mobile — zero console errors on any of 18 permutations",
+      "description": "For each of `overview, fleet, timeline, questions, tasks, cost`:\n* 1440×900 light theme — h1 present, 0 console errors\n* 1440×900 dark theme — 0 console errors\n* 390×844 mobile emulation (dpr 3) — 0 console errors\n\nLayout adapts on mobile; the sidebar collapses and the header stays sticky. Cost screen renders sparsely (body length 272 chars) because the scratch DB has no cost rows seeded — that is an empty-state observation, not a defect.",
+      "screenshots": [
+        {
+          "caption": "Overview — light desktop",
+          "src": "07-light-desktop-overview.png"
+        },
+        {
+          "caption": "Overview — dark desktop",
+          "src": "08-dark-desktop-overview.png"
+        },
+        {
+          "caption": "Overview — mobile 390 px",
+          "src": "09-mobile-overview.png"
+        },
+        {
+          "caption": "Fleet — light desktop",
+          "src": "07-light-desktop-fleet.png"
+        },
+        {
+          "caption": "Fleet — dark desktop",
+          "src": "08-dark-desktop-fleet.png"
+        },
+        {
+          "caption": "Fleet — mobile 390 px",
+          "src": "09-mobile-fleet.png"
+        },
+        {
+          "caption": "Timeline — light desktop",
+          "src": "07-light-desktop-timeline.png"
+        },
+        {
+          "caption": "Timeline — dark desktop",
+          "src": "08-dark-desktop-timeline.png"
+        },
+        {
+          "caption": "Timeline — mobile 390 px",
+          "src": "09-mobile-timeline.png"
+        },
+        {
+          "caption": "Questions — light desktop",
+          "src": "07-light-desktop-questions.png"
+        },
+        {
+          "caption": "Questions — dark desktop",
+          "src": "08-dark-desktop-questions.png"
+        },
+        {
+          "caption": "Questions — mobile 390 px",
+          "src": "09-mobile-questions.png"
+        },
+        {
+          "caption": "Tasks — light desktop",
+          "src": "07-light-desktop-tasks.png"
+        },
+        {
+          "caption": "Tasks — dark desktop",
+          "src": "08-dark-desktop-tasks.png"
+        },
+        {
+          "caption": "Tasks — mobile 390 px",
+          "src": "09-mobile-tasks.png"
+        },
+        {
+          "caption": "Cost — light desktop (empty-state)",
+          "src": "07-light-desktop-cost.png"
+        },
+        {
+          "caption": "Cost — dark desktop",
+          "src": "08-dark-desktop-cost.png"
+        },
+        {
+          "caption": "Cost — mobile 390 px",
+          "src": "09-mobile-cost.png"
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "jira": "GSL-265",
+      "severity": "MINOR",
+      "area": "Skeptical probes",
+      "lane": "functionality",
+      "title": "Rapid repeated clicks, back/forward, 404 — no crashes, no error boundary, DOM intact",
+      "description": "Fresh-eyes probes:\n* Fired 8 back-to-back `click()` events on the first toolbar button on /questions — no crash, h1 remained 'Questions', 0 console errors.\n* Browser history: /fleet → /tasks → back → forward — restored URLs and h1 labels exactly (Fleet ↔ Tasks) via CDP `Page.navigateToHistoryEntry`.\n* /does-not-exist — dedicated Not Found screen (finding #7).",
+      "screenshots": [
+        {
+          "caption": "After 8 rapid clicks — no crash",
+          "src": "17-rapid-clicks.png"
+        },
+        {
+          "caption": "Back-nav returned to /fleet",
+          "src": "18-nav-back.png"
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "jira": "GSL-263",
+      "severity": "MINOR",
+      "area": "SSE liveness",
+      "lane": "functionality",
+      "title": "SSE broadcast bypassed by SQL-only inserts (expected) — reload path picks up the new row",
+      "description": "Environmental note: inserting a new question row via raw SQL bypasses the JSONL tail indexer, so the SSE broadcaster does not fire for that mutation. This is a scratch-seed artifact and not a product defect (the reload path picks the new row up cleanly). For UI-triggered mutations (Answer, Snapshot, Defer) the DB write happens through the actions layer which does update SSE-relevant tables through withTimeline/withEvents; the answer dialog closes and the question card flips without a manual reload.",
+      "screenshots": [
+        {
+          "caption": "After manual reload — new SQL-inserted question appears",
+          "src": "14-sse-after.png"
+        }
+      ]
+    }
+  ],
+  "architecture_notes": [
+    {
+      "title": "Environment isolation — scratch tree, scratch port, scratch DB (zero production touch)",
+      "body": "Verification ran in a pinned worktree at `.claude/worktrees/qa-run03` (checked out at commit dfe8448). The scratch core booted on `127.0.0.1:7343` (never `7331`) with `GOSLEEP_DB_PATH` pointing at `.artifacts/qa-run03/data/gosleep.db` and `GOSLEEP_LAB_DIR` at `.artifacts/qa-run03/lab`. Chrome was launched headless on CDP port 9243 with a dedicated `--user-data-dir`. The shared tree was READ-ONLY throughout — no checkout, no add, no commit; `git status --porcelain` diff before/after confirmed the only new paths sit under `docs/reports/verifications/web-e2e-2026-08-10/runs/03/**`."
+    },
+    {
+      "title": "Known-degraded state observed and worked around",
+      "body": "The `/actions/questions/answer` and `/actions/questions/defer` endpoints spawn `tools/lab/lab-emit.sh answer|defer --re <qid>`, which reads `LAB_DIR/questions/queue.jsonl` and errors with `no record with id …` when the qid was seeded via SQL only. This is the environment artifact the mission brief called out. The workaround (used here for the interactive write tests to pass): seed each qid into BOTH the DB and `queue.jsonl` using lab-emit's field schema (`id`, `type`, `question`, `status`, `qhash`). With the JSONL fixture in place, the answer and defer flows succeed end-to-end — 0 console errors, DB rows flip as expected."
+    },
+    {
+      "title": "Raw API GET without Bearer returns 401 — this is correct auth behavior",
+      "body": "`curl http://127.0.0.1:7343/questions` (no `Authorization: Bearer …`, no `Accept: text/html` browser hint) returns 401 as designed — the Bearer-gated JSON path is unchanged. The SPA-navigation guard (GSL-310) selectively returns the SPA shell only for browser-shaped `Accept: text/html`+ preference; XHR + SDK calls with `Accept: application/json` continue to require a Bearer. Not a defect — an intentional two-lane split."
+    }
+  ],
+  "translations": {
+    "ru": {
+      "meta.title": "Веб-панель gosleep — QA run 03",
+      "meta.subtitle": "Независимая функциональная верификация (свежий взгляд) origin/main @ dfe8448",
+      "meta.summary": "Независимая проверка веб-контрол-плейна с нуля в pinned git-worktree на порту 127.0.0.1:7343 через headless Chrome. Прогнаны 20 шагов: каждый экран SPA в светлой + тёмной теме + мобильной ширине 390 px, три интерактивных write-действия (ответ на variant-вопрос, ответ длинным free-text на 150 символов, snapshot, defer), три регресс-хотфикса из PR #312 (GSL-308, GSL-309, GSL-310) и скептические пробы (быстрые клики, история браузера, неизвестный маршрут). Продуктовых дефектов не обнаружено; тройка регрессов держится; UI готов для владельца (READY-FOR-OWNER).",
+      "findings[1].title": "Регресс GSL-308 держится — free-text ответ на 150 символов уходит без падения диалога/страницы",
+      "findings[1].description": "Воспроизведение (worktree на dfe8448):\n\n1. Поднять скретч-core на 127.0.0.1:7343 со скретч-DB + скретч-lab. Засеять один BLOCKER-вопрос свободной формы `q-qa03-c` и в DB, и в queue.jsonl.\n2. Открыть `/questions` в headless Chrome с Bearer'ом в sessionStorage.\n3. Нажать Answer у q-qa03-c.\n4. Программно записать в textarea 159-символьную строку (native setter + input event) и нажать Send answer.\n\nОжидалось (по фиксу PR #312 `apps/web/src/screens/Questions.tsx` — читать `e.currentTarget.value` синхронно ДО входа в updater состояния): диалог закрывается, страница живёт, строка в DB переходит в `answered` с сохранёнными 159 символами.\n\nНаблюдалось: диалог закрылся, `<h1>` остался 'Questions', 0 ошибок в консоли, строка в DB — `answered` c полным ответом. Ошибки утилизации SyntheticEvent в React 19 нет. Регресс держится.",
+      "findings[1].area": "Диалог ответа — свободный текст",
+      "findings[2].title": "Регресс GSL-309 держится — на idle нет шторма запросов (3 запроса за 65 с, ноль ERR_INSUFFICIENT_RESOURCES)",
+      "findings[2].description": "Воспроизведение:\n\n1. Перейти на `/overview` и сбросить счётчики CDP по сети и консоли.\n2. Простаивать 65 секунд, дать Chrome DevTools Protocol собрать все запросы и все сообщения консоли.\n\nПорог (из брифа миссии): здорово = единицы запросов за 60 с; плохо = сотни; НОЛЬ `ERR_INSUFFICIENT_RESOURCES` в консоли.\n\nНаблюдалось: 3 запроса за 65 с (все — `GET /status`, штатный health-поллинг), 0 fail, 0 `ERR_INSUFFICIENT_RESOURCES`, 0 ошибок консоли. Никаких залипаний long-poll, никаких runaway-refetch. Регресс держится.",
+      "findings[2].area": "Idle сетевая активность",
+      "findings[3].title": "Регресс GSL-310 держится — хард-релоуд каждого deep-link отдаёт SPA (HTTP 200), не 401",
+      "findings[3].description": "Воспроизведение:\n\n1. Для каждого из `/overview /fleet /timeline /questions /tasks /cost` — `curl -H 'Accept: text/html,application/xhtml+xml,…'` (браузерная негосиация).\n2. Для тех же шести путей — хард-навигация в браузере и проверка, что корень SPA `#root` смонтировался.\n\nОжидалось (по фиксу PR #312 `apps/core/src/routes/spaNavigation.ts`): SPA-guard монтируется ДО `readRoutes` и отдаёт `index.html` любому GET с `Accept: text/html` на client-router путь; таким образом браузерный хард-релоуд не проваливается в Bearer-gated JSON-обработчик.\n\nНаблюдалось: все 6 curl'ов вернули HTTP 200 c телом SPA; в браузере `#root` смонтировался на всех 6 маршрутах. Одновременно голый `GET /questions` без `Accept: text/html` продолжает возвращать 401 — API-путь не тронут. Регресс держится.",
+      "findings[3].area": "Хард-релоуд deep-link'а SPA",
+      "findings[4].title": "Ответ на variant-вопрос через диалог сохраняется в DB (single-lane freetext)",
+      "findings[4].description": "UI не рендерит отдельных кнопок под каждый вариант; любой kind вопроса использует один и тот же диалог свободного текста. Ввод `dark` в диалог для `q-qa03-a` (у которого объявлены опции {dark,light,system}) отработал end-to-end: диалог закрылся, строка в DB перешла в `status=answered, answer_text='dark'`, 0 ошибок консоли.",
+      "findings[4].area": "Интерактивная запись — variant-вопрос",
+      "findings[5].title": "Кнопка Snapshot → диалог подтверждения → `POST /actions/snapshot status=ok` в server_intents",
+      "findings[5].description": "Кнопка 'Snapshot' на Overview открывает диалог подтверждения; клик Confirm постит `/actions/snapshot` (с idempotency-key). Строка `server_intents` пишется с `status=ok`, 0 ошибок консоли.",
+      "findings[5].area": "Снапшот",
+      "findings[6].title": "Defer доезжает до DB — `status=deferred, defer_until=…` (при наличии JSONL-seed)",
+      "findings[6].description": "Бриф миссии отдельно отмечает, что defer на SQL-only seed может отдать 500 (сервер читает JSONL). Когда тот же qid засеян в оба места — и в DB, и в `queue.jsonl` по схеме lab-emit — сценарий проходит: `q-qa03-d` перешёл в `status=deferred, defer_until=2026-08-10T14:34Z`, 0 ошибок консоли.",
+      "findings[6].area": "Действие Defer",
+      "findings[7].title": "Неизвестный маршрут ведёт на честный экран 'Route not found' (по фиксу GSL-295)",
+      "findings[7].description": "Переход на `/does-not-exist` больше не редиректит молча на `/overview`; SPA рисует отдельный экран Not Found, `<h1>` = 'Route not found'. Это ожидаемое поведение по GSL-295 — отсутствующие поверхности (например, `/skills` до релиза GSL-174) видны, а не скрыты.",
+      "findings[7].area": "Неизвестный маршрут",
+      "findings[8].title": "Все 6 экранов SPA рендерятся в светлой + тёмной + мобильной 390 px темах — 0 ошибок консоли на 18 комбинациях",
+      "findings[8].description": "Для каждого из `overview, fleet, timeline, questions, tasks, cost`:\n* 1440×900 светлая — h1 присутствует, 0 ошибок консоли\n* 1440×900 тёмная — 0 ошибок консоли\n* 390×844 mobile (dpr 3) — 0 ошибок консоли\n\nМобильная разметка адаптируется; сайдбар складывается, шапка держится sticky. Экран Cost рендерится скромно (тело 272 символа), потому что в скретч-DB не засеяны cost-строки — это наблюдение по empty-state, не дефект.",
+      "findings[8].area": "Согласованность экранов",
+      "findings[9].title": "Быстрые повторные клики, история браузера, 404 — краха нет, error boundary не вылетает, DOM цел",
+      "findings[9].description": "Скептические пробы:\n* 8 подряд `click()` по первой кнопке тулбара на /questions — крэша нет, h1 остался 'Questions', 0 ошибок консоли.\n* История: /fleet → /tasks → назад → вперёд — URL'ы и h1 восстановились в точности (Fleet ↔ Tasks) через CDP `Page.navigateToHistoryEntry`.\n* /does-not-exist — отдельный экран Not Found (находка №7).",
+      "findings[9].area": "Скептические пробы",
+      "findings[10].title": "SSE не срабатывает на raw-SQL insert (ожидаемо) — reload подхватывает",
+      "findings[10].description": "Заметка об окружении: вставка новой строки questions напрямую через SQL обходит tail-индексатор JSONL, поэтому SSE-бродкастер не срабатывает на такую мутацию. Это артефакт скретч-сида, не продуктовый дефект (после reload новая строка на месте). Для мутаций, идущих через UI (Answer, Snapshot, Defer) DB-запись идёт через actions-слой; диалог закрывается и карточка вопроса обновляется без ручной перезагрузки.",
+      "findings[10].area": "SSE — актуальность"
+    }
+  }
+}

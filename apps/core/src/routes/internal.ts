@@ -489,6 +489,27 @@ interface ToolObservation {
   ts: string;
   context_pct: number | null;
   intent: string | null;
+  /** GSL-319 — most-recent GitHub PR URL found in the observed command / response / intent
+   *  text on this observation (null when the extractor found nothing). */
+  pr_url: string | null;
+}
+
+// GSL-319 — extract the FIRST canonical GitHub PR URL from any string. Deliberately narrow:
+// only the `https://github.com/<owner>/<repo>/pull/<n>` form (no gitlab, no gh: refs, no /issues
+// mistakes). Owner + repo segments allow dots, dashes, underscores, alphanumerics; number is
+// digits. Returns the URL as a plain string with no trailing punctuation.
+const PR_URL_PATTERN =
+  /https?:\/\/github\.com\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/pull\/(\d+)/;
+export function extractPrUrl(...sources: Array<string | null | undefined>): string | null {
+  for (const s of sources) {
+    if (typeof s !== "string" || s.length === 0) continue;
+    const m = s.match(PR_URL_PATTERN);
+    if (m !== null) {
+      // Rebuild the canonical form (no query, no fragment, no trailing punctuation).
+      return `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}`;
+    }
+  }
+  return null;
 }
 
 /** Per-session pending observation — replaced on every POST, drained by the flush timer. */
@@ -556,14 +577,18 @@ function flushPendingObservations(): void {
         .query("SELECT session_id FROM agent_sessions WHERE session_id = ?")
         .get(obs.session_id) as { session_id: string } | null;
       if (existing !== null && existing !== undefined) {
-        // Only overwrite context_pct / intent when the observation carried non-null values
-        // (a partial observation must not clobber a fresh number with NULL).
+        // Only overwrite context_pct / intent / pr_url when the observation carried non-null
+        // values (a partial observation must not clobber a fresh value with NULL).
+        // GSL-319 — `last_pr_url` upserted here; timestamp on the same row so Overview can
+        // pick the newest URL across the fleet.
         db.raw
           .query(
             `UPDATE agent_sessions SET
                current_tool = ?,
                context_pct = COALESCE(?, context_pct),
                current_intent = COALESCE(?, current_intent),
+               last_pr_url = COALESCE(?, last_pr_url),
+               last_pr_at = CASE WHEN ? IS NULL THEN last_pr_at ELSE ? END,
                updated_at = ?
              WHERE session_id = ?`,
           )
@@ -571,6 +596,9 @@ function flushPendingObservations(): void {
             obs.tool,
             obs.context_pct,
             obs.intent,
+            obs.pr_url,
+            obs.pr_url,
+            obs.ts,
             nowTs,
             obs.session_id,
           );
@@ -582,8 +610,9 @@ function flushPendingObservations(): void {
           .query(
             `INSERT INTO agent_sessions
                (session_id, name, kind, pid, model, cwd, cycle, context_pct,
-                current_tool, current_intent, status, started_at, updated_at, ended_at)
-             VALUES (?, ?, 'unknown', NULL, NULL, '?', NULL, ?, ?, ?, 'observed', ?, ?, NULL)`,
+                current_tool, current_intent, status, started_at, updated_at, ended_at,
+                last_pr_url, last_pr_at)
+             VALUES (?, ?, 'unknown', NULL, NULL, '?', NULL, ?, ?, ?, 'observed', ?, ?, NULL, ?, ?)`,
           )
           .run(
             obs.session_id,
@@ -593,6 +622,8 @@ function flushPendingObservations(): void {
             obs.intent,
             obs.ts,
             nowTs,
+            obs.pr_url,
+            obs.pr_url !== null ? obs.ts : null,
           );
       }
       affected += 1;
@@ -671,6 +702,63 @@ interface PermissionInput {
 }
 
 /**
+ * GSL-320 — reconcile two hook payload shapes into a common `tool_params` blob.
+ *
+ * Historically the endpoint expected the MCP-style shape (`{ tool, params, message }`) — that
+ * matched the old model-driven `PermissionRequest` tool. But the current wiring runs off
+ * Claude Code's real `PermissionRequest` event (GSL-304), where `tool_input` is the tool call's
+ * ARGUMENTS directly:
+ *   - Bash → `{ "command": "gh pr create …", "description": "…" }`
+ *   - Edit → `{ "file_path": "…", "old_string": "…", "new_string": "…" }`
+ *   - Write → `{ "file_path": "…", "content": "…" }`
+ * `.params` is absent, so the previous `toolInputRaw.params ?? null` collapsed to null and the
+ * card ended up as a bare `Permission request: Bash` with zero context (finding #1 in the run 06
+ * verification report).
+ *
+ * Rule: if the payload declares the MCP shape (either `.tool` or `.params` key present), we
+ * take `.params`. Otherwise the whole object IS the tool arguments; we strip the reserved
+ * metadata keys (`tool`, `message`) and return the rest. An empty object collapses back to
+ * null so the summary rendering can still skip the trailing preview when appropriate.
+ */
+export function flattenToolInput(
+  toolInputRaw: Record<string, unknown>,
+): unknown {
+  const isCanonical =
+    Object.prototype.hasOwnProperty.call(toolInputRaw, "params") ||
+    Object.prototype.hasOwnProperty.call(toolInputRaw, "tool");
+  if (isCanonical) {
+    return toolInputRaw.params ?? null;
+  }
+  const rest: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(toolInputRaw)) {
+    if (k === "tool" || k === "message") continue;
+    rest[k] = v;
+  }
+  return Object.keys(rest).length > 0 ? rest : null;
+}
+
+/** Cap the persisted `tool_input` JSON at ~4 KB. Long Edit payloads (a whole file body) would
+ *  otherwise bloat the row and slow the SPA render. The cap is applied after JSON serialisation
+ *  so the truncation point is byte-accurate; consumers see a suffix marker in place of trailing
+ *  content. */
+const TOOL_INPUT_CAP_BYTES = 4096;
+export function encodeToolInputForStorage(raw: unknown): string | null {
+  if (raw === undefined || raw === null) return null;
+  let text: string;
+  try {
+    text = JSON.stringify(raw);
+  } catch {
+    text = String(raw);
+  }
+  if (text.length === 0) return null;
+  if (text.length > TOOL_INPUT_CAP_BYTES) {
+    // Preserve a "…" marker so the panel can hint truncation to the reader.
+    text = `${text.slice(0, TOOL_INPUT_CAP_BYTES - 1)}…`;
+  }
+  return text;
+}
+
+/**
  * Compose the human-readable summary that lands in `questions.question`. Never NULL — the
  * schema demands a non-empty string. Keeps the tool name at the front so the Questions
  * screen's default label is a discoverable identifier ("Permission: Bash").
@@ -746,7 +834,10 @@ internalRoutes.post("/internal/permissions/post", requireInternalSecret, async (
       : typeof body.tool_name === "string"
         ? body.tool_name
         : "";
-  const toolParams = toolInputRaw.params ?? null;
+  // GSL-320 — accept BOTH the MCP-style shape (`{tool, params, message}`) AND Claude Code's
+  // real PermissionRequest payload where `tool_input` IS the tool's arguments (`{command: …}`
+  // for Bash). See `flattenToolInput` for the reconciliation rule.
+  const toolParams = flattenToolInput(toolInputRaw);
   const message =
     typeof toolInputRaw.message === "string" && toolInputRaw.message.length > 0
       ? toolInputRaw.message
@@ -780,17 +871,23 @@ internalRoutes.post("/internal/permissions/post", requireInternalSecret, async (
   // Any duplicate qid is impossible in practice (random suffix), but INSERT OR IGNORE keeps
   // the endpoint idempotent against a caller that retries with the same qid via a proxy
   // rewrite (unlikely, but harmless to guard).
+  //
+  // GSL-320 — persist the flattened tool_input alongside the question text so the panel card
+  // can render a dedicated monospace preview (not just the summary shoved into the question
+  // string). NULL on the row when the caller sent no params — the SPA hides the preview slot.
+  const toolInputJson = encodeToolInputForStorage(permission.tool_params);
   db.raw
     .query(
       `INSERT OR IGNORE INTO questions
-         (qid, status, kind, task, question, options, opened_at)
-       VALUES (?, 'open', 'permission', NULL, ?, ?, ?)`,
+         (qid, status, kind, task, question, options, opened_at, tool_input)
+       VALUES (?, 'open', 'permission', NULL, ?, ?, ?, ?)`,
     )
     .run(
       qid,
       formatPermissionQuestion(permission),
       JSON.stringify(PERMISSION_OPTIONS),
       openedAt,
+      toolInputJson,
     );
 
   // Fire the SSE side via a lab-log semantic event: this reaches web clients within one
@@ -849,6 +946,26 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
   const intent =
     typeof body.intent === "string" && body.intent.length > 0 ? body.intent : null;
 
+  // GSL-319 — the feeder can attach short previews of the tool's stdin / stdout so the
+  // extractor spots a PR URL the moment `gh pr create` completes. Both fields are optional
+  // and independently capped in the shim; we scan up to ~600 chars per field here.
+  const commandPreview =
+    typeof body.command_preview === "string" && body.command_preview.length > 0
+      ? body.command_preview.slice(0, 600)
+      : null;
+  const responsePreview =
+    typeof body.response_preview === "string" && body.response_preview.length > 0
+      ? body.response_preview.slice(0, 600)
+      : null;
+  // An explicitly attached pr_url wins (a caller may already have parsed it); otherwise the
+  // extractor scans the three preview strings for the canonical GitHub PR URL pattern.
+  const explicitPrUrl =
+    typeof body.pr_url === "string" && body.pr_url.length > 0 ? body.pr_url : null;
+  const prUrl =
+    explicitPrUrl !== null
+      ? extractPrUrl(explicitPrUrl) // still validate the shape
+      : extractPrUrl(commandPreview, responsePreview, intent);
+
   // Overwrite any pending observation for the same session — the debounce is COALESCE, not
   // FIFO. The last observation is the one we want to reflect.
   pendingObservations.set(sessionId, {
@@ -857,6 +974,7 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
     ts,
     context_pct: contextPct,
     intent,
+    pr_url: prUrl,
   });
   ensureFlushTimer();
 
@@ -864,6 +982,7 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
     ok: true,
     session_id: sessionId,
     tool,
+    pr_url_detected: prUrl,
     pending: pendingObservations.size,
     debounce_ms: TOOL_OBSERVED_FLUSH_MS,
   });
@@ -1095,6 +1214,115 @@ internalRoutes.get(
     }
     observeWait();
     return c.json({ ok: true, ...result });
+  },
+);
+
+// -----------------------------------------------------------------------------
+// GSL-333 (run 09 finding #7) — POST /internal/permissions/:qid/expire
+//
+// When the PermissionRequest hook long-poll times out (`GOSLEEP_HOOK_TIMEOUT_S`), the shim
+// exits 0 and Claude Code falls back to the TUI dialog. Pre-GSL-333 the row stayed
+// `status='open'` in the DB, so the panel kept rendering active Allow/Deny buttons; a
+// subsequent owner click landed as `answered`, but the shim was DEAD and CC had already
+// moved on — the answer was orphaned. Run 09 captured the exact sequence.
+//
+// The shim now POSTs THIS endpoint on the 204 timeout branch. The row transitions to
+// `status='timed-out'` (a NEW terminal state) with `applied_by='shim-timeout'`; the panel
+// reads the status and disables Allow/Deny with an explanatory label ("answered in
+// terminal — hook timed out"). Idempotent: an already-terminal row (a race where the owner
+// clicked Allow at the same instant the shim gave up) is a 200 no-op that leaks nothing.
+//
+// Auth: internal-secret only. Never returns the row's payload — the caller only needs
+// success / failure to move on.
+// -----------------------------------------------------------------------------
+internalRoutes.post(
+  "/internal/permissions/:qid/expire",
+  requireInternalSecret,
+  async (c) => {
+    const qid = c.req.param("qid");
+    if (qid === undefined || qid.length === 0) {
+      return c.json({ ok: false, error: "qid required" }, 400);
+    }
+    const db = getDb();
+    const row = db.raw
+      .query("SELECT qid, status, kind FROM questions WHERE qid = ?")
+      .get(qid) as { qid: string; status: string; kind: string } | null;
+    if (row === null || row === undefined) {
+      return c.json({ ok: false, error: `qid ${qid} not found` }, 404);
+    }
+    if (row.kind !== "permission") {
+      return c.json(
+        {
+          ok: false,
+          error: `qid ${qid} is not a permission row (kind=${row.kind})`,
+        },
+        409,
+      );
+    }
+    // Idempotent: if the row is already terminal, return ok with the observed status.
+    // This covers the race where the owner clicked Allow between the shim's wait giving
+    // up and the shim's expire POST landing — we do NOT want the expire to overwrite an
+    // owner's decision, and we do NOT want the shim's fail-open flow to hit an error.
+    if (row.status !== "open") {
+      return c.json({
+        ok: true,
+        qid,
+        status: row.status,
+        transitioned: false,
+        reason: "row was already terminal — no-op",
+      });
+    }
+    const expiredAt = nowIso();
+    const upd = db.raw
+      .query(
+        `UPDATE questions
+           SET status = 'timed-out',
+               answered_at = ?,
+               applied_by = 'shim-timeout'
+         WHERE qid = ? AND status = 'open' AND kind = 'permission'`,
+      )
+      .run(expiredAt, qid);
+    if (upd.changes === 0) {
+      // Racy loss to a concurrent /actions/permissions/decide — re-read and report the
+      // winning status; still a 200 (the shim's fail-open flow only needs "did it work
+      // or move-on, either way don't block").
+      const fresh = db.raw
+        .query("SELECT status FROM questions WHERE qid = ?")
+        .get(qid) as { status: string } | null;
+      return c.json({
+        ok: true,
+        qid,
+        status: fresh?.status ?? "unknown",
+        transitioned: false,
+        reason: "race — row transitioned concurrently, expire was a no-op",
+      });
+    }
+    // Broadcast the transition so the panel invalidates its Questions query in real time
+    // — same seam GSL-312 hotfix 2 used from doDecidePermission. Without this the panel
+    // would keep the "Allow / Deny" buttons live for up to the SseProvider poll interval.
+    agentSessionsBroadcaster.emit({
+      seq: 0,
+      day: expiredAt.slice(0, 10),
+      ts: expiredAt,
+      src: "core",
+      actor: "internal.permissions.expire",
+      task: null,
+      type: "question.expired",
+      payload: {
+        qid,
+        kind: "permission",
+        status: "timed-out",
+        expired_at: expiredAt,
+      },
+      ingested_from: null,
+    });
+    return c.json({
+      ok: true,
+      qid,
+      status: "timed-out",
+      transitioned: true,
+      expired_at: expiredAt,
+    });
   },
 );
 

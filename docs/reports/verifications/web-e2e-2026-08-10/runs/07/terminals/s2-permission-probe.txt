@@ -1,0 +1,18 @@
+=== S2 permission-card probe (FIX-A) ===
+Sent PermissionRequest payload to scratch core (127.0.0.1:7349):
+  tool_name: PermissionRequest
+  tool_input:
+    tool: Bash
+    params: { command: "grep -R \"TODO\" ./ | head -50" }
+    message: "run07 FIX-A probe — this text must be visible on the panel card"
+
+Core response: 200 { ok:true, qid:"p-…774699f7", tool:"Bash" }
+
+Panel Questions screen loaded:
+  playwright command-text-on-page: 2  (row + dialog)
+  playwright command-in-dialog:    1  (expanded)
+
+Decide allow via POST /actions/permissions/decide → 200 { status:"answered", decision:"allow" }
+
+VERDICT: FIX-A confirmed — the panel renders the actual Bash command
+verbatim ("grep -R \"TODO\" ./ | head -50"), not just the tool name.

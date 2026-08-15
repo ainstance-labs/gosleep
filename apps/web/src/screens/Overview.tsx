@@ -18,8 +18,14 @@ import { QueryStatus } from "../components/QueryStatus";
 import { Dialog } from "../components/ui/Dialog";
 import { Button } from "../components/ui/Button";
 import { useToast } from "../components/ui/Toast";
-import { useRunTick, useStatus, useTakeSnapshot, useTimeline } from "../data/queries";
-import { timeAgo, timeOfDay } from "../lib/format";
+import {
+  useFleet,
+  useRunTick,
+  useStatus,
+  useTakeSnapshot,
+  useTimeline,
+} from "../data/queries";
+import { formatPrLabel, timeAgo, timeOfDay } from "../lib/format";
 import { Badge } from "../components/ui/Badge";
 import type { RunwayResult } from "@gosleep/schema";
 
@@ -92,9 +98,105 @@ function RunwayTile({ runway }: { runway: RunwayResult | undefined }) {
   );
 }
 
+// -----------------------------------------------------------------------------
+// GSL-319 — "Latest PR" surface. Run 06 finding #2: after `gh pr create` opened PR #3, no
+// panel screen surfaced the URL. The panel's whole value proposition is "here is what your
+// agent shipped" — and the shipped PR was invisible. This tile scans the live fleet for the
+// newest `last_pr_url` and renders it as a clickable link so the reader can jump straight
+// into the PR review.
+// -----------------------------------------------------------------------------
+
+interface PrObservation {
+  url: string;
+  session_name: string;
+  observed_at: string | null;
+}
+
+/** Pick the freshest `last_pr_url` across all sessions (live or ended). Null when nothing
+ *  has been observed yet — the Overview simply hides the tile in that state. */
+export function pickLatestPr(
+  sessions: Array<{
+    name: string;
+    last_pr_url?: string | null;
+    last_pr_at?: string | null;
+  }>,
+): PrObservation | null {
+  let best: PrObservation | null = null;
+  for (const s of sessions) {
+    const url = s.last_pr_url;
+    if (typeof url !== "string" || url.length === 0) continue;
+    const at = typeof s.last_pr_at === "string" ? s.last_pr_at : null;
+    if (best === null) {
+      best = { url, session_name: s.name, observed_at: at };
+      continue;
+    }
+    const bestAt = best.observed_at ?? "";
+    if ((at ?? "") > bestAt) {
+      best = { url, session_name: s.name, observed_at: at };
+    }
+  }
+  return best;
+}
+
+function LatestPrCard({ pr }: { pr: PrObservation | null }) {
+  // GSL-328 — empty-state variant. Live-fire run 08 flagged that the tile
+  // vanished entirely on a pristine Overview (no session had emitted
+  // `last_pr_url` yet), so the operator could not tell if the surface was
+  // missing or just quiet. Now the card is always present; when there is no
+  // observation, the body renders a muted "No pull requests yet" line
+  // consistent with the other Overview tiles (Runway / KPI) that keep their
+  // frame when empty.
+  if (pr === null) {
+    return (
+      <Card data-testid="latest-pr-card-empty">
+        <CardHeader>
+          <CardTitle>Latest PR</CardTitle>
+          <span className="text-muted text-xs">no PRs observed yet</span>
+        </CardHeader>
+        <CardBody>
+          <p className="text-muted text-sm">
+            No pull requests yet. The card populates as soon as a fleet
+            session runs <code className="mono">gh pr create</code> (or
+            <code className="mono"> gh pr view &lt;url&gt;</code>).
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Latest PR</CardTitle>
+        <span className="text-muted text-xs">
+          {pr.observed_at !== null ? `observed ${timeAgo(pr.observed_at)}` : "just now"}
+        </span>
+      </CardHeader>
+      <CardBody className="space-y-2">
+        {/* GSL-329 — anchor text is the compact `#N`; `href` still points at
+            the full URL (click behaviour unchanged), `title` prefixes the raw
+            URL so the operator can still hover to see and copy it. */}
+        <a
+          href={pr.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mono inline-block text-sm text-[var(--color-accent)] hover:underline"
+          data-testid="latest-pr-link"
+          title={pr.url}
+        >
+          {formatPrLabel(pr.url)}
+        </a>
+        <p className="text-muted text-xs">
+          opened by <code className="mono">{pr.session_name}</code>
+        </p>
+      </CardBody>
+    </Card>
+  );
+}
+
 export function OverviewScreen() {
   const status = useStatus();
   const timeline = useTimeline(12);
+  const fleet = useFleet();
   const tickMut = useRunTick();
   const snapshotMut = useTakeSnapshot();
   const { push: pushToast } = useToast();
@@ -195,6 +297,15 @@ export function OverviewScreen() {
           )}
         </QueryStatus>
       </div>
+
+      {/* GSL-319 — the "Latest PR" surface. GSL-328 (run 08 minor): always render
+          the card so the surface is discoverable; `LatestPrCard` swaps to an
+          empty-state variant when `pickLatestPr()` returns null. */}
+      {(() => {
+        const pr =
+          fleet.data !== undefined ? pickLatestPr(fleet.data.sessions) : null;
+        return <LatestPrCard pr={pr} />;
+      })()}
 
       <Card>
         <CardHeader>

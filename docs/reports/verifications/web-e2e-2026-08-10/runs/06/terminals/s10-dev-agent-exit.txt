@@ -1,0 +1,97 @@
+
+romanlidovskyi@romans-macbook-pro todo-workspace % export GOSLEEP_WEB_QU
+ESTIONS=1
+romanlidovskyi@romans-macbook-pro todo-workspace % export GOSLEEP_INTERN
+AL_SECRET=e2e-run06-in
+ternal-secret-DO-NOT-USE
+romanlidovskyi@romans-macbook-pro todo-workspace % export GOSLEEP_CORE_U
+RL=http://127.0.0.1:73
+47
+romanlidovskyi@romans-macbook-pro todo-workspace % export GOSLEEP_HOOK_D
+EBUG_LOG=/Users/romanl
+idovskyi/Documents/dev/harness/gosleep/.claude/
+worktrees/e2e-run06/.artifacts/e2e-run06/logs/h
+ook-debug.log
+romanlidovskyi@romans-macbook-pro todo-workspace % env | grep -E "GOSLEE
+P_(WEB_QUESTIONS|INTER
+NAL_SECRET|CORE_URL|HOOK_DEBUG)" | wc -l
+       4
+romanlidovskyi@romans-macbook-pro todo-workspace % clear
+
+romanlidovskyi@romans-macbook-pro todo-workspace % claude --model haiku
+--permission-mode acce
+ptEdits
+
+Resume this session with:
+claude --resume 9f7b0b54-2dcc-4fce-89d8-9c21a7b12169
+romanlidovskyi@romans-macbook-pro todo-workspace %
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -52,6 +52,7 @@ import { performPublish, type PublishResult } from "../actions/publish.ts";
 import { getSessionAdapter } from "../adapter/session.ts";
 import { loadManifest, type ManifestRule } from "../manifest/parser.ts";
 import { runSyncCycle, type JiraSyncChangeSummary } from "../workers/jira-sync.ts";
+import { broadcaster } from "../sse/broadcaster.ts";
 
 export const actionsRoutes = new Hono();
 
@@ -1221,6 +1222,40 @@ async function doDecidePermission(
     answer_text: input.decision,
     answered_at,
     answered_by: input.by,
+  });
+
+  // GSL-312 (hotfix 2) — SSE cross-tab fan-out.
+  //
+  // The decide path writes only to SQLite (and wakes the paused shim above). Unlike doAnswer
+  // — which spawns lab-emit.sh → JSONL → tail-indexer → broadcaster — nothing here reaches
+  // the tail indexer, so a second dashboard tab kept rendering the row as OPEN with active
+  // Allow/Deny buttons for 6+ seconds after the first tab decided (QA run 04 MAJOR#1).
+  //
+  // Fix: emit a synthetic in-process event on the same broadcaster the tail indexer feeds.
+  // SseProvider.tsx invalidates ["core","questions"] on any type prefixed `question.`, and
+  // the GSL-309 250 ms coalescer collapses this into the existing bucket. The event carries
+  // `seq: 0` — the pattern from workers/fleet-poll.ts — marking it as non-persistent (no
+  // corresponding row in the events table; SSE consumers key off type, not seq).
+  //
+  // Live-tested with two headless Chrome pages in .artifacts/hotfix2-live/ (see dev_history):
+  // decide in tab A → tab B's Questions query refetch completes in < 400 ms.
+  broadcaster.emit({
+    seq: 0,
+    day: answered_at.slice(0, 10),
+    ts: answered_at,
+    src: "core",
+    actor: "actions.decide",
+    task: null,
+    type: "question.answered",
+    payload: {
+      qid: input.qid,
+      kind: "permission",
+      decision: input.decision,
+      answered_at,
+      answered_by: input.by,
+      applied_by: "owner",
+    },
+    ingested_from: null,
   });
 
   return {

@@ -37,7 +37,8 @@ function makeMemoryDb(): OpenedDb {
     applied_by TEXT,
     applied_rule_ref TEXT,
     defer_until TEXT,
-    last_event_seq INTEGER
+    last_event_seq INTEGER,
+    tool_input TEXT
   );`);
   const db = drizzle(raw, { schema });
   return { db, raw, path: ":memory:" };

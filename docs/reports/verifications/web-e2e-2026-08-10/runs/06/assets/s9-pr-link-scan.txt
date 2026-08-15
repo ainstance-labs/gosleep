@@ -1,0 +1,33 @@
+captured s8a-tasks-after-pr
+captured s8b-timeline-after-pr
+captured s8c-overview-after-pr
+captured s8d-fleet-after-pr
+captured s8e-questions-answered
+---S9-PR-LINK-SCAN---
+{
+  "s8a-tasks-after-pr": {
+    "https?:\\/\\/github\\.com\\/[^\"'\\s<>]+\\/pull\\/\\d+": [],
+    "pull request": [],
+    "gh pr view": []
+  },
+  "s8b-timeline-after-pr": {
+    "https?:\\/\\/github\\.com\\/[^\"'\\s<>]+\\/pull\\/\\d+": [],
+    "pull request": [],
+    "gh pr view": []
+  },
+  "s8c-overview-after-pr": {
+    "https?:\\/\\/github\\.com\\/[^\"'\\s<>]+\\/pull\\/\\d+": [],
+    "pull request": [],
+    "gh pr view": []
+  },
+  "s8d-fleet-after-pr": {
+    "https?:\\/\\/github\\.com\\/[^\"'\\s<>]+\\/pull\\/\\d+": [],
+    "pull request": [],
+    "gh pr view": []
+  },
+  "s8e-questions-answered": {
+    "https?:\\/\\/github\\.com\\/[^\"'\\s<>]+\\/pull\\/\\d+": [],
+    "pull request": [],
+    "gh pr view": []
+  }
+}

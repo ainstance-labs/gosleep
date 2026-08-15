@@ -49,14 +49,14 @@ function freshDb(): OpenedDb {
     qid TEXT PRIMARY KEY, status TEXT NOT NULL, kind TEXT NOT NULL,
     task TEXT, question TEXT NOT NULL, options TEXT, opened_at TEXT NOT NULL,
     answered_at TEXT, answer_text TEXT, resolved_at TEXT, applied TEXT,
-    last_event_seq INTEGER
+    last_event_seq INTEGER, tool_input TEXT
   );`);
   raw.exec(`CREATE TABLE agent_sessions (
     session_id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL,
     pid INTEGER, model TEXT, cwd TEXT NOT NULL, cycle INTEGER,
     context_pct INTEGER, current_tool TEXT, current_intent TEXT,
     status TEXT NOT NULL, started_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-    ended_at TEXT
+    ended_at TEXT, last_pr_url TEXT, last_pr_at TEXT
   );`);
   const db = drizzle(raw, { schema });
   return { db, raw, path: ":memory:" };

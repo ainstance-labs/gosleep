@@ -1,0 +1,68 @@
+2026-08-10T13:35:49Z START step-01 setup-worktree PASS
+2026-08-10T13:35:49Z END step-01 setup-worktree PASS
+2026-08-10T13:35:52Z START step-02 bun-install
+2026-08-10T13:35:53Z END step-02 bun-install PASS
+2026-08-10T13:36:11Z START step-03 web-build
+2026-08-10T13:36:23Z END step-03 web-build PASS
+2026-08-10T13:36:23Z START step-04 migrate-scratch-db
+2026-08-10T13:36:23Z END step-04 migrate-scratch-db PASS
+2026-08-10T13:38:05Z START step-05 boot-core PASS
+2026-08-10T13:38:05Z END step-05 boot-core PASS
+2026-08-10T13:38:05Z START step-06 http-smoke PASS
+2026-08-10T13:38:05Z END step-06 http-smoke PASS
+2026-08-10T13:44:26Z START step-07 screens-light-desktop
+2026-08-10T13:45:24Z END step-07 screens-light-desktop PASS
+2026-08-10T13:45:24Z START step-08 screens-dark-desktop
+2026-08-10T13:46:35Z END step-08 screens-dark-desktop PASS
+2026-08-10T13:46:35Z START step-09 screens-mobile-390
+2026-08-10T13:47:39Z END step-09 screens-mobile-390 PASS
+2026-08-10T13:47:39Z START step-10 regression-gsl310-deep-links
+2026-08-10T13:48:44Z END step-10 regression-gsl310-deep-links PASS
+2026-08-10T13:48:44Z START step-11 regression-gsl309-idle-requests
+2026-08-10T13:50:09Z END step-11 regression-gsl309-idle-requests PASS
+2026-08-10T13:50:09Z START step-12 regression-gsl308-answer-freetext
+2026-08-10T13:50:20Z END step-12 regression-gsl308-answer-freetext FAIL
+2026-08-10T13:50:20Z START step-13 interactive-answer-variant
+2026-08-10T13:50:33Z END step-13 interactive-answer-variant FAIL
+2026-08-10T13:50:33Z START step-14 sse-liveness
+2026-08-10T13:50:59Z END step-14 sse-liveness PASS
+2026-08-10T13:50:59Z START step-15 action-snapshot
+2026-08-10T13:51:08Z END step-15 action-snapshot FAIL
+2026-08-10T13:51:08Z START step-16 route-404
+2026-08-10T13:51:13Z END step-16 route-404 PASS
+2026-08-10T13:51:13Z START step-17 stress-rapid-clicks
+2026-08-10T13:51:20Z END step-17 stress-rapid-clicks PASS
+2026-08-10T13:51:20Z START step-18 nav-back-forward
+2026-08-10T13:52:02Z END step-18 nav-back-forward PASS
+2026-08-10T13:54:53Z START step-12 regression-gsl308-answer-freetext (retry)
+2026-08-10T13:55:07Z END step-12 regression-gsl308-answer-freetext FAIL
+2026-08-10T13:55:07Z START step-13 interactive-answer-variant (retry)
+2026-08-10T13:55:20Z END step-13 interactive-answer-variant FAIL
+2026-08-10T13:55:20Z START step-15 action-snapshot (retry)
+2026-08-10T13:55:32Z END step-15 action-snapshot PASS
+2026-08-10T13:56:54Z START step-12 regression-gsl308-answer-freetext (retry)
+2026-08-10T13:57:07Z END step-12 regression-gsl308-answer-freetext FAIL
+2026-08-10T13:57:07Z START step-13 interactive-answer-variant (retry)
+2026-08-10T13:57:20Z END step-13 interactive-answer-variant FAIL
+2026-08-10T13:57:20Z START step-15 action-snapshot (retry)
+2026-08-10T13:57:32Z END step-15 action-snapshot PASS
+2026-08-10T14:00:17Z START step-12 regression-gsl308-answer-freetext (retry3)
+2026-08-10T14:00:30Z END step-12 regression-gsl308-answer-freetext FAIL
+2026-08-10T14:00:30Z START step-13 interactive-answer-variant (retry3)
+2026-08-10T14:00:42Z END step-13 interactive-answer-variant FAIL
+2026-08-10T14:01:46Z START step-12 regression-gsl308-answer-freetext (retry4)
+2026-08-10T14:02:00Z END step-12 regression-gsl308-answer-freetext FAIL
+2026-08-10T14:02:00Z START step-13 interactive-answer-variant (retry4)
+2026-08-10T14:02:12Z END step-13 interactive-answer-variant FAIL
+2026-08-10T14:03:33Z START step-12 regression-gsl308-answer-freetext (retry5)
+2026-08-10T14:03:47Z END step-12 regression-gsl308-answer-freetext PASS
+2026-08-10T14:03:47Z START step-13 interactive-answer-variant (retry5)
+2026-08-10T14:03:59Z END step-13 interactive-answer-variant PASS
+2026-08-10T14:04:35Z START step-19 action-defer
+2026-08-10T14:04:47Z END step-19 action-defer PASS
+2026-08-10T14:04:47Z START step-20 content-sanity
+2026-08-10T14:06:35Z END step-20 content-sanity PASS
+2026-08-10T14:11:47Z START step-21 build-report PASS
+2026-08-10T14:11:47Z END step-21 build-report PASS
+2026-08-10T14:11:47Z START step-22 teardown
+2026-08-10T14:12:28Z END step-22 teardown PASS

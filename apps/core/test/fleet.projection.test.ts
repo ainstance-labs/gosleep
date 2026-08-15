@@ -33,7 +33,9 @@ raw.exec(`CREATE TABLE agent_sessions (
   status TEXT NOT NULL,
   started_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  ended_at TEXT
+  ended_at TEXT,
+  last_pr_url TEXT,
+  last_pr_at TEXT
 );`);
 // Provide the tables /status expects (only needed if /status is exercised — /fleet does not
 // touch these, but /bundle does; we're testing /fleet only here). heartbeat is joined into

@@ -47,6 +47,10 @@ const TONE: Record<string, StatusTone> = {
   resolved: "accent",
   superseded: "neutral",
   deferred: "info",
+  // GSL-333 — a permission row transitions to this terminal state when the shim's
+  // long-poll timed out (Claude Code fell back to the TUI dialog). Same neutral tone as
+  // 'superseded' — the row is settled but from a fallback path, not from the panel.
+  "timed-out": "neutral",
 };
 
 interface AnswerDialogState {
@@ -190,6 +194,195 @@ function ProvenanceBadge({
     <Badge tone={applied_by === "owner" ? "ok" : "neutral"} title={applied_by}>
       applied by {applied_by}
     </Badge>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// ToolInputPreview — the command / file path attached to a permission-kind question
+// (GSL-320, fix for run 06 finding #1).
+//
+// Without this block the permission card read only "Permission request: Bash" with an
+// Allow / Deny pair, and the owner had no way to see what would actually run — during run 06
+// the dev-agent tried `cd /Users/…/gosleep && git checkout -b …` (a HARD-BANNED write into
+// the shared tree) and the panel gave zero context. The core now persists `tool_input` on the
+// row; this component renders it for the reader:
+//   - Bash tool_input `{ command, description? }` → primary line = command (monospace, wrap),
+//     description as a small caption underneath if present.
+//   - Edit tool_input `{ file_path, old_string, new_string }` → show file_path prominently
+//     plus a compact diff-like block for the two strings (truncated).
+//   - Write tool_input `{ file_path, content }` → file_path + a short content preview.
+//   - MCP-style `{ tool, params, message? }` → dumps params as JSON.
+//   - Anything else → JSON.stringify pretty-printed (fallback, never crashes).
+// The label above the block names the shape ("Command", "File edit", "File write", "Tool
+// arguments") so the reader can tell at a glance what class of action is being approved.
+// -----------------------------------------------------------------------------
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** Label shown above the preview block on a permission card. */
+export function formatToolInputLabel(input: unknown): string {
+  if (!isRecord(input)) return "Tool input";
+  if (typeof input.command === "string") return "Command";
+  if (typeof input.file_path === "string" && "old_string" in input) return "File edit";
+  if (typeof input.file_path === "string" && "content" in input) return "File write";
+  if (typeof input.file_path === "string") return "File path";
+  if (typeof input.tool === "string") return "Tool arguments";
+  return "Tool input";
+}
+
+/** Body text shown inside the preview block. Kept as plain text so the panel renders it in a
+ *  wrap-preserving `<pre>` block; JSON.stringify indentation carries structure without React
+ *  needing to know each schema. */
+export function formatToolInputBody(input: unknown): string {
+  if (input === null || input === undefined) return "";
+  if (typeof input === "string") return input;
+  if (isRecord(input)) {
+    // Bash — one line is the whole story. Show the command verbatim, then optional description.
+    if (typeof input.command === "string") {
+      const desc =
+        typeof input.description === "string" && input.description.length > 0
+          ? `\n\n# ${input.description}`
+          : "";
+      return `${input.command}${desc}`;
+    }
+    // Edit / Write — file_path first, so the reader knows the target before any content.
+    if (typeof input.file_path === "string") {
+      const parts: string[] = [String(input.file_path)];
+      if ("old_string" in input || "new_string" in input) {
+        const oldS = typeof input.old_string === "string" ? input.old_string : "";
+        const newS = typeof input.new_string === "string" ? input.new_string : "";
+        parts.push("");
+        parts.push(`- ${oldS.slice(0, 400)}${oldS.length > 400 ? "…" : ""}`);
+        parts.push(`+ ${newS.slice(0, 400)}${newS.length > 400 ? "…" : ""}`);
+      } else if ("content" in input) {
+        const content = typeof input.content === "string" ? input.content : "";
+        parts.push("");
+        parts.push(`${content.slice(0, 800)}${content.length > 800 ? "…" : ""}`);
+      }
+      return parts.join("\n");
+    }
+    // MCP-style — dump params.
+    if (typeof input.tool === "string" && "params" in input) {
+      const params = (input as { params?: unknown }).params;
+      return JSON.stringify(params ?? null, null, 2);
+    }
+  }
+  try {
+    return JSON.stringify(input, null, 2);
+  } catch {
+    return String(input);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// QuestionOptions — formatted options list (GSL-314, hotfix 2 minor#3)
+//
+// AskUserQuestion payloads carry `options: Array<{label, description?, pros?[], cons?[]}>`
+// per the CLI contract. The pre-fix panel just dumped `JSON.stringify(options, null, 2)`
+// into a `<pre>` block; the owner had to read the raw JSON with quotes / brackets, then type
+// the answer verbatim into the free-text field. This component renders each option as its
+// own card row: label bold, description muted, pros/cons on separate lines with iconic
+// prefixes. Unknown / non-array shapes fall back to the original JSON dump so the panel
+// never hides data it does not know how to structure.
+// -----------------------------------------------------------------------------
+
+interface OptionShape {
+  label?: unknown;
+  description?: unknown;
+  pros?: unknown;
+  cons?: unknown;
+}
+
+function looksLikeOptionArray(v: unknown): v is OptionShape[] {
+  if (!Array.isArray(v)) return false;
+  if (v.length === 0) return false;
+  for (const item of v) {
+    if (item === null || typeof item !== "object") return false;
+    const label = (item as OptionShape).label;
+    if (typeof label !== "string" || label.length === 0) return false;
+  }
+  return true;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string" && v.length > 0);
+}
+
+function QuestionOptions({ options }: { options: unknown }) {
+  if (typeof options === "string" && options.length > 0) {
+    return (
+      <div className="sunken rounded-md p-3">
+        <div className="text-muted mb-1 text-xs uppercase tracking-wide">Options</div>
+        <p className="text-sm text-[var(--color-fg)]">{options}</p>
+      </div>
+    );
+  }
+  if (!looksLikeOptionArray(options)) {
+    return (
+      <div className="sunken rounded-md p-3">
+        <div className="text-muted mb-1 text-xs uppercase tracking-wide">Options</div>
+        <pre className="mono text-secondary max-h-40 overflow-auto text-xs">
+          {typeof options === "string"
+            ? options
+            : JSON.stringify(options, null, 2)}
+        </pre>
+      </div>
+    );
+  }
+  return (
+    <div className="sunken rounded-md p-3">
+      <div className="text-muted mb-2 text-xs uppercase tracking-wide">
+        Options ({options.length})
+      </div>
+      <ul className="flex flex-col gap-2">
+        {options.map((opt, idx) => {
+          const label = typeof opt.label === "string" ? opt.label : String(opt.label ?? "");
+          const description =
+            typeof opt.description === "string" && opt.description.length > 0
+              ? opt.description
+              : null;
+          const pros = stringList(opt.pros);
+          const cons = stringList(opt.cons);
+          return (
+            <li
+              key={`${idx}-${label}`}
+              className="rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-2.5"
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="text-muted mono text-xs">{idx + 1}.</span>
+                <span className="text-sm font-medium text-[var(--color-fg)]">{label}</span>
+              </div>
+              {description !== null ? (
+                <p className="text-secondary mt-1 text-xs">{description}</p>
+              ) : null}
+              {pros.length > 0 ? (
+                <ul className="text-secondary mt-1.5 flex flex-col gap-0.5 text-xs">
+                  {pros.map((p, i) => (
+                    <li key={`pro-${i}`} className="flex gap-1.5">
+                      <span aria-hidden className="text-[var(--color-ok)]">+</span>
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {cons.length > 0 ? (
+                <ul className="text-secondary mt-1 flex flex-col gap-0.5 text-xs">
+                  {cons.map((cItem, i) => (
+                    <li key={`con-${i}`} className="flex gap-1.5">
+                      <span aria-hidden className="text-[var(--color-warn)]">−</span>
+                      <span>{cItem}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -445,17 +638,28 @@ export function QuestionsScreen() {
                   <CardBody className="space-y-3">
                     <CardTitle>{question.question}</CardTitle>
 
-                    {question.options !== null && question.options !== undefined ? (
+                    {/* GSL-320 — permission cards render the actual command / file path being
+                        approved. Without this block the owner saw only "Permission request:
+                        Bash" with no context (run 06 finding #1). Only shown for
+                        kind='permission' rows that have a non-null tool_input. */}
+                    {isPermission &&
+                    question.tool_input !== null &&
+                    question.tool_input !== undefined ? (
                       <div className="sunken rounded-md p-3">
                         <div className="text-muted mb-1 text-xs uppercase tracking-wide">
-                          Options
+                          {formatToolInputLabel(question.tool_input)}
                         </div>
-                        <pre className="mono text-secondary max-h-40 overflow-auto text-xs">
-                          {typeof question.options === "string"
-                            ? question.options
-                            : JSON.stringify(question.options, null, 2)}
+                        <pre
+                          className="mono text-secondary max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs"
+                          data-testid="permission-tool-input"
+                        >
+                          {formatToolInputBody(question.tool_input)}
                         </pre>
                       </div>
+                    ) : null}
+
+                    {question.options !== null && question.options !== undefined ? (
+                      <QuestionOptions options={question.options} />
                     ) : null}
 
                     {question.answer_text !== null &&
@@ -502,6 +706,21 @@ export function QuestionsScreen() {
                     ) : question.status === "deferred" ? (
                       <div className="text-muted text-xs">
                         deferred, no timer — reopen by hand
+                      </div>
+                    ) : null}
+
+                    {/* GSL-333 — permission row that transitioned via the shim-timeout path.
+                        The Allow / Deny buttons are already gone (canDecide guards on
+                        status === "open") but a plain "answered" badge would falsely imply
+                        someone answered here in the panel. Spell out where the decision
+                        actually happened so the operator understands why this row is inert. */}
+                    {isPermission && question.status === "timed-out" ? (
+                      <div
+                        className="text-muted text-xs"
+                        data-testid="permission-timed-out-note"
+                      >
+                        answered in terminal — hook long-poll timed out; the TUI dialog
+                        took over. No panel action available.
                       </div>
                     ) : null}
 
@@ -648,11 +867,17 @@ export function QuestionsScreen() {
           autoFocus
           placeholder="Type the answer for the agent…"
           value={answerDialog?.value ?? ""}
-          onChange={(e) =>
+          onChange={(e) => {
+            // GSL-308 — capture the string synchronously. React 19 is free to invoke the
+            // state-updater outside the synchronous handler window; by the time the updater
+            // runs, the SyntheticEvent is recycled and `e.currentTarget` is null → TypeError
+            // that the router boundary catches, blanking the entire /questions route until a
+            // full reload. Reading `value` before entering the updater fixes the class of bug.
+            const v = e.currentTarget.value;
             setAnswerDialog((prev) =>
-              prev === null ? prev : { ...prev, value: e.currentTarget.value },
-            )
-          }
+              prev === null ? prev : { ...prev, value: v },
+            );
+          }}
         />
         <p className="text-muted mt-2 text-xs">
           Provenance: <code className="mono">owner-web</code> via <code className="mono">web</code> channel.
@@ -697,11 +922,13 @@ export function QuestionsScreen() {
           autoFocus
           placeholder="What was applied to close this out?"
           value={resolveDialog?.value ?? ""}
-          onChange={(e) =>
+          onChange={(e) => {
+            // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+            const v = e.currentTarget.value;
             setResolveDialog((prev) =>
-              prev === null ? prev : { ...prev, value: e.currentTarget.value },
-            )
-          }
+              prev === null ? prev : { ...prev, value: v },
+            );
+          }}
         />
         <p className="text-muted mt-2 text-xs">
           <code className="mono">lab-emit resolve</code> enforces manifest §2 (never before deadline unless <code className="mono">--early</code>);
@@ -802,11 +1029,13 @@ export function QuestionsScreen() {
             rows={2}
             placeholder="Optional: override the answer text (default = the rule body)."
             value={applyDialog?.answerOverride ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+              const v = e.currentTarget.value;
               setApplyDialog((prev) =>
-                prev === null ? prev : { ...prev, answerOverride: e.currentTarget.value },
-              )
-            }
+                prev === null ? prev : { ...prev, answerOverride: v },
+              );
+            }}
           />
         </div>
       </Dialog>
@@ -876,11 +1105,13 @@ export function QuestionsScreen() {
               className="surface mono w-full rounded-md p-2 text-sm"
               placeholder="YYYY-MM-DDTHH:MM:SSZ (empty = no timer)"
               value={deferDialog?.customIso ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+                const v = e.currentTarget.value;
                 setDeferDialog((prev) =>
-                  prev === null ? prev : { ...prev, customIso: e.currentTarget.value },
-                )
-              }
+                  prev === null ? prev : { ...prev, customIso: v },
+                );
+              }}
             />
           ) : null}
         </div>
@@ -937,11 +1168,13 @@ export function QuestionsScreen() {
             autoFocus
             placeholder="Why deny? (optional; sent as permissionDecisionReason)"
             value={denyDialog?.reason ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              // GSL-308 — same capture-then-update pattern as the Answer dialog above.
+              const v = e.currentTarget.value;
               setDenyDialog((prev) =>
-                prev === null ? prev : { ...prev, reason: e.currentTarget.value },
-              )
-            }
+                prev === null ? prev : { ...prev, reason: v },
+              );
+            }}
           />
         </div>
       </Dialog>

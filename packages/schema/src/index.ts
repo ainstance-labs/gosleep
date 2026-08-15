@@ -94,6 +94,12 @@ export const QuestionRow = z.object({
   // GSL-278 defer field — ISO-8601 or null (no timer).
   defer_until: IsoTimestamp.nullable().optional(),
   last_event_seq: Seq.nullable().optional(),
+  // GSL-320 — for `kind='permission'` rows: the parsed `tool_input` object (Bash →
+  // `{command, description?}`, Edit → `{file_path, old_string, new_string}`, Write →
+  // `{file_path, content}`, MCP → `{tool, params, message?}`). Null on non-permission rows
+  // and on legacy pre-GSL-320 rows. The panel renders it as a monospace preview so the
+  // owner sees WHAT is being approved.
+  tool_input: z.unknown().nullable().optional(),
 });
 export type QuestionRow = z.infer<typeof QuestionRow>;
 
@@ -206,6 +212,11 @@ export const FleetSession = z.object({
   started_at: IsoTimestamp,
   updated_at: IsoTimestamp,
   ended_at: IsoTimestamp.nullable().optional(),
+  // GSL-319 — most-recent GitHub PR URL observed for this session (and when). Null when the
+  // session has not touched a PR yet. The Overview panel picks the newest across all live
+  // sessions for its "Latest PR" card; Fleet renders it as a per-row chip.
+  last_pr_url: z.string().nullable().optional(),
+  last_pr_at: IsoTimestamp.nullable().optional(),
 });
 export type FleetSession = z.infer<typeof FleetSession>;
 

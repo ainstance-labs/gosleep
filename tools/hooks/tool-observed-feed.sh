@@ -96,7 +96,15 @@ fi
 # this as "roughly how full the window is" — not a byte-accurate meter, but real signal
 # that moves as the session grows. Never blocks the POST if the transcript is
 # unreadable — we simply omit context_pct in that case.
-POST_BODY="$(python3 - "$STDIN_FILE" <<PY || true
+# Heredoc delimiter is QUOTED (`'PY'`) so bash performs no variable expansion or backtick
+# execution inside the python body. Pre-GSL-332 this was unquoted (`<<PY`) — harmless while
+# the comments only mentioned `intent` / `command` (single-word "commands" that either
+# silently failed or, worse, hit the `command` builtin), but the moment a comment mentioned
+# `gh pr create` bash tried to execute gh at every invocation of the hook (noisy stderr,
+# still fail-open by construction but polluting logs). The python heredoc references NO shell
+# variables — the STDIN filename is passed as `sys.argv[1]` — so quoting the delimiter is
+# strictly safer and adds zero cost.
+POST_BODY="$(python3 - "$STDIN_FILE" <<'PY' || true
 import json, os, sys
 try:
     raw = open(sys.argv[1]).read() if os.path.getsize(sys.argv[1]) > 0 else "{}"
@@ -117,6 +125,53 @@ if not session_id or not tool:
 body = {"session_id": session_id, "tool": tool}
 if intent:
     body["intent"] = intent[:200]  # keep the intent short — Fleet card is one line.
+
+# GSL-319 — attach short previews of the tool's stdin (command / arguments) and stdout so
+# the core-side PR-URL extractor can spot `https://github.com/<org>/<repo>/pull/<n>` the
+# moment `gh pr create` / `gh pr view` returns. Both fields are optional and independently
+# capped at 600 chars — long payloads (a big diff, a full file body) never bloat the POST.
+# The core scans command_preview + response_preview + intent for the PR URL pattern and
+# UPSERTs it as `agent_sessions.last_pr_url`, which then flows through /fleet + /bundle
+# and lands on Overview's "Latest PR" card.
+#
+# GSL-332 (run 09 finding #8): real `gh pr create` prints its status and URL block to
+# STDERR (verified against the CC 2.1.226 PostToolUse payload; the URL landed on
+# tool_response.stderr and stdout was empty). Pre-GSL-332 the loop only scanned
+# stdout / output so the extractor never fired on a real agent action; the Latest-PR
+# card only populated when the QA harness manually POSTed a synthetic payload with
+# pr_url set. Fix: for the dict shape, take stdout AND stderr (each capped at ~300 chars
+# so the concatenated total honors the server 600-char slice); the extractor scans the
+# joined blob for the canonical GitHub PR URL, so whichever stream carried it wins.
+try:
+    tool_input = d.get("tool_input") or {}
+    if isinstance(tool_input, dict):
+        # Bash → {"command": "…", "description": "…"}. Others → serialise the whole blob.
+        cmd = tool_input.get("command")
+        if isinstance(cmd, str) and cmd:
+            body["command_preview"] = cmd[:600]
+        else:
+            # Fallback: dump the tool_input JSON so an Edit/Write/mcp payload that mentions
+            # a PR URL in a description still surfaces.
+            body["command_preview"] = json.dumps(tool_input)[:600]
+    tool_response = d.get("tool_response")
+    if isinstance(tool_response, dict):
+        # Collect every text stream the payload might carry. `stdout` + `stderr` are the
+        # Bash tool contract; `output` is the text-tool contract (Edit / Write). We NEVER
+        # skip a non-empty stream: `gh pr create` on 2.1.226 leaves stdout empty and
+        # ships the pull-request URL on stderr, so a `break` after the first non-empty
+        # stream would still lose it. All fields are truncated per-stream AND the
+        # concatenated preview is capped at the same 600 chars the server slices.
+        parts = []
+        for key in ("stdout", "stderr", "output"):
+            val = tool_response.get(key)
+            if isinstance(val, str) and val:
+                parts.append(val[:300])
+        if parts:
+            body["response_preview"] = ("\n".join(parts))[:600]
+    elif isinstance(tool_response, str) and tool_response:
+        body["response_preview"] = tool_response[:600]
+except Exception:
+    pass  # never fail-close on preview extraction; the PR URL is a nice-to-have.
 
 # Approximate context_pct from transcript file size.
 try:

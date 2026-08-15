@@ -1,0 +1,5 @@
+2026-08-11T11:12:08Z S1 baseline captured: 5 shots
+2026-08-11T11:18:36Z S2 done: perm card posted (FIX-A confirmed, actual command visible). TUI shows IN PARALLEL, not after timeout. Post-timeout panel-answer is ORPHANED (DB=answered, TUI still open, agent still waiting). Agent waits indefinitely on TUI. Denied via TUI to unblock. Probe pane %301 exited.
+2026-08-11T11:41:08Z S3-S7 done: Q1 answered live, DEFER round-trip proven live (71s), agent commit+push+PR #8, backfilled pr_url for FIX-C render test.
+2026-08-11T11:41:08Z S8 report built at index.html + ru/index.html (self-checked in headless Chromium: light+dark themes render, lightbox opens with keyboard/arrows, 9 findings render with severities CRITICAL/MAJOR/MINOR literal in both locales).
+2026-08-11T11:42:27Z teardown OK — scratch core killed, ports 7353+9253 clean, $HOME/e2e-workspaces/ empty, worktree removed, no e2e-run09 tmux panes. Shared tree byte-identical except runs/09/**.

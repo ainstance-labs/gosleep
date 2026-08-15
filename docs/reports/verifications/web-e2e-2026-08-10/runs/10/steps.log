@@ -1,0 +1,19 @@
+2026-08-11T12:20Z  setup     scratch core booted on :7355 with fresh migrated DB (worktree=.claude/worktrees/e2e-reverify @ 179bb42)
+2026-08-11T12:20Z  setup     dev-agent clone at $HOME/e2e-workspaces/todo-reverify with hooks wired to gosleep shims
+2026-08-11T12:24Z  C1 start  poller started, baseline=2 sessions (gosleep-d9, tasty-lunch-65); dev-agent tmux pane e2e-reverify:0.%305 launched
+2026-08-11T12:24Z  C1 obs    dev-agent session 3f7aa3a6 discovered at poll t=28s (started_at=12:24:35.633Z) with model=null, status=idle
+2026-08-11T12:25Z  C1 obs    model remained null for 12 consecutive polls (t=28s → t=72s) — panel shows unknown/starting during boot grace
+2026-08-11T12:25Z  C1 obs    model transitioned to "claude-sonnet-5" at t=76.1s (past 60s grace, transcript first-assistant line arrived)
+2026-08-11T12:25Z  C1 done   PASS — no fabricated model appeared during boot window; sequence null→null→...→sonnet-5
+2026-08-11T12:36Z  C2 obs    dev-agent opened PR #11 via gh pr create; PostToolUse[Bash] fired tool-observed-feed.sh (worktree copy with FIX-2)
+2026-08-11T12:36Z  C2 obs    /fleet.last_pr_url = https://github.com/ainstance-labs/gosleep-e2e-todo/pull/11 (captured from stderr; no manual POST)
+2026-08-11T12:36Z  C2 done   PASS — FIX-2 stderr-scrape confirmed live
+2026-08-11T12:39Z  C3 obs    non-bypass Sonnet dev-agent (pane e2e-reverify:1) prompted with a curl; PermissionRequest hook fired → row qid=p-20260811-123912-685d2b09 posted status=open
+2026-08-11T12:39Z  C3 obs    before-timeout screenshot taken (Allow/Deny buttons live)
+2026-08-11T12:44Z  C3 diag   real-agent path: shim did NOT expire the row (still open 3+ minutes past HOOK_TIMEOUT_S=30). Debug rerun via manual invocation showed expire_status=403 "origin required"
+2026-08-11T12:45Z  C3 diag   root cause found — the FIX-3 shim addition (permission-request-hook.sh:249-255) issues the expire POST WITHOUT -H "Origin: $ORIGIN_HEADER"; requireLocalOrigin middleware rejects with 403
+2026-08-11T12:45Z  C3 obs    direct POST /internal/permissions/:qid/expire WITH Origin header → 200 transitioned:true; WITHOUT Origin → 403 "origin required"
+2026-08-11T12:45Z  C3 obs    server endpoint + panel display + decide=409 guard all work (verified via direct expire on the same row → status=timed-out, applied_by=shim-timeout; decide returned HTTP 409 "not open (status=timed-out)")
+2026-08-11T12:45Z  C3 verdict FAIL in the real-agent path (blocker): the shim's expire call cannot reach the endpoint under the deployed CSRF middleware → row stays open → panel keeps Allow/Deny live → the run-09 orphan-answer bug is NOT fixed for real dev-agents. Server + panel legs of FIX-3 are otherwise correct.
+2026-08-11T12:47Z  report    HTML dashboard rendered (EN + RU shell) at docs/reports/verifications/web-e2e-2026-08-10/runs/10/index.html
+2026-08-11T12:47Z  report    smoke: EN + RU pages load, 3 findings, 8 screenshots wired; no unfilled slot markers

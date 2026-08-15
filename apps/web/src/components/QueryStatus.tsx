@@ -1,4 +1,9 @@
 // @gosleep/web — small helper: renders skeletons / error / empty for a query result.
+//
+// GSL-314 (hotfix 2) — the 401 recovery hint used to hardcode `127.0.0.1:7331` even when the
+// SPA was served from a different port (`GOSLEEP_CORE_PORT` override, or the scratch QA harness
+// on :7344). We derive the origin from `window.location` at render time so the diagnostic always
+// points at the port the panel is actually running on.
 
 import type { ReactNode } from "react";
 import { Card, CardBody } from "./ui/Card";
@@ -12,6 +17,15 @@ interface Props<T> {
   emptyMessage?: string;
   children: (data: T) => ReactNode;
   skeleton?: ReactNode;
+}
+
+/** Best-effort read of the running SPA's origin — falls back to the historical default so a
+ *  stale test harness without `window` still shows a sensible hint. */
+function coreOrigin(): string {
+  if (typeof window !== "undefined" && window.location && window.location.origin.length > 0) {
+    return window.location.origin;
+  }
+  return "http://127.0.0.1:7331";
 }
 
 export function QueryStatus<T>({
@@ -48,7 +62,8 @@ export function QueryStatus<T>({
             {(error as Error).message ?? "Request failed"}
           </p>
           <p className="text-secondary mt-1 text-xs">
-            Check that gosleep-core is running on 127.0.0.1:7331 and the Bearer token in
+            Check that gosleep-core is running on{" "}
+            <span className="mono">{coreOrigin()}</span> and the Bearer token in
             sessionStorage is current.
           </p>
         </CardBody>

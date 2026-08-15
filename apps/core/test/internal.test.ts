@@ -43,7 +43,8 @@ raw.exec(`CREATE TABLE questions (
   applied_by TEXT,
   applied_rule_ref TEXT,
   defer_until TEXT,
-  last_event_seq INTEGER
+  last_event_seq INTEGER,
+  tool_input TEXT
 );`);
 const scratchDb = drizzle(raw, { schema });
 const openedDb: OpenedDb = { db: scratchDb, raw, path: ":memory:" };
@@ -515,5 +516,295 @@ describe("secret required", () => {
       { method: "GET" },
     );
     expect(res.status).toBe(401);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-333 — POST /internal/permissions/:qid/expire (permission-timeout orphan fix).
+//
+// Scenario the endpoint exists to resolve: the PermissionRequest shim's long-poll
+// timed out, Claude Code will now render its own TUI dialog, and if we leave the row
+// `open` the panel keeps its Allow / Deny live and a subsequent owner click is
+// orphaned (the shim is dead, CC has moved on). The shim POSTs this endpoint on 204;
+// the row transitions to `status='timed-out'`, `applied_by='shim-timeout'`.
+// -----------------------------------------------------------------------------
+
+function insertOpenPermission(qid: string, text: string): void {
+  raw
+    .query(
+      `INSERT INTO questions (qid, status, kind, task, question, opened_at)
+       VALUES (?, 'open', 'permission', NULL, ?, ?)`,
+    )
+    .run(qid, text, new Date().toISOString());
+}
+
+describe("POST /internal/permissions/:qid/expire (GSL-333)", () => {
+  test("open permission row → 200 transitioned:true, status='timed-out', applied_by='shim-timeout'", async () => {
+    insertOpenPermission("q-perm-1", "Permission request: Bash");
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-perm-1/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      qid: string;
+      status: string;
+      transitioned: boolean;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.qid).toBe("q-perm-1");
+    expect(body.status).toBe("timed-out");
+    expect(body.transitioned).toBe(true);
+
+    // DB observably transitioned — the panel's /questions read picks this up on the next
+    // SSE-triggered invalidate, which is what makes the Allow / Deny buttons go away.
+    const row = raw
+      .query(
+        "SELECT status, applied_by, answered_at FROM questions WHERE qid = 'q-perm-1'",
+      )
+      .get() as { status: string; applied_by: string | null; answered_at: string | null };
+    expect(row.status).toBe("timed-out");
+    expect(row.applied_by).toBe("shim-timeout");
+    expect(typeof row.answered_at).toBe("string");
+    expect((row.answered_at ?? "").length).toBeGreaterThan(0);
+  });
+
+  test("idempotent: already-terminal row → 200 transitioned:false, status preserved", async () => {
+    insertOpenPermission("q-perm-2", "Permission request: Edit");
+    // Owner answered in the panel BEFORE the shim's expire POST landed (the exact race
+    // the reason field explains). The expire must NOT clobber the owner's decision.
+    raw
+      .query(
+        `UPDATE questions SET status='answered', answer_text='allow', answered_at=?, applied_by='owner' WHERE qid='q-perm-2'`,
+      )
+      .run(new Date().toISOString());
+
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-perm-2/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      status: string;
+      transitioned: boolean;
+      reason?: string;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.transitioned).toBe(false);
+    expect(body.status).toBe("answered");
+
+    // Row must be UNCHANGED from the owner's decision — no silent overwrite.
+    const row = raw
+      .query(
+        "SELECT status, answer_text, applied_by FROM questions WHERE qid = 'q-perm-2'",
+      )
+      .get() as { status: string; answer_text: string; applied_by: string };
+    expect(row.status).toBe("answered");
+    expect(row.answer_text).toBe("allow");
+    expect(row.applied_by).toBe("owner");
+  });
+
+  test("second expire on a row already expired → still 200 no-op (fully idempotent)", async () => {
+    insertOpenPermission("q-perm-3", "Permission request: Write");
+    const first = await app.request(
+      "http://localhost/internal/permissions/q-perm-3/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(first.status).toBe(200);
+    expect(((await first.json()) as { transitioned: boolean }).transitioned).toBe(true);
+
+    const second = await app.request(
+      "http://localhost/internal/permissions/q-perm-3/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(second.status).toBe(200);
+    const body = (await second.json()) as { transitioned: boolean; status: string };
+    expect(body.transitioned).toBe(false);
+    expect(body.status).toBe("timed-out");
+  });
+
+  test("wrong kind (BLOCKER row) → 409 (never mistakenly time-out an AskUserQuestion row)", async () => {
+    insertOpenQuestion("q-blocker-1", "Which colour?");
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-blocker-1/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { ok: boolean; error: string };
+    expect(body.ok).toBe(false);
+    expect(body.error).toContain("not a permission row");
+    // Row untouched.
+    const row = raw
+      .query("SELECT status FROM questions WHERE qid = 'q-blocker-1'")
+      .get() as { status: string };
+    expect(row.status).toBe("open");
+  });
+
+  test("unknown qid → 404", async () => {
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-nope-perm/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  test("missing X-Internal-Secret → 401", async () => {
+    insertOpenPermission("q-perm-auth-1", "Permission request: Bash");
+    const res = await app.request(
+      "http://localhost/internal/permissions/q-perm-auth-1/expire",
+      { method: "POST" },
+    );
+    expect(res.status).toBe(401);
+    // Row untouched.
+    const row = raw
+      .query("SELECT status FROM questions WHERE qid = 'q-perm-auth-1'")
+      .get() as { status: string };
+    expect(row.status).toBe("open");
+  });
+
+  test("blank qid parameter → 400", async () => {
+    // Hono routes `/internal/permissions/:qid/expire` require a non-empty qid segment;
+    // an entirely-blank qid is caught by the handler's own guard. This also stops a
+    // caller from bulk-expiring by omission.
+    const res = await app.request(
+      "http://localhost/internal/permissions/%20/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    // A non-existent qid ("%20" is a bare space) falls through to 404, not 400 — the
+    // handler validates qid.length after path decoding. Either way, no row is created.
+    expect([400, 404]).toContain(res.status);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-333 followup — Origin/CSRF gating on POST /internal/permissions/:qid/expire.
+//
+// Run-10 C3 blocker: the shim's expire curl was missing `-H "Origin: …"`, so the
+// requireLocalOrigin middleware bounced it 403. The GSL-333 tests above mount ONLY
+// `internalRoutes`, which bypasses the app-wide CSRF layer — so they were happily
+// green while the real path was broken. This describe block re-wires the same
+// middleware chain serve.ts uses (`requireLocalOrigin` app-wide) and pins down
+// both the negative (no Origin → 403, row untouched) and the positive
+// (Origin: SELF → 200, row transitioned) behaviours the shim depends on.
+// -----------------------------------------------------------------------------
+const { requireLocalOrigin } = await import("../src/security/origin.ts");
+const { HOST_HEADER } = await import("../src/config.ts");
+const SELF_ORIGIN = `http://${HOST_HEADER}`;
+
+const originGuardedApp = new Hono();
+originGuardedApp.use("*", requireLocalOrigin);
+originGuardedApp.route("/", internalRoutes);
+
+describe("POST /internal/permissions/:qid/expire — CSRF gating (GSL-333 followup)", () => {
+  test("no Origin/Referer → 403 and row STAYS open (the run-10 C3 bug)", async () => {
+    insertOpenPermission("q-perm-csrf-1", "Permission request: Bash");
+    const res = await originGuardedApp.request(
+      "http://localhost/internal/permissions/q-perm-csrf-1/expire",
+      { method: "POST", headers: { "X-Internal-Secret": SECRET } },
+    );
+    expect(res.status).toBe(403);
+    // The whole point: the row must NOT have transitioned. If it did, the panel would
+    // silently swallow real answers — precisely what GSL-333 exists to prevent.
+    const row = raw
+      .query("SELECT status, applied_by FROM questions WHERE qid = 'q-perm-csrf-1'")
+      .get() as { status: string; applied_by: string | null };
+    expect(row.status).toBe("open");
+    expect(row.applied_by).toBeNull();
+  });
+
+  test("Origin: http://<HOST_HEADER> → 200 transitioned (the fixed shim path)", async () => {
+    insertOpenPermission("q-perm-csrf-2", "Permission request: Edit");
+    const res = await originGuardedApp.request(
+      "http://localhost/internal/permissions/q-perm-csrf-2/expire",
+      {
+        method: "POST",
+        headers: {
+          "X-Internal-Secret": SECRET,
+          Origin: SELF_ORIGIN,
+        },
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { transitioned: boolean; status: string };
+    expect(body.transitioned).toBe(true);
+    expect(body.status).toBe("timed-out");
+    const row = raw
+      .query(
+        "SELECT status, applied_by FROM questions WHERE qid = 'q-perm-csrf-2'",
+      )
+      .get() as { status: string; applied_by: string };
+    expect(row.status).toBe("timed-out");
+    expect(row.applied_by).toBe("shim-timeout");
+  });
+
+  test("cross-site Origin → 403, row untouched (defense in depth)", async () => {
+    insertOpenPermission("q-perm-csrf-3", "Permission request: Write");
+    const res = await originGuardedApp.request(
+      "http://localhost/internal/permissions/q-perm-csrf-3/expire",
+      {
+        method: "POST",
+        headers: {
+          "X-Internal-Secret": SECRET,
+          Origin: "http://evil.example.com",
+        },
+      },
+    );
+    expect(res.status).toBe(403);
+    const row = raw
+      .query("SELECT status FROM questions WHERE qid = 'q-perm-csrf-3'")
+      .get() as { status: string };
+    expect(row.status).toBe("open");
+  });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-333 followup — shim-source regression: assert the expire curl carries the
+// Origin header. Belt-and-suspenders on top of the CSRF unit tests above — the
+// exact class of regression this task exists to fix was "the endpoint is right,
+// the shim forgot the header". A grep against the shim source pins that down
+// deterministically.
+// -----------------------------------------------------------------------------
+const { readFileSync } = await import("node:fs");
+const { resolve } = await import("node:path");
+
+describe("permission-request-hook.sh — expire curl carries Origin (GSL-333 followup)", () => {
+  const shimPath = resolve(
+    import.meta.dir,
+    "..",
+    "..",
+    "..",
+    "tools",
+    "hooks",
+    "permission-request-hook.sh",
+  );
+  const source = readFileSync(shimPath, "utf8");
+
+  test("expire block includes `-H \"Origin: $ORIGIN_HEADER\"` alongside the endpoint URL", () => {
+    // Slice from the EXPIRE_STATUS assignment to the endpoint URL so we compare the
+    // right curl (post/decide curls also have Origin; only expire regressed).
+    const start = source.indexOf("EXPIRE_STATUS=");
+    expect(start).toBeGreaterThan(-1);
+    const end = source.indexOf("/expire\"", start);
+    expect(end).toBeGreaterThan(-1);
+    const block = source.slice(start, end);
+    expect(block).toContain("Origin: $ORIGIN_HEADER");
+    expect(block).toContain("X-Internal-Secret: $INTERNAL_SECRET");
+    expect(block).toContain("Host: $HOST_HEADER");
+  });
+
+  test("every authenticated POST in the shim carries the Origin header", () => {
+    // Split on `curl` occurrences; for each block that also mentions a POST verb and
+    // an X-Internal-Secret header, assert Origin: $ORIGIN_HEADER is present.
+    const chunks = source.split(/curl /);
+    for (let i = 1; i < chunks.length; i += 1) {
+      const block = chunks[i]!;
+      const isPost = /"POST"|-X POST/.test(block);
+      const isAuthed = block.includes("X-Internal-Secret: $INTERNAL_SECRET");
+      if (isPost && isAuthed) {
+        expect(block).toContain("Origin: $ORIGIN_HEADER");
+      }
+    }
   });
 });

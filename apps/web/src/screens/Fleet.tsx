@@ -14,7 +14,7 @@ import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import { Badge } from "../components/ui/Badge";
 import { useFleet } from "../data/queries";
-import { timeAgo } from "../lib/format";
+import { formatModelLabel, formatPrLabel, timeAgo } from "../lib/format";
 import { cn } from "../lib/cn";
 
 type StatusTone = "info" | "ok" | "warn" | "neutral" | "danger" | "accent";
@@ -128,19 +128,24 @@ export function FleetScreen() {
                         {s.pid !== null && s.pid !== undefined ? (
                           <span className="mono">pid {s.pid}</span>
                         ) : null}
-                        {/* GSL-290 — render an explicit "unknown" pill when the model
-                            resolver didn't find one; better than a hidden field, and the
-                            operator can then edit `.claude/settings.local.json` to fix it. */}
+                        {/* GSL-290 (settings hierarchy) + GSL-321 (transcript-first per
+                            session). Renders an explicit "unknown" pill when neither source
+                            produced a value; a wrong-but-confident value would be worse
+                            (run 06 finding #3: a `--model haiku` session showed the global
+                            `fable-5` because the transcript reader did not exist).
+                            GSL-327: raw ids like `claude-fable-5` render as the friendly
+                            marketing label; sentinels `unknown` / `starting` pass through;
+                            the raw id stays available on hover via `title`. */}
                         <span
                           className="mono"
                           title={
                             s.model === null || s.model === undefined
-                              ? "no model found in <cwd>/.claude/settings*.json or ~/.claude/settings.json"
-                              : `model resolved from Claude Code settings hierarchy`
+                              ? "no assistant turn in the transcript yet, and no `model` in <cwd>/.claude/settings*.json or ~/.claude/settings.json"
+                              : `raw model id: ${s.model} — read from the session transcript (falls back to Claude Code settings hierarchy)`
                           }
                         >
                           {s.model !== null && s.model !== undefined
-                            ? s.model
+                            ? formatModelLabel(s.model)
                             : "model unknown"}
                         </span>
                         {s.cycle !== null && s.cycle !== undefined ? (
@@ -192,6 +197,34 @@ export function FleetScreen() {
                         )}
                       </div>
                     </div>
+                    {/* GSL-319 — per-session PR chip. Populated by the extractor in
+                        /internal/agents/tool-observed as soon as `gh pr create`
+                        (or a later `gh pr view <URL>`) fires. Hidden when the session has
+                        not touched a PR yet. GSL-329: visible text is the compact `#N`
+                        parsed from the URL; `href` still points at the full URL (click
+                        behaviour unchanged) and `title` prefixes the raw URL so the
+                        operator's clipboard workflow is unaffected. */}
+                    {s.last_pr_url !== null && s.last_pr_url !== undefined ? (
+                      <div>
+                        <div className="text-muted mb-0.5 text-xs uppercase tracking-wide">
+                          Latest PR
+                        </div>
+                        <a
+                          href={s.last_pr_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mono inline-block text-sm text-[var(--color-accent)] hover:underline"
+                          data-testid="fleet-pr-link"
+                          title={
+                            s.last_pr_at !== null && s.last_pr_at !== undefined
+                              ? `${s.last_pr_url} — observed ${timeAgo(s.last_pr_at)}`
+                              : `${s.last_pr_url} — observed just now`
+                          }
+                        >
+                          {formatPrLabel(s.last_pr_url)}
+                        </a>
+                      </div>
+                    ) : null}
                     <div className="text-muted flex items-center justify-between text-xs">
                       <span title={s.cwd}>
                         {s.cwd.split("/").slice(-2).join("/")}

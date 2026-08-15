@@ -1,0 +1,27 @@
+title:	run07 counter-notes app
+state:	OPEN
+author:	rommxx
+labels:	
+assignees:	
+reviewers:	
+projects:	
+milestone:	
+number:	7
+url:	https://github.com/ainstance-labs/gosleep-e2e-todo/pull/7
+additions:	2017
+deletions:	0
+auto-merge:	disabled
+--
+Implements GSL-322.
+
+Minimal Vite + React app: a counter (increment/decrement) and a notes list (add/remove), both persisted to localStorage. Plain CSS with CSS variables, a short reset, dark theme via `prefers-color-scheme`, sizes in rem.
+
+## Tasks
+- [x] GSL-323 Scaffold Vite+React app with counter (#5)
+- [x] GSL-324 Add notes list with localStorage persistence (#6)
+
+Mirrors GH #4.
+
+Closes #4, #5, #6.
+
+**Do not merge** — E2E test fixture PR for review/inspection only.

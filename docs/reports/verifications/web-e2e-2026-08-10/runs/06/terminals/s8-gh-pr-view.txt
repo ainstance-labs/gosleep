@@ -1,0 +1,15 @@
+title:	GSL-315 React to-do app
+state:	OPEN
+author:	rommxx
+labels:	
+assignees:	
+reviewers:	
+projects:	
+milestone:	
+number:	3
+url:	https://github.com/ainstance-labs/gosleep-e2e-todo/pull/3
+additions:	608
+deletions:	0
+auto-merge:	disabled
+--
+Implements GSL-315 e2e test fixture
