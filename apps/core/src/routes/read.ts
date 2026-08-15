@@ -9,7 +9,8 @@
 //   GET /whoami     (Bearer)           Owner identity.                            v1 GSL-260
 //   GET /status     (Bearer)           Row counts + last tail sweep + boot time.  v1 GSL-263
 //   GET /questions  (Bearer)           `questions` table; ?status filter.         v1 GSL-263
-//   GET /skills     (Bearer)           `skills` table.                            v1 GSL-263
+//   GET /skills     (Bearer)           `skills` table + filesystem enrichment.    v1 GSL-263, T6
+//   GET /skills/:name/diff (Bearer)    Full diff `skill/<name>/` vs prod.         T6 GSL-255
 //   GET /timeline   (Bearer)           Latest N events; ?limit, ?type, ?task.     v1 GSL-263
 //   GET /tasks      (Bearer)           `tasks` cache from Jira sync.              v1 GSL-263
 //   GET /cost       (Bearer)           Cost tallies from events (approximation).  v1 GSL-263
@@ -29,6 +30,8 @@ import { getDb } from "../db/client.ts";
 import { loadManifest } from "../manifest/parser.ts";
 import { computeRunway } from "../runway.ts";
 import { getDbSchemaVersion } from "../db/schemaVersion.ts";
+import { computeSkillDiff, quickHasChanges, KNOWN_SKILLS } from "../skills/diff.ts";
+import { serialize } from "../actions/mutex.ts";
 
 export const readRoutes = new Hono();
 
@@ -239,17 +242,90 @@ readRoutes.get("/skills", requireBearer, (c) => {
        FROM skills ORDER BY name ASC`,
     )
     .all() as SkillRow[];
-  return c.json({
-    skills: rows.map((r) => ({
-      name: r.name,
-      version: r.version,
-      status: r.status,
-      last_published_at: r.last_published_at,
-      last_published_by: r.last_published_by,
-      changelog: parseJsonSafe(r.changelog) ?? [],
-    })),
-    count: rows.length,
-  });
+  // Union of DB names + KNOWN_SKILLS so a skill that lives only in production (per plan
+  // risk 5: `tmux-agents-orchestration` until stage 1) still appears with a placeholder.
+  const byName = new Map<string, SkillRow>();
+  for (const r of rows) byName.set(r.name, r);
+  for (const known of KNOWN_SKILLS) {
+    if (!byName.has(known)) {
+      byName.set(known, {
+        name: known,
+        version: "0.0.0",
+        status: "clean",
+        last_published_at: null,
+        last_published_by: null,
+        changelog: "[]",
+      });
+    }
+  }
+  const enriched = Array.from(byName.values())
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .map((r) => {
+      // GSL-255 T6 — enrich registry rows with the filesystem-derived state. `has_changes`
+      // and the two hashes are what the Skills screen's list view flips on. Cache is
+      // per-name/5-second, so a burst of clicks does not re-walk every owned skill tree.
+      const fs = quickHasChanges(r.name);
+      return {
+        name: r.name,
+        version: r.version,
+        status: r.status,
+        last_published_at: r.last_published_at,
+        last_published_by: r.last_published_by,
+        changelog: parseJsonSafe(r.changelog) ?? [],
+        has_changes: fs.hasChanges,
+        local_exists: fs.localExists,
+        prod_exists: fs.prodExists,
+        hash_local: fs.hashLocal,
+        hash_prod: fs.hashProd,
+      };
+    });
+  return c.json({ skills: enriched, count: enriched.length });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-255 T6 — GET /skills/:name/diff (Bearer) — full diff dump for the details drawer.
+// Per-name serialize so a burst of clicks does not race the diff spawn; 5-second cache
+// inside computeSkillDiff() shares the walk across concurrent readers. Refuses unknown
+// skill names before spawning `diff`.
+// -----------------------------------------------------------------------------
+
+readRoutes.get("/skills/:name/diff", requireBearer, async (c) => {
+  const name = c.req.param("name");
+  if (!name || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) {
+    return c.json({ ok: false, error: "invalid skill name" }, 400);
+  }
+  if (!KNOWN_SKILLS.has(name)) {
+    return c.json({ ok: false, error: `unknown skill: ${name}` }, 404);
+  }
+  try {
+    const result = await serialize(`skills.diff:${name}`, async () => computeSkillDiff(name));
+    // Enrich with the DB registry changelog if present, so the details drawer can show one
+    // payload instead of two round-trips.
+    const row = getDb().raw
+      .query(
+        `SELECT changelog FROM skills WHERE name = ?`,
+      )
+      .get(name) as { changelog: string | null } | undefined;
+    const changelog = row ? (parseJsonSafe(row.changelog ?? "[]") ?? []) : [];
+    return c.json({
+      name: result.name,
+      hasChanges: result.hasChanges,
+      diffText: result.diffText,
+      diffBytes: result.diffBytes,
+      truncated: result.truncated,
+      hashLocal: result.hashLocal,
+      hashProd: result.hashProd,
+      localExists: result.localExists,
+      prodExists: result.prodExists,
+      computedAt: result.computedAt,
+      changelog,
+    });
+  } catch (err) {
+    return c.json(
+      { ok: false, error: err instanceof Error ? err.message : String(err) },
+      500,
+    );
+  }
 });
 
 // -----------------------------------------------------------------------------

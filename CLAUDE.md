@@ -126,12 +126,12 @@ generators and the eval runner per README "Use" (fix stale ROOT paths first — 
 
 ## Skill source of truth
 
-`skill/` holds a **redundancy copy** of **11 owned skills** (6 dev copies + 5 rescued orphans,
-per GSL-334 Phase 0), each in its own named subfolder. **Global (`~/.claude/skills/<name>/`)
-remains authoritative** for all owned skills per the standing rule (owner directive 2026-07-20
-for `orchestrating-delivery-agents`, effectively extended to the whole owned set during the
-current transition). The repo copy exists so a single `rm` on the global tree is not a
-permanent-loss event — it is **not** a source-of-truth flip.
+`skill/` holds a **redundancy copy** of **12 owned skills** (7 dev copies + 5 rescued orphans,
+per GSL-334 Phase 0 and GSL-174 Phase 8), each in its own named subfolder. **Global
+(`~/.claude/skills/<name>/`) remains authoritative** for all owned skills per the standing
+rule (owner directive 2026-07-20 for `orchestrating-delivery-agents`, effectively extended
+to the whole owned set during the current transition). The repo copy exists so a single
+`rm` on the global tree is not a permanent-loss event — it is **not** a source-of-truth flip.
 
 ```
 skill/
@@ -141,15 +141,13 @@ skill/
   remote-control/                  # SKILL.md                  (dev copy)
   using-jira/                      # SKILL.md                  (dev copy)
   writing-prds/                    # SKILL.md                  (dev copy)
+  tmux-agents-orchestration/       # SKILL.md                  (dev copy, GSL-174)
   agentic-report-creator/          # SKILL.md + references/ + templates/   (rescued GSL-334)
   agentic-scenario-runner/         # SKILL.md + references/    (rescued GSL-334)
   efficient-agent-evals/           # SKILL.md                  (rescued GSL-334)
   extra-usage/                     # SKILL.md                  (rescued GSL-334)
   verifier-skeptic/                # SKILL.md + references/    (rescued GSL-334)
 ```
-
-The count reaches **12** once `GSL-174-skills-management` lands the 7th dev copy
-(`tmux-agents-orchestration`).
 
 `./install.sh` installs **every subfolder** under `skill/` into `~/.claude/skills/<name>/`
 using `rsync -a --delete`. Sync direction is always **local → global**.
@@ -168,3 +166,12 @@ using `rsync -a --delete`. Sync direction is always **local → global**.
 **Before running `./install.sh`:** ensure `skill/` is not behind the global copy. If you suspect
 the global is newer, reverse-sync first: `rsync -a "$HOME/.claude/skills/<name>/" "skill/<name>/"`
 and commit before running the installer.
+
+**Editing a skill IS a shift-closing item (GSL-189, root treatment for R5 "learning loop has
+no executor").** Every shift-closing agent runs the three-item checklist codified in
+`skill/handoff/SKILL.md` Procedure step 7 before writing the handoff: (a) skim for a lesson
+worth recording into an authoritative skill; (b) if there is one, file a `[Skill]`-tagged GSL
+Task, edit the appropriate copy, publish via `tools/skills/publish.sh <name>` (never bypass
+it); (c) link the lesson-to-Task in the handoff's "Comments" section. Silence must be
+explicit ("no skill lessons this shift"), not implicit — a handoff missing the checklist is
+incomplete regardless of how good the rest reads.

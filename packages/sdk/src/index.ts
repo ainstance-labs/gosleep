@@ -31,8 +31,11 @@ import {
   ResolveActionInput,
   ResolveActionResponse,
   SkillsResponse,
+  SkillDiffResponse,
   SnapshotActionInput,
   SnapshotActionResponse,
+  PublishSkillActionInput,
+  PublishSkillActionResponse,
   SseEventData,
   SseRotateData,
   StatusResponse,
@@ -64,8 +67,11 @@ import type {
   ResolveActionInput as ResolveActionInputT,
   ResolveActionResponse as ResolveActionResponseT,
   SkillsResponse as SkillsResponseT,
+  SkillDiffResponse as SkillDiffResponseT,
   SnapshotActionInput as SnapshotActionInputT,
   SnapshotActionResponse as SnapshotActionResponseT,
+  PublishSkillActionInput as PublishSkillActionInputT,
+  PublishSkillActionResponse as PublishSkillActionResponseT,
   SseEventData as SseEventDataT,
   SseRotateData as SseRotateDataT,
   StatusResponse as StatusResponseT,
@@ -198,6 +204,10 @@ export class CoreClient {
   }
   skills(): Promise<SkillsResponseT> {
     return this.get("/skills", SkillsResponse);
+  }
+  // T6 (GSL-255) — full diff dump for the Skills-screen details drawer.
+  skillDiff(name: string): Promise<SkillDiffResponseT> {
+    return this.get(`/skills/${encodeURIComponent(name)}/diff`, SkillDiffResponse);
   }
   timeline(params?: {
     limit?: number;
@@ -373,6 +383,22 @@ export class CoreClient {
       input,
       SnapshotActionInput,
       SnapshotActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  /** T5 (GSL-286 + GSL-266 partial): publish a single named skill from dev → production.
+   *  Spawns publish.sh with a per-request env-nonce so the CLI's owner-gate opens on the
+   *  endpoint path. Returns the parsed skills.publish.done event. */
+  publishSkill(
+    input: PublishSkillActionInputT,
+    idempotencyKey: string,
+  ): Promise<PublishSkillActionResponseT> {
+    return this.postAction(
+      "/actions/skills/publish",
+      input,
+      PublishSkillActionInput,
+      PublishSkillActionResponse,
       idempotencyKey,
     );
   }
@@ -593,8 +619,11 @@ export type {
   ResolveActionInputT as ResolveActionInput,
   ResolveActionResponseT as ResolveActionResponse,
   SkillsResponseT as SkillsResponse,
+  SkillDiffResponseT as SkillDiffResponse,
   SnapshotActionInputT as SnapshotActionInput,
+  PublishSkillActionInputT as PublishSkillActionInput,
   SnapshotActionResponseT as SnapshotActionResponse,
+  PublishSkillActionResponseT as PublishSkillActionResponse,
   SseEventDataT as SseEventData,
   SseRotateDataT as SseRotateData,
   StatusResponseT as StatusResponse,

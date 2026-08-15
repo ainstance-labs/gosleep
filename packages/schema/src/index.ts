@@ -120,6 +120,13 @@ export const SkillRow = z.object({
   last_published_at: IsoTimestamp.nullable().optional(),
   last_published_by: z.string().nullable().optional(),
   changelog: z.unknown(),
+  // T6 (GSL-255) — filesystem-derived enrichment. Optional for backwards compat with any
+  // consumer that pinned to an older schema version.
+  has_changes: z.boolean().optional(),
+  local_exists: z.boolean().optional(),
+  prod_exists: z.boolean().optional(),
+  hash_local: z.string().optional(),
+  hash_prod: z.string().optional(),
 });
 export type SkillRow = z.infer<typeof SkillRow>;
 
@@ -128,6 +135,22 @@ export const SkillsResponse = z.object({
   count: z.number().int(),
 });
 export type SkillsResponse = z.infer<typeof SkillsResponse>;
+
+// T6 (GSL-255) — GET /skills/:name/diff full drawer payload.
+export const SkillDiffResponse = z.object({
+  name: z.string(),
+  hasChanges: z.boolean(),
+  diffText: z.string(),
+  diffBytes: z.number().int(),
+  truncated: z.boolean(),
+  hashLocal: z.string(),
+  hashProd: z.string(),
+  localExists: z.boolean(),
+  prodExists: z.boolean(),
+  computedAt: IsoTimestamp,
+  changelog: z.unknown(),
+});
+export type SkillDiffResponse = z.infer<typeof SkillDiffResponse>;
 
 // -----------------------------------------------------------------------------
 // tasks (GET /tasks, GET /bundle.tasks)
@@ -591,3 +614,38 @@ export const TickActionInput = z.object({
   carrier: z.string().optional(),
 });
 export type TickActionInput = z.infer<typeof TickActionInput>;
+
+// -----------------------------------------------------------------------------
+// publish action (T5 GSL-286 + GSL-266 partial — POST /actions/skills/publish)
+//
+// Spawns `tools/skills/publish.sh <skill>` with a per-request GOSLEEP_WEB_TOKEN nonce so the
+// CLI's owner-gate opens on the endpoint path. Returns the parsed skills.publish.done event
+// the CLI prints on its final stdout line.
+// -----------------------------------------------------------------------------
+
+export const PublishSkillActionInput = z.object({
+  skill: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+  lesson: z.string().optional(),
+  task: z.string().regex(/^GSL-\d+$/).optional(),
+});
+export type PublishSkillActionInput = z.infer<typeof PublishSkillActionInput>;
+
+export const PublishSkillActionResult = z.object({
+  skill: z.string(),
+  task: z.string(),
+  commit: z.string(),
+  backup: z.string(),
+  ts: IsoTimestamp,
+  intent_id: z.string(),
+  publishSpawn: z.object({
+    rc: z.number().int(),
+    elapsedMs: z.number().int(),
+    stdout: z.string(),
+    stderr: z.string(),
+  }),
+  cliEvent: z.unknown().nullable(),
+});
+export type PublishSkillActionResult = z.infer<typeof PublishSkillActionResult>;
+
+export const PublishSkillActionResponse = actionResponse(PublishSkillActionResult);
+export type PublishSkillActionResponse = z.infer<typeof PublishSkillActionResponse>;
