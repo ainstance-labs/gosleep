@@ -263,7 +263,7 @@ readRoutes.get("/skills", requireBearer, (c) => {
     .map((r) => {
       // GSL-255 T6 — enrich registry rows with the filesystem-derived state. `has_changes`
       // and the two hashes are what the Skills screen's list view flips on. Cache is
-      // per-name/5-second, so a burst of clicks does not re-walk seven trees.
+      // per-name/5-second, so a burst of clicks does not re-walk every owned skill tree.
       const fs = quickHasChanges(r.name);
       return {
         name: r.name,

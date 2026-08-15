@@ -18,7 +18,15 @@ import { randomBytes } from "node:crypto";
 
 import { REPO_ROOT, spawnAwait } from "./spawn.ts";
 
-/** Names the CLI knows how to publish (matches KNOWN_SKILLS in scripts/record-publish.ts). */
+/**
+ * Names the CLI knows how to publish. Kept in sync with:
+ *   - apps/core/scripts/record-publish.ts (KNOWN_SKILLS)
+ *   - apps/core/src/skills/diff.ts       (KNOWN_SKILLS)
+ *   - tools/skills/schema/changelog.schema.json  (properties.skill.enum)
+ *   - skill/README.md                    (Owned skills table)
+ * GSL-174 verifier run 02 M-1 widened 7 → 12 (adds the 5 orphan-rescued skills
+ * that landed on main via GSL-334 Phase 0).
+ */
 const KNOWN_SKILLS = new Set<string>([
   "orchestrating-delivery-agents",
   "delivery-workflow",
@@ -27,6 +35,11 @@ const KNOWN_SKILLS = new Set<string>([
   "writing-prds",
   "remote-control",
   "tmux-agents-orchestration",
+  "agentic-report-creator",
+  "agentic-scenario-runner",
+  "efficient-agent-evals",
+  "extra-usage",
+  "verifier-skeptic",
 ]);
 
 export interface PublishInput {

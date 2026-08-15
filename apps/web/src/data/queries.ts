@@ -99,7 +99,7 @@ export function useSkills(): UseQueryResult<SkillsResponse> {
 }
 
 // T6 (GSL-255) — full diff dump for the Skills-screen details drawer. Only fetches when a
-// row is selected (enabled: name !== null) to avoid seven prefetches on mount.
+// row is selected (enabled: name !== null) to avoid a burst of per-skill prefetches on mount.
 export function useSkillDiff(name: string | null): UseQueryResult<SkillDiffResponse> {
   return useQuery({
     queryKey: queryKeys.skillDiff(name ?? "__none__"),

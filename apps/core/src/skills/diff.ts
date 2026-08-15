@@ -31,6 +31,11 @@ const REPO_ROOT = resolve(HERE, "../../../..");
 const EMPTY_TREE_HASH = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 const ABSENT_SENTINEL = "absent";
 
+// GSL-174 verifier run 02 M-1: widened to all 12 owned skills. 7 dev copies
+// (originals through tmux-agents-orchestration) + 5 orphan-rescued via GSL-334
+// (agentic-report-creator, agentic-scenario-runner, efficient-agent-evals,
+// extra-usage, verifier-skeptic). Additive only; extend when a new skill is
+// added under skill/<name>/ or rescued from the global tree.
 const KNOWN_SKILLS = new Set([
   "orchestrating-delivery-agents",
   "delivery-workflow",
@@ -39,6 +44,11 @@ const KNOWN_SKILLS = new Set([
   "writing-prds",
   "remote-control",
   "tmux-agents-orchestration",
+  "agentic-report-creator",
+  "agentic-scenario-runner",
+  "efficient-agent-evals",
+  "extra-usage",
+  "verifier-skeptic",
 ]);
 
 const DIFF_BYTE_CAP = 200_000;

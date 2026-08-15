@@ -22,7 +22,12 @@
         "using-jira",
         "writing-prds",
         "remote-control",
-        "tmux-agents-orchestration"
+        "tmux-agents-orchestration",
+        "agentic-report-creator",
+        "agentic-scenario-runner",
+        "efficient-agent-evals",
+        "extra-usage",
+        "verifier-skeptic"
       ]
     },
     "task": {

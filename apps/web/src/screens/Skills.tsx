@@ -1,8 +1,9 @@
 // @gosleep/web — Skills management screen (T7, GSL-255 + closes verifier GSL-287).
 //
 // Fills the `/skills` route that until now fell through to NotFoundScreen (GSL-295). Renders
-// the seven-skill list from GET /skills (enriched with filesystem hashes) and, on row click,
-// a details drawer with the full diff + registry changelog from GET /skills/:name/diff.
+// the owned-skill list from GET /skills (enriched with filesystem hashes; 12 skills as of
+// GSL-334 + GSL-174 verifier run 02 M-1 widening) and, on row click, a details drawer with
+// the full diff + registry changelog from GET /skills/:name/diff.
 //
 // The Publish button is visible on every row with `has_changes === true` but is DISABLED
 // tonight per `d-2026-08-09-001` (TouchID pause). The disabled state carries a tooltip
@@ -92,7 +93,11 @@ export function SkillsScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Skills"
-        subtitle="Skills management system — seven skills, git-tracked development copies, publish by owner via one button. Every publish leaves a CHANGELOG row + backup + timeline event chain."
+        subtitle={
+          `Skills management system — ${q.data?.count ?? "…"} skills, ` +
+          "git-tracked development copies, publish by owner via one button. " +
+          "Every publish leaves a CHANGELOG row + backup + timeline event chain."
+        }
         right={
           <div className="flex items-center gap-2">
             <Badge tone={changedCount > 0 ? "warn" : "ok"}>

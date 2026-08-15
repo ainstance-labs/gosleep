@@ -46,6 +46,9 @@ const REPO_ROOT = resolve(HERE, "../../..");
 const DEFAULT_CHANGELOG_PATH = resolve(REPO_ROOT, "docs/skills/CHANGELOG.jsonl");
 const DEFAULT_SCHEMA_PATH = resolve(REPO_ROOT, "tools/skills/schema/changelog.schema.json");
 
+// GSL-174 verifier run 02 M-1: widened to 12 owned skills.
+// Kept in sync with apps/core/src/actions/publish.ts, apps/core/src/skills/diff.ts,
+// tools/skills/schema/changelog.schema.json, and skill/README.md.
 const KNOWN_SKILLS = new Set([
   "orchestrating-delivery-agents",
   "delivery-workflow",
@@ -54,6 +57,11 @@ const KNOWN_SKILLS = new Set([
   "writing-prds",
   "remote-control",
   "tmux-agents-orchestration",
+  "agentic-report-creator",
+  "agentic-scenario-runner",
+  "efficient-agent-evals",
+  "extra-usage",
+  "verifier-skeptic",
 ]);
 
 const STATUS_ENUM = new Set(["draft", "reviewed", "published"]);
