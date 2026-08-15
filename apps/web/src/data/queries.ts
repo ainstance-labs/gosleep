@@ -363,7 +363,7 @@ export function usePublishSkill(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: PublishSkillActionInput) =>
-      coreClient.publishSkill(input, newIdempotencyKey()),
+      coreClient.publishSkill(input, stableIdempotencyKey("publishSkill", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.skills() });
       qc.invalidateQueries({ queryKey: ["core", "skills", "diff"] });
