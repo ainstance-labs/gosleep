@@ -134,7 +134,23 @@ case "$SKILL" in
 esac
 
 SKILL_DIR="$REPO_ROOT/skill/$SKILL"
-PROD_DIR="$HOME/.claude/skills/$SKILL"
+# PROD_ROOT / PROD_DIR — the production tree this publish rsyncs into.
+# Default: $HOME/.claude/skills (the real global skill tree). Override with
+# GOSLEEP_SKILLS_PROD_DIR for a hermetic live-proof that must not touch the
+# real global tree (GSL-174 verifier run 02 m-1). The value is used both as
+# the rsync destination and as the diff/backup reference — a scratch dir
+# under .artifacts/ is the intended override for verification.
+# Every refusal path stays intact under this override: the owner gate (TTY /
+# GOSLEEP_WEB_TOKEN), CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS, verify-local.sh,
+# and the DB preflight all run unchanged and unaware of PROD_ROOT.
+PROD_ROOT="${GOSLEEP_SKILLS_PROD_DIR:-$HOME/.claude/skills}"
+PROD_DIR="$PROD_ROOT/$SKILL"
+
+# Announce the resolved destination up front so the owner (and hermetic
+# verifiers) can see where the publish WOULD write regardless of whether a
+# subsequent gate refuses. Mirrors the "publish: prod = <PROD_DIR>" line
+# printed later in the flow; harmless duplicate for the pass-through case.
+echo "publish:   prod = $PROD_DIR" >&2
 
 if [ ! -d "$SKILL_DIR" ]; then
   echo "publish: skill dir does not exist: $SKILL_DIR" >&2
