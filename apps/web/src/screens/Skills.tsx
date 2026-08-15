@@ -109,7 +109,11 @@ export function SkillsScreen() {
         }
       />
 
-      <div className="rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface-sunken)] px-3 py-2 text-xs text-[var(--color-fg-secondary)]">
+      {/* Notice banner. The token is --color-sunken (see apps/web/src/theme/globals.css) —
+          a stray --color-surface-sunken reference here (verifier GSL-174 run-02 m-2) resolved
+          to unset → transparent, so the banner surface did not swap on dark theme. Aligned
+          to the same class shape .sunken uses. */}
+      <div className="rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-sunken)] px-3 py-2 text-xs text-[var(--color-fg-secondary)]">
         <strong>TouchID paused</strong> (owner decision <code className="mono">d-2026-08-09-001</code>).
         The Publish button is disabled tonight; use the CLI:{" "}
         <code className="mono">bash tools/skills/publish.sh &lt;name&gt;</code>. The web
