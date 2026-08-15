@@ -89,6 +89,22 @@ adjudicated no-change:
   history the verifier can see and future skeptics do not re-file the
   same observation from a fresh read.
 
+## Known minor (verifier run 02b, do not fix in this PR)
+
+The `Card` primitive used by the Skills grid renders on `--color-surface`
+(via the `.surface` utility class in `apps/web/src/theme/globals.css`). In
+current run-02b observation the surface reads light under dark theme while
+the surrounding page background + sidebar + the (now-fixed) notice banner
+flip correctly. Because `--color-surface` IS defined in both the bare
+`:root` block AND the `prefers-color-scheme: dark` @media block AND the
+`html[data-theme="dark"]` override with distinct values (`#ffffff` vs
+`#141518`), a card that reads light in dark must be a specificity /
+inheritance issue at the class layer rather than a missing token — a
+different failure mode than the m-2 typo fix. Left as an info observation
+by team-lead adjudication; the Card system is shared with every other
+screen, so it is not a Skills-only regression and any fix belongs in a
+scoped design-tokens task rather than this epic's merge.
+
 ## Reference
 
 - Verifier report: `docs/reports/verifications/GSL-174-night/runs/02/index.html`.
