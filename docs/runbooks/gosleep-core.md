@@ -288,6 +288,16 @@ were spawned with; no forced restart is required. When ready, add a widening-day
 entry to `docs/lab/decisions/log.jsonl` so the audit trail records who flipped
 which shell when.
 
+**Shim peek robustness (GSL-386).** The compound-OR fast-path extracts
+`session_id` from the first 64 KiB of stdin (was 4 KiB — widened for future
+payload preamble growth). The extractor is `grep -o -m 1 -E` (portable
+first-match on BSD + GNU) piped into a `sed` unwrap; the older greedy
+`sed -E` regex is gone. An empty sid on a non-empty stdin now emits a
+`peek_miss` JSON breadcrumb via `GOSLEEP_HOOK_DEBUG_LOG`. Assertions:
+`tools/lab/tests/shim-control-gate.sh` S6 (sid past byte 4096 within the
+64 KiB cap) and S7 (first-match anchor picks the real sid before a raw
+literal imposter in `tool_input`).
+
 **Runtime toggle reframing (GSL-361, 2026-08-16 — observer mode phase B).** The
 shim guard is no longer an env-flag-only fast-exit; it is a compound-OR gate:
 `proceed = (GOSLEEP_WEB_QUESTIONS=1) OR (core /internal/sessions/:sid/control ==
@@ -473,38 +483,43 @@ is also set):
   `tools/skills/tests/touchid-gate-smoke.sh` with a mock that returns a
   chosen exit code without touching LocalAuthentication.
 - `GOSLEEP_TOUCHID_BYPASS=1` — skip the gate under opt-in. **Fail-closed
-  against production paths** (textual guard, latent under default-off):
+  against production paths** via realpath normalization (GSL-385):
   refuses (exit 3) unless BOTH `GOSLEEP_SKILLS_PROD_DIR` and
-  `GOSLEEP_SKILLS_BACKUPS_DIR` are set AND both string-compare outside
-  `$HOME/.claude/skills` AND outside `docs/skills/backups`. Mirrors the
-  GSL-254 production test-guard pattern. **The guard is text-only**: it
-  compares the raw env-var expansions with a shell `case` statement, with
-  no `realpath` normalization and no independent anchoring of `$HOME`. The
-  independent adversarial verifier for PR #359 (report at
-  `docs/reports/verifications/GSL-288/runs/01/`) demonstrated six ways to
-  slip past it end-to-end — symlink into the real prod tree, uppercase
-  path segments on case-insensitive HFS+, relative-path symlink, `HOME`
-  rewrite, `../` traversal, and a backups-tree symlink — each of which
-  landed dev content in the real `~/.claude/skills` tree. **Latent only
-  under the current default-off shape:** the entire `GOSLEEP_TOUCHID`
-  block is skipped in production, so no live spawn today ever reaches
-  this guard. The guard MUST be hardened (see the follow-up
-  `[Core][Security] Harden touchid bypass guard` task) BEFORE
-  `GOSLEEP_TOUCHID=1` is ever set in any spawner — do not flip the flag
-  on until realpath-normalization + case-insensitive comparison ships.
+  `GOSLEEP_SKILLS_BACKUPS_DIR` are set AND, after resolution to physical
+  paths, both sit outside the real prod tree AND outside the real
+  backups tree. The guard is no longer a textual `case`: it uses
+  `realpath -q` (with a manual walk-up for paths that do not yet exist),
+  compares device+inode identity in addition to lowercase text on
+  case-insensitive volumes (APFS/HFS+), and anchors `$HOME`
+  independently of the environment (via `dscl` on macOS / `getent` on
+  Linux) so a caller cannot rewrite `HOME=/decoy` to slip past. The
+  forbidden anchors themselves are realpath-resolved at guard entry, so
+  a symlinked anchor cannot mismatch either. All six defeat classes
+  from the GSL-288 verifier report (symlink, uppercase-on-CI,
+  relative-symlink, HOME rewrite, `../` traversal, backups symlink) now
+  refuse.
+- `GOSLEEP_TOUCHID_ANCHOR_HOME` / `GOSLEEP_TOUCHID_ANCHOR_REPO` —
+  **test-only** anchor overrides for `touchid-gate-smoke.sh`. Steer the
+  guard's "real HOME" and "real REPO_ROOT" at a hermetic decoy fixture
+  so the six defeat classes can be demonstrated without ever touching
+  the real `~/.claude` tree. NEVER set in the launchd plist or the web
+  endpoint spawner — production leaves them unset and the guard falls
+  back to dscl/getent + the script's own `REPO_ROOT`.
 
 Assert the wiring with `bash tools/skills/tests/touchid-gate-smoke.sh` —
-11 invariants: the default-off inert-stub path (E1), the four opt-in
-exit-code paths (C1–C4), two bypass-guard branches (D1 hermetic-refuse
-without prod overrides + D2 accept with hermetic overrides), two explicit
-prod-path bypass-refusal cases (D3 real `$HOME/.claude/skills`, D4 real
-`docs/skills/backups`), and two "real prod tree mtime unchanged"
-cross-checks (one per real tree) that fail loudly if any case leaks into
-`$HOME/.claude/skills` or `docs/skills/backups`. All run against a mock
-binary so the smoke never triggers a real biometric dialog. The smoke's
-green result attests only that the textual guard behaves as coded against
-the four explicit prod-path shapes it tests; the six adversarial vectors
-above are outside its scope and require the follow-up hardening task.
+17 invariants: the default-off inert-stub path (E1), the four opt-in
+exit-code paths (C1–C4), two bypass-guard sanity branches (D1 refuse
+without hermetic overrides, D2 accept with hermetic overrides), the six
+defeat classes against a hermetic decoy home (D3 symlink, D4 uppercase
+on APFS-CI, D5 relative-path symlink, D6 HOME rewrite, D7 `../`
+traversal, D8 backups symlink), and four leak-check cross-assertions
+(decoy prod tree + decoy backups tree unchanged; real prod tree + real
+backups tree mtime unchanged). All defeat demonstrations run against
+the decoy — the real `~/.claude/skills` and `docs/skills/backups` trees
+are only stat'd once at start/end as belt-and-braces leak checks. The
+gate binary is a mock returning a chosen exit code without touching
+LocalAuthentication, so the smoke never triggers a real biometric
+dialog.
 
 ## 11. Standing rules for agents touching this engine
 

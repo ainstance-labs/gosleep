@@ -208,4 +208,71 @@ tmp="$(mktemp -d "${WORK}/tmp.cacheXXX")"
 gets="$(cat "$GET_COUNT_FILE")"
 [ "$gets" = "1" ] || fail "S5: expected 1 GET, got $gets"
 
-log "OK — 5/5 scenarios passed"
+# --- Scenario 6: shim peek window — session_id past byte 4096 (GSL-386) ------------------
+# Prove the pre-hardening 4 KiB cap would have missed the sid, and the widened 64 KiB cap
+# extracts it. The peek pipeline is copied verbatim from the shims (both shims share it).
+log "Scenario 6: shim peek — session_id past byte 4096, within 64 KiB cap"
+peek_run() {
+    # Verbatim from tools/hooks/{ask-user-question,permission-request}-hook.sh —
+    # the two shims share this pipeline. Testing it here is equivalent to
+    # testing both shims' peek stage.
+    local payload_file="$1"
+    LC_ALL=C head -c 65536 "$payload_file" 2>/dev/null \
+        | LC_ALL=C awk '
+            match($0, /"session_id"[[:space:]]*:[[:space:]]*"[^"]+"/) {
+              s = substr($0, RSTART, RLENGTH)
+              sub(/^"session_id"[[:space:]]*:[[:space:]]*"/, "", s)
+              sub(/"$/, "", s)
+              print s
+              exit
+            }'
+}
+peek_run_narrow() {
+    # Baseline for the pre-GSL-386 4 KiB path — used as a negative control to prove the
+    # attack payload really did push the sid past the old ceiling.
+    local payload_file="$1"
+    LC_ALL=C head -c 4096 "$payload_file" 2>/dev/null \
+        | LC_ALL=C sed -n -E 's/.*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+        | head -n 1
+}
+
+big_payload="$WORK/big.json"
+{
+    printf '{"tool_input":{"filler":"'
+    # 60 KiB of filler → session_id byte offset > 4096, well within 64 KiB.
+    dd if=/dev/zero bs=1024 count=60 2>/dev/null | tr '\0' 'x'
+    printf '"},"session_id":"sess-past-4kib-abcd-9999","other":"tail"}\n'
+} > "$big_payload"
+big_size="$(wc -c < "$big_payload" | tr -d ' ')"
+sid_new="$(peek_run "$big_payload")"
+sid_old="$(peek_run_narrow "$big_payload")"
+if [ "$sid_new" = "sess-past-4kib-abcd-9999" ] && [ -z "$sid_old" ] && [ "$big_size" -gt 60000 ]; then
+    log "  S6 PASS: 4 KiB peek missed the sid on a ${big_size}-byte payload; 64 KiB peek extracted 'sess-past-4kib-abcd-9999'."
+else
+    fail "S6: expected new='sess-past-4kib-abcd-9999' + empty old (size=$big_size); got new='$sid_new' old='$sid_old'"
+fi
+
+# --- Scenario 7: shim peek — first-match anchor beats greedy sed (GSL-386) ---------------
+# Payload has (a) a REAL `"session_id":"real-first-…"` near the top, and (b) a raw literal
+# `"session_id":"tail-imposter-…"` embedded inside a tool_input string (unescaped, mimicking
+# a future path where nested JSON leaks through). The pre-GSL-386 greedy `.*` sed would
+# have grabbed the imposter (last match); the first-match `grep -m 1` extraction picks the
+# real one at the top.
+log "Scenario 7: shim peek — first-match anchor picks the real sid"
+imposter_payload="$WORK/imposter.json"
+printf '{"session_id":"real-first-11111111-2222","tool_input":{"raw":"noise noise \"session_id\":\"tail-imposter-99999999-8888\" more noise"}}\n' \
+    > "$imposter_payload"
+sid_first="$(peek_run "$imposter_payload")"
+# Baseline: run the pre-GSL-386 greedy `sed` regex against the SAME payload to prove it
+# would have grabbed the imposter. This confirms the fixture actually exercises the
+# regression path, not a payload the old regex would also survive.
+sid_greedy="$(LC_ALL=C head -c 65536 "$imposter_payload" 2>/dev/null \
+    | LC_ALL=C sed -n -E 's/.*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+    | head -n 1)"
+if [ "$sid_first" = "real-first-11111111-2222" ] && [ "$sid_greedy" = "tail-imposter-99999999-8888" ]; then
+    log "  S7 PASS: first-match anchor picked 'real-first-…'; greedy sed baseline picked 'tail-imposter-…' as expected."
+else
+    fail "S7: expected first-match='real-first-…' + greedy-baseline='tail-imposter-…'; got first='$sid_first' greedy='$sid_greedy'"
+fi
+
+log "OK — 7/7 scenarios passed"

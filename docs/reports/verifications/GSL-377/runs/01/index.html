@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSL-377 · runs/01 — Answer dialog stale-options SSE proof</title>
+<script>
+  // Theme init pre-paint (no flash).
+  try {
+    var t = localStorage.getItem("arc-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #fafafa; --surface: #ffffff; --surface-2: #f4f4f5;
+    --fg: #18181b; --fg-2: #52525b; --muted: #71717a; --border: #e4e4e7;
+    --accent: #2563eb; --ok: #16a34a; --ok-bg: #dcfce7; --warn: #d97706; --warn-bg: #fef3c7;
+    --crit: #dc2626; --crit-bg: #fee2e2; --shadow: 0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.06);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #09090b; --surface: #18181b; --surface-2: #27272a;
+      --fg: #fafafa; --fg-2: #a1a1aa; --muted: #71717a; --border: #27272a;
+      --accent: #3b82f6; --ok: #22c55e; --ok-bg: #052e16; --warn: #f59e0b; --warn-bg: #451a03;
+      --crit: #ef4444; --crit-bg: #450a0a; --shadow: 0 1px 2px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #09090b; --surface: #18181b; --surface-2: #27272a;
+    --fg: #fafafa; --fg-2: #a1a1aa; --muted: #71717a; --border: #27272a;
+    --accent: #3b82f6; --ok: #22c55e; --ok-bg: #052e16; --warn: #f59e0b; --warn-bg: #451a03;
+    --crit: #ef4444; --crit-bg: #450a0a; --shadow: 0 1px 2px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font: 14px/1.55 var(--sans); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: var(--mono); font-size: 0.92em; }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in oklab, var(--bg), transparent 15%);
+    backdrop-filter: saturate(1.2) blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header .title { font-size: 15px; font-weight: 600; }
+  header .subtitle { color: var(--fg-2); font-size: 13px; }
+  header .spacer { flex: 1; }
+  header .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 8px; border-radius: 6px; font-size: 12px;
+    background: var(--surface-2); color: var(--fg-2); border: 1px solid var(--border);
+  }
+  header button {
+    background: var(--surface); color: var(--fg); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 6px; font: inherit; cursor: pointer;
+  }
+  header button:hover { background: var(--surface-2); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; }
+  .hero {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; box-shadow: var(--shadow); display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+  }
+  .verdict {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: 14px;
+    background: var(--ok-bg); color: var(--ok);
+  }
+  .verdict::before { content: "●"; font-size: 8px; }
+  .hero h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  .hero p { margin: 4px 0 0; color: var(--fg-2); font-size: 13px; }
+  section.card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 20px 0; box-shadow: var(--shadow);
+  }
+  section.card h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; }
+  section.card .index {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: white; font-size: 13px; font-weight: 600;
+  }
+  section.card .jira {
+    background: var(--surface-2); color: var(--fg-2); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 6px; font-family: var(--mono); font-size: 12px;
+  }
+  section.card .lane {
+    background: var(--surface-2); color: var(--fg-2); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  section.card .body { color: var(--fg-2); margin: 12px 0; }
+  section.card .body p { margin: 8px 0; }
+  section.card .body strong { color: var(--fg); }
+  .refs { background: var(--surface-2); border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: 13px; }
+  .refs div { display: flex; gap: 8px; align-items: baseline; margin: 4px 0; }
+  .refs .k { color: var(--muted); min-width: 68px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .refs .v { color: var(--fg); }
+  .shots { margin-top: 12px; }
+  .shot { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+  .shot img {
+    width: 100%; height: auto; display: block; cursor: zoom-in;
+    background: white;
+  }
+  .shot .caption { padding: 8px 12px; font-size: 12px; color: var(--fg-2); border-top: 1px solid var(--border); }
+  ul.checklist { list-style: none; padding: 0; margin: 8px 0; }
+  ul.checklist li { padding: 4px 0 4px 22px; position: relative; }
+  ul.checklist li::before {
+    content: "✓"; color: var(--ok); position: absolute; left: 0; font-weight: 700;
+  }
+  footer {
+    max-width: 960px; margin: 24px auto; padding: 16px 24px;
+    color: var(--muted); font-size: 12px; text-align: center;
+  }
+  /* Lightbox */
+  .lb {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+    padding: 24px;
+  }
+  .lb.open { display: flex; }
+  .lb img { max-width: 100%; max-height: 100%; display: block; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .lb .close {
+    position: absolute; top: 12px; right: 16px; color: white; background: rgba(255,255,255,0.15);
+    border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit;
+  }
+  .lb .caption { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    color: white; background: rgba(0,0,0,0.5); padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="title">GSL-377 · runs/01 — Answer dialog stale-options SSE proof</div>
+    <div class="subtitle">Live browser verification of the fix landed as commit b20ad7f</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="chip">GSL-387 epic</span>
+  <span class="chip">2026-08-16</span>
+  <a class="chip" href="ru/index.html">EN / RU</a>
+  <button id="themeBtn" type="button" title="Toggle theme">◐</button>
+</header>
+
+<main>
+
+<div class="hero">
+  <div class="verdict">PASS</div>
+  <div>
+    <h1>Fix verified end-to-end</h1>
+    <p>SSE-driven option mutation while the Answer dialog is open triggers the stale banner, disables the submit paths, and Reload restores fresh options — hermetic scratch core on 127.0.0.1:7356, headless Chrome on CDP :9256, decoy DB + lab tree under <code>.artifacts/gsl377-proof/</code>. No real user data touched.</p>
+  </div>
+</div>
+
+<section class="card">
+  <h2><span class="index">1</span> <span class="jira">GSL-377</span> <span class="lane">functionality</span> Dialog opens with the seeded 3 options</h2>
+  <div class="body">
+    <p>Seeded a BLOCKER question <code>q-2026-08-16-001</code> via <code>POST /internal/questions/post</code> with 3 options (A/B/C). Clicked the row's <strong>Answer</strong> button in the panel; the dialog opened with all three options visible as variant buttons.</p>
+    <p>The <code>openedOptionsSig</code> was captured at open time; the dialog has no stale banner (signature matches the live question).</p>
+  </div>
+  <div class="refs">
+    <div><span class="k">API</span> <span class="v mono">POST /internal/questions/post → { qid: "q-2026-08-16-001", options: [A, B, C] }</span></div>
+    <div><span class="k">DB</span> <span class="v mono">.artifacts/gsl377-proof/data/gosleep.db</span></div>
+    <div><span class="k">Web</span> <span class="v mono">http://127.0.0.1:7356/questions → click Answer</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img src="assets/step-1-dialog-open-original-3-options.png"
+           data-caption="Dialog open with 3 original options; no banner"
+           alt="Answer dialog open with three original options (A, B, C); all buttons enabled; no stale-options banner.">
+      <figcaption class="caption">Answer dialog open · 3 original options visible · buttons enabled · no banner</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="index">2</span> <span class="jira">GSL-377</span> <span class="lane">functionality</span> SSE mutation → banner fires, all submit paths disabled</h2>
+  <div class="body">
+    <p>Appended a new row for the same qid to <code>lab/questions/queue.jsonl</code> with 3 <strong>different</strong> options (removed B, renamed A, added D — drift on every axis). Appended a <code>question.updated</code> event to <code>lab/events/2026-08-16.jsonl</code>. The tail indexer folded both files; <code>/questions</code> now returns the new option shape.</p>
+    <p>The SSE broadcaster fanned out the event to the panel; the client invalidated the <code>questions</code> query; <code>liveAnswerQuestion</code> re-derived from fresh data; <code>optionsSignature(liveOptions)</code> no longer matches <code>openedOptionsSig</code>; <code>answerOptionsStale</code> flipped to true.</p>
+    <ul class="checklist">
+      <li>Banner rendered with role="alert" — "Options changed while this dialog was open"</li>
+      <li>All 3 per-variant buttons: <code>disabled</code></li>
+      <li>Top-level <strong>Send answer</strong> button: <code>disabled</code></li>
+      <li>Reload options button: rendered and enabled</li>
+    </ul>
+  </div>
+  <div class="refs">
+    <div><span class="k">Mutation</span> <span class="v mono">queue.jsonl append + events JSONL append (question.updated)</span></div>
+    <div><span class="k">SSE</span> <span class="v mono">/events → question.updated → invalidate ["core","questions"]</span></div>
+    <div><span class="k">a11y</span> <span class="v mono">alert atomic live="assertive" relevant="additions text"</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img src="assets/step-2-dialog-stale-banner-visible.png"
+           data-caption="Stale-options banner visible; all buttons disabled"
+           alt="Answer dialog with a yellow warning banner reading 'Options changed while this dialog was open. Reload to answer against the current variants, or cancel.' The three option buttons and the Send answer button are visibly disabled.">
+      <figcaption class="caption">Stale-options banner visible · variant + Send buttons disabled · Reload enabled</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="card">
+  <h2><span class="index">3</span> <span class="jira">GSL-377</span> <span class="lane">functionality</span> Reload → fresh options render, banner clears</h2>
+  <div class="body">
+    <p>Clicked the banner's <strong>Reload options</strong> button. <code>reloadAnswerDialogFromLive</code> rebuilt the dialog state from the live question, storing a fresh <code>openedOptionsSig</code>. The banner disappeared. The dialog now shows the three new options (A revised · C original · D new). Variant buttons are enabled again; the free-text answer input is preserved (empty in this run since no text had been typed).</p>
+    <ul class="checklist">
+      <li>Banner removed from the DOM</li>
+      <li>Three fresh variant buttons rendered with the new labels + aria-labels (GSL-376)</li>
+      <li>Buttons enabled — submit paths available</li>
+    </ul>
+  </div>
+  <div class="refs">
+    <div><span class="k">Handler</span> <span class="v mono">reloadAnswerDialogFromLive → setAnswerDialog({ options: liveAnswerOptions, openedOptionsSig: optionsSignature(...) })</span></div>
+    <div><span class="k">A11y</span> <span class="v mono">aria-label = bare option label (GSL-376 wired on the same path)</span></div>
+  </div>
+  <div class="shots">
+    <figure class="shot">
+      <img src="assets/step-3-dialog-after-reload-fresh-options.png"
+           data-caption="Fresh options after Reload; banner gone; buttons enabled"
+           alt="Answer dialog after clicking Reload options. The banner is gone. Three new option buttons are shown: 'Option A (revised): banner + reload with typed-text preservation', 'Option C: silent reload', and 'Option D (new): defer resubmit'.">
+      <figcaption class="caption">Fresh options rendered · banner cleared · buttons enabled</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Environment + hermetic setup</h2>
+  <div class="refs">
+    <div><span class="k">Branch</span> <span class="v mono">GSL-387-verifier-followups (commit b20ad7f)</span></div>
+    <div><span class="k">Core port</span> <span class="v mono">127.0.0.1:7356 (scratch — prod 7331 untouched)</span></div>
+    <div><span class="k">CDP port</span> <span class="v mono">127.0.0.1:9256 (owned by this worker; per teammate brief)</span></div>
+    <div><span class="k">DB</span> <span class="v mono">.artifacts/gsl377-proof/data/gosleep.db (migrated fresh)</span></div>
+    <div><span class="k">Lab dir</span> <span class="v mono">.artifacts/gsl377-proof/lab/{questions,events,decisions,supervision}</span></div>
+    <div><span class="k">Chrome</span> <span class="v mono">headless=new, isolated user-data-dir, 1440×900</span></div>
+    <div><span class="k">Teardown</span> <span class="v mono">core + chrome PIDs killed; ports 7356 + 9256 confirmed clean</span></div>
+  </div>
+</section>
+
+</main>
+
+<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot preview">
+  <button class="close" type="button" id="lbClose">Close (Esc)</button>
+  <img id="lbImg" alt="">
+  <div class="caption" id="lbCap"></div>
+</div>
+
+<footer>
+  Generated 2026-08-16 UTC · impl-followups worker · runs/01 · shift 79
+</footer>
+
+<script>
+  // Theme toggle
+  var btn = document.getElementById("themeBtn");
+  btn.addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : (cur === "light" ? "" : "dark");
+    if (next === "") { document.documentElement.removeAttribute("data-theme"); localStorage.removeItem("arc-theme"); }
+    else { document.documentElement.setAttribute("data-theme", next); localStorage.setItem("arc-theme", next); }
+  });
+  // Lightbox
+  var lb = document.getElementById("lightbox");
+  var lbImg = document.getElementById("lbImg");
+  var lbCap = document.getElementById("lbCap");
+  document.querySelectorAll(".shot img").forEach(function (img) {
+    img.addEventListener("click", function () {
+      lbImg.src = img.src;
+      lbImg.alt = img.alt;
+      lbCap.textContent = img.dataset.caption || "";
+      lb.classList.add("open");
+    });
+  });
+  function closeLb() { lb.classList.remove("open"); lbImg.src = ""; }
+  document.getElementById("lbClose").addEventListener("click", closeLb);
+  lb.addEventListener("click", function (e) { if (e.target === lb) closeLb(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && lb.classList.contains("open")) closeLb();
+  });
+</script>
+
+</body>
+</html>

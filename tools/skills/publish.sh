@@ -287,6 +287,159 @@ GATE_REASON="gosleep-core: publish skill '$SKILL' to production"
 GATE_RC=""
 GATE_BYPASS=0
 
+# --- realpath-normalization helpers (GSL-385) --------------------------------
+# The bypass guard compares RESOLVED PHYSICAL paths, not the raw env-var
+# expansions the caller passed. The verifier for PR #359
+# (docs/reports/verifications/GSL-288/runs/01/) demonstrated six textual
+# defeat classes against the pre-GSL-385 case-glob guard (symlink, uppercase
+# on HFS+/APFS-CI, relative-path symlink, HOME rewrite, `..` traversal,
+# backups symlink); every one of them lands dev content in the real
+# ~/.claude/skills tree under `GOSLEEP_TOUCHID=1 GOSLEEP_TOUCHID_BYPASS=1`
+# in the pre-hardening shape. The helpers below plus the guard block that
+# uses them close all six.
+#
+# Test-only anchor overrides — NEVER set in the launchd plist or the web
+# endpoint spawner. tools/skills/tests/touchid-gate-smoke.sh sets them so
+# the six defeat classes can be exercised against a hermetic decoy home,
+# not the real ~/.claude tree.
+#   GOSLEEP_TOUCHID_ANCHOR_HOME  Overrides the "real HOME" used to compute
+#                                the forbidden prod-tree anchor. Unset in
+#                                production → dscl (macOS) / getent (Linux).
+#   GOSLEEP_TOUCHID_ANCHOR_REPO  Overrides the "real REPO_ROOT" used to
+#                                compute the forbidden backups-tree anchor.
+#                                Unset in production → the script's own
+#                                REPO_ROOT (already realpath-resolved).
+
+_touchid_lc() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+_touchid_realpath() {
+  # Resolve $1 to its physical path via `realpath -q`. If the path does not
+  # exist yet (mkdir hasn't run), walk up until an existing prefix is found,
+  # resolve THAT physical form, then re-append the tail. Empty input → empty.
+  local p="${1:-}" existing="" tail="" resolved=""
+  [ -z "$p" ] && { printf ''; return 0; }
+  if resolved="$(realpath -q "$p" 2>/dev/null)" && [ -n "$resolved" ]; then
+    printf '%s' "$resolved"
+    return 0
+  fi
+  existing="$p"
+  while [ -n "$existing" ] && [ ! -e "$existing" ]; do
+    tail="/${existing##*/}${tail}"
+    existing="${existing%/*}"
+    [ -z "$existing" ] && existing="/"
+  done
+  if [ -n "$existing" ] && resolved="$(realpath -q "$existing" 2>/dev/null)" \
+     && [ -n "$resolved" ]; then
+    # Strip a trailing slash on `/` before concatenating.
+    [ "$resolved" = "/" ] && resolved=""
+    printf '%s%s' "$resolved" "$tail"
+  else
+    printf '%s' "$p"
+  fi
+}
+
+_touchid_case_insensitive_fs() {
+  # macOS defaults to APFS case-insensitive; HFS+ likewise. Treat Darwin as
+  # case-insensitive to be conservative — the resolved-path text comparison
+  # then lowercases both sides in addition to inode compare.
+  case "$(uname -s 2>/dev/null)" in
+    Darwin) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_touchid_inode_key() {
+  # Print "device:inode" of $1 for identity comparison across path spellings.
+  # Empty on failure.
+  local p="$1" out=""
+  [ -z "$p" ] && return 0
+  [ -e "$p" ] || return 0
+  out="$(stat -f '%d:%i' "$p" 2>/dev/null)" || out="$(stat -c '%d:%i' "$p" 2>/dev/null)"
+  printf '%s' "$out"
+}
+
+_touchid_same_or_under() {
+  # True (0) if $1 (resolved override) equals $2 (resolved forbidden anchor)
+  # OR is a descendant of it. Path text is case-folded on case-insensitive
+  # filesystems; inode identity is checked at every ancestor as belt-and-braces
+  # against symlink+case-fuzz mixes.
+  local override="$1" anchor="$2"
+  [ -z "$override" ] && return 1
+  [ -z "$anchor" ] && return 1
+
+  local o_cmp="$override" a_cmp="$anchor"
+  if _touchid_case_insensitive_fs; then
+    o_cmp="$(_touchid_lc "$override")"
+    a_cmp="$(_touchid_lc "$anchor")"
+  fi
+  if [ "$o_cmp" = "$a_cmp" ]; then
+    return 0
+  fi
+  case "$o_cmp" in
+    "$a_cmp"/*) return 0 ;;
+  esac
+
+  # Inode-based check: walk up the ancestors of the override; if any ancestor's
+  # (dev,inode) matches the anchor's, they are the same directory on disk.
+  local anchor_key cur cur_key
+  anchor_key="$(_touchid_inode_key "$anchor")"
+  if [ -n "$anchor_key" ]; then
+    cur="$override"
+    while [ -n "$cur" ] && [ "$cur" != "/" ]; do
+      cur_key="$(_touchid_inode_key "$cur")"
+      if [ -n "$cur_key" ] && [ "$cur_key" = "$anchor_key" ]; then
+        return 0
+      fi
+      cur="$(dirname "$cur")"
+    done
+    # Also check "/" itself for completeness.
+    cur_key="$(_touchid_inode_key "/")"
+    if [ -n "$cur_key" ] && [ "$cur_key" = "$anchor_key" ]; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+_touchid_real_home() {
+  # Anchor HOME independently of the caller's $HOME env — closes the HOME
+  # rewrite defeat. Test-only override GOSLEEP_TOUCHID_ANCHOR_HOME wins for
+  # the hermetic smoke; production leaves it unset.
+  if [ -n "${GOSLEEP_TOUCHID_ANCHOR_HOME:-}" ]; then
+    _touchid_realpath "$GOSLEEP_TOUCHID_ANCHOR_HOME"
+    return 0
+  fi
+  local raw="" user_id="${USER:-}"
+  [ -z "$user_id" ] && user_id="$(id -un 2>/dev/null || true)"
+  case "$(uname -s 2>/dev/null)" in
+    Darwin)
+      if [ -n "$user_id" ]; then
+        raw="$(dscl . -read "/Users/$user_id" NFSHomeDirectory 2>/dev/null \
+               | awk 'NR==1 && $1=="NFSHomeDirectory:" {print $2}')"
+      fi
+      ;;
+    Linux)
+      if [ -n "$user_id" ]; then
+        raw="$(getent passwd "$user_id" 2>/dev/null | awk -F: '{print $6}' | head -1)"
+      fi
+      ;;
+  esac
+  [ -z "$raw" ] && raw="$HOME"
+  _touchid_realpath "$raw"
+}
+
+_touchid_real_repo() {
+  # Anchor REPO_ROOT the same way — test-only override for the decoy smoke.
+  if [ -n "${GOSLEEP_TOUCHID_ANCHOR_REPO:-}" ]; then
+    _touchid_realpath "$GOSLEEP_TOUCHID_ANCHOR_REPO"
+    return 0
+  fi
+  _touchid_realpath "$REPO_ROOT"
+}
+
 if [ "${GOSLEEP_TOUCHID:-0}" != "1" ]; then
   # Default OFF — inert stub. Log one line so operators reading logs know the
   # gate exists in the script but is not participating in this run; then fall
@@ -296,44 +449,56 @@ if [ "${GOSLEEP_TOUCHID:-0}" != "1" ]; then
 else
   # Opt-in: the flag is set. Fail-closed bypass check first, so even a caller
   # that sets GOSLEEP_TOUCHID_BYPASS=1 cannot ever route around the sensor on
-  # a production tree.
-  #
-  # The guard checks the RESOLVED destination paths, not just the env-var
-  # names. `PROD_DIR` here is the value already computed above from
-  # GOSLEEP_SKILLS_PROD_DIR (default $HOME/.claude/skills/<name>); if that
-  # resolves under the real global tree, refuse the bypass unconditionally.
-  # Same for BACKUPS_DIR vs docs/skills/backups.
+  # a production tree — including symlink, uppercase, relative-path, HOME
+  # rewrite, `..` traversal, and backups-symlink defeats (GSL-385, verified
+  # in docs/reports/verifications/GSL-288/runs/01/).
   if [ "${GOSLEEP_TOUCHID_BYPASS:-0}" = "1" ]; then
     bypass_ok=1
-    resolved_prod_root="${GOSLEEP_SKILLS_PROD_DIR:-}"
-    resolved_backups="${GOSLEEP_SKILLS_BACKUPS_DIR:-}"
-    # Refuse if either override is unset — a bypass without both overrides
-    # cannot possibly be a hermetic test.
-    [ -z "$resolved_prod_root" ] && bypass_ok=0
-    [ -z "$resolved_backups" ]   && bypass_ok=0
-    # Refuse if either resolves under the real global tree, verbatim or by
-    # prefix — mirrors the GSL-254 preflight guard against production paths.
-    case "$resolved_prod_root" in
-      "$HOME/.claude/skills"|"$HOME/.claude/skills/"*) bypass_ok=0 ;;
-    esac
-    case "$resolved_backups" in
-      "$HOME/.claude/skills"|"$HOME/.claude/skills/"*) bypass_ok=0 ;;
-    esac
-    # Also refuse if the resolved BACKUPS points at the real production
-    # backups tree under docs/skills/backups — the launchd default. This
-    # catches "hermetic + prod backups" hybrids.
-    case "$resolved_backups" in
-      "$REPO_ROOT/docs/skills/backups"|"$REPO_ROOT/docs/skills/backups/"*) bypass_ok=0 ;;
-    esac
+    refuse_reason=""
+
+    resolved_prod_raw="${GOSLEEP_SKILLS_PROD_DIR:-}"
+    resolved_backups_raw="${GOSLEEP_SKILLS_BACKUPS_DIR:-}"
+
+    if [ -z "$resolved_prod_raw" ]; then
+      bypass_ok=0
+      refuse_reason="GOSLEEP_SKILLS_PROD_DIR is unset"
+    elif [ -z "$resolved_backups_raw" ]; then
+      bypass_ok=0
+      refuse_reason="GOSLEEP_SKILLS_BACKUPS_DIR is unset"
+    else
+      resolved_prod="$(_touchid_realpath "$resolved_prod_raw")"
+      resolved_backups="$(_touchid_realpath "$resolved_backups_raw")"
+      forbidden_home="$(_touchid_real_home)"
+      forbidden_repo="$(_touchid_real_repo)"
+      forbidden_prod_anchor="$(_touchid_realpath "$forbidden_home/.claude/skills")"
+      forbidden_backups_anchor="$(_touchid_realpath "$forbidden_repo/docs/skills/backups")"
+
+      if _touchid_same_or_under "$resolved_prod" "$forbidden_prod_anchor"; then
+        bypass_ok=0
+        refuse_reason="PROD_DIR '$resolved_prod_raw' resolves to '$resolved_prod' which is under real prod tree '$forbidden_prod_anchor'"
+      elif _touchid_same_or_under "$resolved_backups" "$forbidden_prod_anchor"; then
+        bypass_ok=0
+        refuse_reason="BACKUPS_DIR '$resolved_backups_raw' resolves to '$resolved_backups' which is under real prod tree '$forbidden_prod_anchor'"
+      elif _touchid_same_or_under "$resolved_backups" "$forbidden_backups_anchor"; then
+        bypass_ok=0
+        refuse_reason="BACKUPS_DIR '$resolved_backups_raw' resolves to '$resolved_backups' which is under real backups tree '$forbidden_backups_anchor'"
+      elif _touchid_same_or_under "$resolved_prod" "$forbidden_backups_anchor"; then
+        bypass_ok=0
+        refuse_reason="PROD_DIR '$resolved_prod_raw' resolves to '$resolved_prod' which is under real backups tree '$forbidden_backups_anchor'"
+      fi
+    fi
+
     if [ "$bypass_ok" -eq 1 ]; then
       GATE_BYPASS=1
       echo "publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override)." >&2
-      echo "publish:        prod=$resolved_prod_root backups=$resolved_backups" >&2
+      echo "publish:        prod=$resolved_prod backups=$resolved_backups" >&2
+      echo "publish:        (forbidden anchors: prod=$forbidden_prod_anchor backups=$forbidden_backups_anchor)" >&2
     else
-      echo "publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR" >&2
-      echo "publish:   AND GOSLEEP_SKILLS_BACKUPS_DIR set to hermetic paths outside the real tree." >&2
-      echo "publish:   Resolved: prod='$resolved_prod_root' backups='$resolved_backups'." >&2
-      echo "publish:   Real tree: prod-refused='\$HOME/.claude/skills[/*]',  backups-refused='\$HOME/.claude/skills[/*]' AND '\$REPO_ROOT/docs/skills/backups[/*]'." >&2
+      echo "publish: refusing bypass — $refuse_reason." >&2
+      echo "publish:   Guard uses realpath normalization + dscl/getent-anchored HOME (GSL-385)." >&2
+      echo "publish:   Set both GOSLEEP_SKILLS_PROD_DIR and GOSLEEP_SKILLS_BACKUPS_DIR to hermetic paths OUTSIDE" >&2
+      echo "publish:   the real prod tree ('${forbidden_prod_anchor:-\$HOME/.claude/skills}') and OUTSIDE the real" >&2
+      echo "publish:   backups tree ('${forbidden_backups_anchor:-\$REPO_ROOT/docs/skills/backups}')." >&2
       exit 3
     fi
   fi

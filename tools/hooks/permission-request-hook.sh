@@ -101,9 +101,28 @@ exec < "$_GOSLEEP_STDIN_PEEK"
 # pre-GSL-367 python3 `except Exception: pass` branch.
 _GOSLEEP_PEEK_SESSION_ID=""
 if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ] && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
-    _GOSLEEP_PEEK_SESSION_ID="$(LC_ALL=C head -c 4096 "$_GOSLEEP_STDIN_PEEK" 2>/dev/null \
-        | LC_ALL=C sed -n -E 's/.*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
-        | head -n 1)"
+    # GSL-386 hardening — 4 KiB cap widened to 64 KiB (covers future preamble growth
+    # without silent misses) and the greedy `sed` replaced with `awk` + `match()`
+    # + `exit` for portable first-match semantics on a single process. See
+    # tools/hooks/ask-user-question-hook.sh for the full rationale.
+    _GOSLEEP_PEEK_SESSION_ID="$(LC_ALL=C head -c 65536 "$_GOSLEEP_STDIN_PEEK" 2>/dev/null \
+        | LC_ALL=C awk '
+            match($0, /"session_id"[[:space:]]*:[[:space:]]*"[^"]+"/) {
+              s = substr($0, RSTART, RLENGTH)
+              sub(/^"session_id"[[:space:]]*:[[:space:]]*"/, "", s)
+              sub(/"$/, "", s)
+              print s
+              exit
+            }')"
+
+    # Debug breadcrumb — empty sid on non-empty stdin is now observable via
+    # GOSLEEP_HOOK_DEBUG_LOG. Silent when the env is unset.
+    if [ -z "$_GOSLEEP_PEEK_SESSION_ID" ] && [ -n "${GOSLEEP_HOOK_DEBUG_LOG:-}" ]; then
+        printf '{"ts":"%s","hook":"permission-request","outcome":"peek_miss","stdin_bytes":%d,"peek_cap":65536}\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)" \
+            "$(wc -c < "$_GOSLEEP_STDIN_PEEK" 2>/dev/null | tr -d ' ' || echo 0)" \
+            >>"$GOSLEEP_HOOK_DEBUG_LOG" 2>/dev/null || true
+    fi
 fi
 
 # shellcheck disable=SC1091
