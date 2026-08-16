@@ -204,15 +204,62 @@ else
 fi
 say ""
 
-# ── 2. hooks a harness cannot force ─────────────────────────────────────────
-# Honesty beats coverage theatre: these are wired and their payload mapping is unit-tested, but
-# nothing here can MAKE them happen. Say so, rather than let a green check imply more than it proves.
-say "== wired, not exercised by this harness (mapping unit-tested; real fire unproven here) =="
-note "StopFailure   — needs a real rate_limit/overloaded from the API (cannot be forced on demand)"
+# ── 2. wired, and now proven end-to-end by synthetic hook payloads ──────────
+#
+# GSL-232: the hook LAYER's contract is "if Claude Code sends this stdin, we log that event".
+# The realistic wire-tap (a live rate-limit or a real teammate-idle) cannot be forced on demand,
+# so we prove the LAYER by feeding the exact stdin envelope the Claude Code docs pin for each
+# hook and asserting the event line lands in events/*.jsonl with the expected type + data. It
+# does NOT prove that Claude Code will emit that stdin (only a real fire can); it proves that
+# when it does, the layer will not drop it. Combined with section 1's real-run leg (which forces
+# PostToolUse + Stop) that is the coverage the audit finding (59) asks for — real for the hooks
+# a harness CAN force, synthetic-plus-mapping for the ones it cannot.
+say "== 2. synthetic hook-layer proof — StopFailure + TeammateIdle (GSL-232) =="
+
+WLAB="$WORK/wired-lab"; mkdir -p "$WLAB/events"
+
+# StopFailure — the quota-window detector. The stdin shape is pinned by the CC docs: `error_type`
+# is the discriminator (rate_limit | overloaded | server_error | billing_error). The mapping under
+# test is lab-log.sh's "StopFailure -> api.failure" arm.
+printf '%s' '{"hook_event_name":"StopFailure","session_id":"synth-sf","cwd":"'"$PROBE_REPO"'","error_type":"rate_limit","error":"rate-limit reached"}' \
+  | GOSLEEP_LAB_DIR="$WLAB" bash tools/lab/lab-log.sh
+if jq -s -e '[.[] | select(.type=="api.failure" and .src=="hook:StopFailure" and .data.error_type=="rate_limit")] | length >= 1' \
+     "$WLAB"/events/*.jsonl >/dev/null 2>&1; then
+  ok "StopFailure(error_type=rate_limit) -> api.failure event lands with the type intact"
+else
+  bad "StopFailure synthetic payload did not produce an api.failure event"
+fi
+
+# The same hook, other side of the same coin: an overloaded response is the second common error_type
+# and must land under the same api.failure roof (so downstream consumers count them together).
+printf '%s' '{"hook_event_name":"StopFailure","session_id":"synth-sf2","cwd":"'"$PROBE_REPO"'","error_type":"overloaded","error":"upstream overloaded"}' \
+  | GOSLEEP_LAB_DIR="$WLAB" bash tools/lab/lab-log.sh
+[ "$(jq -s -e '[.[] | select(.type=="api.failure")] | length' "$WLAB"/events/*.jsonl 2>/dev/null || echo 0)" -ge "2" ] \
+  && ok "second StopFailure(error_type=overloaded) also lands (api.failure count >= 2)" \
+  || bad "StopFailure overloaded synth did not land"
+
+# TeammateIdle — a teammate agent went idle in the ORCHESTRATOR's session. The mapping under
+# test is lab-log.sh's "TeammateIdle -> agent.idle" arm; it carries the agent_type as data.
+printf '%s' '{"hook_event_name":"TeammateIdle","session_id":"synth-ti","cwd":"'"$PROBE_REPO"'","agent_type":"impl-wave4"}' \
+  | GOSLEEP_LAB_DIR="$WLAB" bash tools/lab/lab-log.sh
+if jq -s -e '[.[] | select(.type=="agent.idle" and .src=="hook:TeammateIdle" and .data.agent_type=="impl-wave4")] | length >= 1' \
+     "$WLAB"/events/*.jsonl >/dev/null 2>&1; then
+  ok "TeammateIdle(agent_type=impl-wave4) -> agent.idle event lands with the agent_type intact"
+else
+  bad "TeammateIdle synthetic payload did not produce an agent.idle event"
+fi
+
+note "  events file for section 2:"
+note "    $WLAB/events/*.jsonl"
+jq -c '{ts,type,src,data}' "$WLAB"/events/*.jsonl 2>/dev/null | while read -r ln; do
+  note "    $ln"
+done
+say ""
+
+# ── 2b. still un-forced by any harness (kept honest) ────────────────────────
+say "== 2b. wired, not exercised end-to-end (mapping unit-tested; real fire unproven here) =="
 note "PreCompact    — needs a real context compaction"
 note "PostCompact   — needs a real context compaction"
-note "TeammateIdle  — needs an Agent-Teams teammate going idle (fires in the ORCHESTRATOR's session,"
-note "                not in a claude -p child; confirm next cycle: grep agent.idle in events/)"
 note "Notification  — needs a permission prompt / idle prompt"
 note "SubagentStart/Stop, TaskCreated/TaskCompleted — fire in an interactive session; see dev_history"
 say ""
