@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSL-174 · Verification Run 01 · Night audit (verifier-174)</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#111418; --panel2:#161a20; --border:#22282f;
+    --fg:#e6ebf1; --muted:#8a94a1; --accent:#7cc4ff; --ok:#5ecf7a;
+    --warn:#e6c15a; --bad:#ef6a6a; --code:#0f1216;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa; --panel:#ffffff; --panel2:#f1f3f6; --border:#e2e6ea;
+      --fg:#0d1117; --muted:#54606c; --accent:#0b6bcb; --ok:#1f8a3a;
+      --warn:#8a6d0f; --bad:#a51818; --code:#f4f6f8;
+    }
+  }
+  html,body{background:var(--bg);color:var(--fg);}
+  body{font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;margin:0;padding:24px;}
+  .wrap{max-width:1100px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 4px;}
+  h2{font-size:16px;margin:28px 0 10px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
+  .sub{color:var(--muted);margin:0 0 20px;}
+  .lang{display:inline-block;font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;color:var(--muted);margin-left:6px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:16px 0;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .kpi{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:120px;}
+  .kpi .n{font-size:22px;font-weight:600;}
+  .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0;}
+  th,td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--panel2);font-weight:600;}
+  code,pre{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;}
+  code.inline{background:var(--code);padding:1px 5px;border-radius:3px;}
+  .ok{color:var(--ok);font-weight:600;}
+  .warn{color:var(--warn);font-weight:600;}
+  .bad{color:var(--bad);font-weight:600;}
+  .badge{display:inline-block;padding:2px 8px;font-size:11px;border-radius:99px;border:1px solid var(--border);}
+  .b-ok{background:rgba(94,207,122,.15);color:var(--ok);border-color:rgba(94,207,122,.4);}
+  .b-warn{background:rgba(230,193,90,.15);color:var(--warn);border-color:rgba(230,193,90,.4);}
+  .b-bad{background:rgba(239,106,106,.15);color:var(--bad);border-color:rgba(239,106,106,.4);}
+  ul{padding-left:22px;}
+  li{margin:4px 0;}
+  .headline{font-size:15px;padding:14px 18px;border-left:4px solid var(--ok);background:var(--panel2);border-radius:6px;margin:12px 0;}
+  .headline.warn{border-left-color:var(--warn);}
+  .divider{margin:36px 0;border:0;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GSL-174 · Verification run 01 <span class="lang">EN</span></h1>
+<p class="sub">Independent adversarial audit of the tonight-built slice (PR #307, OPEN/CLEAN) by <code class="inline">verifier-174</code> · <b>2026-08-10 (Europe/Kyiv, night shift)</b> · read-only sandbox under <code class="inline">.artifacts/verify-174/</code>.</p>
+
+<div class="row">
+  <div class="kpi"><div class="n">92<span style="color:var(--muted);font-weight:400;font-size:14px;">/100</span></div><div class="l">Verdict</div></div>
+  <div class="kpi"><div class="n ok">10/10</div><div class="l">Tasks landed</div></div>
+  <div class="kpi"><div class="n ok">SAFE</div><div class="l">Safety invariant</div></div>
+  <div class="kpi"><div class="n ok">0 · 1 · 3</div><div class="l">C · M · m findings</div></div>
+  <div class="kpi"><div class="n">HOLD</div><div class="l">Merge recommendation</div></div>
+</div>
+
+<div class="headline">
+  <b>Recommendation:</b> <span class="ok">HOLD-FOR-OWNER.</span>
+  PR #307 is a review surface — <b>not a merge candidate tonight</b>. The 10 tonight-buildable T-tasks landed cleanly; the 11 owner-gated tasks are intentionally deferred. Ship the eleven only after the owner runs the Skills screen live, sanctions GSL-251 reverse-sync, and lifts the TouchID pause.
+</div>
+
+<h2>1 · The headline — Safety invariant</h2>
+<p>
+  <b>Question:</b> can any code path from the tonight-built slice reach <code class="inline">~/.claude/skills/</code> or invoke <code class="inline">install.sh</code> without an explicit owner gesture?
+  <br><b>Answer: <span class="ok">NO.</span></b>
+</p>
+
+<table>
+  <thead><tr><th>Layer</th><th>Evidence</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Grep of the whole branch diff for <code class="inline">.claude/skills</code>, <code class="inline">install.sh</code>, <code class="inline">rsync</code>, <code class="inline">--delete</code></td>
+      <td>Every hit is either a doc/comment or lives inside <code class="inline">tools/skills/publish.sh</code> (the sanctioned path) / <code class="inline">tools/lab/smoke.sh</code> guard code. The TypeScript side of the endpoint (<code class="inline">apps/core/src/actions/publish.ts</code>, <code class="inline">apps/core/scripts/record-publish.ts</code>) has <b>no</b> rsync / no <code class="inline">.claude/skills</code> writes. Only mention in TS is a comment in <code class="inline">record-publish.ts:16</code>.</td>
+      <td class="ok">PASS</td>
+    </tr>
+    <tr>
+      <td>Live filesystem check</td>
+      <td><code class="inline">find ~/.claude/skills -type f -newermt "2026-08-09 22:00"</code> → <b>zero</b> skill-content files. Only hit is <code class="inline">gstack/.git/FETCH_HEAD</code> at 01:19, an unrelated <code class="inline">gstack</code> git fetch. All skill <code class="inline">SKILL.md</code> mtimes = <b>2026-08-08 19:16</b> or earlier.</td>
+      <td class="ok">PASS</td>
+    </tr>
+    <tr>
+      <td>publish.sh owner-gate (line 160)</td>
+      <td>Refuses when <code class="inline">have_tty==0 && have_env==0</code> (exit 3). Env-nonce must be ≥16 chars (endpoint generates 32 hex, 128 bits). Belt-and-braces refuses under <code class="inline">CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS</code>.</td>
+      <td class="ok">PASS</td>
+    </tr>
+    <tr>
+      <td>Endpoint envelope</td>
+      <td><code class="inline">POST /actions/skills/publish</code> gated by <code class="inline">requireBearer</code> (constant-time compare against Keychain secret; 503 if secret unavailable — never silent-fallback). Plus <code class="inline">serialize()</code> mutex + <code class="inline">withTimeline()</code> idempotency. CSRF gate <code class="inline">requireLocalOrigin</code> registered separately.</td>
+      <td class="ok">PASS</td>
+    </tr>
+    <tr>
+      <td>Skills web screen Publish button</td>
+      <td><code class="inline">apps/web/src/screens/Skills.tsx:170-177</code> — button hard-coded <code class="inline">disabled</code> + <code class="inline">aria-disabled="true"</code> + tooltip <code class="inline">"TouchID paused (d-2026-08-09-001). Publish via CLI: bash tools/skills/publish.sh &lt;name&gt;"</code>. No <code class="inline">onClick</code> handler wired.</td>
+      <td class="ok">PASS</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>2 · Per-task verdict</h2>
+<table>
+  <thead><tr><th>Task</th><th>Commit</th><th>What landed</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>GSL-306</td><td><code class="inline">21d5791</code></td><td>PRD Phase 8 (EN, one-file-per-phase, correct slug shape)</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-252</td><td><code class="inline">fc23bc9</code> + <code class="inline">974f17b</code></td><td>CHANGELOG registry (JSONL + JSON schema + validator)</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-254 T2</td><td><code class="inline">ca6cd8b</code></td><td><code class="inline">verify-local.sh</code> pre-publish sanity — 4 checks, conservative refusal posture</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-292</td><td><code class="inline">ba6a00d</code></td><td><code class="inline">record-publish.ts</code> — JSONL read + validate + fold + upsert; empty <code class="inline">/skills</code> now populated</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-253</td><td><code class="inline">dbd905d</code></td><td><code class="inline">publish.sh</code> TTY-interim CLI, four defense layers, exit-code contract 0/1/2/3</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-255 T6</td><td><code class="inline">72f17b7</code></td><td>Skills diff module + <code class="inline">GET /skills/:name/diff</code>; 5s cache; 200 KB bound; per-name serialize</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-286 T5</td><td><code class="inline">2d684a6</code></td><td><code class="inline">POST /actions/skills/publish</code> spawner — Bearer + mutex + withTimeline; 128-bit per-request nonce</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-287 T7</td><td><code class="inline">e25f832</code></td><td>Skills screen with card list + diff drawer + <b>disabled</b> Publish button</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-186</td><td><code class="inline">29c2e55</code> + <code class="inline">9528266</code></td><td>Handoff + delivery-workflow content fixes; safe copies only; section-sign fix follow-up</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-189</td><td><code class="inline">982e359</code></td><td>Shift-closing checklist in <code class="inline">skill/handoff/SKILL.md</code> (safe copy) + CLAUDE.md cross-reference</td><td class="ok">PASS</td></tr>
+    <tr><td>GSL-254 T10</td><td><code class="inline">409e633</code></td><td>Production test-guard in <code class="inline">smoke.sh</code> (opt-in <code class="inline">GOSLEEP_SKILLS_GUARD=1</code>); intent_id correlation</td><td class="ok">PASS</td></tr>
+  </tbody>
+</table>
+
+<h2>3 · Gate results (all green)</h2>
+<table>
+  <thead><tr><th>Gate</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td><code class="inline">bun x tsc -p apps/core --noEmit</code></td><td class="ok">exit 0</td></tr>
+    <tr><td><code class="inline">bun x tsc -p apps/web --noEmit</code></td><td class="ok">exit 0</td></tr>
+    <tr><td><code class="inline">bun x tsc -p packages/schema --noEmit</code></td><td class="ok">exit 0</td></tr>
+    <tr><td><code class="inline">bun x tsc -p packages/sdk --noEmit</code></td><td class="ok">exit 0</td></tr>
+    <tr><td><code class="inline">bash -n</code> on <code class="inline">publish.sh</code>, <code class="inline">verify-local.sh</code>, <code class="inline">validate-changelog.sh</code>, <code class="inline">smoke.sh</code></td><td class="ok">all OK</td></tr>
+    <tr><td><code class="inline">bun test apps/core</code></td><td class="ok">191 pass / 0 fail / 554 expect / 21 files / 2.91 s</td></tr>
+    <tr><td><code class="inline">bash tools/lab/tests/core-smoke.sh</code></td><td class="ok">96/0 pass (includes T6+T5+snapshot)</td></tr>
+    <tr><td><code class="inline">bun run --filter='@gosleep/web' build</code></td><td class="ok">built in 2.57 s, 922 KB main bundle</td></tr>
+  </tbody>
+</table>
+
+<h2>4 · Publish live-proof (hermetic re-run)</h2>
+<p>Own sandbox under <code class="inline">.artifacts/verify-174/publish-sandbox/</code> — own <code class="inline">HOME</code>, own DB, own backups dir, own CHANGELOG path. Real production data <b>not touched</b>.</p>
+
+<table>
+  <thead><tr><th>#</th><th>Test</th><th>Expected</th><th>Actual</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Agent-in-pipe (no TTY, no nonce), <code class="inline">--yes</code></td><td>rc=3</td><td class="ok">rc=3</td></tr>
+    <tr><td>2</td><td><code class="inline">publish.sh --all</code></td><td>rc=2</td><td class="ok">rc=2</td></tr>
+    <tr><td>3</td><td>With nonce + <code class="inline">CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1</code></td><td>rc=3</td><td class="ok">rc=3</td></tr>
+    <tr><td>4</td><td>Path-traversal name <code class="inline">../foo</code></td><td>rc=2</td><td class="ok">rc=2</td></tr>
+    <tr><td>5</td><td>Nonexistent skill dir</td><td>rc=2</td><td class="ok">rc=2</td></tr>
+    <tr><td>6</td><td>Short nonce (&lt;16 chars)</td><td>rc=3</td><td class="ok">rc=3</td></tr>
+    <tr><td>7</td><td>Multi-arg (2 skill names)</td><td>rc=2</td><td class="ok">rc=2</td></tr>
+    <tr><td>8</td><td><b>Full publish</b> — valid nonce + <code class="inline">handoff</code> + migrated scratch DB</td><td>rc=0, CHANGELOG appended, DB folded, backup written, JSON summary on stdout</td><td class="ok">rc=0, all four confirmed (see stdout event <code class="inline">skills.publish.done</code>)</td></tr>
+    <tr><td>9</td><td><b>Idempotency</b> replay (same <code class="inline">--intent-id</code>) at CLI</td><td>rc=0 — but publish.sh has no idempotency at the CLI layer; endpoint (<code class="inline">withTimeline</code>) enforces</td><td class="warn">rc=0, appended a 3rd row (see m1 below)</td></tr>
+  </tbody>
+</table>
+
+<h3>Sandbox artefacts</h3>
+<ul>
+  <li>CHANGELOG.jsonl → 3 rows (2 distinct publishes + 1 orphaned from an unmigrated first attempt).</li>
+  <li>Backups dir → <code class="inline">handoff-20260809T234352Z/</code> + <code class="inline">handoff-20260809T234427Z/</code>.</li>
+  <li>Sandbox <code class="inline">~/.claude/skills/handoff/</code> → populated with <code class="inline">SKILL.md</code> from repo (rsync worked).</li>
+  <li>Real <code class="inline">~/.claude/skills/</code> → mtime scan confirms <b>byte-unchanged</b> for skill content since 2026-08-08.</li>
+</ul>
+
+<h2>5 · Skills web screen check</h2>
+<p><b>Method: source-code read (no browser).</b> The Skills.tsx source, router.tsx, AppShell.tsx nav, and data/queries.ts were read end-to-end. No cheap subagent spawn was necessary — the code is small enough to audit inline.</p>
+
+<ul>
+  <li><b>Route wired.</b> <code class="inline">router.tsx</code> line 37: <code class="inline">{ path: "skills", element: &lt;SkillsScreen /&gt; }</code>. Nav entry in <code class="inline">AppShell.tsx</code> line 36 renders the icon.</li>
+  <li><b>Publish button disabled + tooltip citing d-2026-08-09-001.</b> Line 170-177: <code class="inline">disabled</code> + <code class="inline">aria-disabled="true"</code> + <code class="inline">title={TOUCHID_PAUSED_TOOLTIP}</code>. No <code class="inline">onClick</code> handler — the button is purely visual tonight.</li>
+  <li><b>UI-primitive reuse only.</b> Card, CardHeader, CardBody, Badge, Button, Dialog, PageHeader, QueryStatus — every one already exists in the codebase; no new primitives.</li>
+  <li><b>No data leaks.</b> Row fields shown: name, version, last-publish-at + by, local-hash (first 8-12 chars), prod-hash. Diff drawer shows unified diff (bounded to 200 KB by the backend) + CHANGELOG history. Nothing pulls Bearer tokens, DB paths, or absolute filesystem paths into the DOM.</li>
+</ul>
+
+<h2>6 · Findings</h2>
+
+<h3>Critical (0)</h3>
+<p><i>None.</i> The safety invariant holds architecturally and empirically.</p>
+
+<h3>Medium (1)</h3>
+<div class="panel">
+  <p><b>M1 — <code class="inline">publish.sh</code> half-published state when DB unmigrated.</b> <span class="badge b-warn">MEDIUM</span></p>
+  <p>
+    If <code class="inline">publish.sh</code> runs against a <code class="inline">GOSLEEP_DB_PATH</code> that does not yet have the <code class="inline">skills</code> table (fresh clone, corrupted DB, migration skipped), the sequence is:
+  </p>
+  <ol>
+    <li>verify-local passes</li>
+    <li>backup written</li>
+    <li>rsync completes → <code class="inline">~/.claude/skills/&lt;name&gt;/</code> is <b>updated in production</b></li>
+    <li>CHANGELOG.jsonl append succeeds → orphaned "published" row lives in JSONL</li>
+    <li>fold-to-DB fails with <code class="inline">no such table: skills</code> → publish.sh exits <b>rc=1</b></li>
+  </ol>
+  <p>
+    Net effect: filesystem + JSONL are ahead of the DB; the endpoint returns 500 to the caller; the CLI operator sees "publish.sh FAILED to append CHANGELOG row — the rsync ALREADY LANDED" (which is truthful about the rsync but misleading about the JSONL, which <i>did</i> append). Reproduced in the hermetic sandbox (see live-proof #8, first attempt). In production the launchd-managed core migrates the DB at boot, so this is a theoretical concern; still worth a runbook note that <code class="inline">publish.sh</code> in isolation requires a migrated DB, and worth guarding <code class="inline">record-publish.ts</code> to skip the fold gracefully (or run migrations) when the table is missing.
+  </p>
+</div>
+
+<h3>Minor (3)</h3>
+<div class="panel">
+  <p><b>m1 — <code class="inline">publish.sh</code> has no idempotency at the CLI layer.</b> <span class="badge b-warn">MINOR</span></p>
+  <p>Re-invoking with the same <code class="inline">--intent-id</code> appends another row every time. This is <b>by design</b> — the endpoint (<code class="inline">withTimeline</code>) is where <code class="inline">Idempotency-Key</code> is enforced. Confirmed empirically: 3rd sandbox publish appended a 3rd row despite reusing intent_id. A future runbook note should warn direct-CLI operators not to re-run manually; the T10 test-guard's intent_id correlation logic could also duplicate-detect at end-of-run.</p>
+</div>
+<div class="panel">
+  <p><b>m2 — Skills.tsx <code class="inline">submitPublish</code> is defined but only referenced from a hidden span.</b> <span class="badge b-warn">MINOR</span></p>
+  <p>Lines 68-89 define <code class="inline">submitPublish</code> and call the mutation. Lines 182-185 keep it alive with a hidden <code class="inline">&lt;span&gt;{typeof submitPublish}&lt;/span&gt;</code> so tsc doesn't strip it. When TouchID lifts, the wire-up is <b>not</b> a one-line <code class="inline">disabled={false}</code> flip — the Publish button also needs <code class="inline">onClick={() =&gt; submitPublish(row)}</code>. Worth naming in GSL-266's acceptance so an implementer does not miss it and ship a still-non-functional button.</p>
+</div>
+<div class="panel">
+  <p><b>m3 — Content edits (GSL-186, GSL-189) landed on safe copies as required.</b> <span class="badge b-ok">RESOLVED / RE-CONFIRMED</span></p>
+  <p>Verified via <code class="inline">git diff HEAD~13..HEAD --name-only | grep ^skill/</code>: only <code class="inline">skill/delivery-workflow/SKILL.md</code> and <code class="inline">skill/handoff/SKILL.md</code>. <b>No</b> edits to <code class="inline">skill/orchestrating-delivery-agents/</code> (which is authority-inverted per owner 2026-07-20). Real <code class="inline">~/.claude/skills/orchestrating-delivery-agents/</code> untouched tonight.</p>
+</div>
+
+<h2>7 · Autonomous decisions cross-check</h2>
+<table>
+  <thead><tr><th>Decision</th><th>Verdict</th><th>Note</th></tr></thead>
+  <tbody>
+    <tr><td>Env overrides <code class="inline">GOSLEEP_SKILLS_BACKUPS_DIR</code>, <code class="inline">GOSLEEP_CHANGELOG_PATH</code>, <code class="inline">GOSLEEP_DB_PATH</code> for hermetic tests</td><td class="ok">SOUND</td><td>Enables hermetic verification (used by this run too). No production leak — real paths default when unset.</td></tr>
+    <tr><td>403 for CLI exit code 3 in <code class="inline">httpStatusFromError</code></td><td class="ok">SOUND</td><td>Distinguishes owner-gate refusal from mid-flow failure. Also 400 for exit 2 (usage), 500 fallback.</td></tr>
+    <tr><td>UI-primitive reuse (Card/Badge/Dialog etc)</td><td class="ok">SOUND</td><td>Matches Mastra/Supabase design line the owner sanctioned 2026-07-20. No new primitives.</td></tr>
+    <tr><td>GSL-189 placement in <code class="inline">skill/handoff/SKILL.md</code> (safe copy)</td><td class="ok">SOUND</td><td>Ideal target would also be <code class="inline">orchestrating-delivery-agents/</code>, but that's authority-inverted (owner-only) — dev-history correctly names this as an owner follow-up.</td></tr>
+    <tr><td>Test-guard opt-in behind <code class="inline">GOSLEEP_SKILLS_GUARD=1</code></td><td class="ok">SOUND</td><td>Correct: before GSL-251 reverse-sync, an ambient owner edit between smoke runs would spuriously trip an always-on guard. Flip always-on after stage 1.</td></tr>
+    <tr><td>Section-sign glyph fix in GSL-186 dev history</td><td class="ok">SOUND</td><td>Owner rule 2026-07-20: no <code class="inline">§</code> in project texts, write "section N" in words. Existing content stays, new content is clean. 0 <code class="inline">§</code> in the dev history now.</td></tr>
+  </tbody>
+</table>
+
+<h2>8 · Hygiene checklist</h2>
+<ul>
+  <li><b>No dirty <code class="inline">docs/lab/**</code> or <code class="inline">docs/handoff/**</code> staged in any commit</b> — <code class="inline">git diff HEAD~13..HEAD --name-only | grep -E '^docs/(lab|handoff)/'</code> is empty.</li>
+  <li><b>Nothing under <code class="inline">data/</code> committed</b> — same check, empty.</li>
+  <li><b>One commit per Task with sanctioned follow-ups</b> — GSL-186/252/254 each land 2 commits, all legitimate (T2/T10 sub-tasks for GSL-254; dev-history and section-sign follow-ups for GSL-252 and GSL-186).</li>
+  <li><b>Dev-history file per Task + index</b> — 11 files under <code class="inline">docs/dev_history/GSL-*-phase8-*.md</code>, all matching the <code class="inline">GSL-N-phaseM-slug.md</code> convention the owner reinstated 2026-08-07.</li>
+</ul>
+
+<h2>9 · Punch-list for the owner review</h2>
+<ol>
+  <li><b>Skills screen must be loaded live in the browser.</b> The tonight-build skipped this step. Run <code class="inline">bun run --filter='@gosleep/web' dev</code> against a scratch core; click each of the 7 skills; confirm the diff drawer renders; confirm the Publish button is visibly disabled with the paused-TouchID tooltip.</li>
+  <li><b>GSL-266 + GSL-288 must land together.</b> When TouchID lifts, wiring is <i>not</i> a one-line <code class="inline">disabled={false}</code> flip — Skills.tsx line 170-177 also needs an <code class="inline">onClick={() =&gt; submitPublish(row)}</code>, and <code class="inline">performPublish</code> in <code class="inline">apps/core/src/actions/publish.ts</code> needs the <code class="inline">open -W -a touchid-gate.app</code> hook that publish.sh's TODO(GSL-288) refers to. (m2 above.)</li>
+  <li><b>Reverse-sync (GSL-251) before any of GSL-182-188.</b> Those tickets edit <code class="inline">orchestrating-delivery-agents</code> content; on today's authority-inverted global copy, edits made in <code class="inline">skill/</code> would be OVERWRITTEN by the reverse-sync. Order matters.</li>
+  <li><b>Runbook note: <code class="inline">publish.sh</code> in isolation requires a migrated DB.</b> (M1 above.) The launchd-managed core migrates at boot, so the endpoint path is fine — but a bare CLI invocation on a fresh checkout needs <code class="inline">bun run apps/core/scripts/migrate.ts</code> first.</li>
+  <li><b>Consider CLI-layer duplicate detection.</b> (m1 above.) Not urgent; the endpoint enforces idempotency. But a warning banner from publish.sh when the same <code class="inline">intent_id</code> already appears in the CHANGELOG would prevent orphaned rows from operator error.</li>
+</ol>
+
+<hr class="divider">
+
+<h1 style="font-size:20px;">GSL-174 · Проверка №01 <span class="lang">RU</span></h1>
+<p class="sub">Независимая враждебная проверка ночной сборки PR #307 агентом <code class="inline">verifier-174</code>. Полный отчёт выше — на английском (по правилу владельца, все технические артефакты EN). Здесь — короткая русская оболочка для человека.</p>
+
+<div class="headline">
+  <b>Итог:</b> <span class="ok">92/100</span>, <b>HOLD-FOR-OWNER</b>. Ночная сборка чистая, но эпик GSL-174 — <b>частичный</b> (10 из 21 задач). PR #307 — это <b>витрина для утреннего ревью</b>, а не кандидат на merge.
+</div>
+
+<div class="panel">
+  <p><b>Инвариант безопасности:</b> <span class="ok">СОБЛЮДЁН.</span> Ни одна кодовая тропа из ночной сборки не пишет в реальный <code class="inline">~/.claude/skills/</code> без явного жеста владельца. Все правки скилл-контента в <code class="inline">skill/handoff</code> + <code class="inline">skill/delivery-workflow</code> (безопасные копии), <code class="inline">orchestrating-delivery-agents</code> НЕ трогали. Реальный <code class="inline">~/.claude/skills/</code> побайтно не менялся с 2026-08-08.</p>
+</div>
+
+<ul>
+  <li><b>Гейты</b> — все зелёные: 4 tsc → 0, <code class="inline">bash -n</code> ×4 → OK, <code class="inline">bun test</code> → 191/0, <code class="inline">core-smoke</code> → 96/0, веб-билд → 2.57 s.</li>
+  <li><b>Живой прогон publish.sh</b> в песочнице <code class="inline">.artifacts/verify-174/</code>: 7 форм отказов дали ожидаемые коды 2/2/2/2/2/3/3; полный публикейт с валидным nonce → rc=0, CHANGELOG растёт, DB апдейтится, бэкап пишется, JSON-событие <code class="inline">skills.publish.done</code> на stdout.</li>
+  <li><b>Skills-экран</b> проверен по коду (браузер не открывал — код небольшой, ревью-в-исходниках достаточно). Кнопка Publish физически <code class="inline">disabled</code>, с тултипом на <code class="inline">d-2026-08-09-001</code>, без <code class="inline">onClick</code>. Роут в роутере есть, навигация в AppShell есть.</li>
+  <li><b>Находки:</b> 0 критических; 1 средняя (М1: если DB не мигрирована, publish.sh падает после rsync — теоретически); 3 мелких (m1: нет идемпотентности на CLI-слое, это by design; m2: <code class="inline">submitPublish</code> при снятии паузы нужно ещё привязать к <code class="inline">onClick</code>; m3: правки скилл-контента корректно ушли в безопасные копии).</li>
+  <li><b>Что сделать до утреннего merge:</b> см. пункты 1-5 punch-list выше — визуальная проверка экрана; согласованное завершение GSL-266+GSL-288; порядок GSL-251 → GSL-182-188; заметка в runbook по DB-миграции для CLI; опциональная защита от дублей intent_id на CLI.</li>
+</ul>
+
+<hr class="divider">
+<p class="sub" style="text-align:center;">Report path: <code class="inline">docs/reports/verifications/GSL-174-night/runs/01/index.html</code> · Not committed — verifier surface only.</p>
+
+</div>
+</body>
+</html>

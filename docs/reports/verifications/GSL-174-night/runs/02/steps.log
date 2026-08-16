@@ -1,0 +1,11 @@
+2026-08-15T21:37:33Z  verify-307 boot: worktree=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/pr307 head=343f951 skills_owned=12
+2026-08-15T21:37:52Z  step-A: migrated scratch DB at .artifacts/verify-307/data/gosleep.db (drizzle migrate rc=0)
+2026-08-15T21:39:29Z  step-C: read endpoints OK — /skills 401/200 count=7 (SPEC EXPECTED 12!), /diff 200/400/404 confirmed
+2026-08-15T21:39:29Z  step-D refusals: publish 401/400/400 all pass
+2026-08-15T21:41:48Z  step-D publish: valid=200 cliEvent=skills.publish.done rc=0; replay cached:true; bad-name 400; HOME/.claude/skills untouched (rsync no-op — content matched)
+2026-08-15T21:41:48Z  MAJOR: API count=7 but CLAUDE.md claims 12; KNOWN_SKILLS hardcodes 7; 5 orphans invisible
+2026-08-15T21:42:19Z  step-E CLI: verify-local rc 2/1/0 pass; publish.sh no-TTY rc=3; preflight unmigrated DB rc=1 (no filesystem changes)
+2026-08-15T21:48:29Z  step-F report: index.html built EN+RU; verdict MERGE-READY=NO; 0C/1M/3m
+2026-08-15T21:48:45Z  teardown: core killed, port 7357 free, no lingering chromium — verify-307 done
+2026-08-15T22:03:40Z  Run 02b — focused re-verify starting at head=d2cf903
+2026-08-15T22:09:42Z  02b teardown: core killed PID=24288, port 7357 free, no chromium residue

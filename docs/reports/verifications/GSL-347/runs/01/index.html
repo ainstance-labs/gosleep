@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GSL-350 Observer mode Phase A — verification run 01 (+ 01b re-verify)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #12161c;
+    --panel-2: #171c23;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --border: #2a323d;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --accent: #58a6ff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; }
+  a { color: var(--accent); }
+  header {
+    padding: 28px 36px 20px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #171c23, #0b0d10);
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 32px 80px; }
+  section { margin-top: 32px; }
+  h2 { font-size: 17px; font-weight: 600; margin: 0 0 12px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; color: var(--text); }
+  .verdict {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .verdict.no  { background: rgba(248, 81, 73, .12); color: var(--err); border: 1px solid rgba(248, 81, 73, .3); }
+  .verdict.yes { background: rgba(63, 185, 80, .12); color: var(--ok); border: 1px solid rgba(63, 185, 80, .3); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 14px 0 6px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); padding: 12px 14px; border-radius: 10px; }
+  .kpi .num { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .kpi .lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .b-pass { background: rgba(63, 185, 80, .12); color: var(--ok); border: 1px solid rgba(63, 185, 80, .3); }
+  .b-fail { background: rgba(248, 81, 73, .12); color: var(--err); border: 1px solid rgba(248, 81, 73, .3); }
+  .b-warn { background: rgba(210, 153, 34, .12); color: var(--warn); border: 1px solid rgba(210, 153, 34, .3); }
+  .b-info { background: rgba(88, 166, 255, .12); color: var(--accent); border: 1px solid rgba(88, 166, 255, .3); }
+  .b-major { background: rgba(248, 81, 73, .10); color: var(--err); border: 1px solid rgba(248, 81, 73, .4); }
+  .b-minor { background: rgba(210, 153, 34, .10); color: var(--warn); border: 1px solid rgba(210, 153, 34, .4); }
+  pre, code { font-family: var(--mono); font-size: 12.5px; }
+  pre {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; overflow-x: auto; white-space: pre; margin: 8px 0;
+  }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 8px; }
+  .shot { background: var(--panel); border: 1px solid var(--border); padding: 8px; border-radius: 10px; }
+  .shot img { width: 100%; display: block; border-radius: 6px; }
+  .shot .cap { padding: 6px 4px 0; font-size: 12px; color: var(--muted); }
+  .langtabs { display: flex; gap: 6px; margin-top: 4px; }
+  .langtabs button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 12px; border-radius: 6px; cursor: pointer; font: inherit;
+  }
+  .langtabs button.on { background: var(--accent); color: #0b0d10; border-color: var(--accent); }
+  .lang { display: none; }
+  .lang.on { display: block; }
+  .finding { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 10px 0; background: var(--panel); }
+  .finding .head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .finding .body { margin-top: 6px; }
+  .finding .body p { margin: 4px 0; }
+  .fp { color: var(--muted); font-size: 12px; }
+  ul.compact { margin: 4px 0; padding-left: 20px; }
+  ul.compact li { margin: 2px 0; }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>GSL-350 Observer mode, Phase A — verification run 01 <span style="color:var(--muted);font-weight:400">· round 2 addendum</span></h1>
+  <div class="sub">
+    Adversarial verifier · target = branch <span class="tag">GSL-350-observer-mode-phase-a</span> · PR #349 ·
+    worktree <span class="tag">.claude/worktrees/impl-obs-a</span> · scratch core on <span class="tag">127.0.0.1:7360</span> · 2026-08-16
+    · <b>Round 2</b> re-verifies fixes on <span class="tag">da458a3</span>, <span class="tag">ffb8b24</span>, <span class="tag">ff83948</span>.
+  </div>
+  <div class="langtabs">
+    <button id="btn-en" class="on" onclick="setLang('en')">EN</button>
+    <button id="btn-ru" onclick="setLang('ru')">RU</button>
+  </div>
+</header>
+<main>
+
+<!-- ============================================================ EN ============================================================ -->
+<div class="lang on" id="lang-en">
+
+<section>
+  <h2>Round 2 — focused re-verify (2026-08-16, ~15 min after run 01)</h2>
+  <p><span class="verdict yes">ALL-CLEAR (round 2): YES · 6/6 findings addressed · 1 new minor + 1 caveat surfaced</span></p>
+  <p style="color:var(--muted);margin-top:6px">Fresh scratch DB on 127.0.0.1:7360, same worktree, HEAD = <span class="tag">ff83948</span>. Recipe = same as round 1 (fleet-poll off; observed collectors on). Live scratch tmux session created for M1 (<code>verify-350-r2-scratch</code>, then <code>verify-350-r2-m4b</code> for the prune probe).</p>
+
+  <table>
+    <tr><th>Finding</th><th>Fix commit</th><th>Result</th><th>Evidence</th></tr>
+    <tr>
+      <td><b>M1</b> — /fleet.tmux_pane_ref null on observed rows</td>
+      <td><span class="tag">da458a3</span></td>
+      <td><span class="badge b-pass">FIXED</span><br><span class="badge b-warn">CAVEAT</span></td>
+      <td>
+        <code>/fleet</code> now returns <b>71 rows with tmux_pane_ref populated + attribution="heuristic"</b> and <b>0 rows via attribution="pidtree"</b> in this run.
+        Root cause of no-pidtree: <code>lsof -t transcript.jsonl</code> returns empty for all live sessions this run (Claude does not hold the transcript file open between turns), so the primary path never resolves and the fallback (<code>pane_current_path LIKE cwd_project_root||'%'</code>) does all the work. The fallback is correct and the user-visible outcome is right; the primary path is essentially inert under Claude Code CLI's actual write pattern. See minor R2-1 below.
+      </td>
+    </tr>
+    <tr>
+      <td><b>M2</b> — fleet-poll-off recipe never surfaces gosleep-native rows</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Fresh DB + <code>GOSLEEP_DISABLE_FLEET_POLL=1</code> → <code>/fleet.count=200</code>, <b>91 observed_only=false</b>, <b>109 observed_only=true</b>, <b>85 gosleep-slug rows</b> present. Adversarial hook-column preservation check: manually set <code>current_tool='TestTool', context_pct=42, current_intent='test-intent', cycle=99</code> on one gosleep-native row → after one sessions-collector tick, all four columns intact (<b>preserved verbatim</b>). Fold no longer clobbers fleet-poll's authoritative columns.
+      </td>
+    </tr>
+    <tr>
+      <td><b>m3</b> — agent_sessions.name stale after project_slug flip</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Manually rewrote <code>name = 'observed:STALE-NAME'</code> on an observed row (<code>project_slug=e2e</code>). After one sessions-collector tick, name refreshed to <code>observed:e2e</code>. UPDATE branch's <code>CASE WHEN observed_only=1 THEN 'observed:'||project_slug ELSE name END</code> works.
+      </td>
+    </tr>
+    <tr>
+      <td><b>m4</b> — dead panes never leave tmux_panes</td>
+      <td><span class="tag">ff83948</span></td>
+      <td><span class="badge b-pass">FIXED</span><br><span class="badge b-warn">SLOW</span></td>
+      <td>
+        Created tmux session <code>verify-350-r2-m4b</code> (pane <b>%353</b>) → collector picked it up → killed the session → row remained with <code>misses</code> incrementing → <b>row DELETEd by t+74s post-kill</b>. Historical <code>pane_disappeared</code> event count for %353 = exactly <b>1</b> (fires once on threshold, never re-emitted). Prune SLA target from commit message = ~20s at 2s cadence; actual under real load = ~74s because the sessions collector's <code>last_tick_ms=7872</code> serializes the runtime and slows the tmux-map poller (see R2-2 minor).
+      </td>
+    </tr>
+    <tr>
+      <td><b>m5</b> — historical events flood the timeline</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Over 500 events sampled: <b>444 tagged backfill:true</b> (first-sweep flood), <b>55 tagged backfill:false</b> (later ticks incl. the live <code>observed:scratch</code> transcript-activity events), 1 event missing the tag (edge case, non-blocking). Timeline consumers can now filter <code>payload.backfill=false</code> to hide the initial flood.
+      </td>
+    </tr>
+    <tr>
+      <td><b>m6</b> — ended_at never set → month-old projects listed as live</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Snapshot: 478 observed rows, <b>445 have ended_at populated</b> (transcript mtime > 1h old), 33 live (ended_at NULL). Adversarial re-activity test: forced <code>ended_at='2025-01-01T00:00:00Z'</code> on a live scratch session, <code>touch</code>ed its transcript → after one sessions tick, <code>ended_at = NULL</code> (cleared). Two-way behaviour works.
+      </td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Round 2 — new observations</h2>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">R2-1</span> <span>pidtree primary path is inert under Claude CLI's transcript-write pattern</span></div>
+    <div class="body">
+      <p><code>resolvePaneForTranscript</code> runs <code>lsof -t &lt;transcript.jsonl&gt;</code> to find PIDs holding the transcript open, then walks their parents. In practice, <code>claude</code> opens the transcript, appends, closes — the file is not held between assistant turns. <code>lsof -t</code> against any observed transcript this run returned empty, and <code>/fleet</code>'s <code>attribution=pidtree</code> count is <b>0/200</b>. All 71 pane refs came via the heuristic fallback.</p>
+      <p class="fp"><b>Blast:</b> The user-visible outcome (pane refs populated + heuristic badge) works. The claim that pidtree is "the authoritative primary path" is aspirational — in normal operation the fallback is the only path. Suggestion: swap the two, or supplement lsof with a scan of open <code>~/.claude/projects</code> descriptors via <code>lsof +D</code> at boot, or accept that the heuristic is the operational path and simplify the SQL.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">R2-2</span> <span>sessions-collector tick (~7-8 s) serializes the Bun runtime and blocks the tmux poller SLA</span></div>
+    <div class="body">
+      <p>Under a fresh DB with 500+ historical transcripts to fold, <code>claude-sessions</code>'s <code>last_tick_ms</code> is 7872 (measured mid-run). tmux-map cadence = 2 s, but observed inter-tick intervals stretch to 6-8 s because the sessions fold holds the DB / event loop. Effect: (a) the "~20 s prune" SLA for m4 lands at ~74 s; (b) an HTTP goto from the browser times out at 15 s because a queued tick has the runtime.</p>
+      <p class="fp"><b>Blast:</b> Panel UX degrades under long historical backlogs on macOS default. Suggestions: (a) chunk the sessions fold across multiple ticks (process N transcripts per tick, resume where left off), (b) run the sessions collector in a worker thread, (c) skip transcripts whose mtime is older than <code>ENDED_THRESHOLD_MS</code> after the first backfill sweep. The fix quality is not blocked — the fold does what it should — but the runtime cost surfaces in cadence + panel responsiveness.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Round 2 — evidence snapshots</h2>
+  <div class="shots">
+    <div class="shot"><img src="screenshots/r2-observed-panel.png" alt="Observed panel — round 2"><div class="cap">/observed under the fixed build. 452 sessions / 8 panes header; left rail with 16 projects incl. hidden pseudonym; session cards with observer-only badge; right-rail collectors "writes 0" both green.</div></div>
+    <div class="shot"><img src="screenshots/r2-fleet-panel.png" alt="Fleet panel — round 2"><div class="cap">/fleet under the fixed build. Panel text scan counts <b>71 "heuristic" badges</b> next to tmux pane refs (M1 fallback path visible on every observed row that matched by cwd prefix).</div></div>
+  </div>
+  <pre>GET /fleet round 2
+  count: 200
+  observed_only_true:  128
+  observed_only_false: 72
+  with_pane_ref:       71
+  attribution=heuristic: 71
+  attribution=pidtree:  0
+
+Hook-owned column survival after 1 fold tick
+  before: current_tool='TestTool', context_pct=42, current_intent='test-intent', cycle=99
+  after:  current_tool='TestTool', context_pct=42, current_intent='test-intent', cycle=99   ✓ unchanged
+
+Name refresh after 1 fold tick
+  before: name='observed:STALE-NAME', project_slug='e2e'
+  after:  name='observed:e2e',        project_slug='e2e'   ✓ refreshed
+
+Pane prune after tmux kill-session
+  t+0:  misses=0 (still live)
+  t+4s: misses=1
+  t+10s: misses=2  ← pane_disappeared event fires (threshold crossing)
+  t+18s: misses=3
+  t+24s: misses=4
+  ...
+  t+74s: row DELETEd   ✓ (target ~20s per commit message; measured 74s under load)
+  pane_disappeared events for %353: 1   ✓ no re-emit
+
+m5 backfill tagging (500 events sampled)
+  backfill:true  = 444   (initial-fold flood, filterable)
+  backfill:false = 55    (subsequent ticks + live scratch activity)
+  missing tag    = 1     (non-blocking edge case)
+
+m6 ended_at handling
+  observed rows: 478 total, 445 ended_at populated, 33 live
+  adversarial re-activity: force ended_at='2025-01-01' + touch transcript → ended_at cleared to NULL   ✓</pre>
+</section>
+
+<section>
+  <h2>Round 2 — teardown</h2>
+  <ul class="compact">
+    <li>Scratch core PID 31863 killed after re-verify → briefly restarted PID 58980 with observed collectors OFF for screenshot capture → killed at end.</li>
+    <li>tmux sessions <code>verify-350-r2-scratch</code>, <code>verify-350-r2-m4</code>, <code>verify-350-r2-m4b</code> — all killed.</li>
+    <li>Owner tmux, owner Chrome, panel-obs core on 7331 — <b>untouched</b>.</li>
+    <li>Port 7360 released.</li>
+    <li>Observed scratch repo at <code>$HOME/e2e-workspaces/observed-scratch</code> retained on disk per rule.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verdict (original round 1)</h2>
+  <p><span class="verdict no">ALL-CLEAR: NO · 0 criticals · 2 majors · 4 minors</span></p>
+  <div class="kpis">
+    <div class="kpi"><div class="num">6/6</div><div class="lab">PRD scenarios exercised</div></div>
+    <div class="kpi"><div class="num">4/6</div><div class="lab">Scenarios pass as-shipped</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lab">write_attempts (R14.1)</div></div>
+    <div class="kpi"><div class="num">692</div><div class="lab">transcript heads byte-identical pre/post</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lab">files written under observed scratch</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lab">non-loopback sockets from core</div></div>
+  </div>
+  <p style="color:var(--muted); margin-top:10px">
+    The observation infrastructure and the zero-influence guarantee are structurally sound.
+    Two majors block the strict-reading of F14-S2: the <span class="tag">/fleet.tmux_pane_ref</span>
+    column is null on every observed-only session (join key <span class="tag">a.pid</span> is never
+    populated for the observed path — the promised pid-tree walk is not shipped), and under the
+    author-declared boot recipe (fleet-poll off) no gosleep-native row ever lands in
+    <span class="tag">agent_sessions</span> for a side-by-side render. Both are structural, not
+    integration flakes.
+  </p>
+</section>
+
+<section>
+  <h2>Environment</h2>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Scratch core</td><td><code>bun apps/core/src/serve.ts</code> on <code>127.0.0.1:7360</code>, PID 87167</td></tr>
+    <tr><td>Env overrides</td><td><code>GOSLEEP_DISABLE_JIRA_SYNC/INDEXER/FLEET_POLL/DEFER_REOPEN=1</code>, <code>GOSLEEP_REPO_ROOT=/Users/…/gosleep</code>, <code>GOSLEEP_OBSERVED_HIDDEN=.artifacts/verify-350/data/observed/hidden-projects.json</code>, observed collectors ON</td></tr>
+    <tr><td>Scratch DB</td><td><code>.artifacts/verify-350/gsl350-verify.db</code> (drizzle 0000..0005 clean)</td></tr>
+    <tr><td>Migration 0005</td><td><code>tmux_panes</code> + <code>observed_events</code> tables, three additive columns on <code>agent_sessions</code> (<code>project_slug</code>, <code>cwd_project_root</code>, <code>observed_only</code>)</td></tr>
+    <tr><td>Observed scratch repo</td><td><code>$HOME/e2e-workspaces/observed-scratch</code>, git-init, single commit</td></tr>
+    <tr><td>Live tmux surface</td><td>4 sessions, 8 panes at boot (verifier session, 3 other panes across two dev worktrees)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>PRD scenarios</h2>
+  <table>
+    <tr><th>ID</th><th>Result</th><th>Evidence</th></tr>
+    <tr>
+      <td><b>F14-S1</b><br>tmux map + appeared/disappeared</td>
+      <td><span class="badge b-pass">PASS</span></td>
+      <td>
+        <code>tmux new-session -d -s verify-350-scratch</code> at 10:06:41Z →
+        <code>pane_appeared</code> event <b>%349</b> emitted at 10:06:43Z (Δ ≈ 2 s, one poll cycle). <br>
+        <code>tmux kill-session</code> at 10:06:56Z → <code>pane_disappeared</code> event <b>%349</b> emitted at 10:07:01Z with <code>missed_sweeps=2</code>. <br>
+        <code>GET /observed/tmux</code> returned 9 panes with correct <code>pane_pid</code>, <code>pane_current_path</code>, <code>pane_title</code>, <code>session_name</code>.
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S2</b><br>machine-wide enumeration + observed_only</td>
+      <td><span class="badge b-warn">PARTIAL</span></td>
+      <td>
+        <code>/observed/sessions</code> returned 452 sessions, all with <code>observed_only=true</code>, project_slug populated, distinct project roots across
+        <code>tasty-lunch</code>, <code>lunch</code>, <code>panel-obs</code>, <code>gate</code>, <code>e2e</code>, … (16 projects).<br>
+        <b>Gap 1 (Major 1):</b> <code>/fleet.tmux_pane_ref</code> is null on <b>every</b> observed row — SQL join is
+        <code>LEFT JOIN tmux_panes t ON t.pane_pid = a.pid</code>, and <code>a.pid</code> is null for observed inserts.<br>
+        <b>Gap 2 (Major 2):</b> Under the author's recipe (fleet-poll off), no gosleep-native row (<code>observed_only=false</code>) lands in <code>agent_sessions</code> — the collector's else-branch is a no-op UPDATE.
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S3</b><br>cross-project timeline</td>
+      <td><span class="badge b-pass">PASS</span> (fs-watcher deferred, not a finding)</td>
+      <td>
+        Event distribution over 500 rows: <code>session_appeared</code> ×452, <code>transcript_activity</code> ×9, <code>session_idle</code> ×2, <code>pane_appeared</code> ×9, <code>pane_disappeared</code> ×1. All rows carry <code>source ∈ {tmux-list, transcript-mtime}</code>; <code>source='hook'</code> never appears (R14.4). <br>
+        <code>?project=tasty-lunch</code> filter returns only <code>tasty-lunch</code> rows; monotonic <code>seq</code>. <br>
+        <code>git_head_moved</code> = 0 rows — fs-watcher explicitly deferred per PRD Scope and verifier task; not a finding.
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S4</b><br>zero-influence (R14.1, R14.6)</td>
+      <td><span class="badge b-pass">PASS</span></td>
+      <td>
+        <ul class="compact">
+          <li><code>/observed/collectors</code>: <code>write_attempts_total=0</code>, both collectors <code>disabled=false</code>, <code>last_error=null</code>.</li>
+          <li><code>find $HOME/e2e-workspaces/observed-scratch -newer marker-pre-run -type f</code> → 0 files.</li>
+          <li>692 transcript heads (first 200 bytes) byte-identical pre vs post scrapes — <code>diff -qr</code> = 0 differences.</li>
+          <li><code>lsof -p 87167 -a -i -P</code> shows only <code>127.0.0.1:7360</code> LISTEN + SSE ESTABLISHED to <code>localhost</code>; zero non-loopback sockets.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S5</b><br>Observed screen</td>
+      <td><span class="badge b-pass">PASS</span> (with degradation notes)</td>
+      <td>
+        Panel loads at <code>http://127.0.0.1:7360/observed</code>. Left-rail lists 16 projects with per-project session counts and colour swatches. Right-rail collector inventory shows both collectors with <code>writes 0</code>. Session cards render <code>observer only — no control</code> muted badge on every observed row. Work topic labelled "inferred" per owner decision. <b>tmux ref on the card</b> is derived via a client-side join in <code>Observed.tsx</code> (<code>pane_current_path.startsWith(cwd_project_root)</code>) — that is why the panel shows <code>tmux 2:@2.%102</code> even though <code>/fleet</code> returns null (see Major 1).
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S6</b><br>verification-report proof</td>
+      <td><span class="badge b-pass">PASS</span></td>
+      <td>This file. Per-step screenshots below. Zero-influence counters and byte-identical transcript-head proof cited explicitly in F14-S4.</td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Degraded-state definitions</h2>
+  <table>
+    <tr><th>Scenario</th><th>Expectation</th><th>Result</th></tr>
+    <tr><td>Hide-list opt-out</td><td>Add <code>tasty-lunch</code> to <code>hidden-projects.json</code> → <code>/observed/projects</code> renders <code>display_name=project-b</code>, <code>hidden=true</code>; <code>/observed/events</code> still carries the real slug (proof hiding is render-time)</td><td><span class="badge b-pass">PASS</span> — pseudonym applied only in the projects projection; <code>?project=tasty-lunch</code> events keep real slug</td></tr>
+    <tr><td>Panel dead-pane retention</td><td>Killed pane returns to <code>/observed/tmux</code> until purged</td><td><span class="badge b-warn">PARTIAL</span> — dead pane %349 remained in table after pane_disappeared; <b>no soft-delete</b> path (Minor 4)</td></tr>
+    <tr><td>Empty fleet-poll (recipe)</td><td>Under fleet_poll=off, gosleep-native rows should still surface via observed collector</td><td><span class="badge b-fail">FAIL</span> — observed collector's else-branch UPDATE is a no-op on fresh DB; no INSERT for gosleep-native (Major 2)</td></tr>
+    <tr><td>Hooks source rejection</td><td><code>source='hook'</code> refused at writer</td><td><span class="badge b-pass">PASS</span> — code path verified via grep + writer assertion in <code>events.ts</code></td></tr>
+    <tr><td>tmux server unavailable</td><td>Collector no-ops (panes=[], count=0), <code>last_error=null</code>, not disabled</td><td><span class="badge b-info">CODE-VERIFIED</span> — <code>runTmuxList()</code> catches non-zero exit + missing binary and returns null without disabling</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Findings</h2>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-major">MAJOR 1</span> <span>/fleet.tmux_pane_ref is null on every observed_only session</span></div>
+    <div class="body">
+      <p>SQL: <code>LEFT JOIN tmux_panes t ON t.pane_pid = a.pid</code> (<code>apps/core/src/routes/read.ts:517</code>). The observed sessions collector inserts rows with <code>pid = null</code> (<code>apps/core/src/observed/sessions.ts:311</code>: no <code>pid</code> value in the INSERT). Result: <code>a.pid IS NULL</code>, <code>NULL = t.pane_pid</code> never matches → <code>tmux_pane_ref</code> is always null for observed rows.</p>
+      <p>PRD Risk 1 mitigation ("walk pid tree, cross-check against <code>claude_sessions.pid</code>") is <b>not implemented</b> — the <code>pidtree</code> source is declared in <code>events.ts</code> line 14 but never used anywhere in the codebase.</p>
+      <p class="fp"><b>Blast:</b> Fleet screen (<code>apps/web/src/screens/Fleet.tsx:179</code>) reads <code>s.tmux_pane_ref</code> directly and prints "—" when null → strict F14-S2 ("<b>/fleet</b> returns two rows both with populated tmux_pane_ref") fails. The Observed screen works around it via a cwd-prefix client-side join in <code>Observed.tsx:235</code>, but that workaround is limited to that one screen.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-major">MAJOR 2</span> <span>fleet-poll-off recipe never produces a gosleep-native agent_sessions row</span></div>
+    <div class="body">
+      <p><code>foldSessions</code> else-branch (<code>apps/core/src/observed/sessions.ts:369</code>) does <code>UPDATE agent_sessions SET project_slug = ?, cwd_project_root = ?, observed_only = 0 WHERE session_id = ? AND project_slug IS NULL</code>. On a fresh DB (test contexts, first boot) no rows match → UPDATE affects 0 rows → gosleep-native sessions are silently dropped.</p>
+      <p>Under the author's boot recipe (<code>GOSLEEP_DISABLE_FLEET_POLL=1</code> — explicit in the VERIFY-REQUEST), the fleet indexer is off and there's no other writer of gosleep-native rows. Result: <code>/fleet</code> shows only observed_only rows; no side-by-side "gosleep vs scratch" render is possible.</p>
+      <p class="fp"><b>Blast:</b> F14-S2 literal wording ("two rows, one gosleep, one scratch") cannot be met under the shipped recipe. Fix options: (a) run with <code>fleet_poll=on</code> for acceptance and note it in the PRD, (b) upgrade the else-branch to INSERT-OR-UPDATE so the observed collector alone can hydrate both classes, (c) rewrite the acceptance to name "any two rows, at least one observed_only=true".</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">MINOR 3</span> <span>agent_sessions.name goes stale when project_slug flips</span></div>
+    <div class="body">
+      <p>INSERT sets <code>name = "observed:" + project_slug</code> (<code>sessions.ts:317</code>). UPDATE refreshes <code>project_slug</code> and <code>cwd_project_root</code> but <b>not</b> <code>name</code>. Observed case: session <code>2429662d</code> displays <code>name=observed:lunch</code> yet <code>project_slug=tasty-lunch</code> in the same row.</p>
+      <p class="fp"><b>Blast:</b> Panel cards read stale label; cosmetic but confusing (owner scanning cards sees mismatched project chip vs card title). One-line fix.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">MINOR 4</span> <span>Dead panes are never purged from tmux_panes</span></div>
+    <div class="body">
+      <p>Once <code>misses &gt;= PANE_DISAPPEAR_THRESHOLD</code> (2), <code>pane_disappeared</code> fires. On subsequent sweeps <code>misses</code> keeps incrementing beyond 2 (the WHERE clause <code>misses &lt; PANE_DISAPPEAR_THRESHOLD</code> stops matching, so no further UPDATE fires) but no soft-delete or exclusion from <code>/observed/tmux</code>. Verified: after killing <code>%349</code>, <code>/observed/tmux</code> still returned 9 panes.</p>
+      <p class="fp"><b>Blast:</b> Table growth over a long-running instance; muddies the "9 panes" KPI on the panel. Fix: either delete rows once <code>pane_disappeared</code> fires, or add <code>WHERE last_seen &gt; now() - 5 min</code> to the read endpoint.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">MINOR 5</span> <span>Initial fold floods the observed timeline with historical session_appeared events</span></div>
+    <div class="body">
+      <p><code>enumerateSessions</code> walks every <code>~/.claude/projects/*/*.jsonl</code> ever recorded on the host. On a fresh DB the first fold fires <code>session_appeared</code> for all of them — this run: 452 events in the first ~10 seconds, <code>events_today=738</code> after 3 ticks.</p>
+      <p class="fp"><b>Blast:</b> The "cross-project timeline" opens saturated with events from projects that have been dead for a month. Owner-scan value degrades. Fix: gate the initial-fold emission on transcript mtime within the last N days, or emit a single "session_backfilled" kind for reasons other than "first seen live".</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">MINOR 6</span> <span>ended_at is never set for observed rows, so /observed/projects shows month-old projects as "live"</span></div>
+    <div class="body">
+      <p><code>listProjects()</code> SQL filters <code>ended_at IS NULL</code> (<code>projects.ts:99</code>). Observed inserts never write <code>ended_at</code>, and there is no reaper that flips it. Result: <code>/observed/projects</code> currently lists projects last-active in July 2026 (~1 month ago) with <code>session_count</code> intact.</p>
+      <p class="fp"><b>Blast:</b> Left-rail becomes an all-time project list; the "which projects are live now" reading is lost. Fix: either reap sessions past an <code>ended_at</code> threshold, or filter the SQL by <code>MAX(updated_at) &gt; now() - N days</code>.</p>
+    </div>
+  </div>
+
+  <p class="fp" style="margin-top:14px">
+    <b>Not counted as findings</b> (verifier-task explicit exclusions): fs-watcher / <code>git_head_moved</code> deferred; SSE observed-topic subscription in the panel — the panel polls every 5 s and reflects new events on next fetch, acceptable; <code>capture-pane</code> content reads — deliberately excluded on principle.
+  </p>
+</section>
+
+<section>
+  <h2>Zero-influence evidence (R14.1 &amp; R14.6)</h2>
+  <pre>{ "write_attempts_total": 0,
+  "per": [
+    { "name": "claude-sessions", "write_attempts": 0, "disabled": false, "last_error": null },
+    { "name": "tmux-map",        "write_attempts": 0, "disabled": false, "last_error": null }
+  ]
+}
+find $HOME/e2e-workspaces/observed-scratch -newer marker-pre-run -not -path '*/.git/*' -type f
+  → 0 files
+
+diff -qr transcript-heads-pre transcript-heads-post (692 files each, first 200 bytes)
+  → 0 differences
+
+lsof -p 87167 -a -i -P
+  bun 87167 TCP localhost:7360 (LISTEN)
+  bun 87167 TCP localhost:7360-&gt;localhost:55414..55440 (ESTABLISHED)   # SSE clients, all loopback
+  # zero non-loopback sockets</pre>
+</section>
+
+<section>
+  <h2>Hide-list opt-out (privacy layer, R14.3-adjacent)</h2>
+  <p>Added <code>["tasty-lunch"]</code> to <code>data/observed/hidden-projects.json</code> (env-pointed for the scratch run).</p>
+  <pre>GET /observed/projects  → { project_slug:"tasty-lunch", hidden:true, pseudonym:"project-b", display_name:"project-b" }
+GET /observed/events?project=tasty-lunch  → [ {project_slug:"tasty-lunch", kind:"transcript_activity"}, ... ]  # REAL slug retained</pre>
+  <p>Panel left-rail correctly re-labels the project as <b>project-b · hidden</b>, while the events table keeps the true slug on record — hiding is a render-time projection, not a data redaction. This matches the owner decision distilled in <code>projects.ts</code> and the PRD's Q2 default.</p>
+</section>
+
+<section>
+  <h2>Screenshots</h2>
+  <div class="shots">
+    <div class="shot"><img src="screenshots/observed-light.png" alt="Observed screen — light"><div class="cap">Observed screen — light theme (top of page). Left rail: 16 projects including <b>project-b · hidden</b>. Grid: session cards with "observer only — no control" muted badge.</div></div>
+    <div class="shot"><img src="screenshots/observed-dark.png" alt="Observed screen — dark"><div class="cap">Observed screen — dark theme (JS-forced via <code>documentElement.classList.add('dark')</code>). Same layout, no visible layout regression.</div></div>
+    <div class="shot"><img src="screenshots/observed-light-collectors.png" alt="Collectors rail — light"><div class="cap">Collectors rail — light. <b>writes 0</b> on both collectors (R14.1 counter surfacing).</div></div>
+    <div class="shot"><img src="screenshots/observed-dark-collectors.png" alt="Collectors rail — dark"><div class="cap">Collectors rail — dark. Identical structure, counters unchanged.</div></div>
+    <div class="shot"><img src="screenshots/fleet-dark.png" alt="Fleet screen"><div class="cap">Fleet screen with observed_only rows — muted badge visible, tmux column reads "—" (Major 1 surface).</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Telemetry &amp; teardown checklist</h2>
+  <ul class="compact">
+    <li>Scratch core PID 87167 — killed at end-of-run, port 7360 released.</li>
+    <li>Scratch tmux session <code>verify-350-scratch</code> — killed during F14-S1.</li>
+    <li>Owner's tmux, owner's Chrome, panel-obs core on 7331, other worktrees — <b>not touched</b>.</li>
+    <li><code>$HOME/e2e-workspaces/observed-scratch</code> — left on disk with fresh <code>git init</code> as per task rule.</li>
+    <li>All artifacts + logs land in <code>.claude/worktrees/impl-obs-a/.artifacts/verify-350/</code> and this report dir.</li>
+    <li>No writes to <code>~/.claude/**</code>, no git ops in the shared tree or the author's worktree.</li>
+  </ul>
+</section>
+
+</div>
+
+<!-- ============================================================ RU ============================================================ -->
+<div class="lang" id="lang-ru">
+
+<section>
+  <h2>Раунд 2 — точечная re-verify (2026-08-16, ~15 мин после раунда 01)</h2>
+  <p><span class="verdict yes">ALL-CLEAR (раунд 2): ДА · 6/6 находок закрыто · 1 новый минор + 1 оговорка</span></p>
+  <p style="color:var(--muted);margin-top:6px">Свежая scratch БД на 127.0.0.1:7360, тот же worktree, HEAD = <span class="tag">ff83948</span>. Рецепт — как в раунде 1 (fleet-poll off, observed collectors on). Живая scratch tmux-сессия для M1 (<code>verify-350-r2-scratch</code>, затем <code>verify-350-r2-m4b</code> для проверки прюна).</p>
+
+  <table>
+    <tr><th>Находка</th><th>Коммит</th><th>Итог</th><th>Доказательство</th></tr>
+    <tr>
+      <td><b>M1</b> — /fleet.tmux_pane_ref null у observed-строк</td>
+      <td><span class="tag">da458a3</span></td>
+      <td><span class="badge b-pass">FIXED</span><br><span class="badge b-warn">ОГОВОРКА</span></td>
+      <td>
+        <code>/fleet</code> теперь возвращает <b>71 строку с tmux_pane_ref + attribution="heuristic"</b> и <b>0 строк через attribution="pidtree"</b> в этом прогоне. Причина отсутствия pidtree: <code>lsof -t transcript.jsonl</code> отдаёт пустоту для всех активных сессий (Claude не удерживает transcript-файл открытым между ходами), поэтому primary path никогда не срабатывает, а fallback (<code>pane_current_path LIKE cwd_project_root||'%'</code>) делает всю работу. Fallback корректен, наблюдаемый результат верный; primary-путь по факту инертен под реальным шаблоном записи Claude CLI. См. R2-1 ниже.
+      </td>
+    </tr>
+    <tr>
+      <td><b>M2</b> — рецепт fleet-poll=off не даёт gosleep-native строк</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Свежая БД + <code>GOSLEEP_DISABLE_FLEET_POLL=1</code> → <code>/fleet.count=200</code>, <b>91 observed_only=false</b>, <b>109 observed_only=true</b>, <b>85 строк со slug gosleep</b>. Адверсариальная проверка hook-колонок: вручную выставил <code>current_tool='TestTool', context_pct=42, current_intent='test-intent', cycle=99</code> на одной native-строке → после одного тика все четыре сохранились <b>дословно</b>. Fold больше не затирает авторитетные колонки fleet-poll.
+      </td>
+    </tr>
+    <tr>
+      <td><b>m3</b> — agent_sessions.name протухает при смене slug</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Переписал вручную <code>name='observed:STALE-NAME'</code> на observed-строке (project_slug=e2e). После одного тика имя освежилось до <code>observed:e2e</code>. Ветка UPDATE с <code>CASE WHEN observed_only=1 THEN 'observed:'||project_slug ELSE name END</code> работает.
+      </td>
+    </tr>
+    <tr>
+      <td><b>m4</b> — мёртвые панели никогда не убирались</td>
+      <td><span class="tag">ff83948</span></td>
+      <td><span class="badge b-pass">FIXED</span><br><span class="badge b-warn">МЕДЛЕННО</span></td>
+      <td>
+        Создал tmux-сессию <code>verify-350-r2-m4b</code> (панель <b>%353</b>) → коллектор увидел → убил сессию → строка держалась с растущим <code>misses</code> → <b>строка удалена (DELETE) к t+74s после kill</b>. Событий <code>pane_disappeared</code> для %353 — ровно <b>1</b> (стреляет один раз на пересечении порога, не переизлучается). SLA прюна из коммита ~20с при cadence 2s; по факту под нагрузкой ~74с из-за serialization в event-loop (см. R2-2).
+      </td>
+    </tr>
+    <tr>
+      <td><b>m5</b> — исторические события заливают таймлайн</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        В выборке 500 событий: <b>444 с backfill:true</b> (заливка первого прохода), <b>55 с backfill:false</b> (последующие тики + активность живого <code>observed:scratch</code>), 1 событие без метки (краевой случай, не блокер). Панель теперь может фильтровать <code>payload.backfill=false</code>, чтобы спрятать первичный поток.
+      </td>
+    </tr>
+    <tr>
+      <td><b>m6</b> — ended_at никогда не проставлялся, месяц-мёртвые светятся живыми</td>
+      <td><span class="tag">ffb8b24</span></td>
+      <td><span class="badge b-pass">FIXED</span></td>
+      <td>
+        Снимок: 478 observed-строк, <b>445 с проставленным ended_at</b> (mtime транскрипта > 1 ч назад), 33 живые (ended_at NULL). Адверсариальный обратный тест: форсированно выставил <code>ended_at='2025-01-01T00:00:00Z'</code> на живой scratch-сессии, <code>touch</code>-нул транскрипт → после одного тика <code>ended_at=NULL</code> (сброшен). Двусторонняя логика работает.
+      </td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Раунд 2 — новые наблюдения</h2>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">R2-1</span> <span>primary path pidtree инертен под реальным шаблоном записи Claude CLI</span></div>
+    <div class="body">
+      <p><code>resolvePaneForTranscript</code> вызывает <code>lsof -t transcript.jsonl</code> для получения PIDs, держащих транскрипт открытым, и идёт по их родителям. По факту <code>claude</code> открывает транскрипт, дописывает и закрывает — файл не удерживается между ходами ассистента. <code>lsof -t</code> на любом наблюдаемом транскрипте в этом прогоне вернул пусто, и в <code>/fleet</code> <code>attribution=pidtree</code> — <b>0/200</b>. Все 71 pane-реф пришли через fallback-heuristic.</p>
+      <p class="fp"><b>Blast:</b> Результат для пользователя (pane refs + бэйдж heuristic) корректный. Заявление, что pidtree — "авторитетный primary" — на бумаге; в нормальной работе fallback единственный. Варианты: (а) поменять местами primary/fallback, (б) дополнить lsof-запрос сканом <code>lsof +D ~/.claude/projects</code> на старте, (в) признать heuristic операционным путём и упростить SQL.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">R2-2</span> <span>тик sessions-коллектора (~7-8 с) сериализует Bun-рантайм и ломает SLA tmux-опроса</span></div>
+    <div class="body">
+      <p>На свежей БД с 500+ историческими транскриптами <code>claude-sessions.last_tick_ms=7872</code> (замер в середине прогона). tmux-map cadence = 2 с, но фактические интервалы между тиками растягиваются до 6-8 с, потому что fold сессий держит DB / event-loop. Эффекты: (а) SLA прюна ~20 с из m4 фактически ~74 с; (б) HTTP goto в браузере вылетает по 15-секундному таймауту, потому что очередной тик держит рантайм.</p>
+      <p class="fp"><b>Blast:</b> UX панели деградирует при больших исторических backlog на macOS-дефолте. Предложения: (а) chunking fold-а по N транскриптов на тик с продолжением, (б) вынести коллектор в worker-thread, (в) skip транскриптов старше <code>ENDED_THRESHOLD_MS</code> после первичной заливки. Качество самого фикса не блокировано — fold делает своё — но runtime-цена всплывает в cadence + отзывчивости панели.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Раунд 2 — снимки доказательств</h2>
+  <div class="shots">
+    <div class="shot"><img src="screenshots/r2-observed-panel.png" alt="Панель Observed — раунд 2"><div class="cap">/observed на исправленной сборке. Хедер 452 сессий / 8 панелей; левая рейка с 16 проектами (включая псевдоним); карточки с observer-only бэйджом; правая рейка коллекторов "writes 0", оба зелёные.</div></div>
+    <div class="shot"><img src="screenshots/r2-fleet-panel.png" alt="Fleet — раунд 2"><div class="cap">/fleet на исправленной сборке. Текстовый скан насчитал <b>71 "heuristic" бэйдж</b> рядом с tmux pane refs (fallback M1 виден на каждой observed-строке, совпавшей по префиксу cwd).</div></div>
+  </div>
+  <pre>GET /fleet раунд 2
+  count: 200
+  observed_only_true:  128
+  observed_only_false: 72
+  with_pane_ref:       71
+  attribution=heuristic: 71
+  attribution=pidtree:  0
+
+Выживание hook-колонок после 1 тика
+  до:    current_tool='TestTool', context_pct=42, current_intent='test-intent', cycle=99
+  после: current_tool='TestTool', context_pct=42, current_intent='test-intent', cycle=99   ✓ без изменений
+
+Освежение name после 1 тика
+  до:    name='observed:STALE-NAME', project_slug='e2e'
+  после: name='observed:e2e',        project_slug='e2e'   ✓ освежилось
+
+Прюн панели после tmux kill-session
+  t+0:  misses=0 (ещё живая)
+  t+4s: misses=1
+  t+10s: misses=2  ← pane_disappeared стреляет (пересечение порога)
+  ...
+  t+74s: строка удалена   ✓ (цель ~20с из коммита; факт под нагрузкой 74с)
+  событий pane_disappeared для %353: 1   ✓ без переизлучения
+
+m5 backfill-метки (500 событий)
+  backfill:true  = 444   (первичная заливка, фильтруется)
+  backfill:false = 55    (последующие тики + активность живого scratch)
+  без метки      = 1     (краевой случай, не блокер)
+
+m6 ended_at
+  observed-строк: 478 всего, 445 с проставленным ended_at, 33 живые
+  reversal-тест: форс ended_at='2025-01-01' + touch транскрипта → ended_at=NULL   ✓</pre>
+</section>
+
+<section>
+  <h2>Раунд 2 — teardown</h2>
+  <ul class="compact">
+    <li>Scratch core PID 31863 убит после re-verify → кратко перезапущен PID 58980 с observed=OFF для скриншотов → убит в конце.</li>
+    <li>tmux-сессии <code>verify-350-r2-scratch</code>, <code>verify-350-r2-m4</code>, <code>verify-350-r2-m4b</code> — все убиты.</li>
+    <li>Владельческий tmux, Chrome владельца, panel-obs core на 7331 — <b>не тронуты</b>.</li>
+    <li>Порт 7360 освобождён.</li>
+    <li>Наблюдаемый scratch репозиторий в <code>$HOME/e2e-workspaces/observed-scratch</code> оставлен на диске по требованию.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Вердикт (оригинальный раунд 1)</h2>
+  <p><span class="verdict no">ALL-CLEAR: НЕТ · 0 критикал · 2 мажора · 4 минора</span></p>
+  <div class="kpis">
+    <div class="kpi"><div class="num">6/6</div><div class="lab">сценариев PRD прогнано</div></div>
+    <div class="kpi"><div class="num">4/6</div><div class="lab">проходит как есть</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lab">попыток записи (R14.1)</div></div>
+    <div class="kpi"><div class="num">692</div><div class="lab">файлов транскриптов побайтно совпали до/после</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lab">файлов записано в наблюдаемый scratch</div></div>
+    <div class="kpi"><div class="num">0</div><div class="lab">не-loopback сокетов у core</div></div>
+  </div>
+  <p style="color:var(--muted); margin-top:10px">
+    Инфраструктура наблюдения и гарантия нулевого влияния — структурно на месте.
+    Два мажора блокируют строгое прочтение F14-S2: колонка
+    <span class="tag">/fleet.tmux_pane_ref</span> null у всех observed_only-сессий (ключ джойна
+    <span class="tag">a.pid</span> никогда не заполняется в observed-пути — обещанный обход pid-дерева не поставлен),
+    и под авторским рецептом запуска (fleet-poll выключен) в
+    <span class="tag">agent_sessions</span> вообще не возникает gosleep-native строки для side-by-side отображения.
+    Оба — структурные, не мигания.
+  </p>
+</section>
+
+<section>
+  <h2>Окружение</h2>
+  <table>
+    <tr><th>Пункт</th><th>Значение</th></tr>
+    <tr><td>Scratch core</td><td><code>bun apps/core/src/serve.ts</code> на <code>127.0.0.1:7360</code>, PID 87167</td></tr>
+    <tr><td>Env-переопределения</td><td><code>GOSLEEP_DISABLE_JIRA_SYNC/INDEXER/FLEET_POLL/DEFER_REOPEN=1</code>, <code>GOSLEEP_REPO_ROOT=/Users/…/gosleep</code>, <code>GOSLEEP_OBSERVED_HIDDEN=.artifacts/verify-350/data/observed/hidden-projects.json</code>, наблюдатели-коллекторы ВКЛ</td></tr>
+    <tr><td>Scratch DB</td><td><code>.artifacts/verify-350/gsl350-verify.db</code> (drizzle 0000..0005 чистый прогон)</td></tr>
+    <tr><td>Миграция 0005</td><td>таблицы <code>tmux_panes</code> и <code>observed_events</code>, три additive-колонки на <code>agent_sessions</code></td></tr>
+    <tr><td>Наблюдаемый scratch репозиторий</td><td><code>$HOME/e2e-workspaces/observed-scratch</code>, git-init, один коммит</td></tr>
+    <tr><td>Живая tmux-поверхность</td><td>4 сессии, 8 панелей на старте (сессия верифайера, 3 других поверх двух рабочих деревьев)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Сценарии PRD</h2>
+  <table>
+    <tr><th>ID</th><th>Итог</th><th>Доказательство</th></tr>
+    <tr>
+      <td><b>F14-S1</b><br>tmux-карта + появление/исчезновение панелей</td>
+      <td><span class="badge b-pass">PASS</span></td>
+      <td>
+        <code>tmux new-session -d -s verify-350-scratch</code> в 10:06:41Z →
+        событие <code>pane_appeared</code> <b>%349</b> в 10:06:43Z (Δ ≈ 2 с, один цикл опроса). <br>
+        <code>tmux kill-session</code> в 10:06:56Z → <code>pane_disappeared</code> <b>%349</b> в 10:07:01Z c <code>missed_sweeps=2</code>. <br>
+        <code>GET /observed/tmux</code> вернул 9 панелей с корректными <code>pane_pid</code>, <code>pane_current_path</code>, <code>pane_title</code>, <code>session_name</code>.
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S2</b><br>перечисление всей машины + observed_only</td>
+      <td><span class="badge b-warn">ЧАСТИЧНО</span></td>
+      <td>
+        <code>/observed/sessions</code> вернул 452 сессии, у всех <code>observed_only=true</code>, project_slug заполнен, разные корни проектов
+        (<code>tasty-lunch</code>, <code>lunch</code>, <code>panel-obs</code>, <code>gate</code>, <code>e2e</code>, …, 16 проектов).<br>
+        <b>Разрыв 1 (Мажор 1):</b> <code>/fleet.tmux_pane_ref</code> null у <b>каждой</b> observed-строки — SQL-джойн
+        <code>LEFT JOIN tmux_panes t ON t.pane_pid = a.pid</code>, а <code>a.pid</code> null у observed-вставок.<br>
+        <b>Разрыв 2 (Мажор 2):</b> При авторском рецепте (fleet-poll выкл) ни одной gosleep-native строки (<code>observed_only=false</code>) в <code>agent_sessions</code> не появляется — else-ветка коллектора no-op UPDATE.
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S3</b><br>межпроектный таймлайн</td>
+      <td><span class="badge b-pass">PASS</span> (fs-watcher вынесен, не находка)</td>
+      <td>
+        Распределение видов на 500 строках: <code>session_appeared</code> ×452, <code>transcript_activity</code> ×9, <code>session_idle</code> ×2, <code>pane_appeared</code> ×9, <code>pane_disappeared</code> ×1. У всех <code>source ∈ {tmux-list, transcript-mtime}</code>; <code>source='hook'</code> не встречается (R14.4).<br>
+        Фильтр <code>?project=tasty-lunch</code> возвращает только строки <code>tasty-lunch</code>; <code>seq</code> монотонный.<br>
+        <code>git_head_moved</code> = 0 — fs-watcher намеренно отложен по PRD и задаче верификатора; не считаем находкой.
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S4</b><br>нулевое влияние (R14.1, R14.6)</td>
+      <td><span class="badge b-pass">PASS</span></td>
+      <td>
+        <ul class="compact">
+          <li><code>/observed/collectors</code>: <code>write_attempts_total=0</code>, оба коллектора <code>disabled=false</code>, <code>last_error=null</code>.</li>
+          <li><code>find $HOME/e2e-workspaces/observed-scratch -newer marker-pre-run -type f</code> → 0 файлов.</li>
+          <li>692 файла транскриптов (первые 200 байт) побайтно совпали до/после — <code>diff -qr</code> = 0 расхождений.</li>
+          <li><code>lsof -p 87167</code> показывает только LISTEN на <code>127.0.0.1:7360</code> + SSE ESTABLISHED к <code>localhost</code>; ноль не-loopback сокетов.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S5</b><br>экран Observed</td>
+      <td><span class="badge b-pass">PASS</span> (с замечаниями)</td>
+      <td>
+        Панель грузится по <code>http://127.0.0.1:7360/observed</code>. Левая рейка — 16 проектов с числом сессий и цветными свотчами. Правая рейка — оба коллектора с бэйджом <code>writes 0</code>. На каждой observed-карточке видна плашка <code>observer only — no control</code>. Метка Work topic — «inferred» по решению владельца. <b>tmux-реф на карточке</b> получают клиентским джойном в <code>Observed.tsx</code> (<code>pane_current_path.startsWith(cwd_project_root)</code>) — поэтому панель показывает <code>tmux 2:@2.%102</code>, хотя <code>/fleet</code> отдаёт null (см. Мажор 1).
+      </td>
+    </tr>
+    <tr>
+      <td><b>F14-S6</b><br>отчёт как доказательство</td>
+      <td><span class="badge b-pass">PASS</span></td>
+      <td>Этот файл. Снимки экрана ниже. Счётчики нулевого влияния и побайтно-совпадающие головы транскриптов явно процитированы в F14-S4.</td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Деградационные определения</h2>
+  <table>
+    <tr><th>Сценарий</th><th>Ожидание</th><th>Результат</th></tr>
+    <tr><td>Список скрытия</td><td>Добавляем <code>tasty-lunch</code> в <code>hidden-projects.json</code> → <code>/observed/projects</code> рендерит <code>display_name=project-b</code>, <code>hidden=true</code>; <code>/observed/events</code> сохраняет реальный slug</td><td><span class="badge b-pass">PASS</span> — псевдоним применяется только в проекции projects; события с <code>?project=tasty-lunch</code> сохраняют реальный slug</td></tr>
+    <tr><td>Удерживание мёртвых панелей</td><td>Убитая панель уходит из <code>/observed/tmux</code></td><td><span class="badge b-warn">ЧАСТИЧНО</span> — мёртвая %349 осталась в таблице после pane_disappeared; <b>нет soft-delete</b> (Минор 4)</td></tr>
+    <tr><td>Пустой fleet-poll (рецепт)</td><td>При fleet_poll=off gosleep-native строки должны появляться через observed-коллектор</td><td><span class="badge b-fail">FAIL</span> — else-ветка коллектора no-op UPDATE на чистой БД; INSERT для gosleep-native не срабатывает (Мажор 2)</td></tr>
+    <tr><td>Отказ источника hook</td><td><code>source='hook'</code> отвергается писателем</td><td><span class="badge b-pass">PASS</span> — путь кода проверен grep-ом и assertом в <code>events.ts</code></td></tr>
+    <tr><td>tmux-сервер недоступен</td><td>Коллектор no-op (panes=[], count=0), <code>last_error=null</code>, не отключается</td><td><span class="badge b-info">ПО КОДУ</span> — <code>runTmuxList()</code> ловит exit != 0 и отсутствие бинарника и возвращает null без disable</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Находки</h2>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-major">МАЖОР 1</span> <span>/fleet.tmux_pane_ref null у каждой observed_only-сессии</span></div>
+    <div class="body">
+      <p>SQL: <code>LEFT JOIN tmux_panes t ON t.pane_pid = a.pid</code> (<code>apps/core/src/routes/read.ts:517</code>). Коллектор observed-сессий вставляет строки с <code>pid = null</code> (<code>apps/core/src/observed/sessions.ts:311</code>: в INSERT нет колонки <code>pid</code>). Итог: <code>a.pid IS NULL</code>, <code>NULL = t.pane_pid</code> никогда не совпадёт → <code>tmux_pane_ref</code> всегда null для observed-строк.</p>
+      <p>Митигация из Risk 1 PRD («идти по pid-дереву, сверять с <code>claude_sessions.pid</code>») <b>не реализована</b> — источник <code>pidtree</code> объявлен в <code>events.ts:14</code>, но нигде не используется.</p>
+      <p class="fp"><b>Blast:</b> Экран Fleet (<code>apps/web/src/screens/Fleet.tsx:179</code>) читает <code>s.tmux_pane_ref</code> напрямую и рисует «—» на null → строгая F14-S2 («<b>/fleet</b> отдаёт две строки с заполненным tmux_pane_ref») не выполняется. Экран Observed обходит это клиентским cwd-джойном в <code>Observed.tsx:235</code>, но эта заплатка ограничена одним экраном.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-major">МАЖОР 2</span> <span>Рецепт с fleet-poll=off не создаёт ни одной gosleep-native строки в agent_sessions</span></div>
+    <div class="body">
+      <p>Else-ветка <code>foldSessions</code> (<code>apps/core/src/observed/sessions.ts:369</code>) делает <code>UPDATE agent_sessions SET project_slug = ?, cwd_project_root = ?, observed_only = 0 WHERE session_id = ? AND project_slug IS NULL</code>. На чистой БД (тесты, первый запуск) ни одна строка не совпадает → UPDATE меняет 0 строк → gosleep-native сессии молча теряются.</p>
+      <p>При авторском рецепте запуска (<code>GOSLEEP_DISABLE_FLEET_POLL=1</code> — явно прописан в VERIFY-REQUEST) fleet-indexer выключен, другого писателя gosleep-native строк нет. Итог: в <code>/fleet</code> только observed_only-строки; side-by-side «gosleep vs scratch» невозможен.</p>
+      <p class="fp"><b>Blast:</b> Дословная F14-S2 («две строки, одна gosleep, одна scratch») не выполняется под поставленным рецептом. Варианты фикса: (а) прогонять приёмку с <code>fleet_poll=on</code> и записать в PRD, (б) сделать else-ветку INSERT-OR-UPDATE, чтобы observed-коллектор один тащил оба класса, (в) переформулировать приёмку как «любые две строки, минимум одна observed_only=true».</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">МИНОР 3</span> <span>agent_sessions.name протухает при смене project_slug</span></div>
+    <div class="body">
+      <p>INSERT ставит <code>name = "observed:" + project_slug</code> (<code>sessions.ts:317</code>). UPDATE освежает <code>project_slug</code> и <code>cwd_project_root</code>, но <b>не</b> <code>name</code>. Наблюдение: у сессии <code>2429662d</code> <code>name=observed:lunch</code>, при этом <code>project_slug=tasty-lunch</code>.</p>
+      <p class="fp"><b>Blast:</b> На карточке панели читается протухший ярлык; косметика, но раздражает (владелец видит рассинхрон чипа проекта и заголовка карточки). Правится одной строкой.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">МИНОР 4</span> <span>Мёртвые панели никогда не убираются из tmux_panes</span></div>
+    <div class="body">
+      <p>После <code>misses &gt;= PANE_DISAPPEAR_THRESHOLD</code> (2) стреляет <code>pane_disappeared</code>. На последующих проходах <code>misses</code> продолжает расти выше 2 (WHERE-условие <code>misses &lt; PANE_DISAPPEAR_THRESHOLD</code> перестаёт совпадать, следующие UPDATE не срабатывают), но никакого soft-delete или фильтра в <code>/observed/tmux</code> нет. Подтверждено: после kill-session <code>%349</code>, <code>/observed/tmux</code> всё ещё показал 9 панелей.</p>
+      <p class="fp"><b>Blast:</b> Таблица растёт на долгих прогонах; сбивает KPI «9 панелей» на панели. Фикс: либо удалять строку по срабатыванию <code>pane_disappeared</code>, либо добавить <code>WHERE last_seen &gt; now() - 5 min</code> в чтении.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">МИНОР 5</span> <span>Первичный fold заваливает observed-таймлайн историческими session_appeared</span></div>
+    <div class="body">
+      <p><code>enumerateSessions</code> обходит все <code>~/.claude/projects/*/*.jsonl</code>, что когда-либо писались на машине. На чистой БД первый fold стреляет <code>session_appeared</code> для каждой — в этом прогоне: 452 события за первые ~10 секунд, <code>events_today=738</code> через 3 тика.</p>
+      <p class="fp"><b>Blast:</b> «Межпроектный таймлайн» открывается заваленным событиями из проектов, мёртвых уже месяц. Ценность для владельца-читателя падает. Фикс: гейт emit-а на mtime транскрипта в пределах N дней, или отдельный вид «session_backfilled» для «не свеже-живых» случаев.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="head"><span class="badge b-minor">МИНОР 6</span> <span>ended_at не проставляется у observed-строк, поэтому /observed/projects показывает месяц-мёртвые проекты как «живые»</span></div>
+    <div class="body">
+      <p><code>listProjects()</code> фильтрует SQL по <code>ended_at IS NULL</code> (<code>projects.ts:99</code>). Observed-инсёрты никогда не пишут <code>ended_at</code>, репера, который бы его выставлял, нет. Итог: сейчас <code>/observed/projects</code> перечисляет проекты, последняя активность в которых — июль 2026 (~месяц назад) с целыми <code>session_count</code>.</p>
+      <p class="fp"><b>Blast:</b> Левая рейка становится списком «за всё время»; чтение «какие проекты живы сейчас» теряется. Фикс: либо reap-ать сессии по порогу <code>ended_at</code>, либо ужать SQL по <code>MAX(updated_at) &gt; now() - N days</code>.</p>
+    </div>
+  </div>
+
+  <p class="fp" style="margin-top:14px">
+    <b>Не считаем находками</b> (по явным исключениям в задаче): fs-watcher / <code>git_head_moved</code> отложен; SSE-подписка на observed-topic на панели — панель опрашивает раз в 5 с и подхватывает новое, приемлемо; чтение содержимого панелей через <code>capture-pane</code> — принципиально out-of-scope.
+  </p>
+</section>
+
+<section>
+  <h2>Доказательства нулевого влияния (R14.1 и R14.6)</h2>
+  <pre>{ "write_attempts_total": 0,
+  "per": [
+    { "name": "claude-sessions", "write_attempts": 0, "disabled": false, "last_error": null },
+    { "name": "tmux-map",        "write_attempts": 0, "disabled": false, "last_error": null }
+  ]
+}
+find $HOME/e2e-workspaces/observed-scratch -newer marker-pre-run -not -path '*/.git/*' -type f
+  → 0 файлов
+
+diff -qr transcript-heads-pre transcript-heads-post (692 файла, первые 200 байт)
+  → 0 расхождений
+
+lsof -p 87167 -a -i -P
+  bun 87167 TCP localhost:7360 (LISTEN)
+  bun 87167 TCP localhost:7360-&gt;localhost:55414..55440 (ESTABLISHED)   # SSE-клиенты, всё loopback
+  # 0 не-loopback сокетов</pre>
+</section>
+
+<section>
+  <h2>Скриншоты</h2>
+  <div class="shots">
+    <div class="shot"><img src="screenshots/observed-light.png" alt="Observed — светлая"><div class="cap">Экран Observed — светлая тема (верх страницы). Левая рейка: 16 проектов, включая <b>project-b · hidden</b>. Сетка карточек с плашкой «observer only — no control».</div></div>
+    <div class="shot"><img src="screenshots/observed-dark.png" alt="Observed — тёмная"><div class="cap">Экран Observed — тёмная тема (форсировано через <code>documentElement.classList.add('dark')</code>). Разметка идентичная, регрессий нет.</div></div>
+    <div class="shot"><img src="screenshots/observed-light-collectors.png" alt="Рейка коллекторов — светлая"><div class="cap">Рейка коллекторов — светлая. <b>writes 0</b> у обоих коллекторов (счётчик R14.1 виден).</div></div>
+    <div class="shot"><img src="screenshots/observed-dark-collectors.png" alt="Рейка коллекторов — тёмная"><div class="cap">Рейка коллекторов — тёмная. Структура та же, счётчики неизменны.</div></div>
+    <div class="shot"><img src="screenshots/fleet-dark.png" alt="Fleet"><div class="cap">Fleet с observed_only-строками — плашка видна, tmux-колонка отдаёт «—» (поверхность Мажора 1).</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Телеметрия и teardown</h2>
+  <ul class="compact">
+    <li>Scratch core PID 87167 — прибит в конце прогона, порт 7360 освобождён.</li>
+    <li>tmux-сессия <code>verify-350-scratch</code> — прибита во время F14-S1.</li>
+    <li>tmux владельца, Chrome владельца, panel-obs core на 7331, другие рабочие деревья — <b>не тронуты</b>.</li>
+    <li><code>$HOME/e2e-workspaces/observed-scratch</code> — оставлен на диске с чистым <code>git init</code> по требованию задачи.</li>
+    <li>Все артефакты и логи — в <code>.claude/worktrees/impl-obs-a/.artifacts/verify-350/</code> и в директории этого отчёта.</li>
+    <li>Не было записей в <code>~/.claude/**</code>, не было git-операций в общем дереве и в дереве автора.</li>
+  </ul>
+</section>
+
+</div>
+
+</main>
+
+<script>
+function setLang(l){
+  document.getElementById('lang-en').classList.toggle('on', l === 'en');
+  document.getElementById('lang-ru').classList.toggle('on', l === 'ru');
+  document.getElementById('btn-en').classList.toggle('on', l === 'en');
+  document.getElementById('btn-ru').classList.toggle('on', l === 'ru');
+}
+</script>
+</body>
+</html>

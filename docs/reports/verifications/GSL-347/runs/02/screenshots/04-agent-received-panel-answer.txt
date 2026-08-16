@@ -1,0 +1,25 @@
+  options "yes" and "no": "Should we proceed with the test?" Do it immediately
+  without any preamble.
+
+⏺ User answered Claude's questions:
+  ⎿  · Should we proceed with the test? → yes
+
+⏺ Ответ получен: «да».
+
+✻ Brewed for 5s
+
+❯ Now use AskUserQuestion again with a single question "Ready for merge?" and
+  options "yes" and "no". Do it now.
+
+⏺ User answered Claude's questions:
+  ⎿  · Ready for merge? → yes
+
+⏺ Ответ получен: «да».
+
+✻ Crunched for 43s
+
+────────────────────────────────────────────────────────────────────────────────
+❯ merge it
+────────────────────────────────────────────────────────────────────────────────
+  Sonnet 5 │ control-scratch ░░░░░░░░░░ 7%                                  /rc
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents

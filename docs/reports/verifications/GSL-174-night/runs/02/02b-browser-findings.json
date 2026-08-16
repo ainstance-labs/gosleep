@@ -1,0 +1,58 @@
+{
+  "runId": "02b",
+  "steps": [
+    {
+      "name": "02b-skills-light-12",
+      "note": "M-1 fix — 12 cards visible in light theme",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/02b-skills-light-12.png"
+    },
+    {
+      "name": "02b-diff-orphan-verifier-skeptic",
+      "note": "M-1 — diff drawer opens for orphan verifier-skeptic",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/02b-diff-orphan-verifier-skeptic.png"
+    },
+    {
+      "name": "02b-skills-dark-prefers",
+      "note": "m-2 — Skills screen under prefers-color-scheme=dark",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/02b-skills-dark-prefers.png"
+    },
+    {
+      "name": "02b-skills-manual-before",
+      "note": "m-2 baseline — manual toggle starts in light",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/02b-skills-manual-before.png"
+    },
+    {
+      "name": "02b-skills-manual-dark",
+      "note": "m-2 — after clicking toggle → dark",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/02b-skills-manual-dark.png"
+    },
+    {
+      "name": "02b-skills-manual-back-to-light",
+      "note": "m-2 — toggling back to light works",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/02b-skills-manual-back-to-light.png"
+    }
+  ],
+  "M1": {
+    "cardCount": 12,
+    "subtitle": "Skills management system — 12 skills, git-tracked development copies, publish by owner via one button. Every publish leaves a CHANGELOG row + backup + timeline event chain.",
+    "orphans": {
+      "verifier-skeptic": true,
+      "extra-usage": true,
+      "agentic-report-creator": true,
+      "agentic-scenario-runner": true,
+      "efficient-agent-evals": true
+    }
+  },
+  "m2": {
+    "prefersDark": {
+      "bodyBg": "rgb(11, 11, 13)",
+      "bannerBg": "rgba(0, 0, 0, 0)"
+    },
+    "manualDark": {
+      "bodyBg": "rgb(11, 11, 13)"
+    },
+    "manualBackLight": {
+      "bodyBg": "rgb(250, 250, 250)"
+    }
+  }
+}

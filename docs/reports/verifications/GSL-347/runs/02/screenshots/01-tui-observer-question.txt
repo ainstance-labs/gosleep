@@ -1,0 +1,25 @@
+│                      ▝▜█████▛▘                     │ What's new              │
+│                        ▘▘ ▝▝                       │ Added GitLab merge req… │
+│     Sonnet 5 with xhigh effort · Claude Max ·      │ Added an opt-in `forwa… │
+│     rommxx@gmail.com's Organization                │ Added opt-in memory cg… │
+│          ~/e2e-workspaces/control-scratch          │ /release-notes for more │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+❯ Use the AskUserQuestion tool right now to ask me a single question with
+  options "yes" and "no": "Should we proceed with the test?" Do it immediately
+  without any preamble.
+────────────────────────────────────────────────────────────────────────────────
+ ☐ Confirm test
+
+Should we proceed with the test?
+
+❯ 1. yes
+     Proceed with the test
+  2. no
+     Do not proceed with the test
+  3. Type something.
+────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

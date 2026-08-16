@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>plugin-e2e run 02 — adjudicate run-01 minors + expense-tracker-table build</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">plugin-e2e run 02 — adjudicate run-01 minors + expense-tracker-table build</span>
+        <span class="subtitle">A second real Sonnet dev-agent shipped an Expense Tracker Table THROUGH the gosleep harness on the SAME plugin-era stack; run 02 adjudicates the three MINOR findings from run 01 and exercises the untested permission-TIMEOUT leg on this stack — port 7359, hermetic scratch core off <code>b4560d5</code>.</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Epic">GSL-plugin-era</span>
+        <span class="hbtn" aria-label="Date">2026-08-16</span>
+        <a class="hbtn lang-switch" href="ru/index.html" hreflang="ru">EN <span aria-hidden="true">⇄</span> RU</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Toggle color theme">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Theme</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Executive summary</h2>
+      <div class="card hero">
+        <div class="score-ring" style="--score: 94" data-band="pass">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="52"></circle>
+            <circle class="value" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="num"><b>94</b><span>/ 100</span></div>
+        </div>
+        <div>
+          <h1>Adjudicated — plugin era stays battle-ready</h1>
+          <div class="lead"><p>Nine scenario legs (T1–T9) executed against a hermetic scratch core on <code>127.0.0.1:7359</code>. All nine PASS. The three MINOR findings from run 01 were adjudicated on live evidence — the <strong>Deny-reason quirk was confirmed automation-only</strong> (no product bug, no defect ticket), the <strong>variant-answer clickability gap was confirmed real</strong> (still worth the small ticket someday), and the <strong>Defer short-timer preset gap</strong> stands unchanged. The previously-untested <strong>permission TIMEOUT leg</strong> was proven end-to-end: shim exited status=0 at exactly the deadline, server transitioned the row to <code>status='timed-out'</code>, and the panel row became non-actionable with an owner-facing explanation. A different app shape (React+Vite+TS <em>expense-tracker table</em>, not a to-do) shipped as PR #13 with 6 atomic per-task commits, and a different plugin skill (<code>gosleep-delivery:using-jira</code>, not run 01's <code>handoff</code>) was invoked <em>in anger</em> — the epic + task shape and the tagged <code>[Test][E2E]</code> summary landed exactly as the skill mandates. Global <code>~/.claude</code> content unchanged modulo the CLI's own <code>lastUpdated</code> tick on two pre-existing plugin-bookkeeping files (no gosleep plugin persisted).</p></div>
+          <div class="verdict-row">
+            <span class="level-pill">BATTLE-READY</span>
+            <div class="counts">
+              <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+              <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+              <div class="count-tile" data-severity="MINOR"><span class="n">2</span><span class="k">MINOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">Total</span></div>
+            </div>
+          </div>
+          <div class="dist" role="img" aria-label="Severity distribution">
+            <span class="seg-critical" style="width:0%"></span>
+            <span class="seg-major" style="width:0%"></span>
+            <span class="seg-minor" style="width:100%"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="adj-h">
+      <h2 class="section-title" id="adj-h">Adjudication of run-01 MINORs</h2>
+      <p class="section-lead">Live re-verification of the three MINOR findings from run 01 on the same stack. Each verdict is grounded in DB state + shim stdout captured this run.</p>
+
+      <article class="card finding" id="adj-1">
+        <div class="finding-head">
+          <span class="finding-index">A1</span>
+          <span class="badge" data-severity="MINOR">CLEARED</span>
+          <span class="area-tag">run-01 minor #1 — Deny-dialog reason via CDP fill</span>
+          <span class="lane-tag">automation-only quirk</span>
+        </div>
+        <h3>Reason typed via real keystrokes (CDP <code>Input.dispatchKeyEvent</code>) lands in <code>applied</code> and reaches the model — no product bug</h3>
+        <div class="finding-body">
+          <p><strong>Test.</strong> Fired a fresh permission shim (<code>p-20260815-225949-8e49b837</code>), clicked <em>Deny</em> on the panel, typed <code>RUN02-KEYSTROKES-DENY-REASON-adjudicating-minor-1</code> in the reason textbox via the type_text CDP path (<em>real keystrokes</em>, not <code>fill(uid, value)</code>), clicked <em>Deny</em>. Waited on the shim.</p>
+          <p><strong>DB row after.</strong> <code>status=answered · answer_text=deny · applied="RUN02-KEYSTROKES-DENY-REASON-adjudicating-minor-1" · applied_by=owner</code>. Reason string persisted.</p>
+          <p><strong>Shim stdout.</strong> <code>{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","reason":"RUN02-KEYSTROKES-DENY-REASON-adjudicating-minor-1"}}}</code> — exact Claude Code schema. Full server → shim → model round-trip proven.</p>
+          <p><strong>Verdict.</strong> The run-01 quirk was a Chrome DevTools MCP <code>fill(uid, value)</code> implementation detail — it sets <code>.value</code> without dispatching the input events React needs to update controlled state. Real keystrokes (which is what a human at the keyboard does) work end-to-end. <strong>No defect ticket needed.</strong></p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Evidence</span><span class="ref-v">assets/T5-deny-dialog-empty.png · assets/T5-deny-dialog-typed.png · assets/T5-deny-applied.png · assets/T5-shim.txt</span></div></div>
+        <div class="shots">
+          <figure class="shot"><img class="shot-img" src="assets/T5-deny-dialog-empty.png" alt="Deny dialog freshly opened" data-lightbox-group="adj-1" data-caption="T5 — Deny dialog fresh, reason field empty, focus on textarea"><figcaption class="shot-cap">T5 · Deny dialog empty</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T5-deny-dialog-typed.png" alt="Deny dialog with reason typed via keystrokes" data-lightbox-group="adj-1" data-caption="T5 — reason typed via CDP Input.dispatchKeyEvent; React state observed the change, Deny button enabled"><figcaption class="shot-cap">T5 · reason typed via keystrokes</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T5-deny-applied.png" alt="Panel after Deny submission" data-lightbox-group="adj-1" data-caption="T5 — after submit, row transitioned to answered/deny with reason persisted"><figcaption class="shot-cap">T5 · after Deny</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="card finding" id="adj-2">
+        <div class="finding-head">
+          <span class="finding-index">A2</span>
+          <span class="badge" data-severity="MINOR">CONFIRMED</span>
+          <span class="area-tag">run-01 minor #2 — variant-answer clickability</span>
+          <span class="lane-tag">design</span>
+        </div>
+        <h3>Answer dialog is truly free-text-only for variant questions; option labels are static text with no click affordance</h3>
+        <div class="finding-body">
+          <p><strong>Test.</strong> Opened variant question <code>q-2026-08-15-001</code> (2 options: "Grouping panel" / "Total-row footer"), clicked <em>Answer</em>, introspected the dialog DOM.</p>
+          <p><strong>Dialog contents.</strong> <em>One</em> <code>&lt;textarea&gt;</code> (placeholder "Type the answer for the agent…") plus a <em>Cancel</em> and a <em>Send answer</em> button. Nothing else.</p>
+          <p><strong>DOM probe.</strong> <code>hasRadio=false, hasSelect=false</code>. Option list items surface OUTSIDE the dialog inside the question row: each option renders as <code>&lt;li&gt;</code> with <code>hasClick=false</code> and no button/anchor child. Options are informational, not actionable.</p>
+          <p><strong>Verdict.</strong> Not a testing artifact — a real human owner on this panel has to type an option's label verbatim to answer a variant question. Minor UX gap stands; the tiny follow-up ticket to add per-option pick buttons is still worth filing eventually. Not blocking.</p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">apps/web/src/screens/Questions.tsx (Answer dialog)</span></div></div>
+        <div class="shots">
+          <figure class="shot"><img class="shot-img" src="assets/T6-question-open.png" alt="Variant question open on Questions screen" data-lightbox-group="adj-2" data-caption="T6 — question row with two static-text options (Grouping panel / Total-row footer) and a single Answer button"><figcaption class="shot-cap">T6 · variant question open — options are static text</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T6-answer-dialog.png" alt="Answer dialog for variant question" data-lightbox-group="adj-2" data-caption="T6 — the whole Answer dialog is one textarea + Cancel + Send. No per-option pick control anywhere"><figcaption class="shot-cap">T6 · Answer dialog — free-text only</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T6-answer-typed.png" alt="Textarea with variant label typed as free text" data-lightbox-group="adj-2" data-caption="T6 — 'Grouping panel' typed as free text; Send answer enables"><figcaption class="shot-cap">T6 · typing an option's label as free text</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="card finding" id="adj-3">
+        <div class="finding-head">
+          <span class="finding-index">A3</span>
+          <span class="badge" data-severity="MINOR">CONFIRMED</span>
+          <span class="area-tag">run-01 minor #3 — Defer short-timer preset</span>
+          <span class="lane-tag">design</span>
+        </div>
+        <h3>Custom ISO path re-proven end-to-end; shortest preset is still 30 minutes</h3>
+        <div class="finding-body">
+          <p><strong>Test.</strong> Fired an ask-question shim (<code>q-2026-08-15-002</code>), deferred via <code>POST /actions/questions/defer</code> with <code>defer_until = now + 30 s</code> (Custom ISO), waited on the reopen scheduler, answered "Left" via API. Total hold ≈73 s.</p>
+          <p><strong>Timeline.</strong> <code>opened → deferred (defer_until t+30s) → auto-reopened at t≈36s (t+30s + ~6s scheduler tick) → answered</code>. Shim's long-poll returned 200 with <code>hookSpecificOutput.updatedInput.answers = {…: "Left"}</code>. The Custom ISO round-trip works exactly as designed on the plugin-era stack.</p>
+          <p><strong>Verdict.</strong> The mechanism is sound; the preset row still starts at 30 minutes. For "hold this for a minute" cadences the owner (or a scenario runner) must still hand-compute a Custom ISO. Stands as a small quality-of-life gap.</p>
+        </div>
+        <div class="shots">
+          <figure class="shot"><img class="shot-img" src="assets/T7-deferred.png" alt="Deferred question row on the panel" data-lightbox-group="adj-3" data-caption="T7 — row in the Deferred filter after Custom ISO 30 s defer"><figcaption class="shot-cap">T7 · row in Deferred</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T7-reopened-answered.png" alt="Row auto-reopened and then answered" data-lightbox-group="adj-3" data-caption="T7 — after auto-reopen, row was answered 'Left' via API; the shim's long-poll returned with hookSpecificOutput.updatedInput.answers"><figcaption class="shot-cap">T7 · reopened + answered</figcaption></figure>
+        </div>
+      </article>
+    </section>
+
+    <section aria-labelledby="scen-h">
+      <h2 class="section-title" id="scen-h">Scenario walk (T1–T9)</h2>
+      <p class="section-lead">Each leg carries its own live-evidence proof. T1/T2/T3/T6/T7/T8 use panel + shim + DB triangulation; T4/T5 are the two new legs specifically demanded by the run 02 charter.</p>
+
+      <article class="card finding" id="scen-T1">
+        <div class="finding-head"><span class="finding-index">T1</span><span class="badge" data-severity="MINOR">PASS</span><span class="area-tag">Plugin skill enumeration</span><span class="lane-tag">functionality</span></div>
+        <h3>All 12 namespaced plugin skills surface on the dev-agent under the three bundles</h3>
+        <div class="finding-body">
+          <p>Dev-agent asked to enumerate every plugin skill returned exactly <strong>12</strong>: 4 from <code>gosleep-delivery</code> (<code>delivery-workflow</code>, <code>handoff</code>, <code>using-jira</code>, <code>writing-prds</code>), 5 from <code>gosleep-evals</code> (<code>agentic-report-creator</code>, <code>agentic-scenario-runner</code>, <code>efficient-agent-evals</code>, <code>extra-usage</code>, <code>verifier-skeptic</code>), 3 from <code>gosleep-orchestration</code> (<code>orchestrating-delivery-agents</code>, <code>remote-control</code>, <code>tmux-agents-orchestration</code>). Matches run 01 tally.</p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Evidence</span><span class="ref-v">assets/T1-terminal.txt</span></div></div>
+      </article>
+
+      <article class="card finding" id="scen-T2T3">
+        <div class="finding-head"><span class="finding-index">T2·T3</span><span class="badge" data-severity="MINOR">PASS</span><span class="area-tag">Expense tracker table build + using-jira in anger</span><span class="lane-tag">functionality</span></div>
+        <h3>A different app shape shipped under a different plugin skill — end-to-end Jira → commits → PR chain</h3>
+        <div class="finding-body">
+          <p><strong>Build.</strong> The dev-agent scaffolded Vite + React + TypeScript, wrote 30 seed expense records (Food/Transportation/Entertainment/Utilities/Healthcare/Shopping), and shipped: 5-column table (Date/Category/Amount/Merchant/Notes), Category dropdown filter with <em>All</em>, Date range from/to filter, click-to-sort headers, 10-row pagination with Previous/Next, and a Grouping Panel above the table (per the owner's live answer to the mid-session <code>AskUserQuestion</code>).</p>
+          <p><strong>Jira chain.</strong> Dev-agent explicitly loaded <code>Skill(gosleep-delivery:using-jira) ⎿ Successfully loaded skill</code> at the top of the session, then applied its conventions: one Epic (<code>GSL-340</code>, verified real via <code>getJiraIssue</code> — Epic type, <code>[Test][E2E] Expense tracker table (run02)</code> tagged summary, owner-assigned) plus 6 Tasks <code>GSL-341..GSL-346</code>, one commit per Task, each commit message keyed by the Task ID.</p>
+          <p><strong>PR.</strong> Opened at <a href="https://github.com/ainstance-labs/gosleep-e2e-todo/pull/13">github.com/ainstance-labs/gosleep-e2e-todo#13</a>, state <code>OPEN</code> (not merged per instructions). Fixture repo lives outside the gosleep tree — <code>~/e2e-workspaces/table-plugins-run02/repo</code>.</p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Evidence</span><span class="ref-v">assets/T2-T3-terminal.txt · PR #13</span></div></div>
+      </article>
+
+      <article class="card finding" id="scen-T4">
+        <div class="finding-head"><span class="finding-index">T4</span><span class="badge" data-severity="MINOR">PASS</span><span class="area-tag">Permission TIMEOUT leg (the new leg)</span><span class="lane-tag">functionality</span></div>
+        <h3>End-to-end timeout: shim exits fail-open at the deadline, server marks row <code>timed-out</code>, panel row becomes non-actionable</h3>
+        <div class="finding-body">
+          <p><strong>Test.</strong> Fired the real <code>permission-request-hook.sh</code> with <code>GOSLEEP_HOOK_TIMEOUT_S=40</code> and a canned <code>tool_name=Bash</code> payload (probe curl). Watched the panel for the 40 s window, then let the deadline pass.</p>
+          <p><strong>Panel (during).</strong> Row <code>p-20260815-225735-2818c1d6</code> appeared with <em>Allow</em> and <em>Deny</em> buttons live — actionable for the full 40 s.</p>
+          <p><strong>Shim (at deadline).</strong> <code>status=0</code>, stdout <em>empty</em> (per hooks.md: "hook has no decision to report; tool call continues normal permission flow"). Debug log: <code>{"outcome":"timeout","qid":"p-20260815-225735-2818c1d6","elapsed_ms":40000,"expire_status":"200"}</code> — the shim called the server's expire endpoint after the wait timed out.</p>
+          <p><strong>Panel (after).</strong> Row transitioned to <code>status='timed-out'</code>, applied by <code>shim-timeout</code>. Allow/Deny buttons removed. Explicit owner-facing message: <em>"answered in terminal — hook long-poll timed out; the TUI dialog took over. No panel action available."</em> The behavior is exactly the GSL-333 path proven pre-plugin-era, now re-verified on the plugin-era stack.</p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Evidence</span><span class="ref-v">assets/T4-permission-open.png · assets/T4-permission-timed-out.png · assets/T4-shim.txt</span></div></div>
+        <div class="shots">
+          <figure class="shot"><img class="shot-img" src="assets/T4-permission-open.png" alt="Permission row open during the 40s window" data-lightbox-group="scen-T4" data-caption="T4 — during the 40s window, row is actionable with Allow/Deny buttons"><figcaption class="shot-cap">T4 · during — actionable</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T4-permission-timed-out.png" alt="Row after timeout — no action available" data-lightbox-group="scen-T4" data-caption="T4 — after the deadline, row is 'timed-out'; buttons gone; explicit explainer to the owner"><figcaption class="shot-cap">T4 · after — non-actionable</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="card finding" id="scen-T5T6T7">
+        <div class="finding-head"><span class="finding-index">T5·T6·T7</span><span class="badge" data-severity="MINOR">ADJUDICATED</span><span class="area-tag">Adjudicated run-01 minors</span><span class="lane-tag">functionality · design</span></div>
+        <h3>See the "Adjudication" section above for the verdicts on the three run-01 MINORs</h3>
+        <div class="finding-body">
+          <p>T5 verdict → <strong>CLEARED</strong> (automation-only quirk). T6 verdict → <strong>CONFIRMED</strong> (real UX gap, minor). T7 verdict → <strong>CONFIRMED</strong> (path sound, preset gap stands).</p>
+        </div>
+      </article>
+
+      <article class="card finding" id="scen-T8">
+        <div class="finding-head"><span class="finding-index">T8</span><span class="badge" data-severity="MINOR">PASS</span><span class="area-tag">Screens sweep · light + dark · Skills=12 · SSE liveness</span><span class="lane-tag">design</span></div>
+        <h3>Panel renders cleanly in both themes; 12-skill count matches run 01 exactly</h3>
+        <div class="finding-body">
+          <p><strong>Light.</strong> Overview, Fleet, Timeline, Cost, Questions, Skills — all render clean. Overview shows 3 live sessions (1 real dev-agent + 2 unrelated Fable fleets on the host). Fleet shows the real dev-agent <code>repo-9a · pid 89402 · Sonnet 4.5 · CONTEXT 10% · CURRENT TOOL AskUserQuestion · cwd table-plugins-run02/repo</code> plus 3 ended shim probe-sessions (t4/t5/t7). SSE banner "live · Last-Event-ID resume" present on every screen (hermetic run — indexer disabled for isolation, so Timeline shows 0 rows honestly).</p>
+          <p><strong>Dark.</strong> Skills screen shows all 12 rows (11 clean + <code>verifier-skeptic</code> has-changes with Publish button disabled per TouchID pause <code>d-2026-08-09-001</code>) — identical to run 01. Fleet dark identical in structure.</p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Evidence</span><span class="ref-v">assets/T8-overview.png · assets/T8-fleet.png · assets/T8-timeline.png · assets/T8-cost.png · assets/T8-skills-12.png · assets/T8-skills-dark.png · assets/T8-fleet-dark.png · assets/T8-questions-dark.png</span></div></div>
+        <div class="shots">
+          <figure class="shot"><img class="shot-img" src="assets/T8-overview.png" alt="Overview" data-lightbox-group="scen-T8" data-caption="T8 · Overview (light) — 3 live, 3 busy, 3 ended"><figcaption class="shot-cap">T8 · Overview (light)</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-fleet.png" alt="Fleet" data-lightbox-group="scen-T8" data-caption="T8 · Fleet (light) — real Sonnet dev-agent + ended shim probes"><figcaption class="shot-cap">T8 · Fleet (light)</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-timeline.png" alt="Timeline" data-lightbox-group="scen-T8" data-caption="T8 · Timeline (light) — SSE 'live', 0 rows because indexer disabled for hermetic run"><figcaption class="shot-cap">T8 · Timeline (light)</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-cost.png" alt="Cost" data-lightbox-group="scen-T8" data-caption="T8 · Cost (light) — no cost events yet"><figcaption class="shot-cap">T8 · Cost (light)</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-skills-12.png" alt="Skills" data-lightbox-group="scen-T8" data-caption="T8 · Skills (light) — all 12 rows, 11 clean + verifier-skeptic has-changes"><figcaption class="shot-cap">T8 · Skills (light) · 12</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-skills-dark.png" alt="Skills dark" data-lightbox-group="scen-T8" data-caption="T8 · Skills (dark) — same 12 rows, publish disabled per TouchID pause"><figcaption class="shot-cap">T8 · Skills (dark) · 12</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-fleet-dark.png" alt="Fleet dark" data-lightbox-group="scen-T8" data-caption="T8 · Fleet (dark)"><figcaption class="shot-cap">T8 · Fleet (dark)</figcaption></figure>
+          <figure class="shot"><img class="shot-img" src="assets/T8-questions-dark.png" alt="Questions dark" data-lightbox-group="scen-T8" data-caption="T8 · Questions (dark)"><figcaption class="shot-cap">T8 · Questions (dark)</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="card finding" id="scen-T9">
+        <div class="finding-head"><span class="finding-index">T9</span><span class="badge" data-severity="MINOR">PASS</span><span class="area-tag">Teardown · port free · no residue</span><span class="lane-tag">architecture</span></div>
+        <h3>Dev-agent exited, core killed, port 7359 clean, tmux session removed; fixture PR left open per policy</h3>
+        <div class="finding-body">
+          <p><code>/exit</code> in the dev-agent pane → <code>tmux kill-session -t e2e-plugins-run02</code> → SIGTERM to the core pid → <code>lsof -i :7359 → 0 lines</code>. Fixture PR #13 left OPEN (permanent test artifact policy honored). Browser tab closed.</p>
+        </div>
+      </article>
+    </section>
+
+    <section aria-labelledby="findings-h">
+      <h2 class="section-title" id="findings-h">Findings (0 CRITICAL · 0 MAJOR · 2 MINOR)</h2>
+
+      <article class="card finding" id="finding-1">
+        <div class="finding-head">
+          <span class="finding-index">1</span>
+          <span class="badge" data-severity="MINOR">MINOR</span>
+          <span class="area-tag">T6 — variant-answer clickability (unchanged from run 01)</span>
+          <span class="lane-tag">design</span>
+        </div>
+        <h3>Answer dialog is truly free-text only for variant questions — no per-option pick button, no radio, no select</h3>
+        <div class="finding-body">
+          <p>Live DOM introspection confirmed: the Answer dialog for a variant-typed <code>AskUserQuestion</code> row exposes a single textarea plus Cancel/Send answer. Option labels render outside the dialog as <code>&lt;li&gt;</code> static text with no click affordance. Owner must retype an option's label verbatim to answer.</p>
+          <p><strong>Cost of leaving it.</strong> No functional impact — the agent receives an answer that matches the option label — but the panel presents variant-typed and free-text-typed rows as identical from the owner's perspective. A small ticket to add a per-option pick control would remove that ambiguity.</p>
+        </div>
+        <div class="refs"><div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">apps/web/src/screens/Questions.tsx (Answer dialog)</span></div></div>
+      </article>
+
+      <article class="card finding" id="finding-2">
+        <div class="finding-head">
+          <span class="finding-index">2</span>
+          <span class="badge" data-severity="MINOR">MINOR</span>
+          <span class="area-tag">T7 — Defer short-timer preset (unchanged from run 01)</span>
+          <span class="lane-tag">design</span>
+        </div>
+        <h3>Shortest Defer preset is 30 minutes; short-loop verifications still need Custom ISO</h3>
+        <div class="finding-body">
+          <p>The Defer dialog still offers <em>No timer / 30 minutes / 2 hours / Tomorrow 10:00 / Next Monday 10:00 / Custom ISO</em>. Custom ISO is the workaround for any short window, but a "30 seconds" or "1 minute" preset would remove the arithmetic step for both live verifications and any real "hold this thought for a minute" cadence. Not blocking — Custom ISO is proven to work.</p>
+        </div>
+      </article>
+
+      <p><em>Note.</em> Run 01's MINOR #1 (Deny-dialog reason via CDP <code>fill</code>) is <strong>CLEARED</strong> this run — see A1 above. Automation-only quirk in Chrome DevTools MCP's <code>fill(uid, value)</code>; real keystrokes and real human interaction work.</p>
+    </section>
+
+    <section aria-labelledby="arch-h">
+      <h2 class="section-title" id="arch-h">Architecture lane — sha-manifest proof</h2>
+      <article class="card">
+        <div class="finding-body">
+          <p><strong>Hermetic core.</strong> Scratch scoping: fresh <code>data/</code> under <code>.claude/worktrees/e2e-plugins/</code>, migrated DB (4 migrations), random 24-byte Bearer, port <code>127.0.0.1:7359</code>, SPA from <code>apps/web/dist</code>, indexer + Jira sync disabled for isolation.</p>
+          <p><strong>Dev-agent isolation.</strong> Bypass-permissions Sonnet 4.5 pane on the actual claude CLI (2.1.233), cwd <code>~/e2e-workspaces/table-plugins-run02/repo</code> — OUTSIDE the gosleep tree per hard rules. <code>--plugin-dir</code> passed for each of <code>gosleep-{delivery,orchestration,evals}</code>; sha-manifest before/after proves nothing persisted under <code>~/.claude/plugins/installed_plugins.json</code> for those namespaces (only <code>context7</code>, <code>superpowers</code>, and <code>nx</code> — all pre-existing).</p>
+          <ul>
+            <li><strong>Before:</strong> 30,883 files hashed (assets/homeclaude-before.sha).</li>
+            <li><strong>After:</strong> 30,904 files hashed (assets/homeclaude-after.sha). New rows are <em>the CLI's own bookkeeping</em>: <code>tasks/session-*/N.json</code>, <code>file-history/&lt;dev-agent-session&gt;/*</code>, <code>history.jsonl</code>. The two changed lines in <code>plugins/</code> are <code>lastUpdated</code> timestamp ticks on <code>installed_plugins.json</code> + <code>known_marketplaces.json</code> — content re-inspected below has zero gosleep entries.</li>
+            <li><strong>Plugin manifest content:</strong> <code>installed_plugins.json</code> contains only <code>context7@claude-plugins-official</code>, <code>superpowers@claude-plugins-official</code>, and one project-scoped <code>nx@nx-claude-plugins</code>. <code>grep -c gosleep</code> returns <strong>0</strong> in both files.</li>
+          </ul>
+          <p><strong>The two MINOR findings are polish-level design gaps.</strong> Both are the same ones run 01 called out; the third run-01 MINOR was reclassified to automation-only quirk on real-keystroke evidence and no longer counts against the score. The plugin-era stack remains the delivery surface: build shipped, PR opened, Jira chain intact, no global bleed.</p>
+        </div>
+      </article>
+    </section>
+
+    <section aria-labelledby="how-h">
+      <h2 class="section-title" id="how-h">How this run was executed</h2>
+      <article class="card">
+        <div class="finding-body">
+          <ul>
+            <li><strong>Ground truth:</strong> gosleep-core off tag-adjacent commit <code>b4560d5</code> (worktree <code>.claude/worktrees/e2e-plugins</code>), <code>bun 1.3.x</code>, macOS.</li>
+            <li><strong>Envs on the dev-agent shell:</strong> <code>GOSLEEP_WEB_QUESTIONS=1</code>, <code>GOSLEEP_INTERNAL_SECRET=&lt;random&gt;</code>, <code>GOSLEEP_CORE_URL=http://127.0.0.1:7359</code>, <code>GOSLEEP_HOOK_TIMEOUT_S=600</code> (default for real question loop; overridden to 40 in T4 for the timeout leg).</li>
+            <li><strong>Hooks wired in sandbox <code>.claude/settings.json</code>:</strong> <code>PreToolUse.matcher=AskUserQuestion → ask-user-question-hook.sh</code> and <code>PermissionRequest.matcher=.* → permission-request-hook.sh</code> (both pointing at scripts in the worktree; the shims themselves are opt-in gated on <code>GOSLEEP_WEB_QUESTIONS=1</code>).</li>
+            <li><strong>Adjudication approach:</strong> T5 (Deny-reason via keystrokes) drove the panel through CDP <code>Input.dispatchKeyEvent</code>; T6 (variant clickability) drove DOM introspection with <code>querySelector('input[type=radio]')</code>/<code>hasClick</code>; T7 (Custom ISO defer) exercised the actual reopen scheduler on a 30 s window.</li>
+            <li><strong>Time cap:</strong> the run charter allowed ~60 min; wall-clock from setup to teardown was ~14 min.</li>
+          </ul>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="assets/lightbox.js"></script>
+</body>
+</html>

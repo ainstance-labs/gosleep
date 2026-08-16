@@ -1,0 +1,41 @@
+
+romanlidovskyi@romans-macbook-pro e2e-plugins % cd /Users/romanlidovskyi/e2e-wor
+kspaces/todo-plugins-run01 && pwd
+/Users/romanlidovskyi/e2e-workspaces/todo-plugins-run01
+romanlidovskyi@romans-macbook-pro todo-plugins-run01 % claude --model sonnet --d
+angerously-skip-permissions --plugin-dir /Users/romanlidovskyi/Documents/dev/har
+ness/gosleep-plugins/gosleep-delivery --plugin-dir /Users/romanlidovskyi/Documen
+ts/dev/harness/gosleep-plugins/gosleep-orchestration --plugin-dir /Users/romanli
+dovskyi/Documents/dev/harness/gosleep-plugins/gosleep-evals
+
+────────────────────────────────────────────────────────────────────────────────
+  Settings Warning
+
+  /Users/romanlidovskyi/e2e-workspaces/todo-plugins-run01/.claude/settings.jso
+  n
+  └ hooks.AskUserQuestion: Unknown hook event "AskUserQuestion" was ignored.
+⏺ gosleep-delivery:delivery-workflow
+  gosleep-delivery:handoff
+  gosleep-delivery:using-jira
+  gosleep-delivery:writing-prds
+
+  gosleep-orchestration:orchestrating-delivery-agents
+  gosleep-orchestration:remote-control
+  gosleep-orchestration:tmux-agents-orchestration
+
+  gosleep-evals:agentic-report-creator
+  gosleep-evals:agentic-scenario-runner
+  gosleep-evals:efficient-agent-evals
+  gosleep-evals:extra-usage
+  gosleep-evals:verifier-skeptic
+
+  Итого: 12 скиллов (gosleep-delivery: 4, gosleep-orchestration: 3,
+  gosleep-evals: 5).
+
+✻ Cooked for 9s
+
+────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────
+  Sonnet 5 │ todo-plugins-run01 ░░░░░░░░░░ 7%                               /rc
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

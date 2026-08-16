@@ -1,0 +1,38 @@
+{
+  "steps": [
+    {
+      "name": "b0-overview-light",
+      "note": "SPA boots with Bearer via ?token=",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/b0-overview-light.png"
+    },
+    {
+      "name": "b1-skills-light",
+      "note": "Skills management screen — light theme, full page",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/b1-skills-light.png"
+    },
+    {
+      "name": "b2-diff-drawer-light",
+      "note": "Diff drawer for first skill (light)",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/b2-diff-drawer-light.png"
+    },
+    {
+      "name": "b5-nav-sidebar-light",
+      "note": "Sidebar nav — Skills item present",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/b5-nav-sidebar-light.png"
+    },
+    {
+      "name": "b3-skills-dark",
+      "note": "Skills management screen — dark theme, full page",
+      "path": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/docs/reports/verifications/GSL-174-night/runs/02/screenshots/b3-skills-dark.png"
+    }
+  ],
+  "tableProbe": {
+    "rowCount": 0,
+    "rowNames": [],
+    "headers": [],
+    "publishBtns": 7,
+    "publishPausedLabels": 0,
+    "bannerText": "TouchID paused",
+    "enabledPublish": 0
+  }
+}

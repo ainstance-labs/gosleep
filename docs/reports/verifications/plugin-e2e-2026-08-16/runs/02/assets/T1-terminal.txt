@@ -1,0 +1,60 @@
+
+╭─── Claude Code v2.1.233 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting started                                                                                                                                                                │
+│                   Welcome back R!                  │ Run /init to create a CLAUDE.md file with instructions for Claude                                                                                                                       │
+│                                                    │ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── │
+│                       ▐▛███▜▌                      │ What's new                                                                                                                                                                              │
+│                      ▝▜█████▛▘                     │ Added GitLab merge request URL support to the `--worktree` flag and the `claude agents` view (where MRs display as `!N`)                                                                │
+│                        ▘▘ ▝▝                       │ Added an opt-in `forward_user_identity` apps gateway setting on Anthropic upstreams that sends the signed-in user's identity as headers, so a proxy behind the gateway can attribute s… │
+│    Sonnet 4.5 · Claude Max · rommxx@gmail.com's    │ Added opt-in memory cgroup support for Bash tool commands on Linux (`CLAUDE_CODE_TOOL_MEMORY_LIMIT`) so a runaway build can't stall the session                                         │
+│    Organization                                    │ /release-notes for more                                                                                                                                                                 │
+│      ~/e2e-workspaces/table-plugins-run02/repo     │                                                                                                                                                                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+❯ List EVERY plugin skill available in this session with its full namespaced name (format: plugin-name:skill-name). Do NOT list built-in gstack/superpowers skills. Only plugin-* ones — expect 12 across gosleep-delivery,
+  gosleep-orchestration, gosleep-evals. Output one per line, sorted, then a total count on the last line.
+
+⏺ gosleep-delivery:delivery-workflow
+  gosleep-delivery:handoff
+  gosleep-delivery:using-jira
+  gosleep-delivery:writing-prds
+  gosleep-evals:agentic-report-creator
+  gosleep-evals:agentic-scenario-runner
+  gosleep-evals:efficient-agent-evals
+  gosleep-evals:extra-usage
+  gosleep-evals:verifier-skeptic
+  gosleep-orchestration:orchestrating-delivery-agents
+  gosleep-orchestration:remote-control
+  gosleep-orchestration:tmux-agents-orchestration
+
+  Итого: 12 plugin навыков
+
+✻ Sautéed for 10s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Sonnet 4.5 │ repo ██░░░░░░░░ 24%                                                                                                                                                                                                          /rc
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

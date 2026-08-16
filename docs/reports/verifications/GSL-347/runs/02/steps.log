@@ -1,0 +1,25 @@
+2026-08-16T11:53:53Z verify-361 start | port=7362 db=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/impl-obs-b/.artifacts/verify-361/work/gosleep.db bearer=devbearer-verify361 secret=devsecret-verify361
+2026-08-16T11:53:53Z SETUP core booted pid=63586 migrations=0000..0006 session_control table verified
+2026-08-16T11:54:19Z T1 unknown-session behavior recorded
+2026-08-16T11:54:29Z F15-S1 shim heartbeat registered session=sid-runtime-abc
+2026-08-16T11:54:40Z F15-S2 take-control ok + idempotency replay cached
+2026-08-16T11:55:24Z F15-S3 release-control ok + timeline event
+2026-08-16T11:55:39Z F15-S4 env_opt_in heartbeat -> controlled+env; release 409 confirmed
+2026-08-16T11:55:56Z F15-S6 shim_registered=0 take-control -> 409 confirmed; re-take after release works
+2026-08-16T11:56:14Z SHIM caseA (observer,no-env): rc=0 stdout_empty=no
+2026-08-16T11:56:41Z SHIM caseA: 0 question rows after shim invocation (fast-exit confirmed)
+2026-08-16T11:57:02Z SHIM caseB (controlled): question posted, answered, shim proceeded — end-to-end
+2026-08-16T11:58:09Z SHIM caseB: question q-2026-08-16-001 landed in DB (state=controlled -> shim POSTed as expected); wait timed out (test set 10s)
+2026-08-16T11:58:53Z F15-S3 release cutover: shim fast-exit rc=0 elapsed=9421ms questions_delta=0
+2026-08-16T12:08:14Z F15-S6-core-down: shim fast-exit rc=0 elapsed=161ms (must be <5000)
+2026-08-16T12:08:40Z SETUP core restarted for follow-up; 7331 untouched
+2026-08-16T12:09:11Z F15-S5 permission-hook exercised (controlled path)
+2026-08-16T12:22:27Z ADV: row deleted mid-flight -> fast-exit rc=0 no new questions; heartbeat re-registers as observer
+2026-08-16T12:25:15Z TEARDOWN scratch core killed pid= port 7362 free; 7331 untouched; sha spot-check ~/.claude unchanged
+2026-08-16T12:36:27Z LIVE-leg session_id=1b2dbbec-cc24-40cd-88d9-d04d04e9fa50 model=sonnet
+2026-08-16T12:36:27Z LIVE (a) observer: TUI dialog 'Should we proceed?' rendered; 0 new panel rows
+2026-08-16T12:36:27Z LIVE (b) take-control: state->controlled (activated_at=2026-08-16T12:34:42.122Z)
+2026-08-16T12:36:27Z LIVE (c) controlled prompt: q-2026-08-16-002 landed in panel; agent shows 'Cultivating…' spinner (no TUI dialog)
+2026-08-16T12:36:27Z LIVE (d) answer via /actions/questions/answer: agent received 'Ready for merge? -> yes'
+2026-08-16T12:36:27Z LIVE (e) release + next prompt: TUI 'Final release check?' rendered; 0 new panel rows
+2026-08-16T12:36:27Z VERDICT reaffirmed: ALL-CLEAR

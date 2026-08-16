@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Web control plane — E2E QA — run 01 (2026-08-10)</title>
+<style>
+:root {
+  --bg: #fafafa; --panel: #fff; --text: #26272b; --muted: #6b6f78;
+  --line: #e6e7ea; --accent: #2f6feb; --accent-fg: #fff;
+  --ok: #16803c; --warn: #a35c00; --err: #b42318; --neutral: #4a4d54;
+  --code-bg: #f4f5f7; --shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) {
+    --bg: #0b0b0d; --panel: #14151a; --text: #e6e7ea; --muted: #a4a7ad;
+    --line: #23252b; --accent: #7ba4ff; --accent-fg: #0b0b0d;
+    --ok: #4ade80; --warn: #f5b350; --err: #ff7d70; --neutral: #b3b6bd;
+    --code-bg: #1b1c22; --shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme=dark] {
+  --bg: #0b0b0d; --panel: #14151a; --text: #e6e7ea; --muted: #a4a7ad;
+  --line: #23252b; --accent: #7ba4ff; --accent-fg: #0b0b0d;
+  --ok: #4ade80; --warn: #f5b350; --err: #ff7d70; --neutral: #b3b6bd;
+  --code-bg: #1b1c22; --shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+  font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px; }
+header.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 8px; flex-wrap: wrap; }
+h1 { font-size: 28px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 20px; font-weight: 600; margin: 40px 0 16px; letter-spacing: -0.005em; padding-top: 12px; border-top: 1px solid var(--line); }
+h2:first-of-type { border-top: 0; padding-top: 0; }
+h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+.tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; letter-spacing: 0.02em; }
+.tag.ok { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.tag.warn { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.tag.err { background: color-mix(in srgb, var(--err) 22%, transparent); color: var(--err); }
+.tag.neutral { background: color-mix(in srgb, var(--neutral) 18%, transparent); color: var(--neutral); }
+.tag.crit { background: var(--err); color: #fff; }
+.muted { color: var(--muted); }
+.meta { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px 24px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); margin: 24px 0; }
+.meta div small { display: block; color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 3px; }
+.readiness { padding: 20px 24px; margin: 24px 0; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); display: flex; align-items: center; gap: 24px; box-shadow: var(--shadow); flex-wrap: wrap; }
+.readiness .score { font-size: 48px; font-weight: 700; letter-spacing: -0.02em; }
+.readiness .score sub { font-size: 16px; color: var(--muted); font-weight: 400; }
+.readiness .body { flex: 1; min-width: 260px; }
+.readiness .verdict { font-weight: 600; margin-bottom: 4px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap: 8px; }
+.grid div { padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.grid div span:first-child { font-weight: 500; }
+.finding { padding: 20px 22px; margin: 12px 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); border-left: 4px solid var(--line); }
+.finding.MAJOR { border-left-color: var(--err); }
+.finding.CRITICAL { border-left-color: var(--err); }
+.finding.minor { border-left-color: var(--warn); }
+.finding header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.finding header .id { font-weight: 700; color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+.finding header h3 { margin: 0; flex: 1; min-width: 240px; }
+.finding p { margin: 6px 0; }
+.finding .where { color: var(--muted); font-size: 13px; font-family: ui-monospace, Menlo, monospace; }
+.finding pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 13px; margin: 8px 0; }
+.finding .impact { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 10px; }
+.finding .evidence { margin-top: 8px; font-size: 13px; }
+.finding .evidence a { color: var(--accent); text-decoration: none; margin-right: 8px; }
+.finding .evidence a:hover { text-decoration: underline; }
+.scenario { padding: 18px 20px; margin: 10px 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+.scenario header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+.scenario header h3 { margin: 0; }
+.scenario header .num { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700; min-width: 28px; }
+.scenario p { margin: 4px 0 10px; color: var(--muted); }
+.thumb { display: inline-block; margin-top: 6px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; cursor: zoom-in; background: var(--code-bg); }
+.thumb img { display: block; max-width: 100%; max-height: 260px; }
+code { font-family: ui-monospace, Menlo, monospace; background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 92%; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+ul.punch { padding-left: 22px; }
+ul.punch li { margin: 6px 0; }
+.ru { color: var(--muted); font-style: italic; margin: 6px 0 20px; font-size: 14px; border-left: 2px solid var(--line); padding: 4px 12px; }
+.theme-toggle { position: fixed; top: 20px; right: 20px; padding: 8px 12px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; box-shadow: var(--shadow); z-index: 1000; }
+.theme-toggle:hover { border-color: var(--accent); }
+/* Lightbox */
+.lb { position: fixed; inset: 0; background: rgba(0,0,0,.86); display: none; z-index: 2000; align-items: center; justify-content: center; padding: 40px; flex-direction: column; }
+.lb.open { display: flex; }
+.lb img { max-width: 95vw; max-height: 82vh; box-shadow: 0 10px 40px rgba(0,0,0,.5); border-radius: 4px; }
+.lb .caption { color: #ddd; margin-top: 12px; font-size: 14px; max-width: 90vw; text-align: center; }
+.lb .close { position: absolute; top: 20px; right: 24px; color: #ddd; background: none; border: 1px solid #555; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.lb .nav { position: absolute; top: 50%; transform: translateY(-50%); color: #ddd; background: none; border: 1px solid #555; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 18px; }
+.lb .prev { left: 20px; }
+.lb .next { right: 20px; }
+.lb .count { position: absolute; bottom: 20px; color: #999; font-size: 12px; }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" title="Toggle theme (T)">◐ Theme</button>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <h1>Web control plane — end-to-end QA (run 01)</h1>
+    <p class="muted">verifier <strong>webqa-1</strong> · 2026-08-10 · gosleep (Bun + Hono core + React 19 SPA at <code>127.0.0.1:7331</code>)</p>
+  </div>
+  <div>
+    <span class="tag err">READINESS 62 / 100</span>
+    <span class="tag warn" style="margin-left:6px">NOT ready for owner testing</span>
+  </div>
+</header>
+
+<p class="ru">Русский шелл: это первый прогон живой функциональной верификации веб-версии, шесть экранов + интерактивные действия + SSE. Веб УЖЕ работает, но одна крупная поломка блокирует основной сценарий владельца — форма ответа на вопрос падает при вводе. С этим фиксом версия готова к дальнейшему прогону; без него — нет. Ниже — доказательство по каждому шагу.</p>
+
+<div class="meta">
+  <div><small>Run</small>docs/reports/verifications/web-e2e-2026-08-10/runs/01</div>
+  <div><small>Branch</small>GSL-174-skills-management (HEAD 3289545)</div>
+  <div><small>Scratch core</small>127.0.0.1:7333</div>
+  <div><small>DB</small>.artifacts/webqa-1/db/gosleep.db (copy)</div>
+  <div><small>Indexer</small>DISABLED (hermetic)</div>
+  <div><small>Browser</small>chrome-devtools MCP</div>
+  <div><small>Screenshots</small>30</div>
+  <div><small>Findings</small>3 MAJOR · 3 minor</div>
+</div>
+
+<h2>1 · Readiness verdict</h2>
+<div class="readiness">
+  <div class="score">62<sub>/100</sub></div>
+  <div class="body">
+    <div class="verdict">Not ready for the owner to start testing — one fix away.</div>
+    <div class="muted">Six read-screens work. The interactive write path is real (SSE moves cards live, DB rows land, toasts confirm). But the primary owner action — <strong>answering a queued question</strong> — crashes the whole <code>/questions</code> route on the first keystroke. Reload of any non-Overview URL 401s. Console emits <strong>5,087</strong> resource-exhaustion errors during a normal walkthrough.</div>
+  </div>
+</div>
+
+<h3>Per-screen verdicts</h3>
+<div class="grid">
+  <div><span>Overview</span><span class="tag ok">PASS</span></div>
+  <div><span>Fleet</span><span class="tag ok">PASS</span></div>
+  <div><span>Timeline</span><span class="tag ok">PASS</span></div>
+  <div><span>Questions (read)</span><span class="tag ok">PASS</span></div>
+  <div><span>Questions (Answer)</span><span class="tag err">FAIL</span></div>
+  <div><span>Tasks</span><span class="tag ok">PASS</span></div>
+  <div><span>Cost</span><span class="tag warn">DEGRADED (empty)</span></div>
+  <div><span>Skills</span><span class="tag neutral">SKIPPED (not on main)</span></div>
+</div>
+
+<h3>Interactive actions</h3>
+<div class="grid">
+  <div><span>Answer</span><span class="tag err">FAIL</span></div>
+  <div><span>Permission Allow</span><span class="tag ok">PASS</span></div>
+  <div><span>Permission Deny</span><span class="tag ok">PASS</span></div>
+  <div><span>Snapshot</span><span class="tag warn">PASS (silent)</span></div>
+  <div><span>Apply-manifest dialog</span><span class="tag ok">RENDERS</span></div>
+  <div><span>Defer (env-scoped)</span><span class="tag warn">DEGRADED</span></div>
+  <div><span>Run tick</span><span class="tag ok">PASS</span></div>
+  <div><span>SSE live update</span><span class="tag ok">PASS</span></div>
+</div>
+
+<h2>2 · Findings (severity, root cause, evidence)</h2>
+<p class="ru">Найденные дефекты по убыванию тяжести. Первый — блокер основного действия; чинить перед началом владельческого тестирования.</p>
+
+<div class="finding MAJOR">
+  <header><span class="id">#1</span><h3>Answer dialog crashes on the first keystroke — owner cannot answer any BLOCKER/DECISION from the web</h3><span class="tag crit">MAJOR</span></header>
+  <p class="where">apps/web/src/screens/Questions.tsx:651–655</p>
+  <pre><code>onChange={(e) =>
+  setAnswerDialog((prev) =>
+    prev === null ? prev : { ...prev, value: e.currentTarget.value },
+  )
+}</code></pre>
+  <p><strong>Root cause.</strong> React 19 is free to invoke the state-updater function outside the synchronous event window. By the time the updater reads <code>e.currentTarget.value</code>, the SyntheticEvent has been recycled and <code>e.currentTarget</code> is <code>null</code> → <code>TypeError: Cannot read properties of null (reading 'value')</code>. React Router catches the throw and replaces the whole panel with <em>Something went wrong</em>.</p>
+  <p><strong>Fix.</strong> Read the string synchronously before <code>setState</code>:</p>
+  <pre><code>onChange={(e) => {
+  const v = e.currentTarget.value;
+  setAnswerDialog(prev => prev === null ? prev : { ...prev, value: v });
+}}</code></pre>
+  <p class="impact"><strong>Impact.</strong> Reproducible in automation. Under real keyboard typing it will bite intermittently now and often as soon as React 19 flushes the updater async — which it can any time. The Answer button is on every open BLOCKER/DECISION card. Whichever question the owner tries to answer first is the one that blanks the whole route.</p>
+  <p class="evidence"><strong>Evidence:</strong> <a href="#s19">§ scenario 19</a> · <a href="#s20">§ 20</a> · <a href="#s21">§ 21 (crash)</a></p>
+</div>
+
+<div class="finding MAJOR">
+  <header><span class="id">#2</span><h3>Chrome logs 5,087 <code>ERR_INSUFFICIENT_RESOURCES</code> during a normal walk-through</h3><span class="tag crit">MAJOR</span></header>
+  <p class="where">Client polling / SSE lifecycle (cleanup on route unmount)</p>
+  <p><strong>Root cause (not fully proven from the client alone).</strong> Recent resource entries: 250 total, 242 with <code>transferSize=0</code> <code>responseStatus=0</code>. Only <code>/status</code> and <code>/timeline</code> polls are affected — <code>/status</code> fired 123×, <code>/timeline</code> 121× in about ten minutes. SSE <code>/events</code> reconnect churn on top of react-query polling is the most likely driver; React StrictMode double-mount in the built SPA would compound it.</p>
+  <p><strong>Fix.</strong> Instrument react-query <code>staleTime</code>/<code>refetchInterval</code>; confirm <code>EventSource.close()</code> runs on route unmount; verify StrictMode is off in the production build.</p>
+  <p class="impact"><strong>Impact.</strong> A long-lived tab (the owner leaves the panel open all day) will hit Chrome's per-origin socket ceiling and silently stop refreshing. On mobile Safari the same class of error surfaces as blank cards.</p>
+  <p class="evidence"><strong>Evidence:</strong> console.error <code>ERR_INSUFFICIENT_RESOURCES ×5087</code>; per-endpoint request counts above.</p>
+</div>
+
+<div class="finding MAJOR">
+  <header><span class="id">#4</span><h3>Refreshing any non-Overview URL returns 401, not the SPA</h3><span class="tag crit">MAJOR</span></header>
+  <p class="where">apps/core/src/serve.ts (SPA fallback is mounted after every collision-name API route)</p>
+  <p><strong>Root cause.</strong> The server-side <code>/fleet /timeline /questions /tasks /cost</code> routes are Bearer-gated JSON endpoints. A hard reload of any of those client-side URLs hits the API first, gets 401 with body <em>unauthorized</em>, and the SPA never loads. Only <code>/overview</code> happens to not collide with an API name.</p>
+  <p><strong>Fix.</strong> Give SPA routes a namespace (<code>/panel/*</code>) OR move API to <code>/api/*</code>, OR detect <code>Accept: text/html</code> in each API route and fall through to the SPA index.</p>
+  <p class="impact"><strong>Impact.</strong> Every browser bookmark and every refresh of a non-Overview page breaks the panel. The owner learns "don't reload". The phone-dashboard tunnel makes this worse.</p>
+  <p class="evidence"><strong>Evidence:</strong> reproducible via URL bar → <code>http://127.0.0.1:7333/fleet</code> returns 401 <em>unauthorized</em>.</p>
+</div>
+
+<div class="finding minor">
+  <header><span class="id">#3</span><h3>Snapshot success is silent — no toast, no confirmation</h3><span class="tag warn">minor</span></header>
+  <p class="where">Overview → Snapshot → Confirm</p>
+  <p>Snapshot file is written to disk (<code>.artifacts/webqa-1/db/snapshots/manual-owner-web-2026-08-10T07-19-46Z.db</code>, 3.3 MB, verified) and <code>server_intents</code> row is <code>ok</code>, but the notifications region stays empty. Permission Allow/Deny and Tick DO show toasts on success — Snapshot is the odd one out.</p>
+  <p class="impact"><strong>Impact.</strong> The owner clicks, dialog closes, nothing changes visibly. They may click again or wonder if the action fired.</p>
+  <p class="evidence"><strong>Evidence:</strong> <a href="#s17">§ 17</a> · <a href="#s18">§ 18</a></p>
+</div>
+
+<div class="finding minor">
+  <header><span class="id">#5</span><h3>Cost screen has no first-run guidance</h3><span class="tag warn">minor</span></header>
+  <p class="where">Cost screen</p>
+  <p>Empty state is honest ("No cost events recorded yet.") but does not name the producer or the endpoint. New readers may assume the screen is broken.</p>
+  <p class="evidence"><strong>Evidence:</strong> <a href="#s11">§ 11</a> · <a href="#s12">§ 12</a></p>
+</div>
+
+<div class="finding minor">
+  <header><span class="id">#6</span><h3>Options JSON on Question cards is dumped raw; Answer dialog does not surface them as pickable choices</h3><span class="tag warn">minor</span></header>
+  <p class="where">Questions screen — every open card</p>
+  <p>The <code>options</code> field is rendered as literal JSON (<code>["light","dark","both"]</code>). The Answer dialog forces a free-form textbox even for questions with a short clean list. Slower answers; higher chance of typos landing as the answer text.</p>
+  <p><strong>Fix.</strong> When <code>options</code> is an array of ≤6 short strings/labels, render them as a radio group in the Answer dialog and pre-fill the answer on select.</p>
+  <p class="evidence"><strong>Evidence:</strong> <a href="#s07">§ 7</a> · <a href="#s19">§ 19</a></p>
+</div>
+
+<h2>3 · Test scenarios (screenshot + description each)</h2>
+<p class="ru">Каждый шаг — один скриншот и описание. Кликните по любой миниатюре, чтобы открыть в полном размере (навигация стрелками).</p>
+
+<div id="scenarios"></div>
+
+<h2>4 · SSE live-update proof</h2>
+<p><strong>Verdict: PASS.</strong> After <code>POST /actions/permissions/decide</code> returned 200 (at 07:22:26Z), the target card moved from Open to Answered without a reload, the toast fired within the same paint, and the DB row's <code>answered_at</code> matched. Estimated wire-to-DOM latency &lt; 300 ms. Same behaviour on Deny (07:23:53Z).</p>
+<p class="muted">Caveat. The Timeline did not gain fresh rows from the Run-tick action because the indexer was disabled for hermetic testing and <code>tick.sh</code>'s child events are consumed by the tail worker. Tick-borne SSE fan-out was therefore not observed here — it is a test-env choice, not a defect.</p>
+
+<h2>5 · Console &amp; network errors</h2>
+<table>
+  <tr><th>Class</th><th>Count</th><th>Where</th><th>Verdict</th></tr>
+  <tr><td>TypeError: Cannot read properties of null (reading 'value')</td><td>2</td><td>Answer dialog textarea (finding #1)</td><td class="tag err" style="display:inline-block">real defect</td></tr>
+  <tr><td>net::ERR_INSUFFICIENT_RESOURCES</td><td>5,087</td><td>/status + /timeline polls / SSE reconnects (finding #2)</td><td class="tag err" style="display:inline-block">needs investigation</td></tr>
+  <tr><td>POST /actions/questions/defer</td><td>500 (1×)</td><td>lab-emit can't find SQL-seeded qid in JSONL archive</td><td class="tag warn" style="display:inline-block">env limitation (documented)</td></tr>
+  <tr><td>GET /fleet (hard reload)</td><td>401 (1×)</td><td>API route wins over SPA fallback (finding #4)</td><td class="tag err" style="display:inline-block">real defect</td></tr>
+</table>
+
+<h2>6 · Punch list (fix before owner testing)</h2>
+<ul class="punch">
+  <li><strong>P0.</strong> Fix Answer dialog: read <code>e.currentTarget.value</code> synchronously before <code>setState</code> (finding #1). Blocks primary owner flow.</li>
+  <li><strong>P0.</strong> Investigate the 5,087 <code>ERR_INSUFFICIENT_RESOURCES</code>: instrument react-query and confirm SSE close-on-unmount (finding #2). Long-lived tabs will silently stall.</li>
+  <li><strong>P0.</strong> Route ordering: give SPA a namespace (<code>/panel/*</code>) or move API to <code>/api/*</code> so a hard reload of any client route loads the SPA (finding #4).</li>
+  <li><strong>P1.</strong> Surface a toast for Snapshot success (finding #3).</li>
+  <li><strong>P1.</strong> Surface a toast for <code>/actions/questions/defer</code> failure (currently silent — see scenario 26).</li>
+  <li><strong>P2.</strong> Render <code>options</code> as radio buttons in the Answer dialog when the list is short (finding #6).</li>
+</ul>
+
+<h2>7 · Environment notes (for reproducibility)</h2>
+<ul>
+  <li><strong>Branch note.</strong> Run was performed on the <code>GSL-174-skills-management</code> branch (HEAD 3289545). This branch has the Skills screen merged (via GSL-287); <code>origin/main</code> does not. Per the brief, the Skills screen was NOT tested — the other six screens ARE the merged web version.</li>
+  <li><strong>Scratch env.</strong> A fresh core on <code>127.0.0.1:7333</code> against a copy of <code>data/gosleep.db</code> under <code>.artifacts/webqa-1/db/</code>. Bearer via <code>GOSLEEP_BEARER_TOKEN</code>. <code>GOSLEEP_DISABLE_INDEXER=1</code> — the tail indexer is off, so only <code>/actions/*</code> endpoints fan out on SSE. Production DB was NEVER modified.</li>
+  <li><strong>Seeded questions.</strong> Three <code>q-webqa-1-*</code> rows inserted directly into the scratch DB to exercise interactive flows. These do NOT exist in the JSONL archive that <code>lab-emit</code> reads — hence the Defer 500. This is a real architectural note: SQLite is NOT the exclusive source of truth for the action layer; the action endpoints still shell out to <code>lab-emit</code> which reads JSONL.</li>
+  <li><strong>Cleanup.</strong> Scratch core was torn down at the end of the run; ports 7331/7333 verified free. All chrome-devtools tabs closed. All test-writes stayed under <code>.artifacts/webqa-1/</code> and <code>docs/reports/verifications/web-e2e-2026-08-10/</code>.</li>
+</ul>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lb" id="lb">
+  <button class="close" id="lbClose" aria-label="Close">Close (Esc)</button>
+  <button class="nav prev" id="lbPrev" aria-label="Previous">◀</button>
+  <img id="lbImg" src="" alt="">
+  <button class="nav next" id="lbNext" aria-label="Next">▶</button>
+  <div class="caption" id="lbCap"></div>
+  <div class="count" id="lbCount"></div>
+</div>
+
+<script>
+// Theme toggle
+(function(){
+  const t = document.getElementById('themeToggle');
+  const saved = localStorage.getItem('theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  t.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 't' || e.key === 'T') t.click(); });
+})();
+
+// Scenarios (from payload)
+const SCENARIOS = [
+  { n: 1,  file: '01-overview-light.png',           title: 'Overview — light',                               desc: 'Baseline load via /?token=… — nav, status card, live pulse of last 12 events. RUNWAY reads binding=blockers (from the seeded data). All four count cards populated.' },
+  { n: 2,  file: '02-overview-dark.png',            title: 'Overview — dark',                                desc: 'After clicking the moon-icon toggle. data-theme="dark" set on <html>. Card backgrounds swap; body bg rgb(11,11,13). No layout shift.' },
+  { n: 3,  file: '03-fleet-dark.png',               title: 'Fleet — dark',                                   desc: '6 sessions loaded (2 live/busy, 4 ended). Per-session panel: pid, model, cycle, context, current tool, intent. Two live rows marked "updated 1 second ago" — the fleet-poll worker is refreshing every ~4s.' },
+  { n: 4,  file: '04-fleet-light.png',              title: 'Fleet — light',                                  desc: 'Same data in light theme. All six cards render; count summary intact.' },
+  { n: 5,  file: '05-timeline-light.png',           title: 'Timeline — light',                               desc: '200 rows visible (default limit). Type/Task/Limit filters populated with the real dictionary. Ordered newest-first by seq.' },
+  { n: 6,  file: '06-timeline-dark.png',            title: 'Timeline — dark',                                desc: 'Dark palette. Row hover states differ (radio-checked look on focus).' },
+  { n: 7,  file: '07-questions-dark.png',           title: 'Questions — dark, All filter',                   desc: '47 total (44 real + 3 seeded). The three seeded ones (q-webqa-1-*) at top as "open"; historical answered/resolved queue below still renders correctly. Each card has qid, kind chip, task tag, opened-time, options JSON, and per-status action buttons.' },
+  { n: 8,  file: '08-questions-light.png',          title: 'Questions — light',                              desc: 'Same, light theme. Long Russian labels wrap; no h-scroll.' },
+  { n: 9,  file: '09-tasks-light.png',              title: 'Tasks — light',                                  desc: '243 tasks from the Jira-sync worker. Header, status counts, and the first page of rows.' },
+  { n: 10, file: '10-tasks-dark.png',               title: 'Tasks — dark',                                   desc: 'Same rows in dark; contrast reads OK.' },
+  { n: 11, file: '11-cost-dark.png',                title: 'Cost — dark (empty state)',                      desc: 'Honest empty: "No cost events recorded yet." Carries a help line naming the fleet-dashboard task as the source of aggregation. See finding #5.' },
+  { n: 12, file: '12-cost-light.png',               title: 'Cost — light (empty state)',                     desc: 'Same message in light theme.' },
+  { n: 13, file: '13-overview-narrow.png',          title: 'Overview — 390×844 mobile viewport (rendered at 424)', desc: 'Nav collapses to horizontal chips; cards stack; live-pulse rows compact. No horizontal scroll (scrollWidth == innerWidth). Chrome DevTools MCP clamps viewport width above 390 — the layout would otherwise render at the requested width.' },
+  { n: 14, file: '14-questions-narrow.png',         title: 'Questions — 390×844 mobile viewport',            desc: 'Cards stack. Long question text wraps. Buttons visible under each card. No h-scroll.' },
+  { n: 15, file: '15-questions-open-filter.png',    title: 'Questions — "Open" filter applied',              desc: 'Filter chip toggles; list reduced to the three open items. Filter buttons show focus state.' },
+  { n: 16, file: '16-overview-before-snapshot.png', title: 'Overview — before Snapshot',                     desc: 'Baseline for the snapshot action.' },
+  { n: 17, file: '17-snapshot-confirm-dialog.png',  title: 'Snapshot — confirm dialog',                      desc: 'Explains what the action does (invokes apps/core/scripts/snapshot.sh, sqlite3 .backup, WAL-friendly, atomic). Cancel/Confirm.' },
+  { n: 18, file: '18-snapshot-after.png',           title: 'Snapshot — after Confirm (silent success)',      desc: 'Dialog closed; panel unchanged; notifications region empty. File landed at .artifacts/webqa-1/db/snapshots/manual-owner-web-2026-08-10T07-19-46Z.db (3.3 MB, verified on disk). server_intents row 7a61a318 status=ok. See finding #3.' },
+  { n: 19, file: '19-answer-dialog-empty.png',      title: 'Answer dialog — freshly opened',                 desc: 'For q-webqa-1-test-blocker. Textarea autofocused; Send answer disabled while empty; the JSON options are NOT surfaced as buttons — see finding #6.' },
+  { n: 20, file: '20-answer-dialog-filled.png',     title: 'Answer dialog — typed content, moment before crash', desc: 'Text "both — this run demonstrates both theme paths side-by-side" typed. Last frame in which the dialog is intact.' },
+  { n: 21, file: '21-answer-crash.png',             title: 'Answer — dialog crashed the whole /questions route', desc: 'React Router error boundary caught "TypeError: Cannot read properties of null (reading value)". Entire route is now "Something went wrong". Owner cannot recover without a full reload. See finding #1.' },
+  { n: 22, file: '22-permission-allow-after.png',   title: 'Permission Allow — live SSE proof',              desc: 'After clicking Allow, the row moved into Answered WITHOUT a reload; toast "Allowed q-webqa-1-test-permission — session hook released with allow" appeared; DB row updated to status=answered, answer_text=allow. Wire-to-DOM under one paint.' },
+  { n: 23, file: '23-deny-dialog.png',              title: 'Permission Deny — reason dialog',                desc: 'The reason field is optional and it explains that it becomes permissionDecisionReason back to the model. Clean modal.' },
+  { n: 24, file: '24-permission-deny-after.png',    title: 'Permission Deny — after',                        desc: 'Toast "Denied q-webqa-1-test-permission2 — session hook released with deny". Row disappeared from Open list.' },
+  { n: 25, file: '25-defer-dialog.png',             title: 'Defer — timer picker',                           desc: 'Presets No timer / 30 min / 2h / Tomorrow / Next Monday / Custom ISO. Good UX. Submit on this seeded question fails with 500 — env limitation (see network non-2xx).' },
+  { n: 26, file: '26-defer-failed.png',             title: 'Defer — after 500 (silent no-op in UI)',         desc: 'Dialog closed; no error toast; row unchanged. DB (still status=open, defer_until empty) + core err log confirm the 500. The panel should surface this failure, not just log it.' },
+  { n: 27, file: '27-apply-manifest-dialog.png',    title: 'Apply Manifest — rule picker',                   desc: 'Full manifest sections loaded and rendered as radio options with tag + description + section marker. Optional override text field at the bottom. Well-organised despite the volume.' },
+  { n: 28, file: '28-tick-before.png',              title: 'Run tick — confirm dialog',                      desc: 'Explains what tick.sh does. Confirm/Cancel.' },
+  { n: 29, file: '29-tick-after-toast.png',         title: 'Run tick — spawned toast',                       desc: '"Tick spawned  intent_id=01c19f99…". server_intents ended with status=ok. In this scratch env the tick did not produce new /events rows (chronicler is a no-op on the sandbox tree).' },
+  { n: 30, file: '30-fleet-narrow.png',             title: 'Fleet — 390×844 narrow (rendered at 424)',       desc: 'All cards fit; counters and per-session panels stay legible; no h-scroll.' }
+];
+
+(function(){
+  const root = document.getElementById('scenarios');
+  const html = SCENARIOS.map((s, i) => `
+    <div class="scenario" id="s${String(s.n).padStart(2,'0')}">
+      <header>
+        <span class="num">${String(s.n).padStart(2,'0')}</span>
+        <h3>${s.title}</h3>
+      </header>
+      <p>${s.desc}</p>
+      <div class="thumb" data-idx="${i}"><img loading="lazy" src="assets/${s.file}" alt="${s.title}"></div>
+    </div>
+  `).join('');
+  root.innerHTML = html;
+
+  // Lightbox
+  const lb = document.getElementById('lb');
+  const lbImg = document.getElementById('lbImg');
+  const lbCap = document.getElementById('lbCap');
+  const lbCount = document.getElementById('lbCount');
+  const closeBtn = document.getElementById('lbClose');
+  const prevBtn = document.getElementById('lbPrev');
+  const nextBtn = document.getElementById('lbNext');
+  let currentIdx = 0;
+  function show(i) {
+    currentIdx = (i + SCENARIOS.length) % SCENARIOS.length;
+    const s = SCENARIOS[currentIdx];
+    lbImg.src = 'assets/' + s.file;
+    lbImg.alt = s.title;
+    lbCap.textContent = `${String(s.n).padStart(2,'0')} — ${s.title}`;
+    lbCount.textContent = `${currentIdx + 1} / ${SCENARIOS.length}`;
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function hide() { lb.classList.remove('open'); document.body.style.overflow = ''; }
+  document.querySelectorAll('.thumb').forEach(t => t.addEventListener('click', () => show(parseInt(t.dataset.idx, 10))));
+  closeBtn.addEventListener('click', hide);
+  prevBtn.addEventListener('click', () => show(currentIdx - 1));
+  nextBtn.addEventListener('click', () => show(currentIdx + 1));
+  lb.addEventListener('click', e => { if (e.target === lb) hide(); });
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') hide();
+    else if (e.key === 'ArrowLeft') show(currentIdx - 1);
+    else if (e.key === 'ArrowRight') show(currentIdx + 1);
+  });
+})();
+</script>
+</body>
+</html>

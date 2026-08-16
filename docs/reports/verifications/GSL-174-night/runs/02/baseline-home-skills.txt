@@ -1,0 +1,12 @@
+orchestrating-delivery-agents            940ad0f62210688c96e802fb11b82c48ca705e6683083e9e793d8e05e68ddbdb
+delivery-workflow                        4793ee4f6b79b1be552d6363ac3649186ff4400aa098c3e241223ac606ea49ee
+handoff                                  160e5e67d46a78b827a3a1218f2ed5d2bdeeda18c24b0f2987779a70a33f4856
+using-jira                               d89ef4baebc5c87ed5749c27dd209b034956f5087e2061e15b417b7dc1ed6152
+writing-prds                             024a92e62cd70cc6cda288f799cf709235ca786a01238c51313ac800631998ea
+remote-control                           dd4a04be1ed3420e42029c2027a09ceff6ab16f6de1066fe8904322294ecec7f
+tmux-agents-orchestration                551acbd94b08e1e0b75acd0261f06804c0aa1b31a0d4341e39607f9f32616e90
+agentic-report-creator                   7baeb1111b16e1116ae218413afc2119905dce2499c2cc830475504b26e9dd69
+agentic-scenario-runner                  2f3f58bc542f47eef2098e3cdc70bc8a6bfae2a3004b5e94b230bdefe04824c1
+efficient-agent-evals                    950e775f2efb862eedf0de7c7ec60b9e9ddd59e1925ab1c1d86465a54e2033c8
+extra-usage                              67e7c91bd78f1f1fb2be3281f98f969b88c44a93fb2f94019c26bc74c94ec820
+verifier-skeptic                         a45149818a4c6672cf62a01a757c517a5d51c2361c15ab72dc8bc82769903286

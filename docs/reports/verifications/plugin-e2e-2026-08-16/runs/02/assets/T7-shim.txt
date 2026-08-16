@@ -1,0 +1,6 @@
+T7 ask shim exited status=0
+hooklog:
+{"ts":"2026-08-15T23:02:23Z","hook":"ask-user-question","outcome":"allow","qid":"q-2026-08-15-002","elapsed_ms":73000}
+stdout:
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {"questions": [{"question": "DEFER-PROBE run02: which side is heavier?", "header": "T7", "multiSelect": false, "options": [{"label": "Left", "description": "left option"}, {"label": "Right", "description": "right option"}]}], "answers": {"DEFER-PROBE run02: which side is heavier?": "Left"}}}}
+[exited with code 0]

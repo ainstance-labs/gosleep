@@ -1,0 +1,7 @@
+STATUS=0
+STDOUT:
+{"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "deny", "reason": "RUN02-KEYSTROKES-DENY-REASON-adjudicating-minor-1"}}}---
+HOOKLOG:
+{"ts":"2026-08-15T23:00:26Z","hook":"permission-request","outcome":"decided","qid":"p-20260815-225949-8e49b837","elapsed_ms":37000}
+
+[exited with code 0]

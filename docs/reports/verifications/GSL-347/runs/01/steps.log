@@ -1,0 +1,43 @@
+2026-08-16T10:00:57Z verify-350 start; reading PRD + worktree layout
+2026-08-16T10:02:09Z spec read; migration 0005 + 5 collectors + routes reviewed
+2026-08-16T10:03:13Z preparing scratch env under /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/impl-obs-a/.artifacts/verify-350
+2026-08-16T10:03:13Z scratch env ready
+2026-08-16T10:03:25Z migration ok (rc=0), tables + 3 new cols present
+2026-08-16T10:03:43Z core booted on 7360, PID=85728
+2026-08-16T10:04:00Z initial endpoint sweep captured; collectors registered
+2026-08-16T10:04:55Z core restarted with GOSLEEP_REPO_ROOT=/Users/romanlidovskyi/Documents/dev/harness/gosleep and hide-list env
+2026-08-16T10:05:43Z fleet endpoint checked; sessions collector alone drives it under fleet_poll=off
+2026-08-16T10:06:46Z tmux new-window fired; count 8 -> 9
+2026-08-16T10:07:02Z tmux kill-session; pane_disappeared checked
+2026-08-16T10:07:34Z scratch repo prepared at /Users/romanlidovskyi/e2e-workspaces/observed-scratch with fresh git
+2026-08-16T10:07:42Z transcript heads captured for byte-identical proof
+2026-08-16T10:07:59Z transcript heads pre-run captured
+2026-08-16T10:08:11Z hide-list applied; projects returns pseudonym; events keep real slug
+2026-08-16T10:08:46Z opened /observed panel, took light screenshot
+2026-08-16T10:09:09Z checked /setup panel for Bearer flow
+2026-08-16T10:09:50Z opened /observed with ?token= for Bearer discovery
+2026-08-16T10:10:36Z captured light+dark screenshots, fleet screen, collectors section
+2026-08-16T10:11:27Z event-kind distribution captured; git_head_moved not implemented per PRD deferred
+2026-08-16T10:11:53Z F14-S4 zero-influence proofs captured
+2026-08-16T10:12:50Z writing HTML report EN+RU
+2026-08-16T10:16:56Z HTML report written; beginning teardown
+2026-08-16T10:16:59Z teardown complete: core killed, port 7360 free, tmux clean, browse stopped
+2026-08-16T10:31:19Z === RUN 01b re-verify starting ===
+2026-08-16T10:31:51Z [R2] core booted on 7360 fresh DB, PID=31863
+2026-08-16T10:32:04Z [R2] M2 checked: gosleep-native rows in /fleet
+2026-08-16T10:32:17Z [R2] M1 attribution distribution captured
+2026-08-16T10:32:39Z [R2] lsof + ps chain manual check completed
+2026-08-16T10:33:00Z [R2] scratch claude tmux session started
+2026-08-16T10:33:17Z [R2] scratch transcript check done
+2026-08-16T10:33:38Z [R2] hunt for scratch session in DB
+2026-08-16T10:35:36Z [R2] M2 hook-owned column preservation checked
+2026-08-16T10:36:03Z [R2] m3 name refresh + m5 backfill checked
+2026-08-16T10:36:41Z [R2] m4 checked: pruned=true, disappeared_events=0
+2026-08-16T10:37:45Z [R2] m4 retry: pruned + pane_disappeared preserved
+2026-08-16T10:39:03Z [R2] m4 extended wait done, exists=0
+2026-08-16T10:39:32Z [R2] m6 ended_at set + cleared checked
+2026-08-16T10:40:48Z [R2] screenshots + text captured for r2 report
+2026-08-16T10:42:05Z [R2] screenshots captured to /tmp and copied to report
+2026-08-16T10:43:38Z [R2] restarted with observed collectors OFF; DB retains R2 evidence
+2026-08-16T10:46:42Z [R2] report addendum appended; starting teardown
+2026-08-16T10:46:47Z [R2] teardown complete: 7360 free, no scratch tmux, browse stopped, panel-obs untouched

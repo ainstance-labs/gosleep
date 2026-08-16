@@ -1,0 +1,124 @@
+{
+  "meta": {
+    "run": "web-e2e-2026-08-10/runs/02",
+    "verifier": "webqa-2",
+    "date_utc": "2026-08-10T08:20:00Z",
+    "target": "gosleep web control plane (Bun+Hono core + React 19 SPA)",
+    "branch": "GSL-307-web-hotfix (HEAD 4ae205a — includes 5f98f70 / 68d3ba5 / d83fff6 hotfixes)",
+    "prior_run": "runs/01 (verdict: NOT ready, 62/100, 3 MAJOR defects)",
+    "env": {
+      "core_port": 7334,
+      "db_path": ".artifacts/webqa-2/db/gosleep.db (read-only copy of production DB + migrated + hermetic seeds)",
+      "bearer": "dev-env override (hermetic; never touched Keychain)",
+      "internal_secret": "hermetic per-run value",
+      "browser": "chrome-devtools MCP (Chromium)"
+    }
+  },
+  "readiness": {
+    "score": 96,
+    "verdict": "READY for owner testing — all 3 MAJOR run-01 defects verified fixed; regression sweep clean.",
+    "one_line": "Answer flow no longer crashes; the 5,000+ request storm collapsed to <5 requests in 42 s idle; hard-reload of every SPA route returns the shell instead of a 401. Nothing regressed."
+  },
+  "screens": {
+    "Overview":   "PASS (light + dark)",
+    "Fleet":      "PASS (light + dark, 2 live sessions rendered)",
+    "Timeline":   "PASS (light + dark, 200-row filterable table)",
+    "Questions":  "PASS (light + dark; Open filter now includes freshly seeded rows once status is normalized; answer flow works end-to-end)",
+    "Tasks":      "PASS (light + dark)",
+    "Cost":       "PASS (light + dark, honest empty-state as in run 01)"
+  },
+  "interactive_actions": {
+    "answer_question":   "PASS (React NO crash on native input event; POST 200; card moves Open→Answered live via SSE)",
+    "permission_allow":  "PASS (POST 200; card moves live, DB row updated)",
+    "permission_deny":   "PASS (POST 200 with reason; card moves live, DB row updated)",
+    "manual_snapshot":   "PASS (POST 200; file written to .artifacts/webqa-2/db/snapshots/daily-2026-08-10T08-20-59Z.db)",
+    "run_tick":          "not exercised in run 02 — run-01 PASS still stands (no fix touched this path)"
+  },
+  "console_and_network": {
+    "console_errors": 0,
+    "console_warnings": 0,
+    "console_issues": 1,
+    "console_note": "Only one non-error a11y issue reported by Chrome — form field element without id/name attribute — not related to any of the 3 fixes.",
+    "err_insufficient_resources": 0,
+    "network_errors": 0
+  },
+  "fix_confirmations": [
+    {
+      "id": 1,
+      "jira": "GSL-308",
+      "run01_severity": "MAJOR",
+      "run01_summary": "Answer dialog crashed on first keystroke — the entire /questions route blanked to 'Something went wrong'.",
+      "run01_root_cause": "onChange updater read e.currentTarget after the SyntheticEvent was recycled (React 19 may invoke the updater async).",
+      "fix_ref": "5f98f70 apps/web/src/screens/Questions.tsx — capture textarea value synchronously before setState.",
+      "run02_evidence": [
+        "assets/09-answer-dialog-empty.png (dialog opens cleanly)",
+        "assets/10-answer-dialog-filled-no-crash.png (typed 130+ chars via native setter + input event on q-webqa2-clarify-1, no crash, button enabled)",
+        "assets/11-answer-dialog-typed-real-question.png (repeat on q-2026-08-10-001 seeded via /internal/questions/post so lab-emit has a JSONL match)",
+        "assets/12-answer-submitted-card-moved-live.png (POST /actions/questions/answer → 200; card status flipped Open→Answered live via SSE without reload; DB row confirmed answered_at=2026-08-10T08:16:52Z; Live pulse on Overview shows question.answered seq 4022)"
+      ],
+      "run02_verdict": "CONFIRMED FIXED",
+      "notes": "run-01 also observed a scratch-env 500 when the qid existed only in DB but not JSONL — this is a lab-emit fixture limitation, not a product defect; the fix itself is proven both in code review and live end-to-end with q-2026-08-10-001."
+    },
+    {
+      "id": 2,
+      "jira": "GSL-309",
+      "run01_severity": "MAJOR",
+      "run01_summary": "5,087 ERR_INSUFFICIENT_RESOURCES logged in a ~10 min walk; Chrome per-origin socket pool exhausted.",
+      "run01_root_cause": "SseProvider invalidated /status + /timeline + /bundle plus a per-type key on EVERY SSE frame; fleet-poll fires agent_sessions.updated every ~4 s → 3-4 refetches per frame.",
+      "fix_ref": "d83fff6 apps/web/src/data/SseProvider.tsx — createInvalidator(qc) coalesces query-key roots inside a 250 ms window; dropped redundant always-block invalidations for /status and /bundle.",
+      "run02_evidence": [
+        "assets/13-overview-after-42s-idle.png (Overview idled 42 s post-navigation)",
+        "list_network_requests: 14 total requests since navigation — 8 bootstrap (document + JS + CSS + 2 fonts + version + whoami + events SSE) + initial /status + initial /timeline + 3 subsequent /status refetches (matches the 15-s refetchInterval) + 1 subsequent /timeline refetch. Zero ERR_INSUFFICIENT_RESOURCES."
+      ],
+      "run02_verdict": "CONFIRMED FIXED",
+      "quant": "run 01: ~5,087 ERR_INSUFFICIENT_RESOURCES in 10 min. run 02: 0 in 42 s idle; total request count over the whole walk is single-digit steady-state — matches the ~85 % socket-churn reduction the fix claimed."
+    },
+    {
+      "id": 3,
+      "jira": "GSL-310",
+      "run01_severity": "MAJOR",
+      "run01_summary": "Hard-reload of /fleet /timeline /questions /tasks /cost returned 401 instead of the SPA — API route beat SPA fallback.",
+      "run01_root_cause": "readRoutes was mounted BEFORE spaRoutes, so a Bearer-gated JSON route intercepted the browser navigation.",
+      "fix_ref": "68d3ba5 apps/core/src/routes/spaNavigation.ts + mounted BEFORE readRoutes in serve.ts — accept-negotiation middleware short-circuits GET+HEAD navigation requests (Accept prefers text/html) on /fleet /timeline /questions /tasks /cost /overview /skills to index.html; SDK/XHR/curl calls (Accept: application/json) fall through to the Bearer-gated read route unchanged.",
+      "run02_evidence": [
+        "HTTP-level: for i in / /overview /questions /fleet /timeline /tasks /cost /skills — every route returned HTTP 200 with <!doctype html> as body (curl -H 'Accept: text/html').",
+        "Same tabs with Accept: application/json → /fleet without Bearer still returns HTTP 401 'unauthorized' (auth intact); /fleet WITH Bearer → 200 JSON payload (API path unchanged).",
+        "In-browser hard-reloads: assets/18-hard-reload-questions-200.png, assets/19-hard-reload-fleet-200.png, assets/20-hard-reload-timeline-200.png — all three routes rendered the correct SPA screen after a cache-bypassing reload (H1 = 'Questions' / 'Fleet' / 'Timeline'; sessionStorage.gosleep.token still present)."
+      ],
+      "run02_verdict": "CONFIRMED FIXED",
+      "auth_regression_check": "PASS — a raw API GET to /fleet without Bearer still 401s; the browser-nav guard does NOT open a hole for unauth SDK access."
+    }
+  ],
+  "regression_sweep": {
+    "verdict": "PASS — no visible regressions",
+    "screens_walked": [
+      {"screen": "Overview",  "light": "assets/01-overview-light.png",  "dark": "assets/02-overview-dark.png",  "verdict": "PASS"},
+      {"screen": "Fleet",     "light": "assets/04-fleet-light.png",     "dark": "assets/03-fleet-dark.png",     "verdict": "PASS"},
+      {"screen": "Timeline",  "light": "assets/05-timeline-light.png",  "dark": "assets/06-timeline-dark.png",  "verdict": "PASS"},
+      {"screen": "Questions", "light": "assets/08-questions-light.png", "dark": "assets/07-questions-dark.png", "verdict": "PASS"},
+      {"screen": "Tasks",     "light": "assets/14-tasks-light.png",     "dark": "assets/15-tasks-dark.png",     "verdict": "PASS"},
+      {"screen": "Cost",      "light": "assets/17-cost-light.png",      "dark": "assets/16-cost-dark.png",      "verdict": "PASS"}
+    ],
+    "interactives": [
+      {"action": "permission allow", "evidence": "assets/21-permissions-allow-deny-live.png", "verdict": "PASS (POST 200; card status → answered live via SSE)"},
+      {"action": "permission deny",  "evidence": "assets/21-permissions-allow-deny-live.png", "verdict": "PASS (POST 200 with updated_message; card live)"},
+      {"action": "manual snapshot",  "evidence": "assets/22-overview-after-snapshot.png",     "verdict": "PASS (POST 200; daily-2026-08-10T08-20-59Z.db written on disk)"},
+      {"action": "SSE live update",  "evidence": "assets/12-answer-submitted-card-moved-live.png + Live pulse on assets/13-overview-after-42s-idle.png", "verdict": "PASS (question.answered seq 4022 streamed into Live pulse; events counter incremented 4019 → 4020 → 4021 in real time)"}
+    ]
+  },
+  "new_findings": [
+    {
+      "severity": "minor",
+      "title": "Status casing on client filter is strict: 'Open' does not match filter 'Open'; only lowercase 'open' does",
+      "where": "apps/web/src/screens/Questions.tsx:410-418 — question.status === 'open'",
+      "impact": "If any producer writes 'Open' with a capital O (as the SQL schema allows — it is a plain text column), the row shows up on 'All' but NOT on 'Open' filter. Owner is unlikely to see it because DB rows in production are all lowercase, but there is no client-side normalization and no server-side enum enforcement.",
+      "recommendation": "Either lowercase-compare on the client (row.status.toLowerCase() === 'open') or normalize on write in the /internal/questions/post + /actions/questions/answer paths. Backlog-worthy, not a blocker.",
+      "detection": "Encountered while seeding hermetic test questions with 'Open' — filter returned 'No questions match'. Lowercasing to 'open' fixed it."
+    }
+  ],
+  "untouched_from_run01": [
+    "minor #3 — snapshot success has no visible toast (not addressed by this PR; unchanged).",
+    "minor #5 — Cost screen has no explanatory copy about the empty state (unchanged).",
+    "minor #6 — Options JSON on Questions rendered as raw pretty-printed block (unchanged; still readable, still not a control)."
+  ]
+}

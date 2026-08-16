@@ -1,0 +1,196 @@
+{
+  "meta": {
+    "title": "GSL-250 — Interactive control plane · independent acceptance audit (run 01)",
+    "epic": "GSL-250",
+    "date": "2026-08-08",
+    "auditor": "verifier-skeptic (verifier-250, shift 75)",
+    "shipped_at": "5b54c5d",
+    "design_source": "docs/prd/01-phase7-interactive-control-plane.md + docs/reports/web-harness-research-2026-08-03/target-architecture.md rev 2 + target-architecture-rev3-addendum.md + design-system.md",
+    "extras": {
+      "Independence": "Read ONLY shipped code + the design sources above. Prior stack-audit reports under docs/reports/web-stack-audit-2026-08-06/ were REFUSED per verifier-skeptic §6.",
+      "Live environment": "gosleep-core + gosleep-web booted from scratch on 127.0.0.1:{7331,5273}; killed at teardown, both ports clean.",
+      "Live gates": "core-smoke.sh — 66/66 PASS on hermetic endpoints. Confirms the routes that exist behave; orthogonal to the acceptance gaps below."
+    }
+  },
+  "verdict": {
+    "score": 42,
+    "level": "MAJOR-GAPS",
+    "counts": { "critical": 4, "major": 5, "minor": 2 },
+    "summary": "The engine, the SSE fan-out, the Questions/Permissions loops and the Jira reconciler ship and pass 66/66 endpoint smoke — a real backbone. But the Phase-7 acceptance criteria the epic sells (SPA at :7331, Publish button + TouchID, Skills screen, runway KPI, populated Fleet cards, self-serve auth entry) are absent. Four CRITICAL findings sit on paths the PRD calls end-checks; without them, the owner cannot execute F7-S1 or F7-S3 as written. Recommend BLOCK on epic-close until at least the four CRITICAL findings are addressed or the PRD is re-scoped."
+  },
+  "findings": [
+    {
+      "number": 1,
+      "jira": "GSL-285",
+      "severity": "CRITICAL",
+      "lane": "architecture",
+      "area": "Panel entry-point",
+      "labels": ["verifier", "architecture", "functionality", "phase-7", "GSL-250"],
+      "title": "SPA not served at http://127.0.0.1:7331 — PRD end-check unreachable",
+      "design_ref": "PRD Phase 7 §Goal + F7-S1 + Acceptance/end-check; target-arch rev 2 §1 row 7, §3.3.",
+      "shipped_ref": "apps/core/src/serve.ts:41-46 (only API routes); apps/web/vite.config.ts (5273 only); apps/core/src/routes/ has no setup.ts and no static handler.",
+      "description": "curl -s http://127.0.0.1:7331/ → HTTP 404 text/plain body 'Not Found'. The React SPA lives ONLY on Vite dev 127.0.0.1:5273. Under launchd nothing runs Vite; a real owner following the runbook would see 404 and conclude the panel is broken.",
+      "technique": "code read + live curl against a fresh bun run --filter='@gosleep/core' start",
+      "screenshots": [
+        { "caption": "Overview surface as it actually renders — only reachable via 127.0.0.1:5273", "src": "assets/overview-light.png" }
+      ]
+    },
+    {
+      "number": 2,
+      "jira": "GSL-286",
+      "severity": "CRITICAL",
+      "lane": "functionality",
+      "area": "Write actions",
+      "labels": ["verifier", "functionality", "architecture", "phase-7", "GSL-250"],
+      "title": "POST /actions/skills/publish endpoint absent — first write button not shippable",
+      "design_ref": "PRD F7-S3; target-arch rev 2 §1 row 12, §6.2 table row 1, §9 step 7, §10 example.",
+      "shipped_ref": "apps/core/src/routes/actions.ts registers 8 POST routes; publish is not among them. packages/schema/src/index.ts has no PublishSkillActionInput/Response.",
+      "description": "Live probe: curl -X POST /actions/skills/publish → HTTP 404. Combined with 'no Skills screen' and 'TouchID gate never invoked', the entire publish vertical is a hollow shell.",
+      "technique": "grep + live curl",
+      "screenshots": []
+    },
+    {
+      "number": 3,
+      "jira": "GSL-287",
+      "severity": "CRITICAL",
+      "lane": "functionality",
+      "area": "Screens",
+      "labels": ["verifier", "functionality", "phase-7", "GSL-250"],
+      "title": "No Skills screen in the web UI — only 6 of 7 promised screens shipped",
+      "design_ref": "PRD F7-S1 lists 7 screens including Skills.",
+      "shipped_ref": "apps/web/src/router.tsx:19-33 (6 children); apps/web/src/components/AppShell.tsx:27-34 (NAV array).",
+      "description": "Sidebar shows 6 items (Overview/Fleet/Timeline/Questions/Tasks/Cost). /skills silently falls through the wildcard <Navigate to='/overview'/>.",
+      "technique": "code read + browser navigation to /skills",
+      "screenshots": [
+        { "caption": "Typing /skills into the URL bar silently lands on /overview", "src": "assets/skills-route-redirected-to-overview.png" }
+      ]
+    },
+    {
+      "number": 4,
+      "jira": "GSL-288",
+      "severity": "CRITICAL",
+      "lane": "architecture",
+      "area": "Security · physical barrier",
+      "labels": ["verifier", "architecture", "security", "phase-7", "GSL-250"],
+      "title": "TouchID .app bundle never invoked from core — physical-gesture barrier missing at runtime",
+      "design_ref": "target-arch rev 2 §7.3 'Приоритет 1'; rev-3 addendum Delta 4.",
+      "shipped_ref": "apps/core/bin/touchid-gate.app present + signed; apps/core/src/**/*.ts grep for touchid returns 1 hit — a comment 'TouchID is NOT required for these writes' in actions.ts:37.",
+      "description": "The .app is a dead artifact; no shipped POST calls it. Since there is also no high-blast write endpoint (finding 2), every shipped POST accepts Bearer-only auth — the security model the design promised is not what the code enforces.",
+      "technique": "code read + grep",
+      "screenshots": []
+    },
+    {
+      "number": 5,
+      "jira": "GSL-289",
+      "severity": "MAJOR",
+      "lane": "design",
+      "area": "Overview",
+      "labels": ["verifier", "functionality", "pixel-perfect", "phase-7", "GSL-250"],
+      "title": "Overview missing runway / binding-constraint tile promised in F7-S1",
+      "design_ref": "PRD F7-S1 first bullet: 'Overview with runway = min()'.",
+      "shipped_ref": "apps/web/src/screens/Overview.tsx:76-99 — 4 tiles: Events/Questions/Tasks/Skills counts only.",
+      "description": "The first KPI the epic sells is absent; Overview degrades to row-counts. No RunwayResponse in schema, no useRunway in queries.ts.",
+      "technique": "code read + live screenshot",
+      "screenshots": [
+        { "caption": "Overview shipping — 4 count-KPIs, no runway", "src": "assets/overview-light.png" }
+      ]
+    },
+    {
+      "number": 6,
+      "jira": "GSL-290",
+      "severity": "MAJOR",
+      "lane": "functionality",
+      "area": "Fleet",
+      "labels": ["verifier", "functionality", "phase-7", "GSL-250"],
+      "title": "Fleet — model / context_pct / current_intent NULL for every live session",
+      "design_ref": "PRD R7.4 + F7-S1 'card per agent (context %, current tool, cycle, model)'; rev-3 addendum §8.1.",
+      "shipped_ref": "apps/core/src/workers/fleet-poll.ts; packages/runner-adapter/src/claude-code.ts (contract: CLI does not carry these fields — PreToolUse shim was to backfill).",
+      "description": "Live /fleet: model=null, context_pct=null, current_intent=null on all interactive sessions. The Fleet screen renders name/cwd/status only.",
+      "technique": "live curl + screenshot",
+      "screenshots": [
+        { "caption": "Fleet — cards show status/cwd but no model/context %/intent", "src": "assets/fleet-light.png" }
+      ]
+    },
+    {
+      "number": 7,
+      "jira": "GSL-291",
+      "severity": "MAJOR",
+      "lane": "functionality",
+      "area": "Auth entry point",
+      "labels": ["verifier", "functionality", "pixel-perfect", "phase-7", "GSL-250"],
+      "title": "No client-side auth-setup / Bearer-discovery flow — owner must hand-populate sessionStorage",
+      "design_ref": "target-arch rev 2 §3.3 (apps/core/src/routes/setup.ts); PRD Phase 7 §Acceptance criteria + end-check.",
+      "shipped_ref": "apps/core/src/routes/ has no setup.ts; apps/web/src/data/auth.ts reads sessionStorage['gosleep.token']; main.tsx acknowledges 'Auth required' banner is the fail-loud stance.",
+      "description": "The owner needs devtools + `security find-generic-password | sed | base64 -d` to inject a token before the panel renders anything. On mobile Safari the panel is unreachable.",
+      "technique": "code read + browser navigation before/after sessionStorage.setItem",
+      "screenshots": []
+    },
+    {
+      "number": 8,
+      "jira": "GSL-292",
+      "severity": "MAJOR",
+      "lane": "architecture",
+      "area": "Skills registry",
+      "labels": ["verifier", "architecture", "functionality", "phase-7", "GSL-250"],
+      "title": "/skills endpoint returns empty — skills registry has no writer",
+      "design_ref": "target-arch rev 2 §4.3 skills-table; §9 step 7; §10 example.",
+      "shipped_ref": "apps/core/src/db/schema.ts (skills table exists, count=0); apps/core/scripts/ has no record-publish.ts.",
+      "description": "The whole skills vertical is present in schema + read-projection only; nothing writes, nothing reads (see findings 2 and 3).",
+      "technique": "live curl",
+      "screenshots": []
+    },
+    {
+      "number": 9,
+      "jira": "GSL-293",
+      "severity": "MAJOR",
+      "lane": "design",
+      "area": "Typography",
+      "labels": ["verifier", "pixel-perfect", "phase-7", "GSL-250"],
+      "title": "font-semibold (600) used across UI headings — violates design-system.md §5 500-weight cap",
+      "design_ref": "docs/reports/web-harness-research-2026-08-03/design-system.md §5 (last sentence — UI ceiling 500; 600/700 reserved for reports).",
+      "shipped_ref": "apps/web/src/theme/globals.css:96 h1..h6 { font-weight: 600 }; PageHeader.tsx:17; AppShell.tsx:49; Overview.tsx:25; Cost.tsx:95/108/121; Fleet.tsx:116.",
+      "description": "Live probe (Fleet dark, 1440x900): H1 'Fleet' computed font-weight 600; brand chip 'gosleep' 600. Contract-level design deviation across every screen.",
+      "technique": "grep + live evaluate_script + screenshots",
+      "screenshots": [
+        { "caption": "Fleet H1 rendered at font-weight 600", "src": "assets/fleet-light.png" },
+        { "caption": "Overview KPI values also 600", "src": "assets/overview-light.png" }
+      ]
+    },
+    {
+      "number": 10,
+      "jira": "GSL-294",
+      "severity": "MINOR",
+      "lane": "architecture",
+      "area": "Version endpoint",
+      "labels": ["verifier", "architecture", "phase-7", "GSL-250"],
+      "title": "/version returns db_schema_version='unset' — placeholder never closed",
+      "design_ref": "target-arch rev 2 §3.4 (drizzle-journal hash).",
+      "shipped_ref": "apps/core/src/routes/read.ts:44-52 hardcoded 'unset' with a 'deferred' comment.",
+      "description": "Client cannot detect a rolling schema change; the 'reload the tab on mismatch' story (§12 R34) is inoperable.",
+      "technique": "live curl + code read",
+      "screenshots": []
+    },
+    {
+      "number": 11,
+      "jira": "GSL-295",
+      "severity": "MINOR",
+      "lane": "design",
+      "area": "Router 404",
+      "labels": ["verifier", "pixel-perfect", "functionality", "phase-7", "GSL-250"],
+      "title": "Router wildcard silently redirects unknown routes to /overview — no explicit 404",
+      "design_ref": "Product hygiene; also PRD §Non-goals does not sanction silent redirect.",
+      "shipped_ref": "apps/web/src/router.tsx:31.",
+      "description": "Hides finding 3 (missing Skills screen) and any future missing surface.",
+      "technique": "code read + browser navigation",
+      "screenshots": [
+        { "caption": "/skills → /overview silent redirect", "src": "assets/skills-route-redirected-to-overview.png" }
+      ]
+    }
+  ],
+  "architecture_notes": [
+    {
+      "title": "What DOES work (context for the owner)",
+      "body": "The Bun+Hono core boots cleanly (bind 127.0.0.1:7331, all security middleware including CSP/nosniff/XFO/Referrer-Policy, Origin+Host guards, Bearer, Keychain wrapper with 5s timeout+503 + Tahoe 26.x guard). SQLite+Drizzle schema + tail indexer + rotation + SSE broadcaster + persistent idempotency all live. Questions/Permissions loop through PreToolUse hook is present and lite-proved by GSL-267 (guarded) and GSL-284; core-smoke.sh 66/66 PASS. Jira reconciler + /metrics + defer-reopen + fleet-poll workers are all wired. The runner-adapter seam is honored (grep 'claude agents' in apps/core/src returns 0 hits). Rev-3 addendum Deltas 3 (transcript = enrichment only), 6 (Vite 7 pin), 7 (/metrics), 8.2-8.3 (manifest provenance + defer), 9 (Jira sync), 10 (SessionAdapter) are all met."
+    }
+  ]
+}

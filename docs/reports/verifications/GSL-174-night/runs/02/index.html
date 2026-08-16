@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSL-174 · Verification Run 02 · Adversarial re-verify (verify-307)</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#111418; --panel2:#161a20; --border:#22282f;
+    --fg:#e6ebf1; --muted:#8a94a1; --accent:#7cc4ff; --ok:#5ecf7a;
+    --warn:#e6c15a; --bad:#ef6a6a; --code:#0f1216;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa; --panel:#ffffff; --panel2:#f1f3f6; --border:#e2e6ea;
+      --fg:#0d1117; --muted:#54606c; --accent:#0b6bcb; --ok:#1f8a3a;
+      --warn:#8a6d0f; --bad:#a51818; --code:#f4f6f8;
+    }
+  }
+  html,body{background:var(--bg);color:var(--fg);}
+  body{font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;margin:0;padding:24px;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 4px;}
+  h2{font-size:16px;margin:28px 0 10px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
+  .sub{color:var(--muted);margin:0 0 20px;}
+  .lang{display:inline-block;font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;color:var(--muted);margin-left:6px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:16px 0;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .kpi{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:140px;}
+  .kpi .n{font-size:22px;font-weight:600;}
+  .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0;}
+  th,td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--panel2);font-weight:600;}
+  code,pre{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;}
+  code.inline{background:var(--code);padding:1px 5px;border-radius:3px;}
+  .ok{color:var(--ok);font-weight:600;}
+  .warn{color:var(--warn);font-weight:600;}
+  .bad{color:var(--bad);font-weight:600;}
+  .badge{display:inline-block;padding:2px 8px;font-size:11px;border-radius:99px;border:1px solid var(--border);}
+  .b-ok{background:rgba(94,207,122,.15);color:var(--ok);border-color:rgba(94,207,122,.4);}
+  .b-warn{background:rgba(230,193,90,.15);color:var(--warn);border-color:rgba(230,193,90,.4);}
+  .b-bad{background:rgba(239,106,106,.15);color:var(--bad);border-color:rgba(239,106,106,.4);}
+  ul{padding-left:22px;}
+  li{margin:4px 0;}
+  .headline{font-size:15px;padding:14px 18px;border-left:4px solid var(--bad);background:var(--panel2);border-radius:6px;margin:12px 0;}
+  .headline.ok{border-left-color:var(--ok);}
+  .headline.warn{border-left-color:var(--warn);}
+  .divider{margin:36px 0;border:0;border-top:1px solid var(--border);}
+  figure{margin:14px 0;padding:0;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px;}
+  figure img{max-width:100%;border:1px solid var(--border);border-radius:4px;display:block;}
+  figcaption{font-size:12px;color:var(--muted);padding:6px 4px 2px;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:900px){.cols{grid-template-columns:1fr;}}
+  .finding{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin:10px 0;}
+  .finding.crit{border-left:4px solid var(--bad);}
+  .finding.maj{border-left:4px solid var(--bad);}
+  .finding.min{border-left:4px solid var(--warn);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>GSL-174 · Verification run 02 <span class="lang">EN</span></h1>
+<p class="sub">Independent adversarial re-verify of PR #307 (branch head <code class="inline">343f951</code>) by <code class="inline">verify-307</code> · <b>2026-08-15 night shift</b> · hermetic sandbox under <code class="inline">.claude/worktrees/pr307/.artifacts/verify-307/</code> · scratch core on port <code class="inline">7357</code>.</p>
+
+<div class="headline ok">
+  <b class="ok">RUN 02b (focused re-verify @ d2cf903): ALL-CLEAR — YES.</b>
+  All three fix points confirmed. Full details are appended near the bottom (jump: <a href="#run02b-en">EN</a> · <a href="#run02b-ru">RU</a>). Run 02 findings preserved below for the audit trail.
+</div>
+
+<div class="row">
+  <div class="kpi"><div class="n bad">NO</div><div class="l">Merge-ready</div></div>
+  <div class="kpi"><div class="n">0</div><div class="l">Critical</div></div>
+  <div class="kpi"><div class="n warn">1</div><div class="l">Major</div></div>
+  <div class="kpi"><div class="n">3</div><div class="l">Minor</div></div>
+  <div class="kpi"><div class="n">18/19</div><div class="l">Checks pass</div></div>
+  <div class="kpi"><div class="n ok">clean</div><div class="l">~/.claude untouched</div></div>
+</div>
+
+<div class="headline">
+  <b class="bad">VERDICT: MERGE-READY = NO.</b>
+  One MAJOR merge blocker: the Skills API + web screen surface only <b>7 skills</b>, while the VERIFY-REQUEST and <code class="inline">CLAUDE.md</code> explicitly claim <b>12 owned skills (7 dev copies + 5 rescued orphans)</b>. The 5 orphans exist on disk in both <code class="inline">skill/</code> (worktree) and <code class="inline">~/.claude/skills/</code> (prod) but are hardcoded out of the <code class="inline">KNOWN_SKILLS</code> allow-list. Backend, endpoint refusals, publish idempotency, CLI gates and prod-tree isolation all pass; the disabled-Publish + paused-banner acceptance holds. Fixing the count is a one-file change plus a stale-label sweep; not a scope re-open. See finding M-1 and steps.log.
+</div>
+
+<h2>Environment &amp; setup</h2>
+<div class="panel">
+  <ul>
+    <li>Worktree: <code class="inline">/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/pr307</code> at <code class="inline">343f9514dc3496ad7da1d8ab4f1cdc0f31f93bc6</code>.</li>
+    <li>Scratch DB: <code class="inline">.artifacts/verify-307/data/gosleep.db</code>, migrated cleanly via <code class="inline">bun run --filter='@gosleep/core' db:migrate</code> (event <code class="inline">core.migrate.done</code>).</li>
+    <li>Scratch core PID recorded in <code class="inline">.artifacts/verify-307/core.pid</code>; port <code class="inline">7357</code>; random-hex Bearer at <code class="inline">.artifacts/verify-307/bearer.txt</code>. <b>Never</b> the prod token or port 7331.</li>
+    <li>Env overrides in effect: <code class="inline">GOSLEEP_DB_PATH</code>, <code class="inline">GOSLEEP_BEARER_TOKEN</code>, <code class="inline">GOSLEEP_CORE_PORT=7357</code>, <code class="inline">GOSLEEP_SKILLS_BACKUPS_DIR</code>, <code class="inline">GOSLEEP_DISABLE_{INDEXER,FLEET_POLL,DEFER_REOPEN,JIRA_SYNC}=1</code>.</li>
+    <li>Baseline ~/.claude/skills sha256 hashes for all 12 dirs captured at <code class="inline">baseline-home-skills.txt</code> BEFORE any test.</li>
+  </ul>
+</div>
+
+<h2>Findings</h2>
+
+<div class="finding maj">
+  <b class="bad">M-1 (MAJOR / MERGE BLOCKER)</b> — <b>Skills count mismatch: API + UI show 7, verify-request + CLAUDE.md claim 12.</b><br>
+  Re-derived from the worktree: <code class="inline">ls skill/</code> shows <b>12 subdirectories</b> — the 7 dev copies plus 5 rescued orphans (<code class="inline">agentic-report-creator</code>, <code class="inline">agentic-scenario-runner</code>, <code class="inline">efficient-agent-evals</code>, <code class="inline">extra-usage</code>, <code class="inline">verifier-skeptic</code>). All 12 also exist under <code class="inline">~/.claude/skills/</code>. But <code class="inline">GET /skills</code> returns <code class="inline">count: 7</code> and the web screen renders 7 cards.
+  <br>Root cause: <code class="inline">apps/core/src/skills/diff.ts:34</code> — <code class="inline">KNOWN_SKILLS</code> is a hardcoded 7-name Set; the 5 orphans are silently invisible.
+  <br>Amplifiers (stale copy that will confuse the reviewer if left as-is):
+  <ul>
+    <li><code class="inline">apps/web/src/screens/Skills.tsx:95</code> subtitle: <i>"Skills management system — seven skills, git-tracked development copies…"</i> hardcoded English "seven".</li>
+    <li><code class="inline">skill/README.md</code> "Owned skills" table lists only 7 rows; not updated after GSL-334 orphan rescue.</li>
+    <li>Overview KPI "SKILLS 7" (see <code class="inline">b0-overview-light.png</code>) sourced from the same enriched list.</li>
+  </ul>
+  Merge impact: this PR is the owner's morning review surface, and it advertises "12 owned skills" in CLAUDE.md but the code path serving the panel disagrees. Either flip <code class="inline">KNOWN_SKILLS</code> to 12 and refresh the subtitle + README table, or amend the verify-request + CLAUDE.md down to 7; the current state is internally inconsistent.
+</div>
+
+<div class="finding min">
+  <b class="warn">m-1 (MINOR)</b> — <b>publish.sh has no PROD_DIR override.</b>
+  <code class="inline">tools/skills/publish.sh:137</code> hardcodes <code class="inline">PROD_DIR="$HOME/.claude/skills/$SKILL"</code>. In hermetic verification the successful publish still rsync'd against the REAL prod tree; it left no bytes because content matched (<code class="inline">diff -r</code> empty → rsync no-op → sha256 unchanged). If a scratch-DB test ever ran with divergent local content, the real prod tree would be mutated. The <code class="inline">GOSLEEP_SKILLS_BACKUPS_DIR</code> override diverts backups correctly, but there is no analogous <code class="inline">GOSLEEP_SKILLS_PROD_DIR</code>. Acceptable for tonight (proof of prod-untouched is byte-level), but should be addressed before the TouchID lift so future hermetic tests can safely publish diverged fixtures.
+</div>
+
+<div class="finding min">
+  <b class="warn">m-2 (MINOR)</b> — <b>Dark theme palette does not visually apply under <code class="inline">prefers-color-scheme: dark</code>.</b>
+  Comparing <code class="inline">b1-skills-light.png</code> and <code class="inline">b3-skills-dark.png</code>: the top-right theme toggle correctly flips its icon (moon → sun) but the sidebar and card surfaces stay light-on-light. The palette CSS vars are keyed off <code class="inline">prefers-color-scheme</code> in some places and manual toggle in others. Not a functional gate — the acceptance criterion is "renders clean in both themes" and both do render — but the two shots should look meaningfully different and don't. Worth a quick DevEx pass.
+</div>
+
+<div class="finding min">
+  <b class="warn">m-3 (MINOR)</b> — <b>UI is a card grid, not a columned table.</b>
+  Verify-request said "table shows 12 owned skills with name/status/hash_local/hash_prod/has_changes/changelog columns"; the actual DOM renders one <code class="inline">&lt;Card&gt;</code> per skill with status badge, name+version, last-publish label, local+prod hash strings, "View diff + history" and disabled Publish buttons. The changelog is inside the diff drawer (correctly), not the list. This is a design choice; noting the drift from the verify-request wording so the digest is honest.
+</div>
+
+<h2>Step-by-step evidence</h2>
+
+<h3>Step A · scratch DB migrate <span class="badge b-ok">PASS</span></h3>
+<div class="panel">
+  <pre>bun run --filter='@gosleep/core' db:migrate
+{ event: core.migrate.start,  db: .artifacts/verify-307/data/gosleep.db }
+{ event: core.migrate.integrity.ok }
+{ event: core.migrate.snapshot.ok, path: .artifacts/verify-307/data/snapshots/pre-…-Z.db }
+{ event: core.migrate.done }
+Exited with code 0</pre>
+</div>
+
+<h3>Step B · browser (Playwright/chromium via tools/e2e)</h3>
+<div class="cols">
+  <figure>
+    <img src="screenshots/b0-overview-light.png" alt="Overview light">
+    <figcaption>B0 — Overview after Bearer seed. Sidebar shows the <b>Skills</b> nav item (bottom). "SKILLS 7" KPI is already the smoking gun for finding M-1.</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/b5-nav-sidebar-light.png" alt="Nav sidebar">
+    <figcaption>B5 — Same view showing the full 6-item nav (Overview, Fleet, Timeline, Questions, Tasks, Cost, Skills). The Skills entry is present and reachable.</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/b1-skills-light.png" alt="Skills light">
+    <figcaption>B1 — <code class="inline">/skills</code> light theme, full page. <b>7 skill cards rendered</b> (delivery-workflow, handoff, orchestrating-delivery-agents, remote-control, tmux-agents-orchestration, using-jira, writing-prds). Missing vs. verify-request: agentic-report-creator, agentic-scenario-runner, efficient-agent-evals, extra-usage, verifier-skeptic. TouchID-paused banner cites <code class="inline">d-2026-08-09-001</code>. Every Publish button visibly disabled (pale-blue).</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/b2-diff-drawer-light.png" alt="Diff drawer">
+    <figcaption>B2 — Diff drawer for delivery-workflow. Shows local + prod hash, diff bytes count, "(no differences — dev copy matches production)", CHANGELOG history section, Close button. GET <code class="inline">/skills/delivery-workflow/diff</code> succeeded and rendered inline.</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/b3-skills-dark.png" alt="Skills dark">
+    <figcaption>B3 — Same screen with browser <code class="inline">colorScheme: dark</code>. Top-right toggle icon flips (sun icon, label "Light") but the sidebar and card surfaces stay light — see finding m-2.</figcaption>
+  </figure>
+</div>
+<div class="panel">
+  <b>Playwright probe (stdout):</b>
+  <pre>[probe] publishBtns=7 pausedLabels=0 enabled Publish buttons=0
+[probe] banner = "TouchID paused (owner decision d-2026-08-09-001)…"</pre>
+  <ul>
+    <li><span class="ok">✓</span> 7 Publish buttons found, <b>0 enabled</b> — degraded-state acceptance holds (a clickable Publish would have been a FAIL).</li>
+    <li><span class="ok">✓</span> Paused banner text explicitly cites the owner-decision ID.</li>
+    <li><span class="warn">✗</span> Card count is 7, not the 12 the verify-request required.</li>
+  </ul>
+</div>
+
+<h3>Step C · read-endpoint curl matrix <span class="badge b-ok">PASS</span></h3>
+<div class="panel">
+<table>
+<thead><tr><th>Check</th><th>Request</th><th>Expected</th><th>Got</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>healthz public</td><td><code class="inline">GET /healthz</code></td><td>200</td><td>200 <code class="inline">{ok:true,service:"gosleep-core"}</code></td><td class="ok">PASS</td></tr>
+<tr><td>whoami without Bearer</td><td><code class="inline">GET /whoami</code></td><td>401</td><td>401</td><td class="ok">PASS</td></tr>
+<tr><td>whoami with Bearer</td><td><code class="inline">GET /whoami</code> + Bearer</td><td>200</td><td>200</td><td class="ok">PASS</td></tr>
+<tr><td>skills no Bearer</td><td><code class="inline">GET /skills</code></td><td>401</td><td>401</td><td class="ok">PASS</td></tr>
+<tr><td>skills with Bearer</td><td><code class="inline">GET /skills</code> + Bearer</td><td>200 <code class="inline">{skills,count:12}</code></td><td>200 <code class="inline">{skills,count:<b>7</b>}</code></td><td class="warn">SHAPE OK / COUNT WRONG (M-1)</td></tr>
+<tr><td>diff valid name</td><td><code class="inline">GET /skills/handoff/diff</code></td><td>200 family</td><td>200 (346 bytes body)</td><td class="ok">PASS</td></tr>
+<tr><td>diff bad shape</td><td><code class="inline">GET /skills/BAD-NAME!/diff</code></td><td>400</td><td>400 "invalid skill name"</td><td class="ok">PASS</td></tr>
+<tr><td>diff unknown</td><td><code class="inline">GET /skills/nonexistent-xyz/diff</code></td><td>404</td><td>404 "unknown skill: nonexistent-xyz"</td><td class="ok">PASS</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Step D · publish endpoint (refusals + valid + idempotency) <span class="badge b-ok">PASS</span></h3>
+<div class="panel">
+<table>
+<thead><tr><th>Check</th><th>Request</th><th>Expected</th><th>Got</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>no Bearer</td><td><code class="inline">POST /actions/skills/publish</code></td><td>401</td><td>401</td><td class="ok">PASS</td></tr>
+<tr><td>bad shape (missing skill)</td><td>body <code class="inline">{"foo":"bar"}</code></td><td>400</td><td>400 <code class="inline">{ok:false,error:"skill required"}</code></td><td class="ok">PASS</td></tr>
+<tr><td>bad shape (wrong field <code class="inline">name</code>)</td><td>body <code class="inline">{"name":"handoff"}</code></td><td>400</td><td>400 (also gives "skill required" — brittle if the field name ever changes, but matches spec)</td><td class="ok">PASS</td></tr>
+<tr><td>bad shape (invalid regex)</td><td>body <code class="inline">{"skill":"BAD-NAME!"}</code></td><td>400</td><td>400 <code class="inline">"skill name shape /^[a-z0-9][a-z0-9-]{0,63}$/"</code></td><td class="ok">PASS</td></tr>
+<tr><td>valid publish (scratch profile)</td><td>body <code class="inline">{"skill":"handoff"}</code> + <code class="inline">Idempotency-Key: verify-307-v2</code></td><td>200 + <code class="inline">cliEvent=skills.publish.done</code></td><td>200 <code class="inline">{ok:true,cached:false,intent_id:"verify-307-v2",cliEvent:"skills.publish.done",rc:0}</code></td><td class="ok">PASS</td></tr>
+<tr><td>idempotency replay (same key)</td><td>same POST</td><td>200 <code class="inline">cached:true</code>, no re-spawn</td><td>200 <code class="inline">{ok:true,cached:true}</code></td><td class="ok">PASS</td></tr>
+</tbody>
+</table>
+<b>Hermetic isolation proof:</b>
+<pre>HOME/.claude/skills TOTAL sha256 BEFORE:  2c479a836b0198835c36bec3528b07b5bd106a54418cdd368c213bce2ae9a4fe
+HOME/.claude/skills TOTAL sha256 AFTER:   2c479a836b0198835c36bec3528b07b5bd106a54418cdd368c213bce2ae9a4fe
+                                        → GOOD: ~/.claude/skills UNTOUCHED</pre>
+Note: technically <code class="inline">publish.sh</code> did rsync into the real <code class="inline">~/.claude/skills/handoff/</code> (see finding m-1), but with <code class="inline">diff -r</code> empty (dev matched prod) the rsync was a byte-level no-op. Scratch backup landed at <code class="inline">.artifacts/verify-307/backups/handoff-20260815T214012Z/</code> — real <code class="inline">docs/skills/backups/</code> stayed at <code class="inline">.gitkeep</code>-only. Scratch DB got the row (<code class="inline">handoff|published|2026-08-15T21:40:12Z|owner-web</code>); no real DB write.
+</div>
+
+<h3>Step E · CLI sanity <span class="badge b-ok">PASS</span></h3>
+<div class="panel">
+<table>
+<thead><tr><th>Check</th><th>Command</th><th>Expected</th><th>Got</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>verify-local usage</td><td><code class="inline">tools/skills/verify-local.sh</code> (no arg)</td><td>rc=2</td><td>rc=2 (usage printed)</td><td class="ok">PASS</td></tr>
+<tr><td>verify-local missing</td><td><code class="inline">tools/skills/verify-local.sh nonexistent-xyz</code></td><td>rc=1</td><td>rc=1 "skill dir does not exist"</td><td class="ok">PASS</td></tr>
+<tr><td>verify-local clean</td><td><code class="inline">tools/skills/verify-local.sh handoff</code></td><td>rc=0</td><td>rc=0</td><td class="ok">PASS</td></tr>
+<tr><td>publish.sh owner gate</td><td>piped stdin, no <code class="inline">GOSLEEP_WEB_TOKEN</code></td><td>rc=3 refusal</td><td>rc=3 "no TTY on stdin AND no GOSLEEP_WEB_TOKEN"</td><td class="ok">PASS</td></tr>
+<tr><td>publish.sh preflight</td><td>unmigrated scratch DB + valid token</td><td>rc≠0 BEFORE any mutation</td><td>rc=1; "DB preflight FAILED — 'skills' table is missing"; <b>no</b> backup dir; <b>no</b> CHANGELOG write</td><td class="ok">PASS</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Degraded-state acceptance</h2>
+<div class="panel">
+<ul>
+  <li><span class="ok">✓</span> Publish button disabled with paused label — <b>zero clickable Publish buttons</b>.</li>
+  <li><span class="ok">✓</span> Paused banner cites <code class="inline">d-2026-08-09-001</code> verbatim.</li>
+  <li><span class="ok">✓</span> Owner-gated boxes in PR body (GSL-266/288/256/257 …) remain unchecked — expected.</li>
+  <li><span class="ok">✓</span> Publish endpoint reachable via Bearer + Idempotency-Key on the scratch profile — refusals shape correctly; success path writes to scratch and idempotently replays.</li>
+</ul>
+</div>
+
+<h2>Files &amp; artefacts</h2>
+<div class="panel">
+  <ul>
+    <li>Liveness log: <code class="inline">docs/reports/verifications/GSL-174-night/runs/02/steps.log</code></li>
+    <li>Screenshots: <code class="inline">docs/reports/verifications/GSL-174-night/runs/02/screenshots/</code></li>
+    <li>Curl bodies: <code class="inline">c-*.json</code>, <code class="inline">d-*.json</code></li>
+    <li>Hermetic proof: <code class="inline">home-skills-hash-before.txt</code>, <code class="inline">home-skills-hash-after.txt</code>, <code class="inline">baseline-home-skills.txt</code></li>
+    <li>Browser probe findings JSON: <code class="inline">browser-findings.json</code></li>
+    <li>Scratch env: <code class="inline">.claude/worktrees/pr307/.artifacts/verify-307/</code> (DB, logs, backups, bearer)</li>
+  </ul>
+</div>
+
+<hr class="divider">
+
+<h1>GSL-174 · Верификация, прогон 02 <span class="lang">RU</span></h1>
+<p class="sub">Независимая скептическая проверка PR #307 (голова ветки <code class="inline">343f951</code>) от <code class="inline">verify-307</code> · <b>ночь 2026-08-15</b> · герметичный песочник в <code class="inline">.claude/worktrees/pr307/.artifacts/verify-307/</code> · scratch-core на порту <code class="inline">7357</code>.</p>
+
+<div class="headline">
+  <b class="bad">ВЕРДИКТ: MERGE-READY = НЕТ.</b>
+  Один MAJOR-блокер: экран Skills и API отдают <b>7 скиллов</b> вместо заявленных в VERIFY-REQUEST и <code class="inline">CLAUDE.md</code> <b>12 (7 dev-копий + 5 «rescued orphans»)</b>. Пять «сирот» физически лежат в <code class="inline">skill/</code> и в <code class="inline">~/.claude/skills/</code>, но зашиты вне белого списка <code class="inline">KNOWN_SKILLS</code> — панель их не видит. Всё остальное держит планку: refusals эндпоинтов корректны, идемпотентность работает, публикация в реальный <code class="inline">~/.claude/skills/</code> не проникла (sha256 совпал бит-в-бит), CLI-калитки закрыты, dark/light темы рендерятся. Правка на 1 файл + освежить два ярлыка — не переоткрытие скоупа.
+</div>
+
+<h2>Находки</h2>
+<div class="finding maj">
+  <b class="bad">M-1 (MAJOR / БЛОКЕР)</b> — <b>Расхождение по числу скиллов: API + UI показывают 7, спека и CLAUDE.md обещают 12.</b>
+  В <code class="inline">skill/</code> лежит 12 каталогов (7 dev-копий + 5 «сирот»: <code class="inline">agentic-report-creator</code>, <code class="inline">agentic-scenario-runner</code>, <code class="inline">efficient-agent-evals</code>, <code class="inline">extra-usage</code>, <code class="inline">verifier-skeptic</code>). В <code class="inline">~/.claude/skills/</code> они тоже есть. Но <code class="inline">GET /skills</code> отдаёт <code class="inline">count: 7</code>, и на экране рендерится ровно 7 карточек. Причина — жёстко зашитый белый список <code class="inline">KNOWN_SKILLS</code> в <code class="inline">apps/core/src/skills/diff.ts:34</code>. Плюс подпись экрана <code class="inline">Skills.tsx:95</code> буквально пишет «seven skills», и таблица в <code class="inline">skill/README.md</code> тоже с 7 строками — все три ярлыка старые. Или обновляем всё до 12, или откатываем CLAUDE.md на 7; в текущем виде PR внутренне противоречит сам себе. Это утренний review-surface владельца, так что расхождение критично для доверия.
+</div>
+<div class="finding min">
+  <b class="warn">m-1 (MINOR)</b> — В <code class="inline">publish.sh</code> нет ENV-override для <code class="inline">PROD_DIR</code> — путь <code class="inline">$HOME/.claude/skills/$SKILL</code> зашит. В нашем тесте rsync прошёл, но контент совпадал → 0 байт изменений; sha256 не сдвинулся. Если однажды hermetic-тест поставит расходящиеся фикстуры — реальный prod дерево будет мутировано. Backups override <code class="inline">GOSLEEP_SKILLS_BACKUPS_DIR</code> есть, для prod-target симметрии нет. К TouchID-снятию починить.
+</div>
+<div class="finding min">
+  <b class="warn">m-2 (MINOR)</b> — Тёмная тема визуально не применяется под <code class="inline">prefers-color-scheme: dark</code>: иконка тумблера меняется (луна → солнце), но фон сайдбара и карточек остаётся светлым. Функциональный acceptance «рендерится и там и там» — да, картинка чистая; но два скриншота должны заметно отличаться, а не отличаются.
+</div>
+<div class="finding min">
+  <b class="warn">m-3 (MINOR)</b> — Экран — не таблица с колонками, а сетка карточек. В спеке было «columns name/status/hash_local/hash_prod/has_changes/changelog»; фактически changelog — внутри диф-дровера. Дизайн-выбор ок, но факт расхождения с текстом спеки фиксирую.
+</div>
+
+<h2>Прошедшие проверки</h2>
+<div class="panel">
+<ul>
+  <li>Миграция scratch-DB — rc=0, event <code class="inline">core.migrate.done</code>.</li>
+  <li>Endpoint refusals: <code class="inline">/healthz</code> 200 public; <code class="inline">/whoami</code> 401/200; <code class="inline">/skills</code> 401/200; <code class="inline">/skills/:name/diff</code> 200 / 400 (bad shape) / 404 (unknown).</li>
+  <li><code class="inline">POST /actions/skills/publish</code>: 401 без Bearer; 400 без поля <code class="inline">skill</code>; 400 при <code class="inline">BAD-NAME!</code>; 200 + <code class="inline">cliEvent=skills.publish.done</code> при валидной публикации на scratch-профиле; повтор Idempotency-Key → 200 <code class="inline">cached:true</code>.</li>
+  <li><code class="inline">~/.claude/skills</code> НЕ ТРОНУТ бит-в-бит: sha256 всех файлов совпал до/после (см. <code class="inline">home-untouched.proof.txt</code>).</li>
+  <li>CLI: <code class="inline">verify-local.sh</code> rc 2/1/0; <code class="inline">publish.sh</code> отказ без TTY (rc=3); preflight на unmigrated DB — rc=1, без единой мутации на ФС.</li>
+  <li>Degraded-state acceptance: 0 кликабельных Publish; баннер цитирует <code class="inline">d-2026-08-09-001</code>; owner-gated GSL-266/288/256/257 не закрыты — ожидаемо.</li>
+</ul>
+</div>
+
+<hr class="divider">
+
+<h1 id="run02b-en">Run 02b — focused re-verify @ d2cf903 <span class="lang">EN</span></h1>
+<p class="sub">Adversarial re-check of the three fix commits (bca47e3 M-1, 5bc9565 m-1, 95afa27 m-2) on branch head <code class="inline">d2cf903</code>. Same worktree, fresh scratch core on port <code class="inline">7357</code>, fresh scratch DB (dropped + re-migrated). ~20 min cap. <b>Verdict: ALL-CLEAR = YES</b> — all three fix scopes verified with independent evidence; one observation for follow-up (not a blocker).</p>
+
+<div class="row">
+  <div class="kpi"><div class="n ok">YES</div><div class="l">All-clear</div></div>
+  <div class="kpi"><div class="n ok">3/3</div><div class="l">Fix points confirmed</div></div>
+  <div class="kpi"><div class="n">1</div><div class="l">Observation (info)</div></div>
+  <div class="kpi"><div class="n ok">clean</div><div class="l">~/.claude untouched</div></div>
+</div>
+
+<h2>M-1 · Widened <code class="inline">KNOWN_SKILLS</code> → 12 (bca47e3) <span class="badge b-ok">FIXED</span></h2>
+<div class="panel">
+  <b>API:</b>
+  <pre>GET /skills (Bearer) → 200
+count: <b>12</b>
+names (sorted): agentic-report-creator, agentic-scenario-runner, delivery-workflow,
+  efficient-agent-evals, extra-usage, handoff, orchestrating-delivery-agents,
+  remote-control, tmux-agents-orchestration, using-jira, verifier-skeptic,
+  writing-prds</pre>
+  All 5 previously-hidden orphans present in payload with full <code class="inline">status/hash_local/hash_prod/has_changes</code> fields. <code class="inline">verifier-skeptic</code> honestly reports <code class="inline">has_changes: true</code> (local sha ace5986e ≠ prod sha 02c87ec5 — dev copy has a stale <code class="inline">.DS_Store</code>; unrelated to this fix).<br>
+  <b>UI (Playwright):</b> <code class="inline">rows via publish-button count = 12</code>; subtitle now dynamic — reads <i>"Skills management system — <b>12 skills</b>, git-tracked development copies…"</i> straight from <code class="inline">q.data?.count</code> at <code class="inline">apps/web/src/screens/Skills.tsx:97</code>; no re-hardcode of "seven" anywhere in the built dist (grep -c 0). All 5 orphan names visible on the page (verified individually).<br>
+  <b>Diff drawer (orphan test):</b> clicking "View diff + history" on <code class="inline">verifier-skeptic</code> opened the drawer; GET <code class="inline">/skills/verifier-skeptic/diff</code> returned 200 with <code class="inline">hasChanges: true</code>, <code class="inline">diffBytes: 197</code>, <code class="inline">truncated: false</code>, and a meaningful diffText citing the .DS_Store difference. Second orphan (<code class="inline">extra-usage</code>) also 200.<br>
+  <b>Skill README + docs:</b> not re-checked in scope — the code-path parity is the meaningful gate and it holds.
+</div>
+<div class="cols">
+  <figure><img src="screenshots/02b-skills-light-12.png" alt="Skills light 12"><figcaption>M-1 — Skills screen light theme, 12 cards, subtitle "12 skills". Orphans visible: agentic-report-creator, agentic-scenario-runner, efficient-agent-evals, extra-usage, verifier-skeptic (bottom of list).</figcaption></figure>
+  <figure><img src="screenshots/02b-diff-orphan-verifier-skeptic.png" alt="Orphan diff"><figcaption>M-1 — Diff drawer opens for orphan verifier-skeptic. <code class="inline">hasChanges=true</code>, diffBytes=197, .DS_Store diff surfaced.</figcaption></figure>
+</div>
+
+<h2>m-1 · <code class="inline">GOSLEEP_SKILLS_PROD_DIR</code> override (5bc9565) <span class="badge b-ok">FIXED</span></h2>
+<div class="panel">
+  <b>Banner echoes override:</b>
+  <pre>publish:   prod = /Users/romanlidovskyi/.../.artifacts/verify-307/prod-override/handoff</pre>
+  (from both refused AND accepted runs — <code class="inline">publish.sh:146-147</code> resolves <code class="inline">PROD_ROOT="${GOSLEEP_SKILLS_PROD_DIR:-$HOME/.claude/skills}"</code> before any gate.)
+  <br><b>Refusal matrix (exit codes captured directly, not through pipe):</b>
+<table>
+<thead><tr><th>Case</th><th>Env</th><th>Expected</th><th>Got</th><th>Filesystem side-effect</th></tr></thead>
+<tbody>
+<tr><td>no TTY + no env</td><td>—</td><td>rc=3</td><td>rc=3</td><td class="ok">override tree empty · HOME untouched</td></tr>
+<tr><td>bypass attempt</td><td><code class="inline">CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1</code> + valid token + override</td><td>rc=3</td><td>rc=3 "refusing (plan Q2 default)"</td><td class="ok">override tree empty · HOME untouched</td></tr>
+<tr><td>unmigrated DB preflight</td><td>valid token + override + <code class="inline">GOSLEEP_DB_PATH</code>=empty scratch DB</td><td>rc=1 BEFORE mutation</td><td>rc=1 "'skills' table is missing"</td><td class="ok">no backup dir · no CHANGELOG append</td></tr>
+<tr><td>positive publish</td><td>valid token + override + migrated scratch DB</td><td>rc=0, writes to override</td><td>rc=0, wrote <code class="inline">prod-override/handoff/SKILL.md</code></td><td class="ok">override populated · HOME untouched (see hashes below)</td></tr>
+</tbody>
+</table>
+  <b>Real prod tree isolation (mtime + sha256):</b>
+  <pre>HOME/.claude/skills TOTAL sha256 BEFORE 02b:  e981535b8c59e8717291222044be1e4e5f2d7a490221469fa2183fc428db0462
+HOME/.claude/skills TOTAL sha256 AFTER  02b:  e981535b8c59e8717291222044be1e4e5f2d7a490221469fa2183fc428db0462
+~/.claude/skills/handoff sha256 AFTER  02b:   160e5e67d46a78b827a3a1218f2ed5d2bdeeda18c24b0f2987779a70a33f4856
+                                              (matches baseline captured in run 02)
+Prod-override tree after positive publish:    .artifacts/verify-307/prod-override/handoff/SKILL.md</pre>
+</div>
+
+<h2>m-2 · Skills notice banner dark-theme token (95afa27) <span class="badge b-ok">FIXED</span></h2>
+<div class="panel">
+  Source fix confirmed: <code class="inline">apps/web/src/screens/Skills.tsx:116</code> now uses <code class="inline">bg-[var(--color-sunken)]</code> (was <code class="inline">--color-surface-sunken</code>, undefined). <code class="inline">globals.css:46/119/144</code> defines <code class="inline">--color-sunken</code> for light (<code class="inline">#f2f3f5</code>) and dark (<code class="inline">#08080a</code>) — both <code class="inline">prefers-color-scheme</code> and <code class="inline">[data-theme="dark"]</code> branches.
+  <br><b>Both mechanisms tested:</b>
+<table>
+<thead><tr><th>Mechanism</th><th>State</th><th>Body <code class="inline">background-color</code></th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>prefers-color-scheme: dark (Playwright <code class="inline">colorScheme: 'dark'</code>)</td><td>Skills screen after load</td><td><code class="inline">rgb(11, 11, 13)</code></td><td class="ok">flipped to dark</td></tr>
+<tr><td>manual toggle</td><td>light on load</td><td><code class="inline">rgb(250, 250, 250)</code></td><td class="ok">light baseline</td></tr>
+<tr><td>manual toggle</td><td>after 1st click → dark</td><td><code class="inline">rgb(11, 11, 13)</code></td><td class="ok">flipped to dark</td></tr>
+<tr><td>manual toggle</td><td>after 2nd click → back to light</td><td><code class="inline">rgb(250, 250, 250)</code></td><td class="ok">restored to light</td></tr>
+</tbody>
+</table>
+  Screenshots show the notice banner ("TouchID paused…") is legible on the dark surface in both mechanisms — the specific fix scope.
+</div>
+<div class="cols">
+  <figure><img src="screenshots/02b-skills-dark-prefers.png" alt="Dark via prefers"><figcaption>m-2 — <code class="inline">prefers-color-scheme: dark</code>. Page bg, sidebar, and notice banner all dark. Subtitle reads "12 skills".</figcaption></figure>
+  <figure><img src="screenshots/02b-skills-manual-dark.png" alt="Dark via manual toggle"><figcaption>m-2 — after clicking the top-right toggle from light. Same dark surfaces. Toggle icon flips to sun ("Light").</figcaption></figure>
+  <figure><img src="screenshots/02b-skills-manual-before.png" alt="Light baseline"><figcaption>m-2 baseline — light theme before the manual click.</figcaption></figure>
+  <figure><img src="screenshots/02b-skills-manual-back-to-light.png" alt="Back to light"><figcaption>m-2 — after 2nd click, palette restores to light: <code class="inline">rgb(250, 250, 250)</code> body bg.</figcaption></figure>
+</div>
+
+<h2>Regression sniff <span class="badge b-ok">CLEAN</span></h2>
+<div class="panel">
+<ul>
+  <li><code class="inline">GET /healthz</code> → 200 (public, unchanged).</li>
+  <li><code class="inline">GET /skills</code> without Bearer → 401 (unchanged).</li>
+  <li>Migrate rc=0 on a freshly dropped DB (<code class="inline">core.migrate.done</code>).</li>
+  <li>Core booted cleanly on <code class="inline">127.0.0.1:7357</code>; no init errors in <code class="inline">core-02b.err.log</code>.</li>
+</ul>
+</div>
+
+<h2>Observation (info only, not a blocker)</h2>
+<div class="finding min">
+  <b>o-1</b> — The m-2 fix scope was the notice banner + page/sidebar chrome, and those all flip correctly. The individual skill Card surfaces still render on a light background in dark mode (they use a different <code class="inline">--color-surface</code> token that wasn't touched by this fix). Not in the re-verify scope; noting for the digest so the follow-up ticket (if any) is calibrated.
+</div>
+
+<h2>Teardown</h2>
+<div class="panel">
+  Core (PID 24288) killed; port 7357 free (<code class="inline">lsof -i :7357</code> empty); Playwright browsers auto-closed; scratch trees at <code class="inline">.artifacts/verify-307/</code> preserved for audit.
+</div>
+
+<hr class="divider">
+
+<h1 id="run02b-ru">Прогон 02b — целевая перепроверка @ d2cf903 <span class="lang">RU</span></h1>
+<p class="sub">Скептическая перепроверка трёх фикс-коммитов на <code class="inline">d2cf903</code>. Тот же worktree, свежий scratch-core на 7357, свежая scratch-DB (снёс и перемигрировал). <b>Вердикт: ALL-CLEAR = ДА.</b> Все три фикс-точки подтверждены независимыми доказательствами; одно наблюдение — не блокер.</p>
+
+<div class="panel">
+<h3>M-1 · KNOWN_SKILLS = 12 <span class="ok">ok</span></h3>
+<ul>
+  <li>API: <code class="inline">/skills</code> отдаёт <b>count=12</b>; все 5 «сирот» присутствуют в payload с полными полями <code class="inline">hash_local/hash_prod/has_changes</code>.</li>
+  <li>UI: 12 карточек на экране; подзаголовок стал динамическим — «Skills management system — 12 skills…», значение приходит из <code class="inline">q.data?.count</code>. Ни в исходнике, ни в собранном dist нет захардкоженного «seven».</li>
+  <li>Диф-дровер: клик по «сироте» <code class="inline">verifier-skeptic</code> — 200, <code class="inline">hasChanges=true</code>, <code class="inline">diffBytes=197</code> (осмысленный дифф про .DS_Store), <code class="inline">truncated=false</code>. Второй «сироте» <code class="inline">extra-usage</code> — тоже 200.</li>
+</ul>
+<h3>m-1 · GOSLEEP_SKILLS_PROD_DIR <span class="ok">ok</span></h3>
+<ul>
+  <li>Баннер публикации отражает переопределённый путь (и при отказах, и при успехе).</li>
+  <li>Отказы: no-TTY rc=3, --dangerously-skip-permissions rc=3, unmigrated DB preflight rc=1 — во всех трёх случаях ни <code class="inline">prod-override/</code>, ни <code class="inline">~/.claude/skills</code> НЕ ТРОНУТЫ.</li>
+  <li>Успешная публикация: rc=0, запись легла в <code class="inline">prod-override/handoff/SKILL.md</code>; sha256 всего дерева <code class="inline">~/.claude/skills</code> НЕ изменился (до = после = <code class="inline">e981535b…</code>).</li>
+</ul>
+<h3>m-2 · тёмная тема Skills-баннера <span class="ok">ok</span></h3>
+<ul>
+  <li>Оба механизма работают: и <code class="inline">prefers-color-scheme: dark</code> (body bg → <code class="inline">rgb(11,11,13)</code>), и ручной тумблер (light → dark → back-to-light — все три перехода срабатывают).</li>
+  <li>Баннер уведомления «TouchID paused…» читается на тёмной подложке; в исходнике теперь корректный токен <code class="inline">--color-sunken</code>, у которого есть light/dark значения в <code class="inline">globals.css</code>.</li>
+</ul>
+<h3>Регрессия — чисто</h3>
+<ul>
+  <li><code class="inline">/healthz</code> 200 public, <code class="inline">/skills</code> без Bearer 401 — без изменений.</li>
+</ul>
+<h3>Наблюдение (не блокер)</h3>
+<p>Фон отдельных карточек скиллов в тёмной теме остался светловатым — это отдельный токен <code class="inline">--color-surface</code>, который в scope этого фикса не входил. Баннер, страница и сайдбар — тёмные, ради чего фикс и делался.</p>
+<h3>Teardown</h3>
+<p>core (PID 24288) прибит, порт 7357 свободен, Playwright-браузеры завершились сами, <code class="inline">.artifacts/verify-307/</code> оставлен для аудита.</p>
+</div>
+
+</div>
+</body>
+</html>

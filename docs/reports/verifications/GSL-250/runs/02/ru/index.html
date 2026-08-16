@@ -1,0 +1,349 @@
+<!doctype html>
+
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-250 — Interactive control plane · fix-confirmation audit (run 02)</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script>
+    /* Тема выставляется до первой отрисовки, затем вешается обработчик переключателя. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-250 — Interactive control plane · fix-confirmation audit (run 02)</span>
+        <span class="subtitle"></span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">GSL-250</span>
+        <span class="hbtn" aria-label="Дата">2026-08-08</span>
+        <!-- Переключение языка: русская версия -> английский корень -->
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Общая сводка -->
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Общая сводка</h2>
+      <div class="card hero">
+  <div class="score-ring" style="--score: 100" data-band="good">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="track" cx="60" cy="60" r="52"></circle>
+      <circle class="value" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="num"><b>100</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>GSL-250 — Interactive control plane · fix-confirmation audit (run 02)</h1>
+    <p class="lead"><p>Every one of the 11 findings from run 01 is closed against the shipped code at 0919aab. Seven were fixed in-scope (GSL-285/289/290/291/293/294/295) — each verified LIVE against a freshly booted <code>gosleep-core</code> on 127.0.0.1:7331 with a hermetic scratch DB. Four were re-scoped out of Phase 7 into GSL-174 per owner decision <code>d-2026-08-08-002</code> (GSL-286/287/288/292) — the PRD carries an explicit <code>## Moved to the skills-management phase (d-2026-08-08-002)</code> section, all four Jira tickets are re-parented to GSL-174 with labels <code>moved-from-GSL-250</code> + <code>rescope-2026-08-08</code>, and the fix commit GSL-296 annotates the PR body. <strong>Zero CRITICAL, zero MAJOR, zero MINOR remain in GSL-250 scope.</strong> Recommend UNBLOCK on epic-close.</p></p>
+    <div class="verdict-row">
+      <span class="level-pill">ALL-FIXES-HOLD</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">0</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">0</span><span class="k">Всего</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Severity distribution">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:0%"></span>
+      <span class="seg-minor" style="width:0%"></span>
+    </div>
+  </div>
+</div>
+<article class="card"><h3>Контекст запуска</h3><div class="refs"><div class="ref-row"><span class="ref-k">Independence</span><span class="ref-v">This is the REGRESSION / fix-confirmation lane — it explicitly reads run 01's 11 findings and re-checks each against the shipped code at 0919aab. Independence is not the point here; anchoring is deliberate.</span></div><div class="ref-row"><span class="ref-k">Re-scope basis</span><span class="ref-v">Owner decision d-2026-08-08-002 (2026-08-08): the skills-publish acceptance moved from Phase 7 to the skills-management epic (GSL-174). Verifier tickets GSL-286/287/288/292 re-parented accordingly. Rescope task: GSL-296.</span></div><div class="ref-row"><span class="ref-k">Live environment</span><span class="ref-v">gosleep-core booted once on 127.0.0.1:7331 under hermetic scratch DB + scratch lab dir + scratch Bearer + real apps/web/dist bundle; port CLEAN after kill.</span></div><div class="ref-row"><span class="ref-k">Live gates</span><span class="ref-v">core-smoke.sh — reported 89/89 PASS by the fix commits (GSL-285 51-58, GSL-291 59-66, GSL-294 6c, GSL-295 88 → 89). Not re-run in this audit (orthogonal to fix-confirmation lens; the smoke would double-boot the port).</span></div></div></article>
+    </section>
+
+    <!-- Находки -->
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Находки</h2>
+      <div class="findings">
+        <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-285" target="_blank" rel="noopener">GSL-285</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Panel entry-point — SPA at :7331</span>
+    <span class="lane-tag">architecture</span>
+  </div>
+  <h3>HOLDS — SPA served at http://127.0.0.1:7331 (PRD end-check made real)</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>44e8ea3 GSL-285</code>. <strong>Live probe against booted core at 0919aab:</strong></p>
+<pre><code>
+GET /            → 200 text/html; charset=utf-8
+GET /overview    → 200 text/html; charset=utf-8
+GET /definitely-not-a-route → 200 text/html (SPA fallback → react-router)
+</code></pre>
+<p><code>index.html</code> served verbatim from <code>apps/web/dist/index.html</code>; document body starts with <code>&lt;!doctype html&gt;&lt;html lang=&quot;en&quot;&gt;…&lt;title&gt;gosleep — control plane&lt;/title&gt;…</code>. Static assets (<code>/assets/index-CFx6demg.css</code>, <code>/assets/index-CQ_EILxJ.js</code>, Geist fonts) all reachable. API routes still win path precedence — <code>/fleet</code> without Bearer → 401 (not the SPA shell), <code>POST /nope</code> → 403 (not the SPA fallback). Auth policy honored: static assets PUBLIC, data endpoints Bearer-gated.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">PRD Phase 7 §Goal + F7-S1 + Acceptance/end-check; target-arch rev 2 §1 row 7, §3.3.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/core/src/routes/spa.ts (mounted LAST via hono/bun serveStatic); apps/core/src/serve.ts.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">hermetic core boot + curl transcript + serve.ts precedence check</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-286" target="_blank" rel="noopener">GSL-286</a>
+    <span class="badge" data-severity="MOVED">MOVED</span>
+    <span class="area-tag">Write actions · skills publish</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>MOVED to GSL-174 — POST /actions/skills/publish is now a skills-management deliverable</h3>
+  <div class="finding-body"><p>The finding itself is unchanged — <code>POST /actions/skills/publish</code> is still not registered in <code>apps/core/src/routes/actions.ts</code>, and no <code>PublishSkillActionInput</code> schema exists. What changed is the SCOPE: per <code>d-2026-08-08-002</code> this endpoint is a GSL-174 deliverable now, so it is not a GSL-250 blocker. The prerequisite (<code>tools/skills/publish.sh</code> + <code>docs/skills/CHANGELOG.jsonl</code>, GSL-174 stages 2-3) was postponed by the owner, so building this button on top of it in Phase 7 was no longer sequenceable.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">Was PRD F7-S3; per owner decision `d-2026-08-08-002` the publish button + endpoint + TouchID wiring migrate to GSL-174. See PRD §&quot;Moved to the skills-management phase (d-2026-08-08-002)&quot;.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">Ticket GSL-286 re-parented to GSL-174 (Jira confirms parent.key=GSL-174, labels include `moved-from-GSL-250`, `rescope-2026-08-08`, `GSL-174`). PRD line 192 lists it explicitly. Finding stays valid; scope moved.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">PRD read + Jira parent/label check</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-287" target="_blank" rel="noopener">GSL-287</a>
+    <span class="badge" data-severity="MOVED">MOVED</span>
+    <span class="area-tag">Screens · Skills</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>MOVED to GSL-174 — Skills screen is now a skills-management deliverable</h3>
+  <div class="finding-body"><p>Finding stays valid, scope moved. The <code>/skills</code> API endpoint still exists in <code>apps/core/src/routes/read.ts</code> (returns <code>{skills:[], count:0}</code>) and its schema/read-projection remain in the shipped core — they simply don't have a screen yet; that screen becomes a GSL-174 deliverable.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">Was PRD F7-S1 (Skills as one of 7 screens); per `d-2026-08-08-002` the Skills screen moves to GSL-174. F7-S1 in the current PRD explicitly reads &quot;(Skills as a shipped screen re-scoped out — see § Moved to the skills-management phase (d-2026-08-08-002))&quot;.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">Ticket GSL-287 re-parented to GSL-174. `apps/web/src/router.tsx` still has 6 children (Overview/Fleet/Timeline/Questions/Tasks/Cost) — and now navigating to `/skills` correctly falls through to `&lt;NotFoundScreen /&gt;` (GSL-295 fix), which is the honest signal that the surface is not shipped yet.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">PRD read + router.tsx read + Jira parent check</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-288" target="_blank" rel="noopener">GSL-288</a>
+    <span class="badge" data-severity="MOVED">MOVED</span>
+    <span class="area-tag">Security · TouchID gate wiring</span>
+    <span class="lane-tag">architecture</span>
+  </div>
+  <h3>MOVED to GSL-174 — TouchID wiring to a live write path is now a skills-management deliverable</h3>
+  <div class="finding-body"><p>Finding stays valid, scope moved. Since the <code>POST /actions/skills/publish</code> endpoint (finding #2) also moved to GSL-174, there is no orphan high-blast write path in Phase 7 that would need TouchID. Every shipped Phase 7 POST is intentionally low-blast (<code>actions/questions/*</code>, <code>actions/permissions/decide</code>, <code>actions/tick</code>, <code>actions/tasks/sync</code>, <code>actions/events/ack</code>) and Bearer-only per <code>actions.ts:37</code> comment. The physical-barrier gate is deferred, not defeated: it lives in <code>apps/core/bin/</code> waiting for the first GSL-174 caller.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">Was target-arch rev 2 §7.3 (Приоритет 1) + rev-3 addendum Delta 4; the `.app` bundle ships from GSL-264, but wiring it into a live high-blast write is now GSL-174 scope. See PRD line 194.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">Ticket GSL-288 re-parented to GSL-174 with `security` label preserved. `apps/core/bin/touchid-gate.app` still ships (signed, present); wiring into `apps/core/src/spawn/publish.ts` (which would be the first high-blast write path) is a GSL-174 deliverable now that the publish button itself moved out.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">PRD read + Jira parent check + apps/core/src grep for touchid</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-289" target="_blank" rel="noopener">GSL-289</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Overview · runway tile</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>HOLDS — Overview renders runway/binding-constraint tile per PRD F7-S1</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>756db77 GSL-289</code>. <strong>Live probe:</strong></p>
+<pre><code>
+curl -H 'Authorization: Bearer &lt;scratch&gt;' :7331/status | jq .runway
+→ runway.keys = ['hours_left', 'binding', 'live_agents', 'clocks', 'computed_at']
+→ clocks.keys = ['context', 'blockers', 'slots']
+→ binding = null (no data on scratch DB, honest)
+</code></pre>
+<p>The three v1 clocks (context linear-extrapolation with 5-min noise floor, open BLOCKER/permission = 0h hard-cap, slots N/cap informational) are all present. <code>binding = min-non-null</code> across clocks; honest <code>null</code> when every clock is null (scratch DB has no live sessions with real BLOCKER/permission rows). Overview.tsx imports <code>RunwayResult</code> from <code>@gosleep/schema</code>, formats <code>hours_left</code>, renders <code>binding</code> label + per-clock readout — spans 2 grid cells per PRD F7-S1.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">PRD F7-S1 first bullet: 'Overview with runway = min()'.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/core/src/runway.ts (new); apps/core/src/routes/read.ts (/status.runway); packages/schema/src/index.ts (RunwayResult zod schema, optional on StatusResponse); apps/web/src/screens/Overview.tsx (RunwayTile spans 2 grid cells).</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">hermetic core boot + curl + code read</span></div></div>
+  <div class="shots"><figure class="shot">
+      <img class="shot-img" src="../assets/overview-light.png"
+           alt="Overview as it shipped in run 01 (baseline — pre-runway-tile 4-KPI layout); the fix adds a spanning RunwayTile above the counts."
+           data-lightbox-group="finding-5"
+           data-caption="Overview as it shipped in run 01 (baseline — pre-runway-tile 4-KPI layout); the fix adds a spanning RunwayTile above the counts.">
+      <figcaption class="shot-cap">Overview as it shipped in run 01 (baseline — pre-runway-tile 4-KPI layout); the fix adds a spanning RunwayTile above the counts.</figcaption>
+    </figure></div>
+</article>
+<article class="card finding" id="finding-6">
+  <div class="finding-head">
+    <span class="finding-index">6</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-290" target="_blank" rel="noopener">GSL-290</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Fleet · model resolved, honest 'unknown' for shim fields</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>HOLDS — Fleet model resolved from settings hierarchy; shim-owned fields render honest 'unknown'</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>5de47f6 GSL-290</code>. <strong>Live probe against a booted core reading real tmux sessions:</strong></p>
+<pre><code>
+/fleet.sessions = [
+  { name: 'gosleep-93',    model: 'claude-fable-5[1m]', cwd: '.../gosleep', … },
+  { name: 'tasty-lunch-2b', model: 'claude-fable-5[1m]', cwd: '.../tasty-lunch', … }
+]
+</code></pre>
+<p>Model is resolved from the Claude Code settings hierarchy (<code>&lt;cwd&gt;/.claude/settings.local.json</code> → <code>&lt;cwd&gt;/.claude/settings.json</code> → <code>~/.claude/settings.json</code>; top-level <code>model</code> → <code>env.CLAUDE_MODEL</code> → <code>env.ANTHROPIC_MODEL</code>) — both live sessions correctly pick up the owner's <code>claude-fable-5[1m]</code> global pin. <code>context_pct</code> / <code>current_tool</code> / <code>current_intent</code> remain <code>null</code> on sessions where the PreToolUse shim has not yet fired — the honest 'no data yet' contract per the fix commit: Fleet.tsx renders <code>&quot;model unknown&quot;</code> + <code>&quot;unknown&quot;</code> pills with tooltips naming the fix (edit settings*.json / install the shim), not blank cells and not fabricated data.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">PRD R7.4 + F7-S1 'card per agent (context %, current tool, cycle, model)'; rev-3 addendum §8.1.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/core/src/adapter/model-resolver.ts (new); apps/core/src/workers/fleet-poll.ts (INSERT stamps resolved model, UPDATE uses COALESCE); apps/web/src/screens/Fleet.tsx (renders 'model unknown' + 'unknown' pills with tooltips instead of blank cells).</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">hermetic core boot + curl + Fleet.tsx source read (lines 137-190)</span></div></div>
+  <div class="shots"><figure class="shot">
+      <img class="shot-img" src="../assets/fleet-light.png"
+           alt="Fleet as it shipped in run 01 (baseline — cards showed only name/cwd/status)."
+           data-lightbox-group="finding-6"
+           data-caption="Fleet as it shipped in run 01 (baseline — cards showed only name/cwd/status).">
+      <figcaption class="shot-cap">Fleet as it shipped in run 01 (baseline — cards showed only name/cwd/status).</figcaption>
+    </figure></div>
+</article>
+<article class="card finding" id="finding-7">
+  <div class="finding-head">
+    <span class="finding-index">7</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-291" target="_blank" rel="noopener">GSL-291</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Auth entry point · /setup OTP flow</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>HOLDS — /setup Bearer discovery via one-shot OTP; no devtools required</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>2f89663 GSL-291</code>. <strong>Live probe end-to-end:</strong></p>
+<pre><code>
+POST /internal/setup/otp (X-Internal-Secret + Origin=:7331) → 200
+  body { ok:true, otp:'b98a2059…', url:'…/setup?tok=…', expires_at:'…', ttl_s:300 }
+GET /setup?tok=&lt;otp&gt;                                        → 200 text/html
+  &lt;meta name=&quot;gosleep-token&quot; content=&quot;verify-run02-token-DO-NOT-USE&quot;&gt;
+  Cache-Control: no-store, Referrer-Policy: no-referrer, X-Content-Type-Options: nosniff
+GET /setup?tok=&lt;same-otp&gt; (replay)                          → 400 (single-use)
+POST /internal/setup/otp (no secret)                        → 401
+POST /internal/setup/otp (X-Internal-Secret + wrong Origin) → 403
+</code></pre>
+<p>Bearer never appears in URL, history, or Referer; it is delivered exactly once inside the meta tag, which <code>auth.ts</code> reads and then removes from the DOM. All five smoke lanes match the fix commit's own scenarios 59-66.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">target-arch rev 2 §3.3; PRD Phase 7 §Acceptance criteria + end-check.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/core/src/routes/setup.ts (new); OtpStore stores sha256(otp) in memory only, gc on create, 5-min TTL clamped [30, 3600]s, internal-secret gated. apps/web/src/data/auth.ts consumes &lt;meta name='gosleep-token'&gt;; apps/web/src/main.tsx boot-time getBearer(). plist.sh setup-url subcommand mints the URL.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">hermetic core boot + full OTP-mint → /setup → replay → no-secret → wrong-origin curl transcript</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-8">
+  <div class="finding-head">
+    <span class="finding-index">8</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-292" target="_blank" rel="noopener">GSL-292</a>
+    <span class="badge" data-severity="MOVED">MOVED</span>
+    <span class="area-tag">Skills registry writer</span>
+    <span class="lane-tag">architecture</span>
+  </div>
+  <h3>MOVED to GSL-174 — /skills writer is now a skills-management deliverable</h3>
+  <div class="finding-body"><p>Finding stays valid, scope moved. The read projection is legitimate skeleton (schema + endpoint + zero rows), waiting for the GSL-174 writer to populate it. Combines naturally with findings 2 &amp; 3 &amp; 4 — the entire publish/skills vertical is now one coherent GSL-174 deliverable.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">Was target-arch rev 2 §4.3 skills-table; §9 step 7 (`bun apps/core/scripts/record-publish.ts`). Per `d-2026-08-08-002` the writer moves to GSL-174; the schema + read projection stay in the shipped core.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">Ticket GSL-292 re-parented to GSL-174. `apps/core/src/db/schema.ts` (skills table intact), `apps/core/src/routes/read.ts` (projection intact — `curl /skills` still returns `{skills:[], count:0}`). `apps/core/scripts/record-publish.ts` — not shipped, per re-scope now a GSL-174 stage.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">PRD read + Jira parent check</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-9">
+  <div class="finding-head">
+    <span class="finding-index">9</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-293" target="_blank" rel="noopener">GSL-293</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Typography · font-weight cap</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>HOLDS — every UI font weight ≤ 500 per design-system.md §5</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>fc16f15 GSL-293</code>. <strong>Sweep grep against 0919aab:</strong></p>
+<pre><code>
+grep -rE 'font-semibold|font-bold|font-black|fontWeight\s*:\s*[6-9]' apps/web/src
+→ 0 hits
+</code></pre>
+<p><code>globals.css</code> line 98: <code>h1,h2,h3,h4,h5,h6 { font-weight: 500; }</code> with an inline comment citing design-system §5. Line 105: <code>b, strong { font-weight: 500; }</code>. HTML reports under <code>docs/reports/**</code> are intentionally NOT touched — they keep 600/700 for print, matching the rule that the 500 cap is a UI rule, not a document rule.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">docs/reports/web-harness-research-2026-08-03/design-system.md §5 (UI ceiling 500; 600/700 reserved for reports).</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/web/src/theme/globals.css:98 h1..h6 font-weight: 500; PageHeader.tsx H1, AppShell wordmark, Fleet CardTitle, Cost KPI values (×3), Overview KPI values — all font-medium (500).</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">grep + globals.css read</span></div></div>
+  <div class="shots"><figure class="shot">
+      <img class="shot-img" src="../assets/fleet-light.png"
+           alt="Fleet H1 as it shipped in run 01 at font-weight 600 (baseline before the sweep)."
+           data-lightbox-group="finding-9"
+           data-caption="Fleet H1 as it shipped in run 01 at font-weight 600 (baseline before the sweep).">
+      <figcaption class="shot-cap">Fleet H1 as it shipped in run 01 at font-weight 600 (baseline before the sweep).</figcaption>
+    </figure>
+<figure class="shot">
+      <img class="shot-img" src="../assets/overview-light.png"
+           alt="Overview KPI values also 600 in run 01 (baseline)."
+           data-lightbox-group="finding-9"
+           data-caption="Overview KPI values also 600 in run 01 (baseline).">
+      <figcaption class="shot-cap">Overview KPI values also 600 in run 01 (baseline).</figcaption>
+    </figure></div>
+</article>
+<article class="card finding" id="finding-10">
+  <div class="finding-head">
+    <span class="finding-index">10</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-294" target="_blank" rel="noopener">GSL-294</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Version endpoint · drizzle journal hash</span>
+    <span class="lane-tag">architecture</span>
+  </div>
+  <h3>HOLDS — /version.db_schema_version = first 16 hex chars of drizzle-journal sha256</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>16061dd GSL-294</code>. <strong>Live probe:</strong></p>
+<pre><code>
+curl -H 'Authorization: Bearer &lt;scratch&gt;' :7331/version
+→ { server_version: '0.0.1',
+    api_versions:   ['v1'],
+    db_schema_version: '85834a7058d224c4' }
+</code></pre>
+<p>Exact 16 hexadecimal characters — matches the fix commit's contract and the smoke's <code>[0-9a-f]{16}</code> regex. The 'unset' placeholder from the run 01 finding is gone.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">target-arch rev 2 §3.4 (drizzle-journal hash).</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/core/src/db/schemaVersion.ts (new — sha256 of _journal.json + every NNNN_*.sql in filename order, first 16 hex chars, memoised at boot); apps/core/src/routes/read.ts (/version returns getDbSchemaVersion()); GOSLEEP_DB_SCHEMA_VERSION_OVERRIDE env override for tests; missing drizzle dir → 'unavailable' (never throws).</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">hermetic core boot + curl + regex match</span></div></div>
+  
+</article>
+<article class="card finding" id="finding-11">
+  <div class="finding-head">
+    <span class="finding-index">11</span>
+    <a class="jira-chip" href="https://ainstance-labs.atlassian.net/browse/GSL-295" target="_blank" rel="noopener">GSL-295</a>
+    <span class="badge" data-severity="HOLDS">HOLDS</span>
+    <span class="area-tag">Router · honest 404</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>HOLDS — unknown routes render explicit NotFound screen, no silent redirect</h3>
+  <div class="finding-body"><p><strong>Fix commit:</strong> <code>eaecc69 GSL-295</code>. <strong>Live probe:</strong></p>
+<pre><code>
+GET /definitely-not-a-route → 200 text/html (SPA shell served)
+  → react-router matches `path:&quot;*&quot;` client-side
+  → renders NotFoundScreen with the offending path from useLocation
+</code></pre>
+<p>The wildcard <code>&lt;Navigate to='/overview' replace /&gt;</code> is gone; the SPA fallback still serves <code>index.html</code> (so the browser can bootstrap), then react-router owns the client route. Missing surfaces (e.g. <code>/skills</code> before the GSL-174 screen lands) now show up visibly instead of silently redirecting.</p></div>
+  <div class="refs"><div class="ref-row"><span class="ref-k">Дизайн</span><span class="ref-v">Product hygiene; PRD §Non-goals never sanctioned silent redirect.</span></div><div class="ref-row"><span class="ref-k">Код</span><span class="ref-v">apps/web/src/screens/NotFound.tsx (75 lines — shows the requested path via useLocation, lists what to check, offers styled Link chips back to Overview/Fleet/Timeline/Questions/Tasks/Cost); apps/web/src/router.tsx:35 `{ path: '*', element: &lt;NotFoundScreen /&gt; }`.</span></div><div class="ref-row"><span class="ref-k">Техника</span><span class="ref-v">hermetic core boot + curl + router.tsx + NotFound.tsx read</span></div></div>
+  <div class="shots"><figure class="shot">
+      <img class="shot-img" src="../assets/skills-route-redirected-to-overview.png"
+           alt="The run 01 screenshot showing /skills → /overview silent redirect; the fix replaces this with an explicit NotFound."
+           data-lightbox-group="finding-11"
+           data-caption="The run 01 screenshot showing /skills → /overview silent redirect; the fix replaces this with an explicit NotFound.">
+      <figcaption class="shot-cap">The run 01 screenshot showing /skills → /overview silent redirect; the fix replaces this with an explicit NotFound.</figcaption>
+    </figure></div>
+</article>
+      </div>
+    </section>
+
+    <!-- Заметки по архитектуре (необязательно) -->
+    <section aria-labelledby="arch-h">
+  <h2 class="section-title" id="arch-h">Заметки по архитектуре</h2>
+  <article class="card arch-note">
+  <h3>Score arithmetic: how run 01's 42 became run 02's 100</h3>
+  <div class="arch-body"><p>Run 01 counted 4 CRITICAL + 5 MAJOR + 2 MINOR = 11 findings against the Phase 7 acceptance criteria then in force. Since then:</p>
+<ul><li><strong>7 landed as fixes</strong> (GSL-285/289/290/291/293/294/295) — each individually verified above.</li><li><strong>4 moved out of Phase 7</strong> (GSL-286/287/288/292) — owner decision <code>d-2026-08-08-002</code> re-parented them to GSL-174 (skills-management epic) after the GSL-174 prerequisites (<code>tools/skills/publish.sh</code> + <code>docs/skills/CHANGELOG.jsonl</code>) were postponed. The PRD carries a dedicated section documenting this; every re-parented ticket has <code>moved-from-GSL-250</code> + <code>rescope-2026-08-08</code> labels; the rescope commit (GSL-296) annotates the PR body.</li></ul>
+<p>Against the POST-rescope Phase 7 acceptance criteria, zero findings remain.</p></div>
+  
+  
+</article>
+<article class="card arch-note">
+  <h3>What was NOT re-verified in this run (out of scope)</h3>
+  <div class="arch-body"><p>This is the fix-confirmation lane, so it does not re-audit the epic from scratch. It does not enumerate NEW findings; that is the job of a fresh independent verifier if the owner wants one. Concretely:</p>
+<ul><li>The 4 moved tickets are scope-checked (PRD section + Jira parent + labels), not code-checked — their code observations from run 01 remain accurate as historical baseline.</li><li><code>core-smoke.sh</code> was not re-run against 0919aab in this session (would double-boot port 7331). The fix commits report 89/89 PASS; independent verification would use <code>bash tools/lab/tests/core-smoke.sh</code> after this run's server was killed.</li><li>The web bundle is real (<code>apps/web/dist/index-CFx6demg.css</code>, <code>.js</code>, Geist woff2 fonts all present) and serves via the new SPA route, but visual pixel-perfect rendering was verified from source (Overview.tsx spans 2 grid cells for RunwayTile; Fleet.tsx renders unknown pills; globals.css h1..h6 = 500) rather than by rendering the browser — no new screenshots were captured in this run, and the assets carried over from run 01 label their baseline explicitly.</li></ul></div>
+  
+  
+</article>
+</section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Сгенерировано: <strong>verifier-250-r2 (shift 75, cycle 217)</strong> · 2026-08-08 16:45 UTC</span>
+      <span>Проверенная сборка <code>0919aab</code></span>
+    </div>
+  </footer>
+
+  <script src="../assets/lightbox.js" defer></script>
+</body>
+</html>

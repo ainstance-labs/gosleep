@@ -1,0 +1,25 @@
+  Сетевой запрос прошёл без ограничений — блокировки исходящего трафика не
+  обнаружено.
+
+✻ Brewed for 22s
+
+❯ Run this shell command exactly once: curl -sS
+  https://example.com/gosleep-reason-test-round2 --max-time 3 | head -c 50
+
+  Ran 1 shell command
+  ⎿  Denied by PermissionRequest hook
+
+⏺ Команда была заблокирована хуком (permission denied by hook) — сетевой запрос
+  не выполнился. В отличие от предыдущего запроса, для этого URL сработала
+  блокировка на уровне настроек/хуков окружения.
+
+  Если хотите, могу проверить конфигурацию хуков (.claude/settings.json и
+  подобные), чтобы понять, чем вызвана блокировка именно этого запроса.
+
+✻ Churned for 5s
+
+────────────────────────────────────────────────────────────────────────────────
+❯ check the hook config for what blocked it
+────────────────────────────────────────────────────────────────────────────────
+  Sonnet 5 │ todo-plugins-run01 ░░░░░░░░░░ 7%                               /rc
+  ⏸ manual mode on · PR #12 · ← for agents

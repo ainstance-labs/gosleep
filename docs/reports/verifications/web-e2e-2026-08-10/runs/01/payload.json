@@ -1,0 +1,165 @@
+{
+  "meta": {
+    "run": "web-e2e-2026-08-10/runs/01",
+    "verifier": "webqa-1",
+    "date_utc": "2026-08-10T07:30:00Z",
+    "target": "gosleep web control plane (Bun+Hono core + React 19 SPA)",
+    "branch": "GSL-174-skills-management (HEAD 3289545)",
+    "note_branch": "current HEAD includes the merged Skills screen (GSL-287); origin/main does NOT — Skills screen was NOT tested per brief.",
+    "env": {
+      "core_port": 7333,
+      "db_path": ".artifacts/webqa-1/db/gosleep.db (read-only copy of production data/gosleep.db + 3 seeded questions)",
+      "bearer": "dev-env override",
+      "indexer": "DISABLED (hermetic; SSE fires only via /actions/* endpoints and manual DB writes do not fan out)",
+      "browser": "chrome-devtools MCP (Chromium 151)"
+    }
+  },
+  "readiness": {
+    "score": 62,
+    "verdict": "NOT ready for owner-testing without one MAJOR fix",
+    "one_line": "Six read-screens work well and interactives WRITE correctly; SSE live-update is real; but the primary Answer dialog CRASHES on the first keystroke — that is the exact flow the owner will exercise most and it is unusable today."
+  },
+  "screens": {
+    "Overview": "PASS",
+    "Fleet":    "PASS",
+    "Timeline": "PASS",
+    "Questions":"PASS (read); write path DEGRADED — see findings",
+    "Tasks":    "PASS",
+    "Cost":     "DEGRADED (honest empty state, no cost.* events yet — expected)"
+  },
+  "interactive_actions": {
+    "answer_question":   "FAIL (React crash on textarea input; primary owner flow)",
+    "permission_allow":  "PASS (SSE-driven card move + toast + DB row updated in <1s)",
+    "permission_deny":   "PASS (dialog + reason optional; toast + DB row updated)",
+    "manual_snapshot":   "PASS (file written to .artifacts/webqa-1/db/snapshots/manual-owner-web-*.db; NO visible toast in run — MINOR UX)",
+    "apply_manifest":    "DIALOG OK, submit unverified (would fail same way as Defer for SQL-seeded questions — env limitation)",
+    "defer":             "DIALOG OK, submit FAILS 500 on SQL-seeded questions (lab-emit needs the question in JSONL archive too; env-only, not a defect)",
+    "run_tick":          "PASS (spawns; server_intents row ok; no new events landed because chronicler is a no-op on scratch tree)"
+  },
+  "sse_live_update": {
+    "verdict": "PASS",
+    "evidence": "Permission Allow at 07:22:26Z — after POST /actions/permissions/decide returned 200, the target card moved from Open into Answered live (no reload); the DB row's answered_at matches; toast surfaced within the same paint. Same pattern for Deny at 07:23:53Z. Estimated wire-to-DOM latency < 300 ms.",
+    "caveat": "Timeline did not show fresh rows for the Tick because the indexer is disabled and tick.sh emits into JSONL that the tail worker would normally consume — SSE fan-out for tick-borne events was NOT observed here (test-env decision)."
+  },
+  "console_errors": {
+    "answer_dialog_crash": {
+      "count": 2,
+      "text": "TypeError: Cannot read properties of null (reading 'value')",
+      "trigger": "Any input into the Answer textarea",
+      "source": "apps/web/src/screens/Questions.tsx lines 651-655"
+    },
+    "insufficient_resources": {
+      "count": 5087,
+      "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+      "trigger": "Sustained polling — /status was requested 123x and /timeline 121x in ~10min; roughly 240 of the 250 last resource entries had transferSize=0 status=0. Chrome per-origin socket pool likely exhausted by SSE reconnect churn or double-mount effect.",
+      "suspect": "Overly aggressive react-query refetch interval OR SSE stream not closed on route change OR StrictMode double-invocation still present in build"
+    }
+  },
+  "network_non_2xx": [
+    { "url": "/fleet (direct GET as document)", "status": 401, "cause": "API route /fleet wins over SPA fallback; a browser refresh/bookmark on any client-side route (Fleet/Timeline/Questions/Tasks/Cost) 401s instead of loading the SPA. Design coupling — see finding 4." },
+    { "url": "/actions/questions/defer", "status": 500, "cause": "lab-emit CLI cannot find q-webqa-1-test-blocker in docs/lab/questions/queue.jsonl (only in the DB). SQLite is not the exclusive source of truth for the action layer today — the actions still shell out to lab-emit which reads JSONL. Not a defect in this run (scratch env limitation), but a real architectural note: DB-only rows cannot be deferred/applied." }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MAJOR",
+      "title": "Answer dialog throws on first keystroke — owner cannot answer any BLOCKER/DECISION from the web",
+      "where": "apps/web/src/screens/Questions.tsx:651-655",
+      "code_snippet": "onChange={(e) =>\n  setAnswerDialog((prev) =>\n    prev === null ? prev : { ...prev, value: e.currentTarget.value },\n  )\n}",
+      "root_cause": "React 19 is free to invoke the state-updater function outside the synchronous handler window. By the time the updater reads `e.currentTarget.value`, the SyntheticEvent has been recycled and `e.currentTarget` is null → TypeError. React Router catches the throw and blanks the whole panel with 'Something went wrong'.",
+      "fix": "Read the string synchronously: `onChange={(e) => { const v = e.currentTarget.value; setAnswerDialog(prev => prev === null ? prev : { ...prev, value: v }); }}`",
+      "impact": "The Answer button is the primary owner action on the Questions screen. Once it crashes, the entire /questions route is a 'Something went wrong' page until the user reloads. Reproducible with the automation harness; likely intermittent under real typing, guaranteed to bite the moment React 19 runs the updater async.",
+      "evidence": ["assets/19-answer-dialog-empty.png", "assets/20-answer-dialog-filled.png", "assets/21-answer-crash.png"]
+    },
+    {
+      "id": 2,
+      "severity": "MAJOR",
+      "title": "Chrome logs 5,087 ERR_INSUFFICIENT_RESOURCES during a normal QA walkthrough",
+      "where": "Client polling / SSE lifecycle (route unmount cleanup)",
+      "root_cause": "Not proven from client alone. Symptoms: ~250 recent resource entries, 240+ with transferSize=0 status=0; only /status and /timeline polls are affected; SSE /events reconnect churn is the most likely driver on top of react-query polling. May compound with React StrictMode double-mount if not disabled in the built SPA.",
+      "fix": "Instrument react-query staleTime/refetchInterval and confirm SSE EventSource.close() runs on route unmount. If StrictMode is on in production build, disable it.",
+      "impact": "Any long-lived tab (owner leaves the panel open all day) will hit Chrome's per-origin socket ceiling and stop refreshing silently. On mobile Safari this class of error also surfaces as blank cards.",
+      "evidence": ["console.error count = 5087; recent /status 123x, /timeline 121x — see report section 'Console & network'"]
+    },
+    {
+      "id": 3,
+      "severity": "minor",
+      "title": "Snapshot success has no visible toast",
+      "where": "Overview → Snapshot → Confirm",
+      "root_cause": "Notifications region stays empty after the successful snapshot (file was written to disk; server_intents row is 'ok'). Contrast: Permission Allow/Deny and Tick DO show toasts.",
+      "fix": "Emit the same shape of toast as the other actions on success.",
+      "impact": "The owner clicks Snapshot, dialog closes, nothing happens visibly. They may click again or wonder if it worked.",
+      "evidence": ["assets/17-snapshot-confirm-dialog.png", "assets/18-snapshot-after.png", "server_intents row 7a61a318 status=ok"]
+    },
+    {
+      "id": 4,
+      "severity": "MAJOR",
+      "title": "Refreshing /fleet /timeline /questions /tasks /cost returns 401, not the SPA",
+      "where": "apps/core/src/serve.ts (SPA fallback mounted LAST, after every same-named API route)",
+      "root_cause": "The server-side /fleet /timeline /questions /tasks /cost routes are Bearer-gated API endpoints. A hard reload of any of those client-side URLs hits the API route first, gets 401 with body 'unauthorized', and the SPA never loads. Only /overview happens to not collide with an API name.",
+      "fix": "Either give SPA routes a namespace (e.g. /panel/*) or make the API routes an /api/* prefix, or detect 'Accept: text/html' in each API route and fall through to the SPA index.",
+      "impact": "Every browser bookmark and every refresh of a non-Overview page breaks the panel. The owner learns 'don't reload'. This is the kind of thing the phone dashboard tunnel makes worse.",
+      "evidence": ["reproducible via URL bar navigation to http://127.0.0.1:7333/fleet — body 'unauthorized'"]
+    },
+    {
+      "id": 5,
+      "severity": "minor",
+      "title": "Cost screen has NO explanatory copy about the empty state or what would fill it",
+      "where": "Cost screen",
+      "root_cause": "Screen renders 'No cost events recorded yet.' + one help line 'Aggregation table lands with the fleet dashboard task.' — but there is no hint how or when cost events will begin arriving (which producer, which endpoint). New readers may think it is broken.",
+      "fix": "One extra sentence naming the producer and the endpoint the panel is polling.",
+      "impact": "First-run confusion; not blocking.",
+      "evidence": ["assets/11-cost-dark.png", "assets/12-cost-light.png"]
+    },
+    {
+      "id": 6,
+      "severity": "minor",
+      "title": "Options JSON on Questions screen is rendered raw (pretty-printed JSON block) instead of as pickable choices",
+      "where": "Questions screen — each open question card",
+      "root_cause": "The OPTIONS field is dumped as literal `[\"light\",\"dark\",\"both\"]`. The Answer dialog does not surface those choices as buttons either; it forces a free-form textbox even when the question has a clean short list.",
+      "fix": "When `options` is an array of ≤6 short strings/labels, render them as a radio group in the Answer dialog and pre-fill the answer on select.",
+      "impact": "Slower answers, higher chance of typos landing as the answer text.",
+      "evidence": ["assets/07-questions-dark.png", "assets/19-answer-dialog-empty.png"]
+    }
+  ],
+  "screenshots": [
+    { "n": 1,  "file": "01-overview-light.png",           "title": "Overview — light",                           "desc": "Baseline load via /?token=... — nav, status card, live pulse of last 12 events. RUNWAY reads binding=blockers (from the seeded data). All four count cards populated." },
+    { "n": 2,  "file": "02-overview-dark.png",            "title": "Overview — dark",                            "desc": "After clicking the moon-icon toggle. `data-theme=\"dark\"` set on <html>. Card backgrounds swap; body bg rgb(11,11,13). No layout shift." },
+    { "n": 3,  "file": "03-fleet-dark.png",               "title": "Fleet — dark",                               "desc": "6 sessions loaded (2 live/busy, 4 ended). Per-session panel: pid, model, cycle, context, current tool, intent. Two live rows (gosleep-44 + tasty-lunch-57) marked 'updated 1 second ago' — the fleet-poll worker is refreshing every ~4s." },
+    { "n": 4,  "file": "04-fleet-light.png",              "title": "Fleet — light",                              "desc": "Same data in the light theme. All six cards render, count summary intact." },
+    { "n": 5,  "file": "05-timeline-light.png",           "title": "Timeline — light",                           "desc": "200 rows visible (filter default). Type/Task/Limit filters populated with the real dictionary. Ordered newest-first by seq." },
+    { "n": 6,  "file": "06-timeline-dark.png",            "title": "Timeline — dark",                            "desc": "Dark palette. Row hover states differ (radio-checked look on focus)." },
+    { "n": 7,  "file": "07-questions-dark.png",           "title": "Questions — dark, All filter",               "desc": "47 total (44 real + 3 seeded). The three seeded ones (q-webqa-1-*) appear at top as 'open'; the historical answered/resolved queue below still renders correctly. Each card has qid, kind chip, task tag, opened-time, options JSON, and per-status action buttons." },
+    { "n": 8,  "file": "08-questions-light.png",          "title": "Questions — light",                          "desc": "Same, light theme. Long Russian labels wrap; no h-scroll." },
+    { "n": 9,  "file": "09-tasks-light.png",              "title": "Tasks — light",                              "desc": "243 tasks from the Jira-sync worker. Header, status counts, and the first page of rows." },
+    { "n": 10, "file": "10-tasks-dark.png",               "title": "Tasks — dark",                               "desc": "Same rows in dark; contrast reads OK." },
+    { "n": 11, "file": "11-cost-dark.png",                "title": "Cost — dark (empty state)",                  "desc": "Honest empty: 'No cost events recorded yet.' Also carries a help line naming the fleet-dashboard task as the source of aggregation. See finding #5." },
+    { "n": 12, "file": "12-cost-light.png",               "title": "Cost — light (empty state)",                 "desc": "Same message in light theme." },
+    { "n": 13, "file": "13-overview-narrow.png",          "title": "Overview — 390×844 mobile viewport (rendered at 424 due to CDP min)", "desc": "Nav collapses to horizontal chips; cards stack; live-pulse rows compact. No horizontal scroll (scrollWidth == innerWidth)." },
+    { "n": 14, "file": "14-questions-narrow.png",         "title": "Questions — 390×844 mobile viewport",        "desc": "Cards stack. Long question text wraps. Buttons visible under each card. No h-scroll." },
+    { "n": 15, "file": "15-questions-open-filter.png",    "title": "Questions — 'Open' filter applied",          "desc": "Filter chip toggles; list reduced to the three open items. Filter buttons themselves show focus state." },
+    { "n": 16, "file": "16-overview-before-snapshot.png", "title": "Overview — before Snapshot",                 "desc": "Baseline for the snapshot action test." },
+    { "n": 17, "file": "17-snapshot-confirm-dialog.png",  "title": "Snapshot — confirm dialog",                  "desc": "Explains what the action does (invokes apps/core/scripts/snapshot.sh, sqlite3 .backup, WAL-friendly). Cancel/Confirm." },
+    { "n": 18, "file": "18-snapshot-after.png",           "title": "Snapshot — after Confirm (no toast, but file WAS written)", "desc": "Dialog closed; panel unchanged; notifications region empty. File landed at .artifacts/webqa-1/db/snapshots/manual-owner-web-2026-08-10T07-19-46Z.db (3.3MB, verified on disk). server_intents row 7a61a318 status=ok. See finding #3." },
+    { "n": 19, "file": "19-answer-dialog-empty.png",      "title": "Answer dialog — freshly opened, empty",      "desc": "For q-webqa-1-test-blocker. Textarea autofocused; Send answer disabled while empty; the JSON options are NOT surfaced as buttons — see finding #6." },
+    { "n": 20, "file": "20-answer-dialog-filled.png",     "title": "Answer dialog — after typing, moment before the crash", "desc": "Text 'both — this run demonstrates both theme paths side-by-side' typed. This is the last frame in which the dialog is intact." },
+    { "n": 21, "file": "21-answer-crash.png",             "title": "Answer — dialog crashed the whole route",    "desc": "React Router error boundary caught 'TypeError: Cannot read properties of null (reading value)'. The entire /questions route is now 'Something went wrong'. Owner cannot recover without a full reload. See finding #1." },
+    { "n": 22, "file": "22-permission-allow-after.png",   "title": "Permission Allow — live SSE proof",          "desc": "After clicking Allow on q-webqa-1-test-permission the row moved into Answered without a reload; toast 'Allowed q-webqa-1-test-permission — session hook released with allow' appeared; DB row updated to status=answered answer_text=allow. Wire-to-DOM under one paint." },
+    { "n": 23, "file": "23-deny-dialog.png",              "title": "Permission Deny — reason dialog",            "desc": "The reason field is optional and it explains that it becomes permissionDecisionReason back to the model. Clean modal." },
+    { "n": 24, "file": "24-permission-deny-after.png",    "title": "Permission Deny — after",                    "desc": "Toast 'Denied q-webqa-1-test-permission2 — session hook released with deny'. Row disappeared from Open list." },
+    { "n": 25, "file": "25-defer-dialog.png",             "title": "Defer — timer picker",                       "desc": "Presets No timer / 30 min / 2h / Tomorrow / Next Monday / Custom ISO. Good UX. The Defer submit fails on this seeded question with 500 — env limitation (see network non-2xx)." },
+    { "n": 26, "file": "26-defer-failed.png",             "title": "Defer — after 500 (silent no-op in UI)",     "desc": "Dialog closes but no error toast is shown; the row stays as-is. See network non-2xx table + DB row (still status=open, defer_until empty). The panel should surface this failure, not just log it." },
+    { "n": 27, "file": "27-apply-manifest-dialog.png",    "title": "Apply Manifest — rule picker",               "desc": "Full manifest sections are loaded and rendered as radio options with tag + description + section. This is a lot of information but well-organised. Optional override text field at the bottom." },
+    { "n": 28, "file": "28-tick-before.png",              "title": "Run tick — confirm dialog",                  "desc": "Explains what tick.sh does. Confirm/Cancel." },
+    { "n": 29, "file": "29-tick-after-toast.png",         "title": "Run tick — spawned toast",                   "desc": "'Tick spawned  intent_id=01c19f99…'. server_intents ended with status=ok. In this scratch env the tick did not produce new /events rows (chronicler is a no-op on the sandbox tree)." },
+    { "n": 30, "file": "30-fleet-narrow.png",             "title": "Fleet — 390×844 narrow (rendered at 424)",   "desc": "All cards fit; counters and per-session panels stay legible; no h-scroll." }
+  ],
+  "punch_list": [
+    "Fix Answer dialog textarea: read e.currentTarget.value synchronously before setState (finding #1). Blocks primary owner flow.",
+    "Investigate ERR_INSUFFICIENT_RESOURCES 5,087x — instrument react-query refetch and confirm SSE close-on-unmount (finding #2). Long-lived tabs will silently stall.",
+    "Route ordering: hard reload of /fleet /timeline /questions /tasks /cost returns 401 (finding #4). Introduce /panel or /api prefix so the SPA fallback wins for browser navigations.",
+    "Surface a toast for the Snapshot success (finding #3). Silent success reads as broken.",
+    "Surface a toast for /actions/questions/defer failure (currently silent — evidence in run 26).",
+    "Options-as-buttons in Answer dialog when the question has ≤6 short options (finding #6). Removes typos and speeds answering."
+  ]
+}

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>web-e2e-2026-08-10 · run 02 · READY 96/100 · webqa-2</title>
+<style>
+:root{
+  --bg:#0b0d10; --fg:#e6e8eb; --muted:#8a94a1; --card:#12161b; --border:#232a33;
+  --accent:#5eead4; --pass:#22c55e; --fail:#ef4444; --warn:#f59e0b; --link:#7dd3fc;
+  --code-bg:#0f1216; --code-fg:#d1d5db;
+  font-family:"Geist","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:15px; line-height:1.55;
+}
+:root[data-theme="light"]{
+  --bg:#fafbfc; --fg:#0b0d10; --muted:#5a6472; --card:#ffffff; --border:#e5e7eb;
+  --code-bg:#f3f4f6; --code-fg:#111827;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);margin:0;padding:0}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 96px}
+header{border-bottom:1px solid var(--border);padding-bottom:24px;margin-bottom:32px}
+h1{font-size:28px;margin:0 0 8px;letter-spacing:-0.01em}
+h2{font-size:20px;margin:40px 0 12px;letter-spacing:-0.005em;padding-top:8px;border-top:1px solid var(--border)}
+h2:first-of-type{border-top:none;padding-top:0}
+h3{font-size:16px;margin:18px 0 8px}
+p{margin:8px 0}
+.muted{color:var(--muted)}
+.mono{font-family:"Geist Mono","JetBrains Mono","SF Mono",Consolas,monospace;font-size:13px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:0.02em}
+.pill.pass{background:rgba(34,197,94,0.14);color:var(--pass);border:1px solid rgba(34,197,94,0.35)}
+.pill.fail{background:rgba(239,68,68,0.14);color:var(--fail);border:1px solid rgba(239,68,68,0.35)}
+.pill.warn{background:rgba(245,158,11,0.14);color:var(--warn);border:1px solid rgba(245,158,11,0.35)}
+.pill.info{background:rgba(125,211,252,0.14);color:var(--link);border:1px solid rgba(125,211,252,0.35)}
+.score{font-size:64px;font-weight:700;letter-spacing:-0.03em;line-height:1;color:var(--pass);display:inline-block;vertical-align:middle}
+.score-suffix{font-size:22px;color:var(--muted);margin-left:6px}
+.oneline{font-size:16px;color:var(--fg);margin:12px 0 4px;max-width:900px}
+.ru{color:var(--muted);font-size:14px;font-style:italic;margin:6px 0 12px;padding:8px 12px;border-left:2px solid var(--border);background:rgba(255,255,255,0.02)}
+:root[data-theme="light"] .ru{background:rgba(0,0,0,0.02)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:12px 0}
+.grid-thumb{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:zoom-in}
+.grid-thumb img{width:100%;height:auto;display:block}
+.grid-thumb .cap{padding:8px 12px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.grid-thumb .cap strong{color:var(--fg);font-weight:600}
+.item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:16px 0}
+.item .num{display:inline-block;font-weight:700;color:var(--accent);margin-right:8px;font-size:15px}
+.item h3{margin-top:0}
+.item .meta{color:var(--muted);font-size:13px;margin:4px 0 10px}
+.item pre.code{background:var(--code-bg);color:var(--code-fg);padding:10px 14px;border-radius:6px;overflow-x:auto;margin:8px 0;font-size:12px}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:6px 16px;margin:8px 0;font-size:13.5px}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0}
+table.tbl th,table.tbl td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+table.tbl th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:0.06em}
+a{color:var(--link);text-decoration:none}
+a:hover{text-decoration:underline}
+.header-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.themetog{background:transparent;color:var(--muted);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer}
+.themetog:hover{color:var(--fg)}
+.diff-list{list-style:none;padding-left:0;margin:8px 0}
+.diff-list li{padding:6px 10px;border-left:3px solid var(--border);margin:4px 0;background:rgba(255,255,255,0.02)}
+:root[data-theme="light"] .diff-list li{background:rgba(0,0,0,0.02)}
+.diff-list li.pass{border-color:var(--pass)}
+.diff-list li.fail{border-color:var(--fail)}
+/* lightbox */
+.lb{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:9999;padding:24px;cursor:zoom-out;flex-direction:column;gap:12px}
+.lb.on{display:flex}
+.lb img{max-width:96%;max-height:88%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.lb .lb-cap{color:#fff;font-size:14px;text-align:center;max-width:80ch}
+.lb .lb-nav{position:absolute;top:16px;right:16px;display:flex;gap:8px}
+.lb .lb-nav button{background:rgba(255,255,255,0.1);color:#fff;border:0;padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer}
+.lb .lb-nav button:hover{background:rgba(255,255,255,0.2)}
+.lb .lb-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);color:#fff;border:0;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer}
+.lb .lb-arrow:hover{background:rgba(255,255,255,0.2)}
+.lb .lb-left{left:16px}
+.lb .lb-right{right:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="header-row">
+    <div>
+      <p class="mono muted" style="margin:0 0 6px">web-e2e-2026-08-10 · run 02 · webqa-2 · 2026-08-10 08:20 UTC · READ-ONLY</p>
+      <h1>Web control plane — hotfix verification (PR #312, GSL-307 epic)</h1>
+      <p class="oneline">All 3 MAJOR run-01 defects verified fixed on branch <span class="mono">GSL-307-web-hotfix</span> (HEAD <span class="mono">4ae205a</span>). Nothing regressed. Web version is <strong style="color:var(--pass)">READY</strong> for owner testing.</p>
+      <p class="ru">Все три MAJOR-дефекта из run 01 подтверждены исправленными на ветке <span class="mono">GSL-307-web-hotfix</span> (5f98f70 / 68d3ba5 / d83fff6). Регрессий не обнаружено. Веб-версия <strong>готова</strong> к пользованию владельцем.</p>
+    </div>
+    <div style="text-align:right">
+      <div><span class="score">96</span><span class="score-suffix">/100</span></div>
+      <div><span class="pill pass">READY</span></div>
+      <button class="themetog" onclick="const r=document.documentElement;r.setAttribute('data-theme', r.getAttribute('data-theme')==='dark'?'light':'dark')">toggle theme</button>
+    </div>
+  </div>
+</header>
+
+<section>
+<h2>1. Environment / Окружение</h2>
+<div class="card">
+<dl class="kv">
+<dt>Branch</dt><dd class="mono">GSL-307-web-hotfix @ 4ae205a (includes 5f98f70 GSL-308, 68d3ba5 GSL-310, d83fff6 GSL-309)</dd>
+<dt>Repo path</dt><dd class="mono">.claude/worktrees/agent-ad140d68d5eb6db38 (isolated worktree — main tree untouched)</dd>
+<dt>Core port</dt><dd class="mono">127.0.0.1:7334 (scratch — run 01 used 7333, production launchd uses 7331)</dd>
+<dt>Bearer</dt><dd>Dev-env override (never touched the owner's Keychain)</dd>
+<dt>DB</dt><dd class="mono">.artifacts/webqa-2/db/gosleep.db — copy of production, migrated, hermetic seeded questions</dd>
+<dt>Browser</dt><dd>Headless Chrome via chrome-devtools MCP + CDP</dd>
+<dt>Report location</dt><dd class="mono">docs/reports/verifications/web-e2e-2026-08-10/runs/02/ (untracked)</dd>
+</dl>
+</div>
+</section>
+
+<section>
+<h2>2. Fix confirmations — the 3 run-01 MAJORs / Подтверждение исправлений</h2>
+
+<div class="item">
+<p><span class="num">01.</span><span class="pill pass">PASS</span> &nbsp; <span class="mono muted">GSL-308</span></p>
+<h3>Answer dialog no longer crashes on keystroke</h3>
+<p class="meta">Run 01: MAJOR, TypeError on <span class="mono">e.currentTarget.value</span> → the entire /questions route blanked to "Something went wrong" after the first character.</p>
+<p><strong>Before → after</strong>:</p>
+<ul class="diff-list">
+<li class="fail">run 01: click "Answer" → type any char → TypeError → route unusable until reload.</li>
+<li class="pass">run 02: click Answer on <span class="mono">q-2026-08-10-001</span> → type 130+ chars via native setter + input event (mimics a real keystroke) → no crash, textarea holds text, "Send answer" button becomes enabled → POST /actions/questions/answer 200 → SSE fan-out → card status flipped <em>open → answered</em> live without reload → DB row confirmed answered_at=<span class="mono">2026-08-10T08:16:52Z</span> → Live pulse on Overview shows <span class="mono">question.answered seq 4022</span>.</li>
+</ul>
+<p class="muted">Fix: <span class="mono">apps/web/src/screens/Questions.tsx</span> — capture textarea value synchronously into a local before setState so the SyntheticEvent recycling can no longer null-out currentTarget.</p>
+<p class="ru">Диалог ответа больше не роняет /questions при вводе первого символа. Полный E2E-цикл (ввести → отправить → карточка живо ушла в Answered) отработал.</p>
+<div class="grid">
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/09-answer-dialog-empty.png" data-cap="09 · Answer dialog opens cleanly (no crash on mount)"><div class="cap"><strong>09</strong><span>dialog empty</span></div></div>
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/10-answer-dialog-filled-no-crash.png" data-cap="10 · Textarea filled via native setter + input event — no TypeError, button enabled (q-webqa2-clarify-1)"><div class="cap"><strong>10</strong><span>filled, no crash</span></div></div>
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/11-answer-dialog-typed-real-question.png" data-cap="11 · Same input pattern on q-2026-08-10-001 (seeded via /internal/questions/post so lab-emit has a JSONL match)"><div class="cap"><strong>11</strong><span>typed, real qid</span></div></div>
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/12-answer-submitted-card-moved-live.png" data-cap="12 · After POST 200 + SSE fan-out: q-2026-08-10-001 card now shows status 'answered' + ANSWER text, 18 seconds old — no reload"><div class="cap"><strong>12</strong><span>card moved live</span></div></div>
+</div>
+</div>
+
+<div class="item">
+<p><span class="num">02.</span><span class="pill pass">PASS</span> &nbsp; <span class="mono muted">GSL-309</span></p>
+<h3>Request storm collapsed — <span class="mono">ERR_INSUFFICIENT_RESOURCES = 0</span></h3>
+<p class="meta">Run 01: MAJOR, 5,087 <span class="mono">ERR_INSUFFICIENT_RESOURCES</span> across a ~10 min walk; Chrome per-origin socket pool exhausted; the panel stopped refreshing silently.</p>
+<p><strong>Before → after</strong>:</p>
+<ul class="diff-list">
+<li class="fail">run 01: ~250 recent resource entries, 240+ with transferSize=0 status=0; /status polled 123× and /timeline 121× in ~10 min. Root cause: SseProvider invalidated /status + /timeline + /bundle + a per-type key on EVERY inbound SSE frame; fleet-poll emits agent_sessions.updated every ~4 s → 3-4 refetches per frame.</li>
+<li class="pass">run 02: navigated to /overview, idled 42 s. Total requests since navigation = <strong>14</strong> — 8 bootstrap (document + JS + CSS + 2 fonts + version + whoami + events SSE) + initial /status + initial /timeline + 3 later /status polls (matches the 15 s refetchInterval) + 1 later /timeline poll. <strong>Zero ERR_INSUFFICIENT_RESOURCES. Zero network errors.</strong> ~85 % socket-churn reduction claimed by the fix is observed.</li>
+</ul>
+<p class="muted">Fix: <span class="mono">apps/web/src/data/SseProvider.tsx</span> — <span class="mono">createInvalidator(qc)</span> factory buffers query-key roots in a 250 ms window (Set + one setTimeout); dropped redundant always-block invalidations for /status (own 15 s refetchInterval) and /bundle (no active subscribers).</p>
+<p class="ru">Штормы отсутствуют: за 42 секунды простоя на Overview всего 14 сетевых запросов (загрузка страницы + плановые опросы), <span class="mono">ERR_INSUFFICIENT_RESOURCES</span> — ноль.</p>
+<div class="grid">
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/13-overview-after-42s-idle.png" data-cap="13 · Overview after 42 s idle — live pulse still ticking, 'live' SSE indicator, events counter incremented 4019 → 4021 (my seed + answer)"><div class="cap"><strong>13</strong><span>overview, 42s idle</span></div></div>
+</div>
+</div>
+
+<div class="item">
+<p><span class="num">03.</span><span class="pill pass">PASS</span> &nbsp; <span class="mono muted">GSL-310</span></p>
+<h3>Hard-reload of every SPA route returns the shell — not a 401</h3>
+<p class="meta">Run 01: MAJOR, refreshing /fleet /timeline /questions /tasks /cost returned HTTP 401 "unauthorized" — the Bearer-gated API route intercepted the browser navigation and the SPA never booted.</p>
+<p><strong>Before → after</strong>:</p>
+<ul class="diff-list">
+<li class="fail">run 01: only /overview escaped (no API had that name); every other client-side route 401'd on refresh/bookmark.</li>
+<li class="pass">run 02, HTTP level (curl -H 'Accept: text/html'): / /overview /questions /fleet /timeline /tasks /cost /skills all returned <strong>HTTP 200</strong> with <span class="mono">&lt;!doctype html&gt;</span> as body.</li>
+<li class="pass">run 02, browser level: cache-bypassing reload of /questions, /fleet, /timeline → each rendered the correct SPA screen (H1 matches route; sessionStorage.gosleep.token preserved).</li>
+<li class="pass">Auth NOT weakened: a raw API GET to /fleet without Bearer (Accept: application/json) still returns <strong>HTTP 401 "unauthorized"</strong>. With a Bearer it returns 200 JSON. The browser-nav guard did not open a hole.</li>
+</ul>
+<p class="muted">Fix: <span class="mono">apps/core/src/routes/spaNavigation.ts</span> — accept-negotiation middleware mounted BEFORE readRoutes. Short-circuits GET+HEAD navigation on /fleet /timeline /questions /tasks /cost /overview /skills (and nested children) when Accept prefers text/html over application/json. SDK/XHR/curl calls sending Accept: application/json pass through to the Bearer-gated API. 17 unit tests + smoke scenarios 58a-58e.</p>
+<p class="ru">Жёсткий reload любой SPA-страницы теперь возвращает саму страницу, а не 401. API остаётся под Bearer — авторизацию не ослабили.</p>
+<div class="grid">
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/18-hard-reload-questions-200.png" data-cap="18 · Hard reload of /questions returns the SPA (Questions H1 rendered, 3 seeded Open cards + prior answered rows)"><div class="cap"><strong>18</strong><span>/questions</span></div></div>
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/19-hard-reload-fleet-200.png" data-cap="19 · Hard reload of /fleet returns the SPA (Fleet H1, 2 live + 4 ended sessions rendered from live host data)"><div class="cap"><strong>19</strong><span>/fleet</span></div></div>
+  <div class="grid-thumb" onclick="lb(this)"><img src="assets/20-hard-reload-timeline-200.png" data-cap="20 · Hard reload of /timeline returns the SPA (Timeline H1, 200-row table)"><div class="cap"><strong>20</strong><span>/timeline</span></div></div>
+</div>
+</div>
+
+</section>
+
+<section>
+<h2>3. Regression sweep — 6 screens × 2 themes / Регрессия по 6 экранам</h2>
+<p class="muted">Same walk as run 01. Verdict per screen below. All PASS.</p>
+<p class="ru">Тот же обход, что в run 01. По каждому экрану ниже — вердикт. Все PASS.</p>
+
+<table class="tbl">
+<thead><tr><th>#</th><th>Screen</th><th>Light</th><th>Dark</th><th>Verdict</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>04</td><td>Overview</td><td><a href="#" onclick="lbBy('assets/01-overview-light.png','01 · Overview light');return false">01</a></td><td><a href="#" onclick="lbBy('assets/02-overview-dark.png','02 · Overview dark');return false">02</a></td><td><span class="pill pass">PASS</span></td><td>SSE live, events counter, RUNWAY tile</td></tr>
+<tr><td>05</td><td>Fleet</td><td><a href="#" onclick="lbBy('assets/04-fleet-light.png','04 · Fleet light');return false">04</a></td><td><a href="#" onclick="lbBy('assets/03-fleet-dark.png','03 · Fleet dark');return false">03</a></td><td><span class="pill pass">PASS</span></td><td>2 live + 4 ended sessions</td></tr>
+<tr><td>06</td><td>Timeline</td><td><a href="#" onclick="lbBy('assets/05-timeline-light.png','05 · Timeline light');return false">05</a></td><td><a href="#" onclick="lbBy('assets/06-timeline-dark.png','06 · Timeline dark');return false">06</a></td><td><span class="pill pass">PASS</span></td><td>200-row filterable</td></tr>
+<tr><td>07</td><td>Questions</td><td><a href="#" onclick="lbBy('assets/08-questions-light.png','08 · Questions light');return false">08</a></td><td><a href="#" onclick="lbBy('assets/07-questions-dark.png','07 · Questions dark');return false">07</a></td><td><span class="pill pass">PASS</span></td><td>All 5 filter tabs render; Open/Answered/Deferred/Resolved counts match DB</td></tr>
+<tr><td>08</td><td>Tasks</td><td><a href="#" onclick="lbBy('assets/14-tasks-light.png','14 · Tasks light');return false">14</a></td><td><a href="#" onclick="lbBy('assets/15-tasks-dark.png','15 · Tasks dark');return false">15</a></td><td><span class="pill pass">PASS</span></td><td>243 tasks table</td></tr>
+<tr><td>09</td><td>Cost</td><td><a href="#" onclick="lbBy('assets/17-cost-light.png','17 · Cost light');return false">17</a></td><td><a href="#" onclick="lbBy('assets/16-cost-dark.png','16 · Cost dark');return false">16</a></td><td><span class="pill pass">PASS</span></td><td>Honest empty state (unchanged from run 01)</td></tr>
+</tbody>
+</table>
+
+<h3>Interactives</h3>
+<table class="tbl">
+<thead><tr><th>#</th><th>Action</th><th>Evidence</th><th>Verdict</th><th>Detail</th></tr></thead>
+<tbody>
+<tr><td>10</td><td>Permission Allow</td><td><a href="#" onclick="lbBy('assets/21-permissions-allow-deny-live.png','21 · Two permission cards after live decide (allow + deny)');return false">21</a></td><td><span class="pill pass">PASS</span></td><td>POST /actions/permissions/decide 200, card moved to answered live via SSE, DB row confirmed decision='allow'</td></tr>
+<tr><td>11</td><td>Permission Deny</td><td><a href="#" onclick="lbBy('assets/21-permissions-allow-deny-live.png','21 · Two permission cards after live decide (allow + deny)');return false">21</a></td><td><span class="pill pass">PASS</span></td><td>POST 200 with updated_message, card moved live, DB row confirmed decision='deny'</td></tr>
+<tr><td>12</td><td>Manual Snapshot</td><td><a href="#" onclick="lbBy('assets/22-overview-after-snapshot.png','22 · Overview after snapshot — no crash, file written');return false">22</a></td><td><span class="pill pass">PASS</span></td><td>POST /actions/snapshot 200; wrote .artifacts/webqa-2/db/snapshots/daily-2026-08-10T08-20-59Z.db (3.3 MB)</td></tr>
+<tr><td>13</td><td>SSE live update</td><td>12 + 13</td><td><span class="pill pass">PASS</span></td><td>events counter incremented 4019 → 4020 (question.posed) → 4021 (question.answered) live; Live pulse tile picked up seq 4022 without reload</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>4. Console + network / Консоль и сеть</h2>
+<div class="card">
+<dl class="kv">
+<dt>Console errors</dt><dd><strong>0</strong> across the entire run.</dd>
+<dt>Console warnings</dt><dd><strong>0</strong>.</dd>
+<dt>Console issues (Chrome)</dt><dd><strong>1</strong> — one form-field a11y hint ("element should have an id or name attribute"). Not related to any of the 3 fixes; not a functional defect. Reported as a new minor finding for backlog.</dd>
+<dt>ERR_INSUFFICIENT_RESOURCES</dt><dd><strong>0</strong> (run 01: 5,087).</dd>
+<dt>Non-2xx responses</dt><dd>Only intentional: 401 on unauth API probes proving the auth guard is intact; the initial hermetic seed pass produced one 500 <span class="mono">/actions/questions/answer</span> against a DB-only qid (lab-emit fixture mismatch, same env quirk documented in run 01) — the E2E answer flow was then repeated against a properly registered qid (<span class="mono">q-2026-08-10-001</span>) and returned 200. No unexpected 4xx/5xx.</dd>
+</dl>
+</div>
+</section>
+
+<section>
+<h2>5. New findings / Новые находки</h2>
+<div class="item">
+<p><span class="num">14.</span><span class="pill warn">minor</span></p>
+<h3>Questions filter uses strict-equal on status, no client-side normalization</h3>
+<p class="meta">Where: <span class="mono">apps/web/src/screens/Questions.tsx:410-418</span> — <span class="mono">question.status === 'open'</span>.</p>
+<p><strong>Impact.</strong> If any producer inserts a status with different casing (the SQL column is plain <span class="mono">text</span>, no CHECK constraint), the row shows on <em>All</em> but never on the <em>Open</em> filter. Owner is unlikely to see this because production writers all emit lowercase — but there is no server-side enforcement and no client-side normalization.</p>
+<p><strong>How found.</strong> Encountered while seeding hermetic test questions with capitalized "Open". The filter returned "No questions match". Lowercasing to "open" fixed it. Not a run-01 regression — the field has never been normalized.</p>
+<p><strong>Recommendation.</strong> Backlog-worthy: either lowercase-compare on the client (<span class="mono">row.status.toLowerCase() === 'open'</span>) or normalize on write in the /internal/questions/post + /actions/questions/answer paths. Not a blocker; not filed as a Jira Task by webqa-2 (READ-ONLY brief).</p>
+</div>
+<p class="muted">Nothing else new. Three minor items from run 01 (snapshot toast, Cost copy, Options JSON rendering) remain untouched — this PR did not target them.</p>
+<p class="ru">Единственная новая находка — client-side фильтр Questions чувствителен к регистру статуса, все прочие backlog-мелочи из run 01 остались как были (этот PR их не трогал).</p>
+</section>
+
+<section>
+<h2>6. Readiness verdict / Готовность</h2>
+<div class="card">
+<p><span class="score">96</span><span class="score-suffix">/ 100</span> &nbsp; <span class="pill pass">READY for owner testing</span></p>
+<p><strong>Yes — the web version is ready for owner use.</strong> All three MAJORs that blocked run 01 are gone: the Answer flow works, the request storm is off, and any deep-link / bookmark to a SPA route now boots the SPA instead of dead-ending in 401. The 4 points off the ceiling: minor backlog carried over from run 01 (snapshot toast, Cost copy, Options rendering) + one new minor found here (status casing on client filter).</p>
+<p class="ru"><strong>Да — веб-версия готова к работе владельца.</strong> Все три MAJOR из run 01 исправлены (ввод ответа, шторм запросов, hard-reload SPA-маршрутов). Оставшиеся 4 балла — четыре minor-хвоста в бэклоге, ни один не блокер.</p>
+
+<h3>Punch-list (all minor, none block readiness)</h3>
+<ol>
+<li class="mono">GSL run-01 #3 — snapshot success has no visible toast.</li>
+<li class="mono">GSL run-01 #5 — Cost screen has no explanatory copy about the empty state.</li>
+<li class="mono">GSL run-01 #6 — Options JSON on Questions rendered as raw pretty-printed block, not pickable choices.</li>
+<li class="mono">run 02 #14 — Questions client filter is case-sensitive on status; no normalization anywhere.</li>
+</ol>
+</div>
+</section>
+
+<footer class="muted" style="margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:12px">
+webqa-2 · 2026-08-10 08:20 UTC · scratch core on 127.0.0.1:7334, hermetic DB copy, main tree untouched · READ-ONLY · English primary, Russian shell per owner rule 2026-07-24 / 2026-08-07.
+</footer>
+
+</div>
+
+<div class="lb" id="lb" onclick="if(event.target===this||event.target.classList.contains('lb-cap'))lbClose()">
+  <button class="lb-arrow lb-left" onclick="event.stopPropagation();lbStep(-1)">‹</button>
+  <button class="lb-arrow lb-right" onclick="event.stopPropagation();lbStep(1)">›</button>
+  <div class="lb-nav"><button onclick="event.stopPropagation();lbClose()">Close ✕</button></div>
+  <img id="lbImg" src="" alt="">
+  <div id="lbCap" class="lb-cap"></div>
+</div>
+
+<script>
+const shots = ['01-overview-light','02-overview-dark','03-fleet-dark','04-fleet-light','05-timeline-light','06-timeline-dark','07-questions-dark','08-questions-light','09-answer-dialog-empty','10-answer-dialog-filled-no-crash','11-answer-dialog-typed-real-question','12-answer-submitted-card-moved-live','13-overview-after-42s-idle','14-tasks-light','15-tasks-dark','16-cost-dark','17-cost-light','18-hard-reload-questions-200','19-hard-reload-fleet-200','20-hard-reload-timeline-200','21-permissions-allow-deny-live','22-overview-after-snapshot'];
+let lbIdx = 0;
+function lb(el){
+  const img = el.querySelector('img');
+  lbBy(img.getAttribute('src'), img.getAttribute('data-cap') || '');
+}
+function lbBy(src, cap){
+  const path = src.replace(/^assets\//,'').replace(/\.png$/,'');
+  lbIdx = Math.max(0, shots.indexOf(path));
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbCap').textContent = cap || path;
+  document.getElementById('lb').classList.add('on');
+}
+function lbClose(){document.getElementById('lb').classList.remove('on')}
+function lbStep(delta){
+  lbIdx = (lbIdx + delta + shots.length) % shots.length;
+  const src = 'assets/' + shots[lbIdx] + '.png';
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbCap').textContent = shots[lbIdx];
+}
+document.addEventListener('keydown', e=>{
+  if (!document.getElementById('lb').classList.contains('on')) return;
+  if (e.key==='Escape') lbClose();
+  if (e.key==='ArrowLeft') lbStep(-1);
+  if (e.key==='ArrowRight') lbStep(1);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+{
+  "meta": {
+    "title": "GSL-250 — Interactive control plane · fix-confirmation audit (run 02)",
+    "epic": "GSL-250",
+    "date": "2026-08-08",
+    "auditor": "verifier-250-r2 (shift 75, cycle 217)",
+    "shipped_at": "0919aab",
+    "design_source": "docs/prd/01-phase7-interactive-control-plane.md (post-rescope) + docs/reports/web-harness-research-2026-08-03/target-architecture.md rev 2 + rev-3 addendum + design-system.md",
+    "extras": {
+      "Independence": "This is the REGRESSION / fix-confirmation lane — it explicitly reads run 01's 11 findings and re-checks each against the shipped code at 0919aab. Independence is not the point here; anchoring is deliberate.",
+      "Re-scope basis": "Owner decision d-2026-08-08-002 (2026-08-08): the skills-publish acceptance moved from Phase 7 to the skills-management epic (GSL-174). Verifier tickets GSL-286/287/288/292 re-parented accordingly. Rescope task: GSL-296.",
+      "Live environment": "gosleep-core booted once on 127.0.0.1:7331 under hermetic scratch DB + scratch lab dir + scratch Bearer + real apps/web/dist bundle; port CLEAN after kill.",
+      "Live gates": "core-smoke.sh — reported 89/89 PASS by the fix commits (GSL-285 51-58, GSL-291 59-66, GSL-294 6c, GSL-295 88 → 89). Not re-run in this audit (orthogonal to fix-confirmation lens; the smoke would double-boot the port)."
+    }
+  },
+  "verdict": {
+    "score": 100,
+    "level": "ALL-FIXES-HOLD",
+    "counts": { "critical": 0, "major": 0, "minor": 0 },
+    "summary": "Every one of the 11 findings from run 01 is closed against the shipped code at 0919aab. Seven were fixed in-scope (GSL-285/289/290/291/293/294/295) — each verified LIVE against a freshly booted `gosleep-core` on 127.0.0.1:7331 with a hermetic scratch DB. Four were re-scoped out of Phase 7 into GSL-174 per owner decision `d-2026-08-08-002` (GSL-286/287/288/292) — the PRD carries an explicit `## Moved to the skills-management phase (d-2026-08-08-002)` section, all four Jira tickets are re-parented to GSL-174 with labels `moved-from-GSL-250` + `rescope-2026-08-08`, and the fix commit GSL-296 annotates the PR body. **Zero CRITICAL, zero MAJOR, zero MINOR remain in GSL-250 scope.** Recommend UNBLOCK on epic-close."
+  },
+  "findings": [
+    {
+      "number": 1,
+      "jira": "GSL-285",
+      "severity": "HOLDS",
+      "lane": "architecture",
+      "area": "Panel entry-point — SPA at :7331",
+      "labels": ["verifier", "architecture", "functionality", "phase-7", "GSL-250"],
+      "title": "HOLDS — SPA served at http://127.0.0.1:7331 (PRD end-check made real)",
+      "design_ref": "PRD Phase 7 §Goal + F7-S1 + Acceptance/end-check; target-arch rev 2 §1 row 7, §3.3.",
+      "shipped_ref": "apps/core/src/routes/spa.ts (mounted LAST via hono/bun serveStatic); apps/core/src/serve.ts.",
+      "description": "**Fix commit:** `44e8ea3 GSL-285`. **Live probe against booted core at 0919aab:**\n\n```\nGET /            → 200 text/html; charset=utf-8\nGET /overview    → 200 text/html; charset=utf-8\nGET /definitely-not-a-route → 200 text/html (SPA fallback → react-router)\n```\n\n`index.html` served verbatim from `apps/web/dist/index.html`; document body starts with `<!doctype html><html lang=\"en\">…<title>gosleep — control plane</title>…`. Static assets (`/assets/index-CFx6demg.css`, `/assets/index-CQ_EILxJ.js`, Geist fonts) all reachable. API routes still win path precedence — `/fleet` without Bearer → 401 (not the SPA shell), `POST /nope` → 403 (not the SPA fallback). Auth policy honored: static assets PUBLIC, data endpoints Bearer-gated.",
+      "technique": "hermetic core boot + curl transcript + serve.ts precedence check",
+      "screenshots": []
+    },
+    {
+      "number": 2,
+      "jira": "GSL-286",
+      "severity": "MOVED",
+      "lane": "functionality",
+      "area": "Write actions · skills publish",
+      "labels": ["verifier", "moved-from-GSL-250", "rescope-2026-08-08", "GSL-174"],
+      "title": "MOVED to GSL-174 — POST /actions/skills/publish is now a skills-management deliverable",
+      "design_ref": "Was PRD F7-S3; per owner decision `d-2026-08-08-002` the publish button + endpoint + TouchID wiring migrate to GSL-174. See PRD §\"Moved to the skills-management phase (d-2026-08-08-002)\".",
+      "shipped_ref": "Ticket GSL-286 re-parented to GSL-174 (Jira confirms parent.key=GSL-174, labels include `moved-from-GSL-250`, `rescope-2026-08-08`, `GSL-174`). PRD line 192 lists it explicitly. Finding stays valid; scope moved.",
+      "description": "The finding itself is unchanged — `POST /actions/skills/publish` is still not registered in `apps/core/src/routes/actions.ts`, and no `PublishSkillActionInput` schema exists. What changed is the SCOPE: per `d-2026-08-08-002` this endpoint is a GSL-174 deliverable now, so it is not a GSL-250 blocker. The prerequisite (`tools/skills/publish.sh` + `docs/skills/CHANGELOG.jsonl`, GSL-174 stages 2-3) was postponed by the owner, so building this button on top of it in Phase 7 was no longer sequenceable.",
+      "technique": "PRD read + Jira parent/label check",
+      "screenshots": []
+    },
+    {
+      "number": 3,
+      "jira": "GSL-287",
+      "severity": "MOVED",
+      "lane": "functionality",
+      "area": "Screens · Skills",
+      "labels": ["verifier", "moved-from-GSL-250", "rescope-2026-08-08", "GSL-174"],
+      "title": "MOVED to GSL-174 — Skills screen is now a skills-management deliverable",
+      "design_ref": "Was PRD F7-S1 (Skills as one of 7 screens); per `d-2026-08-08-002` the Skills screen moves to GSL-174. F7-S1 in the current PRD explicitly reads \"(Skills as a shipped screen re-scoped out — see § Moved to the skills-management phase (d-2026-08-08-002))\".",
+      "shipped_ref": "Ticket GSL-287 re-parented to GSL-174. `apps/web/src/router.tsx` still has 6 children (Overview/Fleet/Timeline/Questions/Tasks/Cost) — and now navigating to `/skills` correctly falls through to `<NotFoundScreen />` (GSL-295 fix), which is the honest signal that the surface is not shipped yet.",
+      "description": "Finding stays valid, scope moved. The `/skills` API endpoint still exists in `apps/core/src/routes/read.ts` (returns `{skills:[], count:0}`) and its schema/read-projection remain in the shipped core — they simply don't have a screen yet; that screen becomes a GSL-174 deliverable.",
+      "technique": "PRD read + router.tsx read + Jira parent check",
+      "screenshots": []
+    },
+    {
+      "number": 4,
+      "jira": "GSL-288",
+      "severity": "MOVED",
+      "lane": "architecture",
+      "area": "Security · TouchID gate wiring",
+      "labels": ["verifier", "moved-from-GSL-250", "rescope-2026-08-08", "GSL-174", "security"],
+      "title": "MOVED to GSL-174 — TouchID wiring to a live write path is now a skills-management deliverable",
+      "design_ref": "Was target-arch rev 2 §7.3 (Приоритет 1) + rev-3 addendum Delta 4; the `.app` bundle ships from GSL-264, but wiring it into a live high-blast write is now GSL-174 scope. See PRD line 194.",
+      "shipped_ref": "Ticket GSL-288 re-parented to GSL-174 with `security` label preserved. `apps/core/bin/touchid-gate.app` still ships (signed, present); wiring into `apps/core/src/spawn/publish.ts` (which would be the first high-blast write path) is a GSL-174 deliverable now that the publish button itself moved out.",
+      "description": "Finding stays valid, scope moved. Since the `POST /actions/skills/publish` endpoint (finding #2) also moved to GSL-174, there is no orphan high-blast write path in Phase 7 that would need TouchID. Every shipped Phase 7 POST is intentionally low-blast (`actions/questions/*`, `actions/permissions/decide`, `actions/tick`, `actions/tasks/sync`, `actions/events/ack`) and Bearer-only per `actions.ts:37` comment. The physical-barrier gate is deferred, not defeated: it lives in `apps/core/bin/` waiting for the first GSL-174 caller.",
+      "technique": "PRD read + Jira parent check + apps/core/src grep for touchid",
+      "screenshots": []
+    },
+    {
+      "number": 5,
+      "jira": "GSL-289",
+      "severity": "HOLDS",
+      "lane": "design",
+      "area": "Overview · runway tile",
+      "labels": ["verifier", "functionality", "pixel-perfect", "phase-7", "GSL-250"],
+      "title": "HOLDS — Overview renders runway/binding-constraint tile per PRD F7-S1",
+      "design_ref": "PRD F7-S1 first bullet: 'Overview with runway = min()'.",
+      "shipped_ref": "apps/core/src/runway.ts (new); apps/core/src/routes/read.ts (/status.runway); packages/schema/src/index.ts (RunwayResult zod schema, optional on StatusResponse); apps/web/src/screens/Overview.tsx (RunwayTile spans 2 grid cells).",
+      "description": "**Fix commit:** `756db77 GSL-289`. **Live probe:**\n\n```\ncurl -H 'Authorization: Bearer <scratch>' :7331/status | jq .runway\n→ runway.keys = ['hours_left', 'binding', 'live_agents', 'clocks', 'computed_at']\n→ clocks.keys = ['context', 'blockers', 'slots']\n→ binding = null (no data on scratch DB, honest)\n```\n\nThe three v1 clocks (context linear-extrapolation with 5-min noise floor, open BLOCKER/permission = 0h hard-cap, slots N/cap informational) are all present. `binding = min-non-null` across clocks; honest `null` when every clock is null (scratch DB has no live sessions with real BLOCKER/permission rows). Overview.tsx imports `RunwayResult` from `@gosleep/schema`, formats `hours_left`, renders `binding` label + per-clock readout — spans 2 grid cells per PRD F7-S1.",
+      "technique": "hermetic core boot + curl + code read",
+      "screenshots": [
+        { "caption": "Overview as it shipped in run 01 (baseline — pre-runway-tile 4-KPI layout); the fix adds a spanning RunwayTile above the counts.", "src": "assets/overview-light.png" }
+      ]
+    },
+    {
+      "number": 6,
+      "jira": "GSL-290",
+      "severity": "HOLDS",
+      "lane": "functionality",
+      "area": "Fleet · model resolved, honest 'unknown' for shim fields",
+      "labels": ["verifier", "functionality", "phase-7", "GSL-250"],
+      "title": "HOLDS — Fleet model resolved from settings hierarchy; shim-owned fields render honest 'unknown'",
+      "design_ref": "PRD R7.4 + F7-S1 'card per agent (context %, current tool, cycle, model)'; rev-3 addendum §8.1.",
+      "shipped_ref": "apps/core/src/adapter/model-resolver.ts (new); apps/core/src/workers/fleet-poll.ts (INSERT stamps resolved model, UPDATE uses COALESCE); apps/web/src/screens/Fleet.tsx (renders 'model unknown' + 'unknown' pills with tooltips instead of blank cells).",
+      "description": "**Fix commit:** `5de47f6 GSL-290`. **Live probe against a booted core reading real tmux sessions:**\n\n```\n/fleet.sessions = [\n  { name: 'gosleep-93',    model: 'claude-fable-5[1m]', cwd: '.../gosleep', … },\n  { name: 'tasty-lunch-2b', model: 'claude-fable-5[1m]', cwd: '.../tasty-lunch', … }\n]\n```\n\nModel is resolved from the Claude Code settings hierarchy (`<cwd>/.claude/settings.local.json` → `<cwd>/.claude/settings.json` → `~/.claude/settings.json`; top-level `model` → `env.CLAUDE_MODEL` → `env.ANTHROPIC_MODEL`) — both live sessions correctly pick up the owner's `claude-fable-5[1m]` global pin. `context_pct` / `current_tool` / `current_intent` remain `null` on sessions where the PreToolUse shim has not yet fired — the honest 'no data yet' contract per the fix commit: Fleet.tsx renders `\"model unknown\"` + `\"unknown\"` pills with tooltips naming the fix (edit settings*.json / install the shim), not blank cells and not fabricated data.",
+      "technique": "hermetic core boot + curl + Fleet.tsx source read (lines 137-190)",
+      "screenshots": [
+        { "caption": "Fleet as it shipped in run 01 (baseline — cards showed only name/cwd/status).", "src": "assets/fleet-light.png" }
+      ]
+    },
+    {
+      "number": 7,
+      "jira": "GSL-291",
+      "severity": "HOLDS",
+      "lane": "functionality",
+      "area": "Auth entry point · /setup OTP flow",
+      "labels": ["verifier", "functionality", "pixel-perfect", "phase-7", "GSL-250"],
+      "title": "HOLDS — /setup Bearer discovery via one-shot OTP; no devtools required",
+      "design_ref": "target-arch rev 2 §3.3; PRD Phase 7 §Acceptance criteria + end-check.",
+      "shipped_ref": "apps/core/src/routes/setup.ts (new); OtpStore stores sha256(otp) in memory only, gc on create, 5-min TTL clamped [30, 3600]s, internal-secret gated. apps/web/src/data/auth.ts consumes <meta name='gosleep-token'>; apps/web/src/main.tsx boot-time getBearer(). plist.sh setup-url subcommand mints the URL.",
+      "description": "**Fix commit:** `2f89663 GSL-291`. **Live probe end-to-end:**\n\n```\nPOST /internal/setup/otp (X-Internal-Secret + Origin=:7331) → 200\n  body { ok:true, otp:'b98a2059…', url:'…/setup?tok=…', expires_at:'…', ttl_s:300 }\nGET /setup?tok=<otp>                                        → 200 text/html\n  <meta name=\"gosleep-token\" content=\"verify-run02-token-DO-NOT-USE\">\n  Cache-Control: no-store, Referrer-Policy: no-referrer, X-Content-Type-Options: nosniff\nGET /setup?tok=<same-otp> (replay)                          → 400 (single-use)\nPOST /internal/setup/otp (no secret)                        → 401\nPOST /internal/setup/otp (X-Internal-Secret + wrong Origin) → 403\n```\n\nBearer never appears in URL, history, or Referer; it is delivered exactly once inside the meta tag, which `auth.ts` reads and then removes from the DOM. All five smoke lanes match the fix commit's own scenarios 59-66.",
+      "technique": "hermetic core boot + full OTP-mint → /setup → replay → no-secret → wrong-origin curl transcript",
+      "screenshots": []
+    },
+    {
+      "number": 8,
+      "jira": "GSL-292",
+      "severity": "MOVED",
+      "lane": "architecture",
+      "area": "Skills registry writer",
+      "labels": ["verifier", "moved-from-GSL-250", "rescope-2026-08-08", "GSL-174"],
+      "title": "MOVED to GSL-174 — /skills writer is now a skills-management deliverable",
+      "design_ref": "Was target-arch rev 2 §4.3 skills-table; §9 step 7 (`bun apps/core/scripts/record-publish.ts`). Per `d-2026-08-08-002` the writer moves to GSL-174; the schema + read projection stay in the shipped core.",
+      "shipped_ref": "Ticket GSL-292 re-parented to GSL-174. `apps/core/src/db/schema.ts` (skills table intact), `apps/core/src/routes/read.ts` (projection intact — `curl /skills` still returns `{skills:[], count:0}`). `apps/core/scripts/record-publish.ts` — not shipped, per re-scope now a GSL-174 stage.",
+      "description": "Finding stays valid, scope moved. The read projection is legitimate skeleton (schema + endpoint + zero rows), waiting for the GSL-174 writer to populate it. Combines naturally with findings 2 & 3 & 4 — the entire publish/skills vertical is now one coherent GSL-174 deliverable.",
+      "technique": "PRD read + Jira parent check",
+      "screenshots": []
+    },
+    {
+      "number": 9,
+      "jira": "GSL-293",
+      "severity": "HOLDS",
+      "lane": "design",
+      "area": "Typography · font-weight cap",
+      "labels": ["verifier", "pixel-perfect", "phase-7", "GSL-250"],
+      "title": "HOLDS — every UI font weight ≤ 500 per design-system.md §5",
+      "design_ref": "docs/reports/web-harness-research-2026-08-03/design-system.md §5 (UI ceiling 500; 600/700 reserved for reports).",
+      "shipped_ref": "apps/web/src/theme/globals.css:98 h1..h6 font-weight: 500; PageHeader.tsx H1, AppShell wordmark, Fleet CardTitle, Cost KPI values (×3), Overview KPI values — all font-medium (500).",
+      "description": "**Fix commit:** `fc16f15 GSL-293`. **Sweep grep against 0919aab:**\n\n```\ngrep -rE 'font-semibold|font-bold|font-black|fontWeight\\s*:\\s*[6-9]' apps/web/src\n→ 0 hits\n```\n\n`globals.css` line 98: `h1,h2,h3,h4,h5,h6 { font-weight: 500; }` with an inline comment citing design-system §5. Line 105: `b, strong { font-weight: 500; }`. HTML reports under `docs/reports/**` are intentionally NOT touched — they keep 600/700 for print, matching the rule that the 500 cap is a UI rule, not a document rule.",
+      "technique": "grep + globals.css read",
+      "screenshots": [
+        { "caption": "Fleet H1 as it shipped in run 01 at font-weight 600 (baseline before the sweep).", "src": "assets/fleet-light.png" },
+        { "caption": "Overview KPI values also 600 in run 01 (baseline).", "src": "assets/overview-light.png" }
+      ]
+    },
+    {
+      "number": 10,
+      "jira": "GSL-294",
+      "severity": "HOLDS",
+      "lane": "architecture",
+      "area": "Version endpoint · drizzle journal hash",
+      "labels": ["verifier", "architecture", "phase-7", "GSL-250"],
+      "title": "HOLDS — /version.db_schema_version = first 16 hex chars of drizzle-journal sha256",
+      "design_ref": "target-arch rev 2 §3.4 (drizzle-journal hash).",
+      "shipped_ref": "apps/core/src/db/schemaVersion.ts (new — sha256 of _journal.json + every NNNN_*.sql in filename order, first 16 hex chars, memoised at boot); apps/core/src/routes/read.ts (/version returns getDbSchemaVersion()); GOSLEEP_DB_SCHEMA_VERSION_OVERRIDE env override for tests; missing drizzle dir → 'unavailable' (never throws).",
+      "description": "**Fix commit:** `16061dd GSL-294`. **Live probe:**\n\n```\ncurl -H 'Authorization: Bearer <scratch>' :7331/version\n→ { server_version: '0.0.1',\n    api_versions:   ['v1'],\n    db_schema_version: '85834a7058d224c4' }\n```\n\nExact 16 hexadecimal characters — matches the fix commit's contract and the smoke's `[0-9a-f]{16}` regex. The 'unset' placeholder from the run 01 finding is gone.",
+      "technique": "hermetic core boot + curl + regex match",
+      "screenshots": []
+    },
+    {
+      "number": 11,
+      "jira": "GSL-295",
+      "severity": "HOLDS",
+      "lane": "design",
+      "area": "Router · honest 404",
+      "labels": ["verifier", "pixel-perfect", "functionality", "phase-7", "GSL-250"],
+      "title": "HOLDS — unknown routes render explicit NotFound screen, no silent redirect",
+      "design_ref": "Product hygiene; PRD §Non-goals never sanctioned silent redirect.",
+      "shipped_ref": "apps/web/src/screens/NotFound.tsx (75 lines — shows the requested path via useLocation, lists what to check, offers styled Link chips back to Overview/Fleet/Timeline/Questions/Tasks/Cost); apps/web/src/router.tsx:35 `{ path: '*', element: <NotFoundScreen /> }`.",
+      "description": "**Fix commit:** `eaecc69 GSL-295`. **Live probe:**\n\n```\nGET /definitely-not-a-route → 200 text/html (SPA shell served)\n  → react-router matches `path:\"*\"` client-side\n  → renders NotFoundScreen with the offending path from useLocation\n```\n\nThe wildcard `<Navigate to='/overview' replace />` is gone; the SPA fallback still serves `index.html` (so the browser can bootstrap), then react-router owns the client route. Missing surfaces (e.g. `/skills` before the GSL-174 screen lands) now show up visibly instead of silently redirecting.",
+      "technique": "hermetic core boot + curl + router.tsx + NotFound.tsx read",
+      "screenshots": [
+        { "caption": "The run 01 screenshot showing /skills → /overview silent redirect; the fix replaces this with an explicit NotFound.", "src": "assets/skills-route-redirected-to-overview.png" }
+      ]
+    }
+  ],
+  "architecture_notes": [
+    {
+      "title": "Score arithmetic: how run 01's 42 became run 02's 100",
+      "body": "Run 01 counted 4 CRITICAL + 5 MAJOR + 2 MINOR = 11 findings against the Phase 7 acceptance criteria then in force. Since then:\n\n- **7 landed as fixes** (GSL-285/289/290/291/293/294/295) — each individually verified above.\n- **4 moved out of Phase 7** (GSL-286/287/288/292) — owner decision `d-2026-08-08-002` re-parented them to GSL-174 (skills-management epic) after the GSL-174 prerequisites (`tools/skills/publish.sh` + `docs/skills/CHANGELOG.jsonl`) were postponed. The PRD carries a dedicated section documenting this; every re-parented ticket has `moved-from-GSL-250` + `rescope-2026-08-08` labels; the rescope commit (GSL-296) annotates the PR body.\n\nAgainst the POST-rescope Phase 7 acceptance criteria, zero findings remain."
+    },
+    {
+      "title": "What was NOT re-verified in this run (out of scope)",
+      "body": "This is the fix-confirmation lane, so it does not re-audit the epic from scratch. It does not enumerate NEW findings; that is the job of a fresh independent verifier if the owner wants one. Concretely:\n\n- The 4 moved tickets are scope-checked (PRD section + Jira parent + labels), not code-checked — their code observations from run 01 remain accurate as historical baseline.\n- `core-smoke.sh` was not re-run against 0919aab in this session (would double-boot port 7331). The fix commits report 89/89 PASS; independent verification would use `bash tools/lab/tests/core-smoke.sh` after this run's server was killed.\n- The web bundle is real (`apps/web/dist/index-CFx6demg.css`, `.js`, Geist woff2 fonts all present) and serves via the new SPA route, but visual pixel-perfect rendering was verified from source (Overview.tsx spans 2 grid cells for RunwayTile; Fleet.tsx renders unknown pills; globals.css h1..h6 = 500) rather than by rendering the browser — no new screenshots were captured in this run, and the assets carried over from run 01 label their baseline explicitly."
+    }
+  ]
+}

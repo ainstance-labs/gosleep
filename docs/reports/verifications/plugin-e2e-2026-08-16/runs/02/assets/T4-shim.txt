@@ -1,0 +1,8 @@
+Firing shim at 22:57:35Z with GOSLEEP_HOOK_TIMEOUT_S=40 …
+Shim exited status=0 after 40s at 22:58:15Z
+--- stdout (should be empty for fail-open) ---
+--- stderr (may contain diagnostics) ---
+--- hook debug log ---
+{"ts":"2026-08-15T22:58:15Z","hook":"permission-request","outcome":"timeout","qid":"p-20260815-225735-2818c1d6","elapsed_ms":40000,"expire_status":"200"}
+
+[exited with code 0]

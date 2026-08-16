@@ -1,11 +1,11 @@
 # gosleep — the phone page
 
-🟢 **FRESH at build** · generated `2026-08-03T16:34:52Z` · freshest event **3m** old at that moment (`2026-08-03T16:31:27Z`) · day `2026-08-03`
+🟢 **FRESH at build** · generated `2026-08-10T08:46:34Z` · freshest event **4m** old at that moment (`2026-08-10T08:41:38Z`) · day `2026-08-10`
 
-> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-03T16:34:52Z`, not a claim about now. There are two ages here, not one.
+> **Frozen at build time — check it against your own clock.** Markdown runs no JavaScript, so unlike the seven screens this page cannot re-grade itself when you open it: the verdict above is what was true at `2026-08-10T08:46:34Z`, not a claim about now. There are two ages here, not one.
 >
-> - 🟡 **STALE if you are reading this after `2026-08-03T17:01:27Z`**
-> - 🔴 **DEAD if you are reading this after `2026-08-03T19:31:27Z`**
+> - 🟡 **STALE if you are reading this after `2026-08-10T09:11:38Z`**
+> - 🔴 **DEAD if you are reading this after `2026-08-10T11:41:38Z`**
 >
 > Those two moments are the only thing on this page that cannot go out of date. The grade may only ever get worse, never better.
 
@@ -20,23 +20,21 @@ Nothing open. No decision is being held for you.
 | | |
 |---|---|
 | Open workers | **1** of cap 3 (2 free) |
-| Cycle | 182 |
-| Orchestrator | ok · context 82% |
+| Cycle | 208 |
+| Orchestrator | ok · context 98% |
 
 ## 3. Delivery
 
-Branch `GSL-138-translate-handoffs` @ `591d90f` · 20 dirty path(s)
+Branch `GSL-174-skills-management` @ `db30235` · 34 dirty path(s)
 
-Shipped 2026-08-03 (22):
-- `591d90f` GSL-138 [Docs] Handoffs 13-26 translated to English
-- `7cddb18` GSL-138 [Docs] Handoffs 27-36 translated to English
-- `bbfe029` GSL-138 [Docs] Handoffs 37-46 translated to English
-- `70fec56` GSL-138 [Docs] Handoffs 47-56 translated to English
-- `4c76bbe` GSL-138 [Docs][Process] Handoff 56 дополнен: требования владельца к живому UI, источники событий, новая фаза PRD
-- `136121b` GSL-138 [Docs][Process] Ledger смены 74 (финал): handoff 56, эпики GSL-174/GSL-250 заведены, исследование веб-интерфейс…
-- `f4ef882` GSL-138 [Docs][Process] Пересборка лаборатории и события смены (производные)
-- `b1f0280` Merge pull request #259 from ainstance-labs/GSL-138-web-research-report
-- …and 14 more
+Shipped 2026-08-10 (4):
+- `db30235` GSL-251 [Skill][Process] Reverse-sync O1: local skill/ caught up from global (7 skills)
+- `3289545` GSL-287 [Web][Skill] Skills screen live browser check + m2 comment.
+- `71547d0` GSL-254 [Docs][Runbook] Skills publishing needs migrated DB (verifier item 4).
+- `f9c2993` GSL-254 [Tooling][Skill] publish.sh DB preflight (verifier M1 fix).
+
+Open PRs (1):
+- #307 GSL-174 Skills management system
 
 ## 4. Tasks
 
@@ -46,26 +44,26 @@ Shipped 2026-08-03 (22):
 | To Do | 35 |
 | Done | 210 |
 
-22 more carry no status here — the tracker was last polled **20h 8m** ago, so this is what the poll missed, not 22 idle tasks.
+61 more carry no status here — the tracker was last polled **7d 12h** ago, so this is what the poll missed, not 61 idle tasks.
 
 ## 5. Cost & runway
 
 Cumulative **19,462,000** tokens over 157 cycle(s).
 
-Next runway event: **token budget** — stops at **`2026-08-05T18:03:04Z`**.
+Next runway event: **token budget** — stops at **`2026-08-17T17:33:58Z`**.
 
 ## 6. Activity
 
-**458** events today of **3417** total · 83% mechanical.
+**147** events today of **4789** total · 85% mechanical.
 
-Latest decisions (49 total, newest first):
-- **ЯЗЫК ТЕХНИЧЕСКИХ АРТЕФАКТОВ (owner 2026-08-03): handoffs, ORCHESTRATION-STATE, задачи Jira и зеркала GitHub — на АНГЛИЙСКОМ. Уточняет d-2026-07-28-006 (там: дашборд=инструмент, ру…** `GSL-177` — 2026-08-03 15:37
-- **ТРЕБОВАНИЯ ВЛАДЕЛЬЦА К ЖИВОМУ UI (2026-08-03, в эпик GSL-250): (1) окно вопросов от агентов в реальном времени — новый вопрос виден сразу, со статусом (блокирующий/не блокирующий)…** `GSL-177` — 2026-08-03 15:24
-- **ЦЕЛЕВАЯ АРХИТЕКТУРА (редакция 2, по требованию владельца): SQLite(WAL) — ИСТОЧНИК ПРАВДЫ + Drizzle ORM/drizzle-kit (миграции в git, снимки вне git, идемпотентный импорт JSONL); мо…** `GSL-177` — 2026-08-03 15:01
-  <br>by rule: решение владельца d-2026-08-03-004 (Warren-модель, БД источник правды)
-- **ДИЗАЙН-СИСТЕМА (исследование 2026-08-03, к утверждению владельцем): гарнитура Geist Sans + Geist Mono Variable (OFL, дефолт shadcn/ui и Vercel, полная кириллица), встраивание base…** `GSL-177` — 2026-08-03 14:55
-  <br>by rule: исследование по требованию владельца: modern шрифты без засечек, единые везде, мягкий контраст
-- …and 45 more
+Latest decisions (56 total, newest first):
+- **OWNER UNFREEZES .claude/settings.json (chat, 2026-08-10 night): fix the PermissionRequest wiring; minimal diff, guard stays in the shim. Owner also declares a FULLY AUTONOMOUS NIG…** — 2026-08-09 22:23
+- **Fix-first the cheap minors for acceptance-standard consistency (GSL-299 was held to the real-session bar, GSL-300 gets the same; M3 is a 5-min edit; M1 flat-snapshot layout ACCEPT…** — 2026-08-09 21:35
+  <br>by rule: auto-merge-green-prs (owner 2026-08-08) + verifier-297 runs/02 MERGE verdict + description-wins acceptance standard
+- **In scope: d-2026-08-09-001 pauses TouchID/Keychain and gates WIDENING TO ALL SESSIONS only; a shim active solely under GOSLEEP_WEB_QUESTIONS=1 widens nothing. Fleet R7.4 requires …** — 2026-08-09 20:54
+  <br>by rule: d-2026-08-09-002 web-to-feature-complete; d-2026-08-09-001 scope reading (pause=TouchID, gate=widening only)
+- **Continue the web control plane to Feature Complete; GSL-174 (skills management system) is postponed until the web version is fully done. Also confirmed: workers default Opus 4.7, …** — 2026-08-09 19:42
+- …and 52 more
 
 ## 7. The rest of the dashboard
 

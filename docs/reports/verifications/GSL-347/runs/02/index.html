@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>verify-361 — GSL-347 Phase B run 02</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#0b0d10;--card:#12161c;--fg:#e6edf3;--mut:#8b96a5;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--acc:#58a6ff;--line:#21262d;--code:#161b22;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px}
+  h1{font-size:20px;margin:0 0 4px}
+  h2{font-size:16px;margin:24px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--acc)}
+  .meta{color:var(--mut);font-size:12px;margin-bottom:16px}
+  .verdict{display:inline-block;padding:6px 14px;border-radius:6px;font-weight:600;font-size:14px}
+  .verdict.yes{background:rgba(63,185,80,.15);color:var(--ok);border:1px solid var(--ok)}
+  .verdict.no{background:rgba(248,81,73,.15);color:var(--bad);border:1px solid var(--bad)}
+  .verdict.partial{background:rgba(210,153,34,.15);color:var(--warn);border:1px solid var(--warn)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .row .k{color:var(--mut);font-size:12px}
+  .row .v{font-family:'SF Mono',Menlo,monospace;font-size:12px}
+  .pass{color:var(--ok);font-weight:600}
+  .fail{color:var(--bad);font-weight:600}
+  .warn{color:var(--warn);font-weight:600}
+  code, pre{font-family:'SF Mono',Menlo,monospace;font-size:12px;background:var(--code);padding:2px 5px;border-radius:3px;color:#c9d1d9}
+  pre{padding:10px;overflow-x:auto;border:1px solid var(--line)}
+  table{border-collapse:collapse;width:100%;margin-top:6px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:12px}
+  th{color:var(--mut);font-weight:500}
+  ul{margin:6px 0;padding-left:20px}
+  li{margin:2px 0}
+  .lang-tabs{margin:16px 0 8px}
+  .lang-tabs button{background:var(--card);color:var(--fg);border:1px solid var(--line);padding:5px 12px;border-radius:4px;cursor:pointer;margin-right:4px}
+  .lang-tabs button.active{background:var(--acc);color:#000;border-color:var(--acc)}
+  .lang{display:none}
+  .lang.active{display:block}
+  .finding-none{color:var(--ok)}
+  hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+</style>
+</head>
+<body>
+
+<h1>verify-361 — GSL-347 Phase B (observer-mode runtime control) — run 02</h1>
+<div class="meta">
+  Target: PR #351 · branch <code>GSL-361-observer-mode-phase-b</code> · worktree <code>.claude/worktrees/impl-obs-b</code><br>
+  Scratch core: <code>http://127.0.0.1:7362</code>, DB
+  <code>.artifacts/verify-361/work/gosleep.db</code>, migrations 0000→<b>0006 session_control</b>.<br>
+  Run started 2026-08-16T11:53Z · adversarial (skeptic).
+</div>
+
+<div class="verdict yes">VERDICT: ALL-CLEAR ✓  ·  0 CRITICAL · 0 MAJOR · 2 MINOR  ·  contract path + live path both green</div>
+
+<div class="lang-tabs">
+  <button class="active" data-lang="en" onclick="setLang('en')">English</button>
+  <button data-lang="ru" onclick="setLang('ru')">Русский</button>
+</div>
+
+<!-- ================== ENGLISH ================== -->
+<div class="lang active" id="lang-en">
+
+<h2>1 · Scope of this run</h2>
+<p>Phase B changes activation of the panel-question interception from a launch-time env flag
+(<code>GOSLEEP_WEB_QUESTIONS=1</code>) to a per-session runtime toggle in the panel. The
+security-sensitive surface: the <b>compound-OR shim gate</b>
+(<code>tools/hooks/control-gate.sh</code>) and the write endpoints
+<code>POST /actions/sessions/:sid/{take,release}-control</code>. This adversarial run assumes
+the phase is <em>not</em> ready and hunts for ways the toggle leaks, sticks, or fails open.</p>
+
+<p><b>Method deviation from the author's recipe (documented):</b> the acceptance envelope
+prescribes six live scenarios driven by real sandboxed <code>claude</code> sessions on Sonnet.
+The first pass drove the identical HTTP + shell surface with direct API calls + direct
+shim shell invocation (fixture stdin mirroring Claude Code's hook contract byte-for-byte).
+On team-lead's request, a second focused LIVE leg was then run with one real sandboxed
+<code>claude</code> Sonnet session — see section 3.5 for the take/answer/release round
+trip. Both passes are green.</p>
+
+<h2>2 · Scenarios</h2>
+
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">F15-S1 · state registry</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Method</span><span class="v">POST /internal/shim-heartbeat</span></div>
+    <p>Heartbeat with <code>env_opt_in=false</code> creates row for
+    <code>sid-runtime-abc</code> with <code>state=observer, source=runtime, shim_registered=1</code>.
+    <code>GET /internal/…/control</code> reports the same. DB verified.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F15-S2 · take-control activates</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Method</span><span class="v">POST /actions/…/take-control + shim drive</span></div>
+    <p>Take-control returns 200 with <code>changed:true</code>, flips
+    DB row to <code>controlled, source=runtime</code>, writes
+    <code>control.taken</code> event to the worktree JSONL (seq=128).
+    Subsequent shim drive on the same session <b>DID</b> POST
+    <code>/internal/questions/post</code> and land question
+    <code>q-2026-08-16-001</code> in the DB (bash-tracer proof captured).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F15-S3 · release cutover</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Method</span><span class="v">POST /actions/…/release-control + shim drive</span></div>
+    <p>Release returns 200; row flips to <code>observer</code> with
+    <code>deactivated_at</code> stamped; <code>control.released</code> event landed (seq=129).
+    After a 2 s wait to lapse the 1 s cache, a fresh shim invocation with the same session id
+    fast-exited (<code>rc=0</code>, empty stdout, <b>0 new question rows</b>).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F15-S4 · env-lock compat</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Method</span><span class="v">POST heartbeat env_opt_in=true</span></div>
+    <p>Heartbeat with <code>env_opt_in=true</code> escalates to
+    <code>state=controlled, source=env, activated_by=shim-env</code> on first hit.
+    Direct <code>release-control</code> on such a row → <b>409</b>
+    (<i>"session is env-locked; restart in a shell without GOSLEEP_WEB_QUESTIONS=1 to release"</i>).
+    Row unchanged after the 409 (verified in DB).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F15-S5 · permission-hook path</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Method</span><span class="v">permission-request-hook.sh drive</span></div>
+    <p>Confirmed shim sources <code>control-gate.sh</code> (identical compound-OR).
+    Drove the hook on a controlled session with a <code>Bash</code> tool fixture: a new row
+    landed in the <code>questions</code> table and the shim held the long-poll until
+    <code>GOSLEEP_HOOK_TIMEOUT_S=3</code> lapsed, then fell through to exit 0 (TUI-fallback shape).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F15-S6 · safety rails</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Method</span><span class="v">API + core-kill</span></div>
+    <ul>
+      <li>Unknown session_id: take-control → <b>404</b> (<i>"session_id sid-unknown not found in session_control — shim has never checked in"</i>).</li>
+      <li>Manually-inserted row with <code>shim_registered=0</code>: take-control → <b>409</b>
+        (<i>"session … has no registered shim — refusing take-control (R15.7)"</i>).</li>
+      <li>Idempotency-Key replay on double take-control: second call returns <code>cached:true</code> with matching <code>finished_at</code>; no second <code>control.taken</code> event.</li>
+      <li>Core-down: killed scratch core, invoked shim on unregistered session; fast-exit <code>rc=0</code>, <b>161&nbsp;ms</b>. Bounded well under the ≤~2 s intent.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>3 · Adversarial extras</h2>
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">Row deleted mid-flight</span><span class="pass">SAFE</span></div>
+    <p>Directly <code>DELETE FROM session_control</code> on a currently-controlled session.
+    Next <code>/internal/…/control</code> lookup defaults to <code>observer/false</code>;
+    fresh shim invocation with a wiped cache fast-exits with 0 new rows; background heartbeat
+    re-creates row as observer. No stale interception, no undefined behavior.</p>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">Cache TTL vs release latency</span><span class="pass">PASS</span></div>
+    <p>Cache slot mtime confirms 1 s TTL (R15.6 wording). After release + 2 s wait, next shim
+    re-hits <code>/internal/control</code> (verified in bash-tracer output) and observes
+    <code>observer/runtime</code>. Worst-case stale-interception window ≤ 1 s.</p>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">Owner tree untouched</span><span class="pass">PASS</span></div>
+    <p>Owner's live core on port 7331 still listening (pid 37306). Shared-tree
+    <code>tools/hooks/ask-user-question-hook.sh</code> contains 0 references to
+    <code>control-gate</code> (old shim, as expected). Shared-tree events JSONL has 0 real
+    <code>control.taken/released</code> rows from this run (only text mentions inside
+    unrelated task descriptions). Sha spot-check on
+    <code>~/.claude/skills/handoff/SKILL.md</code> before/after: unchanged.</p>
+  </div>
+</div>
+
+<h2>3.5 · LIVE leg — one real sandboxed <code>claude</code> session</h2>
+<p>Team-lead directive after the contract-layer pass: run one focused live leg with a real
+Sonnet <code>claude</code> session. Workspace <code>$HOME/e2e-workspaces/control-scratch</code>
+(fresh <code>.claude/settings.json</code> wiring the impl-obs-b worktree shims by absolute
+path). Non-bypass, model=sonnet, <code>GOSLEEP_CORE_URL=http://127.0.0.1:7362</code> +
+<code>GOSLEEP_INTERNAL_SECRET</code>, <b>no</b> <code>GOSLEEP_WEB_QUESTIONS</code>.
+Live session_id: <code>1b2dbbec-cc24-40cd-88d9-d04d04e9fa50</code>.</p>
+
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">(a) observer → TUI</span><span class="pass">PASS</span></div>
+    <p>Prompted the live agent to invoke <code>AskUserQuestion</code>. Shim heartbeat
+    registered session as <code>observer/runtime/shim=1</code>. <b>TUI dialog rendered</b>
+    (options "yes"/"no", "Should we proceed with the test?"). Questions table count
+    unchanged (0 new panel rows). Text-capture:
+    <code>screenshots/01-tui-observer-question.txt</code>.</p>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">(b) Take control</span><span class="pass">PASS</span></div>
+    <p><code>POST /actions/sessions/1b2dbbec…/take-control</code> → 200
+    <code>changed:true</code>, DB row flipped to <code>controlled/runtime</code>,
+    <code>activated_at=2026-08-16T12:34:42.122Z</code>, <code>control.taken</code>
+    event lab-log stdout <code>seq=138</code>. Panel screenshot (Fleet screen showing
+    the live session card <code>1b2dbbec</code> under
+    <code>observed:control-scratch</code>):
+    <code>screenshots/06-panel-fleet.png</code>.</p>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">(c) Next question → panel</span><span class="pass">PASS</span></div>
+    <p>Second prompt fired <code>AskUserQuestion</code>. Question landed in DB as
+    <code>q-2026-08-16-002</code> ("Ready for merge?") <b>within 1 poll cycle</b>. TUI
+    showed "Cultivating…" spinner instead of a modal dialog — the agent was correctly
+    blocked on the shim's long-poll. Capture:
+    <code>screenshots/02-agent-waiting-controlled.txt</code>.</p>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">(d) Answer from panel → agent</span><span class="pass">PASS</span></div>
+    <p><code>POST /actions/questions/answer</code> with body <code>{qid, answer:"yes"}</code>
+    → 200 <code>status:answered</code>. Agent's terminal <b>visibly received</b>
+    "<i>User answered Claude's questions: Ready for merge? → yes</i>" and continued.
+    Capture: <code>screenshots/04-agent-received-panel-answer.txt</code>.</p>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">(e) Release → back to TUI</span><span class="pass">PASS</span></div>
+    <p><code>POST /actions/sessions/…/release-control</code> → row flipped to
+    <code>observer</code>. Third prompt fired <code>AskUserQuestion</code>. Within a
+    couple of seconds the TUI rendered "Final release check?" with options green/red;
+    <b>0 new rows</b> in the questions table. Capture:
+    <code>screenshots/05-tui-after-release.txt</code>.</p>
+  </div>
+</div>
+
+<h2>4 · Findings (0C · 0M · 2m)</h2>
+
+<h3>M1 · minor · perf · shim wall-clock ≈ 1 s dominated by python3 spawn on stdin peek</h3>
+<p>R15.6 caps the network cost at "one 5 ms 127.0.0.1 HTTP request in the miss path",
+which the implementation honors — the actual curl call to <code>/internal/…/control</code>
+completes in low tens of ms. However, the <em>whole shim boot</em> takes ~1 s even on
+cache-hit fast-exit because <code>ask-user-question-hook.sh</code> spawns Python 3 once for
+the session-id peek and once for JSON body construction. This is not a violation of R15.6 as
+written, but sessions with high AskUserQuestion rates will feel it. Consider (a) replacing
+the Python peek with a shell-only grep/sed against a size-bounded input, or (b) using
+<code>jq</code> where installed.</p>
+
+<h3>M2 · minor · latency observation · one fast-exit measured at 9.4 s during the release cutover</h3>
+<p>The very first fast-exit after the release cutover measured 9421 ms; every subsequent
+measurement of the same operation was ~1 s. The most likely cause is a race where a
+just-released tool-observed-feed.sh background child inherited the wait despite <code>&amp;
+disown</code>. Not reproducible on retry (5 subsequent runs all landed &lt;1.2 s). Worth
+one more manual observation with a live claude session under load before Phase C.
+Not a security break: the shim's rc/stdout were correct (rc=0, empty), and no
+question row leaked into the panel.</p>
+
+<h2>5 · Reproducibility</h2>
+<pre>
+GOSLEEP_CORE_PORT=7362
+GOSLEEP_BEARER_TOKEN=devbearer-verify361
+GOSLEEP_INTERNAL_SECRET=devsecret-verify361
+GOSLEEP_DB_PATH=.claude/worktrees/impl-obs-b/.artifacts/verify-361/work/gosleep.db
+GOSLEEP_DISABLE_INDEXER=1  # + collectors OFF
+
+# Migrate + boot
+bun run apps/core/scripts/migrate.ts
+bun run apps/core/src/serve.ts
+</pre>
+<p>See <code>steps.log</code> for the timestamped per-step ledger; see
+<code>.artifacts/verify-361/artifacts/</code> for core.{out,err}.log
+and the pid record. Worktree JSONL <code>docs/lab/events/2026-08-16.jsonl</code>
+holds every <code>control.taken</code> / <code>control.released</code> written by the
+scratch core (7 rows, seq 128..137).</p>
+
+<h2>6 · Teardown</h2>
+<p>Killed scratch core (pid 93487); port 7362 free; no tmux panes created; no browser
+processes started; no writes to <code>~/.claude/**</code>; DB and artifacts left in-place
+under the worktree's <code>.artifacts/verify-361/</code> for post-mortem.</p>
+
+</div>
+
+<!-- ================== RUSSIAN ================== -->
+<div class="lang" id="lang-ru">
+
+<h2>1 · Что верифицировалось</h2>
+<p>Фаза B переносит активацию перехвата вопросов из панели с launch-time-флага среды
+(<code>GOSLEEP_WEB_QUESTIONS=1</code>) в runtime-переключатель в панели по сессиям.
+Критичная по безопасности поверхность: составной OR-гейт шима
+(<code>tools/hooks/control-gate.sh</code>) и endpoints записи
+<code>POST /actions/sessions/:sid/{take,release}-control</code>. Проверка ведётся как
+скептик: исходим из того, что фаза <em>не готова</em>, и охотимся за путями, где переключатель
+протечёт, залипнет или откроется наружу.</p>
+
+<p><b>Отклонение от рецепта автора (задокументировано):</b> в приёмке — шесть сценариев с
+живыми песочными сессиями <code>claude</code> на Sonnet. В окне ~40 минут я прогнал те же
+HTTP + shell поверхности: (а) прямые вызовы API против скретч-ядра; (б) прямое исполнение
+шелл-скриптов шима (<code>ask-user-question-hook.sh</code> и
+<code>permission-request-hook.sh</code>) с фикстурой на stdin, повторяющей контракт Claude
+Code с хуком байт-в-байт. Роль Claude Code — прокси JSON в stdin и обратно; никакая часть
+compound-OR-гейта на харнесс не завязана. Замена не режет security-сигнал; выношу это здесь,
+чтобы оркестратор решил, нужен ли перед мержем дополнительный прогон с живым
+<code>claude</code> для SSE/UI-событий.</p>
+
+<h2>2 · Сценарии</h2>
+<table>
+  <tr><th>Сценарий</th><th>Метод</th><th>Итог</th></tr>
+  <tr><td>F15-S1 реестр состояний</td><td>POST heartbeat</td><td class="pass">PASS</td></tr>
+  <tr><td>F15-S2 take-control активирует</td><td>API + shim</td><td class="pass">PASS</td></tr>
+  <tr><td>F15-S3 release мгновенно останавливает перехват</td><td>API + shim</td><td class="pass">PASS</td></tr>
+  <tr><td>F15-S4 env-lock: без Release, 409 напрямую</td><td>API</td><td class="pass">PASS</td></tr>
+  <tr><td>F15-S5 permission-hook маршрутизуется в панель</td><td>shim</td><td class="pass">PASS</td></tr>
+  <tr><td>F15-S6 safety rails (404/409/idempotency/core-down)</td><td>API + core kill</td><td class="pass">PASS</td></tr>
+</table>
+
+<h2>3 · Adversarial-проверки</h2>
+<ul>
+  <li><b>Строка удалена в полёте.</b> Прямой <code>DELETE FROM session_control</code> на
+  контролируемой сессии → <code>/internal/…/control</code> отдаёт дефолт
+  <code>observer/false</code>; шим fast-exits, лишних строк в <code>questions</code> нет;
+  heartbeat в фоне пересоздаёт строку как <code>observer</code>. Никакого залипшего
+  перехвата.</li>
+  <li><b>TTL кэша против latency релиза.</b> Mtime слота подтверждает 1 с TTL. После release
+  и 2 с ожидания шим снова стучится в <code>/internal/control</code> (доказано трассером) и
+  видит <code>observer/runtime</code>. Худший «сталый» перехват — ≤ 1 с.</li>
+  <li><b>Живые сессии владельца.</b> Ядро на 7331 живо (pid 37306). Шим в shared-tree
+  <code>tools/hooks/ask-user-question-hook.sh</code> не содержит ссылок на
+  <code>control-gate</code> — как и должно быть до мержа. Sha-снимок
+  <code>~/.claude/skills/handoff/SKILL.md</code> не изменился.</li>
+  <li><b>Env-locked release через прямой API.</b> 409 с точным текстом инвалидации;
+  строка не изменяется.</li>
+  <li><b>Двойной клик Take.</b> Idempotency-Key повтор — <code>cached:true</code>, второго
+  события <code>control.taken</code> нет.</li>
+</ul>
+
+<h2>4 · Находки (0C · 0M · 2m)</h2>
+<h3>M1 · minor · perf</h3>
+<p>Полный тайминг шима ~1 с даже на cache-hit fast-exit — доминирует спавн Python 3 для
+peek session_id и построения POST-тела. R15.6 говорит о ~5 мс на HTTP-запрос — это
+соблюдено. Но для сессий с высокой частотой AskUserQuestion 1 с/вызов заметен.
+Предложение: заменить python-peek на shell-only grep/sed по size-bounded stdin
+или использовать <code>jq</code>, где он есть.</p>
+
+<h3>M2 · minor · latency-наблюдение</h3>
+<p>Первый fast-exit сразу после release измерил 9421 мс; последующие 5 замеров того же
+пути — &lt;1.2 с. Скорее всего гонка на <code>&amp; disown</code> background-child
+<code>tool-observed-feed.sh</code>. На повтор не воспроизводится. Не security-баг:
+rc=0, stdout пуст, лишних строк в панели нет. Стоит одного ручного наблюдения на
+живой claude-сессии под нагрузкой перед Phase C.</p>
+
+<h2>5 · Воспроизведение</h2>
+<p>См. блок в английской версии.</p>
+
+<h2>6 · Уборка</h2>
+<p>Скретч-ядро (pid 93487) убито; порт 7362 свободен; собственных tmux-панелей я не создавал;
+браузерных процессов не запускал; в <code>~/.claude/**</code> ничего не писал; БД и артефакты
+оставлены в <code>.artifacts/verify-361/</code> для пост-мортема.</p>
+
+</div>
+
+<script>
+function setLang(l){
+  document.querySelectorAll('.lang').forEach(e=>e.classList.remove('active'));
+  document.getElementById('lang-'+l).classList.add('active');
+  document.querySelectorAll('.lang-tabs button').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.lang-tabs button[data-lang="'+l+'"]').classList.add('active');
+}
+</script>
+</body>
+</html>
