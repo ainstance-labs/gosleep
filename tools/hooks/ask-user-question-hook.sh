@@ -56,17 +56,21 @@
 set -u -o pipefail
 
 # =============================================================================
-# GSL-267 GUARDED PILOT (owner decision d-2026-08-08-001).
-# The whole loop is opt-in — this hook exits 0 INSTANTLY unless the session was
-# launched with GOSLEEP_WEB_QUESTIONS=1. Fail-open behaviour is preserved
-# because exit 0 with empty stdout tells Claude Code "no decision" → TUI
-# renders normally per hooks.md:223. Only sessions started with the flag hit
-# the network. Widening to all sessions requires an owner command; do NOT
-# remove this guard without that command.
+# GSL-361 COMPOUND-OR GATE (observer mode phase B, reframes GSL-267).
+#
+# Historically (GSL-267) this hook fast-exited unless GOSLEEP_WEB_QUESTIONS=1 was set on the
+# launching shell. That gate was a coarse, launch-time compat toggle. GSL-361 moves the
+# decision surface into the panel: the owner presses "Take control" and from that moment
+# the session's questions route to the panel. The env flag stays wired forever as a
+# bootstrap + outage-fallback (R15.3) — it still wins immediately.
+#
+# The gate is a compound-OR:
+#   proceed  =  (GOSLEEP_WEB_QUESTIONS=1)                       # env compat, wins fast
+#            OR (core /internal/sessions/:sid/control == controlled)   # runtime toggle
+#
+# Fail-mode on core-unreachable: env-flag-only (binding decision). Never fail-open into
+# interception. `control-gate.sh` implements the 1 s in-process cache + heartbeat fan-out.
 # =============================================================================
-if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ]; then
-    exit 0
-fi
 
 CORE_URL="${GOSLEEP_CORE_URL:-http://127.0.0.1:7331}"
 INTERNAL_SECRET="${GOSLEEP_INTERNAL_SECRET:-}"
@@ -79,6 +83,42 @@ HOST_HEADER="${CORE_URL#http://}"
 HOST_HEADER="${HOST_HEADER#https://}"
 HOST_HEADER="${HOST_HEADER%%/*}"
 ORIGIN_HEADER="${CORE_URL%/}"
+
+# Compound-OR gate: read the session_id from stdin (peek), consult the core / env flag, only
+# proceed into the long-poll if the caller is opted-in. Stdin is captured into a tempfile so
+# the peek does not consume the payload — the rest of the hook re-uses the file.
+_GOSLEEP_STDIN_PEEK="$(mktemp -t gosleep-hook-peek.XXXXXX 2>/dev/null || echo "/tmp/gosleep-hook-peek.$$")"
+trap 'rm -f "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true' EXIT
+cat > "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true
+# Restore stdin from the peek file for the downstream flow.
+exec < "$_GOSLEEP_STDIN_PEEK"
+
+_GOSLEEP_PEEK_SESSION_ID=""
+if command -v python3 >/dev/null 2>&1 && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
+    _GOSLEEP_PEEK_SESSION_ID="$(python3 - "$_GOSLEEP_STDIN_PEEK" <<'PY' 2>/dev/null || printf ''
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        d = json.load(f)
+    print(d.get("session_id", "") or "", end="")
+except Exception:
+    pass
+PY
+)"
+fi
+
+# Source the shared gate. It exposes control_gate_should_proceed() which sets
+# GOSLEEP_CONTROL_PROCEED / GOSLEEP_CONTROL_STATE / GOSLEEP_CONTROL_SOURCE.
+# shellcheck disable=SC1091
+. "$(dirname "$0")/control-gate.sh"
+
+control_gate_should_proceed "$_GOSLEEP_PEEK_SESSION_ID" "$$"
+if [ "${GOSLEEP_CONTROL_PROCEED:-0}" != "1" ]; then
+    # Fast-exit path — mirrors the historic GSL-267 behaviour exactly. TUI renders normally
+    # (hooks.md:223: exit 0 + empty stdout = "no decision to report").
+    rm -f "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true
+    exit 0
+fi
 
 # Wait a couple of seconds longer than the server does so a race at the exact deadline resolves
 # to a 204 on the wire, not a client-side curl abort that looks like unreachable.
