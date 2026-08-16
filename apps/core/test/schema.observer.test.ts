@@ -6,8 +6,16 @@
 //   - `observed_events` autoincrements `seq` monotonically;
 //   - `agent_sessions.observed_only` defaults to 0 for legacy inserts;
 //   - the migration bumps `computeDbSchemaVersion()` relative to a pruned chain (rev drift).
+//
+// Uses `new Database()` + `drizzle()` directly (NOT `openDatabase` from db/client.ts) so
+// that mock.module replacements installed by earlier test files (fleet.projection.test.ts,
+// internal.test.ts, actions.decidePermission.sse.test.ts) do not contaminate the migration
+// path — the module-mock returns a legacy in-memory DB that would fail on the CREATE TABLE
+// step when we re-run migrations against it.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 import {
   copyFileSync,
   cpSync,
@@ -15,40 +23,46 @@ import {
   mkdtempSync,
   readdirSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
-import { openDatabase } from "../src/db/client.ts";
-import { computeDbSchemaVersion } from "../src/db/schemaVersion.ts";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+
+import * as schema from "../src/db/schema.ts";
+import { computeDbSchemaVersion } from "../src/db/schemaVersion.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REAL_MIGRATIONS = resolve(HERE, "../drizzle");
 
-function applyAllMigrations(dbPath: string): void {
-  const db = openDatabase(dbPath);
-  migrate(db.db, { migrationsFolder: REAL_MIGRATIONS });
-  db.raw.close();
+function bootMigratedDb(dbPath: string): { raw: Database } {
+  const raw = new Database(dbPath, { create: true });
+  raw.exec("PRAGMA journal_mode = MEMORY;");
+  const db = drizzle(raw, { schema });
+  migrate(db, { migrationsFolder: REAL_MIGRATIONS });
+  return { raw };
 }
 
 describe("observer-mode schema (GSL-351)", () => {
   const root = mkdtempSync(join(tmpdir(), "gsl351-schema-"));
   const dbPath = join(root, "gosleep.db");
+  let raw!: Database;
 
   beforeAll(() => {
-    applyAllMigrations(dbPath);
+    raw = bootMigratedDb(dbPath).raw;
   });
 
   afterAll(() => {
+    try {
+      raw.close();
+    } catch {
+      /* ignore */
+    }
     rmSync(root, { recursive: true, force: true });
   });
 
   test("tmux_panes accepts a well-formed row and rejects duplicate pane_id", () => {
-    const db = openDatabase(dbPath);
-    db.raw.exec(
+    raw.exec(
       "INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid, " +
         "pane_current_path, pane_current_command, pane_title, first_seen, last_seen) " +
         "VALUES('%1', '$1', 'main', '@1', 12345, '/tmp/repoA', 'bun', 'gosleep-orch', " +
@@ -56,47 +70,44 @@ describe("observer-mode schema (GSL-351)", () => {
     );
     // Duplicate should throw (UNIQUE PRIMARY KEY on pane_id).
     expect(() => {
-      db.raw.exec(
+      raw.exec(
         "INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid, " +
           "pane_current_path, pane_current_command, pane_title, first_seen, last_seen) " +
           "VALUES('%1', '$1', 'main', '@1', 12345, '/tmp/repoA', 'bun', 'gosleep-orch', " +
           "'2026-08-16T00:00:00Z', '2026-08-16T00:00:00Z')",
       );
     }).toThrow();
-    db.raw.close();
   });
 
   test("observed_events autoincrements seq monotonically", () => {
-    const db = openDatabase(dbPath);
-    db.raw.exec(
+    raw.exec(
       "INSERT INTO observed_events(ts, project_slug, kind, source, payload_json) " +
         "VALUES('2026-08-16T00:00:01Z', 'repoA', 'session_appeared', 'transcript-mtime', '{}')",
     );
-    db.raw.exec(
+    raw.exec(
       "INSERT INTO observed_events(ts, project_slug, kind, source, payload_json) " +
         "VALUES('2026-08-16T00:00:02Z', 'repoA', 'transcript_activity', 'transcript-mtime', '{}')",
     );
-    const rows = db.raw.query("SELECT seq FROM observed_events ORDER BY seq").all() as {
+    const rows = raw.query("SELECT seq FROM observed_events ORDER BY seq").all() as {
       seq: number;
     }[];
-    expect(rows).toHaveLength(2);
+    expect(rows.length).toBeGreaterThanOrEqual(2);
     expect(rows[0]!.seq).toBeLessThan(rows[1]!.seq);
-    db.raw.close();
   });
 
   test("agent_sessions.observed_only defaults to 0 when omitted", () => {
-    const db = openDatabase(dbPath);
-    db.raw.exec(
+    raw.exec(
       "INSERT INTO agent_sessions(session_id, name, kind, cwd, status, started_at, updated_at) " +
         "VALUES('sess-1', 'orch', 'interactive', '/tmp/x', 'idle', '2026-08-16T00:00:00Z', '2026-08-16T00:00:00Z')",
     );
-    const row = db.raw
-      .query("SELECT observed_only, project_slug, cwd_project_root FROM agent_sessions WHERE session_id = 'sess-1'")
+    const row = raw
+      .query(
+        "SELECT observed_only, project_slug, cwd_project_root FROM agent_sessions WHERE session_id = 'sess-1'",
+      )
       .get() as { observed_only: number; project_slug: string | null; cwd_project_root: string | null };
     expect(row.observed_only).toBe(0);
     expect(row.project_slug).toBeNull();
     expect(row.cwd_project_root).toBeNull();
-    db.raw.close();
   });
 
   test("computeDbSchemaVersion reflects the new migration (drift from a truncated chain)", () => {

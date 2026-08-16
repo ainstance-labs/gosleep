@@ -78,3 +78,12 @@ export function getDb(): OpenedDb {
 
 export type DbHandle = BunSQLiteDatabase<typeof schema>;
 export { schema };
+
+/**
+ * Test-only: reset the cached singleton so a subsequent `getDb()` call re-resolves via
+ * `defaultDbPath()`. Used by observer-mode tests (GSL-350) that set `GOSLEEP_DB_PATH` per
+ * file and cannot rely on the cross-file singleton from another test.
+ */
+export function __resetDbClientForTests(): void {
+  cached = null;
+}
