@@ -622,6 +622,128 @@ async function doDefer(input: DeferInput): Promise<DeferResult> {
   };
 }
 
+// -----------------------------------------------------------------------------
+// GSL-392 — reopen: manual counterpart to the defer-reopen worker
+// -----------------------------------------------------------------------------
+
+interface ReopenInput {
+  qid: string;
+  by: string;
+}
+
+interface ReopenResult {
+  qid: string;
+  status: "open";
+  reopened_at: string;
+  reopened_by: string;
+  labEmit: { rc: number; stdout: string; stderr: string; elapsedMs: number };
+}
+
+/**
+ * Flip a deferred question back to `open` on owner demand — the manual counterpart to the
+ * defer-reopen worker (`apps/core/src/workers/defer-reopen.ts`). The endpoint refuses
+ * non-deferred rows (404 for missing qid, 409 for wrong status) so an accidental second
+ * click cannot resurrect an answered / resolved question.
+ *
+ * Dual-write mirrors doDefer / doAnswer:
+ *   * lab-emit reopen → JSONL side (queue.jsonl / events/*.jsonl)
+ *   * direct UPDATE → immediate DB consistency (idempotent; the tail indexer's re-fold
+ *     converges to the same state on the next sweep)
+ *
+ * SSE fan-out: a `question.reopened` event lands on the broadcaster with `seq: 0` — same
+ * pattern as doDecidePermission's cross-tab wake — so an open Questions tab invalidates
+ * without waiting for the JSONL tail sweep.
+ */
+async function doReopen(input: ReopenInput): Promise<ReopenResult> {
+  const db = getDb();
+  const row = db.raw
+    .query("SELECT qid, status FROM questions WHERE qid = ?")
+    .get(input.qid) as { qid: string; status: string } | null;
+  if (row === null || row === undefined) {
+    const err = new Error(`question not found: ${input.qid}`);
+    (err as Error & { httpStatus?: number }).httpStatus = 404;
+    throw err;
+  }
+  if (row.status !== "deferred") {
+    const err = new Error(
+      `question ${input.qid} cannot be reopened (status=${row.status}) — only deferred rows may be reopened`,
+    );
+    (err as Error & { httpStatus?: number }).httpStatus = 409;
+    throw err;
+  }
+
+  // Step 1: mirror to JSONL via `lab-emit reopen`. Same verb the defer-reopen worker uses so
+  // downstream projections see a uniform "reopen" event whether the auto-worker or a manual
+  // owner action fired it.
+  const emit = await spawnAwait({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-emit.sh`,
+      "reopen",
+      "--re",
+      input.qid,
+      "--by",
+      input.by,
+    ],
+    timeoutMs: 10_000,
+  });
+  if (!emit.ok) {
+    throw new Error(
+      `lab-emit reopen failed (rc=${emit.code ?? "null"}, timedOut=${emit.timedOut}): ${emit.stderr || emit.stdout}`,
+    );
+  }
+
+  // Step 2: direct UPDATE. Guarded by (status='deferred') so a race with the auto-reopen
+  // worker between SELECT and UPDATE collapses to a single winning transition — the row
+  // ends up `status='open' AND defer_until IS NULL` either way.
+  const reopened_at = nowIso();
+  const upd = db.raw
+    .query(
+      `UPDATE questions
+         SET status = 'open',
+             defer_until = NULL
+       WHERE qid = ? AND status = 'deferred'`,
+    )
+    .run(input.qid);
+  if (upd.changes === 0) {
+    throw new Error(
+      `race: question ${input.qid} changed status between the guard and the UPDATE`,
+    );
+  }
+
+  // Cross-tab wake — the SseProvider client invalidates ["core","questions"] on any
+  // `question.*` event.
+  broadcaster.emit({
+    seq: 0,
+    day: reopened_at.slice(0, 10),
+    ts: reopened_at,
+    src: "core",
+    actor: "actions.reopen",
+    task: null,
+    type: "question.reopened",
+    payload: {
+      qid: input.qid,
+      reopened_at,
+      reopened_by: input.by,
+      source: "owner-manual",
+    },
+    ingested_from: null,
+  });
+
+  return {
+    qid: input.qid,
+    status: "open",
+    reopened_at,
+    reopened_by: input.by,
+    labEmit: {
+      rc: emit.code ?? -1,
+      stdout: emit.stdout,
+      stderr: emit.stderr,
+      elapsedMs: emit.elapsedMs,
+    },
+  };
+}
+
 interface AckInput {
   seq: number;
   note: string | null;
@@ -962,6 +1084,68 @@ actionsRoutes.post("/actions/questions/defer", requireBearer, async (c) => {
           input: { qid, defer_until, by },
         },
         () => doDefer({ qid, defer_until, by }),
+      ),
+    );
+    if (outcome.cached && !outcome.ok) {
+      return c.json(
+        { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+        409,
+      );
+    }
+    return c.json({
+      ok: true,
+      intent_id: outcome.intentId,
+      cached: outcome.cached,
+      finished_at: outcome.finishedAt,
+      result: outcome.result,
+    });
+  } catch (err) {
+    const status = httpStatusFromError(err);
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "core.action.error",
+          intent_id: intentId,
+          http_status: status,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    return c.json(
+      {
+        ok: false,
+        intent_id: intentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      status,
+    );
+  }
+});
+
+// -----------------------------------------------------------------------------
+// POST /actions/questions/reopen (GSL-392)
+// -----------------------------------------------------------------------------
+
+actionsRoutes.post("/actions/questions/reopen", requireBearer, async (c) => {
+  const body = await parseJsonBody(c);
+  if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+  const qid = stringField(body, "qid");
+  if (qid === null) return c.json({ ok: false, error: "qid required" }, 400);
+  const by = stringField(body, "by") ?? "owner-web";
+  const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+  try {
+    const outcome = await serialize("actions.questions.reopen", async () =>
+      withTimeline<ReopenResult>(
+        getDb(),
+        {
+          intentId,
+          endpoint: "POST /actions/questions/reopen",
+          input: { qid, by },
+        },
+        () => doReopen({ qid, by }),
       ),
     );
     if (outcome.cached && !outcome.ok) {

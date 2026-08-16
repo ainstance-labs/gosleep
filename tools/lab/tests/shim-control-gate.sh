@@ -275,4 +275,70 @@ else
     fail "S7: expected first-match='real-first-…' + greedy-baseline='tail-imposter-…'; got first='$sid_first' greedy='$sid_greedy'"
 fi
 
-log "OK — 7/7 scenarios passed"
+# --- Scenario 8: heartbeat is SYNCHRONOUS and visible on the happy path (GSL-389 M1) ------
+# The shim-side symptom of E2E run-01 finding #1: `session_control` never gains a row even
+# though the shim was clearly running. Root cause: the old backgrounded curl raced the shim's
+# own exit and swallowed every failure. Fix: fire the FIRST heartbeat synchronously and log
+# the outcome to $GOSLEEP_HOOK_DEBUG_LOG.
+#
+# This scenario proves the heartbeat POST is observable BY THE TIME the gate function
+# returns — no `sleep` polling. That is the exact property that lets Take-control succeed
+# on the first click after a fresh fixture launch, without any manual `curl` seeding.
+log "Scenario 8: heartbeat synchronous + debug log on happy path"
+echo '{"state":"controlled","source":"env","shim_registered":true}' > "$STATE_FILE"
+: > "$HEARTBEAT_LOG"
+tmp="$(mktemp -d "${WORK}/tmp.hb-syncXXX")"
+hb_debug_log="$WORK/hb-debug-happy.jsonl"
+: > "$hb_debug_log"
+(
+    set -u -o pipefail
+    export TMPDIR="$tmp"
+    export GOSLEEP_WEB_QUESTIONS=1
+    export CORE_URL="$FAKE_URL"
+    export INTERNAL_SECRET="smoke-secret"
+    export HOST_HEADER="127.0.0.1:${FAKE_PORT}"
+    export ORIGIN_HEADER="$FAKE_URL"
+    export CONNECT_TIMEOUT_S=1
+    export GOSLEEP_HOOK_DEBUG_LOG="$hb_debug_log"
+    # shellcheck disable=SC1090
+    . "$REPO_ROOT/tools/hooks/control-gate.sh"
+    control_gate_should_proceed "sess-hb-happy-8" "$$"
+) >/dev/null
+# By the time the subshell exits, the heartbeat MUST have landed (sync path) AND the debug
+# log MUST record it — no wait / no poll.
+hb_lines="$(wc -l < "$HEARTBEAT_LOG" | tr -d ' ')"
+[ "$hb_lines" = "1" ] || fail "S8: expected 1 heartbeat on the fake, got $hb_lines"
+grep -q '"outcome":"ok"' "$hb_debug_log" \
+    || fail "S8: expected 'outcome:ok' in $hb_debug_log; got: $(cat "$hb_debug_log")"
+grep -q '"sid":"sess-hb-happy-8"' "$hb_debug_log" \
+    || fail "S8: expected sid in $hb_debug_log; got: $(cat "$hb_debug_log")"
+
+# --- Scenario 9: heartbeat failure is visible in the debug log (GSL-389 M1 red-first) -----
+# Encode the run-01 defect: the old backgrounded form NEVER logged a failure, so an
+# unreachable core (secret mismatch, wrong port, host header mismatch) looked identical to
+# a successful checkin. This scenario points the shim at an unreachable port and asserts
+# a `hb_fail` line appears in the debug log by the time the gate returns.
+log "Scenario 9: heartbeat failure logged for unreachable core"
+tmp="$(mktemp -d "${WORK}/tmp.hb-failXXX")"
+hb_debug_log_fail="$WORK/hb-debug-fail.jsonl"
+: > "$hb_debug_log_fail"
+(
+    set -u -o pipefail
+    export TMPDIR="$tmp"
+    export GOSLEEP_WEB_QUESTIONS=1
+    export CORE_URL="http://127.0.0.1:1"  # closed port — connect refused
+    export INTERNAL_SECRET="smoke-secret"
+    export HOST_HEADER="127.0.0.1:1"
+    export ORIGIN_HEADER="http://127.0.0.1:1"
+    export CONNECT_TIMEOUT_S=1
+    export GOSLEEP_HOOK_DEBUG_LOG="$hb_debug_log_fail"
+    # shellcheck disable=SC1090
+    . "$REPO_ROOT/tools/hooks/control-gate.sh"
+    control_gate_should_proceed "sess-hb-fail-9" "$$"
+) >/dev/null
+grep -q '"outcome":"fail"' "$hb_debug_log_fail" \
+    || fail "S9: expected 'outcome:fail' in $hb_debug_log_fail; got: $(cat "$hb_debug_log_fail")"
+grep -q '"sid":"sess-hb-fail-9"' "$hb_debug_log_fail" \
+    || fail "S9: expected sid in $hb_debug_log_fail; got: $(cat "$hb_debug_log_fail")"
+
+log "OK — 9/9 scenarios passed"
