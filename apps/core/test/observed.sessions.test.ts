@@ -83,9 +83,8 @@ mock.module("../src/db/client.ts", () => ({
   __resetDbClientForTests: () => {},
 }));
 
-const { enumerateSessions, foldSessions, extractWorkTopic } = await import(
-  "../src/observed/sessions.ts"
-);
+const { enumerateSessions, foldSessions, extractWorkTopic, __resetSessionsFirstSweepForTests } =
+  await import("../src/observed/sessions.ts");
 
 describe("machine-wide session enumerator (GSL-353)", () => {
   test("enumerateSessions returns 2 rows across 2 projects with observed_only correctly set", () => {
@@ -111,28 +110,120 @@ describe("machine-wide session enumerator (GSL-353)", () => {
     expect(topic).toContain("fruit column");
   });
 
-  test("foldSessions writes an observed-only row + a session_appeared event; native cwd row is NOT observed_only", () => {
+  test("foldSessions writes BOTH observed and native rows (M2 fix — no fleet-poll dep)", () => {
+    // Reset backfill flag so this test runs as a fresh boot.
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
     const snap = enumerateSessions(fakeHome);
     const stats = foldSessions(snap);
-    expect(stats.session_appeared).toBeGreaterThanOrEqual(1);
+    expect(stats.session_appeared).toBeGreaterThanOrEqual(2); // both native + observed appeared
+
     const rows = raw
-      .query("SELECT session_id, observed_only, project_slug, model FROM agent_sessions ORDER BY session_id")
+      .query("SELECT session_id, observed_only, project_slug, model, name FROM agent_sessions ORDER BY session_id")
       .all() as {
       session_id: string;
       observed_only: number;
       project_slug: string;
       model: string | null;
+      name: string;
     }[];
+    // M2: native row now lands even without fleet-poll (was previously dropped).
+    const nativeInserted = rows.find((r) => r.session_id === "sess-native-1");
+    expect(nativeInserted).toBeDefined();
+    expect(nativeInserted!.observed_only).toBe(0);
+    expect(nativeInserted!.project_slug).toBe("native-repo");
+
     const observedInserted = rows.find((r) => r.session_id === "sess-observed-1");
     expect(observedInserted).toBeDefined();
     expect(observedInserted!.observed_only).toBe(1);
     expect(observedInserted!.project_slug).toBe("scratch-repo");
+    expect(observedInserted!.name).toBe("observed:scratch-repo");
     expect(observedInserted!.model).toBe("claude-opus-4-7-20260201");
 
     const events = raw
       .query("SELECT COUNT(*) AS n FROM observed_events WHERE kind = 'session_appeared'")
       .get() as { n: number };
-    expect(events.n).toBeGreaterThanOrEqual(1);
+    expect(events.n).toBeGreaterThanOrEqual(2);
+  });
+
+  test("m5: first-sweep events are tagged payload.backfill=true; subsequent sweeps are backfill=false", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+    // First sweep: all rows land as fresh INSERTs.
+    foldSessions(enumerateSessions(fakeHome));
+    const firstEvents = raw
+      .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+      .all() as { payload_json: string }[];
+    expect(firstEvents.length).toBeGreaterThanOrEqual(2);
+    for (const ev of firstEvents) {
+      const payload = JSON.parse(ev.payload_json) as { backfill?: boolean };
+      expect(payload.backfill).toBe(true);
+    }
+
+    // Introduce a NEW transcript so the second sweep has something to emit for.
+    writeTranscript(
+      join(projectsDir, escapeCwd(observedCwd) + "-live"),
+      "sess-observed-live",
+      `${observedCwd}-live`,
+      [JSON.stringify({ type: "last-prompt", lastPrompt: "second sweep prompt" })],
+    );
+    foldSessions(enumerateSessions(fakeHome));
+    const liveRow = raw
+      .query(
+        "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' AND project_slug = 'scratch-repo-live'",
+      )
+      .get() as { payload_json: string } | null;
+    expect(liveRow).not.toBeNull();
+    const livePayload = JSON.parse(liveRow!.payload_json) as { backfill?: boolean };
+    expect(livePayload.backfill).toBe(false);
+  });
+
+  test("m3: name refreshes on project_slug flip for observed rows", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+    // Seed the observed row with a STALE name that doesn't match its current slug.
+    raw.exec(
+      "INSERT INTO agent_sessions(session_id, name, kind, cwd, status, started_at, updated_at, " +
+        "project_slug, cwd_project_root, observed_only) " +
+        "VALUES('sess-observed-1', 'observed:old-slug', 'interactive', '" +
+        observedCwd +
+        "', 'idle', '2026-08-16T00:00:00Z', '2026-08-16T00:00:00Z', 'old-slug', '" +
+        observedCwd +
+        "', 1)",
+    );
+    foldSessions(enumerateSessions(fakeHome));
+    const row = raw
+      .query("SELECT name FROM agent_sessions WHERE session_id = 'sess-observed-1'")
+      .get() as { name: string };
+    expect(row.name).toBe("observed:scratch-repo"); // refreshed to current slug
+  });
+
+  test("m6: transcript quiet > ENDED_THRESHOLD_MS sets ended_at on the row", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+    // Write a transcript with an OLD mtime (2 hours ago).
+    const oldTs = Date.now() - 2 * 60 * 60 * 1_000;
+    const oldSessionDir = join(projectsDir, escapeCwd(observedCwd) + "-old");
+    mkdirSync(oldSessionDir, { recursive: true });
+    const oldSessionPath = join(oldSessionDir, "sess-old.jsonl");
+    writeFileSync(
+      oldSessionPath,
+      JSON.stringify({ type: "header", cwd: observedCwd + "-old", model: "haiku" }) + "\n",
+    );
+    // Bun's fs uses utimesSync via the node interop.
+    const fs = require("node:fs");
+    fs.utimesSync(oldSessionPath, new Date(oldTs), new Date(oldTs));
+
+    foldSessions(enumerateSessions(fakeHome));
+    const row = raw
+      .query("SELECT ended_at, session_id FROM agent_sessions WHERE session_id = 'sess-old'")
+      .get() as { ended_at: string | null; session_id: string };
+    expect(row).toBeDefined();
+    expect(row.ended_at).not.toBeNull();
   });
 });
 

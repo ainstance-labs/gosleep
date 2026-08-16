@@ -7,9 +7,13 @@
 //
 // SIDE-EFFECTS declared (for sentinel review — R14.1):
 //   - READS: ~/.claude/projects/*/*.jsonl transcripts (head+tail only), file mtimes.
-//   - WRITES: agent_sessions rows (own table, for observed rows only), observed_events via
-//     the sanctioned writer.
-//   - SPAWNS: none.
+//   - WRITES: agent_sessions rows (own table, for observed AND native rows — the upsert
+//     pattern is idempotent w.r.t. the fleet-poll worker; only `pid`, `status`, `model`,
+//     `project_slug`, `cwd_project_root`, `updated_at` are set — hook-owned columns like
+//     `current_tool` / `context_pct` / `cycle` are never overwritten). Also observed_events
+//     via the sanctioned writer.
+//   - SPAWNS: `ps -o ppid=` and `lsof -t` for pid-tree correlation (GSL-350 M1 follow-up,
+//     see pidtree.ts). Read-only invocations only.
 //
 // Owner-decision refinements (2026-08-16, binding on the PRD's open questions):
 //   - Depth = FACTS + WORK-TOPIC. This file provides the WORK-TOPIC heuristic (last user
@@ -23,6 +27,7 @@ import { join, resolve } from "node:path";
 
 import { getDb } from "../db/client.ts";
 import { appendObservedEvent } from "./events.ts";
+import { resolvePaneForTranscript } from "./pidtree.ts";
 import { bumpEventsToday, registerCollector, runCollectorTick } from "./sentinel.ts";
 
 export const SESSIONS_COLLECTOR_NAME = "claude-sessions";
@@ -31,8 +36,30 @@ export const SESSIONS_CADENCE_MS = 5_000;
 /** How long since last transcript growth before we flip a session to `session_idle`. */
 export const IDLE_THRESHOLD_MS = 60_000;
 
+/**
+ * How long since transcript_mtime before an observed row is stamped `ended_at` (M6 fix).
+ * 1 hour is a conservative default — most Claude sessions never quiet for that long unless
+ * genuinely done. Enumerator carries `ended` on the snapshot; foldSessions applies it once
+ * (idempotent — a row that later grows re-clears ended_at).
+ */
+export const ENDED_THRESHOLD_MS = 60 * 60 * 1_000;
+
 /** Last-user-message slice length for the work-topic heuristic (owner decision). */
 export const WORK_TOPIC_MAX_LEN = 60;
+
+/**
+ * Fresh-boot flag for the backfill guard (M5 fix). The first foldSessions call after
+ * process boot enumerates a machine that may already have hundreds of historical projects
+ * on disk — every session would fire a `session_appeared` event and drown the observed
+ * timeline. On the first sweep we tag each emitted event's payload with `backfill=true` so
+ * the default timeline view can filter it out; subsequent sweeps emit live-tagged events.
+ */
+let firstSweepDone = false;
+
+/** Test-only reset for the backfill flag so per-file scratch DBs get a fresh boot. */
+export function __resetSessionsFirstSweepForTests(): void {
+  firstSweepDone = false;
+}
 
 /**
  * The gosleep repo root — sessions whose cwd is this OR any subdirectory of this are
@@ -59,6 +86,12 @@ export interface ClaudeSessionSnapshot {
   work_topic_inferred: string | null;
   status: "active" | "idle";
   observed_only: 0 | 1;
+  /** Owning tmux pane_pid resolved via pid-tree walk (M1 fix). NULL when correlation lost
+   *  or lsof/ps unavailable — the /fleet SQL falls back to a cwd-prefix heuristic and tags
+   *  the row `attribution='heuristic'`. */
+  tmux_pane_pid: number | null;
+  /** True iff the transcript has been quiet longer than ENDED_THRESHOLD_MS (M6 fix). */
+  ended: boolean;
 }
 
 /**
@@ -199,8 +232,17 @@ export function directoryToGuessedCwd(dirName: string): string {
 /**
  * Enumerate all `.jsonl` transcript files under `~/.claude/projects/*` — one per session.
  * Called by the collector tick; also directly exercised in tests with a fake HOME dir.
+ *
+ * `panePids` (optional): the set of `pane_pid` values currently in the tmux_panes table.
+ * When provided, the enumerator resolves each session's owning pane via a pid-tree walk
+ * (`resolvePaneForTranscript`) and populates `tmux_pane_pid` on the snapshot. When omitted
+ * (or empty), every snapshot's `tmux_pane_pid` stays null and /fleet falls back to the
+ * cwd-prefix heuristic (`attribution='heuristic'`).
  */
-export function enumerateSessions(claudeHome?: string): ClaudeSessionSnapshot[] {
+export function enumerateSessions(
+  claudeHome?: string,
+  panePids?: ReadonlySet<number>,
+): ClaudeSessionSnapshot[] {
   const home = claudeHome ?? join(homedir(), ".claude");
   const projectsDir = join(home, "projects");
   if (!existsSync(projectsDir)) return [];
@@ -245,6 +287,20 @@ export function enumerateSessions(claudeHome?: string): ClaudeSessionSnapshot[] 
       const observedOnly: 0 | 1 = pathIsUnder(projectRoot, gosleepRoot) ? 0 : 1;
 
       const idle = now - stat.mtimeMs > IDLE_THRESHOLD_MS;
+      const ended = now - stat.mtimeMs > ENDED_THRESHOLD_MS;
+
+      // M1: resolve owning tmux pane via lsof + parent-PID walk. Only run when we know the
+      // pane pids AND the transcript is not fully quiet (a quiet transcript's Claude process
+      // has usually released the file handle — lsof would return empty anyway; save the
+      // subprocess spawn).
+      let tmuxPanePid: number | null = null;
+      if (panePids !== undefined && panePids.size > 0 && !ended) {
+        try {
+          tmuxPanePid = resolvePaneForTranscript(path, panePids);
+        } catch {
+          tmuxPanePid = null;
+        }
+      }
 
       out.push({
         session_id: fname.replace(/\.jsonl$/, ""),
@@ -258,6 +314,8 @@ export function enumerateSessions(claudeHome?: string): ClaudeSessionSnapshot[] 
         work_topic_inferred: extractWorkTopic(path),
         status: idle ? "idle" : "active",
         observed_only: observedOnly,
+        tmux_pane_pid: tmuxPanePid,
+        ended,
       });
     }
   }
@@ -283,102 +341,173 @@ function pathIsUnder(childRaw: string, parentRaw: string): boolean {
 }
 
 /**
- * Fold the enumerated snapshot into `agent_sessions`. Only observed_only=1 sessions are
- * UPSERTed here — gosleep-native rows are owned by the existing fleet-poll worker and would
- * be double-written otherwise. The gosleep-native rows still get their `project_slug` and
- * `cwd_project_root` populated by a separate lightweight UPDATE.
+ * Fold the enumerated snapshot into `agent_sessions`. Every session (observed AND native)
+ * lands via an idempotent upsert (M2 fix — earlier revision only UPDATE-d native rows and
+ * silently dropped them when no row pre-existed, e.g. under GOSLEEP_DISABLE_FLEET_POLL=1).
+ *
+ * The upsert is careful with the fleet-poll worker's ownership: it only writes columns the
+ * enumerator authoritatively knows about (`pid`, `model`, `status`, `updated_at`,
+ * `project_slug`, `cwd_project_root`, `observed_only`, `ended_at`) and preserves the
+ * hook-owned columns (`current_tool`, `context_pct`, `current_intent`, `cycle`).
+ *
+ * m3 fix: `name` is refreshed on every UPDATE from the current `project_slug` so a moved
+ * project no longer shows a stale `observed:old-slug` label.
+ *
+ * m5 fix: on the FIRST sweep after boot, emitted events carry `payload.backfill=true` so
+ * the default timeline view can filter the historical flood out.
+ *
+ * m6 fix: when `snapshot.ended` is true (transcript quiet > ENDED_THRESHOLD_MS) the row's
+ * `ended_at` is stamped; a re-active transcript later clears it back to NULL.
  */
 export function foldSessions(snapshot: ClaudeSessionSnapshot[]): {
   observed_upserts: number;
+  native_upserts: number;
   session_appeared: number;
   session_idle: number;
   transcript_activity: number;
+  session_ended: number;
 } {
   const db = getDb();
   let observed_upserts = 0;
+  let native_upserts = 0;
   let session_appeared = 0;
   let session_idle_count = 0;
   let transcript_activity = 0;
+  let session_ended_count = 0;
+
+  const isBackfill = !firstSweepDone;
+  // Flip AFTER the sweep so any late-arriving snapshot in this call still counts as boot.
+  // The flip happens at end-of-function via the `firstSweepDone = true` assignment below.
 
   for (const s of snapshot) {
     const nowIso = new Date(s.transcript_mtime_ms).toISOString();
-    if (s.observed_only === 1) {
-      const existed = db.raw
-        .query("SELECT session_id, status, updated_at FROM agent_sessions WHERE session_id = ?")
-        .get(s.session_id) as { session_id: string; status: string; updated_at: string } | null;
-      if (existed === null) {
-        db.raw
-          .query(
-            "INSERT INTO agent_sessions(session_id, name, kind, cwd, status, started_at, " +
-              "updated_at, model, observed_only, project_slug, cwd_project_root) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
-          )
-          .run(
-            s.session_id,
-            `observed:${s.project_slug}`,
-            "interactive",
-            s.cwd ?? s.cwd_project_root ?? "",
-            s.status,
-            nowIso,
-            nowIso,
-            s.model,
-            s.project_slug,
-            s.cwd_project_root,
-          );
-        session_appeared += 1;
-        appendObservedEvent({
-          project_slug: s.project_slug,
-          kind: "session_appeared",
-          source: "transcript-mtime",
-          payload: { session_id: s.session_id, cwd: s.cwd, model: s.model },
-        });
-        bumpEventsToday(SESSIONS_COLLECTOR_NAME);
-      } else {
-        db.raw
-          .query(
-            "UPDATE agent_sessions SET status = ?, updated_at = ?, model = COALESCE(?, model), " +
-              "project_slug = ?, cwd_project_root = ?, observed_only = 1 WHERE session_id = ?",
-          )
-          .run(s.status, nowIso, s.model, s.project_slug, s.cwd_project_root, s.session_id);
-        if (existed.status !== "idle" && s.status === "idle") {
-          session_idle_count += 1;
-          appendObservedEvent({
-            project_slug: s.project_slug,
-            kind: "session_idle",
-            source: "transcript-mtime",
-            payload: { session_id: s.session_id },
-          });
-          bumpEventsToday(SESSIONS_COLLECTOR_NAME);
-        } else if (existed.updated_at !== nowIso && s.status === "active") {
-          transcript_activity += 1;
-          appendObservedEvent({
-            project_slug: s.project_slug,
-            kind: "transcript_activity",
-            source: "transcript-mtime",
-            payload: {
-              session_id: s.session_id,
-              work_topic_inferred: s.work_topic_inferred,
-            },
-          });
-          bumpEventsToday(SESSIONS_COLLECTOR_NAME);
-        }
-      }
-      observed_upserts += 1;
-    } else {
-      // gosleep-native: only backfill project_slug + cwd_project_root; do NOT overwrite status.
+    const endedAtValue = s.ended ? nowIso : null;
+    const nameValue = s.observed_only === 1 ? `observed:${s.project_slug}` : null;
+
+    const existed = db.raw
+      .query(
+        "SELECT session_id, status, updated_at, ended_at, name FROM agent_sessions WHERE session_id = ?",
+      )
+      .get(s.session_id) as
+      | { session_id: string; status: string; updated_at: string; ended_at: string | null; name: string }
+      | null;
+
+    if (existed === null) {
+      // Fresh row — INSERT. Native rows get a placeholder `name` when the fleet-poll worker
+      // has not yet contributed one (M2 fix — before this, native rows never landed at all
+      // under GOSLEEP_DISABLE_FLEET_POLL=1).
+      const insertedName = nameValue ?? `observed:${s.project_slug}`;
       db.raw
         .query(
-          "UPDATE agent_sessions SET project_slug = ?, cwd_project_root = ?, observed_only = 0 " +
-            "WHERE session_id = ? AND project_slug IS NULL",
+          "INSERT INTO agent_sessions(session_id, name, kind, pid, cwd, status, started_at, " +
+            "updated_at, model, observed_only, project_slug, cwd_project_root, ended_at) " +
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
-        .run(s.project_slug, s.cwd_project_root, s.session_id);
+        .run(
+          s.session_id,
+          insertedName,
+          "interactive",
+          s.tmux_pane_pid,
+          s.cwd ?? s.cwd_project_root ?? "",
+          s.status,
+          nowIso,
+          nowIso,
+          s.model,
+          s.observed_only,
+          s.project_slug,
+          s.cwd_project_root,
+          endedAtValue,
+        );
+      if (s.observed_only === 1) observed_upserts += 1;
+      else native_upserts += 1;
+      session_appeared += 1;
+      appendObservedEvent({
+        project_slug: s.project_slug,
+        kind: "session_appeared",
+        source: "transcript-mtime",
+        payload: {
+          session_id: s.session_id,
+          cwd: s.cwd,
+          model: s.model,
+          observed_only: s.observed_only === 1,
+          backfill: isBackfill,
+        },
+      });
+      bumpEventsToday(SESSIONS_COLLECTOR_NAME);
+      if (s.ended) session_ended_count += 1;
+    } else {
+      // Existing row — UPDATE only the columns the enumerator owns. Hook-owned columns
+      // (current_tool, context_pct, current_intent, cycle) are NOT touched.
+      // m3: name is refreshed for observed rows so a project_slug flip is reflected. For
+      // native rows we leave name to the fleet-poll worker (it names sessions authoritatively).
+      db.raw
+        .query(
+          "UPDATE agent_sessions SET status = ?, updated_at = ?, " +
+            "model = COALESCE(?, model), pid = COALESCE(?, pid), " +
+            "project_slug = ?, cwd_project_root = ?, observed_only = ?, " +
+            "name = CASE WHEN ? = 1 THEN ? ELSE name END, " +
+            "ended_at = ? WHERE session_id = ?",
+        )
+        .run(
+          s.status,
+          nowIso,
+          s.model,
+          s.tmux_pane_pid,
+          s.project_slug,
+          s.cwd_project_root,
+          s.observed_only,
+          s.observed_only,
+          nameValue,
+          endedAtValue,
+          s.session_id,
+        );
+      if (s.observed_only === 1) observed_upserts += 1;
+      else native_upserts += 1;
+
+      if (existed.ended_at === null && s.ended) {
+        session_ended_count += 1;
+        appendObservedEvent({
+          project_slug: s.project_slug,
+          kind: "session_idle",
+          source: "transcript-mtime",
+          payload: { session_id: s.session_id, ended: true, backfill: isBackfill },
+        });
+        bumpEventsToday(SESSIONS_COLLECTOR_NAME);
+      } else if (existed.status !== "idle" && s.status === "idle") {
+        session_idle_count += 1;
+        appendObservedEvent({
+          project_slug: s.project_slug,
+          kind: "session_idle",
+          source: "transcript-mtime",
+          payload: { session_id: s.session_id, backfill: isBackfill },
+        });
+        bumpEventsToday(SESSIONS_COLLECTOR_NAME);
+      } else if (existed.updated_at !== nowIso && s.status === "active") {
+        transcript_activity += 1;
+        appendObservedEvent({
+          project_slug: s.project_slug,
+          kind: "transcript_activity",
+          source: "transcript-mtime",
+          payload: {
+            session_id: s.session_id,
+            work_topic_inferred: s.work_topic_inferred,
+            backfill: isBackfill,
+          },
+        });
+        bumpEventsToday(SESSIONS_COLLECTOR_NAME);
+      }
     }
   }
 
+  firstSweepDone = true;
+
   return {
     observed_upserts,
+    native_upserts,
     session_appeared,
     session_idle: session_idle_count,
     transcript_activity,
+    session_ended: session_ended_count,
   };
 }
 
@@ -388,7 +517,15 @@ export function foldSessions(snapshot: ClaudeSessionSnapshot[]): {
  */
 export async function sessionsCollectorTick(claudeHome?: string): Promise<void> {
   await runCollectorTick(SESSIONS_COLLECTOR_NAME, async () => {
-    const snap = enumerateSessions(claudeHome);
+    // Read the current tmux_panes.pane_pid snapshot so the enumerator can walk pids into
+    // owning panes (M1 fix). Cheap: a single sqlite scan of a small table (≤ dozens of rows
+    // in practice). Empty set → enumerator skips lsof/ps entirely.
+    const db = getDb();
+    const paneRows = db.raw
+      .query("SELECT pane_pid FROM tmux_panes")
+      .all() as { pane_pid: number }[];
+    const panePids = new Set(paneRows.map((r) => r.pane_pid));
+    const snap = enumerateSessions(claudeHome, panePids);
     foldSessions(snap);
   });
 }
