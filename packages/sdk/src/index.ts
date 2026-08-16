@@ -28,6 +28,8 @@ import {
   DecidePermissionActionResponse,
   DeferActionInput,
   DeferActionResponse,
+  ReopenActionInput,
+  ReopenActionResponse,
   FleetResponse,
   ManifestResponse,
   SessionControlRow,
@@ -76,6 +78,8 @@ import type {
   DecidePermissionActionResponse as DecidePermissionActionResponseT,
   DeferActionInput as DeferActionInputT,
   DeferActionResponse as DeferActionResponseT,
+  ReopenActionInput as ReopenActionInputT,
+  ReopenActionResponse as ReopenActionResponseT,
   FleetResponse as FleetResponseT,
   ManifestResponse as ManifestResponseT,
   SessionControlRow as SessionControlRowT,
@@ -408,6 +412,20 @@ export class CoreClient {
       input,
       DeferActionInput,
       DeferActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  /** GSL-392 — manual reopen of a deferred question (owner "Reopen now" affordance). */
+  reopenQuestion(
+    input: ReopenActionInputT,
+    idempotencyKey: string,
+  ): Promise<ReopenActionResponseT> {
+    return this.postAction(
+      "/actions/questions/reopen",
+      input,
+      ReopenActionInput,
+      ReopenActionResponse,
       idempotencyKey,
     );
   }
@@ -749,6 +767,8 @@ export type {
   DecidePermissionActionResponseT as DecidePermissionActionResponse,
   DeferActionInputT as DeferActionInput,
   DeferActionResponseT as DeferActionResponse,
+  ReopenActionInputT as ReopenActionInput,
+  ReopenActionResponseT as ReopenActionResponse,
   FleetResponseT as FleetResponse,
   ManifestResponseT as ManifestResponse,
   QuestionsResponseT as QuestionsResponse,

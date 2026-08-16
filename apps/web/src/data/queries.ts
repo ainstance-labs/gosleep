@@ -29,6 +29,8 @@ import type {
   DecidePermissionActionResponse,
   DeferActionInput,
   DeferActionResponse,
+  ReopenActionInput,
+  ReopenActionResponse,
   FleetResponse,
   ManifestResponse,
   ObservedCollectorsResponse,
@@ -378,6 +380,25 @@ export function useDeferQuestion(): UseMutationResult<
   return useMutation({
     mutationFn: (input: DeferActionInput) =>
       coreClient.deferQuestion(input, stableIdempotencyKey("defer", input)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["core", "questions"] });
+      qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+// GSL-392: manual "Reopen now" affordance for deferred questions. Owner-facing counterpart
+// to the defer-reopen worker — flips status=deferred → open, clears defer_until, and fans
+// out `question.reopened` via SSE.
+export function useReopenQuestion(): UseMutationResult<
+  ReopenActionResponse,
+  Error,
+  ReopenActionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ReopenActionInput) =>
+      coreClient.reopenQuestion(input, stableIdempotencyKey("reopen", input)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });

@@ -528,17 +528,29 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   //   3. Neither → NULL pane_ref + NULL attribution → panel renders "—".
   //
   // Both paths in one query. Heuristic goes first in COALESCE + CASE so its match wins when
-  // both fire (rare — pidtree is opt-in). Heuristic uses MAX(...) over pane rows sharing a
-  // path so a stale pane never displaces a fresher pane_ref for the same current_path.
+  // both fire (rare — pidtree is opt-in). Heuristic uses per-pane ranking (GSL-391) so a
+  // single pane never binds to more than one session.
   //
   // GSL-373 verifier M1 — the heuristic JOIN must NOT match sibling directories that share a
   // string prefix with cwd_project_root. Naive `LIKE cwd || '%'` matched /repo/foobar/x when
   // the session cwd was /repo/foo. The correct predicate is "same directory (=) OR strict
   // sub-path (LIKE cwd || '/%')" — the '/' after the cwd guarantees a path-separator boundary.
-  // GSL-359 made the heuristic the DEFAULT attribution path, so this correctness bug became
-  // the default; every misattributed row surfaced as attribution='heuristic' with a wrong
-  // tmux_pane_ref. Regression: fleet.projection.test.ts "GSL-373 M1 — heuristic must not
-  // match sibling directories that share a string prefix".
+  //
+  // GSL-391 (E2E run-01 m3) — per-pane winner ranking + session-level dedup.
+  //   * Old shape: `GROUP BY pane_current_path` + LEFT JOIN by "pane_current_path is under
+  //     session cwd" attributed EVERY session with a matching-or-ancestor cwd to the pane.
+  //     Result: a fixture pane bound to 3 sessions at once (the real fixture + the
+  //     orchestrator sharing the worktree cwd + a repo-root parent session).
+  //   * New shape: rank sessions per pane with ROW_NUMBER() and keep only the winner. Order:
+  //       (1) exact `pane_current_path = cwd_project_root` beats any prefix match,
+  //       (2) deeper `cwd_project_root` wins (`length(cwd_project_root) DESC`),
+  //       (3) session with a known `pid` beats one without (real live process > observed
+  //           ghost),
+  //       (4) most recent `updated_at` breaks final ties.
+  //     Then GROUP BY session_id in the outer wrap so a session that wins multiple panes
+  //     surfaces exactly once. Losers get NULL pane_ref (and may still match via pidtree).
+  //   * Regression: fleet.projection.test.ts covers the parent-cwd false match, the
+  //     deepest-wins case, and the pid-tiebreak among two exact-cwd matches.
   const rows = getDb().raw
     .query(
       `SELECT a.session_id, a.name, a.kind, a.pid, a.model, a.cwd, a.cycle, a.context_pct,
@@ -558,14 +570,30 @@ readRoutes.get("/fleet", requireBearer, (c) => {
               sc.shim_registered AS shim_registered
        FROM agent_sessions a
        LEFT JOIN (
-         SELECT pane_current_path,
-                MAX(session_name || ':' || window_id || '.' || pane_id) AS pane_ref
-         FROM tmux_panes
-         WHERE pane_current_path IS NOT NULL
-         GROUP BY pane_current_path
-       ) heur ON a.cwd_project_root IS NOT NULL
-              AND (heur.pane_current_path = a.cwd_project_root
-                   OR heur.pane_current_path LIKE a.cwd_project_root || '/%')
+         SELECT session_id, MAX(pane_ref) AS pane_ref
+         FROM (
+           SELECT a2.session_id,
+                  t.session_name || ':' || t.window_id || '.' || t.pane_id AS pane_ref,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY t.pane_id
+                    ORDER BY
+                      CASE WHEN t.pane_current_path = a2.cwd_project_root THEN 0 ELSE 1 END,
+                      length(a2.cwd_project_root) DESC,
+                      CASE WHEN a2.pid IS NOT NULL THEN 0 ELSE 1 END,
+                      a2.updated_at DESC,
+                      a2.session_id
+                  ) AS rnk
+           FROM agent_sessions a2
+           JOIN tmux_panes t
+             ON t.pane_current_path IS NOT NULL
+            AND a2.cwd_project_root IS NOT NULL
+            AND length(a2.cwd_project_root) > 0
+            AND (t.pane_current_path = a2.cwd_project_root
+                 OR t.pane_current_path LIKE a2.cwd_project_root || '/%')
+         ) ranked
+         WHERE rnk = 1
+         GROUP BY session_id
+       ) heur ON heur.session_id = a.session_id
        LEFT JOIN (
          SELECT pane_pid,
                 session_name || ':' || window_id || '.' || pane_id AS pane_ref

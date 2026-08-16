@@ -74,11 +74,47 @@ _gosleep_control_cache_write() {
     printf '%s %s %s\n' "$state" "$source" "$now" > "$slot" 2>/dev/null || true
 }
 
-# Send the heartbeat once per shim process (background, fire-and-forget). Every invocation
-# still stamps `last_heartbeat_at` server-side, but on the shim side we only need to do it
-# once per process — the DB row exists after the first hit. Doing it here (from the gate)
-# means the heartbeat lands on the FIRST event of the session, without adding a second
-# code path the shims each have to maintain.
+# GSL-389 debug-log helper. Emits a single-line JSON record to $GOSLEEP_HOOK_DEBUG_LOG when
+# the caller sets it. Silent no-op otherwise — the shim path stays quiet by default. The
+# format is `{"ts":<epoch>,"event":"shim.heartbeat","sid":...,"outcome":...,"http":...,"mode":...,"err":...}`.
+# Errors from the append itself are ignored; the debug log is best-effort observability.
+_gosleep_control_debug_log_hb() {
+    local sid="$1" outcome="$2" http="$3" mode="$4" err="$5"
+    local target="${GOSLEEP_HOOK_DEBUG_LOG:-}"
+    if [ -z "$target" ]; then
+        return 0
+    fi
+    local ts
+    ts="$(date +%s 2>/dev/null || echo 0)"
+    # Escape a small set of characters in $err so the JSON stays parseable if curl-stderr
+    # ever contains a stray quote or newline. Anything more elaborate belongs in a real
+    # JSON encoder; the shim never emits pathological error strings in practice.
+    local err_escaped
+    err_escaped="$(printf '%s' "$err" | LC_ALL=C tr -d '\r' | LC_ALL=C tr '\n' ' ' | sed 's/\\/\\\\/g; s/"/\\"/g')"
+    printf '{"ts":%s,"event":"shim.heartbeat","sid":"%s","outcome":"%s","http":"%s","mode":"%s","err":"%s"}\n' \
+        "$ts" "$sid" "$outcome" "$http" "$mode" "$err_escaped" \
+        >> "$target" 2>/dev/null || true
+}
+
+# Send the heartbeat once per shim process. Two-phase design (GSL-389, fixes E2E run-01 M1):
+#   * FIRST invocation is SYNCHRONOUS. The blocking POST holds the shim for at most
+#     $CONNECT_TIMEOUT_S + 1 s (usually a few milliseconds on the loopback). The synchronous
+#     path is the one that populates `session_control` before Take-control needs it — the
+#     old fire-and-forget form could race the shim's own exit and drop the request without
+#     leaving any operator-visible trace.
+#   * Every invocation writes an outcome line into $GOSLEEP_HOOK_DEBUG_LOG when set
+#     (`{"outcome":"ok"|"fail","http":<code>}`). Silence during onboarding was
+#     indistinguishable from success in run-01; a JSON line makes the failure diagnosable.
+#
+# Backgrounded / opt-out path retained for latency-critical callers via
+# GOSLEEP_HEARTBEAT_MODE=async — the current shims all use the default sync path.
+#
+# GSL-368 context (retained): a backgrounded child was previously used to keep the shim's
+# parent from waiting on a shared stdio pipe. The synchronous path here inherits the parent
+# stdio too, but curl writes only to /dev/null — the child exits cleanly, so the parent
+# sees EOF as soon as the shim itself exits. The scenario GSL-368 fixed (9.4 s
+# release-cutover outlier) does not regress because curl's own max-time bounds this
+# invocation.
 _gosleep_control_fire_heartbeat() {
     local sid="$1" pid="$2"
     # env_opt_in mirrors the outer $GOSLEEP_WEB_QUESTIONS.
@@ -90,36 +126,55 @@ _gosleep_control_fire_heartbeat() {
     fi
     local body
     body="$(printf '{"pid":%s,"env_opt_in":%s}' "${pid:-null}" "$env_opt")"
-    # Background POST, all errors swallowed. Uses HOST_HEADER + CONNECT_TIMEOUT_S + ORIGIN_HEADER
-    # + INTERNAL_SECRET + CORE_URL from the outer scope. If any of those is missing (secret
-    # unset, curl absent) the request quietly fails — that is CORRECT for a heartbeat.
-    #
-    # GSL-368: DETACH the subshell's stdin/stdout/stderr from the parent shim's fds. This is
-    # the difference between "returns instantly" and "the shim's parent (bun/claude-code) waits
-    # up to max-time for the child's stdout pipe to close because the child inherited it".
-    # Root cause of the shift-78 verifier's 9.4 s release-cutover outlier: the parent process
-    # (Bun's child_process.spawn) reads the shim's stdout via a pipe and does not resolve
-    # `.on('close')` until every child that inherited the write-end closes its handle. The
-    # curl inside redirects its own fds, but the SUBSHELL PROCESS still inherits the parent
-    # shim's stdio, and its own exit is bounded by curl's max-time (~5 s worst case). The
-    # `< /dev/null > /dev/null 2>&1` redirection on the `( … ) &` group re-parents every fd
-    # BEFORE curl starts, so the child is truly detached; the shim can exit 0 immediately
-    # and its parent's read-side sees EOF within milliseconds. `disown` stays for the bash
-    # job table cleanup — it never affected inherited fds.
-    (
-        curl -sS -o /dev/null \
-            --connect-timeout "${CONNECT_TIMEOUT_S:-2}" \
-            --max-time "$((${CONNECT_TIMEOUT_S:-2} + 3))" \
-            -X POST \
-            -H "Host: ${HOST_HEADER:-127.0.0.1:7331}" \
-            -H "Origin: ${ORIGIN_HEADER:-http://127.0.0.1:7331}" \
-            -H "Content-Type: application/json" \
-            -H "X-Internal-Secret: ${INTERNAL_SECRET:-}" \
-            -d "$body" \
-            "${CORE_URL:-http://127.0.0.1:7331}/internal/sessions/${sid}/shim-heartbeat" \
-            2>/dev/null || true
-    ) </dev/null >/dev/null 2>&1 &
-    disown 2>/dev/null || true
+
+    local mode="${GOSLEEP_HEARTBEAT_MODE:-sync}"
+    if [ "$mode" = "async" ]; then
+        # Opt-in legacy path — background POST, all errors swallowed. The debug log records
+        # "queued" so the owner knows the outcome is not observable from here.
+        (
+            curl -sS -o /dev/null \
+                --connect-timeout "${CONNECT_TIMEOUT_S:-2}" \
+                --max-time "$((${CONNECT_TIMEOUT_S:-2} + 3))" \
+                -X POST \
+                -H "Host: ${HOST_HEADER:-127.0.0.1:7331}" \
+                -H "Origin: ${ORIGIN_HEADER:-http://127.0.0.1:7331}" \
+                -H "Content-Type: application/json" \
+                -H "X-Internal-Secret: ${INTERNAL_SECRET:-}" \
+                -d "$body" \
+                "${CORE_URL:-http://127.0.0.1:7331}/internal/sessions/${sid}/shim-heartbeat" \
+                2>/dev/null || true
+        ) </dev/null >/dev/null 2>&1 &
+        disown 2>/dev/null || true
+        _gosleep_control_debug_log_hb "$sid" "queued" "000" "async" ""
+        return 0
+    fi
+
+    # Sync path (default). Capture the HTTP code from a single curl invocation; a body-write
+    # target is /dev/null so we never blow the shim's own stdout. Stderr is teed into a
+    # per-invocation tempfile so the debug log can surface curl's own message on failure.
+    local err_file http
+    err_file="$(mktemp -t gosleep-control-hb-err.XXXXXX 2>/dev/null || echo "/tmp/gosleep-control-hb-err.$$")"
+    http="$(curl -sS -o /dev/null -w '%{http_code}' \
+        --connect-timeout "${CONNECT_TIMEOUT_S:-2}" \
+        --max-time "$((${CONNECT_TIMEOUT_S:-2} + 1))" \
+        -X POST \
+        -H "Host: ${HOST_HEADER:-127.0.0.1:7331}" \
+        -H "Origin: ${ORIGIN_HEADER:-http://127.0.0.1:7331}" \
+        -H "Content-Type: application/json" \
+        -H "X-Internal-Secret: ${INTERNAL_SECRET:-}" \
+        -d "$body" \
+        "${CORE_URL:-http://127.0.0.1:7331}/internal/sessions/${sid}/shim-heartbeat" \
+        2>"$err_file" || echo "000")"
+    local err_msg=""
+    if [ -s "$err_file" ]; then
+        err_msg="$(head -c 512 "$err_file" 2>/dev/null || true)"
+    fi
+    rm -f "$err_file" 2>/dev/null || true
+    if [ "$http" = "200" ] || [ "$http" = "204" ]; then
+        _gosleep_control_debug_log_hb "$sid" "ok" "$http" "sync" ""
+    else
+        _gosleep_control_debug_log_hb "$sid" "fail" "$http" "sync" "$err_msg"
+    fi
 }
 
 # The gate itself. Sets three outer-scope variables:

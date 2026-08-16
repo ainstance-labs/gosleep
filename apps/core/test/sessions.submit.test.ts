@@ -48,9 +48,13 @@ import type { SpawnResult } from "../src/actions/spawn.ts";
 import {
   MAX_BODY_BYTES,
   PROMPT_BOUNDARY_WAIT_MS,
+  commLooksLikeClaude,
   computeBodySha256,
+  descendantCommsFromPsOutput,
   isPaneAtPrompt,
+  isVersionShapedCommand,
   normaliseAndValidateBody,
+  paneQualifiesAsPrompt,
   previewSubmission,
   resolvePaneRef,
   scanForSecretShapes,
@@ -253,6 +257,174 @@ describe("isPaneAtPrompt — R16 Risk 1 heuristic", () => {
     for (const cmd of ["node", "bun", "NODE", "Bun", " node "]) {
       expect(isPaneAtPrompt(cmd)).toBe(false);
     }
+  });
+  test("version-shaped command alone is NOT enough — sync predicate stays strict (GSL-390)", () => {
+    // Regression fence for E2E run-01 finding #2. A pane whose command reports as
+    // "2.1.233" or "v2.1.233" must not be silently promoted to "at prompt" by the
+    // pure-string sync predicate — the disambiguation happens in
+    // paneQualifiesAsPrompt with a process-tree probe. Otherwise ANY tool that
+    // happens to rename itself to a version string would be treated as claude.
+    for (const cmd of ["2.1.233", "v2.1.233", "1.2", "1.0.0"]) {
+      expect(isPaneAtPrompt(cmd)).toBe(false);
+    }
+  });
+});
+
+describe("isVersionShapedCommand — GSL-390 Claude Code 2.1.x pane_current_command", () => {
+  test("matches semver-shape tags Claude Code renames itself to", () => {
+    for (const cmd of [
+      "2.1.233",
+      "v2.1.233",
+      "1.2",
+      "1.0.0",
+      "1.2.3.4",
+      "2.1.233+build.5",
+      "2.1.233-rc1",
+    ]) {
+      expect(isVersionShapedCommand(cmd)).toBe(true);
+    }
+  });
+  test("rejects everything else (real commands + empty)", () => {
+    for (const cmd of ["bash", "claude", "python", "node", "vim", "", null]) {
+      expect(isVersionShapedCommand(cmd)).toBe(false);
+    }
+  });
+});
+
+describe("commLooksLikeClaude — GSL-390 process-tree comm match", () => {
+  test("plain 'claude' comm accepted", () => {
+    expect(commLooksLikeClaude("claude")).toBe(true);
+  });
+  test("path-with-basename accepted", () => {
+    expect(commLooksLikeClaude("/usr/local/bin/claude")).toBe(true);
+  });
+  test("versioned / suffixed claude accepted", () => {
+    expect(commLooksLikeClaude("claude-2.1.233")).toBe(true);
+    expect(commLooksLikeClaude("claude helper")).toBe(true);
+  });
+  test("random comm rejected — no bare 'claude' substring match", () => {
+    for (const c of ["", "bash", "python", "clangd", "claudeless"]) {
+      expect(commLooksLikeClaude(c)).toBe(false);
+    }
+  });
+});
+
+describe("descendantCommsFromPsOutput — GSL-390 BFS walk", () => {
+  const ps = [
+    "  1     0 launchd",
+    " 100     1 tmux: server",
+    " 200   100 bash",
+    " 300   200 node",
+    " 400   200 claude",
+    " 500   400 claude helper",
+    " 600     1 unrelated",
+  ].join("\n");
+  test("walks descendants of a mid-tree pid AND includes the root's own comm", () => {
+    const comms = descendantCommsFromPsOutput(ps, 100);
+    expect(comms).toContain("tmux: server"); // root's own comm
+    expect(comms).toContain("bash");
+    expect(comms).toContain("node");
+    expect(comms).toContain("claude");
+    expect(comms).toContain("claude helper");
+    expect(comms).not.toContain("unrelated");
+    expect(comms).not.toContain("launchd");
+  });
+  test("returns just the root's own comm when it has no descendants", () => {
+    const comms = descendantCommsFromPsOutput(ps, 600);
+    expect(comms).toEqual(["unrelated"]);
+  });
+  test("returns [] for empty input", () => {
+    expect(descendantCommsFromPsOutput("", 1)).toEqual([]);
+  });
+  test("returns [] when the root pid is not in the ps table (already gone)", () => {
+    const comms = descendantCommsFromPsOutput(ps, 9999);
+    expect(comms).toEqual([]);
+  });
+  test("GSL-390 live-leg — pane_pid IS the claude process itself (root's argv[0] is 'claude')", () => {
+    // Real macOS Claude Code 2.1.x: the pane_pid IS the claude process, `ps -o comm=`
+    // returns "claude", tmux reports pane_current_command="2.1.233" separately. Rooting
+    // the walk at the pane_pid must include that "claude" comm in the results — that's
+    // the very signal `paneQualifiesAsPrompt` needs to accept the pane.
+    const psReal = [
+      "  1     0 launchd",
+      " 100     1 tmux: server",
+      "200   100 claude",
+      "300   200 node",
+      "400   200 npm",
+      "500   300 chrome-devtools-mcp",
+    ].join("\n");
+    const comms = descendantCommsFromPsOutput(psReal, 200);
+    expect(comms[0]).toBe("claude");
+    expect(comms).toContain("node");
+    expect(comms).toContain("npm");
+    expect(comms).toContain("chrome-devtools-mcp");
+  });
+});
+
+describe("paneQualifiesAsPrompt — GSL-390 async predicate with process-tree probe", () => {
+  test("known shell — accepts without probing (probe never called)", async () => {
+    const { pane_ref } = seedControlledSessionAndPane(opened, { pane_current_command: "bash" });
+    let probed = 0;
+    const ok = await paneQualifiesAsPrompt(opened, pane_ref, {
+      readDescendantComms: async () => { probed += 1; return []; },
+    });
+    expect(ok).toBe(true);
+    expect(probed).toBe(0);
+  });
+  test("version-shaped + claude in process tree — ACCEPTED (real CC 2.1.233, run-01 M2)", async () => {
+    const { pane_ref } = seedControlledSessionAndPane(opened, {
+      pane_current_command: "2.1.233",
+    });
+    const ok = await paneQualifiesAsPrompt(opened, pane_ref, {
+      readDescendantComms: async () => ["node", "claude"],
+    });
+    expect(ok).toBe(true);
+  });
+  test("version-shaped but NO claude in process tree — REJECTED (not blanket)", async () => {
+    // The widening must not be blanket. A pane whose command happens to render as
+    // "2.1.233" (some other tool) with no `claude` in its process tree stays
+    // rejected — the probe is the gating step.
+    const { pane_ref } = seedControlledSessionAndPane(opened, {
+      pane_current_command: "2.1.233",
+    });
+    const ok = await paneQualifiesAsPrompt(opened, pane_ref, {
+      readDescendantComms: async () => ["node", "python", "vim"],
+    });
+    expect(ok).toBe(false);
+  });
+  test("non-shell, non-version command — REJECTED without probing", async () => {
+    const { pane_ref } = seedControlledSessionAndPane(opened, { pane_current_command: "python" });
+    let probed = 0;
+    const ok = await paneQualifiesAsPrompt(opened, pane_ref, {
+      readDescendantComms: async () => { probed += 1; return ["claude"]; },
+    });
+    expect(ok).toBe(false);
+    expect(probed).toBe(0);
+  });
+  test("submitTask happy path — default framing on a real CC 2.1.233 pane (E2E run-01 acceptance)", async () => {
+    // Threads the fix all the way through the executor: framing='prompt-boundary'
+    // (the dialog default) + pane_current_command='2.1.233' + a claude in the
+    // process tree → delivered on the first attempt, no more not_at_prompt refusal.
+    const { pane_ref } = seedControlledSessionAndPane(opened, { pane_current_command: "2.1.233" });
+    const spawns: string[][] = [];
+    const r = await submitTask(
+      opened,
+      { session_id: "sess-1", body: "hello CC", framing: "prompt-boundary" },
+      {
+        spawn: async (a) => { spawns.push(a); return okSpawn(); },
+        // Use a real waitForPromptBoundary but shortcut the probe to "claude is present".
+        waitForPromptBoundary: async (db, ref) =>
+          paneQualifiesAsPrompt(db, ref, {
+            readDescendantComms: async () => ["node", "claude"],
+          }),
+      },
+    );
+    expect(r.outcome).toBe("delivered");
+    expect(r.pane_ref_at_dispatch).toBe(pane_ref);
+    expect(spawns).toEqual([
+      ["tmux", "send-keys", "-t", pane_ref, "-l", "hello CC"],
+      ["tmux", "send-keys", "-t", pane_ref, "Enter"],
+    ]);
   });
 });
 

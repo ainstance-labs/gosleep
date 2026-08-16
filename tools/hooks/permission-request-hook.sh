@@ -93,14 +93,17 @@ trap 'rm -f "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true' EXIT
 cat > "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true
 exec < "$_GOSLEEP_STDIN_PEEK"
 
-# GSL-367: env fast-path bypass + pure-shell peek. See ask-user-question-hook.sh for the
-# full rationale. TL;DR: when GOSLEEP_WEB_QUESTIONS=1 the gate wins on env alone and does
-# not need session_id, so we skip the peek entirely; otherwise we use a bash+sed regex
-# over the first 4 KiB of the payload instead of spawning python3. A miss (weird shape,
-# no session_id) leaves the sid empty and the gate reports UNKNOWN — identical to the
-# pre-GSL-367 python3 `except Exception: pass` branch.
+# GSL-367 + GSL-389 (E2E run-01 M1) — peek the sid ALWAYS.
+# The GSL-367 fast-path optimisation skipped the peek on GOSLEEP_WEB_QUESTIONS=1,
+# saving a few ms; but control_gate_should_proceed's heartbeat fan-out requires a
+# non-empty sid, and skipping the peek meant an opted-in session never triggered
+# _gosleep_control_fire_heartbeat — session_control stayed empty and Take-control
+# refused with "shim has never checked in" (E2E run-01 finding #1). We now peek
+# unconditionally; the cost is a couple of ms on the fast-path and is essential
+# for the heartbeat to land. The peek itself still uses the pure-shell awk pipeline
+# (no python3 spawn), so the fast-exit path stays sub-100 ms end-to-end.
 _GOSLEEP_PEEK_SESSION_ID=""
-if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ] && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
+if [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
     # GSL-386 hardening — 4 KiB cap widened to 64 KiB (covers future preamble growth
     # without silent misses) and the greedy `sed` replaced with `awk` + `match()`
     # + `exit` for portable first-match semantics on a single process. See

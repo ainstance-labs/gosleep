@@ -113,7 +113,15 @@ exec < "$_GOSLEEP_STDIN_PEEK"
 # Non-goal: parse arbitrary JSON. The peek is a narrow probe, not a JSON validator; the
 # body construction downstream still uses python3 where correctness matters.
 _GOSLEEP_PEEK_SESSION_ID=""
-if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ] && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
+# GSL-389 (E2E run-01 M1) — peek the sid ALWAYS, not only when the env flag is off.
+# The pre-fix guard skipped the peek on GOSLEEP_WEB_QUESTIONS=1 (GSL-367 fast-path
+# optimisation), which shaved a few ms off the fast-exit but left the gate's
+# heartbeat fan-out with sid=""  — control_gate_should_proceed then returned proceed
+# without ever firing `_gosleep_control_fire_heartbeat` (which requires a non-empty
+# sid). Net effect: an opted-in session posted questions correctly but session_control
+# never gained a row and panel Take-control refused with "shim has never checked in".
+# The peek costs a couple of ms and is essential for the heartbeat — run it always.
+if [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
     # Field shape Claude Code always emits: "session_id":"<uuid>" (JSON-strings only ever contain
     # escaped double-quotes, but a Claude session_id is a hex-and-dash UUID so no escape ever
     # lands inside). `LC_ALL=C` makes the regex byte-oriented (fastest path in bash sed).

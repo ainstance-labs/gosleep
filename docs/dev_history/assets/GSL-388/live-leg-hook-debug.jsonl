@@ -1,0 +1,2 @@
+{"ts":1786919928,"event":"shim.heartbeat","sid":"fixe2e01-manual-live-test","outcome":"ok","http":"200","mode":"sync","err":""}
+{"ts":"2026-08-16T22:38:48Z","hook":"ask-user-question","outcome":"fail_open","qid":"-","elapsed_ms":0,"reason":"POST /internal/questions/post rc=400"}

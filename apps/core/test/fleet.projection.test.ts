@@ -486,4 +486,198 @@ describe("GET /fleet projection", () => {
     expect(root!.attribution).toBe("heuristic");
     expect(["root-shell:@0.%88", "root-shell:@1.%89"]).toContain(root!.tmux_pane_ref!);
   });
+
+  test("GSL-391 m3 — parent-cwd session loses the pane to the deeper (worktree) session", async () => {
+    // The E2E run-01 fixture pane bound to THREE sessions at once: the real fixture
+    // (cwd=.../worktrees/e2e01), the orchestrator (same cwd, no pid), and a repo-root
+    // parent session (cwd=/…/gosleep) that "matched" only because the pane's path was
+    // under the repo root. The fix ranks per pane: exact-cwd > deepest > pid-present >
+    // updated_at DESC, then keeps only rank_per_pane = 1. Fewer ghosts, no NEW misses on
+    // the sibling regression (already covered by the M1 test above).
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    // The one shared pane — pane_current_path is /gosleep/.claude/worktrees/e2e01, i.e.
+    // exactly under the repo root AND exactly matching the two worktree-cwd sessions.
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%431', '$1', 'e2e01-fixture', '@47', 24044,
+                 '/gosleep/.claude/worktrees/e2e01',
+                 'bash', 'e2e01', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+    // Winner: real fixture — exact cwd + has a pid, most recent updated_at.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('53eb568b', 'e2e01-75', 'interactive', 24044,
+                 '/gosleep/.claude/worktrees/e2e01', 'active',
+                 '2026-08-16T20:00:00Z', '2026-08-16T20:05:00Z',
+                 'worktree', '/gosleep/.claude/worktrees/e2e01', 0)`,
+      )
+      .run();
+    // Ghost #1: orchestrator with the SAME cwd — but no pid, older updated_at.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('5abd9a22', 'observed:gosleep', 'interactive', NULL,
+                 '/gosleep/.claude/worktrees/e2e01', 'active',
+                 '2026-08-16T18:00:00Z', '2026-08-16T18:00:10Z',
+                 'worktree', '/gosleep/.claude/worktrees/e2e01', 1)`,
+      )
+      .run();
+    // Ghost #2: repo-root parent — its cwd is an ANCESTOR of the pane's path. Under the
+    // old rule this session was attributed to the fixture's pane; under the fix it loses
+    // to the two deeper (worktree-cwd) sessions and gets NULL for THIS pane.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('2e5a1372', 'observed:gosleep', 'interactive', 42722,
+                 '/gosleep', 'active',
+                 '2026-08-16T19:00:00Z', '2026-08-16T19:00:10Z',
+                 'gosleep', '/gosleep', 1)`,
+      )
+      .run();
+
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{
+        session_id: string;
+        tmux_pane_ref: string | null;
+        attribution?: string | null;
+      }>;
+    };
+    // Dedup at the API boundary: each session appears exactly once, even though the JOIN
+    // could otherwise emit multiple rows (many panes matching one session's ancestor cwd).
+    const seen = new Set<string>();
+    for (const s of body.sessions) {
+      expect(seen.has(s.session_id)).toBe(false);
+      seen.add(s.session_id);
+    }
+    const fixture = body.sessions.find((s) => s.session_id === "53eb568b");
+    const orch = body.sessions.find((s) => s.session_id === "5abd9a22");
+    const parent = body.sessions.find((s) => s.session_id === "2e5a1372");
+    expect(fixture).toBeDefined();
+    expect(orch).toBeDefined();
+    expect(parent).toBeDefined();
+
+    // The real fixture wins the shared pane — exact cwd + pid + most recent updated_at.
+    expect(fixture!.tmux_pane_ref).toBe("e2e01-fixture:@47.%431");
+    expect(fixture!.attribution).toBe("heuristic");
+
+    // The orchestrator loses the shared pane (its cwd matches too, but it has no pid
+    // and an older updated_at). It falls through to the pidtree fallback which is off
+    // because pid is NULL → NULL pane_ref, no ghost bind.
+    expect(orch!.tmux_pane_ref).toBeNull();
+    expect(orch!.attribution).toBeNull();
+
+    // The repo-root parent's cwd is a strict ancestor of the pane's path. Under the
+    // per-pane ranking the two deeper (worktree-cwd) sessions win and the parent loses.
+    // It has a pid (42722) but no pane matches it via pane_pid, so the pidtree fallback
+    // yields NULL too. This is the exact "cwd is a PARENT of the pane's cwd" ghost the
+    // E2E run-01 verifier surfaced.
+    expect(parent!.tmux_pane_ref).toBeNull();
+    expect(parent!.attribution).toBeNull();
+  });
+
+  test("GSL-391 m3 — two exact-cwd matches: session with a pid wins the tie", async () => {
+    // Isolate the pid-tiebreak clause. Two sessions with the same cwd_project_root and
+    // same updated_at — the one with a non-NULL pid wins the pane. Belt + braces for the
+    // "real process beats an observed ghost sharing the same cwd" property.
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%200', '$1', 'work-shell', '@0', 12345,
+                 '/work/proj', 'bash', 'work', '2026-08-16T00:00:00Z',
+                 '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sess-alive', 'alive', 'interactive', 12345, '/work/proj', 'active',
+                 '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 'proj', '/work/proj', 0)`,
+      )
+      .run();
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sess-ghost', 'ghost', 'interactive', NULL, '/work/proj', 'active',
+                 '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 'proj', '/work/proj', 1)`,
+      )
+      .run();
+
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{
+        session_id: string;
+        tmux_pane_ref: string | null;
+        attribution?: string | null;
+      }>;
+    };
+    const alive = body.sessions.find((s) => s.session_id === "sess-alive");
+    const ghost = body.sessions.find((s) => s.session_id === "sess-ghost");
+    expect(alive!.tmux_pane_ref).toBe("work-shell:@0.%200");
+    // Ghost has no pid → pidtree fallback yields NULL → no misattribution.
+    expect(ghost!.tmux_pane_ref).toBeNull();
+  });
+
+  test("GSL-391 m3 — a session that wins many panes appears exactly once in the response", async () => {
+    // If a session's cwd matches multiple panes (multiple shells all rooted at the same
+    // project), the LEFT JOIN could historically emit one row per matching pane_current_path.
+    // The dedup at the API boundary ensures the response has one row per session_id
+    // regardless of how many panes matched.
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sess-multi', 'multi', 'interactive', 999, '/multi/proj', 'active',
+                 '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 'proj', '/multi/proj', 0)`,
+      )
+      .run();
+    for (let i = 0; i < 3; i += 1) {
+      raw
+        .query(
+          `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                    pane_current_path, pane_current_command, pane_title,
+                                    first_seen, last_seen, misses)
+           VALUES (?, '$1', 'multi-shell', ?, 999,
+                   ?, 'bash', 'multi', '2026-08-16T00:00:00Z',
+                   '2026-08-16T00:00:10Z', 0)`,
+        )
+        .run(`%${800 + i}`, `@${i}`, `/multi/proj/sub${i}`);
+    }
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{ session_id: string; tmux_pane_ref: string | null }>;
+    };
+    const rows = body.sessions.filter((s) => s.session_id === "sess-multi");
+    expect(rows.length).toBe(1);
+    expect(rows[0]?.tmux_pane_ref).not.toBeNull();
+  });
 });
