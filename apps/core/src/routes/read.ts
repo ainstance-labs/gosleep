@@ -33,6 +33,7 @@ import { getDbSchemaVersion } from "../db/schemaVersion.ts";
 import { computeSkillDiff, quickHasChanges, KNOWN_SKILLS } from "../skills/diff.ts";
 import { serialize } from "../actions/mutex.ts";
 import { listControlled, readControl } from "../control/registry.ts";
+import { HEURISTIC_PANE_CTE, PIDTREE_PANE_SUBQUERY } from "./paneRanking.ts";
 
 export const readRoutes = new Hono();
 
@@ -551,6 +552,9 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   //     surfaces exactly once. Losers get NULL pane_ref (and may still match via pidtree).
   //   * Regression: fleet.projection.test.ts covers the parent-cwd false match, the
   //     deepest-wins case, and the pid-tiebreak among two exact-cwd matches.
+  // GSL-396 (E2E run-02 M-1) — the CTE below is shared with /observed/sessions via
+  // routes/paneRanking.ts so both surfaces agree on attribution. Any future refinement of
+  // the ranking rules lands there once, never here twice.
   const rows = getDb().raw
     .query(
       `SELECT a.session_id, a.name, a.kind, a.pid, a.model, a.cwd, a.cycle, a.context_pct,
@@ -569,36 +573,8 @@ readRoutes.get("/fleet", requireBearer, (c) => {
               sc.activated_by   AS control_activated_by,
               sc.shim_registered AS shim_registered
        FROM agent_sessions a
-       LEFT JOIN (
-         SELECT session_id, MAX(pane_ref) AS pane_ref
-         FROM (
-           SELECT a2.session_id,
-                  t.session_name || ':' || t.window_id || '.' || t.pane_id AS pane_ref,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY t.pane_id
-                    ORDER BY
-                      CASE WHEN t.pane_current_path = a2.cwd_project_root THEN 0 ELSE 1 END,
-                      length(a2.cwd_project_root) DESC,
-                      CASE WHEN a2.pid IS NOT NULL THEN 0 ELSE 1 END,
-                      a2.updated_at DESC,
-                      a2.session_id
-                  ) AS rnk
-           FROM agent_sessions a2
-           JOIN tmux_panes t
-             ON t.pane_current_path IS NOT NULL
-            AND a2.cwd_project_root IS NOT NULL
-            AND length(a2.cwd_project_root) > 0
-            AND (t.pane_current_path = a2.cwd_project_root
-                 OR t.pane_current_path LIKE a2.cwd_project_root || '/%')
-         ) ranked
-         WHERE rnk = 1
-         GROUP BY session_id
-       ) heur ON heur.session_id = a.session_id
-       LEFT JOIN (
-         SELECT pane_pid,
-                session_name || ':' || window_id || '.' || pane_id AS pane_ref
-         FROM tmux_panes
-       ) pid ON heur.pane_ref IS NULL
+       LEFT JOIN ${HEURISTIC_PANE_CTE} heur ON heur.session_id = a.session_id
+       LEFT JOIN ${PIDTREE_PANE_SUBQUERY} pid ON heur.pane_ref IS NULL
              AND a.pid IS NOT NULL
              AND pid.pane_pid = a.pid
        LEFT JOIN session_control sc ON sc.session_id = a.session_id

@@ -28,6 +28,7 @@ import {
 } from "../data/queries";
 import { cn } from "../lib/cn";
 import { formatModelLabel, timeAgo } from "../lib/format";
+import type { ObservedSessionRow } from "@gosleep/schema";
 
 function ProjectRail({ selected, onSelect }: {
   selected: string | null;
@@ -232,13 +233,14 @@ export function ObservedScreen() {
               }
               return (
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-                  {filtered.map((s) => {
-                    const tmuxRef = tmux.data?.panes.find(
-                      (p) =>
-                        p.pane_current_path !== null &&
-                        s.cwd_project_root !== null &&
-                        p.pane_current_path.startsWith(s.cwd_project_root),
-                    );
+                  {filtered.map((s: ObservedSessionRow) => {
+                    // GSL-396 (E2E run-02 M-1) — read the server-provided tmux_pane_ref
+                    // directly. The pre-fix client-side `.find(p =>
+                    // p.pane_current_path.startsWith(s.cwd_project_root))` glued a repo-root
+                    // session to any deeper pane (fixture worktree, etc.). Attribution now
+                    // lives in one place — apps/core/src/routes/paneRanking.ts — shared with
+                    // /fleet so the two surfaces cannot disagree.
+                    const tmuxPaneRef = s.tmux_pane_ref ?? null;
                     return (
                       <Card
                         key={s.session_id}
@@ -299,11 +301,19 @@ export function ObservedScreen() {
                               updated {timeAgo(s.updated_at)}
                             </span>
                           </div>
-                          {tmuxRef !== undefined ? (
+                          {tmuxPaneRef !== null ? (
                             <div className="text-muted flex items-center justify-between text-xs">
                               <span>tmux</span>
-                              <span className="mono">
-                                {tmuxRef.session_name}:{tmuxRef.window_id}.{tmuxRef.pane_id}
+                              <span
+                                className="mono"
+                                data-testid="observed-tmux-pane-ref"
+                              >
+                                {tmuxPaneRef}
+                                {s.attribution === "heuristic" ? (
+                                  <span className="text-muted ml-1 text-[10px] uppercase">
+                                    heuristic
+                                  </span>
+                                ) : null}
                               </span>
                             </div>
                           ) : null}

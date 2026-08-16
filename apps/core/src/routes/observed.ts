@@ -15,6 +15,7 @@ import { requireBearer } from "../security/bearer.ts";
 import { getDb } from "../db/client.ts";
 import { listCollectors } from "../observed/sentinel.ts";
 import { listProjects } from "../observed/projects.ts";
+import { HEURISTIC_PANE_CTE, PIDTREE_PANE_SUBQUERY } from "./paneRanking.ts";
 
 export const observedRoutes = new Hono();
 
@@ -89,17 +90,37 @@ interface SessionRow {
   control_state: string | null;
   control_source: string | null;
   shim_registered: number | null;
+  // GSL-396 (E2E run-02 M-1) — server-side ranked tmux-pane attribution. The Observed page
+  // used to re-derive this client-side with a weaker `startsWith` predicate, which glued a
+  // repo-root session to any deeper pane (fixture worktree, etc.). Now both /fleet and
+  // /observed/sessions share the same ranked SQL via routes/paneRanking.ts.
+  tmux_pane_ref: string | null;
+  attribution: string | null;
+  pid: number | null;
 }
 
 observedRoutes.get("/observed/sessions", requireBearer, (c) => {
+  // GSL-396 — same ranked join /fleet uses (heuristic first, pidtree fallback). Kept in
+  // routes/paneRanking.ts so the two surfaces cannot silently disagree.
   const rows = getDb()
     .raw.query(
-      "SELECT a.session_id, a.name, a.model, a.cwd, a.status, a.project_slug, a.cwd_project_root, " +
-        "a.observed_only, a.started_at, a.updated_at, a.ended_at, " +
-        "sc.state AS control_state, sc.source AS control_source, sc.shim_registered AS shim_registered " +
-        "FROM agent_sessions a " +
-        "LEFT JOIN session_control sc ON sc.session_id = a.session_id " +
-        "ORDER BY (a.ended_at IS NULL) DESC, a.updated_at DESC LIMIT 500",
+      `SELECT a.session_id, a.name, a.model, a.cwd, a.status, a.project_slug, a.cwd_project_root,
+              a.observed_only, a.started_at, a.updated_at, a.ended_at, a.pid,
+              sc.state AS control_state, sc.source AS control_source, sc.shim_registered AS shim_registered,
+              COALESCE(heur.pane_ref, pid.pane_ref) AS tmux_pane_ref,
+              CASE
+                WHEN heur.pane_ref IS NOT NULL THEN 'heuristic'
+                WHEN pid.pane_ref  IS NOT NULL THEN 'pidtree'
+                ELSE NULL
+              END AS attribution
+         FROM agent_sessions a
+         LEFT JOIN ${HEURISTIC_PANE_CTE} heur ON heur.session_id = a.session_id
+         LEFT JOIN ${PIDTREE_PANE_SUBQUERY} pid ON heur.pane_ref IS NULL
+               AND a.pid IS NOT NULL
+               AND pid.pane_pid = a.pid
+         LEFT JOIN session_control sc ON sc.session_id = a.session_id
+         ORDER BY (a.ended_at IS NULL) DESC, a.updated_at DESC
+         LIMIT 500`,
     )
     .all() as SessionRow[];
   return c.json({
@@ -122,6 +143,11 @@ observedRoutes.get("/observed/sessions", requireBearer, (c) => {
       shim_registered: r.shim_registered === 1,
       env_locked:
         r.control_state === "controlled" && r.control_source === "env",
+      // GSL-396 — server-derived attribution. NULL when the session did not win any pane
+      // (no glue), or neither the heuristic nor the pidtree fallback matched. The Observed
+      // panel renders this verbatim; no client-side join.
+      tmux_pane_ref: r.tmux_pane_ref,
+      attribution: r.attribution,
     })),
     count: rows.length,
   });
