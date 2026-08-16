@@ -327,7 +327,7 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     expect(r.body.reason).toBe("preview-required");
   });
 
-  test("release-mid-submit — 409 session-not-controlled (F16-S6)", async () => {
+  test("release-mid-submit — 409 session-not-controlled + released_mid_submit row + failed event (F16-S6, verifier M1)", async () => {
     clearSubmissionState();
     seedControlled("sess-J");
     const key = "sub-J-1";
@@ -338,6 +338,7 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     );
     // Release control between preview and confirm.
     raw.query(`UPDATE session_control SET state='observer' WHERE session_id='sess-J'`).run();
+    spawnCalls = [];
     const r = await postJson(
       "/actions/sessions/sess-J/submit-task",
       { body: "hi", framing: "none", dry_run: false },
@@ -345,9 +346,44 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     );
     expect(r.status).toBe(409);
     expect(r.body.reason).toBe("session-not-controlled");
-    // No submission row was written.
-    const rows = raw.query(`SELECT COUNT(*) AS c FROM task_submissions`).get() as { c: number };
-    expect(rows.c).toBe(0);
+    // Verifier M1 (F16-S6 auditability per R16.6): one row was written with
+    // outcome='released_mid_submit', pane_ref_at_dispatch is null, and body_sha+
+    // body_len match the preview's captured values (no body text).
+    const row = raw.query(
+      `SELECT outcome, pane_ref_at_dispatch, body_len, framing, error FROM task_submissions WHERE session_id='sess-J'`,
+    ).get() as {
+      outcome: string;
+      pane_ref_at_dispatch: string | null;
+      body_len: number;
+      framing: string;
+      error: string | null;
+    };
+    expect(row.outcome).toBe("released_mid_submit");
+    expect(row.pane_ref_at_dispatch).toBe(null);
+    expect(row.body_len).toBe(2);
+    expect(row.framing).toBe("none");
+    expect(row.error).toContain("not under panel control");
+    // No tmux spawn — the executor never runs on this path. Only lab-log spawns
+    // are permitted (the failed-event emission).
+    const tmuxCalls = spawnCalls.filter((c) => c[0] === "tmux");
+    expect(tmuxCalls).toEqual([]);
+    // The task.submit.failed timeline event was emitted via lab-log.sh with the right
+    // kind and released_mid_submit outcome + non-null error in the --data-json payload.
+    const labLogCalls = spawnCalls.filter(
+      (c) => c[0] === "bash" && c[1].endsWith("/lab-log.sh"),
+    );
+    expect(labLogCalls.length).toBe(1);
+    const argv = labLogCalls[0];
+    const typeIdx = argv.indexOf("--type");
+    expect(typeIdx).toBeGreaterThan(-1);
+    expect(argv[typeIdx + 1]).toBe("task.submit.failed");
+    const dataIdx = argv.indexOf("--data-json");
+    expect(dataIdx).toBeGreaterThan(-1);
+    const payload = JSON.parse(argv[dataIdx + 1] as string) as Record<string, unknown>;
+    expect(payload.outcome).toBe("released_mid_submit");
+    expect(payload.session_id).toBe("sess-J");
+    expect(payload.pane_ref_at_dispatch).toBe(null);
+    expect(payload.error).toBeTruthy();
   });
 
   test("pane_gone at confirm → 200 outcome=pane_gone, row inserted, no tmux spawn (F16-S5)", async () => {

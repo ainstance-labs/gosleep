@@ -2436,6 +2436,62 @@ actionsRoutes.post(
             framing,
           });
           if (!previewNow.ok) {
+            // GSL-381 fix (verifier M1): release-mid-submit auditability per PRD F16-S6
+            // / R16.6. When previewSubmission's re-check trips on `session-not-controlled`
+            // (state flipped between preview and confirm), the executor's
+            // `released_mid_submit` branch is unreachable under the current wiring — the
+            // endpoint used to short-circuit here and no `task_submissions` row was
+            // written and no timeline event fired, so the panel's history + timeline had
+            // NO trace of the aborted send. Write the row + emit the failed event now,
+            // before returning the 409. `shim-not-registered` is intentionally not
+            // upgraded here: that state means the receiver is not observable at all
+            // (the shim vanished), which is closer to `pane_gone` than to a mid-run
+            // release and lives outside the audit surface F16-S6 pins.
+            if (previewNow.reason === "session-not-controlled") {
+              const nowIsoTs = new Date().toISOString();
+              const submissionId = randomUUID();
+              // Reuse the sha + body_len captured at preview time — the body bytes we
+              // hold on the confirm request match by contract (the body_sha256 mismatch
+              // branch below is unreachable here because previewNow never returned an
+              // .ok=true envelope). If the confirm client somehow altered the body,
+              // that path becomes indistinguishable from the same session flip; the
+              // audit row still describes the release accurately.
+              insertSubmissionRow({
+                id: submissionId,
+                ts: nowIsoTs,
+                session_id: sessionId,
+                pane_ref_at_dispatch: null,
+                body_sha256: existingParams.body_sha256,
+                body_len: existingParams.input.body_len,
+                framing,
+                outcome: "released_mid_submit",
+                error: previewNow.message,
+              });
+              fireSubmissionSse({
+                session_id: sessionId,
+                submission_id: submissionId,
+                outcome: "released_mid_submit",
+                body_len: existingParams.input.body_len,
+                body_sha256: existingParams.body_sha256,
+                framing,
+                pane_ref_at_dispatch: null,
+                by,
+                channel,
+              });
+              await fireSubmissionTimelineEvent("task.submit.failed", {
+                session_id: sessionId,
+                submission_id: submissionId,
+                outcome: "released_mid_submit",
+                body_len: existingParams.input.body_len,
+                body_sha256: existingParams.body_sha256,
+                framing,
+                pane_ref_at_dispatch: null,
+                by,
+                channel,
+                error: previewNow.message,
+                body: rawBody,
+              });
+            }
             return {
               httpStatus: previewNow.httpStatus,
               ok: false,
