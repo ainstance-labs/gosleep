@@ -42,6 +42,9 @@ import type {
   ResolveActionInput,
   ResolveActionResponse,
   SessionControlRow,
+  SubmitTaskActionInput,
+  SubmitTaskActionResponse,
+  TaskSubmissionsResponse,
   SkillDiffResponse,
   SkillsResponse,
   SnapshotActionInput,
@@ -518,6 +521,54 @@ export function useReleaseControl(): UseMutationResult<
       qc.invalidateQueries({ queryKey: queryKeys.sessionControl(vars.session_id) });
       qc.invalidateQueries({ queryKey: queryKeys.controlledSessions() });
       qc.invalidateQueries({ queryKey: ["core", "timeline"] });
+    },
+  });
+}
+
+// GSL-381 (observer mode phase C) — per-session submission history + submit-task mutation.
+
+/** Read the per-session submission history for the Fleet/Observed card drawer.
+ *  `sessionId=null` disables the query so the drawer can lazy-open. Refetches on the
+ *  SSE `sessions.submissions.updated` / `task.submitted` / `task.submit.failed` frames
+ *  (the SseProvider invalidates the `submissions` bucket). */
+export function useSubmissions(
+  sessionId: string | null,
+  limit?: number,
+): UseQueryResult<TaskSubmissionsResponse> {
+  return useQuery({
+    queryKey: queryKeys.submissions(sessionId ?? "__none__", limit),
+    queryFn: () => coreClient.submissions(sessionId!, limit),
+    enabled: sessionId !== null && sessionId.length > 0,
+  });
+}
+
+/** POST /actions/sessions/:id/submit-task under the same Idempotency-Key across BOTH
+ *  the dry-run and confirm phases. Caller controls `input.dry_run`; the panel's dialog
+ *  calls this twice per submission (debounced preview + explicit confirm), passing the
+ *  SAME `idempotencyKey` argument each time so the server can enforce F16-S4
+ *  "preview-required".
+ *
+ *  NOT wrapped with an internal mint of the idempotency key — the dialog owns it so a
+ *  confirm can prove it followed a preview under the same key.
+ */
+export function useSubmitTask(): UseMutationResult<
+  SubmitTaskActionResponse,
+  Error,
+  { sessionId: string; input: SubmitTaskActionInput; idempotencyKey: string }
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars) =>
+      coreClient.submitTask(vars.sessionId, vars.input, vars.idempotencyKey),
+    onSuccess: (_data, vars) => {
+      // Only invalidate the submissions drawer / fleet on a confirm — dry-run has no
+      // side effects worth invalidating (the preview call is the panel's own render
+      // input; TanStack Query is not the source of truth for it).
+      if (!vars.input.dry_run) {
+        qc.invalidateQueries({ queryKey: queryKeys.submissions(vars.sessionId) });
+        qc.invalidateQueries({ queryKey: queryKeys.fleet() });
+        qc.invalidateQueries({ queryKey: ["core", "timeline"] });
+      }
     },
   });
 }
