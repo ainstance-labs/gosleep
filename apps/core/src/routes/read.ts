@@ -485,6 +485,13 @@ interface AgentSessionRow {
   // never touched a PR. Timestamped so Overview can pick the newest URL across the fleet.
   last_pr_url: string | null;
   last_pr_at: string | null;
+  // GSL-356 (observer mode phase A) — project attribution + observed-only flag + tmux pane
+  // reference joined from tmux_panes by pid correlation. NULL fields mean "not yet
+  // attributed" (the collector may not have folded this row yet).
+  project_slug: string | null;
+  cwd_project_root: string | null;
+  observed_only: number;
+  tmux_pane_ref: string | null;
 }
 
 readRoutes.get("/fleet", requireBearer, (c) => {
@@ -493,13 +500,22 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   // filtered out, so an owner can still see "who ended in the last hour" without a filter
   // dance. A future ?include=live query knob is easy to add if the row count ever grows past
   // the SPA's happy limit.
+  //
+  // GSL-356 — LEFT JOIN tmux_panes on pane_pid = agent_sessions.pid so each row carries the
+  // human-readable pane ref (session:window.pane_id) when one is correlated. The join is
+  // outer so uncorrelated rows still render (they get NULL pane_ref → panel shows "—").
   const rows = getDb().raw
     .query(
-      `SELECT session_id, name, kind, pid, model, cwd, cycle, context_pct, current_tool,
-              current_intent, status, started_at, updated_at, ended_at,
-              last_pr_url, last_pr_at
-       FROM agent_sessions
-       ORDER BY (ended_at IS NULL) DESC, updated_at DESC
+      `SELECT a.session_id, a.name, a.kind, a.pid, a.model, a.cwd, a.cycle, a.context_pct,
+              a.current_tool, a.current_intent, a.status, a.started_at, a.updated_at, a.ended_at,
+              a.last_pr_url, a.last_pr_at,
+              a.project_slug, a.cwd_project_root, a.observed_only,
+              CASE WHEN t.pane_id IS NOT NULL
+                   THEN t.session_name || ':' || t.window_id || '.' || t.pane_id
+                   ELSE NULL END AS tmux_pane_ref
+       FROM agent_sessions a
+       LEFT JOIN tmux_panes t ON t.pane_pid = a.pid
+       ORDER BY (a.ended_at IS NULL) DESC, a.updated_at DESC
        LIMIT 200`,
     )
     .all() as AgentSessionRow[];
@@ -542,6 +558,13 @@ readRoutes.get("/fleet", requireBearer, (c) => {
       // Null when the session never opened / viewed a PR.
       last_pr_url: r.last_pr_url,
       last_pr_at: r.last_pr_at,
+      // GSL-356 — observer-mode enrichment. `observed_only=true` marks a session that has
+      // no gosleep hook wired in its project; the Fleet screen renders such rows with a
+      // muted badge and disables answer/decide affordances (R14.3).
+      project_slug: r.project_slug,
+      cwd_project_root: r.cwd_project_root,
+      observed_only: r.observed_only === 1,
+      tmux_pane_ref: r.tmux_pane_ref,
     })),
     count: rows.length,
     totals,
