@@ -17,6 +17,7 @@ import { useState } from "react";
 
 import { Badge } from "../components/ui/Badge";
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
+import { ControlToggle } from "../components/ControlToggle";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import {
@@ -325,6 +326,22 @@ export function ObservedScreen() {
                               </span>
                             </div>
                           </div>
+                          {/* GSL-361 (observer mode phase B) — per-session Take/Release
+                              control toggle. Hidden on ended sessions; renders the pill +
+                              button surface for observer / controlled / env-locked states.
+                              Replaces the older "observer only — no control" static badge
+                              on cards where the shim has registered (the shim's presence
+                              means panel control is now possible; the pre-phase-B badge
+                              is misleading in that state). */}
+                          {s.ended_at === null ? (
+                            <ControlToggle
+                              sessionId={s.session_id}
+                              state={s.control_state as "observer" | "controlled" | undefined}
+                              source={s.control_source as "env" | "runtime" | "inherited" | null | undefined}
+                              shimRegistered={s.shim_registered}
+                              envLocked={s.env_locked}
+                            />
+                          ) : null}
                         </CardBody>
                       </Card>
                     );

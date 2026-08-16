@@ -157,6 +157,13 @@ export function SseProvider({ children }: { children: ReactNode }) {
             // `agent_sessions.updated` (via the events broadcaster). The Fleet screen re-fetches
             // /fleet so cards land within a tick of any status/tool/context change.
             invalidator.schedule("fleet");
+          } else if (type.startsWith("sessions.control.")) {
+            // GSL-361 (observer mode phase B) — take/release-control + heartbeat env-locked
+            // synthetics land under this prefix. Invalidate every projection that carries
+            // control state so the pill + button flip within one coalesce window.
+            invalidator.schedule("fleet");
+            invalidator.schedule("sessions");
+            invalidator.schedule("observed");
           }
         },
         onRotate: (data) => {
