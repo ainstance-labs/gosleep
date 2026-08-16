@@ -51,6 +51,9 @@
 #     dedup are read-then-append and must be exclusive).
 #
 # Env: GOSLEEP_LAB_DIR overrides the lab dir (default <repo>/docs/lab) — smoke uses it.
+#      GOSLEEP_MANIFEST_PATH overrides the decision manifest path (default is the REPO's
+#      docs/lab/decisions/manifest.md — the manifest is a shared source of truth, not per-lab-dir).
+#      Tests point this at a fixture to prove --rule validation in isolation.
 # 0 LLM calls (C1). python3 stdlib only (JSON safety). macOS/BSD userland.
 # =============================================================================
 set -euo pipefail
@@ -59,6 +62,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export LAB_DIR="${GOSLEEP_LAB_DIR:-$REPO_ROOT/docs/lab}"
 export LAB_LOG="$SCRIPT_DIR/lab-log.sh"      # GSL-84: the single writer of events/*.jsonl
+export MANIFEST_PATH="${GOSLEEP_MANIFEST_PATH:-$REPO_ROOT/docs/lab/decisions/manifest.md}"
 
 exec python3 - "$@" <<'PY'
 import sys, os, json, hashlib, time, re, subprocess
@@ -71,10 +75,65 @@ LOCK  = os.path.join(QDIR, ".queue.lock")
 DDIR  = os.path.join(LAB, "decisions")
 DLOG  = os.path.join(DDIR, "log.jsonl")
 DLOCK = os.path.join(DDIR, ".log.lock")
+MANIFEST_PATH = os.environ.get("MANIFEST_PATH") or os.path.join(DDIR, "manifest.md")
 
 TYPES    = ("BLOCKER", "DECISION", "CLARIFY", "FYI")
-STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted")
+STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted", "deferred")
 REVERSIBILITY = ("high", "med", "low")
+
+# GSL-227: an orchestrator decision's --rule is validated against the manifest at write time.
+# Two shapes are accepted:
+#   * a citation of a manifest bullet — "manifest §N.bullet" or the short "§N.bullet"; the
+#     bullet must actually exist in manifest.md.
+#   * a delegation — "delegation:<origin>" (e.g. "delegation:owner 2026-08-16"). Delegations
+#     encode a rule the manifest does not yet name; they are advisory only (candidates for
+#     future promotion into the manifest) and are surfaced separately in the digest.
+# Anything else (an unknown §N.bullet, a bare comment, "TODO", or the empty string) is refused
+# with an actionable error. Rules are TAGGED at write time — the decision record carries
+# rule_kind = "manifest" | "delegation" | "" — so the digest split does not have to re-guess.
+RULE_MANIFEST_RE = re.compile(r"^(?:manifest\s+)?§\s*(\d+\.[a-z0-9][a-z0-9-]*)\s*$", re.I)
+RULE_DELEGATION_RE = re.compile(r"^delegation\s*:\s*(\S.*)$", re.I)
+MANIFEST_BULLET_RE = re.compile(r"^-\s+§\s*(\d+\.[a-z0-9][a-z0-9-]*)", re.I)
+
+
+def load_manifest_bullets():
+    """Read manifest.md and return the set of `N.bullet` ids that lab-emit accepts as --rule
+    citations. Fail loudly if the manifest is missing — a lab that cannot cite its manifest has
+    no business auto-recording an autonomous decision."""
+    if not os.path.exists(MANIFEST_PATH):
+        die("manifest not found at %s (set GOSLEEP_MANIFEST_PATH to override)" % MANIFEST_PATH)
+    ids = set()
+    with open(MANIFEST_PATH, encoding="utf-8") as f:
+        for line in f:
+            m = MANIFEST_BULLET_RE.match(line)
+            if m:
+                ids.add(m.group(1).lower())
+    return ids
+
+
+def classify_rule(rule, bullets=None):
+    """Return (rule_kind, canonical, error). rule_kind ∈ {"manifest","delegation",""}.
+    canonical is the tidied string that should end up on the record.
+    error is a human-readable message when the rule cannot be accepted."""
+    r = (rule or "").strip()
+    if not r:
+        return "", "", ""
+    m = RULE_DELEGATION_RE.match(r)
+    if m:
+        return "delegation", "delegation:" + m.group(1).strip(), ""
+    m = RULE_MANIFEST_RE.match(r)
+    if m:
+        bid = m.group(1).lower()
+        known = bullets if bullets is not None else load_manifest_bullets()
+        if bid not in known:
+            near = sorted(k for k in known if k.split(".")[0] == bid.split(".")[0])
+            hint = ("; section §%s has: %s" % (bid.split(".")[0], ", ".join(near))) if near else ""
+            return "", r, ("rule '%s' cites §%s, which is not in the manifest (%s)%s"
+                           % (r, bid, MANIFEST_PATH, hint))
+        return "manifest", "manifest §" + bid, ""
+    return "", r, ("rule %r is neither a manifest citation ('manifest §N.bullet') nor a "
+                   "delegation ('delegation:<origin>'); an orchestrator decision without a "
+                   "citable rule has no provenance (F3-S3)" % r)
 
 # The semantic vocabulary (GSL-84). Hooks (GSL-83) capture what a machine can SEE — a commit, a Jira
 # call, a session ending. These are what only an agent KNOWS. Grouped by the producer that emits them:
@@ -568,6 +627,14 @@ def cmd_decision(argv):
     if by == "orchestrator" and not a.get("rule"):
         die("an orchestrator decision REQUIRES --rule \"manifest §N.bullet\" (provenance, F3-S3); "
             "no citable rule -> it is a DECISION record with a deadline, not an autonomous act")
+    # GSL-227: validate --rule at write time. Owner-authored decisions (--by owner) skip validation
+    # because the owner IS the source of authority; every other actor's rule must classify as either
+    # a real manifest citation or an explicit delegation ("delegation:<origin>").
+    rule_kind, rule_canon = "", (a.get("rule") or "").strip()
+    if rule_canon and by != "owner":
+        rule_kind, rule_canon, err = classify_rule(rule_canon)
+        if err:
+            die(err)
     question, task, qtype = a.get("question", ""), a.get("task", ""), ""
     if a.get("re"):
         m = fold(read_records()).get(a["re"]) or die("no queue record with id %s" % a["re"])
@@ -583,8 +650,8 @@ def cmd_decision(argv):
         n = max([int(m.group(1)) for r in recs for m in [pat.match(r.get("id", ""))] if m] or [0])
         rec = {"id": "d-%s-%03d" % (today, n + 1), "ts": iso_utc(), "re": a.get("re", ""),
                "task": task, "type": qtype, "question": question, "qshape": qshape(question),
-               "decision": a["decision"], "made_by": by, "rule": a.get("rule", ""),
-               "channel": a.get("channel", "")}
+               "decision": a["decision"], "made_by": by, "rule": rule_canon,
+               "rule_kind": rule_kind, "channel": a.get("channel", "")}
         append_jsonl(DLOG, rec)
         print(rec["id"])
     emit_event("decision.made", by,

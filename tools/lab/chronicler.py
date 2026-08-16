@@ -2975,15 +2975,54 @@ def build_digest(ctx, status):
     L.append("")
 
     # 2 — Decided for you. Every autonomous decision MUST cite a manifest rule (provenance, F3-S3).
+    # GSL-227: rules split into two groups — by manifest (rule_kind="manifest") vs by delegation
+    # (rule_kind="delegation", advisory rules that are not yet in the manifest and are candidates
+    # for promotion). Legacy records without rule_kind are classified at read time from the rule
+    # string itself, so old rows still land in the right bucket.
     dec_today = [x for x in ctx["decisions"] if (x.get("ts") or "").startswith(ctx["date"])]
+
+    def _rule_kind(x):
+        k = (x.get("rule_kind") or "").strip().lower()
+        if k in ("manifest", "delegation", "unattributed"):
+            return k
+        r = (x.get("rule") or "").strip().lower()
+        if not r:
+            return "unattributed"
+        if r.startswith("delegation:"):
+            return "delegation"
+        if r.startswith("§") or r.startswith("manifest §") or r.startswith("manifest §"):
+            return "manifest"
+        return "unattributed"
+
+    def _line(x):
+        return "- %s (%s, %s) — rule: `%s`" % (
+            x.get("decision"), x.get("re") or x.get("id") or "—",
+            (x.get("ts") or "")[11:16], x.get("rule") or "NO RULE CITED — audit this")
+
+    by_kind = {"manifest": [], "delegation": [], "unattributed": []}
+    for x in dec_today:
+        by_kind[_rule_kind(x)].append(x)
     L.append("## 2. Decided for you (%d)" % len(dec_today))
-    if dec_today:
-        for x in dec_today:
-            L.append("- %s (%s, %s) — rule: `%s`" % (
-                x.get("decision"), x.get("re") or x.get("id") or "—",
-                (x.get("ts") or "")[11:16], x.get("rule") or "NO RULE CITED — audit this"))
-    else:
+    if not dec_today:
         L.append("- none")
+    else:
+        L.append("### by manifest (%d)" % len(by_kind["manifest"]))
+        if by_kind["manifest"]:
+            L.extend(_line(x) for x in by_kind["manifest"])
+        else:
+            L.append("- none")
+        L.append("")
+        L.append("### by delegation (%d) — advisory rules, candidates for the manifest"
+                 % len(by_kind["delegation"]))
+        if by_kind["delegation"]:
+            L.extend(_line(x) for x in by_kind["delegation"])
+        else:
+            L.append("- none")
+        if by_kind["unattributed"]:
+            L.append("")
+            L.append("### unattributed (%d) — legacy or unvalidated; audit these"
+                     % len(by_kind["unattributed"]))
+            L.extend(_line(x) for x in by_kind["unattributed"])
     L.append("")
 
     # 3 — What shipped. From git/gh/events, not from memory.
