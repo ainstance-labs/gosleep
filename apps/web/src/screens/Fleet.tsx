@@ -177,8 +177,18 @@ export function FleetScreen() {
                           </span>
                         ) : null}
                         {s.tmux_pane_ref !== null && s.tmux_pane_ref !== undefined ? (
-                          <span className="mono" title="tmux session:window.pane_id — correlated by pid">
+                          <span
+                            className="mono"
+                            title={
+                              s.attribution === "heuristic"
+                                ? "tmux session:window.pane_id — matched by cwd prefix (pid walk lost); not authoritative"
+                                : "tmux session:window.pane_id — resolved by parent-PID walk"
+                            }
+                          >
                             {s.tmux_pane_ref}
+                            {s.attribution === "heuristic" ? (
+                              <span className="text-muted ml-1 text-[10px] uppercase">heuristic</span>
+                            ) : null}
                           </span>
                         ) : null}
                       </div>

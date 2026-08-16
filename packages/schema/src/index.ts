@@ -225,6 +225,10 @@ export const FleetSession = z.object({
   cwd_project_root: z.string().nullable().optional(),
   observed_only: z.boolean().optional(),
   tmux_pane_ref: z.string().nullable().optional(),
+  // GSL-350 M1 follow-up — 'pidtree' (parent-PID walk hit a pane pid) | 'heuristic'
+  // (cwd-prefix match on pane_current_path) | null (no pane matched at all). Panel tags
+  // heuristic matches with a small hint so the operator knows it's not authoritative.
+  attribution: z.string().nullable().optional(),
 });
 export type FleetSession = z.infer<typeof FleetSession>;
 

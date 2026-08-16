@@ -266,8 +266,53 @@ describe("GET /fleet projection", () => {
     expect(observed!.project_slug).toBe("scratch");
     expect(observed!.cwd_project_root).toBe("/tmp/scratch");
     expect(observed!.tmux_pane_ref).toBe("obs-shell:@0.%9");
+    // M1 follow-up: attribution surfaces on the pidtree-matched row.
+    expect((observed as unknown as { attribution?: string }).attribution).toBe("pidtree");
     expect(native!.observed_only).toBe(false);
     expect(native!.project_slug).toBe("gosleep");
     expect(native!.tmux_pane_ref).toBeNull(); // no pane with pid=4444
+  });
+
+  test("M1 fallback: cwd-prefix heuristic fires when pid walk failed (session pid=null)", async () => {
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    // Session with NULL pid — the sessions collector could not resolve owning pane via lsof.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sid-noped', 'observed:heur', 'interactive', NULL, '/tmp/heur-repo',
+                 'active', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z',
+                 'heur-repo', '/tmp/heur-repo', 1)`,
+      )
+      .run();
+    // A pane whose pane_current_path is under the session's cwd_project_root — the fallback
+    // heuristic must match it.
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%42', '$1', 'heur-shell', '@0', 7777, '/tmp/heur-repo/src', 'bash', 'heur',
+                 '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{
+        session_id: string;
+        tmux_pane_ref: string | null;
+        attribution?: string | null;
+      }>;
+    };
+    const row = body.sessions.find((s) => s.session_id === "sid-noped");
+    expect(row).toBeDefined();
+    // Heuristic hit — the pane_ref surfaced via cwd-prefix even though pid was NULL.
+    expect(row!.tmux_pane_ref).toBe("heur-shell:@0.%42");
+    expect(row!.attribution).toBe("heuristic");
   });
 });
