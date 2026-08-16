@@ -1,6 +1,7 @@
 // @gosleep/web — Questions screen (GSL-265 read-only; GSL-268 answer/resolve;
 // GSL-277 apply-manifest + provenance badge; GSL-278 defer + countdown;
-// GSL-284 permission Allow/Deny cards; GSL-371 clickable variant options).
+// GSL-284 permission Allow/Deny cards; GSL-371 clickable variant options;
+// GSL-372 short-duration defer presets).
 //
 // Five owner-facing actions on each open question. The row's `kind` field decides which
 // path the card takes:
@@ -43,6 +44,11 @@ import {
   normalizeOptions,
   type NormalizedOption,
 } from "../lib/questionOptions";
+import {
+  DEFER_PRESET_ORDER,
+  resolveDeferPreset,
+  type DeferPresetKey,
+} from "../lib/deferPresets";
 
 type StatusTone = "info" | "ok" | "warn" | "neutral" | "danger" | "accent";
 const TONE: Record<string, StatusTone> = {
@@ -76,7 +82,7 @@ interface ResolveDialogState {
 interface DeferDialogState {
   qid: string;
   question: string;
-  duration: DeferDurationKey;
+  duration: DeferPresetKey;
   customIso: string;
 }
 
@@ -97,54 +103,10 @@ interface DenyPermissionDialogState {
 // helpers
 // -----------------------------------------------------------------------------
 
-type DeferDurationKey =
-  | "no-timer"
-  | "30m"
-  | "2h"
-  | "tomorrow-10am"
-  | "next-week"
-  | "custom";
-
-function isoNowPlus(seconds: number): string {
-  const d = new Date(Date.now() + seconds * 1000);
-  return d.toISOString();
-}
-
-function tomorrowAt10Iso(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(10, 0, 0, 0);
-  return d.toISOString();
-}
-
-function nextWeekMondayAt10Iso(): string {
-  const d = new Date();
-  const day = d.getDay(); // 0 = Sun
-  const daysUntilMonday = (8 - day) % 7 || 7;
-  d.setDate(d.getDate() + daysUntilMonday);
-  d.setHours(10, 0, 0, 0);
-  return d.toISOString();
-}
-
-function deferKeyToIso(key: DeferDurationKey, custom: string): string | null {
-  switch (key) {
-    case "no-timer":
-      return null;
-    case "30m":
-      return isoNowPlus(30 * 60);
-    case "2h":
-      return isoNowPlus(2 * 60 * 60);
-    case "tomorrow-10am":
-      return tomorrowAt10Iso();
-    case "next-week":
-      return nextWeekMondayAt10Iso();
-    case "custom":
-      // Empty custom => no timer (mirrors CLI semantics).
-      return custom.trim().length > 0 ? custom.trim() : null;
-    default:
-      return null;
-  }
-}
+// GSL-372: the preset ladder + duration mapping now live in
+// `apps/web/src/lib/deferPresets.ts` — extracted for unit-test coverage
+// (`test/deferPresets.test.ts`) and so the ordering + labels have a single
+// source of truth.
 
 function formatCountdown(untilIso: string): string {
   const total = new Date(untilIso).getTime() - Date.now();
@@ -527,7 +489,11 @@ export function QuestionsScreen() {
 
   const submitDefer = async (): Promise<void> => {
     if (deferDialog === null) return;
-    const iso = deferKeyToIso(deferDialog.duration, deferDialog.customIso);
+    const iso = resolveDeferPreset(
+      deferDialog.duration,
+      deferDialog.customIso,
+      new Date(),
+    );
     try {
       const res = await deferMut.mutateAsync({
         qid: deferDialog.qid,
@@ -1159,17 +1125,14 @@ export function QuestionsScreen() {
             The agent never learns you deferred — its long-poll keeps waiting until you actually
             answer. An empty timer means "not now" — you reopen by hand.
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ["no-timer", "No timer"],
-                ["30m", "30 minutes"],
-                ["2h", "2 hours"],
-                ["tomorrow-10am", "Tomorrow 10:00"],
-                ["next-week", "Next Monday 10:00"],
-                ["custom", "Custom ISO"],
-              ] as Array<[DeferDurationKey, string]>
-            ).map(([k, label]) => (
+          {/* GSL-372 — three short-duration presets ("5 min", "15 min", "1 hour")
+              added at the front of the ladder for genuinely quick "come back
+              in a bit" defers. Ordered ascending so the eye picks the
+              shortest useful preset without hunting. Long presets and the
+              no-timer / custom escape hatches are unchanged. The ordering
+              lives in `lib/deferPresets.ts` so tests can pin it. */}
+          <div className="grid grid-cols-2 gap-2" data-testid="defer-preset-grid">
+            {DEFER_PRESET_ORDER.map(([k, label]) => (
               <Button
                 key={k}
                 variant={deferDialog?.duration === k ? "solid" : "outline"}
