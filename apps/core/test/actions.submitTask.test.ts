@@ -486,6 +486,48 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     const count = raw.query(`SELECT COUNT(*) AS c FROM task_submissions WHERE session_id='sess-M'`).get() as { c: number };
     expect(count.c).toBe(1);
   });
+
+  test("cross-session Idempotency-Key reuse — preview session A, confirm session B → 409, no delivery (verifier M2)", async () => {
+    // Verifier M2 live case: an operator (with the panel Bearer) previews a body
+    // against session A, then reuses the SAME Idempotency-Key + body to confirm
+    // against session B's URL. R16.3 says the preview is bound to a SPECIFIC
+    // session's target; a cross-session confirm must NOT ride the previous
+    // session's preview. The endpoint tag stored in server_intents already
+    // includes `session=<sid>`, so the fix is to compare against the exact
+    // per-session tag, not just the endpoint-family prefix.
+    clearSubmissionState();
+    seedControlled("sess-A");
+    seedControlled("sess-B");
+    const key = "cross-sess-1";
+    // Preview under session A.
+    const previewA = await postJson(
+      "/actions/sessions/sess-A/submit-task",
+      { body: "cross-session body", framing: "none", dry_run: true },
+      { "Idempotency-Key": key },
+    );
+    expect(previewA.status).toBe(200);
+    spawnCalls = [];
+    // Confirm under session B with the SAME key + SAME body — must be refused.
+    const confirmB = await postJson(
+      "/actions/sessions/sess-B/submit-task",
+      { body: "cross-session body", framing: "none", dry_run: false },
+      { "Idempotency-Key": key },
+    );
+    expect(confirmB.status).toBe(409);
+    expect((confirmB.body.error as string) ?? "").toContain("previously used against");
+    // No tmux spawn — no delivery landed. And no submission row was written to
+    // sess-B (nor should there be one to sess-A, since preview never lands rows).
+    const tmuxCalls = spawnCalls.filter((c) => c[0] === "tmux");
+    expect(tmuxCalls).toEqual([]);
+    const bRows = raw.query(
+      `SELECT COUNT(*) AS c FROM task_submissions WHERE session_id='sess-B'`,
+    ).get() as { c: number };
+    expect(bRows.c).toBe(0);
+    const aRows = raw.query(
+      `SELECT COUNT(*) AS c FROM task_submissions WHERE session_id='sess-A'`,
+    ).get() as { c: number };
+    expect(aRows.c).toBe(0);
+  });
 });
 
 describe("Timeline event kinds (GSL-382)", () => {

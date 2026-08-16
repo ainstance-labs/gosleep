@@ -2350,12 +2350,19 @@ actionsRoutes.post(
           const existingParams = parseSubmitParams(existing);
 
           // Cross-endpoint replay guard — if the same key was used against a DIFFERENT
-          // endpoint prefix, refuse. serialize()+the prefixed endpoint string keep this
-          // rare, but a client that mixes keys should see a 409, not a silent reuse.
-          if (
-            existing !== null &&
-            !existing.endpoint.startsWith("POST /actions/sessions/:session_id/submit-task")
-          ) {
+          // endpoint tag, refuse. GSL-381 fix (verifier M2): the endpoint tag written
+          // by persistPreviewIntent/persistConfirmIntent is
+          // `POST /actions/sessions/:session_id/submit-task session=<sid>` (per-session
+          // — line 2054/2087) — R16.3 preview-authorisation is bound to a SPECIFIC
+          // session's target. The old guard used `.startsWith("POST /actions/sessions/
+          // :session_id/submit-task")` which stripped the `session=<sid>` tail, so a
+          // client that previewed under session A could confirm the same body against
+          // session B under the same Idempotency-Key and land a delivery there (the
+          // confirm's own body_sha256 + preview-required re-check both pass because
+          // the body is byte-identical). Bind the guard to the exact per-session tag
+          // instead.
+          const expectedEndpoint = `POST /actions/sessions/:session_id/submit-task session=${sessionId}`;
+          if (existing !== null && existing.endpoint !== expectedEndpoint) {
             return {
               httpStatus: 409,
               ok: false,
