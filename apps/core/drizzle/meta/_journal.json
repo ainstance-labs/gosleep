@@ -50,6 +50,13 @@
       "when": 1787097600000,
       "tag": "0006_session_control",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787184000000,
+      "tag": "0007_task_submissions",
+      "breakpoints": true
     }
   ]
 }

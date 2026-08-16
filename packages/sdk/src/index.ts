@@ -31,6 +31,9 @@ import {
   FleetResponse,
   ManifestResponse,
   SessionControlRow,
+  SubmitTaskActionInput,
+  SubmitTaskActionResponse,
+  TaskSubmissionsResponse,
   QuestionsResponse,
   ResolveActionInput,
   ResolveActionResponse,
@@ -76,6 +79,9 @@ import type {
   FleetResponse as FleetResponseT,
   ManifestResponse as ManifestResponseT,
   SessionControlRow as SessionControlRowT,
+  SubmitTaskActionInput as SubmitTaskActionInputT,
+  SubmitTaskActionResponse as SubmitTaskActionResponseT,
+  TaskSubmissionsResponse as TaskSubmissionsResponseT,
   QuestionsResponse as QuestionsResponseT,
   ResolveActionInput as ResolveActionInputT,
   ResolveActionResponse as ResolveActionResponseT,
@@ -508,6 +514,41 @@ export class CoreClient {
       input,
       ControlTransitionInput,
       ControlTransitionResponse,
+      idempotencyKey,
+    );
+  }
+
+  /** GSL-381 — GET /sessions/:id/submissions. Reader for the history drawer, newest
+   *  first. `limit` is clamped [1, 100] server-side (default 50). Body itself never
+   *  leaves the timeline event payload — this response carries hash + byte-length
+   *  only (R16.6). */
+  submissions(
+    sessionId: string,
+    limit?: number,
+  ): Promise<TaskSubmissionsResponseT> {
+    const q = typeof limit === "number" ? `?limit=${limit}` : "";
+    return this.get(
+      `/sessions/${encodeURIComponent(sessionId)}/submissions${q}`,
+      TaskSubmissionsResponse,
+    );
+  }
+
+  /** GSL-381 — POST /actions/sessions/:id/submit-task. Both phases (dry-run preview
+   *  and confirm) use the SAME method + SAME Idempotency-Key. Caller decides which
+   *  phase via `input.dry_run`. Confirm without a prior preview under this key
+   *  throws ApiError(428) with `reason: "preview-required"` (F16-S4). Refusals on
+   *  the control envelope surface as ApiError(409) with `reason:
+   *  "session-not-controlled"` (R16.1) or `"shim-not-registered"` (R16.2). */
+  submitTask(
+    sessionId: string,
+    input: SubmitTaskActionInputT,
+    idempotencyKey: string,
+  ): Promise<SubmitTaskActionResponseT> {
+    return this.postAction(
+      `/actions/sessions/${encodeURIComponent(sessionId)}/submit-task`,
+      input,
+      SubmitTaskActionInput,
+      SubmitTaskActionResponse,
       idempotencyKey,
     );
   }

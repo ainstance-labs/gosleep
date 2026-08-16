@@ -381,6 +381,63 @@ export const session_control = sqliteTable(
   ],
 );
 
+/**
+ * GSL-379 (observer mode phase C) — per-submission history of task-body writes into the
+ * receiving tmux pane of a controlled session. One row per attempt, whether it went through
+ * or was refused mid-dispatch. Never stores the body text itself — R16.6 keeps the full
+ * body inside the timeline event payload (subject to that layer's retention policy) and
+ * this row keeps only the sha256 + byte-length so the panel history drawer stays cheap.
+ *
+ * SOURCES that write this table (only one, but split by outcome):
+ *   1. The submit-task endpoint's confirm phase (`POST /actions/sessions/:id/submit-task`
+ *      with `dry_run=false`) — writes `outcome='delivered'` after `tmux send-keys` returned
+ *      cleanly, or one of the refusal outcomes when a guard fired mid-dispatch:
+ *        * `outcome='pane_gone'`             — pane_ref resolved by the executor was missing
+ *                                              from `tmux_panes` at dispatch time (F16-S5).
+ *        * `outcome='released_mid_submit'`   — session state re-read at confirm is not
+ *                                              'controlled' anymore (F16-S6).
+ *        * `outcome='not_at_prompt'`         — framing='prompt-boundary' timed out on the
+ *                                              pane_current_command wait (Risk 1, Q1 = 5 s
+ *                                              default).
+ *        * `outcome='send_failed'`           — `tmux send-keys` itself returned non-zero
+ *                                              (rare — e.g. pane died between the resolve
+ *                                              and the send).
+ *   2. The dry-run phase does NOT write a row (a preview never leaves the process). Only
+ *      a confirm phase produces a history row.
+ *
+ * COLUMNS. `id` is a random UUID minted by the endpoint (not the Idempotency-Key — a client
+ * that reuses the key for a retried confirm gets the same intent_id but STILL only one
+ * history row, because the withTimeline layer collapses replays before the executor runs).
+ * `pane_ref_at_dispatch` is `session_name:window_id.pane_id` looked up from `tmux_panes` at
+ * dispatch, never taken from the request body (R16.4). `body_sha256` is hex-lowercase.
+ * `body_len` is bytes of the UTF-8 payload (used to render the "12 KB" chip in the drawer
+ * without pulling the timeline event). `framing` is the enum value the endpoint applied
+ * (defaults to 'prompt-boundary' when the caller omitted it). `error` is the executor's
+ * stderr or a short reason string; null on the happy path.
+ *
+ * INDEXES. `ix_task_submissions_session_ts` supports the drawer's default query
+ * ("last-N submissions for THIS session, newest first"). `ix_task_submissions_ts` supports
+ * a future cross-session admin view (not built in v1).
+ */
+export const task_submissions = sqliteTable(
+  "task_submissions",
+  {
+    id: text("id").primaryKey(),
+    ts: text("ts").notNull(),
+    session_id: text("session_id").notNull(),
+    pane_ref_at_dispatch: text("pane_ref_at_dispatch"),
+    body_sha256: text("body_sha256").notNull(),
+    body_len: integer("body_len").notNull(),
+    framing: text("framing").notNull(),
+    outcome: text("outcome").notNull(),
+    error: text("error"),
+  },
+  (t) => [
+    index("ix_task_submissions_session_ts").on(t.session_id, t.ts),
+    index("ix_task_submissions_ts").on(t.ts),
+  ],
+);
+
 // Explicit re-export of the SQL tag so consumers can build raw fragments off the same drizzle
 // instance without adding another import surface.
 export { sql };

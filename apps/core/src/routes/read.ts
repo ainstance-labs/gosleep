@@ -720,6 +720,62 @@ readRoutes.get("/sessions", requireBearer, (c) => {
 });
 
 // -----------------------------------------------------------------------------
+// GSL-381 (observer mode phase C) — GET /sessions/:session_id/submissions
+//
+// Reader side of `task_submissions`. Panel's Fleet/Observed card history drawer calls
+// this on open + refreshes on the `sessions.submissions.updated` SSE event. Newest-first,
+// bounded at 100 rows by default (a request past the cap silently caps). Body itself
+// never leaves the timeline event payload — this route returns hash + byte-length only.
+// -----------------------------------------------------------------------------
+
+interface TaskSubmissionRawRow {
+  id: string;
+  ts: string;
+  session_id: string;
+  pane_ref_at_dispatch: string | null;
+  body_sha256: string;
+  body_len: number;
+  framing: string;
+  outcome: string;
+  error: string | null;
+}
+
+readRoutes.get("/sessions/:session_id/submissions", requireBearer, (c) => {
+  const sessionId = c.req.param("session_id");
+  if (sessionId === undefined || sessionId.length === 0) {
+    return c.json({ ok: false, error: "session_id required" }, 400);
+  }
+  const limitParam = c.req.query("limit");
+  const parsedLimit =
+    typeof limitParam === "string" ? Number.parseInt(limitParam, 10) : NaN;
+  const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 50;
+  const rows = getDb().raw
+    .query(
+      `SELECT id, ts, session_id, pane_ref_at_dispatch, body_sha256, body_len,
+              framing, outcome, error
+       FROM task_submissions
+       WHERE session_id = ?
+       ORDER BY ts DESC
+       LIMIT ?`,
+    )
+    .all(sessionId, limit) as TaskSubmissionRawRow[];
+  return c.json({
+    submissions: rows.map((r) => ({
+      id: r.id,
+      ts: r.ts,
+      session_id: r.session_id,
+      pane_ref_at_dispatch: r.pane_ref_at_dispatch,
+      body_sha256: r.body_sha256,
+      body_len: r.body_len,
+      framing: r.framing,
+      outcome: r.outcome,
+      error: r.error,
+    })),
+    count: rows.length,
+  });
+});
+
+// -----------------------------------------------------------------------------
 // /bundle — the "render_bundle.json" replacement (all projections in one)
 // -----------------------------------------------------------------------------
 

@@ -9,11 +9,17 @@
 // rows fade to the bottom with a muted style so the owner can still see who wrapped up in
 // the last hour without a filter dance.
 
+import { useState } from "react";
+import type { FleetSession } from "@gosleep/schema";
+
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
 import { ControlToggle } from "../components/ControlToggle";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { SubmissionHistory } from "../components/SubmissionHistory";
+import { SubmitTaskDialog } from "../components/SubmitTaskDialog";
 import { useFleet } from "../data/queries";
 import { formatModelLabel, formatPrLabel, timeAgo } from "../lib/format";
 import { cn } from "../lib/cn";
@@ -103,12 +109,37 @@ export function FleetScreen() {
       >
         {(data) => (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {data.sessions.map((s) => {
-              const isEnded = s.ended_at !== null && s.ended_at !== undefined;
-              const tone = STATUS_TONE[s.status] ?? "neutral";
-              return (
+            {data.sessions.map((s) => (
+              <FleetCard key={s.session_id} s={s} />
+            ))}
+          </div>
+        )}
+      </QueryStatus>
+    </div>
+  );
+}
+
+/** GSL-383 (observer mode phase C) — extracted per-card component so each card owns
+ *  its own submit-dialog + history-drawer local state. Rendering per-card also lets
+ *  the useSubmissions() call inside SubmissionHistory only fire when the drawer is
+ *  actually open (drawer-open === query enabled). */
+function FleetCard({ s }: { s: FleetSession }) {
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const isEnded = s.ended_at !== null && s.ended_at !== undefined;
+  const tone = STATUS_TONE[s.status] ?? "neutral";
+  // PRD § Scope UI: "renders only on cards where state='controlled' &&
+  // shim_registered=true && pane_ref!=null". Button HIDES on ineligible cards --
+  // operator sees no path at all (no disabled tooltip). Server-side is the real gate.
+  const canSubmit =
+    !isEnded &&
+    s.control_state === "controlled" &&
+    s.shim_registered === true &&
+    s.tmux_pane_ref !== null &&
+    s.tmux_pane_ref !== undefined;
+  return (
+    <>
                 <Card
-                  key={s.session_id}
                   className={cn(isEnded ? "opacity-60" : undefined)}
                 >
                   <CardHeader>
@@ -277,10 +308,10 @@ export function FleetScreen() {
                       </span>
                     </div>
                     {/* GSL-361 (observer mode phase B) — per-session Take/Release control
-                        toggle. Hidden on ended rows (no session left to control) — the
-                        registry row survives, but the affordance is meaningless. */}
+                        toggle + GSL-383 (phase C) Submit-task + History affordances.
+                        Hidden on ended rows (no session left to control). */}
                     {!isEnded ? (
-                      <div className="pt-1">
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
                         <ControlToggle
                           sessionId={s.session_id}
                           state={s.control_state as "observer" | "controlled" | undefined}
@@ -288,15 +319,44 @@ export function FleetScreen() {
                           shimRegistered={s.shim_registered}
                           envLocked={s.env_locked}
                         />
+                        {canSubmit ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSubmitOpen(true)}
+                            data-testid="submit-task-btn"
+                            title="Type a task in the dialog, preview, confirm — the body is typed into this session's tmux pane at its next prompt."
+                          >
+                            Submit task
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setHistoryOpen((v) => !v)}
+                          data-testid="submission-history-btn"
+                          title="Show the last submissions posted into this session's tmux pane. Hash + length only; body itself lives on the timeline event payload."
+                        >
+                          {historyOpen ? "Hide history" : "History"}
+                        </Button>
+                      </div>
+                    ) : null}
+                    {historyOpen ? (
+                      <div className="pt-2">
+                        <SubmissionHistory sessionId={s.session_id} />
                       </div>
                     ) : null}
                   </CardBody>
                 </Card>
-              );
-            })}
-          </div>
-        )}
-      </QueryStatus>
-    </div>
+      {canSubmit ? (
+        <SubmitTaskDialog
+          open={submitOpen}
+          onOpenChange={setSubmitOpen}
+          sessionId={s.session_id}
+          sessionName={s.name}
+          paneRef={s.tmux_pane_ref ?? null}
+        />
+      ) : null}
+    </>
   );
 }

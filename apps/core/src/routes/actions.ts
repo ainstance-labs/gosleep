@@ -58,6 +58,16 @@ import {
   takeControl,
   type TransitionResult,
 } from "../control/registry.ts";
+import {
+  previewSubmission,
+  submitTask,
+  type ExecutorOutcome,
+  type PreviewOutcome,
+  type PreviewRejection,
+  type SubmissionFraming,
+  type SubmitDeps,
+} from "../sessions/submit.ts";
+import { randomUUID } from "node:crypto";
 
 export const actionsRoutes = new Hono();
 
@@ -1934,6 +1944,684 @@ actionsRoutes.post(
             ts: new Date().toISOString(),
             event: "core.action.error",
             intent_id: intentId,
+            http_status: status,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+      return c.json(
+        {
+          ok: false,
+          intent_id: intentId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        status,
+      );
+    }
+  },
+);
+
+// -----------------------------------------------------------------------------
+// GSL-381 (observer mode phase C) — POST /actions/sessions/:session_id/submit-task
+//
+// Two-phase task submission with a MANDATORY dry-run preview (R16.3 / F16-S4).
+//
+// Both phases hit the SAME endpoint under the SAME Idempotency-Key. Phase is
+// selected by the request body's `dry_run` flag:
+//   - `dry_run=true`  — compute preview (no side effects on tmux, no history row).
+//     Server persists a `phase='preview'` marker in `server_intents.params` alongside
+//     the preview payload + body_sha256 so a subsequent confirm can prove prior preview.
+//   - `dry_run=false` — REQUIRE a prior preview marker under this Idempotency-Key
+//     whose body_sha256 matches. Missing / mismatched → 428 (Precondition Required),
+//     `reason: "preview-required"`. Match → run the executor, write ONE task_submissions
+//     row, broadcast a synthetic `sessions.submissions.updated` SSE frame, then persist
+//     `phase='confirmed'` + result. A replayed confirm returns the cached row.
+//
+// Serialised per-session via `serialize("session.submit", session_id)` — R5 concurrent
+// submissions from two owners queue FIFO, and a preview + confirm from the same key
+// cannot interleave with a confirm for a different key on the same session (the mutex
+// scope is per-session).
+//
+// The endpoint layer NEVER inspects request body for the pane target — R16.4 pane
+// resolution lives inside the executor (`resolvePaneRef`).
+//
+// SSE fan-out `sessions.submissions.updated` — the panel invalidates its history
+// drawer query on this event. Kept synthetic (not going through the tail indexer)
+// because task_submissions rows aren't `events` rows — the drawer reads them directly.
+// GSL-382 will add the separate `task.submitted` / `task.submit.failed` timeline
+// events that DO go through the events table.
+// -----------------------------------------------------------------------------
+
+interface SubmitPhaseParams {
+  input: {
+    session_id: string;
+    body_len: number;
+    body_sha256: string;
+    framing: SubmissionFraming;
+    dry_run: boolean;
+  };
+  phase: "preview" | "confirmed";
+  body_sha256: string;
+  preview?: PreviewOutcome;
+  result?: SubmitTaskResultEnvelope;
+}
+
+interface SubmitTaskResultEnvelope {
+  submission_id: string;
+  session_id: string;
+  outcome: ExecutorOutcome["outcome"];
+  pane_ref_at_dispatch: string | null;
+  body_len: number;
+  body_sha256: string;
+  framing: SubmissionFraming;
+  ts: string;
+  error: string | null;
+}
+
+interface SubmitIntentRow {
+  intent_id: string;
+  endpoint: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string | null;
+  params: string | null;
+}
+
+function readSubmitIntent(intentId: string): SubmitIntentRow | null {
+  const row = getDb().raw
+    .query(
+      `SELECT intent_id, endpoint, started_at, finished_at, status, params
+       FROM server_intents WHERE intent_id = ?`,
+    )
+    .get(intentId) as SubmitIntentRow | undefined;
+  return row ?? null;
+}
+
+function persistPreviewIntent(args: {
+  intentId: string;
+  sessionId: string;
+  input: SubmitPhaseParams["input"];
+  preview: PreviewOutcome;
+}): void {
+  const params: SubmitPhaseParams = {
+    input: args.input,
+    phase: "preview",
+    body_sha256: args.preview.body_sha256,
+    preview: args.preview,
+  };
+  const nowTs = nowIso();
+  const existing = readSubmitIntent(args.intentId);
+  const endpoint = `POST /actions/sessions/:session_id/submit-task session=${args.sessionId}`;
+  if (existing === null) {
+    getDb().raw
+      .query(
+        `INSERT INTO server_intents (intent_id, endpoint, started_at, finished_at, status, params)
+         VALUES (?, ?, ?, ?, 'ok', ?)`,
+      )
+      .run(args.intentId, endpoint, nowTs, nowTs, JSON.stringify(params));
+    return;
+  }
+  getDb().raw
+    .query(
+      `UPDATE server_intents
+         SET endpoint = ?, finished_at = ?, status = 'ok', params = ?
+       WHERE intent_id = ?`,
+    )
+    .run(endpoint, nowTs, JSON.stringify(params), args.intentId);
+}
+
+function persistConfirmIntent(args: {
+  intentId: string;
+  sessionId: string;
+  input: SubmitPhaseParams["input"];
+  preview: PreviewOutcome;
+  result: SubmitTaskResultEnvelope;
+}): void {
+  const params: SubmitPhaseParams = {
+    input: args.input,
+    phase: "confirmed",
+    body_sha256: args.preview.body_sha256,
+    preview: args.preview,
+    result: args.result,
+  };
+  const endpoint = `POST /actions/sessions/:session_id/submit-task session=${args.sessionId}`;
+  getDb().raw
+    .query(
+      `UPDATE server_intents
+         SET endpoint = ?, finished_at = ?, status = 'ok', params = ?
+       WHERE intent_id = ?`,
+    )
+    .run(endpoint, nowIso(), JSON.stringify(params), args.intentId);
+}
+
+function parseSubmitParams(row: SubmitIntentRow | null): SubmitPhaseParams | null {
+  if (row === null || row.params === null || row.params.length === 0) return null;
+  try {
+    const parsed = JSON.parse(row.params) as SubmitPhaseParams;
+    if (parsed.phase !== "preview" && parsed.phase !== "confirmed") return null;
+    if (typeof parsed.body_sha256 !== "string") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+interface SubmitTaskWireResponse {
+  ok: boolean;
+  intent_id: string;
+  cached?: boolean;
+  finished_at?: string;
+  result?: PreviewOutcome | SubmitTaskResultEnvelope;
+  error?: string;
+  reason?: string;
+}
+
+/** Executor deps hook injection — kept as a module-level so tests / smoke can stub the
+ *  spawn without going through Hono. `undefined` means "use the real executor". */
+let executorDepsOverride: SubmitDeps | undefined;
+export function _setSubmitDepsOverrideForTesting(deps: SubmitDeps | undefined): void {
+  executorDepsOverride = deps;
+}
+export function _getSubmitDepsOverrideForTesting(): SubmitDeps | undefined {
+  return executorDepsOverride;
+}
+
+function insertSubmissionRow(row: {
+  id: string;
+  ts: string;
+  session_id: string;
+  pane_ref_at_dispatch: string | null;
+  body_sha256: string;
+  body_len: number;
+  framing: SubmissionFraming;
+  outcome: ExecutorOutcome["outcome"];
+  error: string | null;
+}): void {
+  getDb().raw
+    .query(
+      `INSERT INTO task_submissions
+         (id, ts, session_id, pane_ref_at_dispatch, body_sha256, body_len, framing, outcome, error)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      row.id,
+      row.ts,
+      row.session_id,
+      row.pane_ref_at_dispatch,
+      row.body_sha256,
+      row.body_len,
+      row.framing,
+      row.outcome,
+      row.error,
+    );
+}
+
+/**
+ * GSL-382 — fire the durable timeline event for a submission attempt. Uses lab-log.sh
+ * to append a row to the day's events/*.jsonl (which the tail indexer folds into the
+ * `events` table for the Timeline screen). Also broadcasts the same event on the SSE
+ * stream so the Timeline invalidates immediately.
+ *
+ *   task.submitted       — outcome='delivered'
+ *   task.submit.failed   — every other outcome (pane_gone, released_mid_submit,
+ *                          not_at_prompt, send_failed)
+ *
+ * Payload is intentionally rich but body-free: body_len + body_sha256 + pane_ref +
+ * framing + outcome + error. Full body lives on the timeline event PAYLOAD in the
+ * JSONL (which lab-log records verbatim); it does NOT live in `task_submissions.body`
+ * (that column does not exist -- R16.6).
+ *
+ * Fail-open: a failure to spawn lab-log warn-logs but does NOT roll back the
+ * submission or its DB row. Same shape as fireControlTimelineEvent above.
+ */
+async function fireSubmissionTimelineEvent(
+  kind: "task.submitted" | "task.submit.failed",
+  args: {
+    session_id: string;
+    submission_id: string;
+    outcome: ExecutorOutcome["outcome"];
+    body_len: number;
+    body_sha256: string;
+    framing: SubmissionFraming;
+    pane_ref_at_dispatch: string | null;
+    by: string;
+    channel: string;
+    error: string | null;
+    /** Sanitised body -- included on the timeline event payload for full audit per
+     *  R16.6. Never null on a real dispatch; the `task_submissions` row still keeps
+     *  only sha + len. */
+    body: string;
+  },
+): Promise<void> {
+  const dataJson = JSON.stringify({
+    session_id: args.session_id,
+    submission_id: args.submission_id,
+    outcome: args.outcome,
+    body_len: args.body_len,
+    body_sha256: args.body_sha256,
+    framing: args.framing,
+    pane_ref_at_dispatch: args.pane_ref_at_dispatch,
+    by: args.by,
+    channel: args.channel,
+    error: args.error,
+    body: args.body,
+  });
+  const emit = await spawnAwait({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-log.sh`,
+      "--type",
+      kind,
+      "--actor",
+      args.by,
+      "--src",
+      "emit",
+      "--data-json",
+      dataJson,
+    ],
+    timeoutMs: 5_000,
+  });
+  if (!emit.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.action.submit-task.timeline_warn",
+        kind,
+        session_id: args.session_id,
+        submission_id: args.submission_id,
+        rc: emit.code,
+        stderr: emit.stderr,
+      }),
+    );
+  }
+  // Also broadcast the same event on SSE so the Timeline screen invalidates immediately
+  // (the tail-indexer path is best-effort and lags by a sweep). The Timeline reads events
+  // from /timeline; the SSE consumer invalidates that query on any `event: task.*` frame.
+  const nowTs = new Date().toISOString();
+  broadcaster.emit({
+    seq: 0,
+    day: nowTs.slice(0, 10),
+    ts: nowTs,
+    src: "core",
+    actor: "actions.sessions.submit-task",
+    task: null,
+    type: kind,
+    payload: {
+      session_id: args.session_id,
+      submission_id: args.submission_id,
+      outcome: args.outcome,
+      body_len: args.body_len,
+      body_sha256: args.body_sha256,
+      framing: args.framing,
+      pane_ref_at_dispatch: args.pane_ref_at_dispatch,
+      by: args.by,
+      channel: args.channel,
+      error: args.error,
+    },
+    ingested_from: null,
+  });
+}
+
+function fireSubmissionSse(args: {
+  session_id: string;
+  submission_id: string;
+  outcome: ExecutorOutcome["outcome"];
+  body_len: number;
+  body_sha256: string;
+  framing: SubmissionFraming;
+  pane_ref_at_dispatch: string | null;
+  by: string;
+  channel: string;
+}): void {
+  const nowTs = new Date().toISOString();
+  broadcaster.emit({
+    seq: 0,
+    day: nowTs.slice(0, 10),
+    ts: nowTs,
+    src: "core",
+    actor: "actions.sessions.submit-task",
+    task: null,
+    type: "sessions.submissions.updated",
+    payload: {
+      session_id: args.session_id,
+      submission_id: args.submission_id,
+      outcome: args.outcome,
+      body_len: args.body_len,
+      body_sha256: args.body_sha256,
+      framing: args.framing,
+      pane_ref_at_dispatch: args.pane_ref_at_dispatch,
+      by: args.by,
+      channel: args.channel,
+    },
+    ingested_from: null,
+  });
+}
+
+actionsRoutes.post(
+  "/actions/sessions/:session_id/submit-task",
+  requireBearer,
+  async (c) => {
+    const sessionId = c.req.param("session_id");
+    if (sessionId === undefined || sessionId.length === 0) {
+      return c.json({ ok: false, error: "session_id required" }, 400);
+    }
+    const body = await parseJsonBody(c);
+    if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+
+    const rawBody = stringField(body, "body");
+    if (rawBody === null) {
+      return c.json({ ok: false, error: "body required" }, 400);
+    }
+    const framingRaw = stringField(body, "framing");
+    const framing: SubmissionFraming =
+      framingRaw === "none"
+        ? "none"
+        : framingRaw === "slash-command"
+          ? "slash-command"
+          : "prompt-boundary";
+    if (
+      framingRaw !== null &&
+      framingRaw !== "none" &&
+      framingRaw !== "prompt-boundary" &&
+      framingRaw !== "slash-command"
+    ) {
+      return c.json(
+        { ok: false, error: `framing must be one of none|prompt-boundary|slash-command` },
+        400,
+      );
+    }
+    if (typeof body.dry_run !== "boolean") {
+      return c.json(
+        { ok: false, error: "dry_run must be a boolean (true for preview, false for confirm)" },
+        400,
+      );
+    }
+    const dryRun = body.dry_run;
+    const by = stringField(body, "by") ?? "owner-web";
+    const channel = stringField(body, "channel") ?? "web";
+    const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+    try {
+      const outcome = await serialize(
+        `session.submit.${sessionId}`,
+        async (): Promise<SubmitTaskWireResponse & { httpStatus: number }> => {
+          const existing = readSubmitIntent(intentId);
+          const existingParams = parseSubmitParams(existing);
+
+          // Cross-endpoint replay guard — if the same key was used against a DIFFERENT
+          // endpoint tag, refuse. GSL-381 fix (verifier M2): the endpoint tag written
+          // by persistPreviewIntent/persistConfirmIntent is
+          // `POST /actions/sessions/:session_id/submit-task session=<sid>` (per-session
+          // — line 2054/2087) — R16.3 preview-authorisation is bound to a SPECIFIC
+          // session's target. The old guard used `.startsWith("POST /actions/sessions/
+          // :session_id/submit-task")` which stripped the `session=<sid>` tail, so a
+          // client that previewed under session A could confirm the same body against
+          // session B under the same Idempotency-Key and land a delivery there (the
+          // confirm's own body_sha256 + preview-required re-check both pass because
+          // the body is byte-identical). Bind the guard to the exact per-session tag
+          // instead.
+          const expectedEndpoint = `POST /actions/sessions/:session_id/submit-task session=${sessionId}`;
+          if (existing !== null && existing.endpoint !== expectedEndpoint) {
+            return {
+              httpStatus: 409,
+              ok: false,
+              intent_id: intentId,
+              error: `Idempotency-Key ${intentId} previously used against ${existing.endpoint}`,
+            };
+          }
+
+          if (dryRun) {
+            const preview = await previewSubmission(getDb(), {
+              session_id: sessionId,
+              body: rawBody,
+              framing,
+            });
+            if (!preview.ok) {
+              // Guard rejection: 400 for body-invalid, 409 for control state.
+              return {
+                httpStatus: preview.httpStatus,
+                ok: false,
+                intent_id: intentId,
+                error: preview.message,
+                reason: preview.reason,
+              };
+            }
+            persistPreviewIntent({
+              intentId,
+              sessionId,
+              input: {
+                session_id: sessionId,
+                body_len: preview.body_len,
+                body_sha256: preview.body_sha256,
+                framing: preview.framing,
+                dry_run: true,
+              },
+              preview,
+            });
+            return {
+              httpStatus: 200,
+              ok: true,
+              intent_id: intentId,
+              cached: existingParams !== null,
+              finished_at: preview.previewed_at,
+              result: preview,
+            };
+          }
+
+          // Confirm phase.
+          if (existingParams === null) {
+            return {
+              httpStatus: 428,
+              ok: false,
+              intent_id: intentId,
+              error: "preview-required: submit a dry_run=true first with the same Idempotency-Key",
+              reason: "preview-required",
+            };
+          }
+
+          // Cached confirm replay — return the stored result envelope so a double-click
+          // is safe.
+          if (existingParams.phase === "confirmed" && existingParams.result !== undefined) {
+            return {
+              httpStatus: 200,
+              ok: true,
+              intent_id: intentId,
+              cached: true,
+              finished_at: existing?.finished_at ?? undefined,
+              result: existingParams.result,
+            };
+          }
+
+          // Preview must exist AND its body_sha256 must match the confirm request. We
+          // recompute the sha for the confirm's own body by running previewSubmission
+          // again (this also re-checks state/shim guards — F16-S6 release-mid-submit is
+          // caught here because previewSubmission re-reads session_control every call).
+          const previewNow = await previewSubmission(getDb(), {
+            session_id: sessionId,
+            body: rawBody,
+            framing,
+          });
+          if (!previewNow.ok) {
+            // GSL-381 fix (verifier M1): release-mid-submit auditability per PRD F16-S6
+            // / R16.6. When previewSubmission's re-check trips on `session-not-controlled`
+            // (state flipped between preview and confirm), the executor's
+            // `released_mid_submit` branch is unreachable under the current wiring — the
+            // endpoint used to short-circuit here and no `task_submissions` row was
+            // written and no timeline event fired, so the panel's history + timeline had
+            // NO trace of the aborted send. Write the row + emit the failed event now,
+            // before returning the 409. `shim-not-registered` is intentionally not
+            // upgraded here: that state means the receiver is not observable at all
+            // (the shim vanished), which is closer to `pane_gone` than to a mid-run
+            // release and lives outside the audit surface F16-S6 pins.
+            if (previewNow.reason === "session-not-controlled") {
+              const nowIsoTs = new Date().toISOString();
+              const submissionId = randomUUID();
+              // Reuse the sha + body_len captured at preview time — the body bytes we
+              // hold on the confirm request match by contract (the body_sha256 mismatch
+              // branch below is unreachable here because previewNow never returned an
+              // .ok=true envelope). If the confirm client somehow altered the body,
+              // that path becomes indistinguishable from the same session flip; the
+              // audit row still describes the release accurately.
+              insertSubmissionRow({
+                id: submissionId,
+                ts: nowIsoTs,
+                session_id: sessionId,
+                pane_ref_at_dispatch: null,
+                body_sha256: existingParams.body_sha256,
+                body_len: existingParams.input.body_len,
+                framing,
+                outcome: "released_mid_submit",
+                error: previewNow.message,
+              });
+              fireSubmissionSse({
+                session_id: sessionId,
+                submission_id: submissionId,
+                outcome: "released_mid_submit",
+                body_len: existingParams.input.body_len,
+                body_sha256: existingParams.body_sha256,
+                framing,
+                pane_ref_at_dispatch: null,
+                by,
+                channel,
+              });
+              await fireSubmissionTimelineEvent("task.submit.failed", {
+                session_id: sessionId,
+                submission_id: submissionId,
+                outcome: "released_mid_submit",
+                body_len: existingParams.input.body_len,
+                body_sha256: existingParams.body_sha256,
+                framing,
+                pane_ref_at_dispatch: null,
+                by,
+                channel,
+                error: previewNow.message,
+                body: rawBody,
+              });
+            }
+            return {
+              httpStatus: previewNow.httpStatus,
+              ok: false,
+              intent_id: intentId,
+              error: previewNow.message,
+              reason: previewNow.reason,
+            };
+          }
+          if (previewNow.body_sha256 !== existingParams.body_sha256) {
+            return {
+              httpStatus: 428,
+              ok: false,
+              intent_id: intentId,
+              error: `preview-required: body_sha256 mismatch (preview=${existingParams.body_sha256}, confirm=${previewNow.body_sha256}) — re-run dry_run=true`,
+              reason: "preview-required",
+            };
+          }
+
+          // Run the executor.
+          const runOutcome = await submitTask(
+            getDb(),
+            {
+              session_id: sessionId,
+              body: rawBody,
+              framing,
+            },
+            executorDepsOverride,
+          );
+
+          const submissionId = randomUUID();
+          insertSubmissionRow({
+            id: submissionId,
+            ts: runOutcome.ts,
+            session_id: runOutcome.session_id,
+            pane_ref_at_dispatch: runOutcome.pane_ref_at_dispatch,
+            body_sha256: runOutcome.body_sha256,
+            body_len: runOutcome.body_len,
+            framing: runOutcome.framing,
+            outcome: runOutcome.outcome,
+            error: runOutcome.error,
+          });
+
+          const resultEnvelope: SubmitTaskResultEnvelope = {
+            submission_id: submissionId,
+            session_id: runOutcome.session_id,
+            outcome: runOutcome.outcome,
+            pane_ref_at_dispatch: runOutcome.pane_ref_at_dispatch,
+            body_len: runOutcome.body_len,
+            body_sha256: runOutcome.body_sha256,
+            framing: runOutcome.framing,
+            ts: runOutcome.ts,
+            error: runOutcome.error,
+          };
+
+          persistConfirmIntent({
+            intentId,
+            sessionId,
+            input: {
+              session_id: sessionId,
+              body_len: runOutcome.body_len,
+              body_sha256: runOutcome.body_sha256,
+              framing: runOutcome.framing,
+              dry_run: false,
+            },
+            preview: previewNow,
+            result: resultEnvelope,
+          });
+
+          fireSubmissionSse({
+            session_id: runOutcome.session_id,
+            submission_id: submissionId,
+            outcome: runOutcome.outcome,
+            body_len: runOutcome.body_len,
+            body_sha256: runOutcome.body_sha256,
+            framing: runOutcome.framing,
+            pane_ref_at_dispatch: runOutcome.pane_ref_at_dispatch,
+            by,
+            channel,
+          });
+          // GSL-382 -- fire the durable timeline event. Runs after the DB write + SSE
+          // fan-out; a failed lab-log spawn is warn-logged, never rolls back. The event
+          // kind is 'task.submitted' on the happy path and 'task.submit.failed' for
+          // every reachable-refusal outcome (pane_gone, released_mid_submit,
+          // not_at_prompt, send_failed).
+          await fireSubmissionTimelineEvent(
+            runOutcome.outcome === "delivered" ? "task.submitted" : "task.submit.failed",
+            {
+              session_id: runOutcome.session_id,
+              submission_id: submissionId,
+              outcome: runOutcome.outcome,
+              body_len: runOutcome.body_len,
+              body_sha256: runOutcome.body_sha256,
+              framing: runOutcome.framing,
+              pane_ref_at_dispatch: runOutcome.pane_ref_at_dispatch,
+              by,
+              channel,
+              error: runOutcome.error,
+              body: rawBody,
+            },
+          );
+
+          return {
+            httpStatus: 200,
+            ok: true,
+            intent_id: intentId,
+            cached: false,
+            finished_at: runOutcome.ts,
+            result: resultEnvelope,
+          };
+        },
+      );
+      const { httpStatus, ...responseBody } = outcome;
+      return c.json(responseBody, httpStatus as 200 | 400 | 409 | 428);
+    } catch (err) {
+      const status = httpStatusFromError(err);
+      if (status >= 500) {
+        // eslint-disable-next-line no-console
+        console.error(
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            event: "core.action.submit-task.error",
+            intent_id: intentId,
+            session_id: sessionId,
             http_status: status,
             message: err instanceof Error ? err.message : String(err),
           }),
