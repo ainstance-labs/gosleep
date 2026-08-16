@@ -1,0 +1,2 @@
+16c6dc3f-b831-42df-8026-e407588e5d1d|2026-08-16T20:32:13.363Z|sess-live-1|gsl378-target:@37.%406|66f1bde3b80ccddbbc1a3e1426182ee808743499b6a3bfab3a4730ac3f063e4f|52|none|delivered|
+09642fcc-ee5e-4153-8366-8ab11f1b9847|2026-08-16T20:32:29.628Z|sess-live-1||3e5ab9392823c10ca41d7ef6f42adb6b7b643ca5421f4e545b2ae54fa02408fb|15|none|pane_gone|pane_ref resolves to null in tmux_panes at dispatch time

@@ -38,6 +38,7 @@
 #   51-58. SPA static + fallback + API-precedence + CSP             (GSL-285)
 #   59-66. /setup Bearer-discovery flow                             (GSL-291)
 #   67-71. POST /actions/snapshot                                    (GSL-298)
+#   72-75. POST /actions/sessions/:id/submit-task + GET submissions  (GSL-381)
 #
 # Not wired into gate.sh — the gate must stay 0-network/0-process; this test intentionally
 # starts a process. Run it BY HAND before committing changes to apps/core/. Exit 0 = pass.
@@ -966,6 +967,47 @@ if [ "$DAILY_STATUS" = "200" ] && grep -q '"kind":"daily"' "$DAILY_BODY"; then
   ok "71. POST /actions/snapshot (no label) → 200 + result.kind=daily"
 else
   bad "71. POST /actions/snapshot (no label) → $DAILY_STATUS body=$(cat "$DAILY_BODY")"
+fi
+
+echo "== GSL-381: POST /actions/sessions/:id/submit-task refusal scenarios =="
+# The scratch DB has no session_control rows, so every submit request refuses at the
+# executor's first guard. These smoke checks prove the three refusal shapes from the
+# PRD's F16-S2..S4 without ever needing a real tmux (the executor short-circuits before
+# the send).
+
+# 72. dry_run=true against a never-registered session_id → 409 session-not-controlled.
+check_status "72. POST submit-task (observer) → 409" "409" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: smoke-submit-observer-$(date +%s)" \
+  -d '{"body":"hi","framing":"none","dry_run":true}' \
+  "http://127.0.0.1:$PORT/actions/sessions/smoke-observer/submit-task"
+
+# 73. dry_run=false with no prior preview → 428 preview-required (F16-S4).
+check_status "73. POST submit-task confirm without preview → 428" "428" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: smoke-submit-nopreview-$(date +%s)" \
+  -d '{"body":"hi","framing":"none","dry_run":false}' \
+  "http://127.0.0.1:$PORT/actions/sessions/smoke-nopreview/submit-task"
+
+# 74. missing dry_run → 400 (endpoint requires a boolean).
+check_status "74. POST submit-task without dry_run → 400" "400" -X POST \
+  -H "Host: 127.0.0.1:$PORT" -H "Origin: http://127.0.0.1:$PORT" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: smoke-submit-bad-$(date +%s)" \
+  -d '{"body":"hi","framing":"none"}' \
+  "http://127.0.0.1:$PORT/actions/sessions/smoke-bad/submit-task"
+
+# 75. GET /sessions/:id/submissions (no rows) → 200 + empty array.
+SUBS_BODY="$WORK/subs-empty.json"
+SUBS_STATUS="$(curl -s -o "$SUBS_BODY" -w '%{http_code}' \
+  -H "Host: 127.0.0.1:$PORT" -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:$PORT/sessions/smoke-observer/submissions")"
+if [ "$SUBS_STATUS" = "200" ] && grep -q '"submissions":\[\]' "$SUBS_BODY"; then
+  ok "75. GET /sessions/:id/submissions (empty) → 200 + submissions:[]"
+else
+  bad "75. GET /sessions/:id/submissions expected 200 empty; got $SUBS_STATUS body=$(cat "$SUBS_BODY")"
 fi
 
 echo "== teardown =="

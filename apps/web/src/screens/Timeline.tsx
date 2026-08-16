@@ -19,6 +19,21 @@ import { useToast } from "../components/ui/Toast";
 import { shortJson, timeOfDay } from "../lib/format";
 import { cn } from "../lib/cn";
 
+// GSL-382 -- tone map for event kinds. Submissions get distinct colouring on the
+// Timeline so an owner scanning the log picks out task-submission rows from every
+// other event type. Kept in sync with the Fleet history-drawer badge palette in
+// components/SubmissionHistory (GSL-383).
+type BadgeTone = "neutral" | "info" | "ok" | "warn" | "danger" | "accent";
+
+function toneForEventType(type: string): BadgeTone {
+  if (type === "task.submitted") return "accent";
+  if (type === "task.submit.failed") return "warn";
+  if (type === "sessions.submissions.updated") return "info";
+  if (type === "control.taken") return "ok";
+  if (type === "control.released") return "info";
+  return "neutral";
+}
+
 interface AckDialogState {
   seq: number;
   type: string;
@@ -154,7 +169,7 @@ export function TimelineScreen() {
                         )}
                       >
                         <span className="mono text-muted text-xs">{timeOfDay(e.ts)}</span>
-                        <Badge tone="neutral" className="w-fit">{e.type}</Badge>
+                        <Badge tone={toneForEventType(e.type)} className="w-fit">{e.type}</Badge>
                         <span className="text-secondary truncate text-xs">
                           <span className="mono">{e.actor}</span>
                           {e.task !== null ? (
