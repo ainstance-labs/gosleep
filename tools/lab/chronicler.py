@@ -3097,7 +3097,18 @@ def build_digest(ctx, status):
     L.append("")
 
     # 6 — Manifest candidates: verbatim from `lab-emit candidates`.
+    # GSL-229: the count line PRINTS EVEN AT ZERO. Two weeks of 21 unique shapes and zero
+    # candidates is a data point — the owner has to see it, or the digest quietly hides the fact
+    # that nothing repeated. Shapes are counted off the decision log's `qshape` field (the
+    # rewritten semantic shape from GSL-229). Legacy decisions without qshape are folded under
+    # "no-shape" so the total = decisions-with-shape count.
+    n_cands = len(ctx["candidates"] or [])
+    shapes = {(d.get("qshape") or "no-shape") for d in ctx["decisions"] if d.get("qshape")}
     L.append("## 6. Manifest candidates")
+    L.append("- candidates: %d (shapes: %d) — advisory only; a candidate is a shape+answer that "
+             "recurred past the threshold, and promotion into the manifest remains owner-only "
+             "(§3, this section, and the digest header for provenance)."
+             % (n_cands, len(shapes)))
     if ctx["candidates"]:
         for c in ctx["candidates"]:
             L.append("- %s" % json.dumps(c, ensure_ascii=False)[:300])

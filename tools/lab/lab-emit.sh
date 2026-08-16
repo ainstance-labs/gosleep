@@ -337,15 +337,47 @@ def read_records():
 def append_record(obj):
     append_jsonl(QUEUE, obj)
 
+QSHAPE_STOPWORDS = frozenset("""
+    a an the this that these those and or but nor of to in on at for from by with
+    as is are was were be been being do does did doing has have had having we you
+    i they he she it me us them him her its our their my your what which who whom
+    whose when where why how if then else than so also just too very much many
+    should would could shall will can may might must not no yes ok please via into
+    onto about across around another after before still now some any all each every
+    <key> <ref> <path> <n>
+""".split())
+# GSL-229: applied longest-first. Order matters — "ing" must beat "s" so "merging" doesn't
+# collapse to "mergin". Then a trailing "e" is stripped as well, so "merge" and "merged"
+# both land on "merg". This is a deliberately dumb stemmer — good enough to fold rewordings,
+# small enough to reason about, python-stdlib only (C1).
+QSHAPE_SUFFIXES = ("ing", "ed", "es", "ly", "s", "e")
+
+
 def qshape(question):
-    """Task-agnostic question SHAPE for the learning loop: numbers/keys/paths collapsed."""
+    """Task-agnostic question SHAPE for the learning loop. GSL-229: the old shape was a hash of
+    the near-verbatim string, so every rewording produced a different shape and `candidates` never
+    grouped anything past N=1. This version normalizes keys/refs/paths/numbers, strips punctuation
+    and stopwords, applies a light stemmer, and hashes the SORTED bag of remaining tokens — so
+    "merge strategy for PR #40 after main moved?" and "what is the merge strategy after main moved
+    for PR #40?" collapse to the same shape. It is advisory only: `candidates` still needs a
+    threshold count and the manifest is owner-edited."""
     s = question.strip().lower()
     s = re.sub(r"[a-z]+-\d+", "<key>", s)          # GSL-45, tlm-8 ...
     s = re.sub(r"#\d+", "<ref>", s)                # #52
     s = re.sub(r"\S*/\S+", "<path>", s)            # paths/urls
     s = re.sub(r"\d+", "<n>", s)
-    s = re.sub(r"\s+", " ", s)
-    return hashlib.sha256(s.encode()).hexdigest()[:10]
+    s = re.sub(r"[^a-z<>\s]", " ", s)              # strip punctuation, keep placeholder brackets
+    tokens = []
+    for w in s.split():
+        if w in QSHAPE_STOPWORDS or len(w) <= 2:
+            continue
+        for suf in QSHAPE_SUFFIXES:
+            if len(w) > len(suf) + 2 and w.endswith(suf):
+                w = w[: -len(suf)]
+                break
+        tokens.append(w)
+    tokens.sort()
+    return hashlib.sha256(" ".join(tokens).encode()).hexdigest()[:10]
 
 def parse_flags(argv, spec, multi=()):
     """spec: {'--flag': 'key'}; multi flags accumulate into lists; bare flags in spec map to True."""
