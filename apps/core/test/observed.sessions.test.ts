@@ -88,6 +88,8 @@ const {
   foldSessions,
   extractWorkTopic,
   listCandidateTranscripts,
+  purgeMissingTranscripts,
+  PURGE_BUDGET_PER_TICK,
   sessionsCollectorTick,
   SESSIONS_COLLECTOR_NAME,
   SESSIONS_CADENCE_MS,
@@ -467,6 +469,171 @@ describe("GSL-360 chunked collector loop", () => {
       if (priorChunk === undefined) delete process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
       else process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = priorChunk;
     }
+  });
+});
+
+describe("GSL-375 purge stale agent_sessions rows for deleted transcripts", () => {
+  test("row whose transcript.jsonl vanished between ticks → session_ended + DELETE", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+
+    // Seed a third observed-only transcript so we have something to remove.
+    const purgeCwd = join(scratchRoot, "purge-repo");
+    mkdirSync(purgeCwd, { recursive: true });
+    const purgeProjectDir = join(projectsDir, escapeCwd(purgeCwd));
+    mkdirSync(purgeProjectDir, { recursive: true });
+    const purgeTranscript = join(purgeProjectDir, "sess-purge.jsonl");
+    writeFileSync(
+      purgeTranscript,
+      JSON.stringify({ type: "header", cwd: purgeCwd, model: "haiku" }) + "\n",
+    );
+
+    // Fold once → row appears.
+    foldSessions(enumerateSessions(fakeHome));
+    const before = raw
+      .query("SELECT session_id FROM agent_sessions WHERE session_id = 'sess-purge'")
+      .get() as { session_id: string } | null;
+    expect(before).not.toBeNull();
+
+    // Delete the transcript file mid-flight, then re-enumerate.
+    rmSync(purgeTranscript);
+    const cands = listCandidateTranscripts(fakeHome);
+    const currentIds = new Set(cands.map((c) => c.session_id));
+    expect(currentIds.has("sess-purge")).toBe(false);
+
+    const stats = purgeMissingTranscripts(
+      currentIds,
+      PURGE_BUDGET_PER_TICK,
+      projectsDir,
+    );
+    expect(stats.visited).toBeGreaterThanOrEqual(1);
+    expect(stats.purged).toBe(1);
+    expect(stats.skipped_still_exists).toBe(0);
+
+    const after = raw
+      .query("SELECT session_id FROM agent_sessions WHERE session_id = 'sess-purge'")
+      .get() as { session_id: string } | null;
+    expect(after).toBeNull();
+
+    const ev = raw
+      .query(
+        "SELECT payload_json FROM observed_events WHERE kind = 'session_ended' " +
+          "AND payload_json LIKE '%\"session_id\":\"sess-purge\"%' ORDER BY seq DESC LIMIT 1",
+      )
+      .get() as { payload_json: string } | null;
+    expect(ev).not.toBeNull();
+    const payload = JSON.parse(ev!.payload_json) as {
+      session_id?: string;
+      was_status?: string;
+      reason?: string;
+    };
+    expect(payload.session_id).toBe("sess-purge");
+    expect(payload.reason).toBe("transcript_missing");
+  });
+
+  test("vanish-mid-rotation: the tick's candidate set says gone, but the transcript re-appears before the purge — the row is preserved", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+
+    const raceCwd = join(scratchRoot, "race-repo");
+    mkdirSync(raceCwd, { recursive: true });
+    const raceProjectDir = join(projectsDir, escapeCwd(raceCwd));
+    mkdirSync(raceProjectDir, { recursive: true });
+    const raceTranscript = join(raceProjectDir, "sess-race.jsonl");
+    writeFileSync(
+      raceTranscript,
+      JSON.stringify({ type: "header", cwd: raceCwd, model: "haiku" }) + "\n",
+    );
+    foldSessions(enumerateSessions(fakeHome));
+
+    // Simulate the race: the tick's listCandidateTranscripts snapshot was
+    // taken BEFORE the transcript was (re-)written; the purge's re-check
+    // needs to see it back on disk and skip the DELETE.
+    const staleCandidateSet = new Set<string>(); // "empty snapshot" — row is not in it
+    // The transcript file is STILL on disk (we never deleted it) — the
+    // belt-and-braces re-check must trip.
+    const stats = purgeMissingTranscripts(
+      staleCandidateSet,
+      PURGE_BUDGET_PER_TICK,
+      projectsDir,
+    );
+    expect(stats.visited).toBeGreaterThanOrEqual(1);
+    expect(stats.skipped_still_exists).toBeGreaterThanOrEqual(1);
+
+    // The row must survive.
+    const survivor = raw
+      .query("SELECT session_id FROM agent_sessions WHERE session_id = 'sess-race'")
+      .get() as { session_id: string } | null;
+    expect(survivor).not.toBeNull();
+  });
+
+  test("bounded by PURGE_BUDGET_PER_TICK — a mass-delete purges up to budget per call", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+
+    // Seed budget+3 observed-only rows in the DB WITHOUT any transcript on disk.
+    // (Insert directly — we're testing the purge's budget behavior, not the
+    // enumerator's insertion path.)
+    const N = PURGE_BUDGET_PER_TICK + 3;
+    for (let i = 0; i < N; i += 1) {
+      const sid = `sess-mass-${String(i).padStart(3, "0")}`;
+      raw.exec(
+        "INSERT INTO agent_sessions(session_id, name, kind, cwd, status, started_at, updated_at, " +
+          "project_slug, cwd_project_root, observed_only) " +
+          `VALUES('${sid}', 'observed:mass', 'interactive', '/tmp', 'idle', ` +
+          "'2026-08-16T00:00:00Z', '2026-08-16T00:00:00Z', 'mass', '/tmp', 1)",
+      );
+    }
+
+    // Empty candidate set → every seeded row is a purge candidate.
+    const empty = new Set<string>();
+    const stats = purgeMissingTranscripts(empty, PURGE_BUDGET_PER_TICK, projectsDir);
+    expect(stats.visited).toBe(PURGE_BUDGET_PER_TICK);
+    expect(stats.purged).toBe(PURGE_BUDGET_PER_TICK);
+
+    const remaining = raw
+      .query(
+        "SELECT COUNT(*) AS n FROM agent_sessions WHERE session_id LIKE 'sess-mass-%'",
+      )
+      .get() as { n: number };
+    expect(remaining.n).toBe(N - PURGE_BUDGET_PER_TICK); // budget applied
+
+    // A second call sweeps the remaining rows.
+    const stats2 = purgeMissingTranscripts(empty, PURGE_BUDGET_PER_TICK, projectsDir);
+    expect(stats2.purged).toBe(N - PURGE_BUDGET_PER_TICK);
+    const finalCount = raw
+      .query(
+        "SELECT COUNT(*) AS n FROM agent_sessions WHERE session_id LIKE 'sess-mass-%'",
+      )
+      .get() as { n: number };
+    expect(finalCount.n).toBe(0);
+  });
+
+  test("native rows (observed_only=0) are never purged even with missing transcripts", () => {
+    __resetSessionsFirstSweepForTests();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+
+    // Insert a native row whose transcript will not be found under fakeHome.
+    raw.exec(
+      "INSERT INTO agent_sessions(session_id, name, kind, cwd, status, started_at, updated_at, " +
+        "project_slug, cwd_project_root, observed_only) " +
+        "VALUES('sess-native-ghost', 'gosleep-1', 'interactive', '/tmp', 'idle', " +
+        "'2026-08-16T00:00:00Z', '2026-08-16T00:00:00Z', 'gosleep', '/tmp', 0)",
+    );
+
+    const empty = new Set<string>();
+    const stats = purgeMissingTranscripts(empty, PURGE_BUDGET_PER_TICK, projectsDir);
+    // Native row is not visited at all — the SELECT is `WHERE observed_only = 1`.
+    expect(stats.purged).toBe(0);
+
+    const survivor = raw
+      .query("SELECT session_id FROM agent_sessions WHERE session_id = 'sess-native-ghost'")
+      .get() as { session_id: string } | null;
+    expect(survivor).not.toBeNull();
   });
 });
 

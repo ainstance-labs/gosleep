@@ -16,6 +16,10 @@ export type ObservedSource = "tmux-list" | "transcript-mtime" | "fs-watcher" | "
 export type ObservedKind =
   | "session_appeared"
   | "session_idle"
+  // GSL-375: emitted when the sessions collector purges a stale `agent_sessions`
+  // row whose transcript.jsonl vanished from `~/.claude/projects/*` between ticks.
+  // Payload: { session_id, transcript_path?, was_status, reason: "transcript_missing" }.
+  | "session_ended"
   | "transcript_activity"
   | "git_head_moved"
   | "pane_appeared"

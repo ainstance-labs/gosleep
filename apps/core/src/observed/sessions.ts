@@ -638,6 +638,128 @@ export function foldSessions(
  * historical `session_appeared` still lands with `payload.backfill=true`; only sessions
  * that appear (or reactivate) AFTER the first full rotation are tagged `backfill=false`.
  */
+/**
+ * GSL-375 — per-tick purge cap. Bounded so a rare mass-delete of transcripts
+ * (owner ran `rm -rf ~/.claude/projects/*` or an obsolete-cleanup script) is
+ * absorbed across several ticks instead of blocking one tick with hundreds of
+ * DELETEs. 32 is generous for the observed churn (single-digit sessions/day
+ * in practice) and cheap even at the ceiling — SQLite deletes are ~sub-ms each
+ * on this schema.
+ */
+export const PURGE_BUDGET_PER_TICK = 32;
+
+/**
+ * GSL-375 — purge `agent_sessions` rows whose transcript.jsonl no longer
+ * exists under `~/.claude/projects/*`. The pre-hardening collector never
+ * DELETEd, ENDed, or expired such rows; the verifier for GSL-373 showed
+ * `sess-cold-3` surviving 12 s + 4 collector ticks after its transcript was
+ * removed mid-flight (evidence:
+ * `docs/reports/verifications/GSL-373/runs/01/assets/06-fleet-final.json`).
+ *
+ * Only `observed_only=1` rows are candidates — native rows are co-owned by
+ * the fleet-poll worker and a missing transcript there does not authoritatively
+ * mean the session is gone (the worker's next tick will re-touch it if it has
+ * a live pane pid or CLI reachback). Observed-only rows have no other owner;
+ * the transcript file IS their existence signal.
+ *
+ * Contract:
+ *   * Compare the row's `session_id` against `candidateSessionIds` — a Set
+ *     constructed from the current `listCandidateTranscripts()` pass at
+ *     tick-start. That set is the snapshot-of-record for the tick.
+ *   * As a belt-and-braces guard for the "vanish-mid-tick" case (the file was
+ *     listed at tick-start but was deleted between listing and purge), each
+ *     candidate row is re-checked with an `existsSync` before DELETE.
+ *   * Bounded by `budget`. Rows are visited in stable order (session_id ASC)
+ *     so a persistent backlog progresses deterministically across ticks.
+ *   * For every purged row, `session_ended` fires on the observed-events
+ *     bus with `reason: "transcript_missing"` — SSE consumers can react.
+ *   * Returns a small stats object for the collector-inventory row.
+ *
+ * Called from `sessionsCollectorTick` AFTER `foldSessions`. Exposed so tests
+ * (and future rebuild flows) can drive it deterministically with a fabricated
+ * candidate set.
+ */
+export function purgeMissingTranscripts(
+  candidateSessionIds: ReadonlySet<string>,
+  budget = PURGE_BUDGET_PER_TICK,
+  claudeProjectsDir?: string,
+): { visited: number; purged: number; skipped_still_exists: number } {
+  const db = getDb();
+  const rows = db.raw
+    .query(
+      "SELECT session_id, status, project_slug FROM agent_sessions " +
+        "WHERE observed_only = 1 " +
+        "ORDER BY session_id ASC",
+    )
+    .all() as { session_id: string; status: string; project_slug: string | null }[];
+
+  const home = claudeProjectsDir ?? join(homedir(), ".claude", "projects");
+  const del = db.raw.query("DELETE FROM agent_sessions WHERE session_id = ?");
+
+  let visited = 0;
+  let purged = 0;
+  let skipped_still_exists = 0;
+
+  for (const r of rows) {
+    if (visited >= budget) break;
+    if (candidateSessionIds.has(r.session_id)) continue;
+    visited += 1;
+
+    // Belt-and-braces: a transcript could have appeared between the tick's
+    // listCandidateTranscripts() call and now. Re-check the filesystem for a
+    // path matching `<projectsDir>/*/<session_id>.jsonl`. Cheap — one readdir
+    // + prefix check per project dir (dozens in practice).
+    let stillExists = false;
+    try {
+      const dirents = readdirSync(home, { withFileTypes: true });
+      const wantName = `${r.session_id}.jsonl`;
+      for (const dirent of dirents) {
+        if (!dirent.isDirectory()) continue;
+        try {
+          if (existsSync(join(home, dirent.name, wantName))) {
+            stillExists = true;
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
+    } catch {
+      // ~/.claude/projects missing entirely — nothing exists; proceed with purge.
+      stillExists = false;
+    }
+
+    if (stillExists) {
+      skipped_still_exists += 1;
+      continue;
+    }
+
+    // Emit session_ended BEFORE the DELETE so any subscriber that reads the row
+    // in the same tick still sees it.
+    try {
+      appendObservedEvent({
+        project_slug: r.project_slug,
+        kind: "session_ended",
+        source: "transcript-mtime",
+        payload: {
+          session_id: r.session_id,
+          was_status: r.status,
+          reason: "transcript_missing",
+        },
+      });
+      bumpEventsToday(SESSIONS_COLLECTOR_NAME);
+    } catch {
+      // observed-events writer refused (shape / sentinel). Do NOT delete — a
+      // silent DELETE with no timeline signal defeats the point of the purge.
+      continue;
+    }
+    del.run(r.session_id);
+    purged += 1;
+  }
+
+  return { visited, purged, skipped_still_exists };
+}
+
 export async function sessionsCollectorTick(claudeHome?: string): Promise<void> {
   await runCollectorTick(SESSIONS_COLLECTOR_NAME, async () => {
     // Read the current tmux_panes.pane_pid snapshot so the enumerator can walk pids into
@@ -689,6 +811,22 @@ export async function sessionsCollectorTick(claudeHome?: string): Promise<void> 
     const snap = toProcess.map((c) => buildSnapshot(c, panePids, gosleepRoot, now));
 
     foldSessions(snap, { holdFirstSweep: !coldRotationComplete });
+
+    // GSL-375 — purge `agent_sessions` rows whose transcript.jsonl no longer
+    // exists on disk. Compare against the FULL candidate set (`cands` = warm
+    // + cold, tick-consistent), not just this chunk, so a session that lives
+    // in a future cold chunk is not accidentally purged. Bounded per-tick
+    // (see PURGE_BUDGET_PER_TICK) so a mass-delete does not block one tick.
+    // Only runs when the first full cold rotation has completed — before
+    // that, the candidate set may still be growing across boot chunks and a
+    // premature purge would race the boot backfill.
+    if (coldRotationComplete) {
+      const candidateSessionIds = new Set(cands.map((c) => c.session_id));
+      const claudeProjectsDir = claudeHome !== undefined
+        ? join(claudeHome, "projects")
+        : undefined;
+      purgeMissingTranscripts(candidateSessionIds, PURGE_BUDGET_PER_TICK, claudeProjectsDir);
+    }
   });
 }
 
