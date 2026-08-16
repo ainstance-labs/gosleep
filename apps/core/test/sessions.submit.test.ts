@@ -244,6 +244,16 @@ describe("isPaneAtPrompt — R16 Risk 1 heuristic", () => {
       expect(isPaneAtPrompt(cmd)).toBe(false);
     }
   });
+  test("node / bun treated as BUSY (verifier m3)", () => {
+    // A Claude Code session spawns a `node` (or `bun`) subprocess to run a tool
+    // and tmux reports that leaf command while the tool is still executing.
+    // Landing a submission at that instant interleaves the body with tool output.
+    // The safer default is "busy" — the prompt-boundary framing should keep
+    // waiting until the leaf command is back to a real shell (or the claude CLI).
+    for (const cmd of ["node", "bun", "NODE", "Bun", " node "]) {
+      expect(isPaneAtPrompt(cmd)).toBe(false);
+    }
+  });
 });
 
 describe("resolvePaneRef — cwd-prefix heuristic (R16.4)", () => {
@@ -254,6 +264,18 @@ describe("resolvePaneRef — cwd-prefix heuristic (R16.4)", () => {
   test("returns null when no pane matches (pane_gone)", () => {
     seedControlledSessionAndPane(opened, {
       pane_current_path: "/somewhere/else",
+    });
+    expect(resolvePaneRef(opened, "sess-1")).toBeNull();
+  });
+  test("empty-string cwd_project_root treated as NULL, does NOT match a foreign pane (verifier m4)", () => {
+    // Seed the session with cwd_project_root='' and a pane whose pane_current_path
+    // is a plain absolute path unrelated to the session. Without the
+    // `length(a.cwd_project_root) > 0` guard, the heuristic JOIN would degrade to
+    // `LIKE '/%'` and match the foreign pane. With the guard, resolvePaneRef must
+    // return null (executor short-circuits to outcome='pane_gone').
+    seedControlledSessionAndPane(opened, {
+      cwd_project_root: "",
+      pane_current_path: "/some/other/project/tree",
     });
     expect(resolvePaneRef(opened, "sess-1")).toBeNull();
   });

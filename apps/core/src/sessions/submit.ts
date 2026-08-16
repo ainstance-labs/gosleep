@@ -174,6 +174,13 @@ export function resolvePaneRef(
   db: OpenedDb,
   sessionId: string,
 ): string | null {
+  // GSL-380 fix (verifier m4): guard on non-empty cwd_project_root, not just
+  // NOT NULL. The fleet enumerator today writes either NULL or the real project
+  // root, but a future writer that persisted an empty string would collapse the
+  // cwd-prefix heuristic to `LIKE '/%'` — matching ANY absolute path — and the
+  // MAX() aggregation would then return the lexicographically largest pane_ref
+  // across the whole tmux_panes table (a foreign pane). Belt + braces:
+  // `length(a.cwd_project_root) > 0` at the join guard.
   const row = db.raw
     .query(
       `SELECT COALESCE(heur.pane_ref, pid.pane_ref) AS pane_ref
@@ -185,6 +192,7 @@ export function resolvePaneRef(
          WHERE pane_current_path IS NOT NULL
          GROUP BY pane_current_path
        ) heur ON a.cwd_project_root IS NOT NULL
+              AND length(a.cwd_project_root) > 0
               AND (heur.pane_current_path = a.cwd_project_root
                    OR heur.pane_current_path LIKE a.cwd_project_root || '/%')
        LEFT JOIN (
@@ -226,6 +234,16 @@ export function readPaneCurrentCommand(
  * standard shell set (bash/zsh/fish/sh) plus the Claude CLI when it's waiting for input
  * (`claude` itself, as reported by tmux — pty state, not process state). We treat unknown
  * commands as "busy" so a receiver we don't recognise defaults to the safer wait.
+ *
+ * GSL-380 fix (verifier m3): `node` and `bun` used to be on the whitelist as "REPL leaves
+ * a prompt". In practice a Claude Code session spawns a `node` (or `bun`) subprocess to
+ * run a tool, and `tmux #{pane_current_command}` reports that leaf command WHILE the
+ * tool is still executing. Under the old whitelist that reported "at prompt" and the
+ * submission landed mid-tool-execution, interleaving the operator's typed body with the
+ * tool's output — the receiving Claude then treated the body as an out-of-turn user
+ * message and the tool call was derailed (F16 Risk 1). Restrict to pure shells;
+ * `claude` stays on the whitelist because it is the only leaf command we know reports
+ * itself at pty-idle when the CLI is at its own prompt.
  */
 export function isPaneAtPrompt(command: string | null): boolean {
   if (command === null || command.length === 0) return false;
@@ -239,9 +257,6 @@ export function isPaneAtPrompt(command: string | null): boolean {
     "ksh",
     "tcsh",
     "csh",
-    // Node/Bun REPLs — a prompt from the receiver's perspective.
-    "node",
-    "bun",
     // The Claude CLI reports itself when idle at its prompt.
     "claude",
   ]);
