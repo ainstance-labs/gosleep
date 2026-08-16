@@ -229,6 +229,35 @@ export function readPaneCurrentCommand(
   return row.pane_current_command;
 }
 
+/** Read `pane_pid` for the resolved pane_ref. Null when the pane isn't in the table
+ *  (already gone). Used by GSL-390's process-tree probe to disambiguate a version-shaped
+ *  `pane_current_command` from a random tool that happens to report as a version string. */
+export function readPanePid(db: OpenedDb, paneRef: string): number | null {
+  const dot = paneRef.lastIndexOf(".");
+  if (dot < 0) return null;
+  const paneId = paneRef.slice(dot + 1);
+  const row = db.raw
+    .query(`SELECT pane_pid FROM tmux_panes WHERE pane_id = ?`)
+    .get(paneId) as { pane_pid: number | null } | null | undefined;
+  if (row === null || row === undefined) return null;
+  return row.pane_pid;
+}
+
+/**
+ * GSL-390 (fixes E2E run-01 M2): recognise a version-shaped `pane_current_command`. Real
+ * Claude Code sessions (2.1.233 in the run-01 fixture, 2.1.x on the shipping channel today)
+ * set their argv so tmux's `#{pane_current_command}` reports the version string instead of
+ * "claude". Accept `2.1.233`, `v2.1.233`, `1.0`, `1.2.3.4`, `2.1.233+build.5`, `2.1.233-rc1`.
+ * Anything else (semver-with-suffix like `2.1.233-canary.hash`, plain shell names) falls
+ * through to the standard allowlist path.
+ */
+export function isVersionShapedCommand(command: string | null): boolean {
+  if (command === null) return false;
+  const t = command.trim();
+  if (t.length === 0) return false;
+  return /^v?\d+\.\d+(\.\d+){0,2}([+-][A-Za-z0-9._]+)?$/.test(t);
+}
+
 /**
  * Heuristic: is the pane at a prompt? The list of "at a prompt" leaf commands is the
  * standard shell set (bash/zsh/fish/sh) plus the Claude CLI when it's waiting for input
@@ -244,6 +273,13 @@ export function readPaneCurrentCommand(
  * message and the tool call was derailed (F16 Risk 1). Restrict to pure shells;
  * `claude` stays on the whitelist because it is the only leaf command we know reports
  * itself at pty-idle when the CLI is at its own prompt.
+ *
+ * GSL-390 (E2E run-01 M2): Claude Code 2.1.x renames its process argv so tmux reports the
+ * version string (e.g. `2.1.233`) as `pane_current_command`. The sync predicate does NOT
+ * accept version strings on its own — a randomly-named tool that happens to render as
+ * "2.1.233" would then be treated as claude. The disambiguation lives in
+ * `paneQualifiesAsPrompt` below: version-shaped + a `claude` process actually present in
+ * the pane's process tree.
  */
 export function isPaneAtPrompt(command: string | null): boolean {
   if (command === null || command.length === 0) return false;
@@ -264,8 +300,137 @@ export function isPaneAtPrompt(command: string | null): boolean {
 }
 
 /**
+ * Return the `comm` string of every descendant of `rootPid` (BFS on `ps` output). Best
+ * effort — a spawn error yields an empty list, which the caller treats as "no claude in
+ * the tree, keep waiting". Uses `ps -eo pid=,ppid=,comm=` — the `=` suppresses the header
+ * row and the tokens split cleanly on whitespace (comm never contains a space).
+ *
+ * The default implementation is exported so tests can swap it with a fixture.
+ */
+export async function readDescendantCommsDefault(rootPid: number): Promise<string[]> {
+  try {
+    const proc = Bun.spawn(["ps", "-eo", "pid=,ppid=,comm="], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [text] = await Promise.all([
+      new Response(proc.stdout).text(),
+      proc.exited,
+    ]);
+    return descendantCommsFromPsOutput(text, rootPid);
+  } catch {
+    return [];
+  }
+}
+
+/** Pure parser (exported for tests). Walks the ps table rooted at `rootPid`. */
+export function descendantCommsFromPsOutput(
+  psOutput: string,
+  rootPid: number,
+): string[] {
+  interface Row {
+    pid: number;
+    ppid: number;
+    comm: string;
+  }
+  const rows: Row[] = [];
+  for (const rawLine of psOutput.split("\n")) {
+    const line = rawLine.trimStart();
+    if (line.length === 0) continue;
+    // pid ppid comm — comm is basename on macOS/Linux, may contain path chars but not
+    // whitespace. Take the first two tokens as pid/ppid and the rest of the line as comm.
+    const m = /^(\d+)\s+(\d+)\s+(.+)$/.exec(line);
+    if (!m || m[3] === undefined) continue;
+    rows.push({
+      pid: Number.parseInt(m[1]!, 10),
+      ppid: Number.parseInt(m[2]!, 10),
+      comm: m[3].trim(),
+    });
+  }
+  const childrenByPpid = new Map<number, Row[]>();
+  for (const r of rows) {
+    let list = childrenByPpid.get(r.ppid);
+    if (!list) {
+      list = [];
+      childrenByPpid.set(r.ppid, list);
+    }
+    list.push(r);
+  }
+  const results: string[] = [];
+  const seen = new Set<number>();
+  const stack: number[] = [rootPid];
+  while (stack.length > 0) {
+    const cur = stack.pop()!;
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    const kids = childrenByPpid.get(cur);
+    if (!kids) continue;
+    for (const k of kids) {
+      results.push(k.comm);
+      stack.push(k.pid);
+    }
+  }
+  return results;
+}
+
+/**
+ * GSL-390 — comm-level "does the pane run Claude Code?" check. Matches the exact comm
+ * "claude", a comm whose basename is claude (`/usr/local/bin/claude`), or a comm that
+ * BEGINS with "claude" followed by `-` or whitespace (`claude-2.1.233`). Version-shaped
+ * comms alone are not counted here — the pane's outer command is version-shaped, and the
+ * process tree needs a REAL claude in it to qualify.
+ */
+export function commLooksLikeClaude(comm: string): boolean {
+  const t = comm.trim();
+  if (t.length === 0) return false;
+  if (t === "claude") return true;
+  const slash = t.lastIndexOf("/");
+  const basename = slash >= 0 ? t.slice(slash + 1) : t;
+  if (basename === "claude") return true;
+  // "claude-2.1.233", "claude helper", "claude:main" — anything starting with claude
+  // followed by a separator counts.
+  return /^claude(?:[\s\-:.]|$)/.test(basename);
+}
+
+/**
+ * GSL-390 — the async prompt-boundary predicate the executor actually runs. Two-tier:
+ *   1. If `pane_current_command` matches the known-prompt allowlist (bash / zsh / … /
+ *      claude), accept immediately — no shell-out.
+ *   2. Else, if the command is version-shaped (`2.1.233` / `v1.2.3` / …), walk the
+ *      pane's process tree once. Accept iff a `claude` process is present. This is the
+ *      Claude Code 2.1.x case the run-01 fixture surfaced.
+ *   3. Anything else — reject (busy).
+ *
+ * Tests inject `readDescendantComms` with a fixture list so the async check runs without
+ * touching real `ps`. The production path uses `readDescendantCommsDefault`.
+ */
+export async function paneQualifiesAsPrompt(
+  db: OpenedDb,
+  paneRef: string,
+  deps: {
+    readDescendantComms?: (rootPid: number) => Promise<string[]>;
+  } = {},
+): Promise<boolean> {
+  const command = readPaneCurrentCommand(db, paneRef);
+  if (isPaneAtPrompt(command)) return true;
+  if (!isVersionShapedCommand(command)) return false;
+  const panePid = readPanePid(db, paneRef);
+  if (panePid === null || panePid <= 0) return false;
+  const probe = deps.readDescendantComms ?? readDescendantCommsDefault;
+  const comms = await probe(panePid);
+  return comms.some(commLooksLikeClaude);
+}
+
+/**
  * Wait up to `waitMs` for the pane to be at a prompt, polling every `pollMs`. Returns
  * true if the pane went to prompt within the window, false on timeout.
+ *
+ * GSL-390 — now delegates to `paneQualifiesAsPrompt` so version-shaped `pane_current_command`
+ * values (real Claude Code sessions today) are honoured after a one-off process-tree probe.
+ * The process-tree probe fires at most once per poll interval; caching is left to the
+ * probe implementation (production `readDescendantCommsDefault` shells out on demand — the
+ * whole check completes in a few ms; the extra ~15-20 shell-outs across a 5 s wait cap are
+ * cheap compared to a submission's own tmux fan-out).
  *
  * The default clock is Date.now(); tests can inject a fake `now` to advance deterministically.
  */
@@ -277,19 +442,21 @@ export async function waitForPromptBoundary(
     pollMs?: number;
     now?: () => number;
     sleep?: (ms: number) => Promise<void>;
+    readDescendantComms?: (rootPid: number) => Promise<string[]>;
   } = {},
 ): Promise<boolean> {
   const waitMs = opts.waitMs ?? PROMPT_BOUNDARY_WAIT_MS;
   const pollMs = opts.pollMs ?? PROMPT_BOUNDARY_POLL_MS;
   const now = opts.now ?? (() => Date.now());
   const sleep = opts.sleep ?? ((ms) => new Promise((res) => setTimeout(res, ms)));
+  const probe = opts.readDescendantComms;
   const started = now();
   // First check without sleeping — a receiver that's already at its prompt shouldn't add
   // even one poll interval of latency.
-  if (isPaneAtPrompt(readPaneCurrentCommand(db, paneRef))) return true;
+  if (await paneQualifiesAsPrompt(db, paneRef, { readDescendantComms: probe })) return true;
   while (now() - started < waitMs) {
     await sleep(pollMs);
-    if (isPaneAtPrompt(readPaneCurrentCommand(db, paneRef))) return true;
+    if (await paneQualifiesAsPrompt(db, paneRef, { readDescendantComms: probe })) return true;
   }
   return false;
 }
