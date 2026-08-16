@@ -1,0 +1,12 @@
+{
+  "session_id": "e2e02-1f",
+  "cwd_project_root": "/repo/gosleep/.claude/worktrees/e2e02",
+  "tmux_pane_ref": "e2e02-fixture:@51.%444",
+  "attribution": "heuristic"
+}
+{
+  "session_id": "gosleep-66",
+  "cwd_project_root": "/repo/gosleep",
+  "tmux_pane_ref": null,
+  "attribution": null
+}

@@ -741,6 +741,12 @@ export const ObservedSessionRow = z.object({
   control_source: z.enum(["env", "runtime", "inherited"]).nullable().optional(),
   shim_registered: z.boolean().optional(),
   env_locked: z.boolean().optional(),
+  // GSL-396 (E2E run-02 M-1) — server-side ranked tmux-pane attribution. Same shape as
+  // FleetSession.tmux_pane_ref / attribution (see apps/core/src/routes/paneRanking.ts): NULL
+  // when no pane matched. The Observed panel renders these verbatim; the pre-fix client-side
+  // .startsWith join is gone.
+  tmux_pane_ref: z.string().nullable().optional(),
+  attribution: z.enum(["heuristic", "pidtree"]).nullable().optional(),
 });
 export type ObservedSessionRow = z.infer<typeof ObservedSessionRow>;
 
