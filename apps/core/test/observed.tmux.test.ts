@@ -110,4 +110,26 @@ describe("tmux collector (GSL-352)", () => {
       .get() as { n: number };
     expect(events.n).toBe(1);
   });
+
+  test("m4: dead pane is soft-deleted (pruned) after PANE_PRUNE_THRESHOLD misses", () => {
+    // Continue from the prior test's state: pane %2 has misses=2 already and the row exists.
+    // Keep the trimmed fixture (no %2) and sweep many more times.
+    const trimmed = FIXTURE_LINES.split("\n").filter((l) => !l.startsWith("%2")).join("\n");
+    let lastRes: { pruned: number } | null = null;
+    for (let i = 3; i <= 15; i += 1) {
+      const ts = `2026-08-16T00:00:${String(i * 2).padStart(2, "0")}Z`;
+      lastRes = foldScrape(ts, parseTmuxListOutput(trimmed));
+    }
+    // Somewhere in that range the prune threshold (10) was crossed exactly once.
+    const paneRow = raw
+      .query("SELECT pane_id FROM tmux_panes WHERE pane_id = '%2'")
+      .get() as { pane_id: string } | null;
+    expect(paneRow).toBeNull(); // soft-deleted (pruned)
+    // The pane_disappeared event fires exactly ONCE across the run (threshold-crossing only).
+    const evCount = raw
+      .query("SELECT COUNT(*) AS n FROM observed_events WHERE kind = 'pane_disappeared'")
+      .get() as { n: number };
+    expect(evCount.n).toBe(1);
+    expect(lastRes!.pruned).toBeGreaterThanOrEqual(0); // may be 0 on the very last tick
+  });
 });

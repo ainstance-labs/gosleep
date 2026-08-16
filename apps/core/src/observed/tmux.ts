@@ -26,6 +26,15 @@ export const TMUX_CADENCE_MS = 2_000;
 /** How many consecutive misses before a pane_disappeared event is emitted. */
 const PANE_DISAPPEAR_THRESHOLD = 2;
 
+/**
+ * How many consecutive misses before a pane row is soft-deleted (M4 fix). The disappear
+ * event fires at PANE_DISAPPEAR_THRESHOLD; PANE_PRUNE_THRESHOLD gives us a few extra
+ * sweeps of headroom in case the tmux server briefly hiccuped (e.g. `-L` socket flap) so
+ * we don't lose historical rows on a false-alarm miss. Rows past the prune threshold are
+ * DELETEd — the disappear event is already recorded in observed_events for history.
+ */
+const PANE_PRUNE_THRESHOLD = 10;
+
 /** tmux -F format string. Fields land tab-separated in stdout — parser splits accordingly. */
 const TMUX_FMT =
   "#{pane_id}\t#{session_id}\t#{session_name}\t#{window_id}\t#{pane_pid}\t" +
@@ -102,6 +111,7 @@ export function foldScrape(
   upserts: number;
   appeared: number;
   disappeared: number;
+  pruned: number;
 } {
   const db = getDb();
   const seenIds = new Set<string>();
@@ -153,26 +163,27 @@ export function foldScrape(
     upserts += 1;
   }
 
-  // Any pane not seen this sweep gets misses++; PANE_DISAPPEAR_THRESHOLD trip → event.
+  // Any pane not seen this sweep gets misses++; PANE_DISAPPEAR_THRESHOLD trip → event once.
+  // M4 fix — panes past PANE_PRUNE_THRESHOLD get soft-deleted (their disappear event is
+  // already recorded in observed_events so the historical view survives).
   const stale = db.raw
     .query(
       "SELECT pane_id, session_name, pane_pid, misses FROM tmux_panes " +
-        "WHERE last_seen <> ? AND misses < ?",
+        "WHERE last_seen <> ?",
     )
-    .all(scrapedIso, PANE_DISAPPEAR_THRESHOLD) as {
+    .all(scrapedIso) as {
     pane_id: string;
     session_name: string;
     pane_pid: number;
     misses: number;
   }[];
 
+  let pruned = 0;
   for (const row of stale) {
     if (seenIds.has(row.pane_id)) continue;
     const nextMisses = row.misses + 1;
-    db.raw.exec(
-      `UPDATE tmux_panes SET misses=${nextMisses} WHERE pane_id='${escapeSql(row.pane_id)}'`,
-    );
-    if (nextMisses >= PANE_DISAPPEAR_THRESHOLD) {
+    // Fire the disappear event on the exact threshold crossing (never re-emit).
+    if (row.misses < PANE_DISAPPEAR_THRESHOLD && nextMisses >= PANE_DISAPPEAR_THRESHOLD) {
       disappeared += 1;
       appendObservedEvent({
         project_slug: null,
@@ -187,9 +198,21 @@ export function foldScrape(
       });
       bumpEventsToday(TMUX_COLLECTOR_NAME);
     }
+    if (nextMisses >= PANE_PRUNE_THRESHOLD) {
+      // Soft-delete: remove the row so /observed/tmux stops counting a dead pane. The
+      // pane_disappeared event stays in observed_events for the historical timeline.
+      db.raw.exec(
+        `DELETE FROM tmux_panes WHERE pane_id='${escapeSql(row.pane_id)}'`,
+      );
+      pruned += 1;
+    } else {
+      db.raw.exec(
+        `UPDATE tmux_panes SET misses=${nextMisses} WHERE pane_id='${escapeSql(row.pane_id)}'`,
+      );
+    }
   }
 
-  return { upserts, appeared, disappeared };
+  return { upserts, appeared, disappeared, pruned };
 }
 
 /**
