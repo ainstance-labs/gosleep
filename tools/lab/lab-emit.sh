@@ -51,6 +51,9 @@
 #     dedup are read-then-append and must be exclusive).
 #
 # Env: GOSLEEP_LAB_DIR overrides the lab dir (default <repo>/docs/lab) — smoke uses it.
+#      GOSLEEP_MANIFEST_PATH overrides the decision manifest path (default is the REPO's
+#      docs/lab/decisions/manifest.md — the manifest is a shared source of truth, not per-lab-dir).
+#      Tests point this at a fixture to prove --rule validation in isolation.
 # 0 LLM calls (C1). python3 stdlib only (JSON safety). macOS/BSD userland.
 # =============================================================================
 set -euo pipefail
@@ -59,6 +62,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export LAB_DIR="${GOSLEEP_LAB_DIR:-$REPO_ROOT/docs/lab}"
 export LAB_LOG="$SCRIPT_DIR/lab-log.sh"      # GSL-84: the single writer of events/*.jsonl
+export MANIFEST_PATH="${GOSLEEP_MANIFEST_PATH:-$REPO_ROOT/docs/lab/decisions/manifest.md}"
 
 exec python3 - "$@" <<'PY'
 import sys, os, json, hashlib, time, re, subprocess
@@ -71,10 +75,150 @@ LOCK  = os.path.join(QDIR, ".queue.lock")
 DDIR  = os.path.join(LAB, "decisions")
 DLOG  = os.path.join(DDIR, "log.jsonl")
 DLOCK = os.path.join(DDIR, ".log.lock")
+MANIFEST_PATH = os.environ.get("MANIFEST_PATH") or os.path.join(DDIR, "manifest.md")
 
 TYPES    = ("BLOCKER", "DECISION", "CLARIFY", "FYI")
-STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted")
+STATUSES = ("open", "answered", "auto-resolved", "answered-by-default", "noted", "deferred")
 REVERSIBILITY = ("high", "med", "low")
+
+# GSL-227: an orchestrator decision's --rule is validated against the manifest at write time.
+# Two shapes are accepted:
+#   * a citation of a manifest bullet — "manifest §N.bullet" or the short "§N.bullet"; the
+#     bullet must actually exist in manifest.md.
+#   * a delegation — "delegation:<origin>" (e.g. "delegation:owner 2026-08-16"). Delegations
+#     encode a rule the manifest does not yet name; they are advisory only (candidates for
+#     future promotion into the manifest) and are surfaced separately in the digest.
+# Anything else (an unknown §N.bullet, a bare comment, "TODO", or the empty string) is refused
+# with an actionable error. Rules are TAGGED at write time — the decision record carries
+# rule_kind = "manifest" | "delegation" | "" — so the digest split does not have to re-guess.
+RULE_MANIFEST_RE = re.compile(r"^(?:manifest\s+)?§\s*(\d+\.[a-z0-9][a-z0-9-]*)\s*$", re.I)
+RULE_DELEGATION_RE = re.compile(r"^delegation\s*:\s*(\S.*)$", re.I)
+MANIFEST_BULLET_RE = re.compile(r"^-\s+§\s*(\d+\.[a-z0-9][a-z0-9-]*)", re.I)
+
+# GSL-228: risk-tier hard floor (manifest §3 denylist, in code).
+#
+# BLOCKER is tier 2: only the owner closes it, there is no default, ever. DECISION/CLARIFY/FYI are
+# tiers 0-1: they carry a default (or none, for FYI) and can be closed autonomously. The audit
+# finding (86, MAJOR) is that the queue currently trusts an AGENT'S CHOICE of tier — an agent that
+# labels "spend $500 on X" as a DECISION gets a two-hour deadline before the default fires.
+#
+# The floor moves the classification into CODE. When a non-BLOCKER question mentions an action from
+# any of these four categories — money, external comms, secrets, destructive/production actions —
+# the emit is REFUSED with a message telling the caller to reclassify as --type BLOCKER. It is the
+# manifest §3 denylist enforced at the door, not read as a note in the digest tomorrow.
+#
+# The patterns are VERB-focused on purpose. "budget 80% crossed" is a valid FYI (manifest §5.warn-80)
+# and must not trip; "spend beyond ceiling" is not. If a new false positive shows up, tighten the
+# pattern rather than widening the escape hatch — a bypass on this floor is a design fault.
+TIER2_PATTERNS = {
+    "money": [
+        r"\bspend(?:ing|s)?\s+(?:\$|\d|money|funds|cash|beyond|above|over)\b",
+        r"\bpurchase\b",
+        r"\bcharge\s+(?:the\s+)?(?:card|account|customer)\b",
+        r"\bpay(?:ment)?\s+(?:for|the|out|invoice)\b",
+        r"\bsubscribe\b|\bsubscription\b",
+        r"\bissue\s+(?:an?\s+)?refund\b",
+        r"\bpay\s+(?:the\s+)?invoice\b",
+    ],
+    "external_comms": [
+        # Noun anchor group widened per GSL-243 verifier run 01, finding 4
+        # (`post on social media`, `tweet about the launch`, `email the team`
+        # were slipping through because none of `social media`, `team`, or
+        # `launch` sat in the anchor group). Added: team, channel,
+        # social media, social, slack, twitter, linkedin, launch.
+        r"\b(?:send|write|post|publish|announce|broadcast|tweet|email)\b.{0,40}"
+            r"\b(?:customer|user|external|public|press|announcement|blog|homepage|newsletter|"
+            r"subscriber|audience|community|prod\s+site|status\s+page|"
+            r"team|channel|social\s+media|social|slack|twitter|linkedin|launch)\b",
+        r"\bpress\s+release\b",
+        r"\bexternal\s+(?:comms|communication|announcement)\b",
+        r"\bcustomer\s+(?:email|announcement)\b",
+        r"\bpublish\s+publicly\b",
+    ],
+    "secrets": [
+        # Each verb allows an optional article + up to two qualifier words
+        # before the secret-noun, per GSL-243 verifier run 01, findings 2/3:
+        # `leak the token` lacked the `(?:the\s+)?` prefix, and `rotate the
+        # AWS key` / `rotate our master token` were bypassing because the
+        # pattern refused any intervening qualifier. `(?:\S+\s+){0,2}` also
+        # subsumes the plain `the ` form, so the surface is symmetric across
+        # all six act-on-secret verbs.
+        r"\brotate\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key|key)\b",
+        r"\bshare\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bpublish\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bcommit\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bexpose\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bleak(?:ed)?\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+    ],
+    "destructive": [
+        r"\bforce[- ]push\b",
+        r"\bgit\s+push\b[^\n]*--force\b",
+        r"\brebase\s+(?:published|shared|the\s+published)\b",
+        r"\bdrop\s+(?:the\s+)?(?:table|database|schema)\b",
+        r"\b(?:drop|delete|remove)\s+(?:the\s+)?(?:release\s+)?(?:branch|tag|release|repo|repository)\b",
+        r"\brm\s+-rf\b",
+        r"\bdeploy\s+(?:to\s+)?prod(?:uction)?\b",
+        r"\b(?:prod|production)\s+deploy(?:ment)?\b",
+        r"\bdestructive\s+(?:db\s+)?migration\b",
+        r"\bdelete\s+(?:cloud|infra|infrastructure)\b",
+        r"\bdrop\s+(?:the\s+)?release\s+tag\b",
+    ],
+}
+
+
+def tier2_floor(text):
+    """Return the list of (category, matched-snippet) hits — empty iff `text` is under the floor."""
+    hits = []
+    t = " ".join((text or "").split()).lower()
+    if not t:
+        return hits
+    for cat, pats in TIER2_PATTERNS.items():
+        for p in pats:
+            m = re.search(p, t, re.I)
+            if m:
+                hits.append((cat, m.group(0)))
+                break
+    return hits
+
+
+def load_manifest_bullets():
+    """Read manifest.md and return the set of `N.bullet` ids that lab-emit accepts as --rule
+    citations. Fail loudly if the manifest is missing — a lab that cannot cite its manifest has
+    no business auto-recording an autonomous decision."""
+    if not os.path.exists(MANIFEST_PATH):
+        die("manifest not found at %s (set GOSLEEP_MANIFEST_PATH to override)" % MANIFEST_PATH)
+    ids = set()
+    with open(MANIFEST_PATH, encoding="utf-8") as f:
+        for line in f:
+            m = MANIFEST_BULLET_RE.match(line)
+            if m:
+                ids.add(m.group(1).lower())
+    return ids
+
+
+def classify_rule(rule, bullets=None):
+    """Return (rule_kind, canonical, error). rule_kind ∈ {"manifest","delegation",""}.
+    canonical is the tidied string that should end up on the record.
+    error is a human-readable message when the rule cannot be accepted."""
+    r = (rule or "").strip()
+    if not r:
+        return "", "", ""
+    m = RULE_DELEGATION_RE.match(r)
+    if m:
+        return "delegation", "delegation:" + m.group(1).strip(), ""
+    m = RULE_MANIFEST_RE.match(r)
+    if m:
+        bid = m.group(1).lower()
+        known = bullets if bullets is not None else load_manifest_bullets()
+        if bid not in known:
+            near = sorted(k for k in known if k.split(".")[0] == bid.split(".")[0])
+            hint = ("; section §%s has: %s" % (bid.split(".")[0], ", ".join(near))) if near else ""
+            return "", r, ("rule '%s' cites §%s, which is not in the manifest (%s)%s"
+                           % (r, bid, MANIFEST_PATH, hint))
+        return "manifest", "manifest §" + bid, ""
+    return "", r, ("rule %r is neither a manifest citation ('manifest §N.bullet') nor a "
+                   "delegation ('delegation:<origin>'); an orchestrator decision without a "
+                   "citable rule has no provenance (F3-S3)" % r)
 
 # The semantic vocabulary (GSL-84). Hooks (GSL-83) capture what a machine can SEE — a commit, a Jira
 # call, a session ending. These are what only an agent KNOWS. Grouped by the producer that emits them:
@@ -206,15 +350,47 @@ def read_records():
 def append_record(obj):
     append_jsonl(QUEUE, obj)
 
+QSHAPE_STOPWORDS = frozenset("""
+    a an the this that these those and or but nor of to in on at for from by with
+    as is are was were be been being do does did doing has have had having we you
+    i they he she it me us them him her its our their my your what which who whom
+    whose when where why how if then else than so also just too very much many
+    should would could shall will can may might must not no yes ok please via into
+    onto about across around another after before still now some any all each every
+    <key> <ref> <path> <n>
+""".split())
+# GSL-229: applied longest-first. Order matters — "ing" must beat "s" so "merging" doesn't
+# collapse to "mergin". Then a trailing "e" is stripped as well, so "merge" and "merged"
+# both land on "merg". This is a deliberately dumb stemmer — good enough to fold rewordings,
+# small enough to reason about, python-stdlib only (C1).
+QSHAPE_SUFFIXES = ("ing", "ed", "es", "ly", "s", "e")
+
+
 def qshape(question):
-    """Task-agnostic question SHAPE for the learning loop: numbers/keys/paths collapsed."""
+    """Task-agnostic question SHAPE for the learning loop. GSL-229: the old shape was a hash of
+    the near-verbatim string, so every rewording produced a different shape and `candidates` never
+    grouped anything past N=1. This version normalizes keys/refs/paths/numbers, strips punctuation
+    and stopwords, applies a light stemmer, and hashes the SORTED bag of remaining tokens — so
+    "merge strategy for PR #40 after main moved?" and "what is the merge strategy after main moved
+    for PR #40?" collapse to the same shape. It is advisory only: `candidates` still needs a
+    threshold count and the manifest is owner-edited."""
     s = question.strip().lower()
     s = re.sub(r"[a-z]+-\d+", "<key>", s)          # GSL-45, tlm-8 ...
     s = re.sub(r"#\d+", "<ref>", s)                # #52
     s = re.sub(r"\S*/\S+", "<path>", s)            # paths/urls
     s = re.sub(r"\d+", "<n>", s)
-    s = re.sub(r"\s+", " ", s)
-    return hashlib.sha256(s.encode()).hexdigest()[:10]
+    s = re.sub(r"[^a-z<>\s]", " ", s)              # strip punctuation, keep placeholder brackets
+    tokens = []
+    for w in s.split():
+        if w in QSHAPE_STOPWORDS or len(w) <= 2:
+            continue
+        for suf in QSHAPE_SUFFIXES:
+            if len(w) > len(suf) + 2 and w.endswith(suf):
+                w = w[: -len(suf)]
+                break
+        tokens.append(w)
+    tokens.sort()
+    return hashlib.sha256(" ".join(tokens).encode()).hexdigest()[:10]
 
 def parse_flags(argv, spec, multi=()):
     """spec: {'--flag': 'key'}; multi flags accumulate into lists; bare flags in spec map to True."""
@@ -269,6 +445,14 @@ def cmd_question(argv):
         "--reversibility": "reversibility", "--impact": "impact_if_wrong",
         "--auto-apply-at": "auto_apply_at", "--link": "links", "--option": "options",
         "--high-impact": "!high_impact",
+        # GSL-233: dedup against any status, not only "open". The default dedup rule matches an
+        # OPEN row with the same qhash — good for BLOCKER/DECISION spam (a second worker with the
+        # same fork gets folded into the first) but useless for FYIs, which land as "noted"
+        # immediately and therefore never dedup on the next pass. With --dedup-any, a record
+        # matching qhash under ANY status is treated as a hit and a seen_by patch is written
+        # instead of a fresh question. The chronicler uses this for self-health debts: one FYI
+        # per named debt, ever, until the debt is fixed and the qhash-tuple never repeats.
+        "--dedup-any": "!dedup_any",
     }, multi=("--link", "--option"))
     typ = a.get("type") or die("--type is required")
     if typ not in TYPES:
@@ -293,6 +477,26 @@ def cmd_question(argv):
     if typ == "BLOCKER" and a.get("default"):
         die("BLOCKER takes no --default (manifest §3: no default, ever); "
             "a fork WITH a defensible reversible default is a DECISION, reclassify it")
+    # GSL-228: risk-tier hard floor. Money, external comms, secrets, destructive/production actions
+    # are BLOCKER by construction — the manifest §3 denylist, enforced in code so the tier is a
+    # property of what the question DOES, not of what an agent thinks it is. BLOCKER already stops
+    # the night; every other type is refused with the exact snippet that matched.
+    #
+    # We scan the `question` and each `option` label — the FORK being posed and its enumerated
+    # variants. The default/rationale/impact fields deliberately DO NOT feed the check: a rationale
+    # like "no-force-push standing rule" is CITING the rule that would be violated, not proposing
+    # to violate it, and a false positive on rationale text is exactly the kind of noise that
+    # trains agents to bypass the floor with paraphrase.
+    if typ != "BLOCKER":
+        scan = [question] + list(a.get("options", []))
+        hits = tier2_floor(" ".join(scan))
+        if hits:
+            cats = ", ".join(sorted({c for c, _ in hits}))
+            snips = "; ".join('%s: "%s"' % (c, s) for c, s in hits)
+            die("%s hits the tier-2 floor (%s) — manifest §3 denylist actions "
+                "(money, external comms, secrets, destructive/production) are BLOCKER by "
+                "code, never by an agent's chosen type. Reclassify as --type BLOCKER "
+                "(no --default). matched: %s" % (typ, cats, snips))
     frm  = a.get("from", "orchestrator")
     task = a.get("task", "")
     links = {}
@@ -309,8 +513,11 @@ def cmd_question(argv):
     with QueueLock():
         records = read_records()
         h = qhash(task, question)
+        want_any = bool(a.get("dedup_any"))
         for qid, m in fold(records).items():
-            if m.get("status") == "open" and m.get("qhash") == h:
+            if m.get("qhash") != h:
+                continue
+            if want_any or m.get("status") == "open":
                 append_record({"re": qid, "ts": iso_utc(), "seen_by": frm})
                 print("DUPLICATE %s" % qid)
                 dup = qid
@@ -418,6 +625,66 @@ def cmd_resolve(argv):
         emit_event("question.answered", "orchestrator",
                    {"id": qid, "qtype": m.get("type", ""), "answer": a["applied"],
                     "channel": "early-default"}, m.get("task", ""))
+
+ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+def cmd_park(argv):
+    # GSL-230: parking IS deferring, but with the safety of a MANDATORY wake date. The audit
+    # finding (80) is that a defer with no timer silently disappears — the queue holds it, the
+    # digest cannot see it (deferred rows are filtered out of the "open" bucket), and no worker
+    # is scheduled to bring it back. `park` refuses that failure mode at the door.
+    #
+    # Storage is exactly the shape `defer --defer-until` produces (status="deferred",
+    # defer_until=<ISO-UTC>) so every existing reader — chronicler's digest, the SQLite indexer,
+    # the auto-reopen worker in apps/core — interoperates without change. The digest bubbles a
+    # parked question on the day defer_until falls due (see build_digest / section "Parked, due
+    # to return").
+    a = parse_flags(argv, {"--re": "re", "--wake-at": "wake_at", "--by": "by"})
+    if not a.get("re"):
+        die("--re is required")
+    wake = (a.get("wake_at") or "").strip()
+    if not wake:
+        die("park REQUIRES --wake-at ISO-UTC (GSL-230: a parked question that carries no wake "
+            "date is exactly what silently disappears; a park without a date is a defer without "
+            "a timer, and this subcommand refuses that shape). If you truly want no timer, call "
+            "`defer` explicitly — the owner will have to reopen it by hand.")
+    if not ISO_UTC_RE.match(wake):
+        die("--wake-at must be ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ), got %r" % wake)
+    # GSL-243 verifier run 01, finding 7: refuse past wake dates. A parked
+    # record whose defer_until is already in the past defeats the entire
+    # subcommand — the auto-reopen worker (apps/core defer-reopen) compares
+    # defer_until <= now and flips the record back to open on its next tick,
+    # so parking with a past date is indistinguishable from not parking at
+    # all. `defer --defer-until <past>` remains permitted (owner-directed
+    # rollback of a defer); `park` is the safety-net variant and hard-refuses.
+    try:
+        wake_dt = datetime.strptime(wake, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except Exception:
+        die("--wake-at must be ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ), got %r" % wake)
+    if wake_dt <= datetime.now(timezone.utc):
+        die("--wake-at must be in the future (GSL-243 verifier m7: a parked "
+            "question whose wake date is already past would be re-opened by the "
+            "next auto-reopen tick, defeating the point of parking); got %r" % wake)
+    now = iso_utc()
+    with QueueLock():
+        state = fold(read_records())
+        qid = a["re"]
+        m = state.get(qid)
+        if not m:
+            die("no record with id %s" % qid)
+        if m.get("status") not in ("open", "answered"):
+            die("%s cannot be parked (status=%s) — park is only valid on open|answered "
+                "(a closed record is terminal, a superseded record has already moved on)"
+                % (qid, m.get("status")))
+        patch = {"re": qid, "ts": now, "status": "deferred",
+                 "defer_until": wake, "deferred_by": a.get("by", "owner"), "parked": True}
+        append_record(patch)
+        print("parked %s wake_at=%s" % (qid, wake))
+    emit_event("question.deferred", a.get("by", "owner"),
+               {"id": qid, "qtype": m.get("type", ""), "defer_until": wake, "parked": True},
+               m.get("task", ""))
+
 
 def cmd_defer(argv):
     # GSL-278: "not now, ask me later." Marks the question as deferred and (optionally) sets a
@@ -568,6 +835,14 @@ def cmd_decision(argv):
     if by == "orchestrator" and not a.get("rule"):
         die("an orchestrator decision REQUIRES --rule \"manifest §N.bullet\" (provenance, F3-S3); "
             "no citable rule -> it is a DECISION record with a deadline, not an autonomous act")
+    # GSL-227: validate --rule at write time. Owner-authored decisions (--by owner) skip validation
+    # because the owner IS the source of authority; every other actor's rule must classify as either
+    # a real manifest citation or an explicit delegation ("delegation:<origin>").
+    rule_kind, rule_canon = "", (a.get("rule") or "").strip()
+    if rule_canon and by != "owner":
+        rule_kind, rule_canon, err = classify_rule(rule_canon)
+        if err:
+            die(err)
     question, task, qtype = a.get("question", ""), a.get("task", ""), ""
     if a.get("re"):
         m = fold(read_records()).get(a["re"]) or die("no queue record with id %s" % a["re"])
@@ -583,8 +858,8 @@ def cmd_decision(argv):
         n = max([int(m.group(1)) for r in recs for m in [pat.match(r.get("id", ""))] if m] or [0])
         rec = {"id": "d-%s-%03d" % (today, n + 1), "ts": iso_utc(), "re": a.get("re", ""),
                "task": task, "type": qtype, "question": question, "qshape": qshape(question),
-               "decision": a["decision"], "made_by": by, "rule": a.get("rule", ""),
-               "channel": a.get("channel", "")}
+               "decision": a["decision"], "made_by": by, "rule": rule_canon,
+               "rule_kind": rule_kind, "channel": a.get("channel", "")}
         append_jsonl(DLOG, rec)
         print(rec["id"])
     emit_event("decision.made", by,
@@ -654,6 +929,9 @@ def cmd_help(argv):
              answered-by-default), an already-closed record, a BLOCKER (owner-only)
   defer      --re q-ID [--defer-until ISO-UTC] [--by owner|auto]  # GSL-278: mark deferred; empty
              defer-until = "not now, ask me later" (no timer, owner reopens by hand)
+  park       --re q-ID --wake-at ISO-UTC [--by owner|auto]        # GSL-230: mandatory wake date;
+             writes {status:"deferred", defer_until:<wake>, parked:true} so every reader
+             (chronicler digest, apps/core, auto-reopen worker) interoperates with `defer`
   reopen     --re q-ID [--by auto|owner]                          # GSL-278: flip deferred → open,
              clears defer_until; used by the auto-reopen worker + by the owner
   apply-due  [--dry-run] [--json]     # apply defaults of every OPEN DECISION past its deadline;
@@ -673,12 +951,12 @@ question/answer/resolve/decision also MIRROR themselves into docs/lab/events/ au
 
 def main():
     if len(sys.argv) < 2:
-        die("usage: lab-emit.sh question|answer|resolve|defer|reopen|apply-due|list|decision|candidates|event|help ...")
+        die("usage: lab-emit.sh question|answer|resolve|defer|park|reopen|apply-due|list|decision|candidates|event|help ...")
     cmd, argv = sys.argv[1], sys.argv[2:]
     if cmd in ("-h", "--help"):
         cmd = "help"
     fn = {"question": cmd_question, "answer": cmd_answer,
-          "resolve": cmd_resolve, "defer": cmd_defer, "reopen": cmd_reopen,
+          "resolve": cmd_resolve, "defer": cmd_defer, "park": cmd_park, "reopen": cmd_reopen,
           "apply-due": cmd_apply_due, "list": cmd_list,
           "decision": cmd_decision, "candidates": cmd_candidates,
           "event": cmd_event, "help": cmd_help}.get(cmd)

@@ -2371,6 +2371,44 @@ def handoff_debt(events):
     return base
 
 
+def emit_debt_fyis(self_health):
+    """GSL-233: turn every named self-health debt into ONE deduped FYI queue row.
+
+    Two debt sources feed this: dev_history missing keys ("GSL-30 hanging since July 13"
+    is what the audit called out) and, when it crosses the alarm threshold, the handoff
+    debt as a single summary FYI. `lab-emit question --dedup-any` guarantees at most one
+    open+closed record per (task, qhash) tuple, so the emitter is idempotent — running the
+    chronicler every 15 minutes leaves exactly one FYI per debt until it is fixed.
+
+    Dry-run and offline installs both skip: an FYI is a write, and --dry-run must not write.
+    """
+    if ARGS.get("dry_run"):
+        return
+    dh = self_health.get("dev_history") or {}
+    for epic in dh.get("epics") or []:
+        for key in epic.get("missing") or []:
+            q = "no dev_history file committed for %s (epic %s) — audit and write, or archive" % (
+                key, epic.get("key") or "?")
+            try:
+                lab_emit("question", "--type", "FYI", "--from", "self-health",
+                         "--task", key, "--question", q, "--dedup-any")
+            except Exception as exc:                                    # noqa: BLE001
+                degrade("debt-fyi-devhistory", exc)
+    hb = self_health.get("handoffs") or {}
+    n = hb.get("undocumented_cycles") or 0
+    if hb.get("alarm") and n:
+        # A summary FYI, deduped by qhash across the same wording. When the count changes, the
+        # wording changes and a NEW record lands — that is the point: the owner sees the number
+        # move even though the debt itself is one thing.
+        q = "handoff debt: %d cycle(s) closed without a committed handoff (alarm at %d)" % (
+            n, hb.get("alarm_at") or 0)
+        try:
+            lab_emit("question", "--type", "FYI", "--from", "self-health",
+                     "--question", q, "--dedup-any")
+        except Exception as exc:                                        # noqa: BLE001
+            degrade("debt-fyi-handoffs", exc)
+
+
 def build_self_health(ctx, status):
     """The three meters, as ONE block, computed once. R5.3's anti-rot alarm."""
     st = status["staleness"]
@@ -2398,12 +2436,22 @@ def build_self_health(ctx, status):
 # morning. status.json keeps only the open ones; that is a summary, and this is the ledger.
 QUESTION_KEYS = ("id", "ts", "type", "from", "task", "question", "options", "default",
                  "default_rationale", "reversibility", "impact_if_wrong", "auto_apply_at",
-                 "status", "seen_by", "high_impact", "answered_by", "answer", "links")
+                 "status", "seen_by", "high_impact", "answered_by", "answer", "links",
+                 # GSL-230: parked/deferred rows carry a wake-at (defer_until) and a `parked`
+                 # marker so the digest can bubble them on the appointed day.
+                 "defer_until", "parked")
 
 
 def build_queue(questions):
     items = [{k: q.get(k) for k in QUESTION_KEYS if k in q} for q in questions]
     open_items = [q for q in items if q.get("status") == "open"]
+    now_str = now_iso()
+    # GSL-230: parked/deferred rows whose wake date has passed. In a queue.jsonl-only run (no
+    # apps/core, no defer-reopen worker), these would otherwise sit deferred forever. We surface
+    # them separately from `open_items` so nothing about the "open" contract changes; the digest
+    # renders them under "Parked, due to return" so the owner sees them on the day.
+    parked_due = [q for q in items if q.get("status") == "deferred"
+                  and q.get("defer_until") and q["defer_until"] <= now_str]
     return {
         "open": len(open_items),
         "total": len(items),
@@ -2417,6 +2465,7 @@ def build_queue(questions):
         # nothing applies a default mechanically; a live orchestrator does): the runway keys on
         # blockers here AND on overdue DECISIONs with a dead pulse via clock_decisions (GSL-224).
         "open_blockers": [q for q in open_items if q.get("type") == "BLOCKER"],
+        "parked_due": parked_due,
     }
 
 
@@ -2972,18 +3021,66 @@ def build_digest(ctx, status):
                                               (" — " + tail) if tail else ""))
     else:
         L.append("- none — nothing needs you. Everything the night hit was inside its licence.")
+    # GSL-230: parked questions whose wake date has passed bubble here. In a queue.jsonl-only run
+    # (no live apps/core auto-reopen worker), the digest is what makes them visible on the day.
+    parked_due = q.get("parked_due") or []
+    if parked_due:
+        L.append("")
+        L.append("### Parked, due to return (%d)" % len(parked_due))
+        for i in parked_due:
+            L.append("- ⏰ %-8s %s — %s — parked; wake_at=%s"
+                     % (i.get("type", "?"), i["id"], i.get("question"), i.get("defer_until")))
     L.append("")
 
     # 2 — Decided for you. Every autonomous decision MUST cite a manifest rule (provenance, F3-S3).
+    # GSL-227: rules split into two groups — by manifest (rule_kind="manifest") vs by delegation
+    # (rule_kind="delegation", advisory rules that are not yet in the manifest and are candidates
+    # for promotion). Legacy records without rule_kind are classified at read time from the rule
+    # string itself, so old rows still land in the right bucket.
     dec_today = [x for x in ctx["decisions"] if (x.get("ts") or "").startswith(ctx["date"])]
+
+    def _rule_kind(x):
+        k = (x.get("rule_kind") or "").strip().lower()
+        if k in ("manifest", "delegation", "unattributed"):
+            return k
+        r = (x.get("rule") or "").strip().lower()
+        if not r:
+            return "unattributed"
+        if r.startswith("delegation:"):
+            return "delegation"
+        if r.startswith("§") or r.startswith("manifest §") or r.startswith("manifest §"):
+            return "manifest"
+        return "unattributed"
+
+    def _line(x):
+        return "- %s (%s, %s) — rule: `%s`" % (
+            x.get("decision"), x.get("re") or x.get("id") or "—",
+            (x.get("ts") or "")[11:16], x.get("rule") or "NO RULE CITED — audit this")
+
+    by_kind = {"manifest": [], "delegation": [], "unattributed": []}
+    for x in dec_today:
+        by_kind[_rule_kind(x)].append(x)
     L.append("## 2. Decided for you (%d)" % len(dec_today))
-    if dec_today:
-        for x in dec_today:
-            L.append("- %s (%s, %s) — rule: `%s`" % (
-                x.get("decision"), x.get("re") or x.get("id") or "—",
-                (x.get("ts") or "")[11:16], x.get("rule") or "NO RULE CITED — audit this"))
-    else:
+    if not dec_today:
         L.append("- none")
+    else:
+        L.append("### by manifest (%d)" % len(by_kind["manifest"]))
+        if by_kind["manifest"]:
+            L.extend(_line(x) for x in by_kind["manifest"])
+        else:
+            L.append("- none")
+        L.append("")
+        L.append("### by delegation (%d) — advisory rules, candidates for the manifest"
+                 % len(by_kind["delegation"]))
+        if by_kind["delegation"]:
+            L.extend(_line(x) for x in by_kind["delegation"])
+        else:
+            L.append("- none")
+        if by_kind["unattributed"]:
+            L.append("")
+            L.append("### unattributed (%d) — legacy or unvalidated; audit these"
+                     % len(by_kind["unattributed"]))
+            L.extend(_line(x) for x in by_kind["unattributed"])
     L.append("")
 
     # 3 — What shipped. From git/gh/events, not from memory.
@@ -3058,7 +3155,18 @@ def build_digest(ctx, status):
     L.append("")
 
     # 6 — Manifest candidates: verbatim from `lab-emit candidates`.
+    # GSL-229: the count line PRINTS EVEN AT ZERO. Two weeks of 21 unique shapes and zero
+    # candidates is a data point — the owner has to see it, or the digest quietly hides the fact
+    # that nothing repeated. Shapes are counted off the decision log's `qshape` field (the
+    # rewritten semantic shape from GSL-229). Legacy decisions without qshape are folded under
+    # "no-shape" so the total = decisions-with-shape count.
+    n_cands = len(ctx["candidates"] or [])
+    shapes = {(d.get("qshape") or "no-shape") for d in ctx["decisions"] if d.get("qshape")}
     L.append("## 6. Manifest candidates")
+    L.append("- candidates: %d (shapes: %d) — advisory only; a candidate is a shape+answer that "
+             "recurred past the threshold, and promotion into the manifest remains owner-only "
+             "(§3, this section, and the digest header for provenance)."
+             % (n_cands, len(shapes)))
     if ctx["candidates"]:
         for c in ctx["candidates"]:
             L.append("- %s" % json.dumps(c, ensure_ascii=False)[:300])
@@ -3721,6 +3829,16 @@ def main():
     # Self-health AFTER status: two of its three meters are about the build itself (its clock, and the
     # age of the freshest event IN it), and neither exists before status.json has been assembled.
     ctx["self_health"] = build_self_health(ctx, status)
+    # GSL-233: every named debt the meter can see becomes an FYI record in the queue — the audit
+    # finding (80) is that a debt on the meter is a number on a screen; a debt in the digest is
+    # a row the owner acts on. Opt-in via GOSLEEP_DEBT_FYI=1 so a passing chronicler on someone
+    # else's machine cannot suddenly start writing rows to the queue. Fail-open: a broken emit
+    # must never wedge the build.
+    if os.environ.get("GOSLEEP_DEBT_FYI", "0") == "1":
+        try:
+            emit_debt_fyis(ctx["self_health"])
+        except Exception as exc:                                        # noqa: BLE001
+            degrade("debt-fyis", exc)
     if ARGS["narrate"]:
         ctx["narrative"] = narrate(status)
         status["narrative"] = ctx["narrative"]
