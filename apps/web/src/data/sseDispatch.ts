@@ -34,8 +34,17 @@ export function sseRootsFor(type: string): string[] {
 
   if (type.startsWith("question.")) {
     roots.push("questions");
-    // GSL-398 (m-3) is layered on top of this branch in a follow-up commit; see the second
-    // describe() block in apps/web/test/sseInvalidations.test.ts.
+    // GSL-398 (m-3) — terminal transitions can clear server-side
+    // agent_sessions.current_tool. useFleet has no refetchInterval, so without this bump
+    // the Fleet card keeps the pre-answer tool label forever (E2E run-02 finding: label
+    // survived the whole run after AskUserQuestion was answered).
+    if (
+      type === "question.answered" ||
+      type === "question.deferred" ||
+      type === "question.reopened"
+    ) {
+      roots.push("fleet");
+    }
     return roots;
   }
 
