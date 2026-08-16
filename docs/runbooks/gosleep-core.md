@@ -473,19 +473,38 @@ is also set):
   `tools/skills/tests/touchid-gate-smoke.sh` with a mock that returns a
   chosen exit code without touching LocalAuthentication.
 - `GOSLEEP_TOUCHID_BYPASS=1` — skip the gate under opt-in. **Fail-closed
-  against production paths**: refuses (exit 3) unless BOTH
-  `GOSLEEP_SKILLS_PROD_DIR` and `GOSLEEP_SKILLS_BACKUPS_DIR` are set AND
-  the RESOLVED destinations both sit outside `$HOME/.claude/skills` AND
-  outside `docs/skills/backups`. Mirrors the GSL-254 production test-guard
-  pattern — impossible to trip in a production spawn even if a caller sets
-  both env vars pointing at the real tree by mistake.
+  against production paths** (textual guard, latent under default-off):
+  refuses (exit 3) unless BOTH `GOSLEEP_SKILLS_PROD_DIR` and
+  `GOSLEEP_SKILLS_BACKUPS_DIR` are set AND both string-compare outside
+  `$HOME/.claude/skills` AND outside `docs/skills/backups`. Mirrors the
+  GSL-254 production test-guard pattern. **The guard is text-only**: it
+  compares the raw env-var expansions with a shell `case` statement, with
+  no `realpath` normalization and no independent anchoring of `$HOME`. The
+  independent adversarial verifier for PR #359 (report at
+  `docs/reports/verifications/GSL-288/runs/01/`) demonstrated six ways to
+  slip past it end-to-end — symlink into the real prod tree, uppercase
+  path segments on case-insensitive HFS+, relative-path symlink, `HOME`
+  rewrite, `../` traversal, and a backups-tree symlink — each of which
+  landed dev content in the real `~/.claude/skills` tree. **Latent only
+  under the current default-off shape:** the entire `GOSLEEP_TOUCHID`
+  block is skipped in production, so no live spawn today ever reaches
+  this guard. The guard MUST be hardened (see the follow-up
+  `[Core][Security] Harden touchid bypass guard` task) BEFORE
+  `GOSLEEP_TOUCHID=1` is ever set in any spawner — do not flip the flag
+  on until realpath-normalization + case-insensitive comparison ships.
 
 Assert the wiring with `bash tools/skills/tests/touchid-gate-smoke.sh` —
-nine invariants: the default-off inert-stub path, the four opt-in exit codes,
-two bypass-guard branches (accept + hermetic-refuse), and two explicit
-prod-path bypass-refusal cases (real `$HOME/.claude/skills` and real
-`docs/skills/backups`). All run against a mock binary so the smoke never
-triggers a real biometric dialog.
+11 invariants: the default-off inert-stub path (E1), the four opt-in
+exit-code paths (C1–C4), two bypass-guard branches (D1 hermetic-refuse
+without prod overrides + D2 accept with hermetic overrides), two explicit
+prod-path bypass-refusal cases (D3 real `$HOME/.claude/skills`, D4 real
+`docs/skills/backups`), and two "real prod tree mtime unchanged"
+cross-checks (one per real tree) that fail loudly if any case leaks into
+`$HOME/.claude/skills` or `docs/skills/backups`. All run against a mock
+binary so the smoke never triggers a real biometric dialog. The smoke's
+green result attests only that the textual guard behaves as coded against
+the four explicit prod-path shapes it tests; the six adversarial vectors
+above are outside its scope and require the follow-up hardening task.
 
 ## 11. Standing rules for agents touching this engine
 
