@@ -1,6 +1,6 @@
 // @gosleep/web — Questions screen (GSL-265 read-only; GSL-268 answer/resolve;
 // GSL-277 apply-manifest + provenance badge; GSL-278 defer + countdown;
-// GSL-284 permission Allow/Deny cards).
+// GSL-284 permission Allow/Deny cards; GSL-371 clickable variant options).
 //
 // Five owner-facing actions on each open question. The row's `kind` field decides which
 // path the card takes:
@@ -39,6 +39,10 @@ import { Dialog } from "../components/ui/Dialog";
 import { useToast } from "../components/ui/Toast";
 import { timeAgo } from "../lib/format";
 import { cn } from "../lib/cn";
+import {
+  normalizeOptions,
+  type NormalizedOption,
+} from "../lib/questionOptions";
 
 type StatusTone = "info" | "ok" | "warn" | "neutral" | "danger" | "accent";
 const TONE: Record<string, StatusTone> = {
@@ -57,6 +61,10 @@ interface AnswerDialogState {
   qid: string;
   question: string;
   value: string;
+  // GSL-371 — non-null when the question shipped a clickable option list.
+  // Options are rendered as a button row above the free-text textarea; clicking
+  // one submits the label immediately, no keyboard step.
+  options: NormalizedOption[] | null;
 }
 
 interface ResolveDialogState {
@@ -277,7 +285,8 @@ export function formatToolInputBody(input: unknown): string {
 }
 
 // -----------------------------------------------------------------------------
-// QuestionOptions — formatted options list (GSL-314, hotfix 2 minor#3)
+// QuestionOptions — formatted options list (GSL-314, hotfix 2 minor#3; GSL-371
+// added the clickable-variant path).
 //
 // AskUserQuestion payloads carry `options: Array<{label, description?, pros?[], cons?[]}>`
 // per the CLI contract. The pre-fix panel just dumped `JSON.stringify(options, null, 2)`
@@ -286,32 +295,21 @@ export function formatToolInputBody(input: unknown): string {
 // own card row: label bold, description muted, pros/cons on separate lines with iconic
 // prefixes. Unknown / non-array shapes fall back to the original JSON dump so the panel
 // never hides data it does not know how to structure.
+//
+// GSL-371: pass `onSelect` to make each option row a clickable button. Clicking
+// bubbles the option's label to the parent, which opens the Answer dialog
+// prefilled with that label. When `onSelect` is null the rows stay pure
+// display (used for answered/resolved/deferred rows where clicking would be
+// a no-op).
 // -----------------------------------------------------------------------------
 
-interface OptionShape {
-  label?: unknown;
-  description?: unknown;
-  pros?: unknown;
-  cons?: unknown;
-}
-
-function looksLikeOptionArray(v: unknown): v is OptionShape[] {
-  if (!Array.isArray(v)) return false;
-  if (v.length === 0) return false;
-  for (const item of v) {
-    if (item === null || typeof item !== "object") return false;
-    const label = (item as OptionShape).label;
-    if (typeof label !== "string" || label.length === 0) return false;
-  }
-  return true;
-}
-
-function stringList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((v): v is string => typeof v === "string" && v.length > 0);
-}
-
-function QuestionOptions({ options }: { options: unknown }) {
+function QuestionOptions({
+  options,
+  onSelect,
+}: {
+  options: unknown;
+  onSelect: ((label: string) => void) | null;
+}) {
   if (typeof options === "string" && options.length > 0) {
     return (
       <div className="sunken rounded-md p-3">
@@ -320,7 +318,8 @@ function QuestionOptions({ options }: { options: unknown }) {
       </div>
     );
   }
-  if (!looksLikeOptionArray(options)) {
+  const normalized = normalizeOptions(options);
+  if (normalized === null) {
     return (
       <div className="sunken rounded-md p-3">
         <div className="text-muted mb-1 text-xs uppercase tracking-wide">Options</div>
@@ -332,35 +331,35 @@ function QuestionOptions({ options }: { options: unknown }) {
       </div>
     );
   }
+  const clickable = onSelect !== null;
   return (
     <div className="sunken rounded-md p-3">
-      <div className="text-muted mb-2 text-xs uppercase tracking-wide">
-        Options ({options.length})
+      <div className="text-muted mb-2 flex items-baseline justify-between text-xs uppercase tracking-wide">
+        <span>Options ({normalized.length})</span>
+        {clickable ? (
+          <span className="text-muted normal-case tracking-normal">click a variant to answer</span>
+        ) : null}
       </div>
       <ul className="flex flex-col gap-2">
-        {options.map((opt, idx) => {
-          const label = typeof opt.label === "string" ? opt.label : String(opt.label ?? "");
-          const description =
-            typeof opt.description === "string" && opt.description.length > 0
-              ? opt.description
-              : null;
-          const pros = stringList(opt.pros);
-          const cons = stringList(opt.cons);
-          return (
-            <li
-              key={`${idx}-${label}`}
-              className="rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-2.5"
-            >
+        {normalized.map((opt, idx) => {
+          const rowClass = cn(
+            "block w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-2.5 text-left",
+            clickable
+              ? "cursor-pointer transition-colors hover:border-[var(--color-accent)] hover:bg-[color-mix(in_oklab,var(--color-accent),transparent_92%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+              : "",
+          );
+          const body = (
+            <>
               <div className="flex items-baseline gap-2">
                 <span className="text-muted mono text-xs">{idx + 1}.</span>
-                <span className="text-sm font-medium text-[var(--color-fg)]">{label}</span>
+                <span className="text-sm font-medium text-[var(--color-fg)]">{opt.label}</span>
               </div>
-              {description !== null ? (
-                <p className="text-secondary mt-1 text-xs">{description}</p>
+              {opt.description !== null ? (
+                <p className="text-secondary mt-1 text-xs">{opt.description}</p>
               ) : null}
-              {pros.length > 0 ? (
+              {opt.pros.length > 0 ? (
                 <ul className="text-secondary mt-1.5 flex flex-col gap-0.5 text-xs">
-                  {pros.map((p, i) => (
+                  {opt.pros.map((p, i) => (
                     <li key={`pro-${i}`} className="flex gap-1.5">
                       <span aria-hidden className="text-[var(--color-ok)]">+</span>
                       <span>{p}</span>
@@ -368,9 +367,9 @@ function QuestionOptions({ options }: { options: unknown }) {
                   ))}
                 </ul>
               ) : null}
-              {cons.length > 0 ? (
+              {opt.cons.length > 0 ? (
                 <ul className="text-secondary mt-1 flex flex-col gap-0.5 text-xs">
-                  {cons.map((cItem, i) => (
+                  {opt.cons.map((cItem, i) => (
                     <li key={`con-${i}`} className="flex gap-1.5">
                       <span aria-hidden className="text-[var(--color-warn)]">−</span>
                       <span>{cItem}</span>
@@ -378,6 +377,22 @@ function QuestionOptions({ options }: { options: unknown }) {
                   ))}
                 </ul>
               ) : null}
+            </>
+          );
+          return (
+            <li key={`${idx}-${opt.label}`}>
+              {clickable ? (
+                <button
+                  type="button"
+                  className={rowClass}
+                  data-testid="question-option-choice"
+                  onClick={() => onSelect(opt.label)}
+                >
+                  {body}
+                </button>
+              ) : (
+                <div className={rowClass}>{body}</div>
+              )}
             </li>
           );
         })}
@@ -451,30 +466,38 @@ export function QuestionsScreen() {
     return map;
   }, [manifest.data]);
 
-  const submitAnswer = async (): Promise<void> => {
-    if (answerDialog === null) return;
-    const trimmed = answerDialog.value.trim();
+  // GSL-371 — factored out so both the textarea "Send answer" button and the
+  // per-variant option buttons in the dialog share one submission path. The
+  // per-variant buttons pass the option's label directly, bypassing any
+  // textarea edits the owner may have made — clicking a variant IS a decision.
+  const sendAnswer = async (qid: string, answer: string): Promise<void> => {
+    const trimmed = answer.trim();
     if (trimmed.length === 0) return;
     try {
       const res = await answerMut.mutateAsync({
-        qid: answerDialog.qid,
+        qid,
         answer: trimmed,
         by: "owner-web",
         channel: "web",
       });
       pushToast({
-        title: `Answered ${answerDialog.qid}`,
+        title: `Answered ${qid}`,
         description: res.cached === true ? "cached replay (no re-run)" : "sent to lab-emit + DB",
         tone: "ok",
       });
       setAnswerDialog(null);
     } catch (err) {
       pushToast({
-        title: `Answer failed for ${answerDialog.qid}`,
+        title: `Answer failed for ${qid}`,
         description: err instanceof Error ? err.message : String(err),
         tone: "danger",
       });
     }
+  };
+
+  const submitAnswer = async (): Promise<void> => {
+    if (answerDialog === null) return;
+    await sendAnswer(answerDialog.qid, answerDialog.value);
   };
 
   const submitResolve = async (): Promise<void> => {
@@ -659,7 +682,26 @@ export function QuestionsScreen() {
                     ) : null}
 
                     {question.options !== null && question.options !== undefined ? (
-                      <QuestionOptions options={question.options} />
+                      <QuestionOptions
+                        options={question.options}
+                        // GSL-371 — clicking a variant opens the Answer dialog
+                        // prefilled with the chosen label so the owner can
+                        // review before submitting (an accidental miss-click
+                        // on the card is common; the dialog gives a beat to
+                        // notice). The clickable-in-dialog buttons submit
+                        // directly.
+                        onSelect={
+                          canAnswer
+                            ? (label) =>
+                                setAnswerDialog({
+                                  qid: question.qid,
+                                  question: question.question,
+                                  value: label,
+                                  options: normalizeOptions(question.options),
+                                })
+                            : null
+                        }
+                      />
                     ) : null}
 
                     {question.answer_text !== null &&
@@ -761,6 +803,9 @@ export function QuestionsScreen() {
                                 qid: question.qid,
                                 question: question.question,
                                 value: "",
+                                // GSL-371 — carry the parsed options into the
+                                // dialog so the option-button row can render.
+                                options: normalizeOptions(question.options),
                               })
                             }
                           >
@@ -830,7 +875,12 @@ export function QuestionsScreen() {
         )}
       </QueryStatus>
 
-      {/* Answer dialog — unchanged from GSL-268. */}
+      {/* Answer dialog — GSL-268 baseline + GSL-371 clickable-variant row.
+          Questions that ship an options[] payload get a button per option
+          rendered ABOVE the free-text textarea; clicking a variant submits
+          the label directly (bypasses the textarea), so a one-click answer
+          takes exactly one click. The textarea remains for "Other" replies
+          and for questions without options. */}
       <Dialog
         open={answerDialog !== null}
         onOpenChange={(o) => {
@@ -861,6 +911,41 @@ export function QuestionsScreen() {
           </>
         }
       >
+        {answerDialog?.options !== null &&
+        answerDialog?.options !== undefined &&
+        answerDialog.options.length > 0 ? (
+          <div className="mb-3 space-y-1.5">
+            <div className="text-muted text-xs uppercase tracking-wide">
+              Pick a variant (submits immediately)
+            </div>
+            <div
+              className="flex flex-col gap-1.5"
+              data-testid="answer-dialog-variants"
+            >
+              {answerDialog.options.map((opt, idx) => (
+                <Button
+                  key={`${idx}-${opt.label}`}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="!h-auto min-h-7 justify-start whitespace-normal py-1.5 text-left"
+                  disabled={answerMut.isPending}
+                  onClick={() => {
+                    if (answerDialog === null) return;
+                    void sendAnswer(answerDialog.qid, opt.label);
+                  }}
+                  data-testid="answer-dialog-variant"
+                >
+                  <span className="text-muted mono mr-2 text-xs">{idx + 1}.</span>
+                  <span>{opt.label}</span>
+                </Button>
+              ))}
+            </div>
+            <div className="text-muted text-xs">
+              …or edit the free-text answer below for an "Other" reply.
+            </div>
+          </div>
+        ) : null}
         <textarea
           className="surface mono w-full rounded-md p-2 text-sm"
           rows={4}
