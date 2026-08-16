@@ -227,17 +227,139 @@ else
 fi
 echo "==============================================================================" >&2
 
-# ---- interactive confirmation ------------------------------------------------
+# ---- TouchID physical-gesture gate (GSL-288 wiring) --------------------------
 #
-# TouchID leg is PAUSED (d-2026-08-09-001). When the pause lifts, replace the
-# TTY-confirm block below with an invocation of `apps/core/bin/touchid-gate.app`
-# (rev-3 addendum Delta 4) — one function call, exit code 0/1/2 → same
-# behaviour as here.
+# Target-architecture rev 2 §7.3 "Приоритет 1" designates a physical biometric
+# gesture as the ONLY layer an agent under the owner's UID cannot bypass. The
+# .app bundle shipped under GSL-260/GSL-264 satisfies the entitlement contract
+# (`LAContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, …)`
+# requires the bundle identity — a bare Mach-O returns false). Rev-3 addendum
+# Delta 4 items 3-4 make the invocation mandatory for every high-blast write.
 #
-# TODO(GSL-288): TouchID wiring.
-#   open -W -a "$REPO_ROOT/apps/core/bin/touchid-gate.app"
-#   case $? in 0) ok ;; 1) exit 3 ;; 2) fallback to TTY-confirm ;; esac
-if [ "$AUTO_YES" -eq 0 ] && [ "$have_tty" -eq 1 ]; then
+# Every publish flow — whether invoked interactively on a TTY or spawned by the
+# web endpoint with an env-nonce (AUTO_YES=1, no TTY) — MUST pass through this
+# gate before the rsync lands. On success the physical gesture IS the owner
+# confirmation; the TTY-confirm block below runs only as the §7.3 "Priority 1
+# fallback" for hosts without a biometric sensor (MacBook Air, external
+# keyboard, SSH corner).
+#
+# Ordering rationale. This block runs AFTER verify-local + DB preflight so a
+# broken repo state or unmigrated DB refuses without ever invoking the sensor.
+# The physical gesture is reserved for the "everything else looks legit"
+# moment. Every existing hermetic smoke (preflight-smoke.sh,
+# prod-dir-override-smoke.sh) fails at an earlier gate and never reaches this
+# block, so no test infrastructure is disturbed.
+#
+# Exit-code contract with apps/core/bin/touchid-gate.swift:
+#   0 → owner tapped TouchID / Face ID; proceed with backup + rsync.
+#   1 → owner cancelled or biometric failed → exit 3 (owner-gate refused).
+#   2 → sensor unavailable → fall back to TTY-confirm; refuse if no TTY either.
+#   3 → framework error → exit 3.
+#
+# Test-only overrides (NEVER set in the launchd plist or the web endpoint
+# spawner — both leave these unset, so a production spawn always runs the real
+# .app):
+#   GOSLEEP_TOUCHID_GATE_BIN   Path to an alternative gate binary or bundle.
+#                              Used by tools/skills/tests/touchid-gate-smoke.sh
+#                              with a mock that returns a chosen exit code
+#                              without touching the biometric subsystem.
+#   GOSLEEP_TOUCHID_BYPASS=1   Skip the gate entirely. Hard belt-and-braces
+#                              requirement: BOTH GOSLEEP_SKILLS_PROD_DIR and
+#                              GOSLEEP_SKILLS_BACKUPS_DIR must ALSO be set and
+#                              point outside "$HOME/.claude/skills". This
+#                              double-condition makes the bypass impossible to
+#                              trip in a production spawn (neither variable is
+#                              set by launchd or by apps/core/src/actions/
+#                              publish.ts) while keeping CI smokes runnable on
+#                              hosts with no biometric hardware.
+
+GATE_BIN="${GOSLEEP_TOUCHID_GATE_BIN:-$REPO_ROOT/apps/core/bin/touchid-gate.app}"
+GATE_REASON="gosleep-core: publish skill '$SKILL' to production"
+GATE_RC=""
+
+# Belt-and-braces bypass — only when both hermetic overrides are set AND
+# neither points at the real global tree. Anything else is a hard refusal.
+GATE_BYPASS=0
+if [ "${GOSLEEP_TOUCHID_BYPASS:-0}" = "1" ]; then
+  gate_bypass_ok=1
+  case "${GOSLEEP_SKILLS_PROD_DIR:-}" in
+    ""|"$HOME/.claude/skills"|"$HOME/.claude/skills/"*) gate_bypass_ok=0 ;;
+  esac
+  case "${GOSLEEP_SKILLS_BACKUPS_DIR:-}" in
+    ""|"$HOME/.claude/skills"|"$HOME/.claude/skills/"*) gate_bypass_ok=0 ;;
+  esac
+  if [ "$gate_bypass_ok" -eq 1 ]; then
+    GATE_BYPASS=1
+    echo "publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override)." >&2
+    echo "publish:        prod=$GOSLEEP_SKILLS_PROD_DIR backups=$GOSLEEP_SKILLS_BACKUPS_DIR" >&2
+  else
+    echo "publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR" >&2
+    echo "publish:   and GOSLEEP_SKILLS_BACKUPS_DIR to be set AND to point outside $HOME/.claude/skills." >&2
+    exit 3
+  fi
+fi
+
+if [ "$GATE_BYPASS" -eq 0 ]; then
+  gate_run() {
+    if [ -d "$GATE_BIN" ] && [ -x "$GATE_BIN/Contents/MacOS/touchid-gate" ]; then
+      # Real .app bundle — must be launched via `open -W -a` so the biometric
+      # entitlement attached to the bundle identity is honored. `open -W`
+      # propagates the app's exit status on macOS 11+ (verified by GSL-260
+      # scoping notes and Apple's open(1) man page).
+      echo "publish:   touchid gate: launching $GATE_BIN via 'open -W -a'" >&2
+      /usr/bin/open -W -a "$GATE_BIN" --args "$GATE_REASON"
+      return $?
+    fi
+    if [ -x "$GATE_BIN" ]; then
+      # Bare executable — used by tools/skills/tests/touchid-gate-smoke.sh
+      # with a mock binary that never touches LocalAuthentication.
+      echo "publish:   touchid gate: exec $GATE_BIN (bare binary; mock-friendly path)" >&2
+      "$GATE_BIN" "$GATE_REASON"
+      return $?
+    fi
+    echo "publish: touchid-gate binary not found at $GATE_BIN — refusing." >&2
+    echo "publish:   Fix: bash apps/core/scripts/build-touchid-gate.sh (rev-3 addendum Delta 4)." >&2
+    return 3
+  }
+
+  gate_run
+  GATE_RC=$?
+  echo "publish:   touchid gate rc=$GATE_RC" >&2
+  case "$GATE_RC" in
+    0)
+      # Physical gesture confirmed. The TTY-confirm block below is skipped —
+      # asking the owner to type "yes" after they already tapped TouchID is
+      # noise, not defense.
+      :
+      ;;
+    1)
+      echo "publish: TouchID denied (rc=1) — owner cancelled or biometric failed. Aborting." >&2
+      exit 3
+      ;;
+    2)
+      echo "publish: TouchID sensor unavailable (rc=2) — trying TTY-confirm fallback (§7.3 Priority 1)." >&2
+      if [ "$have_tty" -ne 1 ]; then
+        echo "publish: no TTY on stdin either — no owner-presence path available. Aborting." >&2
+        echo "publish:   Re-run the publish from an interactive shell on a host with either a" >&2
+        echo "publish:   biometric sensor or a controlling terminal, or use tty-confirm.sh directly." >&2
+        exit 3
+      fi
+      # Fall through to the TTY-confirm block below.
+      ;;
+    3|*)
+      echo "publish: TouchID framework error (rc=$GATE_RC) — aborting." >&2
+      exit 3
+      ;;
+  esac
+fi
+
+# ---- interactive TTY-confirm fallback ----------------------------------------
+#
+# Runs only when TouchID exited 2 (no sensor) and a TTY is present, OR under a
+# hermetic bypass with --yes unset. Under a TouchID exit 0 pass the physical
+# gesture already gave consent; there is no second TTY prompt.
+if { [ "${GATE_RC:-2}" = "2" ] || [ "$GATE_BYPASS" -eq 1 ]; } \
+   && [ "$AUTO_YES" -eq 0 ] && [ "$have_tty" -eq 1 ]; then
   CONFIRM=""
   {
     echo ""

@@ -428,6 +428,35 @@ Assert the guard with `bash tools/skills/tests/preflight-smoke.sh` — it points
 `publish.sh` at an empty scratch DB and confirms the early-fail path leaves the
 backups dir + CHANGELOG.jsonl + production skill dir untouched.
 
+**TouchID physical-gesture gate (GSL-288 — WIRED 2026-08-16).** `publish.sh`
+now invokes `apps/core/bin/touchid-gate.app` after the DB preflight (before the
+rsync). This is the target-architecture rev 2 §7.3 "Приоритет 1" barrier — the
+only layer an agent under the owner's UID cannot bypass. Exit-code contract
+matches `apps/core/bin/touchid-gate.swift`:
+
+- `0` — owner tapped TouchID / Face ID → publish proceeds.
+- `1` — owner cancelled or biometric failed → `publish.sh` exits 3 (owner
+  refused).
+- `2` — sensor unavailable (MacBook Air, external keyboard, SSH corner) →
+  falls back to the `/dev/tty` `type 'yes'` prompt when a TTY is available;
+  refuses hard when spawned from the web endpoint (no TTY, no sensor).
+- `3` — LocalAuthentication framework error → `publish.sh` exits 3.
+
+Test-only env overrides (NEVER set in the launchd plist or any worker spawn
+that talks to the real global tree):
+
+- `GOSLEEP_TOUCHID_GATE_BIN` — override the gate binary path. Used by
+  `tools/skills/tests/touchid-gate-smoke.sh` with a mock that returns a
+  chosen exit code without touching LocalAuthentication.
+- `GOSLEEP_TOUCHID_BYPASS=1` — skip the gate. Refuses unless BOTH
+  `GOSLEEP_SKILLS_PROD_DIR` and `GOSLEEP_SKILLS_BACKUPS_DIR` are set AND
+  point outside `$HOME/.claude/skills`. This double-condition makes the
+  bypass impossible to trip in a production spawn.
+
+Assert the wiring with `bash tools/skills/tests/touchid-gate-smoke.sh` — six
+invariants over the four exit codes plus both bypass-guard branches, all run
+against a mock binary so the smoke never triggers a real biometric dialog.
+
 ## 11. Standing rules for agents touching this engine
 
 - **SQLite is the source of truth** — JSONL under `docs/lab/` is a historical archive as of

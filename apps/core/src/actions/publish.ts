@@ -4,9 +4,12 @@
 // physical publish: spawn `tools/skills/publish.sh <name>` with a per-request GOSLEEP_WEB_TOKEN
 // nonce, capture the JSON summary the CLI prints on stdout, propagate to the endpoint result.
 //
-// TouchID is PAUSED (`d-2026-08-09-001`) — publish.sh's owner-gate opens on the env-nonce
-// alone tonight. When the pause lifts, the CLI's TTY-confirm block flips to the TouchID
-// invocation without changing this file.
+// TouchID is WIRED (GSL-288) — publish.sh invokes `open -W -a apps/core/bin/touchid-gate.app`
+// after its DB preflight and translates exit codes 0/1/2/3 into proceed / owner-refused /
+// TTY-fallback / framework-error. The web-endpoint path always spawns publish.sh without a
+// TTY, so a `2` (no sensor) on this host now refuses hard rather than silently proceeding.
+// The exit-3 → HTTP 403 mapping below already carried the "owner refused" semantics; it now
+// also fires when the physical-gesture gate refuses, not only under the old TTY-timeout path.
 //
 // Env passthroughs for hermetic smoke:
 //   - GOSLEEP_SKILLS_PUBLISH_TIMEOUT_MS  bump the spawn ceiling from 60 000 ms.
