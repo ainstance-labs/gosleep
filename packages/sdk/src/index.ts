@@ -36,6 +36,11 @@ import {
   SnapshotActionResponse,
   PublishSkillActionInput,
   PublishSkillActionResponse,
+  ObservedCollectorsResponse,
+  ObservedEventsResponse,
+  ObservedProjectsResponse,
+  ObservedSessionsResponse,
+  ObservedTmuxResponse,
   SseEventData,
   SseRotateData,
   StatusResponse,
@@ -72,6 +77,11 @@ import type {
   SnapshotActionResponse as SnapshotActionResponseT,
   PublishSkillActionInput as PublishSkillActionInputT,
   PublishSkillActionResponse as PublishSkillActionResponseT,
+  ObservedCollectorsResponse as ObservedCollectorsResponseT,
+  ObservedEventsResponse as ObservedEventsResponseT,
+  ObservedProjectsResponse as ObservedProjectsResponseT,
+  ObservedSessionsResponse as ObservedSessionsResponseT,
+  ObservedTmuxResponse as ObservedTmuxResponseT,
   SseEventData as SseEventDataT,
   SseRotateData as SseRotateDataT,
   StatusResponse as StatusResponseT,
@@ -239,6 +249,36 @@ export class CoreClient {
   }
   manifest(): Promise<ManifestResponseT> {
     return this.get("/manifest", ManifestResponse);
+  }
+
+  // ---- observer-mode reads (GSL-355 under GSL-350 phase 14) -----------------
+
+  observedTmux(): Promise<ObservedTmuxResponseT> {
+    return this.get("/observed/tmux", ObservedTmuxResponse);
+  }
+  observedSessions(): Promise<ObservedSessionsResponseT> {
+    return this.get("/observed/sessions", ObservedSessionsResponse);
+  }
+  observedProjects(): Promise<ObservedProjectsResponseT> {
+    return this.get("/observed/projects", ObservedProjectsResponse);
+  }
+  observedEvents(params?: {
+    since?: number;
+    limit?: number;
+    project?: string;
+  }): Promise<ObservedEventsResponseT> {
+    const q = new URLSearchParams();
+    if (params?.since !== undefined) q.set("since", String(params.since));
+    if (params?.limit !== undefined) q.set("limit", String(params.limit));
+    if (params?.project !== undefined) q.set("project", params.project);
+    const qs = q.toString();
+    return this.get(
+      `/observed/events${qs.length > 0 ? `?${qs}` : ""}`,
+      ObservedEventsResponse,
+    );
+  }
+  observedCollectors(): Promise<ObservedCollectorsResponseT> {
+    return this.get("/observed/collectors", ObservedCollectorsResponse);
   }
 
   // ---- typed POST helper ----------------------------------------------------
@@ -624,6 +664,11 @@ export type {
   PublishSkillActionInputT as PublishSkillActionInput,
   SnapshotActionResponseT as SnapshotActionResponse,
   PublishSkillActionResponseT as PublishSkillActionResponse,
+  ObservedCollectorsResponseT as ObservedCollectorsResponse,
+  ObservedEventsResponseT as ObservedEventsResponse,
+  ObservedProjectsResponseT as ObservedProjectsResponse,
+  ObservedSessionsResponseT as ObservedSessionsResponse,
+  ObservedTmuxResponseT as ObservedTmuxResponse,
   SseEventDataT as SseEventData,
   SseRotateDataT as SseRotateData,
   StatusResponseT as StatusResponse,

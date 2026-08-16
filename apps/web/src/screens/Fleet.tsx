@@ -120,6 +120,21 @@ export function FleetScreen() {
                         {s.kind !== "interactive" ? (
                           <Badge tone="neutral">{s.kind}</Badge>
                         ) : null}
+                        {/* GSL-356 (observer mode phase A) — observed_only rows have no
+                            hook wired in their project; the panel can see the session but
+                            cannot route answers / decisions to it. Muted badge (R14.3).
+                            Answer / decide affordances are already gated on the Questions +
+                            Overview screens (they read from questions table + require an
+                            open row for THIS session); this badge is the "why" for the
+                            operator. */}
+                        {s.observed_only === true ? (
+                          <Badge
+                            tone="warn"
+                            title="This session has no gosleep hook wired in its project — the panel can observe but cannot answer / decide / defer on it. Runtime Take-control lands in Phase 15 (GSL-347 program)."
+                          >
+                            observer only
+                          </Badge>
+                        ) : null}
                       </div>
                       <div className="text-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
                         <span className="mono" title={s.session_id}>
@@ -150,6 +165,31 @@ export function FleetScreen() {
                         </span>
                         {s.cycle !== null && s.cycle !== undefined ? (
                           <span>cycle {s.cycle}</span>
+                        ) : null}
+                        {/* GSL-356 — project chip + tmux pane ref when correlated. Muted
+                            when NULL. */}
+                        {s.project_slug !== null && s.project_slug !== undefined ? (
+                          <span
+                            className="mono"
+                            title={s.cwd_project_root ?? undefined}
+                          >
+                            {s.project_slug}
+                          </span>
+                        ) : null}
+                        {s.tmux_pane_ref !== null && s.tmux_pane_ref !== undefined ? (
+                          <span
+                            className="mono"
+                            title={
+                              s.attribution === "heuristic"
+                                ? "tmux session:window.pane_id — matched by cwd prefix (pid walk lost); not authoritative"
+                                : "tmux session:window.pane_id — resolved by parent-PID walk"
+                            }
+                          >
+                            {s.tmux_pane_ref}
+                            {s.attribution === "heuristic" ? (
+                              <span className="text-muted ml-1 text-[10px] uppercase">heuristic</span>
+                            ) : null}
+                          </span>
                         ) : null}
                       </div>
                     </div>

@@ -217,6 +217,18 @@ export const FleetSession = z.object({
   // sessions for its "Latest PR" card; Fleet renders it as a per-row chip.
   last_pr_url: z.string().nullable().optional(),
   last_pr_at: IsoTimestamp.nullable().optional(),
+  // GSL-356 (observer mode phase A) — project attribution + observed-only marker + the
+  // human-readable tmux pane reference joined from tmux_panes on pid correlation. The Fleet
+  // screen renders `observed_only=true` cards with a muted badge and disables answer/decide
+  // affordances (R14.3). NULLs mean "not yet attributed" — panel renders "—".
+  project_slug: z.string().nullable().optional(),
+  cwd_project_root: z.string().nullable().optional(),
+  observed_only: z.boolean().optional(),
+  tmux_pane_ref: z.string().nullable().optional(),
+  // GSL-350 M1 follow-up — 'pidtree' (parent-PID walk hit a pane pid) | 'heuristic'
+  // (cwd-prefix match on pane_current_path) | null (no pane matched at all). Panel tags
+  // heuristic matches with a small hint so the operator knows it's not authoritative.
+  attribution: z.string().nullable().optional(),
 });
 export type FleetSession = z.infer<typeof FleetSession>;
 
@@ -649,3 +661,106 @@ export type PublishSkillActionResult = z.infer<typeof PublishSkillActionResult>;
 
 export const PublishSkillActionResponse = actionResponse(PublishSkillActionResult);
 export type PublishSkillActionResponse = z.infer<typeof PublishSkillActionResponse>;
+
+// -----------------------------------------------------------------------------
+// observer-mode responses (GSL-355 under GSL-350 phase 14)
+// -----------------------------------------------------------------------------
+
+export const TmuxPaneRow = z.object({
+  pane_id: z.string(),
+  session_id: z.string(),
+  session_name: z.string(),
+  window_id: z.string(),
+  pane_pid: z.number().int(),
+  pane_current_path: z.string().nullable(),
+  pane_current_command: z.string().nullable(),
+  pane_title: z.string().nullable(),
+  first_seen: IsoTimestamp,
+  last_seen: IsoTimestamp,
+  misses: z.number().int(),
+});
+export type TmuxPaneRow = z.infer<typeof TmuxPaneRow>;
+
+export const ObservedTmuxResponse = z.object({
+  panes: z.array(TmuxPaneRow),
+  count: z.number().int(),
+});
+export type ObservedTmuxResponse = z.infer<typeof ObservedTmuxResponse>;
+
+export const ObservedSessionRow = z.object({
+  session_id: z.string(),
+  name: z.string(),
+  model: z.string().nullable(),
+  cwd: z.string(),
+  status: z.string(),
+  project_slug: z.string().nullable(),
+  cwd_project_root: z.string().nullable(),
+  observed_only: z.boolean(),
+  started_at: IsoTimestamp,
+  updated_at: IsoTimestamp,
+  ended_at: IsoTimestamp.nullable(),
+});
+export type ObservedSessionRow = z.infer<typeof ObservedSessionRow>;
+
+export const ObservedSessionsResponse = z.object({
+  sessions: z.array(ObservedSessionRow),
+  count: z.number().int(),
+});
+export type ObservedSessionsResponse = z.infer<typeof ObservedSessionsResponse>;
+
+export const ObservedProjectRow = z.object({
+  project_slug: z.string(),
+  cwd_project_root: z.string().nullable(),
+  session_count: z.number().int(),
+  observed_only_count: z.number().int(),
+  last_activity: IsoTimestamp.nullable(),
+  hidden: z.boolean(),
+  pseudonym: z.string().nullable(),
+  colour_hsl: z.string(),
+  display_name: z.string(),
+});
+export type ObservedProjectRow = z.infer<typeof ObservedProjectRow>;
+
+export const ObservedProjectsResponse = z.object({
+  projects: z.array(ObservedProjectRow),
+  count: z.number().int(),
+});
+export type ObservedProjectsResponse = z.infer<typeof ObservedProjectsResponse>;
+
+export const ObservedEventRow = z.object({
+  seq: z.number().int(),
+  ts: IsoTimestamp,
+  project_slug: z.string().nullable(),
+  kind: z.string(),
+  source: z.string(),
+  payload: z.unknown().nullable(),
+});
+export type ObservedEventRow = z.infer<typeof ObservedEventRow>;
+
+export const ObservedEventsResponse = z.object({
+  events: z.array(ObservedEventRow),
+  count: z.number().int(),
+  since: z.number().int(),
+  limit: z.number().int(),
+});
+export type ObservedEventsResponse = z.infer<typeof ObservedEventsResponse>;
+
+export const CollectorInventoryRow = z.object({
+  name: z.string(),
+  source: z.string(),
+  cadence_ms: z.number().int(),
+  last_tick_at: IsoTimestamp.nullable(),
+  last_tick_ms: z.number().int().nullable(),
+  last_error: z.string().nullable(),
+  events_today: z.number().int(),
+  write_attempts: z.number().int(),
+  disabled: z.boolean(),
+});
+export type CollectorInventoryRow = z.infer<typeof CollectorInventoryRow>;
+
+export const ObservedCollectorsResponse = z.object({
+  collectors: z.array(CollectorInventoryRow),
+  count: z.number().int(),
+  write_attempts_total: z.number().int(),
+});
+export type ObservedCollectorsResponse = z.infer<typeof ObservedCollectorsResponse>;

@@ -253,10 +253,91 @@ export const agent_sessions = sqliteTable(
     /** GSL-319 — timestamp of the observation that produced `last_pr_url`. Used by the panel
      *  to pick the newest URL across the fleet (Overview shows the freshest). */
     last_pr_at: text("last_pr_at"),
+    /** GSL-350 (observer mode phase A) — the project this session belongs to, derived from
+     *  cwd (basename of first git-toplevel). NULL for sessions the enumerator has not yet
+     *  attributed. Rendered as the project chip on the Fleet/Observed cards. */
+    project_slug: text("project_slug"),
+    /** GSL-350 — resolved cwd project root (git toplevel or falls-back to the transcript's
+     *  cwd header). Distinct from `cwd` which is the raw cwd Claude Code reported. */
+    cwd_project_root: text("cwd_project_root"),
+    /** GSL-350 — 1 iff the session is OBSERVED-ONLY: no gosleep hook wiring is present in its
+     *  project's .claude/settings.json, so the panel cannot route answers/decisions to it.
+     *  The Fleet card renders a muted badge and disables answer/decide affordances (R14.3).
+     *  Default 0 preserves legacy behaviour for the existing gosleep-native rows. */
+    observed_only: integer("observed_only").notNull().default(0),
   },
   (t) => [
     index("ix_agent_sessions_status_updated").on(t.status, t.updated_at),
     index("ix_agent_sessions_updated").on(t.updated_at),
+  ],
+);
+
+/**
+ * GSL-350 (observer mode phase A) — snapshot of tmux panes on this host. The tmux collector
+ * (`apps/core/src/observed/tmux.ts`) UPSERTs one row per pane every 2 s (R14.5). Rows are
+ * NEVER deleted; a pane missing from two consecutive sweeps stamps a `pane_disappeared`
+ * event into `observed_events` and stays here as a historical marker (its `last_seen` acts
+ * as the tombstone). Enumeration is machine-wide — no cwd-prefix filter (R14.2).
+ *
+ * The natural primary key is `pane_id` (tmux's `%<n>` string, monotonic per server).
+ * `pane_pid` is used by the machine-wide Claude enumerator to correlate a tmux pane to the
+ * `agent_sessions.pid` — a full pid-tree walk falls back on this when the shell reparents.
+ *
+ * NOTE: `pane_current_path` and `pane_title` are read but NEVER `pane_content` — content
+ * capture via `tmux capture-pane` is an explicit non-goal for this phase.
+ */
+export const tmux_panes = sqliteTable(
+  "tmux_panes",
+  {
+    pane_id: text("pane_id").primaryKey(),
+    session_id: text("session_id").notNull(),
+    session_name: text("session_name").notNull(),
+    window_id: text("window_id").notNull(),
+    pane_pid: integer("pane_pid").notNull(),
+    pane_current_path: text("pane_current_path"),
+    pane_current_command: text("pane_current_command"),
+    pane_title: text("pane_title"),
+    first_seen: text("first_seen").notNull(),
+    last_seen: text("last_seen").notNull(),
+    misses: integer("misses").notNull().default(0),
+  },
+  (t) => [
+    index("ix_tmux_panes_last_seen").on(t.last_seen),
+    index("ix_tmux_panes_pane_pid").on(t.pane_pid),
+  ],
+);
+
+/**
+ * GSL-350 (observer mode phase A) — cross-project timeline events fed by the four passive
+ * signal producers (tmux list, transcript-mtime, fs-watcher, pidtree). Refuses `source='hook'`
+ * at the writer level — hooks belong to the gosleep timeline (`events` table), and are for
+ * gosleep-native sessions only. This separation (R14.7) keeps the observed screen readable
+ * and prevents mislabelling.
+ *
+ * `kind` enum (soft, TEXT):
+ *   `session_appeared` | `session_idle` | `transcript_activity` | `git_head_moved` |
+ *   `pane_appeared` | `pane_disappeared` | `work_topic_changed`
+ *
+ * `source` enum (enforced in TS writer):
+ *   `tmux-list` | `transcript-mtime` | `fs-watcher` | `pidtree`
+ *
+ * `payload_json` carries the source-specific detail (e.g. `{pane_id, pane_pid}` for a
+ * `pane_appeared` row, `{new_head, old_head}` for `git_head_moved`).
+ */
+export const observed_events = sqliteTable(
+  "observed_events",
+  {
+    seq: integer("seq").primaryKey({ autoIncrement: true }),
+    ts: text("ts").notNull(),
+    project_slug: text("project_slug"),
+    kind: text("kind").notNull(),
+    source: text("source").notNull(),
+    payload_json: text("payload_json", { mode: "json" }),
+  },
+  (t) => [
+    index("ix_observed_events_ts").on(t.ts),
+    index("ix_observed_events_project_ts").on(t.project_slug, t.ts),
+    index("ix_observed_events_kind_ts").on(t.kind, t.ts),
   ],
 );
 

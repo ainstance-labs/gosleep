@@ -35,7 +35,25 @@ raw.exec(`CREATE TABLE agent_sessions (
   updated_at TEXT NOT NULL,
   ended_at TEXT,
   last_pr_url TEXT,
-  last_pr_at TEXT
+  last_pr_at TEXT,
+  project_slug TEXT,
+  cwd_project_root TEXT,
+  observed_only INTEGER NOT NULL DEFAULT 0
+);`);
+// GSL-356 — /fleet now LEFT JOINs tmux_panes so this test needs the observer-mode table
+// available (an empty table lets the JOIN succeed and yield NULL tmux_pane_ref per row).
+raw.exec(`CREATE TABLE tmux_panes (
+  pane_id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  session_name TEXT NOT NULL,
+  window_id TEXT NOT NULL,
+  pane_pid INTEGER NOT NULL,
+  pane_current_path TEXT,
+  pane_current_command TEXT,
+  pane_title TEXT,
+  first_seen TEXT NOT NULL,
+  last_seen TEXT NOT NULL,
+  misses INTEGER NOT NULL DEFAULT 0
 );`);
 // Provide the tables /status expects (only needed if /status is exercised — /fleet does not
 // touch these, but /bundle does; we're testing /fleet only here). heartbeat is joined into
@@ -185,5 +203,116 @@ describe("GET /fleet projection", () => {
       }),
     );
     expect(res.status).toBe(401);
+  });
+
+  test("GSL-356 — observer_only + tmux_pane_ref + project_slug surface on /fleet rows", async () => {
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    // Native gosleep row (observed_only=0) + observed scratch-repo row (observed_only=1).
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES (?, ?, 'interactive', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run("sid-native", "gosleep-99", 4444, "/repo/gosleep", "idle", "2026-08-16T00:00:00Z", "2026-08-16T00:00:05Z", "gosleep", "/repo/gosleep", 0);
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES (?, ?, 'interactive', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run("sid-observed", "observed:scratch", "interactive" as unknown as number, "/tmp/scratch", "active", "2026-08-16T00:00:00Z", "2026-08-16T00:00:10Z", "scratch", "/tmp/scratch", 1);
+    // Fixup the pid arg (bind order) — the 3rd ? was 'kind' text; use a proper INSERT below.
+    raw.exec("DELETE FROM agent_sessions WHERE session_id = 'sid-observed'");
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sid-observed', 'observed:scratch', 'interactive', 5555, '/tmp/scratch', 'active', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 'scratch', '/tmp/scratch', 1)`,
+      )
+      .run();
+    // A tmux pane whose pane_pid matches the observed session's pid — should surface as ref.
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%9', '$0', 'obs-shell', '@0', 5555, '/tmp/scratch', 'claude', 'claude-code',
+                 '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{
+        session_id: string;
+        project_slug: string | null;
+        cwd_project_root: string | null;
+        observed_only: boolean;
+        tmux_pane_ref: string | null;
+      }>;
+    };
+    const observed = body.sessions.find((s) => s.session_id === "sid-observed");
+    const native = body.sessions.find((s) => s.session_id === "sid-native");
+    expect(observed).toBeDefined();
+    expect(native).toBeDefined();
+    expect(observed!.observed_only).toBe(true);
+    expect(observed!.project_slug).toBe("scratch");
+    expect(observed!.cwd_project_root).toBe("/tmp/scratch");
+    expect(observed!.tmux_pane_ref).toBe("obs-shell:@0.%9");
+    // M1 follow-up: attribution surfaces on the pidtree-matched row.
+    expect((observed as unknown as { attribution?: string }).attribution).toBe("pidtree");
+    expect(native!.observed_only).toBe(false);
+    expect(native!.project_slug).toBe("gosleep");
+    expect(native!.tmux_pane_ref).toBeNull(); // no pane with pid=4444
+  });
+
+  test("M1 fallback: cwd-prefix heuristic fires when pid walk failed (session pid=null)", async () => {
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    // Session with NULL pid — the sessions collector could not resolve owning pane via lsof.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sid-noped', 'observed:heur', 'interactive', NULL, '/tmp/heur-repo',
+                 'active', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z',
+                 'heur-repo', '/tmp/heur-repo', 1)`,
+      )
+      .run();
+    // A pane whose pane_current_path is under the session's cwd_project_root — the fallback
+    // heuristic must match it.
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%42', '$1', 'heur-shell', '@0', 7777, '/tmp/heur-repo/src', 'bash', 'heur',
+                 '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{
+        session_id: string;
+        tmux_pane_ref: string | null;
+        attribution?: string | null;
+      }>;
+    };
+    const row = body.sessions.find((s) => s.session_id === "sid-noped");
+    expect(row).toBeDefined();
+    // Heuristic hit — the pane_ref surfaced via cwd-prefix even though pid was NULL.
+    expect(row!.tmux_pane_ref).toBe("heur-shell:@0.%42");
+    expect(row!.attribution).toBe("heuristic");
   });
 });

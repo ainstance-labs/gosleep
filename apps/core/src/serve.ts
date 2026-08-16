@@ -31,6 +31,7 @@ import { metricsRoutes } from "./routes/metrics.ts";
 import { actionsRoutes } from "./routes/actions.ts";
 import { internalRoutes, stopToolObservedFlush } from "./routes/internal.ts";
 import { setupRoutes } from "./routes/setup.ts";
+import { observedRoutes } from "./routes/observed.ts";
 import { spaNavigationRoutes } from "./routes/spaNavigation.ts";
 import { spaRoutes } from "./routes/spa.ts";
 import { getDb } from "./db/client.ts";
@@ -41,6 +42,14 @@ import { writeAuthSourceAudit } from "./security/authSource.ts";
 import { startFleetPoll, type FleetPollController } from "./workers/fleet-poll.ts";
 import { startDeferReopen, type DeferReopenController } from "./workers/defer-reopen.ts";
 import { startJiraSync, type JiraSyncController } from "./workers/jira-sync.ts";
+import {
+  startTmuxCollector,
+  type TmuxCollectorController,
+} from "./observed/tmux.ts";
+import {
+  startSessionsCollector,
+  type SessionsCollectorController,
+} from "./observed/sessions.ts";
 
 const app = new Hono();
 
@@ -58,6 +67,8 @@ app.route("/", eventsRoutes);
 app.route("/", metricsRoutes);
 app.route("/", actionsRoutes);
 app.route("/", internalRoutes);
+// GSL-355 (observer mode phase A) — passive read routes. Bearer-gated, no writes.
+app.route("/", observedRoutes);
 // Setup (GSL-291) mounts BEFORE the SPA fallback — `GET /setup?tok=...` renders the SPA
 // shell with a Bearer meta tag, so it must beat the generic index.html fallback in spaRoutes.
 app.route("/", setupRoutes);
@@ -76,6 +87,8 @@ let rotation: RotationWatcher | null = null;
 let fleet: FleetPollController | null = null;
 let deferReopen: DeferReopenController | null = null;
 let jiraSync: JiraSyncController | null = null;
+let tmuxCollector: TmuxCollectorController | null = null;
+let sessionsCollector: SessionsCollectorController | null = null;
 // Exported so `POST /actions/tasks/sync` can trigger an on-demand cycle without a fresh worker.
 export function getJiraSyncController(): JiraSyncController | null {
   return jiraSync;
@@ -161,6 +174,40 @@ if (process.env.GOSLEEP_DISABLE_DEFER_REOPEN !== "1") {
 // Gated by GOSLEEP_DISABLE_JIRA_SYNC=1 so the core-smoke can boot the server without spawning
 // gh in a hermetic scenario. Interval defaults to 5 min (target-arch Delta 9); override via
 // GOSLEEP_JIRA_SYNC_INTERVAL_S.
+// Observer-mode collectors (GSL-350 phase A). Passive machine-wide observability — tmux map
+// (2 s cadence) + Claude session enumerator (5 s cadence). Gated by their own envs so the
+// endpoint smoke can boot without polling every 2 s:
+//   GOSLEEP_DISABLE_OBSERVED=1        — turn OFF both collectors.
+//   GOSLEEP_OBSERVED_TMUX_MS=<n>      — override the tmux cadence (default 2000).
+//   GOSLEEP_OBSERVED_SESSIONS_MS=<n>  — override the sessions cadence (default 5000).
+if (process.env.GOSLEEP_DISABLE_OBSERVED !== "1") {
+  try {
+    const tmuxMs = Number.parseInt(
+      process.env.GOSLEEP_OBSERVED_TMUX_MS ?? "2000",
+      10,
+    );
+    tmuxCollector = startTmuxCollector(
+      Number.isFinite(tmuxMs) && tmuxMs > 0 ? tmuxMs : 2000,
+    );
+    const sessionsMs = Number.parseInt(
+      process.env.GOSLEEP_OBSERVED_SESSIONS_MS ?? "5000",
+      10,
+    );
+    sessionsCollector = startSessionsCollector(
+      Number.isFinite(sessionsMs) && sessionsMs > 0 ? sessionsMs : 5000,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.observed.boot_failed",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
+}
+
 if (process.env.GOSLEEP_DISABLE_JIRA_SYNC !== "1") {
   try {
     const intervalS = Number.parseInt(
@@ -229,6 +276,16 @@ const shutdown = async (signal: string): Promise<void> => {
   }
   try {
     await tail?.stop();
+  } catch {
+    /* ignore */
+  }
+  try {
+    tmuxCollector?.stop();
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionsCollector?.stop();
   } catch {
     /* ignore */
   }

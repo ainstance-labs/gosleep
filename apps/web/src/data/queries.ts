@@ -28,6 +28,11 @@ import type {
   DeferActionResponse,
   FleetResponse,
   ManifestResponse,
+  ObservedCollectorsResponse,
+  ObservedEventsResponse,
+  ObservedProjectsResponse,
+  ObservedSessionsResponse,
+  ObservedTmuxResponse,
   PublishSkillActionInput,
   PublishSkillActionResponse,
   QuestionsResponse,
@@ -65,6 +70,13 @@ export const queryKeys = {
   cost: (limit?: number) => ["core", "cost", limit ?? 60] as const,
   fleet: () => ["core", "fleet"] as const,
   manifest: () => ["core", "manifest"] as const,
+  // GSL-357 (observer mode phase A) — one query key per /observed/* read endpoint.
+  observedTmux: () => ["core", "observed", "tmux"] as const,
+  observedSessions: () => ["core", "observed", "sessions"] as const,
+  observedProjects: () => ["core", "observed", "projects"] as const,
+  observedEvents: (project?: string) =>
+    ["core", "observed", "events", project ?? ""] as const,
+  observedCollectors: () => ["core", "observed", "collectors"] as const,
 } as const;
 
 export function useVersion(): UseQueryResult<VersionResponse> {
@@ -144,6 +156,48 @@ export function useCost(limit?: number): UseQueryResult<CostResponse> {
 
 export function useFleet(): UseQueryResult<FleetResponse> {
   return useQuery({ queryKey: queryKeys.fleet(), queryFn: () => coreClient.fleet() });
+}
+
+// GSL-357 (observer mode phase A) — read hooks for the Observed screen.
+export function useObservedTmux(): UseQueryResult<ObservedTmuxResponse> {
+  return useQuery({
+    queryKey: queryKeys.observedTmux(),
+    queryFn: () => coreClient.observedTmux(),
+    refetchInterval: 5_000,
+  });
+}
+export function useObservedSessions(): UseQueryResult<ObservedSessionsResponse> {
+  return useQuery({
+    queryKey: queryKeys.observedSessions(),
+    queryFn: () => coreClient.observedSessions(),
+    refetchInterval: 5_000,
+  });
+}
+export function useObservedProjects(): UseQueryResult<ObservedProjectsResponse> {
+  return useQuery({
+    queryKey: queryKeys.observedProjects(),
+    queryFn: () => coreClient.observedProjects(),
+    refetchInterval: 5_000,
+  });
+}
+export function useObservedEvents(
+  project?: string,
+): UseQueryResult<ObservedEventsResponse> {
+  return useQuery({
+    queryKey: queryKeys.observedEvents(project),
+    queryFn: () =>
+      coreClient.observedEvents(
+        project !== undefined && project.length > 0 ? { project } : undefined,
+      ),
+    refetchInterval: 5_000,
+  });
+}
+export function useObservedCollectors(): UseQueryResult<ObservedCollectorsResponse> {
+  return useQuery({
+    queryKey: queryKeys.observedCollectors(),
+    queryFn: () => coreClient.observedCollectors(),
+    refetchInterval: 5_000,
+  });
 }
 
 export function useManifest(): UseQueryResult<ManifestResponse> {
