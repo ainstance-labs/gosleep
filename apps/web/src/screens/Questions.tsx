@@ -265,7 +265,7 @@ export function formatToolInputBody(input: unknown): string {
 // a no-op).
 // -----------------------------------------------------------------------------
 
-function QuestionOptions({
+export function QuestionOptions({
   options,
   onSelect,
 }: {
@@ -348,6 +348,13 @@ function QuestionOptions({
                   type="button"
                   className={rowClass}
                   data-testid="question-option-choice"
+                  // GSL-376: the visible content inside <button> concatenates
+                  // label + description + pros + cons, which without an
+                  // aria-label makes the accessible name the whole blob.
+                  // Screen readers and voice-control ("click Option A") need
+                  // just the bare label. The rich body stays visible for
+                  // sighted users; the a11y tree gets the option label alone.
+                  aria-label={opt.label}
                   onClick={() => onSelect(opt.label)}
                 >
                   {body}
@@ -896,6 +903,10 @@ export function QuestionsScreen() {
                   size="sm"
                   className="!h-auto min-h-7 justify-start whitespace-normal py-1.5 text-left"
                   disabled={answerMut.isPending}
+                  // GSL-376: keep the bare option label as the accessible
+                  // name so voice-control / screen-reader users can address
+                  // "Option A" without the numbered prefix leaking into it.
+                  aria-label={opt.label}
                   onClick={() => {
                     if (answerDialog === null) return;
                     void sendAnswer(answerDialog.qid, opt.label);
