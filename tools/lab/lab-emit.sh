@@ -602,6 +602,51 @@ def cmd_resolve(argv):
                    {"id": qid, "qtype": m.get("type", ""), "answer": a["applied"],
                     "channel": "early-default"}, m.get("task", ""))
 
+ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+def cmd_park(argv):
+    # GSL-230: parking IS deferring, but with the safety of a MANDATORY wake date. The audit
+    # finding (80) is that a defer with no timer silently disappears — the queue holds it, the
+    # digest cannot see it (deferred rows are filtered out of the "open" bucket), and no worker
+    # is scheduled to bring it back. `park` refuses that failure mode at the door.
+    #
+    # Storage is exactly the shape `defer --defer-until` produces (status="deferred",
+    # defer_until=<ISO-UTC>) so every existing reader — chronicler's digest, the SQLite indexer,
+    # the auto-reopen worker in apps/core — interoperates without change. The digest bubbles a
+    # parked question on the day defer_until falls due (see build_digest / section "Parked, due
+    # to return").
+    a = parse_flags(argv, {"--re": "re", "--wake-at": "wake_at", "--by": "by"})
+    if not a.get("re"):
+        die("--re is required")
+    wake = (a.get("wake_at") or "").strip()
+    if not wake:
+        die("park REQUIRES --wake-at ISO-UTC (GSL-230: a parked question that carries no wake "
+            "date is exactly what silently disappears; a park without a date is a defer without "
+            "a timer, and this subcommand refuses that shape). If you truly want no timer, call "
+            "`defer` explicitly — the owner will have to reopen it by hand.")
+    if not ISO_UTC_RE.match(wake):
+        die("--wake-at must be ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ), got %r" % wake)
+    now = iso_utc()
+    with QueueLock():
+        state = fold(read_records())
+        qid = a["re"]
+        m = state.get(qid)
+        if not m:
+            die("no record with id %s" % qid)
+        if m.get("status") not in ("open", "answered"):
+            die("%s cannot be parked (status=%s) — park is only valid on open|answered "
+                "(a closed record is terminal, a superseded record has already moved on)"
+                % (qid, m.get("status")))
+        patch = {"re": qid, "ts": now, "status": "deferred",
+                 "defer_until": wake, "deferred_by": a.get("by", "owner"), "parked": True}
+        append_record(patch)
+        print("parked %s wake_at=%s" % (qid, wake))
+    emit_event("question.deferred", a.get("by", "owner"),
+               {"id": qid, "qtype": m.get("type", ""), "defer_until": wake, "parked": True},
+               m.get("task", ""))
+
+
 def cmd_defer(argv):
     # GSL-278: "not now, ask me later." Marks the question as deferred and (optionally) sets a
     # timestamp at which the auto-reopen worker (apps/core/src/workers/defer-reopen.ts) flips it
@@ -845,6 +890,9 @@ def cmd_help(argv):
              answered-by-default), an already-closed record, a BLOCKER (owner-only)
   defer      --re q-ID [--defer-until ISO-UTC] [--by owner|auto]  # GSL-278: mark deferred; empty
              defer-until = "not now, ask me later" (no timer, owner reopens by hand)
+  park       --re q-ID --wake-at ISO-UTC [--by owner|auto]        # GSL-230: mandatory wake date;
+             writes {status:"deferred", defer_until:<wake>, parked:true} so every reader
+             (chronicler digest, apps/core, auto-reopen worker) interoperates with `defer`
   reopen     --re q-ID [--by auto|owner]                          # GSL-278: flip deferred → open,
              clears defer_until; used by the auto-reopen worker + by the owner
   apply-due  [--dry-run] [--json]     # apply defaults of every OPEN DECISION past its deadline;
@@ -864,12 +912,12 @@ question/answer/resolve/decision also MIRROR themselves into docs/lab/events/ au
 
 def main():
     if len(sys.argv) < 2:
-        die("usage: lab-emit.sh question|answer|resolve|defer|reopen|apply-due|list|decision|candidates|event|help ...")
+        die("usage: lab-emit.sh question|answer|resolve|defer|park|reopen|apply-due|list|decision|candidates|event|help ...")
     cmd, argv = sys.argv[1], sys.argv[2:]
     if cmd in ("-h", "--help"):
         cmd = "help"
     fn = {"question": cmd_question, "answer": cmd_answer,
-          "resolve": cmd_resolve, "defer": cmd_defer, "reopen": cmd_reopen,
+          "resolve": cmd_resolve, "defer": cmd_defer, "park": cmd_park, "reopen": cmd_reopen,
           "apply-due": cmd_apply_due, "list": cmd_list,
           "decision": cmd_decision, "candidates": cmd_candidates,
           "event": cmd_event, "help": cmd_help}.get(cmd)

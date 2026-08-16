@@ -2398,12 +2398,22 @@ def build_self_health(ctx, status):
 # morning. status.json keeps only the open ones; that is a summary, and this is the ledger.
 QUESTION_KEYS = ("id", "ts", "type", "from", "task", "question", "options", "default",
                  "default_rationale", "reversibility", "impact_if_wrong", "auto_apply_at",
-                 "status", "seen_by", "high_impact", "answered_by", "answer", "links")
+                 "status", "seen_by", "high_impact", "answered_by", "answer", "links",
+                 # GSL-230: parked/deferred rows carry a wake-at (defer_until) and a `parked`
+                 # marker so the digest can bubble them on the appointed day.
+                 "defer_until", "parked")
 
 
 def build_queue(questions):
     items = [{k: q.get(k) for k in QUESTION_KEYS if k in q} for q in questions]
     open_items = [q for q in items if q.get("status") == "open"]
+    now_str = now_iso()
+    # GSL-230: parked/deferred rows whose wake date has passed. In a queue.jsonl-only run (no
+    # apps/core, no defer-reopen worker), these would otherwise sit deferred forever. We surface
+    # them separately from `open_items` so nothing about the "open" contract changes; the digest
+    # renders them under "Parked, due to return" so the owner sees them on the day.
+    parked_due = [q for q in items if q.get("status") == "deferred"
+                  and q.get("defer_until") and q["defer_until"] <= now_str]
     return {
         "open": len(open_items),
         "total": len(items),
@@ -2417,6 +2427,7 @@ def build_queue(questions):
         # nothing applies a default mechanically; a live orchestrator does): the runway keys on
         # blockers here AND on overdue DECISIONs with a dead pulse via clock_decisions (GSL-224).
         "open_blockers": [q for q in open_items if q.get("type") == "BLOCKER"],
+        "parked_due": parked_due,
     }
 
 
@@ -2972,6 +2983,15 @@ def build_digest(ctx, status):
                                               (" — " + tail) if tail else ""))
     else:
         L.append("- none — nothing needs you. Everything the night hit was inside its licence.")
+    # GSL-230: parked questions whose wake date has passed bubble here. In a queue.jsonl-only run
+    # (no live apps/core auto-reopen worker), the digest is what makes them visible on the day.
+    parked_due = q.get("parked_due") or []
+    if parked_due:
+        L.append("")
+        L.append("### Parked, due to return (%d)" % len(parked_due))
+        for i in parked_due:
+            L.append("- ⏰ %-8s %s — %s — parked; wake_at=%s"
+                     % (i.get("type", "?"), i["id"], i.get("question"), i.get("defer_until")))
     L.append("")
 
     # 2 — Decided for you. Every autonomous decision MUST cite a manifest rule (provenance, F3-S3).
