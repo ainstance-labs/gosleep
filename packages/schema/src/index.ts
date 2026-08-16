@@ -852,3 +852,114 @@ export type ControlTransitionResult = z.infer<typeof ControlTransitionResult>;
 
 export const ControlTransitionResponse = actionResponse(ControlTransitionResult);
 export type ControlTransitionResponse = z.infer<typeof ControlTransitionResponse>;
+
+// -----------------------------------------------------------------------------
+// GSL-379 / GSL-381 (observer mode phase C) — task-submission history + submit endpoint.
+//
+// One row per confirm invocation of POST /actions/sessions/:id/submit-task. Dry-run
+// requests never write. Body itself lives on the timeline event payload; the row keeps
+// only sha256 + byte length. Framing enum mirrors R16 scope (none|prompt-boundary|
+// slash-command; default 'prompt-boundary'). Outcome enum drives the drawer badge.
+// -----------------------------------------------------------------------------
+
+export const SubmissionFraming = z.enum([
+  "none",
+  "prompt-boundary",
+  "slash-command",
+]);
+export type SubmissionFraming = z.infer<typeof SubmissionFraming>;
+
+export const SubmissionOutcome = z.enum([
+  "delivered",
+  "pane_gone",
+  "released_mid_submit",
+  "not_at_prompt",
+  "send_failed",
+]);
+export type SubmissionOutcome = z.infer<typeof SubmissionOutcome>;
+
+export const TaskSubmissionRow = z.object({
+  id: z.string(),
+  ts: IsoTimestamp,
+  session_id: z.string(),
+  pane_ref_at_dispatch: z.string().nullable(),
+  body_sha256: z.string(),
+  body_len: z.number().int().nonnegative(),
+  framing: SubmissionFraming.or(z.string()),
+  outcome: SubmissionOutcome.or(z.string()),
+  error: z.string().nullable(),
+});
+export type TaskSubmissionRow = z.infer<typeof TaskSubmissionRow>;
+
+export const TaskSubmissionsResponse = z.object({
+  submissions: z.array(TaskSubmissionRow),
+  count: z.number().int().nonnegative(),
+});
+export type TaskSubmissionsResponse = z.infer<typeof TaskSubmissionsResponse>;
+
+/** Warning shape returned inside the dry-run preview. Non-fatal — advisory only for the
+ *  panel to render, per Risk 3 (secret-shape regex warning defaults advisory). */
+export const SubmissionWarning = z.object({
+  code: z.string(),
+  message: z.string(),
+});
+export type SubmissionWarning = z.infer<typeof SubmissionWarning>;
+
+/** Shared body validator for BOTH dry-run and confirm posts. `body` is the literal UTF-8
+ *  payload the endpoint will hand `tmux send-keys -l`. Optional `framing` defaults server-side
+ *  to 'prompt-boundary'. `dry_run` MUST be a boolean — the enforcement of "preview first"
+ *  lives at the endpoint layer (F16-S4: 428 preview-required). */
+export const SubmitTaskActionInput = z.object({
+  body: z.string().min(1).max(16384),
+  framing: SubmissionFraming.optional(),
+  dry_run: z.boolean(),
+  by: z.string().optional(),
+  channel: z.string().optional(),
+});
+export type SubmitTaskActionInput = z.infer<typeof SubmitTaskActionInput>;
+
+/** Preview payload returned by `dry_run=true`. `keystroke_bytes` is the same bytes that will
+ *  land in tmux (already normalised — trailing whitespace stripped, single trailing Enter is
+ *  the executor's own append and NOT part of these bytes). `resolved_target` is
+ *  `session_name:window_id.pane_id`, the same shape used elsewhere in the panel for pane refs. */
+export const SubmitTaskPreviewResult = z.object({
+  session_id: z.string(),
+  resolved_target: z.string().nullable(),
+  keystroke_bytes: z.string(),
+  body_len: z.number().int().nonnegative(),
+  body_sha256: z.string(),
+  framing: SubmissionFraming,
+  warnings: z.array(SubmissionWarning),
+  /** ISO ts sampled at preview time — panel can hint "preview is stale, X s old". */
+  previewed_at: IsoTimestamp,
+});
+export type SubmitTaskPreviewResult = z.infer<typeof SubmitTaskPreviewResult>;
+
+/** Confirm-phase payload. `submission_id` is the `task_submissions.id` (a UUID). `outcome`
+ *  is one of the SubmissionOutcome values — the endpoint always returns 200 on a reachable
+ *  guard rejection so the panel can render the specific reason from the drawer row; hard
+ *  refusals (409/428) still flow through the standard error envelope for pre-executor
+ *  guards. */
+export const SubmitTaskConfirmResult = z.object({
+  submission_id: z.string(),
+  session_id: z.string(),
+  outcome: SubmissionOutcome,
+  pane_ref_at_dispatch: z.string().nullable(),
+  body_len: z.number().int().nonnegative(),
+  body_sha256: z.string(),
+  framing: SubmissionFraming,
+  ts: IsoTimestamp,
+  error: z.string().nullable(),
+});
+export type SubmitTaskConfirmResult = z.infer<typeof SubmitTaskConfirmResult>;
+
+/** Server response is either a preview (dry_run=true) or a confirm result (dry_run=false).
+ *  Kept as a discriminated union at the wire layer so the SDK can narrow on `dry_run`. */
+export const SubmitTaskActionResult = z.union([
+  SubmitTaskPreviewResult,
+  SubmitTaskConfirmResult,
+]);
+export type SubmitTaskActionResult = z.infer<typeof SubmitTaskActionResult>;
+
+export const SubmitTaskActionResponse = actionResponse(SubmitTaskActionResult);
+export type SubmitTaskActionResponse = z.infer<typeof SubmitTaskActionResponse>;
