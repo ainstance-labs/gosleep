@@ -671,6 +671,26 @@ been extracted to that file and rewritten in English on 2026-08-07 (GSL-273 foll
 
 ---
 
+## Phases 8-16 — per-phase PRD files (index only)
+
+Every phase from 8 onward is authored as a standalone per-phase file in English under
+`docs/prd/`, per the owner language rule (2026-08-07). This monolith is kept as the
+historical archive for Phases 1-6 (Russian) and the pointer surface for Phase 7. Later
+phases are listed here so a reader who lands in the monolith still discovers them; the
+full traceability lives in [`docs/prd/README.md`](./README.md).
+
+- **Phase 8 — skills management system:** [`02-phase8-skills-management.md`](./02-phase8-skills-management.md) — epic [GSL-174](https://ainstance-labs.atlassian.net/browse/GSL-174).
+- **Phase 9 — plugin orphan rescue:** [`03-phase9-plugin-orphan-rescue.md`](./03-phase9-plugin-orphan-rescue.md) — epic [GSL-334](https://ainstance-labs.atlassian.net/browse/GSL-334) inside the plugin-migration program [GSL-337](https://ainstance-labs.atlassian.net/browse/GSL-337).
+- **Phase 10 — plugin bundles v0.1:** [`04-phase10-plugin-bundles-v01.md`](./04-phase10-plugin-bundles-v01.md).
+- **Phase 11 — snapshot-release pipeline:** [`05-phase11-snapshot-release-pipeline.md`](./05-phase11-snapshot-release-pipeline.md).
+- **Phase 12 — plugin global-scope transition:** [`06-phase12-plugin-global-scope-transition.md`](./06-phase12-plugin-global-scope-transition.md).
+- **Phase 13 — plugin E2E shakedown:** [`07-phase13-plugin-e2e-shakedown.md`](./07-phase13-plugin-e2e-shakedown.md).
+- **Phase 14 — observer mode, passive observation:** [`08-phase14-observer-mode-observation.md`](./08-phase14-observer-mode-observation.md) — program epic [GSL-347](https://ainstance-labs.atlassian.net/browse/GSL-347).
+- **Phase 15 — observer mode, runtime control activation:** [`09-phase15-observer-mode-runtime-control.md`](./09-phase15-observer-mode-runtime-control.md).
+- **Phase 16 — observer mode, task submission from the web:** [`10-phase16-observer-mode-task-submission.md`](./10-phase16-observer-mode-task-submission.md) — requirements-level only in v1.
+
+---
+
 ## Сквозная матрица трассируемости (seam-guard)
 
 Каждое требование источника (findings + бриф владельца) → фаза → req-ID → критерий приёмки. Ни одного
