@@ -24,10 +24,25 @@ import type { EventRow } from "../indexer/process.ts";
 
 /** SSE message shape yielded to subscribers. `id` doubles as the SSE `Last-Event-ID`. */
 export interface BroadcastMessage {
-  kind: "event" | "rotate";
+  kind: "event" | "rotate" | "observed";
   id: number | null;
   event: string;
   data: unknown;
+}
+
+/**
+ * GSL-355 — observed-events broadcast shape. Kept in a distinct wire kind (`observed`) so the
+ * gosleep timeline (`event`) and the observed timeline (`observed`) can coexist on the same
+ * broadcaster without collision (R14.7). The `/events` stream ignores `observed` kinds and a
+ * future `/observed/events` SSE stream ignores `event` kinds. `id` is the observed_events.seq.
+ */
+export interface ObservedEventPayload {
+  seq: number;
+  ts: string;
+  project_slug: string | null;
+  kind: string;
+  source: string;
+  payload: unknown;
 }
 
 /**
@@ -83,6 +98,20 @@ class Broadcaster {
       id: null,
       event: "rotate",
       data: { new_day: newDay },
+    };
+    this.emitter.emit("message", msg);
+  }
+
+  /**
+   * GSL-355 — broadcast an observed_events row. Kept in its own wire kind so the /events
+   * stream never sees it — the /observed/events stream is a distinct topic (R14.7).
+   */
+  emitObserved(row: ObservedEventPayload): void {
+    const msg: BroadcastMessage = {
+      kind: "observed",
+      id: row.seq,
+      event: `observed.${row.kind}`,
+      data: row,
     };
     this.emitter.emit("message", msg);
   }
