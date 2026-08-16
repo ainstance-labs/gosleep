@@ -83,20 +83,45 @@ interface SessionRow {
   started_at: string;
   updated_at: string;
   ended_at: string | null;
+  // GSL-361 (observer mode phase B) — per-session control-registry projection joined from
+  // session_control. NULLs mean "no row" — the Observed card renders `observer + Take
+  // disabled` in that case (R15.7 fallback).
+  control_state: string | null;
+  control_source: string | null;
+  shim_registered: number | null;
 }
 
 observedRoutes.get("/observed/sessions", requireBearer, (c) => {
   const rows = getDb()
     .raw.query(
-      "SELECT session_id, name, model, cwd, status, project_slug, cwd_project_root, " +
-        "observed_only, started_at, updated_at, ended_at FROM agent_sessions " +
-        "ORDER BY (ended_at IS NULL) DESC, updated_at DESC LIMIT 500",
+      "SELECT a.session_id, a.name, a.model, a.cwd, a.status, a.project_slug, a.cwd_project_root, " +
+        "a.observed_only, a.started_at, a.updated_at, a.ended_at, " +
+        "sc.state AS control_state, sc.source AS control_source, sc.shim_registered AS shim_registered " +
+        "FROM agent_sessions a " +
+        "LEFT JOIN session_control sc ON sc.session_id = a.session_id " +
+        "ORDER BY (a.ended_at IS NULL) DESC, a.updated_at DESC LIMIT 500",
     )
     .all() as SessionRow[];
   return c.json({
     sessions: rows.map((r) => ({
-      ...r,
+      session_id: r.session_id,
+      name: r.name,
+      model: r.model,
+      cwd: r.cwd,
+      status: r.status,
+      project_slug: r.project_slug,
+      cwd_project_root: r.cwd_project_root,
       observed_only: r.observed_only === 1,
+      started_at: r.started_at,
+      updated_at: r.updated_at,
+      ended_at: r.ended_at,
+      // GSL-361 — control state defaults to observer when no session_control row exists.
+      control_state:
+        r.control_state === "controlled" ? "controlled" : "observer",
+      control_source: r.control_source ?? null,
+      shim_registered: r.shim_registered === 1,
+      env_locked:
+        r.control_state === "controlled" && r.control_source === "env",
     })),
     count: rows.length,
   });

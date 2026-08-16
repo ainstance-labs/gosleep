@@ -20,6 +20,9 @@ import {
   ApplyManifestActionInput,
   ApplyManifestActionResponse,
   BundleResponse,
+  ControlledSessionsResponse,
+  ControlTransitionInput,
+  ControlTransitionResponse,
   CostResponse,
   DecidePermissionActionInput,
   DecidePermissionActionResponse,
@@ -27,6 +30,7 @@ import {
   DeferActionResponse,
   FleetResponse,
   ManifestResponse,
+  SessionControlRow,
   QuestionsResponse,
   ResolveActionInput,
   ResolveActionResponse,
@@ -61,6 +65,9 @@ import type {
   ApplyManifestActionInput as ApplyManifestActionInputT,
   ApplyManifestActionResponse as ApplyManifestActionResponseT,
   BundleResponse as BundleResponseT,
+  ControlledSessionsResponse as ControlledSessionsResponseT,
+  ControlTransitionInput as ControlTransitionInputT,
+  ControlTransitionResponse as ControlTransitionResponseT,
   CostResponse as CostResponseT,
   DecidePermissionActionInput as DecidePermissionActionInputT,
   DecidePermissionActionResponse as DecidePermissionActionResponseT,
@@ -68,6 +75,7 @@ import type {
   DeferActionResponse as DeferActionResponseT,
   FleetResponse as FleetResponseT,
   ManifestResponse as ManifestResponseT,
+  SessionControlRow as SessionControlRowT,
   QuestionsResponse as QuestionsResponseT,
   ResolveActionInput as ResolveActionInputT,
   ResolveActionResponse as ResolveActionResponseT,
@@ -453,6 +461,53 @@ export class CoreClient {
       input,
       DecidePermissionActionInput,
       DecidePermissionActionResponse,
+      idempotencyKey,
+    );
+  }
+
+  // ---- GSL-361 (observer mode phase B) — control registry ------------------
+
+  /** Read per-session control state. Bearer-gated public sibling of the shim's
+   *  /internal/sessions/:id/control fast lookup. Returns a synthesised
+   *  `state='observer' + exists=false` row when the session has never registered. */
+  sessionControl(sessionId: string): Promise<SessionControlRowT> {
+    return this.get(
+      `/sessions/${encodeURIComponent(sessionId)}/control`,
+      SessionControlRow,
+    );
+  }
+
+  /** List every session currently under panel control (state='controlled'). */
+  controlledSessions(): Promise<ControlledSessionsResponseT> {
+    return this.get("/sessions?state=controlled", ControlledSessionsResponse);
+  }
+
+  /** POST /actions/sessions/:id/take-control — flip an observer row to
+   *  controlled/runtime. Refuses (409) when shim_registered=0. */
+  takeControl(
+    input: ControlTransitionInputT,
+    idempotencyKey: string,
+  ): Promise<ControlTransitionResponseT> {
+    return this.postAction(
+      `/actions/sessions/${encodeURIComponent(input.session_id)}/take-control`,
+      input,
+      ControlTransitionInput,
+      ControlTransitionResponse,
+      idempotencyKey,
+    );
+  }
+
+  /** POST /actions/sessions/:id/release-control — flip a runtime-controlled row
+   *  back to observer. Refuses (409) on env-locked rows (source='env'). */
+  releaseControl(
+    input: ControlTransitionInputT,
+    idempotencyKey: string,
+  ): Promise<ControlTransitionResponseT> {
+    return this.postAction(
+      `/actions/sessions/${encodeURIComponent(input.session_id)}/release-control`,
+      input,
+      ControlTransitionInput,
+      ControlTransitionResponse,
       idempotencyKey,
     );
   }

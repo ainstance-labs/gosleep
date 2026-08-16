@@ -66,6 +66,19 @@ raw.exec(`CREATE TABLE heartbeat (
   open_workers INTEGER,
   extra TEXT
 );`);
+// GSL-361 (observer mode phase B) — /fleet LEFT JOINs session_control for per-session control
+// state. Scratch DB must include the table or the query 500s.
+raw.exec(`CREATE TABLE session_control (
+  session_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL DEFAULT 'observer',
+  source TEXT NOT NULL DEFAULT 'runtime',
+  activated_at TEXT,
+  activated_by TEXT,
+  deactivated_at TEXT,
+  shim_registered INTEGER NOT NULL DEFAULT 0,
+  last_heartbeat_at TEXT,
+  last_heartbeat_pid INTEGER
+);`);
 const scratchDb = drizzle(raw, { schema });
 const openedDb: OpenedDb = { db: scratchDb, raw, path: ":memory:" };
 

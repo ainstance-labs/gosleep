@@ -229,6 +229,16 @@ export const FleetSession = z.object({
   // (cwd-prefix match on pane_current_path) | null (no pane matched at all). Panel tags
   // heuristic matches with a small hint so the operator knows it's not authoritative.
   attribution: z.string().nullable().optional(),
+  // GSL-361 (observer mode phase B) — per-session control state joined from `session_control`.
+  // Defaults on the wire: `control_state='observer', control_source=null, shim_registered=false`
+  // for a session whose shim never checked in. `env_locked=true` iff (state='controlled' AND
+  // source='env') — a UI convenience so the panel doesn't have to re-derive the pair.
+  control_state: z.enum(["observer", "controlled"]).optional(),
+  control_source: z.enum(["env", "runtime", "inherited"]).nullable().optional(),
+  control_activated_at: IsoTimestamp.nullable().optional(),
+  control_activated_by: z.string().nullable().optional(),
+  shim_registered: z.boolean().optional(),
+  env_locked: z.boolean().optional(),
 });
 export type FleetSession = z.infer<typeof FleetSession>;
 
@@ -699,6 +709,11 @@ export const ObservedSessionRow = z.object({
   started_at: IsoTimestamp,
   updated_at: IsoTimestamp,
   ended_at: IsoTimestamp.nullable(),
+  // GSL-361 (observer mode phase B) — per-session control-registry projection.
+  control_state: z.enum(["observer", "controlled"]).optional(),
+  control_source: z.enum(["env", "runtime", "inherited"]).nullable().optional(),
+  shim_registered: z.boolean().optional(),
+  env_locked: z.boolean().optional(),
 });
 export type ObservedSessionRow = z.infer<typeof ObservedSessionRow>;
 
@@ -764,3 +779,76 @@ export const ObservedCollectorsResponse = z.object({
   write_attempts_total: z.number().int(),
 });
 export type ObservedCollectorsResponse = z.infer<typeof ObservedCollectorsResponse>;
+
+// -----------------------------------------------------------------------------
+// GSL-361 (observer mode phase B) — per-session control registry.
+// -----------------------------------------------------------------------------
+
+export const ControlState = z.enum(["observer", "controlled"]);
+export type ControlState = z.infer<typeof ControlState>;
+
+export const ControlSource = z.enum(["env", "runtime", "inherited"]);
+export type ControlSource = z.infer<typeof ControlSource>;
+
+/** Shape returned by `GET /sessions/:session_id/control`. Also embedded on Fleet cards under
+ *  the `control_*` prefix (see FleetSession). `exists=false` means "no row" — the panel
+ *  still renders it as `observer` but keeps "Take control" disabled with a tooltip. */
+export const SessionControlRow = z.object({
+  ok: z.literal(true).optional(),
+  session_id: z.string(),
+  state: ControlState,
+  source: ControlSource.nullable(),
+  activated_at: IsoTimestamp.nullable(),
+  activated_by: z.string().nullable(),
+  deactivated_at: IsoTimestamp.nullable(),
+  shim_registered: z.boolean(),
+  last_heartbeat_at: IsoTimestamp.nullable(),
+  env_locked: z.boolean(),
+  exists: z.boolean(),
+});
+export type SessionControlRow = z.infer<typeof SessionControlRow>;
+
+export const ControlledSessionRow = z.object({
+  session_id: z.string(),
+  state: ControlState,
+  source: ControlSource,
+  activated_at: IsoTimestamp.nullable(),
+  activated_by: z.string().nullable(),
+  shim_registered: z.boolean(),
+  last_heartbeat_at: IsoTimestamp.nullable(),
+  env_locked: z.boolean(),
+});
+export type ControlledSessionRow = z.infer<typeof ControlledSessionRow>;
+
+export const ControlledSessionsResponse = z.object({
+  ok: z.literal(true).optional(),
+  sessions: z.array(ControlledSessionRow),
+  count: z.number().int(),
+});
+export type ControlledSessionsResponse = z.infer<typeof ControlledSessionsResponse>;
+
+/** Input schema for POST /actions/sessions/:session_id/take-control and /release-control. */
+export const ControlTransitionInput = z.object({
+  session_id: z.string().min(1),
+  by: z.string().optional(),
+  channel: z.string().optional(),
+});
+export type ControlTransitionInput = z.infer<typeof ControlTransitionInput>;
+
+/** Result payload nested inside the standard action-response envelope for take/release-control. */
+export const ControlTransitionResult = z.object({
+  session_id: z.string(),
+  state: ControlState,
+  source: ControlSource,
+  activated_at: IsoTimestamp.nullable(),
+  activated_by: z.string().nullable(),
+  deactivated_at: IsoTimestamp.nullable(),
+  shim_registered: z.boolean(),
+  changed: z.boolean(),
+  channel: z.string(),
+  labLog: LabToolTrace.nullable(),
+});
+export type ControlTransitionResult = z.infer<typeof ControlTransitionResult>;
+
+export const ControlTransitionResponse = actionResponse(ControlTransitionResult);
+export type ControlTransitionResponse = z.infer<typeof ControlTransitionResponse>;
