@@ -102,13 +102,25 @@ export function __resetSessionsFirstSweepForTests(): void {
 }
 
 /** GSL-360 cold-rotation cursor + "one full pass done" flag. Module-level so successive
- *  ticks pick up where the previous left off; test-only reset provided below. */
+ *  ticks pick up where the previous left off; test-only reset provided below.
+ *
+ *  GSL-373 verifier m3 — `initialColdSize` is captured on the first tick that observes a
+ *  non-empty cold list, then the rotation is declared complete once the cursor has advanced
+ *  by that much (in addition to the existing "cursor reached end" wrap). This closes a
+ *  starvation window: if the cold list grows by ≥ chunkSize per tick, the cursor never
+ *  catches the end (`cold.length` grows just as fast), so `coldRotationComplete` would stay
+ *  false forever and every emitted event would be tagged `backfill=true`. Anchoring to the
+ *  boot-time size bounds the first-sweep hold. `0` is the "not captured yet" sentinel — a
+ *  boot with zero cold transcripts falls through to the else-branch that sets complete=true
+ *  directly, so the sentinel is only re-checked on a tick that actually sees cold entries. */
 let coldCursor = 0;
 let coldRotationComplete = false;
+let initialColdSize = 0;
 
 export function __resetSessionsChunkStateForTests(): void {
   coldCursor = 0;
   coldRotationComplete = false;
+  initialColdSize = 0;
 }
 
 /**
@@ -649,13 +661,21 @@ export async function sessionsCollectorTick(claudeHome?: string): Promise<void> 
 
     // Cold rotation: slice a chunk starting at the cursor, advance, wrap on overflow. The
     // wrap flips `coldRotationComplete=true` so subsequent ticks clear the backfill hold.
+    //
+    // GSL-373 verifier m3 — anchor completion to the BOOT-TIME cold size so a sustained
+    // grow-by-≥-chunkSize-per-tick input cannot keep the cursor perpetually behind
+    // `cold.length`. First non-empty tick captures `initialColdSize`; the wrap fires when
+    // the cursor reaches EITHER the live end OR the initial size (whichever hits first).
+    // Ticks that arrive with a genuinely-shorter list still land in the pre-existing
+    // "list shrank" branch below.
     const chunkSize = coldChunkSize();
     let coldChunk: SessionCandidate[] = [];
     if (cold.length > 0) {
+      if (initialColdSize === 0) initialColdSize = cold.length;
       if (coldCursor >= cold.length) coldCursor = 0; // list shrank between ticks
       coldChunk = cold.slice(coldCursor, coldCursor + chunkSize);
       coldCursor += coldChunk.length;
-      if (coldCursor >= cold.length) {
+      if (coldCursor >= cold.length || coldCursor >= initialColdSize) {
         coldCursor = 0;
         coldRotationComplete = true;
       }

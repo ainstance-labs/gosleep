@@ -373,6 +373,101 @@ describe("GSL-360 chunked collector loop", () => {
       else process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = priorChunk;
     }
   });
+
+  test("GSL-373 m3 — cursor wraps after initialColdSize even when the cold list keeps growing per tick", async () => {
+    // Verifier m3: if the cold list grows by ≥ chunkSize items each tick, the naive wrap
+    // condition `coldCursor >= cold.length` never fires because cold.length grows in lockstep.
+    // The fix captures `initialColdSize` on the first non-empty tick, so completion is
+    // anchored to the boot-time cold count. This test simulates that pathology by inserting
+    // 2 new cold transcripts before every tick (chunkSize=1 → cold.length grows by 2/tick).
+    // With chunkSize=1 and 3 initial cold, coldRotationComplete MUST flip by the third tick;
+    // events emitted by the FOURTH tick must be `backfill=false`.
+    __resetSessionsFirstSweepForTests();
+    __resetSessionsChunkStateForTests();
+    __resetCollectorInventory();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+    registerCollector(SESSIONS_COLLECTOR_NAME, {
+      source: "transcript-mtime",
+      cadence_ms: SESSIONS_CADENCE_MS,
+    });
+
+    const priorWarm = process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+    const priorChunk = process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+    process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = "1000";
+    process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = "1";
+
+    // Fresh isolated HOME so we own the cold list entirely.
+    const growHome = join(scratchRoot, "grow-home");
+    const growProjects = join(growHome, "projects");
+    mkdirSync(growProjects, { recursive: true });
+    const fsNode = require("node:fs");
+    const oldTs = Date.now() - 10 * 60 * 60 * 1_000;
+
+    const dropCold = (id: string): void => {
+      const cwd = join(scratchRoot, `grow-cold-${id}`);
+      mkdirSync(cwd, { recursive: true });
+      const dir = join(growProjects, `-${cwd.replace(/\//g, "-")}`);
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, `sess-grow-${id}.jsonl`);
+      writeFileSync(p, JSON.stringify({ type: "header", cwd, model: "haiku" }) + "\n");
+      fsNode.utimesSync(p, new Date(oldTs), new Date(oldTs));
+    };
+
+    try {
+      // Seed initial 3 cold transcripts — this is the initialColdSize the fix must anchor to.
+      dropCold("init-0");
+      dropCold("init-1");
+      dropCold("init-2");
+
+      // Tick 1 — captures initialColdSize=3. Adds 2 new cold BEFORE next tick.
+      await sessionsCollectorTick(growHome);
+      dropCold("grow-1a");
+      dropCold("grow-1b");
+
+      // Tick 2 — cold.length is now 5, cursor at 1 after tick 1, becomes 2 after tick 2.
+      await sessionsCollectorTick(growHome);
+      dropCold("grow-2a");
+      dropCold("grow-2b");
+
+      // Tick 3 — cold.length is 7, cursor advances to 3 == initialColdSize → wrap fires here.
+      await sessionsCollectorTick(growHome);
+      dropCold("grow-3a");
+      dropCold("grow-3b");
+
+      // Sanity: three ticks emitted three cold session_appeared events (chunkSize=1) and all
+      // three carry backfill=true because firstSweepDone was still held while foldSessions
+      // ran under holdFirstSweep=true. This mirrors the existing GSL-360 test.
+      const appeared = raw
+        .query(
+          "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' ORDER BY seq",
+        )
+        .all() as { payload_json: string }[];
+      expect(appeared.length).toBe(3);
+      for (const ev of appeared) {
+        expect(JSON.parse(ev.payload_json).backfill).toBe(true);
+      }
+
+      // Tick 4 — the critical assertion. Under the OLD wrap-on-length code this would still
+      // be backfill=true (cold.length keeps outpacing coldCursor). Under the fix,
+      // coldRotationComplete flipped at end of tick 3, so tick 4 runs foldSessions with
+      // holdFirstSweep=false; the emitted event lands with backfill=FALSE.
+      await sessionsCollectorTick(growHome);
+      const tick4Rows = raw
+        .query(
+          "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' ORDER BY seq",
+        )
+        .all() as { payload_json: string }[];
+      expect(tick4Rows.length).toBe(4);
+      const lastPayload = JSON.parse(tick4Rows[3]!.payload_json) as { backfill?: boolean };
+      expect(lastPayload.backfill).toBe(false);
+    } finally {
+      if (priorWarm === undefined) delete process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+      else process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = priorWarm;
+      if (priorChunk === undefined) delete process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+      else process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = priorChunk;
+    }
+  });
 });
 
 // Cleanup — best-effort at process exit; bun:test doesn't call afterAll on module scope.
