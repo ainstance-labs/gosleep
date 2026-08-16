@@ -370,4 +370,120 @@ describe("GET /fleet projection", () => {
     expect(row!.tmux_pane_ref).toBe("heur-shell:@0.%42");
     expect(row!.attribution).toBe("heuristic");
   });
+
+  test("GSL-373 M1 — heuristic must not match sibling directories that share a string prefix", async () => {
+    // Verifier live-proved the bug: two sessions in a fake HOME, native cwd `/…/fake-repo`
+    // and observed cwd `/…/fake-repo-sibling`, plus a pane whose pane_current_path was
+    // `/…/fake-repo-sibling/subdir`. The old `LIKE cwd || '%'` matched BOTH — the sibling
+    // (correct) and the native session (WRONG, path just STARTS WITH `/…/fake-repo`).
+    //
+    // The fix uses `= cwd OR LIKE cwd || '/%'` — the trailing separator prevents the
+    // sibling from spilling across the boundary, and the equality alternate keeps the
+    // root itself (pane cwd == session cwd) attributable.
+    //
+    // This regression test asserts three things at once:
+    //   1. `/fake-repo-sibling/subdir` attributes ONLY to sess-sibling (was: also to sess-native).
+    //   2. `/fake-repo` (exact match) attributes to sess-root (equality branch of the fix).
+    //   3. `/fake-repo/nested/deeper` attributes to sess-root (LIKE '/%' branch).
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    // Native session whose cwd is `/fake-repo` — historical prefix collision candidate.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sess-native', 'observed:native', 'interactive', NULL, '/fake-repo',
+                 'active', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z',
+                 'fake-repo', '/fake-repo', 0)`,
+      )
+      .run();
+    // Observed sibling session at `/fake-repo-sibling` — the pane below is genuinely its.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sess-sibling', 'observed:sibling', 'interactive', NULL, '/fake-repo-sibling',
+                 'active', '2026-08-16T00:00:01Z', '2026-08-16T00:00:11Z',
+                 'fake-repo-sibling', '/fake-repo-sibling', 1)`,
+      )
+      .run();
+    // A third session that owns pane matching its cwd EXACTLY (equality-branch coverage)
+    // AND owns a strict sub-path pane (LIKE '/%'-branch coverage).
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sess-root', 'observed:root', 'interactive', NULL, '/fake-root',
+                 'active', '2026-08-16T00:00:02Z', '2026-08-16T00:00:12Z',
+                 'fake-root', '/fake-root', 1)`,
+      )
+      .run();
+    // Pane #1 — the sibling's genuine pane. Path is `/fake-repo-sibling/subdir` which STARTS
+    // WITH `/fake-repo` but is not under it. Old code attributed this to sess-native too.
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%77', '$1', 'sibling-shell', '@0', 9001, '/fake-repo-sibling/subdir',
+                 'bash', 'sibling', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+    // Pane #2 — pane_current_path EQUALS sess-root cwd_project_root exactly.
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%88', '$1', 'root-shell', '@0', 9002, '/fake-root',
+                 'bash', 'root', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+    // Pane #3 — strict sub-path of sess-root cwd (LIKE '/%' branch).
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%89', '$1', 'root-shell', '@1', 9003, '/fake-root/nested/deeper',
+                 'bash', 'root', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{
+        session_id: string;
+        tmux_pane_ref: string | null;
+        attribution?: string | null;
+      }>;
+    };
+    const native = body.sessions.find((s) => s.session_id === "sess-native");
+    const sibling = body.sessions.find((s) => s.session_id === "sess-sibling");
+    const root = body.sessions.find((s) => s.session_id === "sess-root");
+    expect(native).toBeDefined();
+    expect(sibling).toBeDefined();
+    expect(root).toBeDefined();
+
+    // The bug: sess-native must NOT be attributed to the sibling's pane. Under the old
+    // predicate `LIKE cwd || '%'` this expected null was WRONG — the sibling's pane
+    // ('/fake-repo-sibling/subdir') matched because it starts with '/fake-repo'.
+    expect(native!.tmux_pane_ref).toBeNull();
+    expect(native!.attribution).toBeNull();
+
+    // The sibling's genuine pane still attributes correctly.
+    expect(sibling!.tmux_pane_ref).toBe("sibling-shell:@0.%77");
+    expect(sibling!.attribution).toBe("heuristic");
+
+    // Equality + strict-sub-path branches: sess-root sees SOME pane (MAX picks one — the
+    // point is that both branches of the OR fire, not which pane wins).
+    expect(root!.tmux_pane_ref).not.toBeNull();
+    expect(root!.attribution).toBe("heuristic");
+    expect(["root-shell:@0.%88", "root-shell:@1.%89"]).toContain(root!.tmux_pane_ref!);
+  });
 });

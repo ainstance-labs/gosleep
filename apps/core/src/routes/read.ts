@@ -530,6 +530,15 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   // Both paths in one query. Heuristic goes first in COALESCE + CASE so its match wins when
   // both fire (rare — pidtree is opt-in). Heuristic uses MAX(...) over pane rows sharing a
   // path so a stale pane never displaces a fresher pane_ref for the same current_path.
+  //
+  // GSL-373 verifier M1 — the heuristic JOIN must NOT match sibling directories that share a
+  // string prefix with cwd_project_root. Naive `LIKE cwd || '%'` matched /repo/foobar/x when
+  // the session cwd was /repo/foo. The correct predicate is "same directory (=) OR strict
+  // sub-path (LIKE cwd || '/%')" — the '/' after the cwd guarantees a path-separator boundary.
+  // GSL-359 made the heuristic the DEFAULT attribution path, so this correctness bug became
+  // the default; every misattributed row surfaced as attribution='heuristic' with a wrong
+  // tmux_pane_ref. Regression: fleet.projection.test.ts "GSL-373 M1 — heuristic must not
+  // match sibling directories that share a string prefix".
   const rows = getDb().raw
     .query(
       `SELECT a.session_id, a.name, a.kind, a.pid, a.model, a.cwd, a.cycle, a.context_pct,
@@ -555,7 +564,8 @@ readRoutes.get("/fleet", requireBearer, (c) => {
          WHERE pane_current_path IS NOT NULL
          GROUP BY pane_current_path
        ) heur ON a.cwd_project_root IS NOT NULL
-              AND heur.pane_current_path LIKE a.cwd_project_root || '%'
+              AND (heur.pane_current_path = a.cwd_project_root
+                   OR heur.pane_current_path LIKE a.cwd_project_root || '/%')
        LEFT JOIN (
          SELECT pane_pid,
                 session_name || ':' || window_id || '.' || pane_id AS pane_ref
