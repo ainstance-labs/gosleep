@@ -46,6 +46,21 @@ else
   bad "park with bad ISO was accepted (rc=$rc, err=$err)"
 fi
 
+# ── refuses past --wake-at (verifier m7) ───────────────────────────────────
+# GSL-243 verifier run 01, finding 7: `park` accepted a past wake date, which
+# defeats the entire point (the auto-reopen worker would flip the record back
+# to open on its next tick). Reject any wake-at that is not strictly in the
+# future. Uses a fresh question ID so the following happy-path test still
+# operates on an unparked record.
+QM7=$(bash "$EMIT" question --type BLOCKER --from smoke --task GSL-1 \
+        --question "wake-at m7 past-date check?")
+err=$(bash "$EMIT" park --re "$QM7" --wake-at "2020-01-01T00:00:00Z" 2>&1 >/dev/null); rc=$?
+if [ "$rc" -ne 0 ] && printf '%s' "$err" | grep -qE "future|past"; then
+  ok "park with past --wake-at is refused (verifier m7)"
+else
+  bad "park with past --wake-at was accepted (rc=$rc, err=$err)"
+fi
+
 # ── happy path: park with valid wake-at, correct record shape ───────────────
 if bash "$EMIT" park --re "$QB" --wake-at "2027-01-01T10:00:00Z" --by owner \
      | grep -q "parked $QB wake_at=2027-01-01T10:00:00Z"; then

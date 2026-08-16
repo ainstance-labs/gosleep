@@ -121,21 +121,34 @@ TIER2_PATTERNS = {
         r"\bpay\s+(?:the\s+)?invoice\b",
     ],
     "external_comms": [
+        # Noun anchor group widened per GSL-243 verifier run 01, finding 4
+        # (`post on social media`, `tweet about the launch`, `email the team`
+        # were slipping through because none of `social media`, `team`, or
+        # `launch` sat in the anchor group). Added: team, channel,
+        # social media, social, slack, twitter, linkedin, launch.
         r"\b(?:send|write|post|publish|announce|broadcast|tweet|email)\b.{0,40}"
             r"\b(?:customer|user|external|public|press|announcement|blog|homepage|newsletter|"
-            r"subscriber|audience|community|prod\s+site|status\s+page)\b",
+            r"subscriber|audience|community|prod\s+site|status\s+page|"
+            r"team|channel|social\s+media|social|slack|twitter|linkedin|launch)\b",
         r"\bpress\s+release\b",
         r"\bexternal\s+(?:comms|communication|announcement)\b",
         r"\bcustomer\s+(?:email|announcement)\b",
         r"\bpublish\s+publicly\b",
     ],
     "secrets": [
-        r"\brotate\s+(?:the\s+)?(?:secret|token|credential|credentials|password|api[- ]?key|key)\b",
-        r"\bshare\s+(?:the\s+)?(?:secret|token|credential|credentials|password|api[- ]?key)\b",
-        r"\bpublish\s+(?:the\s+)?(?:secret|token|credential|credentials|password|api[- ]?key)\b",
-        r"\bcommit\s+(?:the\s+)?(?:secret|token|credential|credentials|password|api[- ]?key)\b",
-        r"\bexpose\s+(?:the\s+)?(?:secret|token|credential|credentials|password|api[- ]?key)\b",
-        r"\bleak(?:ed)?\s+(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        # Each verb allows an optional article + up to two qualifier words
+        # before the secret-noun, per GSL-243 verifier run 01, findings 2/3:
+        # `leak the token` lacked the `(?:the\s+)?` prefix, and `rotate the
+        # AWS key` / `rotate our master token` were bypassing because the
+        # pattern refused any intervening qualifier. `(?:\S+\s+){0,2}` also
+        # subsumes the plain `the ` form, so the surface is symmetric across
+        # all six act-on-secret verbs.
+        r"\brotate\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key|key)\b",
+        r"\bshare\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bpublish\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bcommit\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bexpose\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
+        r"\bleak(?:ed)?\s+(?:\S+\s+){0,2}(?:secret|token|credential|credentials|password|api[- ]?key)\b",
     ],
     "destructive": [
         r"\bforce[- ]push\b",
@@ -638,6 +651,21 @@ def cmd_park(argv):
             "`defer` explicitly — the owner will have to reopen it by hand.")
     if not ISO_UTC_RE.match(wake):
         die("--wake-at must be ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ), got %r" % wake)
+    # GSL-243 verifier run 01, finding 7: refuse past wake dates. A parked
+    # record whose defer_until is already in the past defeats the entire
+    # subcommand — the auto-reopen worker (apps/core defer-reopen) compares
+    # defer_until <= now and flips the record back to open on its next tick,
+    # so parking with a past date is indistinguishable from not parking at
+    # all. `defer --defer-until <past>` remains permitted (owner-directed
+    # rollback of a defer); `park` is the safety-net variant and hard-refuses.
+    try:
+        wake_dt = datetime.strptime(wake, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except Exception:
+        die("--wake-at must be ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ), got %r" % wake)
+    if wake_dt <= datetime.now(timezone.utc):
+        die("--wake-at must be in the future (GSL-243 verifier m7: a parked "
+            "question whose wake date is already past would be re-opened by the "
+            "next auto-reopen tick, defeating the point of parking); got %r" % wake)
     now = iso_utc()
     with QueueLock():
         state = fold(read_records())

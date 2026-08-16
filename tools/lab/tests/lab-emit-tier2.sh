@@ -81,6 +81,31 @@ expect_refused "publish the token" "secrets" -- question \
   --question "publish the token in the runbook?" \
   --default "no" --reversibility high
 
+# ── secrets (verifier m2/m3): article- and qualifier-tolerant patterns ──────
+# GSL-243 verifier run 01, finding 2: `leak(?:ed)?` lacked optional `the`.
+# GSL-243 verifier run 01, finding 3: `rotate` refused a qualifier between
+# `the` and the noun (`rotate the AWS key`, `rotate our master token`).
+expect_refused "leak the token (verifier m2)" "secrets" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "leak the token to the runbook?" \
+  --default "no" --reversibility high
+expect_refused "leak the password (verifier m2)" "secrets" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "leak the password in the incident channel?" \
+  --default "no" --reversibility high
+expect_refused "rotate the AWS key (verifier m3)" "secrets" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "rotate the AWS key this afternoon?" \
+  --default "no" --reversibility high
+expect_refused "rotate our master token (verifier m3)" "secrets" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "rotate our master token before staging?" \
+  --default "no" --reversibility high
+expect_refused "rotate my api key (verifier m3)" "secrets" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "rotate my api key without notice?" \
+  --default "no" --reversibility high
+
 # ── external comms ───────────────────────────────────────────────────────────
 expect_refused "send email to customer" "external_comms" -- question \
   --type DECISION --from smoke --task GSL-1 \
@@ -89,6 +114,26 @@ expect_refused "send email to customer" "external_comms" -- question \
 expect_refused "publish blog post" "external_comms" -- question \
   --type DECISION --from smoke --task GSL-1 \
   --question "publish blog post announcing the incident?" \
+  --default "no" --reversibility high
+
+# ── external comms (verifier m4): social / team / launch anchors ────────────
+# GSL-243 verifier run 01, finding 4: the noun anchor group missed
+# `social media`, `team`, `launch`, and the named platforms.
+expect_refused "post on social media (verifier m4)" "external_comms" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "post on social media about the incident?" \
+  --default "no" --reversibility high
+expect_refused "tweet about the launch (verifier m4)" "external_comms" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "tweet about the launch on Friday?" \
+  --default "no" --reversibility high
+expect_refused "email the team about status (verifier m4)" "external_comms" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "email the team about status update?" \
+  --default "no" --reversibility high
+expect_refused "post on slack channel (verifier m4)" "external_comms" -- question \
+  --type DECISION --from smoke --task GSL-1 \
+  --question "post on the slack channel a heads-up?" \
   --default "no" --reversibility high
 
 # ── destructive / production ─────────────────────────────────────────────────
