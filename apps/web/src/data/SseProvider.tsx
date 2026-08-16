@@ -41,6 +41,7 @@ import { subscribe, type SseEventData } from "@gosleep/sdk";
 import { getBearer } from "./auth";
 import { sseBaseUrl } from "./client";
 import { queryKeys } from "./queries";
+import { sseRootsFor } from "./sseDispatch";
 import { useToast } from "../components/ui/Toast";
 
 // -----------------------------------------------------------------------------
@@ -136,46 +137,17 @@ export function SseProvider({ children }: { children: ReactNode }) {
             return next.length > 200 ? next.slice(next.length - 200) : next;
           });
 
-          // GSL-309 — batched invalidations. Every event bumps `timeline` (the event feed
-          // itself); type-specific keys go into the same 250 ms window. `status` + `bundle`
-          // are NOT invalidated per-event (status has a 15 s refetchInterval; bundle has no
-          // active subscribers) — that removed ~85% of the socket churn responsible for
+          // GSL-309 — batched invalidations. `status` + `bundle` are deliberately NOT
+          // touched per-event (status has a 15 s refetchInterval; bundle has no active
+          // subscribers) — removing them killed ~85% of the socket churn responsible for
           // ERR_INSUFFICIENT_RESOURCES ×5087 in the run-01 QA report.
-          invalidator.schedule("timeline");
-
-          const type = evt.type;
-          if (type.startsWith("question.")) {
-            invalidator.schedule("questions");
-          } else if (type === "task.submitted" || type === "task.submit.failed") {
-            // GSL-382 -- task-submission timeline events. Invalidate the per-session
-            // submissions drawer AND the fleet card (control_state may have flipped as
-            // the reason for the failed submission). Timeline itself is already
-            // invalidated above -- these events are visible on the Timeline row.
-            invalidator.schedule("submissions");
-            invalidator.schedule("fleet");
-          } else if (type.startsWith("task.") || type.startsWith("tasks.")) {
-            invalidator.schedule("tasks");
-          } else if (type.startsWith("skill.")) {
-            invalidator.schedule("skills");
-          } else if (type.startsWith("cost.")) {
-            invalidator.schedule("cost");
-          } else if (type.startsWith("agent_sessions.") || type.startsWith("agent.")) {
-            // GSL-276: fleet-poll worker + PreToolUse shim both emit
-            // `agent_sessions.updated` (via the events broadcaster). The Fleet screen re-fetches
-            // /fleet so cards land within a tick of any status/tool/context change.
-            invalidator.schedule("fleet");
-          } else if (type.startsWith("sessions.control.")) {
-            // GSL-361 (observer mode phase B) — take/release-control + heartbeat env-locked
-            // synthetics land under this prefix. Invalidate every projection that carries
-            // control state so the pill + button flip within one coalesce window.
-            invalidator.schedule("fleet");
-            invalidator.schedule("sessions");
-            invalidator.schedule("observed");
-          } else if (type === "sessions.submissions.updated") {
-            // GSL-381 (observer mode phase C) — synthetic submissions frame the endpoint
-            // fires after every confirm. Panel invalidates the history drawer query so
-            // the row appears within the coalesce window.
-            invalidator.schedule("submissions");
+          //
+          // The type→roots mapping now lives in `./sseDispatch` so a unit test can pin the
+          // contract (permission.* pushing to /questions is GSL-397; question.answered
+          // invalidating /fleet is GSL-398). Every root goes through the same coalescer, so
+          // a burst of 20 events still collapses to one refetch per unique key.
+          for (const root of sseRootsFor(evt.type)) {
+            invalidator.schedule(root);
           }
         },
         onRotate: (data) => {
