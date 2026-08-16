@@ -227,17 +227,187 @@ else
 fi
 echo "==============================================================================" >&2
 
-# ---- interactive confirmation ------------------------------------------------
+# ---- TouchID physical-gesture gate (GSL-288 wiring; OFF by default) ----------
 #
-# TouchID leg is PAUSED (d-2026-08-09-001). When the pause lifts, replace the
-# TTY-confirm block below with an invocation of `apps/core/bin/touchid-gate.app`
-# (rev-3 addendum Delta 4) — one function call, exit code 0/1/2 → same
-# behaviour as here.
+# STATUS as of 2026-08-16 (owner ruling recorded on GSL-288): the TouchID gate
+# is WIRED into this script but SHIPS DEFAULT-OFF, behind an explicit opt-in
+# flag. The harness+web program comes first; the physical-gesture layer is
+# deferred until the owner enables it as part of a later task (tied to
+# GSL-266 activation). With the flag OFF (the default) this block is a
+# documented inert stub — the TTY-confirm block below is the sole owner-gate
+# for daily publish flows, exactly as before this task landed.
 #
-# TODO(GSL-288): TouchID wiring.
-#   open -W -a "$REPO_ROOT/apps/core/bin/touchid-gate.app"
-#   case $? in 0) ok ;; 1) exit 3 ;; 2) fallback to TTY-confirm ;; esac
-if [ "$AUTO_YES" -eq 0 ] && [ "$have_tty" -eq 1 ]; then
+# Enable path (future task; the owner will flip this deliberately):
+#   1. Build the .app bundle:  bash apps/core/scripts/build-touchid-gate.sh
+#   2. Wire the flag into the launchd plist EnvironmentVariables dict
+#      (apps/core/plist/com.gosleep.core.plist) AND into the endpoint
+#      spawner (apps/core/src/actions/publish.ts) — currently NEITHER sets
+#      it, so a production spawn today enters this block with the flag off.
+#   3. Set GOSLEEP_TOUCHID=1 in the calling shell before invoking publish.sh
+#      by hand; the block below then activates with the exit-code map
+#      documented under the "opt-in mechanics" comment.
+#
+# Design intent: land the wiring and the mock-driven smoke coverage NOW so
+# turning the flag on later is a one-line env change, not a fresh
+# implementation. Nothing about the current publish behaviour changes with
+# the flag off — no biometric prompt fires, no path resolves through
+# LocalAuthentication.
+#
+# Ordering rationale: this block sits AFTER verify-local + DB preflight so a
+# broken repo state or unmigrated DB refuses without ever invoking the
+# sensor even under opt-in.
+#
+# ---- opt-in mechanics (only active with GOSLEEP_TOUCHID=1) -----------------
+#
+# Exit-code contract with apps/core/bin/touchid-gate.swift:
+#   0 → owner tapped TouchID / Face ID; proceed with backup + rsync.
+#   1 → owner cancelled or biometric failed → exit 3 (owner-gate refused).
+#   2 → sensor unavailable → fall back to TTY-confirm; refuse if no TTY.
+#   3 → framework error → exit 3.
+#
+# Test-only overrides (NEVER set in the launchd plist or the web endpoint
+# spawner — both leave these unset):
+#   GOSLEEP_TOUCHID_GATE_BIN   Path to an alternative gate binary or bundle.
+#                              Used by tools/skills/tests/touchid-gate-smoke.sh
+#                              with a mock that returns a chosen exit code
+#                              without touching the biometric subsystem.
+#   GOSLEEP_TOUCHID_BYPASS=1   Skip the gate under opt-in. FAIL-CLOSED against
+#                              production paths: refuses (exit 3) unless BOTH
+#                              GOSLEEP_SKILLS_PROD_DIR and
+#                              GOSLEEP_SKILLS_BACKUPS_DIR are set AND the
+#                              RESOLVED PROD_DIR + BACKUPS_DIR both sit
+#                              outside "$HOME/.claude/skills" (mirrors the
+#                              GSL-254 production test-guard pattern —
+#                              impossible to trip in a production spawn even
+#                              if a caller sets both env vars pointing at the
+#                              real tree by mistake).
+
+GATE_BIN="${GOSLEEP_TOUCHID_GATE_BIN:-$REPO_ROOT/apps/core/bin/touchid-gate.app}"
+GATE_REASON="gosleep-core: publish skill '$SKILL' to production"
+GATE_RC=""
+GATE_BYPASS=0
+
+if [ "${GOSLEEP_TOUCHID:-0}" != "1" ]; then
+  # Default OFF — inert stub. Log one line so operators reading logs know the
+  # gate exists in the script but is not participating in this run; then fall
+  # through to the pre-existing TTY-confirm block, whose behaviour is exactly
+  # what publish.sh had before this task.
+  echo "publish:   touchid gate: OFF (stub; owner-deferred 2026-08-16; opt in with GOSLEEP_TOUCHID=1)" >&2
+else
+  # Opt-in: the flag is set. Fail-closed bypass check first, so even a caller
+  # that sets GOSLEEP_TOUCHID_BYPASS=1 cannot ever route around the sensor on
+  # a production tree.
+  #
+  # The guard checks the RESOLVED destination paths, not just the env-var
+  # names. `PROD_DIR` here is the value already computed above from
+  # GOSLEEP_SKILLS_PROD_DIR (default $HOME/.claude/skills/<name>); if that
+  # resolves under the real global tree, refuse the bypass unconditionally.
+  # Same for BACKUPS_DIR vs docs/skills/backups.
+  if [ "${GOSLEEP_TOUCHID_BYPASS:-0}" = "1" ]; then
+    bypass_ok=1
+    resolved_prod_root="${GOSLEEP_SKILLS_PROD_DIR:-}"
+    resolved_backups="${GOSLEEP_SKILLS_BACKUPS_DIR:-}"
+    # Refuse if either override is unset — a bypass without both overrides
+    # cannot possibly be a hermetic test.
+    [ -z "$resolved_prod_root" ] && bypass_ok=0
+    [ -z "$resolved_backups" ]   && bypass_ok=0
+    # Refuse if either resolves under the real global tree, verbatim or by
+    # prefix — mirrors the GSL-254 preflight guard against production paths.
+    case "$resolved_prod_root" in
+      "$HOME/.claude/skills"|"$HOME/.claude/skills/"*) bypass_ok=0 ;;
+    esac
+    case "$resolved_backups" in
+      "$HOME/.claude/skills"|"$HOME/.claude/skills/"*) bypass_ok=0 ;;
+    esac
+    # Also refuse if the resolved BACKUPS points at the real production
+    # backups tree under docs/skills/backups — the launchd default. This
+    # catches "hermetic + prod backups" hybrids.
+    case "$resolved_backups" in
+      "$REPO_ROOT/docs/skills/backups"|"$REPO_ROOT/docs/skills/backups/"*) bypass_ok=0 ;;
+    esac
+    if [ "$bypass_ok" -eq 1 ]; then
+      GATE_BYPASS=1
+      echo "publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override)." >&2
+      echo "publish:        prod=$resolved_prod_root backups=$resolved_backups" >&2
+    else
+      echo "publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR" >&2
+      echo "publish:   AND GOSLEEP_SKILLS_BACKUPS_DIR set to hermetic paths outside the real tree." >&2
+      echo "publish:   Resolved: prod='$resolved_prod_root' backups='$resolved_backups'." >&2
+      echo "publish:   Real tree: prod-refused='\$HOME/.claude/skills[/*]',  backups-refused='\$HOME/.claude/skills[/*]' AND '\$REPO_ROOT/docs/skills/backups[/*]'." >&2
+      exit 3
+    fi
+  fi
+
+  if [ "$GATE_BYPASS" -eq 0 ]; then
+    gate_run() {
+      if [ -d "$GATE_BIN" ] && [ -x "$GATE_BIN/Contents/MacOS/touchid-gate" ]; then
+        # Real .app bundle — must be launched via `open -W -a` so the biometric
+        # entitlement attached to the bundle identity is honored. `open -W`
+        # propagates the app's exit status on macOS 11+ (per Apple's open(1)).
+        echo "publish:   touchid gate: launching $GATE_BIN via 'open -W -a'" >&2
+        /usr/bin/open -W -a "$GATE_BIN" --args "$GATE_REASON"
+        return $?
+      fi
+      if [ -x "$GATE_BIN" ]; then
+        # Bare executable — used by tools/skills/tests/touchid-gate-smoke.sh
+        # with a mock binary that never touches LocalAuthentication.
+        echo "publish:   touchid gate: exec $GATE_BIN (bare binary; mock-friendly path)" >&2
+        "$GATE_BIN" "$GATE_REASON"
+        return $?
+      fi
+      echo "publish: touchid-gate binary not found at $GATE_BIN — refusing." >&2
+      echo "publish:   Fix: bash apps/core/scripts/build-touchid-gate.sh (rev-3 addendum Delta 4)." >&2
+      return 3
+    }
+
+    gate_run
+    GATE_RC=$?
+    echo "publish:   touchid gate rc=$GATE_RC" >&2
+    case "$GATE_RC" in
+      0)
+        # Physical gesture confirmed. The TTY-confirm block below is skipped —
+        # asking the owner to type "yes" after they already tapped TouchID is
+        # noise, not defense.
+        :
+        ;;
+      1)
+        echo "publish: TouchID denied (rc=1) — owner cancelled or biometric failed. Aborting." >&2
+        exit 3
+        ;;
+      2)
+        echo "publish: TouchID sensor unavailable (rc=2) — trying TTY-confirm fallback (§7.3 Priority 1)." >&2
+        if [ "$have_tty" -ne 1 ]; then
+          echo "publish: no TTY on stdin either — no owner-presence path available. Aborting." >&2
+          echo "publish:   Re-run the publish from an interactive shell on a host with either a" >&2
+          echo "publish:   biometric sensor or a controlling terminal, or use tty-confirm.sh directly." >&2
+          exit 3
+        fi
+        # Fall through to the TTY-confirm block below.
+        ;;
+      3|*)
+        echo "publish: TouchID framework error (rc=$GATE_RC) — aborting." >&2
+        exit 3
+        ;;
+    esac
+  fi
+fi
+
+# ---- interactive TTY-confirm fallback ----------------------------------------
+#
+# Runs in three cases:
+#   (a) TouchID gate OFF (GOSLEEP_TOUCHID != 1) — the default path today. This
+#       is the pre-GSL-288 owner-gate: TTY prompt when interactive, silent
+#       proceed when --yes was passed and either a TTY or env-nonce is present.
+#   (b) TouchID opt-in + gate exited 2 (no sensor) + a TTY is present — the
+#       §7.3 Priority 1 fallback documented in the Swift source.
+#   (c) TouchID opt-in + hermetic bypass — the smoke test override; still
+#       prompts on --yes-off + TTY for shape parity with (a).
+# Under a TouchID exit 0 pass the physical gesture already gave consent; there
+# is no second TTY prompt.
+if { [ "${GOSLEEP_TOUCHID:-0}" != "1" ] \
+     || [ "${GATE_RC:-2}" = "2" ] \
+     || [ "$GATE_BYPASS" -eq 1 ]; } \
+   && [ "$AUTO_YES" -eq 0 ] && [ "$have_tty" -eq 1 ]; then
   CONFIRM=""
   {
     echo ""

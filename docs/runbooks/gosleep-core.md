@@ -428,6 +428,84 @@ Assert the guard with `bash tools/skills/tests/preflight-smoke.sh` — it points
 `publish.sh` at an empty scratch DB and confirms the early-fail path leaves the
 backups dir + CHANGELOG.jsonl + production skill dir untouched.
 
+**TouchID physical-gesture gate (GSL-288 — WIRED but DEFAULT-OFF as of
+2026-08-16).** `publish.sh` contains the invocation of
+`apps/core/bin/touchid-gate.app` behind an explicit opt-in flag. **Status
+today: OFF.** Per the owner ruling on 2026-08-16, TouchID is deferred until
+after the harness+web program; daily publish flows go through the pre-GSL-288
+owner-gate (interactive TTY prompt, or `GOSLEEP_WEB_TOKEN` env-nonce from the
+web endpoint) and are never blocked by biometrics. The `publish.sh` block
+around the gate is a documented inert stub with the flag off — it prints one
+breadcrumb line (`touchid gate: OFF (stub; owner-deferred 2026-08-16; opt in
+with GOSLEEP_TOUCHID=1)`) and then hands control to the existing TTY-confirm
+fallback exactly as before.
+
+**How to enable the gate later** (a deliberate owner step, tied to GSL-266
+activation — do NOT flip this without an explicit owner directive):
+
+1. Build the signed `.app` bundle:
+   `bash apps/core/scripts/build-touchid-gate.sh` (rev-3 addendum Delta 4).
+2. Wire `GOSLEEP_TOUCHID=1` into the launchd plist
+   `apps/core/plist/com.gosleep.core.plist` `EnvironmentVariables` dict AND
+   into the endpoint spawner `apps/core/src/actions/publish.ts` env
+   pass-through — neither sets it today, so the launchd-managed core enters
+   the block with the flag off.
+3. For a bare `publish.sh` invocation, prefix with `GOSLEEP_TOUCHID=1 bash
+   tools/skills/publish.sh <name>` — the gate becomes active for that call.
+
+**Exit-code contract when the gate IS active** (matches
+`apps/core/bin/touchid-gate.swift`):
+
+- `0` — owner tapped TouchID / Face ID → publish proceeds; the TTY prompt is
+  skipped.
+- `1` — owner cancelled or biometric failed → `publish.sh` exits 3 (owner
+  refused).
+- `2` — sensor unavailable → falls back to the `/dev/tty` `type 'yes'`
+  prompt when a TTY is available; refuses hard when spawned from the web
+  endpoint (no TTY, no sensor).
+- `3` — LocalAuthentication framework error → `publish.sh` exits 3.
+
+**Test-only env overrides** (NEVER set in the launchd plist or any worker
+spawn that talks to the real global tree; only active when the opt-in flag
+is also set):
+
+- `GOSLEEP_TOUCHID_GATE_BIN` — override the gate binary path. Used by
+  `tools/skills/tests/touchid-gate-smoke.sh` with a mock that returns a
+  chosen exit code without touching LocalAuthentication.
+- `GOSLEEP_TOUCHID_BYPASS=1` — skip the gate under opt-in. **Fail-closed
+  against production paths** (textual guard, latent under default-off):
+  refuses (exit 3) unless BOTH `GOSLEEP_SKILLS_PROD_DIR` and
+  `GOSLEEP_SKILLS_BACKUPS_DIR` are set AND both string-compare outside
+  `$HOME/.claude/skills` AND outside `docs/skills/backups`. Mirrors the
+  GSL-254 production test-guard pattern. **The guard is text-only**: it
+  compares the raw env-var expansions with a shell `case` statement, with
+  no `realpath` normalization and no independent anchoring of `$HOME`. The
+  independent adversarial verifier for PR #359 (report at
+  `docs/reports/verifications/GSL-288/runs/01/`) demonstrated six ways to
+  slip past it end-to-end — symlink into the real prod tree, uppercase
+  path segments on case-insensitive HFS+, relative-path symlink, `HOME`
+  rewrite, `../` traversal, and a backups-tree symlink — each of which
+  landed dev content in the real `~/.claude/skills` tree. **Latent only
+  under the current default-off shape:** the entire `GOSLEEP_TOUCHID`
+  block is skipped in production, so no live spawn today ever reaches
+  this guard. The guard MUST be hardened (see the follow-up
+  `[Core][Security] Harden touchid bypass guard` task) BEFORE
+  `GOSLEEP_TOUCHID=1` is ever set in any spawner — do not flip the flag
+  on until realpath-normalization + case-insensitive comparison ships.
+
+Assert the wiring with `bash tools/skills/tests/touchid-gate-smoke.sh` —
+11 invariants: the default-off inert-stub path (E1), the four opt-in
+exit-code paths (C1–C4), two bypass-guard branches (D1 hermetic-refuse
+without prod overrides + D2 accept with hermetic overrides), two explicit
+prod-path bypass-refusal cases (D3 real `$HOME/.claude/skills`, D4 real
+`docs/skills/backups`), and two "real prod tree mtime unchanged"
+cross-checks (one per real tree) that fail loudly if any case leaks into
+`$HOME/.claude/skills` or `docs/skills/backups`. All run against a mock
+binary so the smoke never triggers a real biometric dialog. The smoke's
+green result attests only that the textual guard behaves as coded against
+the four explicit prod-path shapes it tests; the six adversarial vectors
+above are outside its scope and require the follow-up hardening task.
+
 ## 11. Standing rules for agents touching this engine
 
 - **SQLite is the source of truth** — JSONL under `docs/lab/` is a historical archive as of

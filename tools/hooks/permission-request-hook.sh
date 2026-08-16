@@ -93,18 +93,17 @@ trap 'rm -f "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true' EXIT
 cat > "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true
 exec < "$_GOSLEEP_STDIN_PEEK"
 
+# GSL-367: env fast-path bypass + pure-shell peek. See ask-user-question-hook.sh for the
+# full rationale. TL;DR: when GOSLEEP_WEB_QUESTIONS=1 the gate wins on env alone and does
+# not need session_id, so we skip the peek entirely; otherwise we use a bash+sed regex
+# over the first 4 KiB of the payload instead of spawning python3. A miss (weird shape,
+# no session_id) leaves the sid empty and the gate reports UNKNOWN — identical to the
+# pre-GSL-367 python3 `except Exception: pass` branch.
 _GOSLEEP_PEEK_SESSION_ID=""
-if command -v python3 >/dev/null 2>&1 && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
-    _GOSLEEP_PEEK_SESSION_ID="$(python3 - "$_GOSLEEP_STDIN_PEEK" <<'PY' 2>/dev/null || printf ''
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        d = json.load(f)
-    print(d.get("session_id", "") or "", end="")
-except Exception:
-    pass
-PY
-)"
+if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ] && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
+    _GOSLEEP_PEEK_SESSION_ID="$(LC_ALL=C head -c 4096 "$_GOSLEEP_STDIN_PEEK" 2>/dev/null \
+        | LC_ALL=C sed -n -E 's/.*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+        | head -n 1)"
 fi
 
 # shellcheck disable=SC1091
