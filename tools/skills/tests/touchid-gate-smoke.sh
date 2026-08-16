@@ -1,31 +1,42 @@
 #!/usr/bin/env bash
 # =============================================================================
 # tools/skills/tests/touchid-gate-smoke.sh — asserts publish.sh's TouchID
-# physical-gesture gate (GSL-288 wiring; target-architecture rev 2 §7.3
+# physical-gesture gate wiring (GSL-288; target-architecture rev 2 §7.3
 # "Приоритет 1", rev-3 addendum Delta 4 items 3-4).
 #
-# The gate MUST run on every publish flow — including the AUTO_YES=1 + env-nonce
-# path the web endpoint (POST /actions/skills/publish) spawns. Before this
-# fix landed the CLI walked straight through to `rsync` in that context, so
-# an agent under the owner's UID that held the Bearer could publish without
-# any physical proof of the owner's presence. This smoke locks the four cases:
+# Owner ruling (2026-08-16): the gate SHIPS DEFAULT-OFF behind
+# `GOSLEEP_TOUCHID=1`. This smoke locks the default-off inert-stub path, all
+# four opt-in exit codes, both bypass-guard branches, and two explicit
+# prod-path bypass-refusal cases that mirror the GSL-254 test-guard pattern
+# (fail-closed against any resolved production destination even under opt-in).
 #
-#   Group C — gate is invoked and its exit code steers the flow:
-#     C1. Mock gate rc=0 → publish proceeds (endpoint context: AUTO_YES=1,
-#         env-nonce set, no TTY). CHANGELOG row written; rsync landed in the
-#         hermetic PROD_DIR override.
-#     C2. Mock gate rc=1 → publish exits 3, NO rsync into the override tree,
-#         NO backup written, NO CHANGELOG row appended.
-#     C3. Mock gate rc=2 (no sensor) + no TTY (hermetic pipe context) → publish
-#         exits 3 with the "no owner-presence path available" fingerprint; NO
-#         mutation of the override tree.
+#   Group E — DEFAULT-OFF stub is inert; publish flows are unchanged:
+#     E1. No GOSLEEP_TOUCHID → publish proceeds under the pre-GSL-288
+#         owner-gate (`--yes` + env-nonce). The gate's "OFF (stub; ...)"
+#         breadcrumb is logged; no "touchid gate rc=" line, no "TouchID
+#         denied", no other gate fingerprint fires; override tree populated.
+#         Setting GOSLEEP_TOUCHID_BYPASS=1 with the flag off does NOT trigger
+#         the bypass refusal path either — the whole block is skipped.
+#
+#   Group C — GOSLEEP_TOUCHID=1 + exit code steers the flow:
+#     C1. Mock gate rc=0 → publish proceeds; CHANGELOG row written; rsync
+#         landed in the hermetic PROD_DIR override.
+#     C2. Mock gate rc=1 → publish exits 3, NO rsync, NO backup, NO CHANGELOG.
+#     C3. Mock gate rc=2 (no sensor) + no TTY (hermetic pipe context) →
+#         publish exits 3 with the "no owner-presence path available"
+#         fingerprint; NO mutation of the override tree.
 #     C4. Mock gate rc=3 (framework error) → publish exits 3; NO mutation.
 #
-#   Group D — the hermetic bypass has hard belt-and-braces guards:
-#     D1. GOSLEEP_TOUCHID_BYPASS=1 WITHOUT the hermetic path overrides → refuses
-#         with exit 3 (prevents accidental production bypass).
-#     D2. GOSLEEP_TOUCHID_BYPASS=1 WITH the hermetic overrides → skips the gate
-#         and proceeds (this is how CI runs without biometric hardware).
+#   Group D — GOSLEEP_TOUCHID_BYPASS guards under opt-in:
+#     D1. BYPASS=1 WITHOUT the hermetic path overrides → refuses with exit 3
+#         (prevents accidental production bypass).
+#     D2. BYPASS=1 WITH the hermetic overrides → skips the gate, proceeds.
+#     D3. BYPASS=1 + GOSLEEP_SKILLS_PROD_DIR=$HOME/.claude/skills (real prod
+#         tree) → refuses even though BACKUPS_DIR is hermetic. Fail-closed
+#         against the real global skills tree.
+#     D4. BYPASS=1 + GOSLEEP_SKILLS_BACKUPS_DIR=$REPO_ROOT/docs/skills/backups
+#         (real prod backups tree) → refuses even though PROD_DIR is
+#         hermetic. Fail-closed against the real production backups path.
 #
 # Every mutable path is redirected under .artifacts/touchid-gate-smoke/ via
 # GOSLEEP_* env overrides. The real global tree $HOME/.claude/skills/ is
@@ -51,9 +62,8 @@ PROD_ROOT_SCRATCH="$WORK/prod-scratch"
 BACKUPS_DIR="$WORK/backups"
 CHANGELOG_PATH="$WORK/changelog/CHANGELOG.jsonl"
 
-# The gate runs AFTER the DB preflight, so we need a real (migrated) DB or the
-# preflight will refuse before we ever exercise the gate. Bun's migrate.ts
-# creates the tables idempotently against a fresh file.
+# The gate (when opt-in) runs AFTER the DB preflight, so we need a real
+# (migrated) DB or the preflight will refuse before we ever exercise the gate.
 SCRATCH_DB="$WORK/data/gosleep.db"
 if ! (cd "$REPO_ROOT" && GOSLEEP_DB_PATH="$SCRATCH_DB" bun run apps/core/scripts/migrate.ts) \
      >"$WORK/migrate.stdout.log" 2>"$WORK/migrate.stderr.log"; then
@@ -64,12 +74,23 @@ fi
 
 TARGET_SKILL="handoff"
 REAL_PROD_DIR="$HOME/.claude/skills/$TARGET_SKILL"
+REAL_BACKUPS_ROOT="$REPO_ROOT/docs/skills/backups"
 
 REAL_MTIME_BEFORE=""
 REAL_EXISTED_BEFORE="no"
 if [ -d "$REAL_PROD_DIR" ]; then
   REAL_EXISTED_BEFORE="yes"
   REAL_MTIME_BEFORE="$(stat -f %m "$REAL_PROD_DIR" 2>/dev/null || stat -c %Y "$REAL_PROD_DIR" 2>/dev/null || echo "")"
+fi
+
+# Also snapshot the real prod backups root (docs/skills/backups) so D4 can
+# prove the fail-closed guard is real — a bypass that landed anything in
+# there would flip the mtime.
+REAL_BACKUPS_MTIME_BEFORE=""
+REAL_BACKUPS_EXISTED_BEFORE="no"
+if [ -d "$REAL_BACKUPS_ROOT" ]; then
+  REAL_BACKUPS_EXISTED_BEFORE="yes"
+  REAL_BACKUPS_MTIME_BEFORE="$(stat -f %m "$REAL_BACKUPS_ROOT" 2>/dev/null || stat -c %Y "$REAL_BACKUPS_ROOT" 2>/dev/null || echo "")"
 fi
 
 # ---- mock gate binary --------------------------------------------------------
@@ -103,11 +124,47 @@ reset_state() {
   : > "$CHANGELOG_PATH"
 }
 
+# ---- E1: default-off inert stub ----------------------------------------------
+# NO GOSLEEP_TOUCHID → gate is inert; publish must proceed via the pre-GSL-288
+# owner-gate (env-nonce + --yes). Also set GOSLEEP_TOUCHID_BYPASS=1 to prove
+# the bypass guard is dormant when the flag is off (would otherwise fire).
+reset_state
+echo "0" > "$WORK/mock-gate-rc"
+set +e
+env -u CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS \
+    -u GOSLEEP_TOUCHID \
+    GOSLEEP_WEB_TOKEN="touchid-gate-smoke-nonce-32-hex-chars-a" \
+    GOSLEEP_SKILLS_PROD_DIR="$PROD_ROOT_SCRATCH" \
+    GOSLEEP_SKILLS_BACKUPS_DIR="$BACKUPS_DIR" \
+    GOSLEEP_CHANGELOG_PATH="$CHANGELOG_PATH" \
+    GOSLEEP_DB_PATH="$SCRATCH_DB" \
+    GOSLEEP_TOUCHID_GATE_BIN="$WORK/mock-gate" \
+    GOSLEEP_TOUCHID_BYPASS=1 \
+  bash -c "bash \"$REPO_ROOT/tools/skills/publish.sh\" $TARGET_SKILL --yes </dev/null \
+           >\"$WORK/E1.stdout.log\" 2>\"$WORK/E1.stderr.log\"; echo \$? >\"$WORK/E1.rc\""
+set -e
+E1_RC="$(cat "$WORK/E1.rc" 2>/dev/null || echo 99)"
+if [ "$E1_RC" = "0" ] \
+   && [ -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] \
+   && grep -q 'touchid gate: OFF (stub' "$WORK/E1.stderr.log" \
+   && ! grep -q 'touchid gate rc=' "$WORK/E1.stderr.log" \
+   && ! grep -q 'refusing bypass' "$WORK/E1.stderr.log" \
+   && ! grep -q 'TouchID denied' "$WORK/E1.stderr.log"; then
+  echo "  PASS: E1 default-off → inert stub logged, publish proceeded via pre-GSL-288 owner-gate."
+else
+  echo "FAIL: E1 default-off failed — expected rc=0 + stub log + no gate/bypass fingerprints." >&2
+  echo "  rc=$E1_RC, override present? $([ -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] && echo yes || echo no)" >&2
+  tail -n 40 "$WORK/E1.stderr.log" >&2
+  FAIL=1
+fi
+
+# ---- helper for opt-in cases (C1-C4, D1-D2) ---------------------------------
 run_case() {
   # $1 = label, $2 = mock exit code, remaining args = env prefix pairs "KEY=val"
   local label="$1" mock_rc="$2"; shift 2
   echo "$mock_rc" > "$WORK/mock-gate-rc"
   local -a envs=(
+    "GOSLEEP_TOUCHID=1"
     "GOSLEEP_WEB_TOKEN=touchid-gate-smoke-nonce-32-hex-chars-a"
     "GOSLEEP_SKILLS_PROD_DIR=$PROD_ROOT_SCRATCH"
     "GOSLEEP_SKILLS_BACKUPS_DIR=$BACKUPS_DIR"
@@ -123,20 +180,15 @@ run_case() {
   set -e
 }
 
-# ---- C1: mock rc=0 → publish proceeds --------------------------------------
+# ---- C1: mock rc=0 → publish proceeds ---------------------------------------
 reset_state
 run_case C1 0
 C1_RC="$(cat "$WORK/C1.rc" 2>/dev/null || echo 99)"
-if [ "$C1_RC" = "0" ] && [ -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ]; then
-  if grep -q 'touchid gate rc=0' "$WORK/C1.stderr.log"; then
-    echo "  PASS: C1 gate rc=0 → publish proceeded (rc=0, override tree populated, gate line logged)."
-  else
-    echo "FAIL: C1 gate rc=0 succeeded but the 'touchid gate rc=0' log line is missing." >&2
-    tail -n 30 "$WORK/C1.stderr.log" >&2
-    FAIL=1
-  fi
+if [ "$C1_RC" = "0" ] && [ -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] \
+   && grep -q 'touchid gate rc=0' "$WORK/C1.stderr.log"; then
+  echo "  PASS: C1 opt-in + gate rc=0 → publish proceeded, gate log line present."
 else
-  echo "FAIL: C1 expected rc=0 + override tree populated; got rc=$C1_RC. Override present? $([ -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] && echo yes || echo no)." >&2
+  echo "FAIL: C1 expected rc=0 + override tree populated + gate log; got rc=$C1_RC." >&2
   tail -n 30 "$WORK/C1.stderr.log" >&2
   FAIL=1
 fi
@@ -148,7 +200,7 @@ C2_RC="$(cat "$WORK/C2.rc" 2>/dev/null || echo 99)"
 if [ "$C2_RC" = "3" ] \
    && [ ! -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] \
    && grep -q 'TouchID denied' "$WORK/C2.stderr.log"; then
-  echo "  PASS: C2 gate rc=1 → publish refused (rc=3), no rsync, 'TouchID denied' fingerprint present."
+  echo "  PASS: C2 opt-in + gate rc=1 → publish refused (rc=3), no rsync, 'TouchID denied' fingerprint."
 else
   echo "FAIL: C2 expected rc=3 refusal + no rsync + fingerprint; got rc=$C2_RC." >&2
   tail -n 30 "$WORK/C2.stderr.log" >&2
@@ -162,7 +214,7 @@ C3_RC="$(cat "$WORK/C3.rc" 2>/dev/null || echo 99)"
 if [ "$C3_RC" = "3" ] \
    && [ ! -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] \
    && grep -q 'no owner-presence path available' "$WORK/C3.stderr.log"; then
-  echo "  PASS: C3 gate rc=2 + no TTY → publish refused with the sensorless-pipe fingerprint."
+  echo "  PASS: C3 opt-in + gate rc=2 + no TTY → publish refused with sensorless-pipe fingerprint."
 else
   echo "FAIL: C3 expected rc=3 refusal + no rsync + 'no owner-presence path available'; got rc=$C3_RC." >&2
   tail -n 30 "$WORK/C3.stderr.log" >&2
@@ -176,20 +228,20 @@ C4_RC="$(cat "$WORK/C4.rc" 2>/dev/null || echo 99)"
 if [ "$C4_RC" = "3" ] \
    && [ ! -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] \
    && grep -q 'TouchID framework error' "$WORK/C4.stderr.log"; then
-  echo "  PASS: C4 gate rc=3 → publish refused with the framework-error fingerprint."
+  echo "  PASS: C4 opt-in + gate rc=3 → publish refused with framework-error fingerprint."
 else
   echo "FAIL: C4 expected rc=3 refusal + no rsync + framework-error fingerprint; got rc=$C4_RC." >&2
   tail -n 30 "$WORK/C4.stderr.log" >&2
   FAIL=1
 fi
 
-# ---- D1: BYPASS=1 without hermetic overrides → refusal -----------------------
+# ---- D1: opt-in + BYPASS=1 without hermetic overrides → refusal --------------
 reset_state
-# Deliberately drop the two path overrides to prove the bypass refuses.
 echo "0" > "$WORK/mock-gate-rc"
 set +e
 env -u CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS \
     -u GOSLEEP_SKILLS_PROD_DIR -u GOSLEEP_SKILLS_BACKUPS_DIR \
+    GOSLEEP_TOUCHID=1 \
     GOSLEEP_WEB_TOKEN="touchid-gate-smoke-nonce-32-hex-chars-a" \
     GOSLEEP_CHANGELOG_PATH="$CHANGELOG_PATH" \
     GOSLEEP_DB_PATH="$SCRATCH_DB" \
@@ -199,20 +251,19 @@ env -u CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS \
            >\"$WORK/D1.stdout.log\" 2>\"$WORK/D1.stderr.log\"; echo \$? >\"$WORK/D1.rc\""
 set -e
 D1_RC="$(cat "$WORK/D1.rc" 2>/dev/null || echo 99)"
-if [ "$D1_RC" = "3" ] \
-   && grep -q 'refusing bypass' "$WORK/D1.stderr.log" \
-   && [ ! -d "$REAL_PROD_DIR.gsl288-tmp" ]; then
-  echo "  PASS: D1 BYPASS=1 without hermetic overrides → refused (rc=3, fingerprint present)."
+if [ "$D1_RC" = "3" ] && grep -q 'refusing bypass' "$WORK/D1.stderr.log"; then
+  echo "  PASS: D1 opt-in + BYPASS=1 without hermetic overrides → refused (rc=3, 'refusing bypass')."
 else
   echo "FAIL: D1 expected rc=3 refusal + 'refusing bypass' fingerprint; got rc=$D1_RC." >&2
   tail -n 30 "$WORK/D1.stderr.log" >&2
   FAIL=1
 fi
 
-# ---- D2: BYPASS=1 with hermetic overrides → proceeds -------------------------
+# ---- D2: opt-in + BYPASS=1 with hermetic overrides → proceeds ----------------
 reset_state
 set +e
 env -u CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS \
+    GOSLEEP_TOUCHID=1 \
     GOSLEEP_WEB_TOKEN="touchid-gate-smoke-nonce-32-hex-chars-a" \
     GOSLEEP_SKILLS_PROD_DIR="$PROD_ROOT_SCRATCH" \
     GOSLEEP_SKILLS_BACKUPS_DIR="$BACKUPS_DIR" \
@@ -227,10 +278,68 @@ D2_RC="$(cat "$WORK/D2.rc" 2>/dev/null || echo 99)"
 if [ "$D2_RC" = "0" ] \
    && [ -d "$PROD_ROOT_SCRATCH/$TARGET_SKILL" ] \
    && grep -q 'TouchID gate skipped' "$WORK/D2.stderr.log"; then
-  echo "  PASS: D2 BYPASS=1 + hermetic overrides → publish proceeded (rc=0) with 'skipped' fingerprint."
+  echo "  PASS: D2 opt-in + BYPASS=1 + hermetic overrides → publish proceeded (rc=0)."
 else
-  echo "FAIL: D2 expected rc=0 + override tree populated + bypass fingerprint; got rc=$D2_RC." >&2
+  echo "FAIL: D2 expected rc=0 + override tree populated + 'skipped' fingerprint; got rc=$D2_RC." >&2
   tail -n 30 "$WORK/D2.stderr.log" >&2
+  FAIL=1
+fi
+
+# ---- D3: opt-in + BYPASS=1 + REAL prod tree in PROD_DIR → refusal ------------
+#
+# The caller explicitly points PROD_DIR at $HOME/.claude/skills. Even with
+# BYPASS=1 and a hermetic BACKUPS_DIR, the guard must refuse — mirrors the
+# GSL-254 production test-guard pattern (fail-closed against production paths).
+reset_state
+echo "0" > "$WORK/mock-gate-rc"
+set +e
+env -u CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS \
+    GOSLEEP_TOUCHID=1 \
+    GOSLEEP_WEB_TOKEN="touchid-gate-smoke-nonce-32-hex-chars-a" \
+    GOSLEEP_SKILLS_PROD_DIR="$HOME/.claude/skills" \
+    GOSLEEP_SKILLS_BACKUPS_DIR="$BACKUPS_DIR" \
+    GOSLEEP_CHANGELOG_PATH="$CHANGELOG_PATH" \
+    GOSLEEP_DB_PATH="$SCRATCH_DB" \
+    GOSLEEP_TOUCHID_GATE_BIN="$WORK/mock-gate" \
+    GOSLEEP_TOUCHID_BYPASS=1 \
+  bash -c "bash \"$REPO_ROOT/tools/skills/publish.sh\" $TARGET_SKILL --yes </dev/null \
+           >\"$WORK/D3.stdout.log\" 2>\"$WORK/D3.stderr.log\"; echo \$? >\"$WORK/D3.rc\""
+set -e
+D3_RC="$(cat "$WORK/D3.rc" 2>/dev/null || echo 99)"
+if [ "$D3_RC" = "3" ] && grep -q 'refusing bypass' "$WORK/D3.stderr.log"; then
+  echo "  PASS: D3 opt-in + BYPASS=1 + PROD_DIR=\$HOME/.claude/skills → refused (fail-closed)."
+else
+  echo "FAIL: D3 expected rc=3 refusal against real prod tree; got rc=$D3_RC." >&2
+  tail -n 30 "$WORK/D3.stderr.log" >&2
+  FAIL=1
+fi
+
+# ---- D4: opt-in + BYPASS=1 + REAL prod backups in BACKUPS_DIR → refusal ------
+#
+# Same guard, opposite variable: point BACKUPS_DIR at the real production
+# backups tree docs/skills/backups. Even with a hermetic PROD_DIR the guard
+# must refuse.
+reset_state
+echo "0" > "$WORK/mock-gate-rc"
+set +e
+env -u CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS \
+    GOSLEEP_TOUCHID=1 \
+    GOSLEEP_WEB_TOKEN="touchid-gate-smoke-nonce-32-hex-chars-a" \
+    GOSLEEP_SKILLS_PROD_DIR="$PROD_ROOT_SCRATCH" \
+    GOSLEEP_SKILLS_BACKUPS_DIR="$REAL_BACKUPS_ROOT" \
+    GOSLEEP_CHANGELOG_PATH="$CHANGELOG_PATH" \
+    GOSLEEP_DB_PATH="$SCRATCH_DB" \
+    GOSLEEP_TOUCHID_GATE_BIN="$WORK/mock-gate" \
+    GOSLEEP_TOUCHID_BYPASS=1 \
+  bash -c "bash \"$REPO_ROOT/tools/skills/publish.sh\" $TARGET_SKILL --yes </dev/null \
+           >\"$WORK/D4.stdout.log\" 2>\"$WORK/D4.stderr.log\"; echo \$? >\"$WORK/D4.rc\""
+set -e
+D4_RC="$(cat "$WORK/D4.rc" 2>/dev/null || echo 99)"
+if [ "$D4_RC" = "3" ] && grep -q 'refusing bypass' "$WORK/D4.stderr.log"; then
+  echo "  PASS: D4 opt-in + BYPASS=1 + BACKUPS_DIR=docs/skills/backups → refused (fail-closed)."
+else
+  echo "FAIL: D4 expected rc=3 refusal against real prod backups; got rc=$D4_RC." >&2
+  tail -n 30 "$WORK/D4.stderr.log" >&2
   FAIL=1
 fi
 
@@ -252,8 +361,26 @@ else
   fi
 fi
 
+# ---- REAL production backups root untouched ---------------------------------
+if [ "$REAL_BACKUPS_EXISTED_BEFORE" = "yes" ]; then
+  REAL_BACKUPS_MTIME_AFTER="$(stat -f %m "$REAL_BACKUPS_ROOT" 2>/dev/null || stat -c %Y "$REAL_BACKUPS_ROOT" 2>/dev/null || echo "")"
+  if [ "$REAL_BACKUPS_MTIME_BEFORE" != "$REAL_BACKUPS_MTIME_AFTER" ]; then
+    echo "FAIL: real backups root mtime changed ($REAL_BACKUPS_MTIME_BEFORE → $REAL_BACKUPS_MTIME_AFTER) — the smoke is leaky." >&2
+    FAIL=1
+  else
+    echo "  PASS: real backups root ($REAL_BACKUPS_ROOT) mtime unchanged across all cases."
+  fi
+else
+  if [ -d "$REAL_BACKUPS_ROOT" ]; then
+    echo "FAIL: real backups root $REAL_BACKUPS_ROOT did not exist before but does now — the smoke is leaky." >&2
+    FAIL=1
+  else
+    echo "  PASS: real backups root $REAL_BACKUPS_ROOT still absent (never mkdir'd)."
+  fi
+fi
+
 if [ "$FAIL" -eq 0 ]; then
-  echo "touchid-gate-smoke: OK — gate is invoked on every publish path and steers the flow correctly."
+  echo "touchid-gate-smoke: OK — default-off stub inert, opt-in exit codes steer flow, bypass fail-closed vs real prod paths."
   exit 0
 else
   echo "touchid-gate-smoke: FAILED — one or more invariants broke." >&2
