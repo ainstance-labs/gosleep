@@ -53,6 +53,11 @@ import { getSessionAdapter } from "../adapter/session.ts";
 import { loadManifest, type ManifestRule } from "../manifest/parser.ts";
 import { runSyncCycle, type JiraSyncChangeSummary } from "../workers/jira-sync.ts";
 import { broadcaster } from "../sse/broadcaster.ts";
+import {
+  releaseControl,
+  takeControl,
+  type TransitionResult,
+} from "../control/registry.ts";
 
 export const actionsRoutes = new Hono();
 
@@ -1615,6 +1620,336 @@ actionsRoutes.post("/actions/events/ack", requireBearer, async (c) => {
 // CHANGELOG row keys back to the audit ledger (plan risk 3: production test-guard keys on
 // intent_id, not "any published row in this run").
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// GSL-361 (observer mode phase B) — POST /actions/sessions/:session_id/take-control
+//                                 + POST /actions/sessions/:session_id/release-control
+//
+// Owner-gated per-session control transitions. Under the same three-layer envelope as every
+// other /actions/* endpoint (requireBearer → serialize → withTimeline). Each transition:
+//   - Writes the DB row via `registry.takeControl / releaseControl`. Refuses:
+//       * 404 unknown session_id (no shim ever registered).
+//       * 409 shim_registered=0 (take-control only — R15.7).
+//       * 409 env-locked release attempts (R15.3).
+//   - Fires a lab-log event of type `control.taken` / `control.released` so the timeline
+//     screen surfaces the transition (F15-S1, F15-S3). Fields include session_id, by, channel,
+//     source, and — on take — the shim_registered flag the row carried at transition time.
+//   - Broadcasts a synthetic `sessions.control.taken` / `sessions.control.released` SSE event
+//     so the Fleet + Observed panels invalidate their per-session control state within one
+//     round-trip. Sub-second cutover (F15-S3 stopwatch overlay).
+//
+// Idempotency: the withTimeline layer replays cached outcomes for a re-used Idempotency-Key.
+// Registry-level idempotency (already-controlled → no-op) returns `changed:false` inside the
+// result envelope; the endpoint stays 200 either way so a double-click is safe.
+// -----------------------------------------------------------------------------
+
+interface ControlTransitionInput {
+  session_id: string;
+  by: string;
+  channel: string;
+}
+
+interface ControlTransitionResult {
+  session_id: string;
+  state: TransitionResult["state"];
+  source: TransitionResult["source"];
+  activated_at: string | null;
+  activated_by: string | null;
+  deactivated_at: string | null;
+  shim_registered: boolean;
+  changed: boolean;
+  channel: string;
+  labLog: { rc: number; stdout: string; stderr: string; elapsedMs: number } | null;
+}
+
+async function fireControlTimelineEvent(kind: "taken" | "released", args: {
+  session_id: string;
+  by: string;
+  channel: string;
+  source: TransitionResult["source"];
+  shim_registered: boolean;
+}): Promise<{ rc: number; stdout: string; stderr: string; elapsedMs: number } | null> {
+  // Fire-and-forget-esque: we await the spawn so the audit line lands before we return, but
+  // any failure only degrades the timeline write — the DB transition already succeeded.
+  // Fail-open on error (returns null in the result envelope; the metrics/log surface still
+  // shows the endpoint 200'd).
+  const dataJson = JSON.stringify({
+    session_id: args.session_id,
+    by: args.by,
+    channel: args.channel,
+    source: args.source,
+    shim_registered: args.shim_registered,
+  });
+  const emit = await spawnAwait({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-log.sh`,
+      "--type",
+      kind === "taken" ? "control.taken" : "control.released",
+      "--actor",
+      args.by,
+      "--src",
+      "emit",
+      "--data-json",
+      dataJson,
+    ],
+    timeoutMs: 5_000,
+  });
+  if (!emit.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.action.control.timeline_warn",
+        kind,
+        session_id: args.session_id,
+        rc: emit.code,
+        stderr: emit.stderr,
+      }),
+    );
+    return null;
+  }
+  return {
+    rc: emit.code ?? -1,
+    stdout: emit.stdout,
+    stderr: emit.stderr,
+    elapsedMs: emit.elapsedMs,
+  };
+}
+
+function fireControlSse(
+  eventType: "sessions.control.taken" | "sessions.control.released",
+  args: {
+    session_id: string;
+    by: string;
+    channel: string;
+    source: TransitionResult["source"];
+    state: TransitionResult["state"];
+  },
+): void {
+  const nowTs = new Date().toISOString();
+  broadcaster.emit({
+    seq: 0,
+    day: nowTs.slice(0, 10),
+    ts: nowTs,
+    src: "core",
+    actor: `actions.sessions.${eventType.endsWith("taken") ? "take-control" : "release-control"}`,
+    task: null,
+    type: eventType,
+    payload: {
+      session_id: args.session_id,
+      by: args.by,
+      channel: args.channel,
+      source: args.source,
+      state: args.state,
+    },
+    ingested_from: null,
+  });
+}
+
+async function doTakeControl(input: ControlTransitionInput): Promise<ControlTransitionResult> {
+  const t = takeControl(getDb(), { session_id: input.session_id, by: input.by });
+  const lab = t.changed
+    ? await fireControlTimelineEvent("taken", {
+        session_id: t.session_id,
+        by: input.by,
+        channel: input.channel,
+        source: t.source,
+        shim_registered: t.shim_registered,
+      })
+    : null;
+  fireControlSse("sessions.control.taken", {
+    session_id: t.session_id,
+    by: input.by,
+    channel: input.channel,
+    source: t.source,
+    state: t.state,
+  });
+  return {
+    session_id: t.session_id,
+    state: t.state,
+    source: t.source,
+    activated_at: t.activated_at,
+    activated_by: t.activated_by,
+    deactivated_at: t.deactivated_at,
+    shim_registered: t.shim_registered,
+    changed: t.changed,
+    channel: input.channel,
+    labLog: lab,
+  };
+}
+
+async function doReleaseControl(input: ControlTransitionInput): Promise<ControlTransitionResult> {
+  const t = releaseControl(getDb(), { session_id: input.session_id, by: input.by });
+  const lab = t.changed
+    ? await fireControlTimelineEvent("released", {
+        session_id: t.session_id,
+        by: input.by,
+        channel: input.channel,
+        source: t.source,
+        shim_registered: t.shim_registered,
+      })
+    : null;
+  fireControlSse("sessions.control.released", {
+    session_id: t.session_id,
+    by: input.by,
+    channel: input.channel,
+    source: t.source,
+    state: t.state,
+  });
+  return {
+    session_id: t.session_id,
+    state: t.state,
+    source: t.source,
+    activated_at: t.activated_at,
+    activated_by: t.activated_by,
+    deactivated_at: t.deactivated_at,
+    shim_registered: t.shim_registered,
+    changed: t.changed,
+    channel: input.channel,
+    labLog: lab,
+  };
+}
+
+function parseControlBody(
+  body: Record<string, unknown>,
+): { by: string; channel: string } {
+  const by = stringField(body, "by") ?? "owner-web";
+  const channel = stringField(body, "channel") ?? "web";
+  return { by, channel };
+}
+
+actionsRoutes.post(
+  "/actions/sessions/:session_id/take-control",
+  requireBearer,
+  async (c) => {
+    const sessionId = c.req.param("session_id");
+    if (sessionId === undefined || sessionId.length === 0) {
+      return c.json({ ok: false, error: "session_id required" }, 400);
+    }
+    const body = await parseJsonBody(c);
+    if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+    const { by, channel } = parseControlBody(body);
+    const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+    try {
+      const outcome = await serialize(
+        `actions.sessions.take-control.${sessionId}`,
+        async () =>
+          withTimeline<ControlTransitionResult>(
+            getDb(),
+            {
+              intentId,
+              endpoint: "POST /actions/sessions/:session_id/take-control",
+              input: { session_id: sessionId, by, channel },
+            },
+            () => doTakeControl({ session_id: sessionId, by, channel }),
+          ),
+      );
+      if (outcome.cached && !outcome.ok) {
+        return c.json(
+          { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+          409,
+        );
+      }
+      return c.json({
+        ok: true,
+        intent_id: outcome.intentId,
+        cached: outcome.cached,
+        finished_at: outcome.finishedAt,
+        result: outcome.result,
+      });
+    } catch (err) {
+      const status = httpStatusFromError(err);
+      if (status >= 500) {
+        // eslint-disable-next-line no-console
+        console.error(
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            event: "core.action.error",
+            intent_id: intentId,
+            http_status: status,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+      return c.json(
+        {
+          ok: false,
+          intent_id: intentId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        status,
+      );
+    }
+  },
+);
+
+actionsRoutes.post(
+  "/actions/sessions/:session_id/release-control",
+  requireBearer,
+  async (c) => {
+    const sessionId = c.req.param("session_id");
+    if (sessionId === undefined || sessionId.length === 0) {
+      return c.json({ ok: false, error: "session_id required" }, 400);
+    }
+    const body = await parseJsonBody(c);
+    if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+    const { by, channel } = parseControlBody(body);
+    const intentId = resolveIntentId(c.req.header("idempotency-key"));
+
+    try {
+      const outcome = await serialize(
+        `actions.sessions.release-control.${sessionId}`,
+        async () =>
+          withTimeline<ControlTransitionResult>(
+            getDb(),
+            {
+              intentId,
+              endpoint: "POST /actions/sessions/:session_id/release-control",
+              input: { session_id: sessionId, by, channel },
+            },
+            () => doReleaseControl({ session_id: sessionId, by, channel }),
+          ),
+      );
+      if (outcome.cached && !outcome.ok) {
+        return c.json(
+          { ok: false, intent_id: outcome.intentId, error: outcome.error, cached: true },
+          409,
+        );
+      }
+      return c.json({
+        ok: true,
+        intent_id: outcome.intentId,
+        cached: outcome.cached,
+        finished_at: outcome.finishedAt,
+        result: outcome.result,
+      });
+    } catch (err) {
+      const status = httpStatusFromError(err);
+      if (status >= 500) {
+        // eslint-disable-next-line no-console
+        console.error(
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            event: "core.action.error",
+            intent_id: intentId,
+            http_status: status,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+      return c.json(
+        {
+          ok: false,
+          intent_id: intentId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        status,
+      );
+    }
+  },
+);
 
 actionsRoutes.post("/actions/skills/publish", requireBearer, async (c) => {
   const body = await parseJsonBody(c);

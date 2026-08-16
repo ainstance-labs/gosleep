@@ -47,6 +47,10 @@ import { spawnAwait, spawnDetached, REPO_ROOT } from "../actions/spawn.ts";
 import { observeHookWait } from "../metrics/registry.ts";
 import { otpStore, DEFAULT_OTP_TTL_MS } from "../setup/otp-store.ts";
 import { HOST_HEADER } from "../config.ts";
+import {
+  readEffectiveState,
+  recordHeartbeat,
+} from "../control/registry.ts";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -1385,3 +1389,105 @@ internalRoutes.post("/internal/setup/otp", requireInternalSecret, async (c) => {
     ttl_s: Math.round(ttlMs / 1000),
   });
 });
+
+// -----------------------------------------------------------------------------
+// GSL-361 (observer mode phase B) — per-session control registry endpoints.
+//
+// Two internal routes wire the shim's runtime-toggle-aware gate to the DB:
+//
+//   GET /internal/sessions/:session_id/control
+//     Fast lookup that returns `{state, source, shim_registered}`. Called by the shim on
+//     every invocation (miss path: adds ~5 ms per hook fire, per R15.6). Cached in-process
+//     on the shim side at a 1 s TTL. Fail-mode: on unreachable core the shim falls back to
+//     env-flag-only per the binding decision (never fail-open into interception).
+//
+//   POST /internal/sessions/:session_id/shim-heartbeat
+//     Called by the FIRST shim invocation per session and idempotently on subsequent ones.
+//     Registers `shim_registered=1` and stamps a heartbeat. Also carries the shim's own
+//     env-opt-in bit: when the launching shell exported GOSLEEP_WEB_QUESTIONS=1, the shim
+//     posts `env_opt_in=true` and the registry escalates to state='controlled', source='env'
+//     immediately (F15-S4). A subsequent panel `release-control` on such a row 409s
+//     (R15.3, "not releasable from panel").
+//
+// AUTH: shared requireInternalSecret gate with every /internal/* route above.
+// -----------------------------------------------------------------------------
+
+internalRoutes.get(
+  "/internal/sessions/:session_id/control",
+  requireInternalSecret,
+  (c) => {
+    const sessionId = c.req.param("session_id");
+    if (sessionId === undefined || sessionId.length === 0) {
+      return c.json({ ok: false, error: "session_id required" }, 400);
+    }
+    const effective = readEffectiveState(getDb(), sessionId);
+    return c.json({
+      ok: true,
+      session_id: sessionId,
+      state: effective.state,
+      source: effective.source,
+      shim_registered: effective.shim_registered,
+    });
+  },
+);
+
+internalRoutes.post(
+  "/internal/sessions/:session_id/shim-heartbeat",
+  requireInternalSecret,
+  async (c) => {
+    const sessionId = c.req.param("session_id");
+    if (sessionId === undefined || sessionId.length === 0) {
+      return c.json({ ok: false, error: "session_id required" }, 400);
+    }
+    const body = await parseJsonBody(c);
+    if ("__error" in body) return c.json({ ok: false, error: body.__error }, 400);
+
+    const rawPid = body.pid;
+    const pid =
+      typeof rawPid === "number" && Number.isFinite(rawPid) && rawPid > 0
+        ? Math.trunc(rawPid)
+        : null;
+    const envOptIn = body.env_opt_in === true;
+    const result = recordHeartbeat(getDb(), {
+      session_id: sessionId,
+      pid,
+      env_opt_in: envOptIn,
+    });
+
+    // Fan out to the panel via SSE — the shim-registered flip enables the "Take control"
+    // button, and the env-locked escalation swaps the pill from `observer` to `env-locked`.
+    // Synthetic (seq: 0) event; SseProvider treats `sessions.control.*` prefix as a cache-
+    // invalidation trigger (client changes land in GSL-361 too).
+    const nowTs = nowIso();
+    agentSessionsBroadcaster.emit({
+      seq: 0,
+      day: nowTs.slice(0, 10),
+      ts: nowTs,
+      src: "core",
+      actor: "internal.sessions.heartbeat",
+      task: null,
+      type: result.env_locked
+        ? "sessions.control.env-locked"
+        : "sessions.control.heartbeat",
+      payload: {
+        session_id: sessionId,
+        state: result.state,
+        source: result.source,
+        shim_registered: result.shim_registered,
+        env_locked: result.env_locked,
+        created: result.created,
+      },
+      ingested_from: null,
+    });
+
+    return c.json({
+      ok: true,
+      session_id: sessionId,
+      state: result.state,
+      source: result.source,
+      shim_registered: result.shim_registered,
+      env_locked: result.env_locked,
+      created: result.created,
+    });
+  },
+);

@@ -32,6 +32,7 @@ import { computeRunway } from "../runway.ts";
 import { getDbSchemaVersion } from "../db/schemaVersion.ts";
 import { computeSkillDiff, quickHasChanges, KNOWN_SKILLS } from "../skills/diff.ts";
 import { serialize } from "../actions/mutex.ts";
+import { listControlled, readControl } from "../control/registry.ts";
 
 export const readRoutes = new Hono();
 
@@ -496,6 +497,15 @@ interface AgentSessionRow {
   // parent-PID walk) or 'heuristic' (cwd-prefix match on pane_current_path). NULL when no
   // pane matched at all. Panel renders a small tag next to the pane ref when heuristic.
   attribution: string | null;
+  // GSL-361 (observer mode phase B) — per-session control-registry projection. `control_state`
+  // is 'observer' when no row exists (default) or when the row is observer. `control_source`
+  // is null iff no row exists. `shim_registered=0` disables the "Take control" button on the
+  // panel card (R15.7). NULLs project from the LEFT JOIN when the session's shim never fired.
+  control_state: string | null;
+  control_source: string | null;
+  control_activated_at: string | null;
+  control_activated_by: string | null;
+  shim_registered: number | null;
 }
 
 readRoutes.get("/fleet", requireBearer, (c) => {
@@ -528,7 +538,12 @@ readRoutes.get("/fleet", requireBearer, (c) => {
                 WHEN pri.pane_ref IS NOT NULL THEN 'pidtree'
                 WHEN sec.pane_ref IS NOT NULL THEN 'heuristic'
                 ELSE NULL
-              END AS attribution
+              END AS attribution,
+              sc.state       AS control_state,
+              sc.source      AS control_source,
+              sc.activated_at   AS control_activated_at,
+              sc.activated_by   AS control_activated_by,
+              sc.shim_registered AS shim_registered
        FROM agent_sessions a
        LEFT JOIN (
          SELECT pane_pid,
@@ -544,6 +559,7 @@ readRoutes.get("/fleet", requireBearer, (c) => {
        ) sec ON pri.pane_ref IS NULL
              AND a.cwd_project_root IS NOT NULL
              AND sec.pane_current_path LIKE a.cwd_project_root || '%'
+       LEFT JOIN session_control sc ON sc.session_id = a.session_id
        ORDER BY (a.ended_at IS NULL) DESC, a.updated_at DESC
        LIMIT 200`,
     )
@@ -597,9 +613,95 @@ readRoutes.get("/fleet", requireBearer, (c) => {
       // GSL-350 M1 follow-up — how the tmux_pane_ref was resolved (pidtree | heuristic |
       // null). Panel tags heuristic matches with a small "heuristic" hint.
       attribution: r.attribution,
+      // GSL-361 (observer mode phase B) — per-session control state. `control_state` defaults
+      // to 'observer' when no session_control row exists (never-registered shim). `env_locked`
+      // is a UI convenience derived from the pair — true iff (state='controlled' AND
+      // source='env'). `shim_registered=false` on a fresh row disables the "Take control"
+      // button on the panel card (R15.7).
+      control_state:
+        r.control_state === "controlled" ? "controlled" : "observer",
+      control_source: r.control_source ?? null,
+      control_activated_at: r.control_activated_at,
+      control_activated_by: r.control_activated_by,
+      shim_registered: r.shim_registered === 1,
+      env_locked:
+        r.control_state === "controlled" && r.control_source === "env",
     })),
     count: rows.length,
     totals,
+  });
+});
+
+// -----------------------------------------------------------------------------
+// GSL-361 (observer mode phase B) — GET /sessions/:session_id/control
+//                                 + GET /sessions?state=controlled
+//
+// Public (Bearer-gated) read side of the control registry, complementing the internal
+// /internal/sessions/:id/control that the shim consults. Panel calls the singular form when
+// hydrating a session card and the plural form to render the "sessions under panel control"
+// list (also feeds the Take-Control confirmation dialog's "already-controlled" count).
+// -----------------------------------------------------------------------------
+
+readRoutes.get("/sessions/:session_id/control", requireBearer, (c) => {
+  const sessionId = c.req.param("session_id");
+  if (sessionId === undefined || sessionId.length === 0) {
+    return c.json({ ok: false, error: "session_id required" }, 400);
+  }
+  const row = readControl(getDb(), sessionId);
+  if (row === null) {
+    // "Never checked in" — the panel renders this as `observer + disabled Take` with a
+    // tooltip pointing at R15.7 ("shim not registered — cannot take control").
+    return c.json({
+      ok: true,
+      session_id: sessionId,
+      state: "observer",
+      source: null,
+      activated_at: null,
+      activated_by: null,
+      deactivated_at: null,
+      shim_registered: false,
+      last_heartbeat_at: null,
+      env_locked: false,
+      exists: false,
+    });
+  }
+  return c.json({
+    ok: true,
+    session_id: sessionId,
+    state: row.state,
+    source: row.source,
+    activated_at: row.activated_at,
+    activated_by: row.activated_by,
+    deactivated_at: row.deactivated_at,
+    shim_registered: row.shim_registered,
+    last_heartbeat_at: row.last_heartbeat_at,
+    env_locked: row.state === "controlled" && row.source === "env",
+    exists: true,
+  });
+});
+
+readRoutes.get("/sessions", requireBearer, (c) => {
+  const state = c.req.query("state");
+  if (state !== undefined && state !== "controlled") {
+    return c.json(
+      { ok: false, error: `unsupported state filter: ${state}` },
+      400,
+    );
+  }
+  const rows = listControlled(getDb());
+  return c.json({
+    ok: true,
+    sessions: rows.map((r) => ({
+      session_id: r.session_id,
+      state: r.state,
+      source: r.source,
+      activated_at: r.activated_at,
+      activated_by: r.activated_by,
+      shim_registered: r.shim_registered,
+      last_heartbeat_at: r.last_heartbeat_at,
+      env_locked: r.state === "controlled" && r.source === "env",
+    })),
+    count: rows.length,
   });
 });
 

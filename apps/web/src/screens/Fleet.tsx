@@ -10,6 +10,7 @@
 // the last hour without a filter dance.
 
 import { Card, CardBody, CardHeader, CardTitle } from "../components/ui/Card";
+import { ControlToggle } from "../components/ControlToggle";
 import { PageHeader } from "../components/PageHeader";
 import { QueryStatus } from "../components/QueryStatus";
 import { Badge } from "../components/ui/Badge";
@@ -275,6 +276,20 @@ export function FleetScreen() {
                           : `updated ${timeAgo(s.updated_at)}`}
                       </span>
                     </div>
+                    {/* GSL-361 (observer mode phase B) — per-session Take/Release control
+                        toggle. Hidden on ended rows (no session left to control) — the
+                        registry row survives, but the affordance is meaningless. */}
+                    {!isEnded ? (
+                      <div className="pt-1">
+                        <ControlToggle
+                          sessionId={s.session_id}
+                          state={s.control_state as "observer" | "controlled" | undefined}
+                          source={s.control_source as "env" | "runtime" | "inherited" | null | undefined}
+                          shimRegistered={s.shim_registered}
+                          envLocked={s.env_locked}
+                        />
+                      </div>
+                    ) : null}
                   </CardBody>
                 </Card>
               );

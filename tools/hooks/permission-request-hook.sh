@@ -67,17 +67,13 @@
 set -u -o pipefail
 
 # =============================================================================
-# GSL-267 GUARDED PILOT (owner decision d-2026-08-08-001).
-# The whole loop is opt-in — this hook exits 0 INSTANTLY unless the session was
-# launched with GOSLEEP_WEB_QUESTIONS=1. Fail-open behaviour is preserved
-# because exit 0 with empty stdout tells Claude Code "no decision" → TUI
-# renders normally per hooks.md:223. Only sessions started with the flag hit
-# the network. Widening to all sessions requires an owner command; do NOT
-# remove this guard without that command.
+# GSL-361 COMPOUND-OR GATE (observer mode phase B, reframes GSL-267).
+#
+# See ask-user-question-hook.sh for the full rationale. TL;DR: the launch-time env-flag gate
+# is now a compound-OR with the runtime toggle exposed by the panel; env-flag still wins
+# instantly, runtime-toggle takes effect within a 1 s cache TTL, core-unreachable falls back
+# to env-flag-only (never fail-open into interception, per the binding decision).
 # =============================================================================
-if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ]; then
-    exit 0
-fi
 
 CORE_URL="${GOSLEEP_CORE_URL:-http://127.0.0.1:7331}"
 INTERNAL_SECRET="${GOSLEEP_INTERNAL_SECRET:-}"
@@ -89,6 +85,35 @@ HOST_HEADER="${CORE_URL#http://}"
 HOST_HEADER="${HOST_HEADER#https://}"
 HOST_HEADER="${HOST_HEADER%%/*}"
 ORIGIN_HEADER="${CORE_URL%/}"
+
+# Compound-OR gate: peek at stdin for the session_id, consult the core / env flag, and
+# fast-exit unless the session is opted-in.
+_GOSLEEP_STDIN_PEEK="$(mktemp -t gosleep-perm-hook-peek.XXXXXX 2>/dev/null || echo "/tmp/gosleep-perm-hook-peek.$$")"
+trap 'rm -f "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true' EXIT
+cat > "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true
+exec < "$_GOSLEEP_STDIN_PEEK"
+
+_GOSLEEP_PEEK_SESSION_ID=""
+if command -v python3 >/dev/null 2>&1 && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
+    _GOSLEEP_PEEK_SESSION_ID="$(python3 - "$_GOSLEEP_STDIN_PEEK" <<'PY' 2>/dev/null || printf ''
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        d = json.load(f)
+    print(d.get("session_id", "") or "", end="")
+except Exception:
+    pass
+PY
+)"
+fi
+
+# shellcheck disable=SC1091
+. "$(dirname "$0")/control-gate.sh"
+
+control_gate_should_proceed "$_GOSLEEP_PEEK_SESSION_ID" "$$"
+if [ "${GOSLEEP_CONTROL_PROCEED:-0}" != "1" ]; then
+    exit 0
+fi
 
 CURL_WAIT_TIMEOUT_S=$((HOOK_TIMEOUT_S + 5))
 

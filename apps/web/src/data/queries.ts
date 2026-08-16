@@ -21,6 +21,9 @@ import type {
   ApplyManifestActionInput,
   ApplyManifestActionResponse,
   BundleResponse,
+  ControlledSessionsResponse,
+  ControlTransitionInput,
+  ControlTransitionResponse,
   CostResponse,
   DecidePermissionActionInput,
   DecidePermissionActionResponse,
@@ -38,6 +41,7 @@ import type {
   QuestionsResponse,
   ResolveActionInput,
   ResolveActionResponse,
+  SessionControlRow,
   SkillDiffResponse,
   SkillsResponse,
   SnapshotActionInput,
@@ -77,6 +81,10 @@ export const queryKeys = {
   observedEvents: (project?: string) =>
     ["core", "observed", "events", project ?? ""] as const,
   observedCollectors: () => ["core", "observed", "collectors"] as const,
+  // GSL-361 (observer mode phase B) — per-session control state, both singular and plural.
+  sessionControl: (sessionId: string) =>
+    ["core", "sessions", "control", sessionId] as const,
+  controlledSessions: () => ["core", "sessions", "controlled"] as const,
 } as const;
 
 export function useVersion(): UseQueryResult<VersionResponse> {
@@ -441,6 +449,70 @@ export function useDecidePermission(): UseMutationResult<
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["core", "questions"] });
       qc.invalidateQueries({ queryKey: queryKeys.bundle() });
+    },
+  });
+}
+
+// GSL-361 (observer mode phase B) — per-session control state hooks + take/release mutations.
+
+/** Read the per-session control row. Panel calls this when opening a Take/Release confirm
+ *  dialog to make sure it renders the latest server truth (guards against a stale card
+ *  where SSE has not landed yet). */
+export function useSessionControl(
+  sessionId: string | null,
+): UseQueryResult<SessionControlRow> {
+  return useQuery({
+    queryKey: queryKeys.sessionControl(sessionId ?? "__none__"),
+    queryFn: () => coreClient.sessionControl(sessionId!),
+    enabled: sessionId !== null && sessionId.length > 0,
+  });
+}
+
+/** List of every session under panel control. Refetch on SSE `sessions.control.*` events
+ *  invalidates this bucket for a live-updating "controlled sessions" surface. */
+export function useControlledSessions(): UseQueryResult<ControlledSessionsResponse> {
+  return useQuery({
+    queryKey: queryKeys.controlledSessions(),
+    queryFn: () => coreClient.controlledSessions(),
+    refetchInterval: 15_000,
+  });
+}
+
+export function useTakeControl(): UseMutationResult<
+  ControlTransitionResponse,
+  Error,
+  ControlTransitionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ControlTransitionInput) =>
+      coreClient.takeControl(input, stableIdempotencyKey("takeControl", input)),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.fleet() });
+      qc.invalidateQueries({ queryKey: queryKeys.sessionControl(vars.session_id) });
+      qc.invalidateQueries({ queryKey: queryKeys.controlledSessions() });
+      qc.invalidateQueries({ queryKey: ["core", "timeline"] });
+    },
+  });
+}
+
+export function useReleaseControl(): UseMutationResult<
+  ControlTransitionResponse,
+  Error,
+  ControlTransitionInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ControlTransitionInput) =>
+      coreClient.releaseControl(
+        input,
+        stableIdempotencyKey("releaseControl", input),
+      ),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.fleet() });
+      qc.invalidateQueries({ queryKey: queryKeys.sessionControl(vars.session_id) });
+      qc.invalidateQueries({ queryKey: queryKeys.controlledSessions() });
+      qc.invalidateQueries({ queryKey: ["core", "timeline"] });
     },
   });
 }

@@ -288,6 +288,23 @@ were spawned with; no forced restart is required. When ready, add a widening-day
 entry to `docs/lab/decisions/log.jsonl` so the audit trail records who flipped
 which shell when.
 
+**Runtime toggle reframing (GSL-361, 2026-08-16 — observer mode phase B).** The
+shim guard is no longer an env-flag-only fast-exit; it is a compound-OR gate:
+`proceed = (GOSLEEP_WEB_QUESTIONS=1) OR (core /internal/sessions/:sid/control ==
+'controlled')`. The runtime side of the OR is fed by two write endpoints —
+`POST /actions/sessions/:id/take-control` and `.../release-control` — the panel's
+Fleet + Observed cards fire on the owner's click, and the shim consults the state
+on every invocation with a 1 s in-process cache. `d-2026-08-08-001` ("widening
+interception is an owner-gated act") is REFRAMED, not violated: pressing the
+Take-control button IS the owner command; the surface simply moved from a
+launch-time env export to a per-session runtime click. The env-flag path stays
+wired as the legacy bootstrap + outage fallback — an env-locked session (started
+with `GOSLEEP_WEB_QUESTIONS=1`) renders in the panel with a distinct pill and no
+Release button (releasing an env-locked session requires restarting it in a shell
+without the flag). Core-unreachable falls back to env-flag-only (binding decision:
+never fail-open into interception). Sub-second cutover on release is bounded by
+the shim cache TTL. Full acceptance spec in `docs/prd/09-phase15-observer-mode-runtime-control.md`.
+
 ### Rollback
 
 `git revert` of the commit that added the `PreToolUse` + `PermissionRequest` blocks
