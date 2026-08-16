@@ -1,4 +1,4 @@
-// @gosleep/core — pid-tree correlation (GSL-350 M1 follow-up).
+// @gosleep/core — pid-tree correlation (GSL-350 M1 follow-up; primacy swap GSL-359).
 //
 // Walks the parent-PID tree to resolve a Claude process's owning tmux pane.
 //
@@ -7,20 +7,30 @@
 // one such descendant. To map "which pane owns this Claude session?" we walk up the PID chain
 // from the Claude process until we hit an ancestor whose PID matches any known pane_pid.
 //
-// The Claude PID itself is discovered indirectly: transcripts under `~/.claude/projects/*.jsonl`
-// are held open by the process writing them; `lsof -t <path>` returns the PID(s) holding a
-// given file. We look up the pid, then walk ancestors bounded by MAX_DEPTH.
+// The Claude PID is discovered indirectly: transcripts under `~/.claude/projects/*.jsonl`
+// are (in theory) held open by the process writing them; `lsof -t <path>` returns the PID(s)
+// holding a given file. We look up the pid, then walk ancestors bounded by MAX_DEPTH.
+//
+// ---------------------------------------------------------------------------
+// GSL-359 (2026-08-16) — pidtree path is OFF by default.
+// ---------------------------------------------------------------------------
+// Verifier round-2 measured `lsof -t <transcript>` returning EMPTY 200/200 times against
+// live Claude Code sessions — the CLI opens the transcript, appends, and closes per turn
+// (no long-lived handle for lsof to observe). The `resolvePaneForTranscript` path was
+// therefore dead in prod: every session-tick paid the lsof + `ps` subprocess cost for zero
+// resolutions, and every /fleet row was resolved by the cwd-prefix heuristic anyway.
+//
+// The sessions collector (`observed/sessions.ts`) no longer calls this from its hot path —
+// the call now requires an explicit `GOSLEEP_OBSERVER_LSOF=1` opt-in (kept for benchmarks,
+// controlled experiments, and any future Claude CLI variant that DOES keep the handle open).
+// The /fleet SQL (`routes/read.ts`) still LEFT JOINs both paths and puts heuristic first;
+// pidtree wins only when the enumerator populated `agent_sessions.pid` under the opt-in.
 //
 // Side-effects declared (for the sentinel review — R14.1):
-//   - READS: /proc/*/stat (Linux) or `ps -o ppid=` (macOS) via Bun.spawnSync — parent PID
-//     lookup only, never signals or writes.
-//   - SPAWNS: `ps` and `lsof` (read-only invocations).
+//   - READS: /proc/*/stat (Linux) or `ps -o ppid=` (macOS) via node:child_process spawnSync —
+//     parent PID lookup only, never signals or writes.
+//   - SPAWNS: `ps` and `lsof` (read-only invocations; only when the opt-in env is set).
 //   - WRITES: none.
-//
-// Fallback: when the pid walk fails (Claude reparented to launchd, transcript file already
-// closed after the assistant turn wrapped, or lsof unavailable), the /fleet query falls back
-// to a cwd-prefix match on tmux_panes.pane_current_path and tags the row `attribution =
-// 'heuristic'` so the panel can badge it.
 
 import { spawnSync } from "node:child_process";
 

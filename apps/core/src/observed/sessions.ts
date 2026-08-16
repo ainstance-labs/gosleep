@@ -12,8 +12,9 @@
 //     `project_slug`, `cwd_project_root`, `updated_at` are set — hook-owned columns like
 //     `current_tool` / `context_pct` / `cycle` are never overwritten). Also observed_events
 //     via the sanctioned writer.
-//   - SPAWNS: `ps -o ppid=` and `lsof -t` for pid-tree correlation (GSL-350 M1 follow-up,
-//     see pidtree.ts). Read-only invocations only.
+//   - SPAWNS: `ps -o ppid=` and `lsof -t` for pid-tree correlation are only issued when the
+//     `GOSLEEP_OBSERVER_LSOF=1` env opt-in is set (GSL-359 primacy swap — see pidtree.ts).
+//     Off by default because verifier R2 measured lsof returning empty 100% in prod.
 //
 // Owner-decision refinements (2026-08-16, binding on the PRD's open questions):
 //   - Depth = FACTS + WORK-TOPIC. This file provides the WORK-TOPIC heuristic (last user
@@ -289,12 +290,19 @@ export function enumerateSessions(
       const idle = now - stat.mtimeMs > IDLE_THRESHOLD_MS;
       const ended = now - stat.mtimeMs > ENDED_THRESHOLD_MS;
 
-      // M1: resolve owning tmux pane via lsof + parent-PID walk. Only run when we know the
-      // pane pids AND the transcript is not fully quiet (a quiet transcript's Claude process
-      // has usually released the file handle — lsof would return empty anyway; save the
-      // subprocess spawn).
+      // GSL-350 M1 / GSL-359 primacy swap: resolve owning tmux pane via lsof + parent-PID
+      // walk ONLY when the opt-in env is set. Verifier R2 measured lsof returning empty
+      // 200/200 times in prod (Claude CLI closes the transcript between turns), so the
+      // hot-path lsof cost bought zero resolutions. The path is preserved as `pidtree` in
+      // the /fleet CTE and can be re-armed for benchmarks or a future CLI variant that
+      // keeps the file handle open.
       let tmuxPanePid: number | null = null;
-      if (panePids !== undefined && panePids.size > 0 && !ended) {
+      if (
+        process.env["GOSLEEP_OBSERVER_LSOF"] === "1" &&
+        panePids !== undefined &&
+        panePids.size > 0 &&
+        !ended
+      ) {
         try {
           tmuxPanePid = resolvePaneForTranscript(path, panePids);
         } catch {

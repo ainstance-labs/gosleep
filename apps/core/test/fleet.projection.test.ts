@@ -279,11 +279,53 @@ describe("GET /fleet projection", () => {
     expect(observed!.project_slug).toBe("scratch");
     expect(observed!.cwd_project_root).toBe("/tmp/scratch");
     expect(observed!.tmux_pane_ref).toBe("obs-shell:@0.%9");
-    // M1 follow-up: attribution surfaces on the pidtree-matched row.
-    expect((observed as unknown as { attribution?: string }).attribution).toBe("pidtree");
+    // GSL-359 primacy swap: when BOTH heuristic and pidtree would match (pane_current_path
+    // under cwd_project_root AND pane_pid == agent_sessions.pid), the heuristic wins because
+    // it is now the primary path — pidtree is a fallback that only fires when the heuristic
+    // missed. The pane_ref is identical either way; only the attribution tag flips.
+    expect((observed as unknown as { attribution?: string }).attribution).toBe("heuristic");
     expect(native!.observed_only).toBe(false);
     expect(native!.project_slug).toBe("gosleep");
     expect(native!.tmux_pane_ref).toBeNull(); // no pane with pid=4444
+  });
+
+  test("GSL-359 pidtree fallback: fires when heuristic missed (pane_current_path not under cwd) but pane_pid matches", async () => {
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM tmux_panes");
+    raw.exec("DELETE FROM heartbeat");
+    // Session with a resolved pid (the GSL-359 opt-in populated it) whose cwd_project_root
+    // is not any pane's current path — the heuristic path misses entirely. The pidtree path
+    // must fill in via pane_pid == pid.
+    raw
+      .query(
+        `INSERT INTO agent_sessions
+           (session_id, name, kind, pid, cwd, status, started_at, updated_at,
+            project_slug, cwd_project_root, observed_only)
+         VALUES ('sid-pidonly', 'observed:pidonly', 'interactive', 8888, '/tmp/pidonly',
+                 'active', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z',
+                 'pidonly', '/tmp/pidonly', 1)`,
+      )
+      .run();
+    // Pane whose pane_pid matches the session but whose pane_current_path is somewhere
+    // ELSE (shell cd-ed away from the project root, or the pane is in an unrelated dir).
+    raw
+      .query(
+        `INSERT INTO tmux_panes(pane_id, session_id, session_name, window_id, pane_pid,
+                                 pane_current_path, pane_current_command, pane_title,
+                                 first_seen, last_seen, misses)
+         VALUES ('%13', '$2', 'wander-shell', '@1', 8888, '/somewhere/else', 'claude',
+                 'wander', '2026-08-16T00:00:00Z', '2026-08-16T00:00:10Z', 0)`,
+      )
+      .run();
+    const res = await app.fetch(req("/fleet"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sessions: Array<{ session_id: string; tmux_pane_ref: string | null; attribution?: string | null }>;
+    };
+    const row = body.sessions.find((s) => s.session_id === "sid-pidonly");
+    expect(row).toBeDefined();
+    expect(row!.tmux_pane_ref).toBe("wander-shell:@1.%13");
+    expect(row!.attribution).toBe("pidtree");
   });
 
   test("M1 fallback: cwd-prefix heuristic fires when pid walk failed (session pid=null)", async () => {

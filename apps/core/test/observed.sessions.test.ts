@@ -201,6 +201,29 @@ describe("machine-wide session enumerator (GSL-353)", () => {
     expect(row.name).toBe("observed:scratch-repo"); // refreshed to current slug
   });
 
+  test("GSL-359: default enumeration leaves tmux_pane_pid null (lsof is opt-in via GOSLEEP_OBSERVER_LSOF)", () => {
+    // Prod behaviour (verified in R2): lsof -t <transcript> returns empty because the Claude
+    // CLI closes the file between turns. Enumerator MUST NOT invoke lsof/ps by default; the
+    // /fleet SQL uses the heuristic path first and pidtree only fills in when the opt-in
+    // populated `agent_sessions.pid`. This test pins that contract so a future revert of the
+    // GSL-359 gate would fail loudly.
+    const priorFlag = process.env["GOSLEEP_OBSERVER_LSOF"];
+    delete process.env["GOSLEEP_OBSERVER_LSOF"];
+    try {
+      // Non-empty panePids on purpose — the gate short-circuits BEFORE the lookup, so this
+      // documents that the gate wins even when pids are available.
+      const panePids = new Set<number>([process.pid, 999_999_999]);
+      const rows = enumerateSessions(fakeHome, panePids);
+      expect(rows.length).toBeGreaterThan(0);
+      for (const r of rows) {
+        expect(r.tmux_pane_pid).toBeNull();
+      }
+    } finally {
+      if (priorFlag === undefined) delete process.env["GOSLEEP_OBSERVER_LSOF"];
+      else process.env["GOSLEEP_OBSERVER_LSOF"] = priorFlag;
+    }
+  });
+
   test("m6: transcript quiet > ENDED_THRESHOLD_MS sets ended_at on the row", () => {
     __resetSessionsFirstSweepForTests();
     raw.exec("DELETE FROM agent_sessions");
