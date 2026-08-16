@@ -13,6 +13,7 @@ import { QuestionsScreen } from "./screens/Questions";
 import { TasksScreen } from "./screens/Tasks";
 import { CostScreen } from "./screens/Cost";
 import { FleetScreen } from "./screens/Fleet";
+import { ObservedScreen } from "./screens/Observed";
 import { SkillsScreen } from "./screens/Skills";
 import { NotFoundScreen } from "./screens/NotFound";
 import { RouteError } from "./components/RouteError";
@@ -26,6 +27,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/overview" replace /> },
       { path: "overview", element: <OverviewScreen /> },
       { path: "fleet", element: <FleetScreen /> },
+      // GSL-357 (observer mode phase A) — machine-wide passive observability screen.
+      { path: "observed", element: <ObservedScreen /> },
       { path: "timeline", element: <TimelineScreen /> },
       { path: "questions", element: <QuestionsScreen /> },
       { path: "tasks", element: <TasksScreen /> },

@@ -14,6 +14,7 @@ import {
   ActivitySquare,
   BookText,
   Clock3,
+  Eye,
   HelpCircle,
   ListChecks,
   Menu,
@@ -36,6 +37,10 @@ import { Button } from "./ui/Button";
 const NAV = [
   { to: "/overview", label: "Overview", icon: ActivitySquare },
   { to: "/fleet", label: "Fleet", icon: Users },
+  // GSL-357 (observer mode phase A) — machine-wide passive-observability screen.
+  // Distinct from Fleet: Observed shows EVERY Claude session on the host, including
+  // sessions the panel cannot control (observed_only=true).
+  { to: "/observed", label: "Observed", icon: Eye },
   { to: "/timeline", label: "Timeline", icon: Clock3 },
   { to: "/questions", label: "Questions", icon: HelpCircle },
   { to: "/tasks", label: "Tasks", icon: ListChecks },
