@@ -319,8 +319,9 @@ describe("descendantCommsFromPsOutput — GSL-390 BFS walk", () => {
     " 500   400 claude helper",
     " 600     1 unrelated",
   ].join("\n");
-  test("walks descendants of a mid-tree pid", () => {
+  test("walks descendants of a mid-tree pid AND includes the root's own comm", () => {
     const comms = descendantCommsFromPsOutput(ps, 100);
+    expect(comms).toContain("tmux: server"); // root's own comm
     expect(comms).toContain("bash");
     expect(comms).toContain("node");
     expect(comms).toContain("claude");
@@ -328,12 +329,35 @@ describe("descendantCommsFromPsOutput — GSL-390 BFS walk", () => {
     expect(comms).not.toContain("unrelated");
     expect(comms).not.toContain("launchd");
   });
-  test("returns [] when the root pid has no descendants", () => {
+  test("returns just the root's own comm when it has no descendants", () => {
     const comms = descendantCommsFromPsOutput(ps, 600);
-    expect(comms).toEqual([]);
+    expect(comms).toEqual(["unrelated"]);
   });
   test("returns [] for empty input", () => {
     expect(descendantCommsFromPsOutput("", 1)).toEqual([]);
+  });
+  test("returns [] when the root pid is not in the ps table (already gone)", () => {
+    const comms = descendantCommsFromPsOutput(ps, 9999);
+    expect(comms).toEqual([]);
+  });
+  test("GSL-390 live-leg — pane_pid IS the claude process itself (root's argv[0] is 'claude')", () => {
+    // Real macOS Claude Code 2.1.x: the pane_pid IS the claude process, `ps -o comm=`
+    // returns "claude", tmux reports pane_current_command="2.1.233" separately. Rooting
+    // the walk at the pane_pid must include that "claude" comm in the results — that's
+    // the very signal `paneQualifiesAsPrompt` needs to accept the pane.
+    const psReal = [
+      "  1     0 launchd",
+      " 100     1 tmux: server",
+      "200   100 claude",
+      "300   200 node",
+      "400   200 npm",
+      "500   300 chrome-devtools-mcp",
+    ].join("\n");
+    const comms = descendantCommsFromPsOutput(psReal, 200);
+    expect(comms[0]).toBe("claude");
+    expect(comms).toContain("node");
+    expect(comms).toContain("npm");
+    expect(comms).toContain("chrome-devtools-mcp");
   });
 });
 

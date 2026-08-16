@@ -300,10 +300,17 @@ export function isPaneAtPrompt(command: string | null): boolean {
 }
 
 /**
- * Return the `comm` string of every descendant of `rootPid` (BFS on `ps` output). Best
- * effort — a spawn error yields an empty list, which the caller treats as "no claude in
- * the tree, keep waiting". Uses `ps -eo pid=,ppid=,comm=` — the `=` suppresses the header
- * row and the tokens split cleanly on whitespace (comm never contains a space).
+ * Return the `comm` string of every descendant of `rootPid`, PLUS `rootPid`'s own comm
+ * (BFS on `ps` output). Including the root itself matters on macOS Claude Code 2.1.x:
+ * the pane_pid IS the Claude process, and its argv[0] `ps -o comm=` reports as `claude`
+ * even though tmux's `#{pane_current_command}` (kernel-level exec basename) reports the
+ * version string. If we only walked descendants we'd miss the "pane_pid is claude
+ * itself" case and reject a legitimate Claude Code fixture.
+ *
+ * Best effort — a spawn error yields an empty list, which the caller treats as "no
+ * claude in the tree, keep waiting". Uses `ps -eo pid=,ppid=,comm=` — the `=` suppresses
+ * the header row and the tokens split cleanly on whitespace (comm never contains a
+ * space).
  *
  * The default implementation is exported so tests can swap it with a fixture.
  */
@@ -323,7 +330,15 @@ export async function readDescendantCommsDefault(rootPid: number): Promise<strin
   }
 }
 
-/** Pure parser (exported for tests). Walks the ps table rooted at `rootPid`. */
+/** Pure parser (exported for tests). Walks the ps table rooted at `rootPid`.
+ *
+ * The rootPid's OWN comm is included first (GSL-390 live-leg fix): a Claude Code 2.1.x
+ * pane_pid IS the claude process itself, and `ps -o comm=` returns its argv[0]
+ * ("claude") — that's the very signal we want to accept. Only walking descendants would
+ * miss it, because the descendants are usually the tools claude is spawning (node, npm,
+ * chrome-devtools-mcp — never `claude`). Including root also mirrors the "does this
+ * pane run claude" question a human would ask when eyeballing `ps`.
+ */
 export function descendantCommsFromPsOutput(
   psOutput: string,
   rootPid: number,
@@ -348,6 +363,7 @@ export function descendantCommsFromPsOutput(
     });
   }
   const childrenByPpid = new Map<number, Row[]>();
+  const rowByPid = new Map<number, Row>();
   for (const r of rows) {
     let list = childrenByPpid.get(r.ppid);
     if (!list) {
@@ -355,8 +371,14 @@ export function descendantCommsFromPsOutput(
       childrenByPpid.set(r.ppid, list);
     }
     list.push(r);
+    rowByPid.set(r.pid, r);
   }
   const results: string[] = [];
+  // GSL-390 (live-leg fix): include the root's own comm so a Claude Code 2.1.x
+  // pane_pid — whose `ps -o comm=` returns "claude" even though tmux reports the
+  // version string — qualifies without needing a descendant with that name.
+  const rootRow = rowByPid.get(rootPid);
+  if (rootRow) results.push(rootRow.comm);
   const seen = new Set<number>();
   const stack: number[] = [rootPid];
   while (stack.length > 0) {
