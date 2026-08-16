@@ -432,6 +432,14 @@ def cmd_question(argv):
         "--reversibility": "reversibility", "--impact": "impact_if_wrong",
         "--auto-apply-at": "auto_apply_at", "--link": "links", "--option": "options",
         "--high-impact": "!high_impact",
+        # GSL-233: dedup against any status, not only "open". The default dedup rule matches an
+        # OPEN row with the same qhash — good for BLOCKER/DECISION spam (a second worker with the
+        # same fork gets folded into the first) but useless for FYIs, which land as "noted"
+        # immediately and therefore never dedup on the next pass. With --dedup-any, a record
+        # matching qhash under ANY status is treated as a hit and a seen_by patch is written
+        # instead of a fresh question. The chronicler uses this for self-health debts: one FYI
+        # per named debt, ever, until the debt is fixed and the qhash-tuple never repeats.
+        "--dedup-any": "!dedup_any",
     }, multi=("--link", "--option"))
     typ = a.get("type") or die("--type is required")
     if typ not in TYPES:
@@ -492,8 +500,11 @@ def cmd_question(argv):
     with QueueLock():
         records = read_records()
         h = qhash(task, question)
+        want_any = bool(a.get("dedup_any"))
         for qid, m in fold(records).items():
-            if m.get("status") == "open" and m.get("qhash") == h:
+            if m.get("qhash") != h:
+                continue
+            if want_any or m.get("status") == "open":
                 append_record({"re": qid, "ts": iso_utc(), "seen_by": frm})
                 print("DUPLICATE %s" % qid)
                 dup = qid

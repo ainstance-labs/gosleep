@@ -2371,6 +2371,44 @@ def handoff_debt(events):
     return base
 
 
+def emit_debt_fyis(self_health):
+    """GSL-233: turn every named self-health debt into ONE deduped FYI queue row.
+
+    Two debt sources feed this: dev_history missing keys ("GSL-30 hanging since July 13"
+    is what the audit called out) and, when it crosses the alarm threshold, the handoff
+    debt as a single summary FYI. `lab-emit question --dedup-any` guarantees at most one
+    open+closed record per (task, qhash) tuple, so the emitter is idempotent — running the
+    chronicler every 15 minutes leaves exactly one FYI per debt until it is fixed.
+
+    Dry-run and offline installs both skip: an FYI is a write, and --dry-run must not write.
+    """
+    if ARGS.get("dry_run"):
+        return
+    dh = self_health.get("dev_history") or {}
+    for epic in dh.get("epics") or []:
+        for key in epic.get("missing") or []:
+            q = "no dev_history file committed for %s (epic %s) — audit and write, or archive" % (
+                key, epic.get("key") or "?")
+            try:
+                lab_emit("question", "--type", "FYI", "--from", "self-health",
+                         "--task", key, "--question", q, "--dedup-any")
+            except Exception as exc:                                    # noqa: BLE001
+                degrade("debt-fyi-devhistory", exc)
+    hb = self_health.get("handoffs") or {}
+    n = hb.get("undocumented_cycles") or 0
+    if hb.get("alarm") and n:
+        # A summary FYI, deduped by qhash across the same wording. When the count changes, the
+        # wording changes and a NEW record lands — that is the point: the owner sees the number
+        # move even though the debt itself is one thing.
+        q = "handoff debt: %d cycle(s) closed without a committed handoff (alarm at %d)" % (
+            n, hb.get("alarm_at") or 0)
+        try:
+            lab_emit("question", "--type", "FYI", "--from", "self-health",
+                     "--question", q, "--dedup-any")
+        except Exception as exc:                                        # noqa: BLE001
+            degrade("debt-fyi-handoffs", exc)
+
+
 def build_self_health(ctx, status):
     """The three meters, as ONE block, computed once. R5.3's anti-rot alarm."""
     st = status["staleness"]
@@ -3791,6 +3829,16 @@ def main():
     # Self-health AFTER status: two of its three meters are about the build itself (its clock, and the
     # age of the freshest event IN it), and neither exists before status.json has been assembled.
     ctx["self_health"] = build_self_health(ctx, status)
+    # GSL-233: every named debt the meter can see becomes an FYI record in the queue — the audit
+    # finding (80) is that a debt on the meter is a number on a screen; a debt in the digest is
+    # a row the owner acts on. Opt-in via GOSLEEP_DEBT_FYI=1 so a passing chronicler on someone
+    # else's machine cannot suddenly start writing rows to the queue. Fail-open: a broken emit
+    # must never wedge the build.
+    if os.environ.get("GOSLEEP_DEBT_FYI", "0") == "1":
+        try:
+            emit_debt_fyis(ctx["self_health"])
+        except Exception as exc:                                        # noqa: BLE001
+            degrade("debt-fyis", exc)
     if ARGS["narrate"]:
         ctx["narrative"] = narrate(status)
         status["narrative"] = ctx["narrative"]
