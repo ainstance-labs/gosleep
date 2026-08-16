@@ -21,6 +21,13 @@
 //     message ≤60 char slice) with `attribution_kind='inferred'` — the UI clearly labels it.
 //   - Privacy hide list is layered on top by projects.ts; this file always writes the real
 //     project_slug into the DB (hiding is a render-time projection).
+//
+// GSL-360 (2026-08-16) — collector loop is chunked to keep the tick under R14.5 cadence.
+// The enumerator's `readdir`+`stat` list is still cheap; the per-transcript enrichment
+// (header/tail read, work-topic extraction) is deferred so warm transcripts (mtime within
+// WARM_WINDOW_MS) process every tick and cold transcripts rotate N=COLD_CHUNK per tick.
+// The historical-backfill guard (`firstSweepDone`) now flips only after the first full
+// cold rotation completes, so the boot-time flood stays tagged `backfill=true` throughout.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -49,17 +56,59 @@ export const ENDED_THRESHOLD_MS = 60 * 60 * 1_000;
 export const WORK_TOPIC_MAX_LEN = 60;
 
 /**
+ * GSL-360 chunked-fold tuning knobs.
+ * - `WARM_WINDOW_MS`: transcripts whose mtime is within this window from `now()` are "warm"
+ *   and get their expensive enrichment (header + tail + work-topic read) on every tick.
+ *   Everything older is "cold" and rotates through fixed-size chunks. 24 h keeps every
+ *   still-plausibly-live session in the warm set with room to spare.
+ * - `COLD_CHUNK`: how many cold transcripts one tick processes. 50 keeps a 500-transcript
+ *   home at ~10 ticks per full cold rotation (≈50 s at the default 5 s cadence).
+ * Both are env-overridable for benchmarks and hermetic tests.
+ */
+export const WARM_WINDOW_MS_DEFAULT = 24 * 60 * 60 * 1_000;
+export const COLD_CHUNK_DEFAULT = 50;
+
+export function warmWindowMs(): number {
+  const raw = process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+  if (raw === undefined || raw.length === 0) return WARM_WINDOW_MS_DEFAULT;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : WARM_WINDOW_MS_DEFAULT;
+}
+
+export function coldChunkSize(): number {
+  const raw = process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+  if (raw === undefined || raw.length === 0) return COLD_CHUNK_DEFAULT;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : COLD_CHUNK_DEFAULT;
+}
+
+/**
  * Fresh-boot flag for the backfill guard (M5 fix). The first foldSessions call after
  * process boot enumerates a machine that may already have hundreds of historical projects
  * on disk — every session would fire a `session_appeared` event and drown the observed
  * timeline. On the first sweep we tag each emitted event's payload with `backfill=true` so
  * the default timeline view can filter it out; subsequent sweeps emit live-tagged events.
+ *
+ * GSL-360 addendum: with the chunked cold rotation, "the first sweep" now means "every
+ * chunk of the first full rotation across all cold transcripts". `foldSessions` accepts a
+ * `holdFirstSweep` option that keeps the flag armed across chunks; `sessionsCollectorTick`
+ * only clears the hold after `coldRotationComplete` flips.
  */
 let firstSweepDone = false;
 
 /** Test-only reset for the backfill flag so per-file scratch DBs get a fresh boot. */
 export function __resetSessionsFirstSweepForTests(): void {
   firstSweepDone = false;
+}
+
+/** GSL-360 cold-rotation cursor + "one full pass done" flag. Module-level so successive
+ *  ticks pick up where the previous left off; test-only reset provided below. */
+let coldCursor = 0;
+let coldRotationComplete = false;
+
+export function __resetSessionsChunkStateForTests(): void {
+  coldCursor = 0;
+  coldRotationComplete = false;
 }
 
 /**
@@ -231,26 +280,24 @@ export function directoryToGuessedCwd(dirName: string): string {
 }
 
 /**
- * Enumerate all `.jsonl` transcript files under `~/.claude/projects/*` — one per session.
- * Called by the collector tick; also directly exercised in tests with a fake HOME dir.
- *
- * `panePids` (optional): the set of `pane_pid` values currently in the tmux_panes table.
- * When provided, the enumerator resolves each session's owning pane via a pid-tree walk
- * (`resolvePaneForTranscript`) and populates `tmux_pane_pid` on the snapshot. When omitted
- * (or empty), every snapshot's `tmux_pane_pid` stays null and /fleet falls back to the
- * cwd-prefix heuristic (`attribution='heuristic'`).
+ * GSL-360 cheap listing pass: enumerate every `.jsonl` transcript path under
+ * `~/.claude/projects/*` with its mtime, WITHOUT reading the file body. `readdir`+`stat`
+ * on a 500-transcript home takes single-digit ms even on slow disks — this is the primitive
+ * the chunked collector loop iterates over. `buildSnapshot` below does the heavy work
+ * per-candidate.
  */
-export function enumerateSessions(
-  claudeHome?: string,
-  panePids?: ReadonlySet<number>,
-): ClaudeSessionSnapshot[] {
+export interface SessionCandidate {
+  session_id: string;
+  project_dir: string;
+  path: string;
+  mtime_ms: number;
+}
+
+export function listCandidateTranscripts(claudeHome?: string): SessionCandidate[] {
   const home = claudeHome ?? join(homedir(), ".claude");
   const projectsDir = join(home, "projects");
   if (!existsSync(projectsDir)) return [];
-  const gosleepRoot = gosleepProjectRoot();
-  const out: ClaudeSessionSnapshot[] = [];
-
-  const now = Date.now();
+  const out: SessionCandidate[] = [];
   const dirents = readdirSync(projectsDir, { withFileTypes: true });
   for (const dirent of dirents) {
     if (!dirent.isDirectory()) continue;
@@ -269,66 +316,108 @@ export function enumerateSessions(
       } catch {
         continue;
       }
-      const header = readHeaderJson(path);
-      const tail = readTailJson(path);
-      const cwdCandidate =
-        (header && typeof header["cwd"] === "string" ? (header["cwd"] as string) : null) ??
-        (tail && typeof tail["cwd"] === "string" ? (tail["cwd"] as string) : null) ??
-        directoryToGuessedCwd(dirent.name);
-      const modelCandidate = (() => {
-        for (const src of [header, tail]) {
-          if (src === null) continue;
-          const m = (src as Record<string, unknown>)["model"];
-          if (typeof m === "string" && m.length > 0) return m;
-        }
-        return null;
-      })();
-      const projectRoot = cwdCandidate;
-      const slug = projectSlugFromCwd(projectRoot);
-      const observedOnly: 0 | 1 = pathIsUnder(projectRoot, gosleepRoot) ? 0 : 1;
-
-      const idle = now - stat.mtimeMs > IDLE_THRESHOLD_MS;
-      const ended = now - stat.mtimeMs > ENDED_THRESHOLD_MS;
-
-      // GSL-350 M1 / GSL-359 primacy swap: resolve owning tmux pane via lsof + parent-PID
-      // walk ONLY when the opt-in env is set. Verifier R2 measured lsof returning empty
-      // 200/200 times in prod (Claude CLI closes the transcript between turns), so the
-      // hot-path lsof cost bought zero resolutions. The path is preserved as `pidtree` in
-      // the /fleet CTE and can be re-armed for benchmarks or a future CLI variant that
-      // keeps the file handle open.
-      let tmuxPanePid: number | null = null;
-      if (
-        process.env["GOSLEEP_OBSERVER_LSOF"] === "1" &&
-        panePids !== undefined &&
-        panePids.size > 0 &&
-        !ended
-      ) {
-        try {
-          tmuxPanePid = resolvePaneForTranscript(path, panePids);
-        } catch {
-          tmuxPanePid = null;
-        }
-      }
-
       out.push({
         session_id: fname.replace(/\.jsonl$/, ""),
         project_dir: dirent.name,
-        project_slug: slug,
-        cwd_project_root: projectRoot,
-        transcript_path: path,
-        transcript_mtime_ms: stat.mtimeMs,
-        cwd: cwdCandidate,
-        model: modelCandidate,
-        work_topic_inferred: extractWorkTopic(path),
-        status: idle ? "idle" : "active",
-        observed_only: observedOnly,
-        tmux_pane_pid: tmuxPanePid,
-        ended,
+        path,
+        mtime_ms: stat.mtimeMs,
       });
     }
   }
-
+  // Deterministic order so the cold-rotation cursor visits the same transcript position
+  // across ticks even when the filesystem reshuffles readdir output. Path is unique.
+  out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return out;
+}
+
+/**
+ * GSL-360 per-candidate enrichment: read header + tail, extract work-topic, resolve pane
+ * (opt-in), classify observed-only vs native. Called by `enumerateSessions` (for the
+ * legacy full-sweep path) and by `sessionsCollectorTick` (per-chunk in the chunked path).
+ */
+export function buildSnapshot(
+  cand: SessionCandidate,
+  panePids: ReadonlySet<number> | undefined,
+  gosleepRoot: string,
+  nowMs: number,
+): ClaudeSessionSnapshot {
+  const header = readHeaderJson(cand.path);
+  const tail = readTailJson(cand.path);
+  const cwdCandidate =
+    (header && typeof header["cwd"] === "string" ? (header["cwd"] as string) : null) ??
+    (tail && typeof tail["cwd"] === "string" ? (tail["cwd"] as string) : null) ??
+    directoryToGuessedCwd(cand.project_dir);
+  const modelCandidate = (() => {
+    for (const src of [header, tail]) {
+      if (src === null) continue;
+      const m = (src as Record<string, unknown>)["model"];
+      if (typeof m === "string" && m.length > 0) return m;
+    }
+    return null;
+  })();
+  const projectRoot = cwdCandidate;
+  const slug = projectSlugFromCwd(projectRoot);
+  const observedOnly: 0 | 1 = pathIsUnder(projectRoot, gosleepRoot) ? 0 : 1;
+  const idle = nowMs - cand.mtime_ms > IDLE_THRESHOLD_MS;
+  const ended = nowMs - cand.mtime_ms > ENDED_THRESHOLD_MS;
+
+  // GSL-350 M1 / GSL-359 primacy swap: resolve owning tmux pane via lsof + parent-PID
+  // walk ONLY when the opt-in env is set. Verifier R2 measured lsof returning empty
+  // 200/200 times in prod (Claude CLI closes the transcript between turns), so the
+  // hot-path lsof cost bought zero resolutions. The path is preserved as `pidtree` in
+  // the /fleet CTE and can be re-armed for benchmarks or a future CLI variant that
+  // keeps the file handle open.
+  let tmuxPanePid: number | null = null;
+  if (
+    process.env["GOSLEEP_OBSERVER_LSOF"] === "1" &&
+    panePids !== undefined &&
+    panePids.size > 0 &&
+    !ended
+  ) {
+    try {
+      tmuxPanePid = resolvePaneForTranscript(cand.path, panePids);
+    } catch {
+      tmuxPanePid = null;
+    }
+  }
+
+  return {
+    session_id: cand.session_id,
+    project_dir: cand.project_dir,
+    project_slug: slug,
+    cwd_project_root: projectRoot,
+    transcript_path: cand.path,
+    transcript_mtime_ms: cand.mtime_ms,
+    cwd: cwdCandidate,
+    model: modelCandidate,
+    work_topic_inferred: extractWorkTopic(cand.path),
+    status: idle ? "idle" : "active",
+    observed_only: observedOnly,
+    tmux_pane_pid: tmuxPanePid,
+    ended,
+  };
+}
+
+/**
+ * Enumerate all `.jsonl` transcript files under `~/.claude/projects/*` — one per session.
+ * Called by tests directly; the live collector tick uses the chunked path in
+ * `sessionsCollectorTick` (GSL-360) instead so a 500-transcript home does not block Bun's
+ * timer queue for 7-8 s at boot.
+ *
+ * `panePids` (optional): the set of `pane_pid` values currently in the tmux_panes table.
+ * When provided AND `GOSLEEP_OBSERVER_LSOF=1`, the enumerator resolves each session's
+ * owning pane via a pid-tree walk (`resolvePaneForTranscript`) and populates
+ * `tmux_pane_pid` on the snapshot. Otherwise every snapshot's `tmux_pane_pid` stays null
+ * and /fleet uses the cwd-prefix heuristic (`attribution='heuristic'`).
+ */
+export function enumerateSessions(
+  claudeHome?: string,
+  panePids?: ReadonlySet<number>,
+): ClaudeSessionSnapshot[] {
+  const cands = listCandidateTranscripts(claudeHome);
+  const gosleepRoot = gosleepProjectRoot();
+  const now = Date.now();
+  return cands.map((c) => buildSnapshot(c, panePids, gosleepRoot, now));
 }
 
 /**
@@ -367,7 +456,10 @@ function pathIsUnder(childRaw: string, parentRaw: string): boolean {
  * m6 fix: when `snapshot.ended` is true (transcript quiet > ENDED_THRESHOLD_MS) the row's
  * `ended_at` is stamped; a re-active transcript later clears it back to NULL.
  */
-export function foldSessions(snapshot: ClaudeSessionSnapshot[]): {
+export function foldSessions(
+  snapshot: ClaudeSessionSnapshot[],
+  opts?: { holdFirstSweep?: boolean },
+): {
   observed_upserts: number;
   native_upserts: number;
   session_appeared: number;
@@ -507,7 +599,10 @@ export function foldSessions(snapshot: ClaudeSessionSnapshot[]): {
     }
   }
 
-  firstSweepDone = true;
+  // GSL-360: only flip `firstSweepDone` when the caller is NOT asking us to hold it across
+  // additional chunks. The chunked collector loop holds it until the full cold rotation
+  // completes, so the boot-time backfill flood stays tagged `backfill=true` throughout.
+  if (opts?.holdFirstSweep !== true) firstSweepDone = true;
 
   return {
     observed_upserts,
@@ -520,21 +615,60 @@ export function foldSessions(snapshot: ClaudeSessionSnapshot[]): {
 }
 
 /**
- * One collector tick. Enumerate → fold. Wrapped in the sentinel so an accidental throw is
- * captured in the collector-inventory row for the panel to surface.
+ * One collector tick. Warm transcripts (mtime within `warmWindowMs()` from now) are fully
+ * enriched every tick; cold transcripts rotate through `coldChunkSize()`-per-tick chunks so
+ * a 500-transcript home stops blocking Bun's timer queue for 7-8 s at boot. Wrapped in the
+ * sentinel so an accidental throw is captured in the collector-inventory row.
+ *
+ * The `firstSweepDone` backfill guard is HELD across the first full cold rotation via
+ * `foldSessions(..., { holdFirstSweep: true })`, and cleared once the cold cursor wraps.
+ * That preserves the boot-time semantics of the original single-shot enumeration: every
+ * historical `session_appeared` still lands with `payload.backfill=true`; only sessions
+ * that appear (or reactivate) AFTER the first full rotation are tagged `backfill=false`.
  */
 export async function sessionsCollectorTick(claudeHome?: string): Promise<void> {
   await runCollectorTick(SESSIONS_COLLECTOR_NAME, async () => {
     // Read the current tmux_panes.pane_pid snapshot so the enumerator can walk pids into
-    // owning panes (M1 fix). Cheap: a single sqlite scan of a small table (≤ dozens of rows
-    // in practice). Empty set → enumerator skips lsof/ps entirely.
+    // owning panes under the GSL-359 opt-in. Cheap: a single sqlite scan of a small table
+    // (≤ dozens of rows in practice). Empty set → enumerator skips lsof/ps entirely.
     const db = getDb();
     const paneRows = db.raw
       .query("SELECT pane_pid FROM tmux_panes")
       .all() as { pane_pid: number }[];
     const panePids = new Set(paneRows.map((r) => r.pane_pid));
-    const snap = enumerateSessions(claudeHome, panePids);
-    foldSessions(snap);
+
+    const cands = listCandidateTranscripts(claudeHome);
+    const now = Date.now();
+    const warmCutoffMs = now - warmWindowMs();
+    const warm: SessionCandidate[] = [];
+    const cold: SessionCandidate[] = [];
+    for (const c of cands) {
+      if (c.mtime_ms >= warmCutoffMs) warm.push(c);
+      else cold.push(c);
+    }
+
+    // Cold rotation: slice a chunk starting at the cursor, advance, wrap on overflow. The
+    // wrap flips `coldRotationComplete=true` so subsequent ticks clear the backfill hold.
+    const chunkSize = coldChunkSize();
+    let coldChunk: SessionCandidate[] = [];
+    if (cold.length > 0) {
+      if (coldCursor >= cold.length) coldCursor = 0; // list shrank between ticks
+      coldChunk = cold.slice(coldCursor, coldCursor + chunkSize);
+      coldCursor += coldChunk.length;
+      if (coldCursor >= cold.length) {
+        coldCursor = 0;
+        coldRotationComplete = true;
+      }
+    } else {
+      // No cold transcripts at all → rotation is trivially complete on the first tick.
+      coldRotationComplete = true;
+    }
+
+    const gosleepRoot = gosleepProjectRoot();
+    const toProcess = [...warm, ...coldChunk];
+    const snap = toProcess.map((c) => buildSnapshot(c, panePids, gosleepRoot, now));
+
+    foldSessions(snap, { holdFirstSweep: !coldRotationComplete });
   });
 }
 

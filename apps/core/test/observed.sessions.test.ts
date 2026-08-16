@@ -83,8 +83,20 @@ mock.module("../src/db/client.ts", () => ({
   __resetDbClientForTests: () => {},
 }));
 
-const { enumerateSessions, foldSessions, extractWorkTopic, __resetSessionsFirstSweepForTests } =
-  await import("../src/observed/sessions.ts");
+const {
+  enumerateSessions,
+  foldSessions,
+  extractWorkTopic,
+  listCandidateTranscripts,
+  sessionsCollectorTick,
+  SESSIONS_COLLECTOR_NAME,
+  SESSIONS_CADENCE_MS,
+  __resetSessionsFirstSweepForTests,
+  __resetSessionsChunkStateForTests,
+} = await import("../src/observed/sessions.ts");
+const { registerCollector, __resetCollectorInventory } = await import(
+  "../src/observed/sentinel.ts"
+);
 
 describe("machine-wide session enumerator (GSL-353)", () => {
   test("enumerateSessions returns 2 rows across 2 projects with observed_only correctly set", () => {
@@ -247,6 +259,119 @@ describe("machine-wide session enumerator (GSL-353)", () => {
       .get() as { ended_at: string | null; session_id: string };
     expect(row).toBeDefined();
     expect(row.ended_at).not.toBeNull();
+  });
+});
+
+describe("GSL-360 chunked collector loop", () => {
+  test("listCandidateTranscripts returns every .jsonl under fake HOME with mtime", () => {
+    const cands = listCandidateTranscripts(fakeHome);
+    // At minimum the two seed transcripts from module setup are present.
+    expect(cands.length).toBeGreaterThanOrEqual(2);
+    for (const c of cands) {
+      expect(c.path.endsWith(".jsonl")).toBe(true);
+      expect(c.session_id).toMatch(/^sess-/);
+      expect(c.mtime_ms).toBeGreaterThan(0);
+    }
+    // Sorted by path for deterministic cold-rotation cursor semantics.
+    const sorted = [...cands].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+    expect(cands.map((c) => c.path)).toEqual(sorted.map((c) => c.path));
+  });
+
+  test("sessionsCollectorTick chunks cold transcripts; backfill flag stays held across the rotation and clears on wrap", async () => {
+    __resetSessionsFirstSweepForTests();
+    __resetSessionsChunkStateForTests();
+    __resetCollectorInventory();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+
+    // Seed sentinel inventory so `sessionsCollectorTick` can `runCollectorTick`.
+    registerCollector(SESSIONS_COLLECTOR_NAME, {
+      source: "transcript-mtime",
+      cadence_ms: SESSIONS_CADENCE_MS,
+    });
+
+    // Force a small warm window (1 s) so we can stamp mtimes deep in the past and make them
+    // cold on purpose. Force chunk size to 1 so we can observe the rotation with tiny N.
+    const priorWarm = process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+    const priorChunk = process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+    process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = "1000";
+    process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = "1";
+
+    // Create 3 cold transcripts under a fresh isolated fake HOME. Using the module-level
+    // fakeHome would collide with warm rows from prior tests; a per-test HOME keeps the
+    // cold list small and deterministic.
+    const chunkHome = join(scratchRoot, "chunk-home");
+    const chunkProjects = join(chunkHome, "projects");
+    mkdirSync(chunkProjects, { recursive: true });
+    const fsNode = require("node:fs");
+    const oldTs = Date.now() - 10 * 60 * 60 * 1_000; // 10 h old → cold under 1 s warm window
+    const coldPaths: string[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const cwd = join(scratchRoot, `chunk-cold-${i}`);
+      mkdirSync(cwd, { recursive: true });
+      const dir = join(chunkProjects, `-${cwd.replace(/\//g, "-")}`);
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, `sess-cold-${i}.jsonl`);
+      writeFileSync(p, JSON.stringify({ type: "header", cwd, model: "haiku" }) + "\n");
+      fsNode.utimesSync(p, new Date(oldTs), new Date(oldTs));
+      coldPaths.push(p);
+    }
+
+    try {
+      // Tick 1 — one cold visited, backfill still held.
+      await sessionsCollectorTick(chunkHome);
+      const after1 = raw
+        .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+        .all() as { payload_json: string }[];
+      expect(after1).toHaveLength(1);
+      expect(JSON.parse(after1[0]!.payload_json).backfill).toBe(true);
+
+      // Tick 2 — second cold visited, still held.
+      await sessionsCollectorTick(chunkHome);
+      const after2 = raw
+        .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+        .all() as { payload_json: string }[];
+      expect(after2).toHaveLength(2);
+      for (const ev of after2) {
+        expect(JSON.parse(ev.payload_json).backfill).toBe(true);
+      }
+
+      // Tick 3 — third cold visited, cursor wraps → coldRotationComplete=true, hold cleared.
+      // The event emitted by this tick is still the last of the boot flood (firstSweepDone
+      // was still false when foldSessions ran), so it too is `backfill=true`.
+      await sessionsCollectorTick(chunkHome);
+      const after3 = raw
+        .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+        .all() as { payload_json: string }[];
+      expect(after3).toHaveLength(3);
+      for (const ev of after3) {
+        expect(JSON.parse(ev.payload_json).backfill).toBe(true);
+      }
+
+      // Introduce a NEW transcript AFTER the rotation completed and tick again — it must
+      // land as backfill=false because firstSweepDone flipped when we passed
+      // holdFirstSweep=false at the end of tick 3.
+      const liveCwd = join(scratchRoot, "chunk-live");
+      mkdirSync(liveCwd, { recursive: true });
+      const liveDir = join(chunkProjects, `-${liveCwd.replace(/\//g, "-")}`);
+      mkdirSync(liveDir, { recursive: true });
+      const livePath = join(liveDir, "sess-live-1.jsonl");
+      writeFileSync(livePath, JSON.stringify({ type: "header", cwd: liveCwd, model: "haiku" }) + "\n");
+      // Fresh mtime → warm.
+      await sessionsCollectorTick(chunkHome);
+      const liveRow = raw
+        .query(
+          "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' AND project_slug = 'chunk-live'",
+        )
+        .get() as { payload_json: string } | null;
+      expect(liveRow).not.toBeNull();
+      expect(JSON.parse(liveRow!.payload_json).backfill).toBe(false);
+    } finally {
+      if (priorWarm === undefined) delete process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+      else process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = priorWarm;
+      if (priorChunk === undefined) delete process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+      else process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = priorChunk;
+    }
   });
 });
 
