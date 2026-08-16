@@ -10,6 +10,9 @@
 | [`05-phase11-snapshot-release-pipeline.md`](./05-phase11-snapshot-release-pipeline.md) | Per-phase PRD (Phase 11) | Draft — 2026-08-15 | Plugin migration release loop: `tools/skills/snapshot-sync.sh` — owner-gated sync-then-bump-then-tag; CHANGELOG.jsonl schema extended additively with a `kind` field (D6); D9 update discipline in a new runbook. Program epic [GSL-337](https://ainstance-labs.atlassian.net/browse/GSL-337). |
 | [`06-phase12-plugin-global-scope-transition.md`](./06-phase12-plugin-global-scope-transition.md) | Per-phase PRD (Phase 12) | Draft — 2026-08-15 | Plugin migration G1-G4 (owner-refined 2026-08-15): parallel install → the ONE sanctioned near-term write (deprecation stubs) → ~1-month trial → owner archive-move. Lightweight owner-only workflow flip; distinct from far-future 4B ceremony. Program epic [GSL-337](https://ainstance-labs.atlassian.net/browse/GSL-337). |
 | [`07-phase13-plugin-e2e-shakedown.md`](./07-phase13-plugin-e2e-shakedown.md) | Per-phase PRD (Phase 13) | Draft — 2026-08-15 | Plugin migration E2E shakedown: three-plus sandboxed dev-agent runs, one HTML report (EN + RU) per run under `docs/reports/verifications/GSL-337/runs/NN/`, adversarial verification per run. Program epic [GSL-337](https://ainstance-labs.atlassian.net/browse/GSL-337). |
+| [`08-phase14-observer-mode-observation.md`](./08-phase14-observer-mode-observation.md) | Per-phase PRD (Phase 14) | Draft — 2026-08-16 | Observer mode part A: machine-wide passive observability. Tmux map + Fleet enrichment with `project_slug` / `observed_only` + cross-project timeline (`observed_events`) fed by four passive-signal producers. Zero-influence guarantee enforced by a runtime write-attempt sentinel. Program epic [GSL-347](https://ainstance-labs.atlassian.net/browse/GSL-347). |
+| [`09-phase15-observer-mode-runtime-control.md`](./09-phase15-observer-mode-runtime-control.md) | Per-phase PRD (Phase 15) | Draft — 2026-08-16 | Observer mode part B: runtime control activation. Per-session `observer` / `controlled` / `env-locked` state registry + shim compound-OR gate + Take-control / Release-control endpoints. Activation is the owner command that `d-2026-08-08-001` requires. Program epic [GSL-347](https://ainstance-labs.atlassian.net/browse/GSL-347). |
+| [`10-phase16-observer-mode-task-submission.md`](./10-phase16-observer-mode-task-submission.md) | Per-phase PRD (Phase 16) | Draft — 2026-08-16 (requirements-level only) | Observer mode part C: pose a task to a controlled session from the panel via a core-side `tmux send-keys -l` executor. Mandatory dry-run preview, per-session serialisation, guardrails against observer / shim-unregistered / pane-gone / release-mid-submit. No implementation in v1. Program epic [GSL-347](https://ainstance-labs.atlassian.net/browse/GSL-347). |
 
 ## Convention — per-phase PRD files (owner rule, 2026-08-07)
 
@@ -81,6 +84,34 @@ F2 productized contribution ceremony; F3 legacy decommission at scale) waits on
 **gosleep = full PRODUCTION + separate owner decision + D10 evidence** (strategy Owner
 corrections point 1; section 4B gate). This near-term program does not schedule or preview
 those; the strategy is the record.
+
+## Global traceability — observer-mode program (Phases 14-16)
+
+Source of truth: owner briefing 2026-08-16 (verbatim-distilled in the epic
+[GSL-347](https://ainstance-labs.atlassian.net/browse/GSL-347) description). The briefing
+carries three requirements: passive machine-wide observation of any project the owner works
+on (Phase 14), a runtime per-session Take/Release control activation that supersedes the
+env-flag opt-in (Phase 15), and task submission from the panel into a controlled session's
+tmux pane (Phase 16, requirements-level only in v1). The re-framing of decision
+`d-2026-08-08-001` — activation IS the owner command that decision requires — is a Phase 15
+deliverable (R15.5) that lands in `docs/runbooks/gosleep-core.md` § 8 at implementation time.
+
+| Briefing requirement | Destination phase | Acceptance-ID |
+|---|---|---|
+| "any project the owner works on … the panel runs in parallel as a passive observer" | Phase 14 (Scope: machine-wide tmux + Claude enumeration; R14.2 machine-wide, not repo-wide) | F14-S1, F14-S2, F14-S5, R14.2 |
+| "must NOT influence the process until explicitly activated" (zero-influence guarantee) | Phase 14 (Scope: write-attempt sentinel; R14.1 structural invariant) | F14-S4, F14-S6, R14.1, R14.6 |
+| "which sessions, which tmux panes belong to which workers, what tasks are being worked" | Phase 14 (Scope: project attribution + Fleet enrichment + Observed screen) | F14-S1, F14-S2, F14-S5 |
+| "cross-project observed activity timeline" (session start/idle, transcript, git movement) | Phase 14 (Scope: `observed_events` + four passive-signal producers) | F14-S3, R14.4 |
+| "when activated (a runtime function in the UI, not a launch-time env flag)" | Phase 15 (per-session state registry + runtime toggle) | F15-S1, F15-S3, R15.1 |
+| "panel takes over question/permission interception" | Phase 15 (compound-OR shim gate; R15.6) | F15-S2, F15-S5, R15.6 |
+| "tmux panes remain open and visible" | Phase 15 R15.1 non-goal + Phase 16 R16.8 (owner memory `workers-visible-in-tmux.md`) | R16.8 |
+| Reframing `d-2026-08-08-001` — activation is the owner command | Phase 15 R15.5 (runbook § 8 note) | R15.5 |
+| Env-flag compatibility preserved as legacy bootstrap | Phase 15 (Scope: `source='env'` + env-locked pill; R15.3) | F15-S4, R15.3 |
+| "later, task submission from the web" | Phase 16 (requirements-level only; no implementation in v1) | F16-S1..S8, R16.1..R16.9 |
+| Guardrails on task submission (controlled + shim-registered + dry-run + serialise) | Phase 16 (Scope: submit endpoint + refusal paths; R16.1..R16.5) | F16-S2..S6, R16.1..R16.5 |
+| Owner memory `no-silent-default-decisions.md` (no auto-transitions) | Phase 15 R15.1 + Phase 16 R16.1 | R15.1, R16.1 |
+| Owner memory `web-verification-html-runs.md` (HTML report EN+RU per run) | All three phases | F14-S6, F15-S7, F16-S8 |
+| Plugin-program touchpoint — runtime-toggle-aware shim as a future `gosleep-orchestration` plugin candidate | Phase 15 Dependencies (note only, not a dependency) | n/a |
 
 ## Legacy note — Phases 1-6
 
