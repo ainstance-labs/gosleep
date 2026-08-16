@@ -43,6 +43,13 @@
       "when": 1786976000000,
       "tag": "0005_observer_mode_phase_a",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787097600000,
+      "tag": "0006_session_control",
+      "breakpoints": true
     }
   ]
 }

@@ -341,6 +341,46 @@ export const observed_events = sqliteTable(
   ],
 );
 
+/**
+ * GSL-361 (observer mode phase B) — per-session control registry. One row per session that has
+ * ever been observed. Written by TWO paths only:
+ *   1. The shim's first invocation, when `GOSLEEP_WEB_QUESTIONS=1` is set on the launching
+ *      shell — the shim's heartbeat handler upserts `state='controlled', source='env'`.
+ *      This state is NOT releasable from the panel (R15.3, F15-S4).
+ *   2. The `POST /actions/sessions/:id/take-control` and `/release-control` endpoints —
+ *      each write flips `state` (observer|controlled) and stamps `source='runtime'`.
+ *
+ * `shim_registered` is a boolean-int (0|1) marker that flips to 1 on the first heartbeat.
+ * Panel refuses "Take control" when this is 0 (R15.7) — otherwise the state would flip but
+ * the shim would never consult the row and events would keep going to the TUI.
+ *
+ * Both `activated_at` / `activated_by` and `deactivated_at` carry the timestamp of the
+ * respective transition; `deactivated_at` is null while the row is `controlled`, and
+ * `activated_at` is null on a fresh `observer` row that has only ever been observer.
+ *
+ * `last_heartbeat_at` is stamped on every heartbeat so the panel can flag stale shims
+ * (Risk 4). `last_heartbeat_pid` lets the panel resolve a resume-mid-session reissue if
+ * two rows share the same pid; latest wins.
+ */
+export const session_control = sqliteTable(
+  "session_control",
+  {
+    session_id: text("session_id").primaryKey(),
+    state: text("state").notNull().default("observer"),
+    source: text("source").notNull().default("runtime"),
+    activated_at: text("activated_at"),
+    activated_by: text("activated_by"),
+    deactivated_at: text("deactivated_at"),
+    shim_registered: integer("shim_registered").notNull().default(0),
+    last_heartbeat_at: text("last_heartbeat_at"),
+    last_heartbeat_pid: integer("last_heartbeat_pid"),
+  },
+  (t) => [
+    index("ix_session_control_state").on(t.state),
+    index("ix_session_control_last_heartbeat").on(t.last_heartbeat_at),
+  ],
+);
+
 // Explicit re-export of the SQL tag so consumers can build raw fragments off the same drizzle
 // instance without adding another import surface.
 export { sql };
