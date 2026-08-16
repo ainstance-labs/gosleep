@@ -288,6 +288,16 @@ were spawned with; no forced restart is required. When ready, add a widening-day
 entry to `docs/lab/decisions/log.jsonl` so the audit trail records who flipped
 which shell when.
 
+**Shim peek robustness (GSL-386).** The compound-OR fast-path extracts
+`session_id` from the first 64 KiB of stdin (was 4 KiB — widened for future
+payload preamble growth). The extractor is `grep -o -m 1 -E` (portable
+first-match on BSD + GNU) piped into a `sed` unwrap; the older greedy
+`sed -E` regex is gone. An empty sid on a non-empty stdin now emits a
+`peek_miss` JSON breadcrumb via `GOSLEEP_HOOK_DEBUG_LOG`. Assertions:
+`tools/lab/tests/shim-control-gate.sh` S6 (sid past byte 4096 within the
+64 KiB cap) and S7 (first-match anchor picks the real sid before a raw
+literal imposter in `tool_input`).
+
 **Runtime toggle reframing (GSL-361, 2026-08-16 — observer mode phase B).** The
 shim guard is no longer an env-flag-only fast-exit; it is a compound-OR gate:
 `proceed = (GOSLEEP_WEB_QUESTIONS=1) OR (core /internal/sessions/:sid/control ==

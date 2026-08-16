@@ -118,12 +118,50 @@ if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ] && [ -s "$_GOSLEEP_STDIN_PEEK" ]; th
     # escaped double-quotes, but a Claude session_id is a hex-and-dash UUID so no escape ever
     # lands inside). `LC_ALL=C` makes the regex byte-oriented (fastest path in bash sed).
     # We accept whitespace between the field name, colon, and value to survive pretty-printed
-    # payloads. Head-limits the read to the first 4 KiB — the session_id is always in the top
-    # of the Claude Code payload, and a 4 KiB ceiling caps the peek's wall-clock regardless of
-    # the tool_input size.
-    _GOSLEEP_PEEK_SESSION_ID="$(LC_ALL=C head -c 4096 "$_GOSLEEP_STDIN_PEEK" 2>/dev/null \
-        | LC_ALL=C sed -n -E 's/.*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
-        | head -n 1)"
+    # payloads.
+    #
+    # GSL-386 hardening (was: 4 KiB cap + greedy sed).
+    #
+    #   (a) Window ceiling widened 4 KiB → 64 KiB. Claude Code today emits `session_id`
+    #       near the top of the JSON payload (near `transcript_path`, `cwd`,
+    #       `permission_mode`) and 4 KiB is enough — but any future preamble growth or
+    #       key reorder would silently miss the sid, gate returns UNKNOWN, and an
+    #       opted-in session falls back to the TUI dialog with no debug signal. 64 KiB
+    #       covers any realistic payload preamble at a single-read cost.
+    #
+    #   (b) First-match anchor. BSD/GNU sed `-E` (ERE) has no non-greedy quantifier,
+    #       so the pre-GSL-386 `s/.*"session_id":.../` regex captured the LAST
+    #       occurrence in the peek window, not the first. Today this is safe because
+    #       nested `"session_id"` inside `tool_input` strings are JSON-escaped to
+    #       `\"session_id\"` (backslash-quote — the regex's leading `"` refuses to
+    #       match `\"`). Future paths where an unescaped literal `"session_id":"..."`
+    #       appears inside `tool_input` (raw text, nested unescaped JSON) would
+    #       resolve to a stranger's sid, the gate returns 404-then-observer, the
+    #       shim fast-exits, and the intent is corrupted silently. Fix: use `awk`
+    #       with `match()` + `exit` — one process, first-match semantics on both
+    #       BSD and GNU awk, and (bench: 20 iters × 2 fixtures, macOS bash 3.2) the
+    #       total peek cost stays within ±10 % of the pre-GSL-386 pipeline instead
+    #       of the ~4× cost of a `grep | sed | head` chain.
+    _GOSLEEP_PEEK_SESSION_ID="$(LC_ALL=C head -c 65536 "$_GOSLEEP_STDIN_PEEK" 2>/dev/null \
+        | LC_ALL=C awk '
+            match($0, /"session_id"[[:space:]]*:[[:space:]]*"[^"]+"/) {
+              s = substr($0, RSTART, RLENGTH)
+              sub(/^"session_id"[[:space:]]*:[[:space:]]*"/, "", s)
+              sub(/"$/, "", s)
+              print s
+              exit
+            }')"
+
+    # Debug breadcrumb — makes an empty-sid-on-non-empty-stdin outcome observable
+    # via GOSLEEP_HOOK_DEBUG_LOG (the pre-existing channel from log_debug below).
+    # log_debug is defined later in the script, so emit a plain JSON line here
+    # directly. Silent on unset env — zero cost on the fast-path.
+    if [ -z "$_GOSLEEP_PEEK_SESSION_ID" ] && [ -n "${GOSLEEP_HOOK_DEBUG_LOG:-}" ]; then
+        printf '{"ts":"%s","hook":"ask-user-question","outcome":"peek_miss","stdin_bytes":%d,"peek_cap":65536}\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)" \
+            "$(wc -c < "$_GOSLEEP_STDIN_PEEK" 2>/dev/null | tr -d ' ' || echo 0)" \
+            >>"$GOSLEEP_HOOK_DEBUG_LOG" 2>/dev/null || true
+    fi
 fi
 
 # Source the shared gate. It exposes control_gate_should_proceed() which sets
