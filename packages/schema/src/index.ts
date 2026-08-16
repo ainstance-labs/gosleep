@@ -490,6 +490,30 @@ export const DeferActionInput = z.object({
 export type DeferActionInput = z.infer<typeof DeferActionInput>;
 
 // -----------------------------------------------------------------------------
+// reopen action (GSL-392 — POST /actions/questions/reopen)
+//
+// Manual counterpart to the defer-reopen worker: flip a deferred question back to `open` on
+// owner demand (e.g. the operator wants to answer sooner than the preset elapsed, or fix a
+// mis-defer). The endpoint refuses non-deferred rows so an accidental double-post cannot
+// resurrect an already-answered question.
+// -----------------------------------------------------------------------------
+
+export const ReopenActionInput = z.object({
+  qid: z.string().min(1),
+  by: z.string().optional(),
+});
+export type ReopenActionInput = z.infer<typeof ReopenActionInput>;
+
+export const ReopenActionResult = z.object({
+  qid: z.string(),
+  status: z.literal("open"),
+  reopened_at: IsoTimestamp,
+  reopened_by: z.string(),
+  labEmit: LabToolTrace,
+});
+export type ReopenActionResult = z.infer<typeof ReopenActionResult>;
+
+// -----------------------------------------------------------------------------
 // sync-tasks action (GSL-279 — POST /actions/tasks/sync)
 //
 // On-demand Jira reconciler tick. Returns the per-cycle summary (inserted / updated / total
@@ -544,6 +568,9 @@ export type ApplyManifestActionResponse = z.infer<typeof ApplyManifestActionResp
 
 export const DeferActionResponse = actionResponse(DeferActionResult);
 export type DeferActionResponse = z.infer<typeof DeferActionResponse>;
+
+export const ReopenActionResponse = actionResponse(ReopenActionResult);
+export type ReopenActionResponse = z.infer<typeof ReopenActionResponse>;
 
 export const SyncTasksActionResponse = actionResponse(SyncTasksActionResult);
 export type SyncTasksActionResponse = z.infer<typeof SyncTasksActionResponse>;
