@@ -4,9 +4,15 @@
 // physical publish: spawn `tools/skills/publish.sh <name>` with a per-request GOSLEEP_WEB_TOKEN
 // nonce, capture the JSON summary the CLI prints on stdout, propagate to the endpoint result.
 //
-// TouchID is PAUSED (`d-2026-08-09-001`) — publish.sh's owner-gate opens on the env-nonce
-// alone tonight. When the pause lifts, the CLI's TTY-confirm block flips to the TouchID
-// invocation without changing this file.
+// TouchID gate is WIRED but SHIPS DEFAULT-OFF (GSL-288, owner ruling 2026-08-16). publish.sh
+// contains the `open -W -a apps/core/bin/touchid-gate.app` invocation behind a
+// GOSLEEP_TOUCHID=1 opt-in flag; with the flag off (the default) the block is an inert stub
+// and publish proceeds via the pre-GSL-288 owner-gate (TTY OR env-nonce), so this endpoint's
+// behaviour is unchanged from before the wiring landed. When the owner enables the flag as
+// part of a future task (tied to GSL-266 activation), the exit-3 → HTTP 403 mapping below
+// carries the "owner refused" semantics — no change needed on this side. The launchd plist
+// and this spawner intentionally do NOT set GOSLEEP_TOUCHID today; setting the flag is the
+// deliberate future step, not a side effect of any production spawn.
 //
 // Env passthroughs for hermetic smoke:
 //   - GOSLEEP_SKILLS_PUBLISH_TIMEOUT_MS  bump the spawn ceiling from 60 000 ms.

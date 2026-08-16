@@ -83,8 +83,20 @@ mock.module("../src/db/client.ts", () => ({
   __resetDbClientForTests: () => {},
 }));
 
-const { enumerateSessions, foldSessions, extractWorkTopic, __resetSessionsFirstSweepForTests } =
-  await import("../src/observed/sessions.ts");
+const {
+  enumerateSessions,
+  foldSessions,
+  extractWorkTopic,
+  listCandidateTranscripts,
+  sessionsCollectorTick,
+  SESSIONS_COLLECTOR_NAME,
+  SESSIONS_CADENCE_MS,
+  __resetSessionsFirstSweepForTests,
+  __resetSessionsChunkStateForTests,
+} = await import("../src/observed/sessions.ts");
+const { registerCollector, __resetCollectorInventory } = await import(
+  "../src/observed/sentinel.ts"
+);
 
 describe("machine-wide session enumerator (GSL-353)", () => {
   test("enumerateSessions returns 2 rows across 2 projects with observed_only correctly set", () => {
@@ -201,6 +213,29 @@ describe("machine-wide session enumerator (GSL-353)", () => {
     expect(row.name).toBe("observed:scratch-repo"); // refreshed to current slug
   });
 
+  test("GSL-359: default enumeration leaves tmux_pane_pid null (lsof is opt-in via GOSLEEP_OBSERVER_LSOF)", () => {
+    // Prod behaviour (verified in R2): lsof -t <transcript> returns empty because the Claude
+    // CLI closes the file between turns. Enumerator MUST NOT invoke lsof/ps by default; the
+    // /fleet SQL uses the heuristic path first and pidtree only fills in when the opt-in
+    // populated `agent_sessions.pid`. This test pins that contract so a future revert of the
+    // GSL-359 gate would fail loudly.
+    const priorFlag = process.env["GOSLEEP_OBSERVER_LSOF"];
+    delete process.env["GOSLEEP_OBSERVER_LSOF"];
+    try {
+      // Non-empty panePids on purpose — the gate short-circuits BEFORE the lookup, so this
+      // documents that the gate wins even when pids are available.
+      const panePids = new Set<number>([process.pid, 999_999_999]);
+      const rows = enumerateSessions(fakeHome, panePids);
+      expect(rows.length).toBeGreaterThan(0);
+      for (const r of rows) {
+        expect(r.tmux_pane_pid).toBeNull();
+      }
+    } finally {
+      if (priorFlag === undefined) delete process.env["GOSLEEP_OBSERVER_LSOF"];
+      else process.env["GOSLEEP_OBSERVER_LSOF"] = priorFlag;
+    }
+  });
+
   test("m6: transcript quiet > ENDED_THRESHOLD_MS sets ended_at on the row", () => {
     __resetSessionsFirstSweepForTests();
     raw.exec("DELETE FROM agent_sessions");
@@ -224,6 +259,214 @@ describe("machine-wide session enumerator (GSL-353)", () => {
       .get() as { ended_at: string | null; session_id: string };
     expect(row).toBeDefined();
     expect(row.ended_at).not.toBeNull();
+  });
+});
+
+describe("GSL-360 chunked collector loop", () => {
+  test("listCandidateTranscripts returns every .jsonl under fake HOME with mtime", () => {
+    const cands = listCandidateTranscripts(fakeHome);
+    // At minimum the two seed transcripts from module setup are present.
+    expect(cands.length).toBeGreaterThanOrEqual(2);
+    for (const c of cands) {
+      expect(c.path.endsWith(".jsonl")).toBe(true);
+      expect(c.session_id).toMatch(/^sess-/);
+      expect(c.mtime_ms).toBeGreaterThan(0);
+    }
+    // Sorted by path for deterministic cold-rotation cursor semantics.
+    const sorted = [...cands].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+    expect(cands.map((c) => c.path)).toEqual(sorted.map((c) => c.path));
+  });
+
+  test("sessionsCollectorTick chunks cold transcripts; backfill flag stays held across the rotation and clears on wrap", async () => {
+    __resetSessionsFirstSweepForTests();
+    __resetSessionsChunkStateForTests();
+    __resetCollectorInventory();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+
+    // Seed sentinel inventory so `sessionsCollectorTick` can `runCollectorTick`.
+    registerCollector(SESSIONS_COLLECTOR_NAME, {
+      source: "transcript-mtime",
+      cadence_ms: SESSIONS_CADENCE_MS,
+    });
+
+    // Force a small warm window (1 s) so we can stamp mtimes deep in the past and make them
+    // cold on purpose. Force chunk size to 1 so we can observe the rotation with tiny N.
+    const priorWarm = process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+    const priorChunk = process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+    process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = "1000";
+    process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = "1";
+
+    // Create 3 cold transcripts under a fresh isolated fake HOME. Using the module-level
+    // fakeHome would collide with warm rows from prior tests; a per-test HOME keeps the
+    // cold list small and deterministic.
+    const chunkHome = join(scratchRoot, "chunk-home");
+    const chunkProjects = join(chunkHome, "projects");
+    mkdirSync(chunkProjects, { recursive: true });
+    const fsNode = require("node:fs");
+    const oldTs = Date.now() - 10 * 60 * 60 * 1_000; // 10 h old → cold under 1 s warm window
+    const coldPaths: string[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const cwd = join(scratchRoot, `chunk-cold-${i}`);
+      mkdirSync(cwd, { recursive: true });
+      const dir = join(chunkProjects, `-${cwd.replace(/\//g, "-")}`);
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, `sess-cold-${i}.jsonl`);
+      writeFileSync(p, JSON.stringify({ type: "header", cwd, model: "haiku" }) + "\n");
+      fsNode.utimesSync(p, new Date(oldTs), new Date(oldTs));
+      coldPaths.push(p);
+    }
+
+    try {
+      // Tick 1 — one cold visited, backfill still held.
+      await sessionsCollectorTick(chunkHome);
+      const after1 = raw
+        .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+        .all() as { payload_json: string }[];
+      expect(after1).toHaveLength(1);
+      expect(JSON.parse(after1[0]!.payload_json).backfill).toBe(true);
+
+      // Tick 2 — second cold visited, still held.
+      await sessionsCollectorTick(chunkHome);
+      const after2 = raw
+        .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+        .all() as { payload_json: string }[];
+      expect(after2).toHaveLength(2);
+      for (const ev of after2) {
+        expect(JSON.parse(ev.payload_json).backfill).toBe(true);
+      }
+
+      // Tick 3 — third cold visited, cursor wraps → coldRotationComplete=true, hold cleared.
+      // The event emitted by this tick is still the last of the boot flood (firstSweepDone
+      // was still false when foldSessions ran), so it too is `backfill=true`.
+      await sessionsCollectorTick(chunkHome);
+      const after3 = raw
+        .query("SELECT payload_json FROM observed_events WHERE kind = 'session_appeared'")
+        .all() as { payload_json: string }[];
+      expect(after3).toHaveLength(3);
+      for (const ev of after3) {
+        expect(JSON.parse(ev.payload_json).backfill).toBe(true);
+      }
+
+      // Introduce a NEW transcript AFTER the rotation completed and tick again — it must
+      // land as backfill=false because firstSweepDone flipped when we passed
+      // holdFirstSweep=false at the end of tick 3.
+      const liveCwd = join(scratchRoot, "chunk-live");
+      mkdirSync(liveCwd, { recursive: true });
+      const liveDir = join(chunkProjects, `-${liveCwd.replace(/\//g, "-")}`);
+      mkdirSync(liveDir, { recursive: true });
+      const livePath = join(liveDir, "sess-live-1.jsonl");
+      writeFileSync(livePath, JSON.stringify({ type: "header", cwd: liveCwd, model: "haiku" }) + "\n");
+      // Fresh mtime → warm.
+      await sessionsCollectorTick(chunkHome);
+      const liveRow = raw
+        .query(
+          "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' AND project_slug = 'chunk-live'",
+        )
+        .get() as { payload_json: string } | null;
+      expect(liveRow).not.toBeNull();
+      expect(JSON.parse(liveRow!.payload_json).backfill).toBe(false);
+    } finally {
+      if (priorWarm === undefined) delete process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+      else process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = priorWarm;
+      if (priorChunk === undefined) delete process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+      else process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = priorChunk;
+    }
+  });
+
+  test("GSL-373 m3 — cursor wraps after initialColdSize even when the cold list keeps growing per tick", async () => {
+    // Verifier m3: if the cold list grows by ≥ chunkSize items each tick, the naive wrap
+    // condition `coldCursor >= cold.length` never fires because cold.length grows in lockstep.
+    // The fix captures `initialColdSize` on the first non-empty tick, so completion is
+    // anchored to the boot-time cold count. This test simulates that pathology by inserting
+    // 2 new cold transcripts before every tick (chunkSize=1 → cold.length grows by 2/tick).
+    // With chunkSize=1 and 3 initial cold, coldRotationComplete MUST flip by the third tick;
+    // events emitted by the FOURTH tick must be `backfill=false`.
+    __resetSessionsFirstSweepForTests();
+    __resetSessionsChunkStateForTests();
+    __resetCollectorInventory();
+    raw.exec("DELETE FROM agent_sessions");
+    raw.exec("DELETE FROM observed_events");
+    registerCollector(SESSIONS_COLLECTOR_NAME, {
+      source: "transcript-mtime",
+      cadence_ms: SESSIONS_CADENCE_MS,
+    });
+
+    const priorWarm = process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+    const priorChunk = process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+    process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = "1000";
+    process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = "1";
+
+    // Fresh isolated HOME so we own the cold list entirely.
+    const growHome = join(scratchRoot, "grow-home");
+    const growProjects = join(growHome, "projects");
+    mkdirSync(growProjects, { recursive: true });
+    const fsNode = require("node:fs");
+    const oldTs = Date.now() - 10 * 60 * 60 * 1_000;
+
+    const dropCold = (id: string): void => {
+      const cwd = join(scratchRoot, `grow-cold-${id}`);
+      mkdirSync(cwd, { recursive: true });
+      const dir = join(growProjects, `-${cwd.replace(/\//g, "-")}`);
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, `sess-grow-${id}.jsonl`);
+      writeFileSync(p, JSON.stringify({ type: "header", cwd, model: "haiku" }) + "\n");
+      fsNode.utimesSync(p, new Date(oldTs), new Date(oldTs));
+    };
+
+    try {
+      // Seed initial 3 cold transcripts — this is the initialColdSize the fix must anchor to.
+      dropCold("init-0");
+      dropCold("init-1");
+      dropCold("init-2");
+
+      // Tick 1 — captures initialColdSize=3. Adds 2 new cold BEFORE next tick.
+      await sessionsCollectorTick(growHome);
+      dropCold("grow-1a");
+      dropCold("grow-1b");
+
+      // Tick 2 — cold.length is now 5, cursor at 1 after tick 1, becomes 2 after tick 2.
+      await sessionsCollectorTick(growHome);
+      dropCold("grow-2a");
+      dropCold("grow-2b");
+
+      // Tick 3 — cold.length is 7, cursor advances to 3 == initialColdSize → wrap fires here.
+      await sessionsCollectorTick(growHome);
+      dropCold("grow-3a");
+      dropCold("grow-3b");
+
+      // Sanity: three ticks emitted three cold session_appeared events (chunkSize=1) and all
+      // three carry backfill=true because firstSweepDone was still held while foldSessions
+      // ran under holdFirstSweep=true. This mirrors the existing GSL-360 test.
+      const appeared = raw
+        .query(
+          "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' ORDER BY seq",
+        )
+        .all() as { payload_json: string }[];
+      expect(appeared.length).toBe(3);
+      for (const ev of appeared) {
+        expect(JSON.parse(ev.payload_json).backfill).toBe(true);
+      }
+
+      // Tick 4 — the critical assertion. Under the OLD wrap-on-length code this would still
+      // be backfill=true (cold.length keeps outpacing coldCursor). Under the fix,
+      // coldRotationComplete flipped at end of tick 3, so tick 4 runs foldSessions with
+      // holdFirstSweep=false; the emitted event lands with backfill=FALSE.
+      await sessionsCollectorTick(growHome);
+      const tick4Rows = raw
+        .query(
+          "SELECT payload_json FROM observed_events WHERE kind = 'session_appeared' ORDER BY seq",
+        )
+        .all() as { payload_json: string }[];
+      expect(tick4Rows.length).toBe(4);
+      const lastPayload = JSON.parse(tick4Rows[3]!.payload_json) as { backfill?: boolean };
+      expect(lastPayload.backfill).toBe(false);
+    } finally {
+      if (priorWarm === undefined) delete process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"];
+      else process.env["GOSLEEP_OBSERVER_WARM_WINDOW_MS"] = priorWarm;
+      if (priorChunk === undefined) delete process.env["GOSLEEP_OBSERVER_COLD_CHUNK"];
+      else process.env["GOSLEEP_OBSERVER_COLD_CHUNK"] = priorChunk;
+    }
   });
 });
 

@@ -493,9 +493,10 @@ interface AgentSessionRow {
   cwd_project_root: string | null;
   observed_only: number;
   tmux_pane_ref: string | null;
-  // GSL-350 M1 follow-up — how the tmux_pane_ref was resolved: 'pidtree' (authoritative
-  // parent-PID walk) or 'heuristic' (cwd-prefix match on pane_current_path). NULL when no
-  // pane matched at all. Panel renders a small tag next to the pane ref when heuristic.
+  // GSL-350 M1 / GSL-359 — how the tmux_pane_ref was resolved: 'heuristic' (cwd-prefix
+  // match on pane_current_path — the prod primary) or 'pidtree' (parent-PID walk against
+  // agent_sessions.pid — opt-in fallback under GOSLEEP_OBSERVER_LSOF=1). NULL when no pane
+  // matched at all. Panel renders a small tag next to the pane ref when heuristic.
   attribution: string | null;
   // GSL-361 (observer mode phase B) — per-session control-registry projection. `control_state`
   // is 'observer' when no row exists (default) or when the row is observer. `control_source`
@@ -515,28 +516,39 @@ readRoutes.get("/fleet", requireBearer, (c) => {
   // dance. A future ?include=live query knob is easy to add if the row count ever grows past
   // the SPA's happy limit.
   //
-  // GSL-356 + GSL-350 M1 follow-up — two-path LEFT JOIN with attribution:
-  //   1. Primary: pid-tree correlation. `agent_sessions.pid` is set by the sessions
-  //      collector after a parent-PID walk (see observed/pidtree.ts + observed/sessions.ts).
-  //      Match `t.pane_pid = a.pid` and tag `attribution='pidtree'`.
-  //   2. Fallback: cwd-prefix heuristic. When the pid walk failed (Claude reparented, or
-  //      the collector's lsof unavailable) but the pane's current path is under the
-  //      session's cwd_project_root, match by prefix and tag `attribution='heuristic'`.
+  // GSL-356 + GSL-350 M1 + GSL-359 primacy swap — two-path LEFT JOIN with attribution:
+  //   1. Primary: cwd-prefix heuristic. `tmux_panes.pane_current_path` under the session's
+  //      `cwd_project_root` → `attribution='heuristic'`. Verifier R2 measured this path
+  //      resolving 200/200 observed rows in prod; the earlier pidtree "primary" was inert
+  //      because the Claude CLI closes transcripts between turns (nothing for lsof to hold).
+  //   2. Fallback (opt-in): pid-tree correlation. `agent_sessions.pid` is populated only
+  //      when the collector runs with `GOSLEEP_OBSERVER_LSOF=1`; if it is AND the heuristic
+  //      missed (`pane_current_path` not under the cwd, e.g. shell cd-ed out), `t.pane_pid =
+  //      a.pid` fills in with `attribution='pidtree'`. Off-by-default in prod.
   //   3. Neither → NULL pane_ref + NULL attribution → panel renders "—".
   //
-  // Both paths in one query via a CTE that materializes candidate pane rows per session.
-  // We prefer the pidtree match (COALESCE order), and rank heuristic matches by descending
-  // pane last_seen so a stale pane never wins over a fresh one.
+  // Both paths in one query. Heuristic goes first in COALESCE + CASE so its match wins when
+  // both fire (rare — pidtree is opt-in). Heuristic uses MAX(...) over pane rows sharing a
+  // path so a stale pane never displaces a fresher pane_ref for the same current_path.
+  //
+  // GSL-373 verifier M1 — the heuristic JOIN must NOT match sibling directories that share a
+  // string prefix with cwd_project_root. Naive `LIKE cwd || '%'` matched /repo/foobar/x when
+  // the session cwd was /repo/foo. The correct predicate is "same directory (=) OR strict
+  // sub-path (LIKE cwd || '/%')" — the '/' after the cwd guarantees a path-separator boundary.
+  // GSL-359 made the heuristic the DEFAULT attribution path, so this correctness bug became
+  // the default; every misattributed row surfaced as attribution='heuristic' with a wrong
+  // tmux_pane_ref. Regression: fleet.projection.test.ts "GSL-373 M1 — heuristic must not
+  // match sibling directories that share a string prefix".
   const rows = getDb().raw
     .query(
       `SELECT a.session_id, a.name, a.kind, a.pid, a.model, a.cwd, a.cycle, a.context_pct,
               a.current_tool, a.current_intent, a.status, a.started_at, a.updated_at, a.ended_at,
               a.last_pr_url, a.last_pr_at,
               a.project_slug, a.cwd_project_root, a.observed_only,
-              COALESCE(pri.pane_ref, sec.pane_ref) AS tmux_pane_ref,
+              COALESCE(heur.pane_ref, pid.pane_ref) AS tmux_pane_ref,
               CASE
-                WHEN pri.pane_ref IS NOT NULL THEN 'pidtree'
-                WHEN sec.pane_ref IS NOT NULL THEN 'heuristic'
+                WHEN heur.pane_ref IS NOT NULL THEN 'heuristic'
+                WHEN pid.pane_ref  IS NOT NULL THEN 'pidtree'
                 ELSE NULL
               END AS attribution,
               sc.state       AS control_state,
@@ -546,19 +558,21 @@ readRoutes.get("/fleet", requireBearer, (c) => {
               sc.shim_registered AS shim_registered
        FROM agent_sessions a
        LEFT JOIN (
-         SELECT pane_pid,
-                session_name || ':' || window_id || '.' || pane_id AS pane_ref
-         FROM tmux_panes
-       ) pri ON a.pid IS NOT NULL AND pri.pane_pid = a.pid
-       LEFT JOIN (
          SELECT pane_current_path,
                 MAX(session_name || ':' || window_id || '.' || pane_id) AS pane_ref
          FROM tmux_panes
          WHERE pane_current_path IS NOT NULL
          GROUP BY pane_current_path
-       ) sec ON pri.pane_ref IS NULL
-             AND a.cwd_project_root IS NOT NULL
-             AND sec.pane_current_path LIKE a.cwd_project_root || '%'
+       ) heur ON a.cwd_project_root IS NOT NULL
+              AND (heur.pane_current_path = a.cwd_project_root
+                   OR heur.pane_current_path LIKE a.cwd_project_root || '/%')
+       LEFT JOIN (
+         SELECT pane_pid,
+                session_name || ':' || window_id || '.' || pane_id AS pane_ref
+         FROM tmux_panes
+       ) pid ON heur.pane_ref IS NULL
+             AND a.pid IS NOT NULL
+             AND pid.pane_pid = a.pid
        LEFT JOIN session_control sc ON sc.session_id = a.session_id
        ORDER BY (a.ended_at IS NULL) DESC, a.updated_at DESC
        LIMIT 200`,
@@ -610,8 +624,8 @@ readRoutes.get("/fleet", requireBearer, (c) => {
       cwd_project_root: r.cwd_project_root,
       observed_only: r.observed_only === 1,
       tmux_pane_ref: r.tmux_pane_ref,
-      // GSL-350 M1 follow-up — how the tmux_pane_ref was resolved (pidtree | heuristic |
-      // null). Panel tags heuristic matches with a small "heuristic" hint.
+      // GSL-350 M1 / GSL-359 — how the tmux_pane_ref was resolved (heuristic default |
+      // pidtree opt-in | null). Panel tags heuristic matches with a small "heuristic" hint.
       attribution: r.attribution,
       // GSL-361 (observer mode phase B) — per-session control state. `control_state` defaults
       // to 'observer' when no session_control row exists (never-registered shim). `env_locked`

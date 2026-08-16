@@ -1,0 +1,28 @@
+{
+  "collectors": [
+    {
+      "name": "claude-sessions",
+      "source": "transcript-mtime",
+      "cadence_ms": 1000,
+      "last_tick_at": "2026-08-16T19:06:48.625Z",
+      "last_tick_ms": 1,
+      "last_error": null,
+      "events_today": 9,
+      "write_attempts": 0,
+      "disabled": false
+    },
+    {
+      "name": "tmux-map",
+      "source": "tmux-list",
+      "cadence_ms": 1000,
+      "last_tick_at": "2026-08-16T19:06:48.608Z",
+      "last_tick_ms": 7,
+      "last_error": null,
+      "events_today": 9,
+      "write_attempts": 0,
+      "disabled": false
+    }
+  ],
+  "count": 2,
+  "write_attempts_total": 0
+}
