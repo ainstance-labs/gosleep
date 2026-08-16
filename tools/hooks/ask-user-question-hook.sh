@@ -93,18 +93,37 @@ cat > "$_GOSLEEP_STDIN_PEEK" 2>/dev/null || true
 # Restore stdin from the peek file for the downstream flow.
 exec < "$_GOSLEEP_STDIN_PEEK"
 
+# GSL-367: shrink the fast-exit cost.
+#
+# Two changes, both preserving the compound-OR gate semantics exactly:
+#
+#   1. Env fast-path bypass: when GOSLEEP_WEB_QUESTIONS=1 the gate always returns PROCEED=1
+#      without consulting session_id (see control-gate.sh — env flag wins BEFORE the sid
+#      lookup). So there is nothing to peek for in that branch. Skip the peek entirely.
+#
+#   2. Pure-shell peek: previously we spawned python3 to extract "session_id" from the JSON
+#      payload. That spawn was the dominant cost on the ~127 ms cold fast-exit; the peek
+#      only needs to find one narrow field ("session_id":"<value>") in a size-bounded file.
+#      A bash+sed regex handles the string form Claude Code always emits (session_id is a
+#      UUID string, never a number/null/object). On any weird shape the regex misses and we
+#      fall through with an empty session_id — the gate then correctly reports UNKNOWN and
+#      the shim fast-exits, which is the SAME behaviour the old python3 path had on parse
+#      error (see the pre-GSL-367 `except Exception: pass` branch).
+#
+# Non-goal: parse arbitrary JSON. The peek is a narrow probe, not a JSON validator; the
+# body construction downstream still uses python3 where correctness matters.
 _GOSLEEP_PEEK_SESSION_ID=""
-if command -v python3 >/dev/null 2>&1 && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
-    _GOSLEEP_PEEK_SESSION_ID="$(python3 - "$_GOSLEEP_STDIN_PEEK" <<'PY' 2>/dev/null || printf ''
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        d = json.load(f)
-    print(d.get("session_id", "") or "", end="")
-except Exception:
-    pass
-PY
-)"
+if [ "${GOSLEEP_WEB_QUESTIONS:-0}" != "1" ] && [ -s "$_GOSLEEP_STDIN_PEEK" ]; then
+    # Field shape Claude Code always emits: "session_id":"<uuid>" (JSON-strings only ever contain
+    # escaped double-quotes, but a Claude session_id is a hex-and-dash UUID so no escape ever
+    # lands inside). `LC_ALL=C` makes the regex byte-oriented (fastest path in bash sed).
+    # We accept whitespace between the field name, colon, and value to survive pretty-printed
+    # payloads. Head-limits the read to the first 4 KiB — the session_id is always in the top
+    # of the Claude Code payload, and a 4 KiB ceiling caps the peek's wall-clock regardless of
+    # the tool_input size.
+    _GOSLEEP_PEEK_SESSION_ID="$(LC_ALL=C head -c 4096 "$_GOSLEEP_STDIN_PEEK" 2>/dev/null \
+        | LC_ALL=C sed -n -E 's/.*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+        | head -n 1)"
 fi
 
 # Source the shared gate. It exposes control_gate_should_proceed() which sets

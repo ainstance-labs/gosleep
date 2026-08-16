@@ -93,6 +93,19 @@ _gosleep_control_fire_heartbeat() {
     # Background POST, all errors swallowed. Uses HOST_HEADER + CONNECT_TIMEOUT_S + ORIGIN_HEADER
     # + INTERNAL_SECRET + CORE_URL from the outer scope. If any of those is missing (secret
     # unset, curl absent) the request quietly fails — that is CORRECT for a heartbeat.
+    #
+    # GSL-368: DETACH the subshell's stdin/stdout/stderr from the parent shim's fds. This is
+    # the difference between "returns instantly" and "the shim's parent (bun/claude-code) waits
+    # up to max-time for the child's stdout pipe to close because the child inherited it".
+    # Root cause of the shift-78 verifier's 9.4 s release-cutover outlier: the parent process
+    # (Bun's child_process.spawn) reads the shim's stdout via a pipe and does not resolve
+    # `.on('close')` until every child that inherited the write-end closes its handle. The
+    # curl inside redirects its own fds, but the SUBSHELL PROCESS still inherits the parent
+    # shim's stdio, and its own exit is bounded by curl's max-time (~5 s worst case). The
+    # `< /dev/null > /dev/null 2>&1` redirection on the `( … ) &` group re-parents every fd
+    # BEFORE curl starts, so the child is truly detached; the shim can exit 0 immediately
+    # and its parent's read-side sees EOF within milliseconds. `disown` stays for the bash
+    # job table cleanup — it never affected inherited fds.
     (
         curl -sS -o /dev/null \
             --connect-timeout "${CONNECT_TIMEOUT_S:-2}" \
@@ -105,7 +118,7 @@ _gosleep_control_fire_heartbeat() {
             -d "$body" \
             "${CORE_URL:-http://127.0.0.1:7331}/internal/sessions/${sid}/shim-heartbeat" \
             2>/dev/null || true
-    ) &
+    ) </dev/null >/dev/null 2>&1 &
     disown 2>/dev/null || true
 }
 
