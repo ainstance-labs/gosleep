@@ -146,6 +146,13 @@ export function SseProvider({ children }: { children: ReactNode }) {
           const type = evt.type;
           if (type.startsWith("question.")) {
             invalidator.schedule("questions");
+          } else if (type === "task.submitted" || type === "task.submit.failed") {
+            // GSL-382 -- task-submission timeline events. Invalidate the per-session
+            // submissions drawer AND the fleet card (control_state may have flipped as
+            // the reason for the failed submission). Timeline itself is already
+            // invalidated above -- these events are visible on the Timeline row.
+            invalidator.schedule("submissions");
+            invalidator.schedule("fleet");
           } else if (type.startsWith("task.") || type.startsWith("tasks.")) {
             invalidator.schedule("tasks");
           } else if (type.startsWith("skill.")) {
@@ -164,6 +171,11 @@ export function SseProvider({ children }: { children: ReactNode }) {
             invalidator.schedule("fleet");
             invalidator.schedule("sessions");
             invalidator.schedule("observed");
+          } else if (type === "sessions.submissions.updated") {
+            // GSL-381 (observer mode phase C) — synthetic submissions frame the endpoint
+            // fires after every confirm. Panel invalidates the history drawer query so
+            // the row appears within the coalesce window.
+            invalidator.schedule("submissions");
           }
         },
         onRotate: (data) => {

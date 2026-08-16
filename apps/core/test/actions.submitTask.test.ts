@@ -370,7 +370,10 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     expect(r.status).toBe(200);
     const result = r.body.result as Record<string, unknown>;
     expect(result.outcome).toBe("pane_gone");
-    expect(spawnCalls).toEqual([]);
+    // Filter to tmux calls only — GSL-382 fires an extra `lab-log.sh task.submit.failed`
+    // spawn on every reachable-refusal outcome. tmux itself should NEVER be invoked.
+    const tmuxCalls = spawnCalls.filter((c) => c[0] === "tmux");
+    expect(tmuxCalls).toEqual([]);
     // One row landed.
     const row = raw.query(`SELECT outcome, body_sha256, body_len FROM task_submissions WHERE session_id='sess-K'`).get() as { outcome: string; body_sha256: string; body_len: number };
     expect(row.outcome).toBe("pane_gone");
@@ -395,12 +398,19 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     expect(r.status).toBe(200);
     const result = r.body.result as Record<string, unknown>;
     expect(result.outcome).toBe("delivered");
-    expect(spawnCalls).toHaveLength(2);
-    expect(spawnCalls[0][0]).toBe("tmux");
-    expect(spawnCalls[0][1]).toBe("send-keys");
-    expect(spawnCalls[0].includes("-l")).toBe(true);
-    expect(spawnCalls[0][spawnCalls[0].length - 1]).toBe("task body");
-    expect(spawnCalls[1][spawnCalls[1].length - 1]).toBe("Enter");
+    // GSL-382 also fires `bash lab-log.sh task.submitted` after the executor. Filter
+    // to tmux calls only for the send-keys assertion; assert lab-log fired separately.
+    const tmuxCalls = spawnCalls.filter((c) => c[0] === "tmux");
+    expect(tmuxCalls).toHaveLength(2);
+    expect(tmuxCalls[0][1]).toBe("send-keys");
+    expect(tmuxCalls[0].includes("-l")).toBe(true);
+    expect(tmuxCalls[0][tmuxCalls[0].length - 1]).toBe("task body");
+    expect(tmuxCalls[1][tmuxCalls[1].length - 1]).toBe("Enter");
+    const labLogCalls = spawnCalls.filter(
+      (c) => c[0] === "bash" && c[1].endsWith("lab-log.sh"),
+    );
+    expect(labLogCalls).toHaveLength(1);
+    expect(labLogCalls[0].includes("task.submitted")).toBe(true);
     const row = raw.query(`SELECT outcome, body_sha256, body_len FROM task_submissions WHERE session_id='sess-L'`).get() as { outcome: string; body_sha256: string; body_len: number };
     expect(row.outcome).toBe("delivered");
     expect(row.body_len).toBe(9);
@@ -434,9 +444,75 @@ describe("POST /actions/sessions/:id/submit-task — confirm (GSL-381)", () => {
     expect(second.body.cached).toBe(true);
     const secondResult = second.body.result as Record<string, unknown>;
     expect(secondResult.submission_id).toBe(firstId);
+    // Cached replay must NOT re-fire the executor OR the timeline event -- no tmux
+    // spawns and no lab-log spawns.
     expect(spawnCalls).toEqual([]);
     const count = raw.query(`SELECT COUNT(*) AS c FROM task_submissions WHERE session_id='sess-M'`).get() as { c: number };
     expect(count.c).toBe(1);
+  });
+});
+
+describe("Timeline event kinds (GSL-382)", () => {
+  test("delivered outcome fires lab-log with type=task.submitted + body payload", async () => {
+    clearSubmissionState();
+    seedControlled("sess-tl-1");
+    const key = "sub-tl-1";
+    await postJson(
+      "/actions/sessions/sess-tl-1/submit-task",
+      { body: "run migration", framing: "none", dry_run: true },
+      { "Idempotency-Key": key },
+    );
+    spawnCalls = [];
+    await postJson(
+      "/actions/sessions/sess-tl-1/submit-task",
+      { body: "run migration", framing: "none", dry_run: false },
+      { "Idempotency-Key": key },
+    );
+    const labLogCalls = spawnCalls.filter(
+      (c) => c[0] === "bash" && c[1].endsWith("lab-log.sh"),
+    );
+    expect(labLogCalls).toHaveLength(1);
+    // argv shape: [bash, lab-log.sh, --type, task.submitted, --actor, owner-web,
+    //             --src, emit, --data-json, <json>]
+    const typeIdx = labLogCalls[0].indexOf("--type");
+    expect(labLogCalls[0][typeIdx + 1]).toBe("task.submitted");
+    const dataIdx = labLogCalls[0].indexOf("--data-json");
+    const payload = JSON.parse(labLogCalls[0][dataIdx + 1]) as Record<string, unknown>;
+    expect(payload.session_id).toBe("sess-tl-1");
+    expect(payload.outcome).toBe("delivered");
+    expect(payload.body).toBe("run migration");
+    expect(payload.body_len).toBe(13);
+    expect(typeof payload.body_sha256).toBe("string");
+    expect(payload.framing).toBe("none");
+    expect(payload.error).toBeNull();
+  });
+
+  test("pane_gone outcome fires lab-log with type=task.submit.failed + error", async () => {
+    clearSubmissionState();
+    seedControlled("sess-tl-2");
+    const key = "sub-tl-2";
+    await postJson(
+      "/actions/sessions/sess-tl-2/submit-task",
+      { body: "hi", framing: "none", dry_run: true },
+      { "Idempotency-Key": key },
+    );
+    raw.query(`DELETE FROM tmux_panes WHERE session_name='gsl378-target-sess-tl-2'`).run();
+    spawnCalls = [];
+    await postJson(
+      "/actions/sessions/sess-tl-2/submit-task",
+      { body: "hi", framing: "none", dry_run: false },
+      { "Idempotency-Key": key },
+    );
+    const labLogCalls = spawnCalls.filter(
+      (c) => c[0] === "bash" && c[1].endsWith("lab-log.sh"),
+    );
+    expect(labLogCalls).toHaveLength(1);
+    const typeIdx = labLogCalls[0].indexOf("--type");
+    expect(labLogCalls[0][typeIdx + 1]).toBe("task.submit.failed");
+    const dataIdx = labLogCalls[0].indexOf("--data-json");
+    const payload = JSON.parse(labLogCalls[0][dataIdx + 1]) as Record<string, unknown>;
+    expect(payload.outcome).toBe("pane_gone");
+    expect(payload.error).not.toBeNull();
   });
 });
 

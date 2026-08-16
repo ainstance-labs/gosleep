@@ -85,6 +85,11 @@ export const queryKeys = {
   sessionControl: (sessionId: string) =>
     ["core", "sessions", "control", sessionId] as const,
   controlledSessions: () => ["core", "sessions", "controlled"] as const,
+  // GSL-381 (observer mode phase C) — per-session submission history for the Fleet /
+  // Observed card drawer. Invalidated by the SseProvider on
+  // `sessions.submissions.updated` and on `task.submitted` / `task.submit.failed`.
+  submissions: (sessionId: string, limit?: number) =>
+    ["core", "submissions", sessionId, limit ?? 50] as const,
 } as const;
 
 export function useVersion(): UseQueryResult<VersionResponse> {

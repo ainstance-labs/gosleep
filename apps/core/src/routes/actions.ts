@@ -2156,6 +2156,113 @@ function insertSubmissionRow(row: {
     );
 }
 
+/**
+ * GSL-382 — fire the durable timeline event for a submission attempt. Uses lab-log.sh
+ * to append a row to the day's events/*.jsonl (which the tail indexer folds into the
+ * `events` table for the Timeline screen). Also broadcasts the same event on the SSE
+ * stream so the Timeline invalidates immediately.
+ *
+ *   task.submitted       — outcome='delivered'
+ *   task.submit.failed   — every other outcome (pane_gone, released_mid_submit,
+ *                          not_at_prompt, send_failed)
+ *
+ * Payload is intentionally rich but body-free: body_len + body_sha256 + pane_ref +
+ * framing + outcome + error. Full body lives on the timeline event PAYLOAD in the
+ * JSONL (which lab-log records verbatim); it does NOT live in `task_submissions.body`
+ * (that column does not exist -- R16.6).
+ *
+ * Fail-open: a failure to spawn lab-log warn-logs but does NOT roll back the
+ * submission or its DB row. Same shape as fireControlTimelineEvent above.
+ */
+async function fireSubmissionTimelineEvent(
+  kind: "task.submitted" | "task.submit.failed",
+  args: {
+    session_id: string;
+    submission_id: string;
+    outcome: ExecutorOutcome["outcome"];
+    body_len: number;
+    body_sha256: string;
+    framing: SubmissionFraming;
+    pane_ref_at_dispatch: string | null;
+    by: string;
+    channel: string;
+    error: string | null;
+    /** Sanitised body -- included on the timeline event payload for full audit per
+     *  R16.6. Never null on a real dispatch; the `task_submissions` row still keeps
+     *  only sha + len. */
+    body: string;
+  },
+): Promise<void> {
+  const dataJson = JSON.stringify({
+    session_id: args.session_id,
+    submission_id: args.submission_id,
+    outcome: args.outcome,
+    body_len: args.body_len,
+    body_sha256: args.body_sha256,
+    framing: args.framing,
+    pane_ref_at_dispatch: args.pane_ref_at_dispatch,
+    by: args.by,
+    channel: args.channel,
+    error: args.error,
+    body: args.body,
+  });
+  const emit = await spawnAwait({
+    cmd: [
+      "bash",
+      `${REPO_ROOT}/tools/lab/lab-log.sh`,
+      "--type",
+      kind,
+      "--actor",
+      args.by,
+      "--src",
+      "emit",
+      "--data-json",
+      dataJson,
+    ],
+    timeoutMs: 5_000,
+  });
+  if (!emit.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "core.action.submit-task.timeline_warn",
+        kind,
+        session_id: args.session_id,
+        submission_id: args.submission_id,
+        rc: emit.code,
+        stderr: emit.stderr,
+      }),
+    );
+  }
+  // Also broadcast the same event on SSE so the Timeline screen invalidates immediately
+  // (the tail-indexer path is best-effort and lags by a sweep). The Timeline reads events
+  // from /timeline; the SSE consumer invalidates that query on any `event: task.*` frame.
+  const nowTs = new Date().toISOString();
+  broadcaster.emit({
+    seq: 0,
+    day: nowTs.slice(0, 10),
+    ts: nowTs,
+    src: "core",
+    actor: "actions.sessions.submit-task",
+    task: null,
+    type: kind,
+    payload: {
+      session_id: args.session_id,
+      submission_id: args.submission_id,
+      outcome: args.outcome,
+      body_len: args.body_len,
+      body_sha256: args.body_sha256,
+      framing: args.framing,
+      pane_ref_at_dispatch: args.pane_ref_at_dispatch,
+      by: args.by,
+      channel: args.channel,
+      error: args.error,
+    },
+    ingested_from: null,
+  });
+}
+
 function fireSubmissionSse(args: {
   session_id: string;
   submission_id: string;
@@ -2408,6 +2515,27 @@ actionsRoutes.post(
             by,
             channel,
           });
+          // GSL-382 -- fire the durable timeline event. Runs after the DB write + SSE
+          // fan-out; a failed lab-log spawn is warn-logged, never rolls back. The event
+          // kind is 'task.submitted' on the happy path and 'task.submit.failed' for
+          // every reachable-refusal outcome (pane_gone, released_mid_submit,
+          // not_at_prompt, send_failed).
+          await fireSubmissionTimelineEvent(
+            runOutcome.outcome === "delivered" ? "task.submitted" : "task.submit.failed",
+            {
+              session_id: runOutcome.session_id,
+              submission_id: submissionId,
+              outcome: runOutcome.outcome,
+              body_len: runOutcome.body_len,
+              body_sha256: runOutcome.body_sha256,
+              framing: runOutcome.framing,
+              pane_ref_at_dispatch: runOutcome.pane_ref_at_dispatch,
+              by,
+              channel,
+              error: runOutcome.error,
+              body: rawBody,
+            },
+          );
 
           return {
             httpStatus: 200,
