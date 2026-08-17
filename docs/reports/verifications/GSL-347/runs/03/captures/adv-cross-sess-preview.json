@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.h preview on sess-a under fresh key — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-adv-cross-sess","cached":false,"finished_at":"2026-08-16T20:50:50.026Z","result":{"ok":true,"session_id":"sess-a","framing":"prompt-boundary","resolved_target":"verify378-target-a:@38.%412","keystroke_bytes":"cross-session body","body_len":18,"body_sha256":"3b479a5f7217a611ae63603900622721d415ca6e813efa80e35f3d481ca326b3","warnings":[],"previewed_at":"2026-08-16T20:50:50.026Z"}}

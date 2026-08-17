@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S2.a preview against observer session — HTTP 409 (expected 409)
+{"ok":false,"intent_id":"verify-s2-1","error":"session sess-b is not under panel control (state=observer)","reason":"session-not-controlled"}

@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.a Ctrl-C (0x03) in body → 400 — HTTP 400 (expected 400)
+{"ok":false,"error":"invalid JSON: JSON Parse error: Unterminated string"}

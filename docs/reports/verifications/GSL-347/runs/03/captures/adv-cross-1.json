@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.g submit-task under key verify-adv-7 (preview) — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-adv-7","cached":false,"finished_at":"2026-08-16T20:50:49.991Z","result":{"ok":true,"session_id":"sess-a","framing":"prompt-boundary","resolved_target":"verify378-target-a:@38.%412","keystroke_bytes":"cross-endpoint test","body_len":19,"body_sha256":"f9d32b6aa7b40b491ee353255596bb1cebdd87cbf28b7adfb21652f3a549da5c","warnings":[],"previewed_at":"2026-08-16T20:50:49.991Z"}}

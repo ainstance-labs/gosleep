@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S4.b preview under key key-verify-s4-2 — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-s4-2","cached":false,"finished_at":"2026-08-16T20:50:48.784Z","result":{"ok":true,"session_id":"sess-d","framing":"prompt-boundary","resolved_target":"verify378-target-d:@41.%415","keystroke_bytes":"hello","body_len":5,"body_sha256":"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824","warnings":[],"previewed_at":"2026-08-16T20:50:48.784Z"}}

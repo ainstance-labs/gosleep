@@ -1,0 +1,10 @@
+session_id  state       shim_registered
+----------  ----------  ---------------
+sess-a      controlled  1              
+sess-b      observer    0              
+sess-c      controlled  0              
+sess-d      controlled  1              
+sess-e      controlled  1              
+sess-f      controlled  1              
+sess-g      controlled  1              
+sess-h      controlled  1              

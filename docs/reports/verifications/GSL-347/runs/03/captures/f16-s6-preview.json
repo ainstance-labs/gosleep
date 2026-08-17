@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S6.a preview on sess-f (controlled) — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-s6-1","cached":false,"finished_at":"2026-08-16T20:50:49.727Z","result":{"ok":true,"session_id":"sess-f","framing":"prompt-boundary","resolved_target":"verify378-target-f:@43.%417","keystroke_bytes":"release-mid-submit test body","body_len":28,"body_sha256":"e253e3e5ecf4f5dc12630abc2766aa12be424b7045c69968236c6eb78e706b32","warnings":[],"previewed_at":"2026-08-16T20:50:49.727Z"}}

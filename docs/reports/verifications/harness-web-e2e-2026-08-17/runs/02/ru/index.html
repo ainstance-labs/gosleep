@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>gosleep — E2E-верификация, прогон 02 (2026-08-17)</title>
+<link rel="stylesheet" href="../assets/style.css" onerror="this.remove()"/>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12151a; --panel2:#171b21; --border:#232a34;
+    --text:#e7ecf3; --muted:#98a2b3; --accent:#7ea1ff; --ok:#4ade80;
+    --warn:#f5c451; --bad:#f87171; --info:#8cd8ff; --shadow:0 2px 12px rgba(0,0,0,.4);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa;--panel:#ffffff;--panel2:#fafbfc;--border:#e5e8ee;
+      --text:#0e1116;--muted:#5b6472;--accent:#3161ff;--ok:#0f9d58;
+      --warn:#b6842d;--bad:#d93a3a;--info:#0f6ea3;--shadow:0 2px 12px rgba(0,0,0,.06);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1120px;margin:0 auto;padding:32px 24px 96px}
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:24px}
+  header.top h1{font-size:24px;margin:0;font-weight:600}
+  .lang{margin-left:auto;display:inline-flex;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .lang a{padding:6px 12px;color:var(--muted);border-right:1px solid var(--border)}
+  .lang a:last-child{border-right:0}
+  .lang a.active{background:var(--panel2);color:var(--text)}
+  .verdict{display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);margin-bottom:24px}
+  .score{font-family:var(--mono);font-size:56px;font-weight:700;color:var(--ok);line-height:1}
+  .score .sub{font-size:14px;color:var(--muted);font-weight:400;display:block;margin-top:4px;font-family:inherit}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .pill.ok{background:rgba(74,222,128,.14);color:var(--ok);border:1px solid rgba(74,222,128,.35)}
+  .pill.warn{background:rgba(245,196,81,.14);color:var(--warn);border:1px solid rgba(245,196,81,.35)}
+  .pill.bad{background:rgba(248,113,113,.14);color:var(--bad);border:1px solid rgba(248,113,113,.4)}
+  .pill.info{background:rgba(140,216,255,.14);color:var(--info);border:1px solid rgba(140,216,255,.35)}
+  .verdict .head{display:flex;flex-direction:column;gap:6px}
+  .verdict .head .subline{color:var(--muted);font-size:13px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  nav.toc a{background:var(--panel);border:1px solid var(--border);padding:6px 12px;border-radius:8px;color:var(--muted);font-size:13px}
+  nav.toc a:hover{color:var(--text);border-color:var(--accent)}
+  section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)}
+  section h2{font-size:18px;margin:0 0 12px;font-weight:600}
+  section h3{font-size:15px;margin:16px 0 8px;font-weight:600}
+  .kv{display:grid;grid-template-columns:200px 1fr;gap:8px 16px;font-size:13px}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0;font-family:var(--mono);font-size:12.5px;color:var(--text);word-break:break-all}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:8px}
+  .fix{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .fix .title{font-weight:600;margin-bottom:4px;font-size:14px}
+  .fix .body{color:var(--muted);font-size:13px}
+  .fix .evi{margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 8px;overflow-x:auto}
+  table.lanes{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.lanes th,table.lanes td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.lanes th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  table.lanes td.label{white-space:nowrap;font-weight:600}
+  .find-list{counter-reset:findc;list-style:none;padding:0;margin:0}
+  .find-list li{counter-increment:findc;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .find-list li:before{content:counter(findc) ". ";font-weight:700;font-family:var(--mono);color:var(--accent)}
+  .find-list .fhead{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+  .find-list .ftitle{font-weight:600}
+  .find-list .fmeta{color:var(--muted);font-size:12px;font-family:var(--mono);margin-left:auto}
+  .find-list .fbody{color:var(--text);margin-top:6px;font-size:13px}
+  .find-list .frepro{margin-top:8px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:12px;color:var(--muted);white-space:pre-wrap}
+  code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .thumbs figure{margin:0;background:var(--panel2);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:zoom-in}
+  .thumbs img{display:block;width:100%;height:140px;object-fit:cover;background:#000}
+  .thumbs figcaption{padding:6px 8px;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+  .lightbox.open{display:flex}
+  .lightbox img{max-width:min(1400px,95vw);max-height:90vh;box-shadow:0 10px 40px rgba(0,0,0,.6);border-radius:6px}
+  .lightbox .cap{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);color:#eee;font:12px var(--mono);background:rgba(0,0,0,.4);padding:6px 10px;border-radius:6px}
+  .lightbox .nav{position:fixed;top:50%;transform:translateY(-50%);color:#fff;background:rgba(255,255,255,.1);border:0;font-size:32px;padding:6px 14px;border-radius:8px;cursor:pointer}
+  .lightbox .prev{left:20px}.lightbox .next{right:20px}
+  .lightbox .close{position:fixed;top:12px;right:16px;color:#fff;background:transparent;border:0;font-size:28px;cursor:pointer}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+  .lane-pass{color:var(--ok);font-weight:600}
+  .lane-partial{color:var(--warn);font-weight:600}
+  .lane-fail{color:var(--bad);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>gosleep — end-to-end верификация, прогон 02</h1>
+  <div class="lang">
+    <a href="../index.html">EN</a>
+    <a class="active" href="index.html">RU</a>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="score">87<span class="sub">/ 100</span></div>
+  <div class="head">
+    <div><span class="pill warn">Вердикт — READY-с-оговорками</span></div>
+    <div class="subline"><strong>Независимый повторный прогон «свежими глазами».</strong> Все пять правок из run 01 подтверждены живьём против реальной сессии Claude Code 2.1.233 Sonnet 5. Одна частичная регрессия: дефект «prefix-склейки родительского cwd» починили только на <code>/fleet</code> (ранкер на сервере), а на странице <em>Observed</em> он остался (клиентский <code>startsWith</code>). Два минорных UX-разрыва. Критичных нет.</div>
+    <div class="subline">Перепроверки правок: 5/5 pass · Полосы: A pass · B pass* · C partial · D pass · E pass · Новые находки: 0 Critical, 1 Medium, 3 minor · SHA <code>c59b36e</code></div>
+  </div>
+  <div>
+    <span class="pill ok">5/5 правок подтверждены</span><br/>
+    <span class="pill info">1 частичная регрессия</span>
+  </div>
+</div>
+
+<nav class="toc">
+  <a href="#setup">Стенд</a>
+  <a href="#fixes">Перепроверка 5 правок</a>
+  <a href="#lanes">Полосы A–E</a>
+  <a href="#findings">Находки</a>
+  <a href="#coverage">Сверка с run 01</a>
+  <a href="#evidence">Скриншоты</a>
+</nav>
+
+<section id="setup">
+  <h2>Стенд, дерево, изоляция</h2>
+  <dl class="kv">
+    <dt>Коммит</dt><dd>c59b36e (main, после мержа PR #387) — <code>Merge pull request #387 from ainstance-labs/GSL-388-e2e01-findings</code></dd>
+    <dt>Worktree</dt><dd>.claude/worktrees/e2e02 (detached HEAD, свой bun install, своя сборка web)</dd>
+    <dt>Царапка core</dt><dd>bun apps/core/src/serve.ts на 127.0.0.1:<strong>7365</strong> (prod 7331 не трогается). dev-env Bearer + INTERNAL_SECRET; scratch DB под <code>.artifacts/e2e02/</code></dd>
+    <dt>Fixture</dt><dd>tmux-сессия <code>e2e02-fixture</code> (окно @51, pane %444, pid 56412) — Claude Code 2.1.233, модель <strong>Sonnet 5</strong>, opt-in через <code>GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=… GOSLEEP_CORE_URL=http://127.0.0.1:7365</code></dd>
+    <dt>session_id фикстуры</dt><dd>e056990d-0d54-406c-a317-e31d460abadb (в UI — <code>e2e02-1f</code>)</dd>
+    <dt>Браузер</dt><dd>chrome-devtools MCP → CDP; token-handshake <code>/?token=…</code>; панель отдаётся из бандла царапки</dd>
+    <dt>Безопасность</dt><dd>healthz public 200 · без Bearer 401 · неправильный Host 421 · API за Bearer — проверено живьём</dd>
+    <dt>Запреты соблюдены</dt><dd>prod-порт 7331 не тронут; /tmp не задействован; ~/.claude не менялся; git-мутаций нет; tmux — только <code>e2e02-*</code>; модель — только Sonnet (Haiku запрещён); Workflow не использовался</dd>
+  </dl>
+</section>
+
+<section id="fixes">
+  <h2>Независимая перепроверка пяти правок run 01</h2>
+  <p style="color:var(--muted);margin-top:0">Каждую правку проверял по реальному сценарию (не по юнит-тесту), против живой фикстуры. Отчёт run 01 <strong>читался только после закрытия этого раздела</strong>.</p>
+  <div class="grid">
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Правка #1 — синхронный heartbeat шима сам заполняет session_control</div>
+      <div class="body">Первый tool-вызов в фикстуре (AskUserQuestion) поднял <code>control-gate.sh</code>. Отладочный лог показал <em>mode=sync</em>. Строка в <code>session_control</code> появилась без ручной подсадки.</div>
+      <div class="evi">hook-debug.jsonl: {"event":"shim.heartbeat","sid":"e056990d…","outcome":"ok","http":"200","mode":"sync"}<br/>DB: e056990d… | state=controlled | source=env | shim_registered=1 | last_heartbeat_at=2026-08-16T23:08:26.826Z</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Правка #2 — isPaneAtPrompt понимает версионную строку 2.1.x</div>
+      <div class="body">Живой pane_current_command = <code>2.1.233</code> (это версия CC-2.1, а не <em>claude</em>). Отправил задачу через диалог панели; тело набралось в pane %444; ответ фикстуры дословно совпал.</div>
+      <div class="evi">tmux #{pane_current_command} = "2.1.233"<br/>Panel Submit → task_submissions.outcome = <strong>delivered</strong>, body_len=77, framing=prompt-boundary<br/>Fixture pane: "❯ Print the single word DELIVERED-E2E02…" → "⏺ DELIVERED-E2E02"</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS<sup>*</sup></span> Правка #3 — на /fleet больше нет prefix-склейки cwd</div>
+      <div class="body">Серверный ранкер <code>/fleet</code> корректно привязал <em>gosleep-66</em> (cwd = основное дерево) к pane <code>3:@3.%107</code>, а НЕ к моему pane фикстуры %444 (глубже). Дубликатов строк нет. <strong>Оговорка:</strong> тот же дефект остался на странице Observed (см. M-1).</div>
+      <div class="evi">/fleet: gosleep-66 → tmux_pane_ref=3:@3.%107  ✓ (не приклеен к e2e02-fixture:@51.%444)<br/>       e2e02-1f  → tmux_pane_ref=e2e02-fixture:@51.%444  ✓ (одна строка)</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Правка #4 — ручной «Reopen now» из панели</div>
+      <div class="body">Отложил q-2026-08-16-001 на 5 минут; в карточке идёт живой обратный отсчёт; кликнул <em>Reopen now</em> → статус <code>deferred → open</code>, тост «Reopened … status → open (was deferred)».</div>
+      <div class="evi">events: 3 question.deferred → 6 question.reopened → кнопки-варианты вернулись</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Правка #5 — вариант списка отправляется в ОДИН клик</div>
+      <div class="body">Кликнул «apple» на переоткрытом вопросе. Диалог не открывался. Статус тут же стал <em>answered</em>, тост «Answered … sent to lab-emit + DB».</div>
+      <div class="evi">Snapshot до клика: 3 варианта + кнопки Answer/Apply/Defer/Resolved<br/>Snapshot после клика: «ANSWER apple» + тост + status=answered (один клик, без модалки)</div>
+    </div>
+  </div>
+</section>
+
+<section id="lanes">
+  <h2>Регрессия по полосам A–E</h2>
+  <table class="lanes">
+    <thead><tr><th>Полоса</th><th>Итог</th><th>Живая свидетельная база</th></tr></thead>
+    <tbody>
+      <tr><td class="label">A — Вопросы</td><td class="lane-pass">PASS</td><td>Реальный сквозной AskUserQuestion (Sonnet 5) → панель → ответ вернулся в pane. One-click вариант (Правка #5). Свободный текст через <code>/actions/questions/answer</code> с проверкой <em>Idempotency-Key</em> (повтор cached:true). Defer/Reopen (Правка #4). XSS-нагрузки в лейблах (<code>&lt;img src=x onerror=alert(1)&gt;</code>, <code>&lt;script&gt;alert(2)&lt;/script&gt;</code>) отрисованы как <em>текст</em> — <strong>alert не срабатывает, сырых тегов в DOM нет, aria-label несёт литеральные символы</strong>.</td></tr>
+      <tr><td class="label">B — Разрешения</td><td class="lane-partial">PASS с m-2</td><td>Инжект <code>Bash rm -rf /nonexistent-e2e</code> через <code>/internal/permissions/post</code>. Allow — один клик, без причины. Deny — диалог с textarea «Why deny? (optional; sent as permissionDecisionReason)»; причина «e2e02 denial rationale — reason attached» сохранена в <code>questions.applied</code>. События <code>permission.posed</code> записаны. <strong>Минор:</strong> новые <code>permission.posed</code> НЕ приходят на /questions по SSE — нужен reload, чтобы увидеть новый запрос разрешения (m-2). Контрольная проверка с <code>question.posed</code> живьём приходит.</td></tr>
+      <tr><td class="label">C — Наблюдение</td><td class="lane-partial">PARTIAL</td><td>Карточка фикстуры на Fleet — <em>env-locked</em>, корректный pane_ref, одна строка. Take-control правильно задизейблен с подсказкой для пиров без shim. <strong>Моя оркестраторская сессия НЕ приклеена к pane фикстуры на /fleet</strong> (Правка #3 ✓). <strong>НО</strong> на Observed gosleep-66 (cwd = основное дерево, родитель для cwd фикстуры) приклеена к <code>e2e02-fixture:@51.%444</code> через клиентский <code>startsWith</code> — см. M-1.</td></tr>
+      <tr><td class="label">D — Отправка задач</td><td class="lane-pass">PASS</td><td>Диалог автоматически формирует dry-run превью (SHA-256, байты, framing, целевой pane). Чекбокс «I understand … cannot be recalled» гейтит кнопку Send. Send → task_submissions outcome=<em>delivered</em>, событие таймлайна <code>task.submitted</code>. Pane фикстуры получил тело дословно, Sonnet 5 ответил ровно <em>DELIVERED-E2E02</em>. History-drawer показывает строку (56s ago · delivered · 77 b · prompt-boundary · e2e02-fixture:@51.%444 · 80794b9892…).</td></tr>
+      <tr><td class="label">E — Устойчивость</td><td class="lane-pass">PASS</td><td>Deep-link'и /overview, /fleet, /observed, /questions, /timeline, /tasks — все 200. Ноль console-ошибок и предупреждений за весь прогон. Idempotency-Key повтор на <code>/actions/questions/answer</code> — cached:true с идентичным результатом. SSE-реконнект: убил core (порт освободился) → баннер «reconnecting»; поднял снова → «live» за ~3s, потерь нет, Last-Event-ID resume отработал.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="findings">
+  <h2>Находки (новые в run 02)</h2>
+  <ol class="find-list">
+    <li>
+      <div class="fhead">
+        <span class="ftitle">На Observed остаётся prefix-склейка cwd (правку #3 применили только к /fleet)</span>
+        <span class="fmeta">M-1 · MEDIUM · <code>apps/web/src/screens/Observed.tsx:235-241</code></span>
+      </div>
+      <div class="fbody">
+        Run 01 отметил этот дефект для <em>Fleet</em> и <em>Observed</em> вместе. GSL-391 починил <code>/fleet</code> на сервере (per-pane ранкер + dedup по session_id), но карточка Observed по-прежнему связывает pane-ы клиентски: <code>panes.find(p => p.pane_current_path.startsWith(s.cwd_project_root))</code>. Предикат срабатывает для <em>любого</em> pane, чей cwd лежит в поддереве сессии — поэтому сессия с cwd = основное дерево склеивается с первым pane, который где-то ниже, включая мою фикстуру в <code>.claude/worktrees/e2e02</code>. Итог видно на Observed: карточка <code>gosleep-66</code> (сессия в основном дереве, tmux 1:@1.%10 на самом деле) показывает «tmux e2e02-fixture:@51.%444» — pane моей фикстуры.
+      </div>
+      <div class="frepro">Fixture: e2e02-1f (cwd=.claude/worktrees/e2e02)  gosleep-66 (cwd=основное дерево)
+Panel · /observed  →  карточка gosleep-66 показывает «tmux e2e02-fixture:@51.%444»  (НЕВЕРНО)
+Panel · /fleet     →  карточка gosleep-66 показывает «3:@3.%107»                    (верно)
+Как чинить: заменить .find(startsWith) на тот же ранкер, что использует SQL для /fleet,
+            либо отдать tmux_pane_ref через /observed/sessions, чтобы UI не склеивал сам.</div>
+    </li>
+    <li>
+      <div class="fhead">
+        <span class="ftitle">Новые <code>permission.posed</code> не приходят на /questions по SSE (нужен reload)</span>
+        <span class="fmeta">m-2 · MINOR · провал SSE fan-out</span>
+      </div>
+      <div class="fbody">
+        Панель открыта на /questions. Постим новое разрешение через <code>/internal/permissions/post</code>. Запись в БД появилась (seq 66, event <code>permission.posed</code>), но панель показывает 0 кнопок Allow/Deny до ручной перезагрузки. Контрольный <code>question.posed</code> приходит живьём — значит разрыв специфичен для permission. Практика: если панель просто открыта, новый запрос разрешения владелец не увидит без reload.
+      </div>
+      <div class="frepro">Repro:
+  1. Открыть панель /questions, посчитать кнопки Allow/Deny.
+  2. curl -X POST /internal/permissions/post {…}
+  3. Подождать 2.5 s. Количество кнопок не меняется.
+  4. Reload. Кнопок +1.
+С /internal/questions/post — приходит живьём за ~2.5 s, без reload.</div>
+    </li>
+    <li>
+      <div class="fhead">
+        <span class="ftitle">На Fleet-карточке «CURRENT TOOL» показывает AskUserQuestion после его завершения</span>
+        <span class="fmeta">m-3 · MINOR · устаревшее поле</span>
+      </div>
+      <div class="fbody">
+        После того как я ответил на AskUserQuestion и Sonnet 5 вернулся в prompt, Fleet-карточка продолжала показывать <code>CURRENT TOOL: AskUserQuestion</code> и <code>INTENT: AskUserQuestion pending owner answer</code> весь оставшийся прогон. Серверный <code>/fleet.sessions[…].current_tool</code> при этом = null. Устаревание клиентское — производный HEURISTIC-лейбл не сбрасывается на <code>question.answered</code>.
+      </div>
+      <div class="frepro">curl /fleet | jq '.sessions[] | select(.session_id | startswith("e056990d")) | .current_tool'
+=> null  (верно)
+Panel Fleet card:  CURRENT TOOL AskUserQuestion — INTENT AskUserQuestion pending owner answer  (устаревшее)</div>
+    </li>
+    <li>
+      <div class="fhead">
+        <span class="ftitle">Заголовок карточки permission дампит сырой <code>tool_input</code></span>
+        <span class="fmeta">m-4 · MINOR · UX-полировка</span>
+      </div>
+      <div class="fbody">
+        Заголовок для permission-запроса в /questions: <em>Permission request: Bash <code>{"command":"rm -rf /nonexistent-e2e"}</code></em> — JSON tool_input вставлен прямо в H3. Ниже уже есть строка COMMAND. Просится убрать сырой JSON из заголовка (он дублирует COMMAND-ряд), чтобы читалось легче.
+      </div>
+      <div class="frepro">Наблюдаемый заголовок H3:
+  "Permission request: Bash {"command":"rm -rf /nonexistent-e2e"}"
+Ниже уже:
+  COMMAND: rm -rf /nonexistent-e2e</div>
+    </li>
+  </ol>
+</section>
+
+<section id="coverage">
+  <h2>Сверка с run 01 (читалась ПОСЛЕ закрытия своего свипа)</h2>
+  <p style="color:var(--muted);margin-top:0">Вердикт run 01 (2026-08-16): <strong>READY-WITH-CAVEATS · widen after 2 MAJORs fixed</strong>, 82/100. Оба MAJOR-а — (a) prefix-склейка cwd на Fleet/Observed и (b) варианты списка открывают модалку — стали блокерами расширения. Полосы A/B/D/E — PASS.</p>
+  <h3>Что подтвердил run 02</h3>
+  <ul>
+    <li>Каждый MAJOR run 01 <em>полностью или частично</em> закрыт: one-click ✓, /fleet-склейка ✓, /observed-склейка <strong>ещё открыта</strong> (M-1).</li>
+    <li>Все полосы run 01 остаются PASS (A/B/D/E), плюс новый сигнал: Take-control становится доступным исключительно от живого heartbeat шима.</li>
+  </ul>
+  <h3>Дыры в покрытии run 02 vs run 01</h3>
+  <ul>
+    <li>Run 01 проверял <em>отказ на observer-only сессии</em> (submit-task 409 <code>session-not-controlled</code>). Run 02 гонял только happy-path (env-locked, controlled). Путь отказа — на слово.</li>
+    <li>Run 01 проверял <em>конкурентную идемпотентность ответа</em> (два гонщика с одним qid). Run 02 — только последовательный replay с тем же <em>Idempotency-Key</em>. Гонка — на слово.</li>
+  </ul>
+  <h3>Дыры в покрытии run 01 vs run 02</h3>
+  <ul>
+    <li>Run 01 отметил prefix-склейку как единую находку для <em>Fleet/Observed</em>, не разделяя, что частичный фикс на /fleet оставит /observed уязвимым. Run 02 разложил это явно.</li>
+    <li>Run 01 не проверял SSE fan-out <code>permission.posed</code> отдельно от <code>question.posed</code>. Run 02 поймал m-2.</li>
+    <li>Run 01 не мерил устаревание клиентского <code>current_tool</code> после <code>question.answered</code>. Run 02 поймал m-3.</li>
+  </ul>
+</section>
+
+<section id="evidence">
+  <h2>Скриншоты (клик — открыть)</h2>
+  <div class="thumbs" id="thumbs">
+    <figure data-full="../assets/01-overview.png"><img loading="lazy" src="../assets/01-overview.png"><figcaption>01 · Overview (панель загружена через <code>?token=</code>)</figcaption></figure>
+    <figure data-full="../assets/02-questions-open.png"><img loading="lazy" src="../assets/02-questions-open.png"><figcaption>02 · Открытый вопрос с 3 кнопками-вариантами</figcaption></figure>
+    <figure data-full="../assets/03-defer-dialog.png"><img loading="lazy" src="../assets/03-defer-dialog.png"><figcaption>03 · Диалог Defer + пресеты</figcaption></figure>
+    <figure data-full="../assets/04-deferred-with-reopen-button.png"><img loading="lazy" src="../assets/04-deferred-with-reopen-button.png"><figcaption>04 · Deferred + Reopen now (Правка #4)</figcaption></figure>
+    <figure data-full="../assets/05-reopened.png"><img loading="lazy" src="../assets/05-reopened.png"><figcaption>05 · После Reopen: status=open, варианты вернулись</figcaption></figure>
+    <figure data-full="../assets/06-answered-one-click.png"><img loading="lazy" src="../assets/06-answered-one-click.png"><figcaption>06 · Один клик по «apple» → answered (Правка #5)</figcaption></figure>
+    <figure data-full="../assets/07-observed-page.png"><img loading="lazy" src="../assets/07-observed-page.png"><figcaption>07 · Observed — видна prefix-склейка cwd (M-1)</figcaption></figure>
+    <figure data-full="../assets/08-fleet-page.png"><img loading="lazy" src="../assets/08-fleet-page.png"><figcaption>08 · Fleet — атрибуция верна (Правка #3)</figcaption></figure>
+    <figure data-full="../assets/09-fleet-fixture-card.png"><img loading="lazy" src="../assets/09-fleet-fixture-card.png"><figcaption>09 · Fleet · карточка e2e02-1f (env-locked, реальный pane)</figcaption></figure>
+    <figure data-full="../assets/10-submit-dryrun-ready.png"><img loading="lazy" src="../assets/10-submit-dryrun-ready.png"><figcaption>10 · Submit-task · dry-run готов</figcaption></figure>
+    <figure data-full="../assets/11-post-submit-toast.png"><img loading="lazy" src="../assets/11-post-submit-toast.png"><figcaption>11 · После Send · задача доставлена</figcaption></figure>
+    <figure data-full="../assets/12-xss-payload-safe.png"><img loading="lazy" src="../assets/12-xss-payload-safe.png"><figcaption>12 · XSS-лейблы как текст · alert не срабатывает</figcaption></figure>
+    <figure data-full="../assets/13-permission-request.png"><img loading="lazy" src="../assets/13-permission-request.png"><figcaption>13 · Карточка Permission · Allow/Deny</figcaption></figure>
+    <figure data-full="../assets/14-permission-allowed.png"><img loading="lazy" src="../assets/14-permission-allowed.png"><figcaption>14 · После Allow · answered, тост записан</figcaption></figure>
+    <figure data-full="../assets/15-deny-with-reason-dialog.png"><img loading="lazy" src="../assets/15-deny-with-reason-dialog.png"><figcaption>15 · Диалог Deny с textarea-причиной</figcaption></figure>
+    <figure data-full="../assets/16-sse-reconnect.png"><img loading="lazy" src="../assets/16-sse-reconnect.png"><figcaption>16 · SSE-баннер вернулся в «live» после рестарта core</figcaption></figure>
+    <figure data-full="../assets/17-timeline-events.png"><img loading="lazy" src="../assets/17-timeline-events.png"><figcaption>17 · Timeline · question/permission/task events</figcaption></figure>
+  </div>
+</section>
+
+<footer>Автор: e2e-run-02 · 2026-08-17 · sha c59b36e · фикстура Sonnet 5 · git не меняли, /tmp не трогали, prod 7331 не касались</footer>
+
+</div>
+
+<div class="lightbox" id="lb">
+  <button class="close" aria-label="закрыть">×</button>
+  <button class="nav prev" aria-label="предыдущий">‹</button>
+  <img alt=""/>
+  <button class="nav next" aria-label="следующий">›</button>
+  <div class="cap"></div>
+</div>
+
+<script>
+(function(){
+  const lb = document.getElementById('lb');
+  const lbImg = lb.querySelector('img');
+  const lbCap = lb.querySelector('.cap');
+  const figs = Array.from(document.querySelectorAll('#thumbs figure'));
+  let idx = 0;
+  function open(i){
+    idx = (i + figs.length) % figs.length;
+    const f = figs[idx];
+    lbImg.src = f.dataset.full;
+    lbCap.textContent = f.querySelector('figcaption').textContent;
+    lb.classList.add('open');
+  }
+  function close(){ lb.classList.remove('open'); lbImg.src = ''; }
+  figs.forEach((f,i) => f.addEventListener('click', () => open(i)));
+  lb.querySelector('.close').addEventListener('click', close);
+  lb.querySelector('.prev').addEventListener('click', e => { e.stopPropagation(); open(idx-1); });
+  lb.querySelector('.next').addEventListener('click', e => { e.stopPropagation(); open(idx+1); });
+  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') close();
+    if (e.key === 'ArrowLeft') open(idx-1);
+    if (e.key === 'ArrowRight') open(idx+1);
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {"questions": [{"question": "Ship it?", "header": "ship", "options": [{"label": "yes"}, {"label": "no"}], "multiSelect": false}], "answers": {"Ship it?": "yes"}}}}

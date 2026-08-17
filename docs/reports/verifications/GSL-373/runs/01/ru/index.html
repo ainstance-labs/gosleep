@@ -1,0 +1,331 @@
+<!doctype html>
+<!--
+  agentic-report-creator — Russian translation shell (ru/index.html).
+  Identical structure to dashboard.html; only the UI CHROME is Russian. The data
+  slots (GSL-373 — верификация R2, <div class="card hero">
+  <div class="score-ring" style="--score: 78" data-band="warning">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="track" cx="60" cy="60" r="52"></circle>
+      <circle class="value" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="num"><b>78</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>GSL-373 — Observer R2 follow-ups — адверсарная верификация</h1>
+    <p class="lead">PR #361 (ветка <code>GSL-373-observer-r2-followups</code>): GSL-359 primacy swap (<code>64d2941</code>) + GSL-360 chunked folds (<code>a600609</code>). Все три гейта зелёные и на tip PR, и на <code>origin/main</code>: <code>tsc -p apps/core --noEmit</code> чист, <code>bun test apps/core</code> 354/0 (main 350/0, PR добавляет +4 теста), <code>core-smoke</code> 102/0. Живой прогон на scratch core :7350 с fake HOME подтвердил primacy swap (теги heuristic), каденс chunked rotation (2 cold на тик) и удержание backfill в течение первой ротации.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MERGE — fix follow-up</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">1</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">3</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">4</span><span class="k">Всего</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Распределение по серьёзности">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:25%"></span>
+      <span class="seg-minor" style="width:75%"></span>
+    </div>
+  </div>
+</div>, <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="area-tag">/fleet attribution</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>LIKE-prefix false attribution — heuristic now default, bug now default</h3>
+  <div class="finding-body">
+    <p>Эвристический JOIN в <code>/fleet</code> матчит tmux-пейны через SQL <code>LIKE a.cwd_project_root || '%'</code>. Без разделителя пути шаблон совпадает с любым пейном, чей <code>pane_current_path</code> начинается со строки cwd — включая соседние директории. Проекты <code>/repo/foo</code> и <code>/repo/foobar/…</code> сталкиваются: <code>LIKE '/repo/foo' || '%'</code> матчит <code>/repo/foobar/x</code>.</p>
+<p>GSL-359 сделал эвристику первичным путём атрибуции (раньше первичным был pidtree, а эта эвристика была fallback). То есть уже существующий баг корректности стал по-умолчанию: каждая ошибочно атрибуированная строка приезжает с <code>attribution='heuristic'</code> и неверным <code>tmux_pane_ref</code>.</p>
+<p><strong>Проверено вживую.</strong> Два сессии засеяны в fake HOME: native <code>/…/fake-repo</code> и observed-only <code>/…/fake-repo-sibling</code>. Вставлен tmux pane с <code>pane_current_path=/…/fake-repo-sibling/subdir</code>. <code>/fleet</code> атрибутировал ТОТ ЖЕ pane К ОБЕИМ сессиям — sibling верно, а native ошибочно — оба с <code>attribution='heuristic'</code> (файл evidence <code>05-fleet-with-sibling-pane.json</code>).</p>
+<p><strong>Правка.</strong> Заменить условие JOIN на <code>LIKE a.cwd_project_root || '/%'</code>, либо добавить эквивалентный вариант <code>pane_current_path = a.cwd_project_root OR pane_current_path LIKE a.cwd_project_root || '/%'</code>. Небольшая, безопасная правка, восстанавливающая исходное намерение («cwd пейна лежит внутри cwd сессии»).</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Источник</span><span class="ref-v">GSL-359 primacy swap (README this PR)</span></div>
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>apps/core/src/routes/read.ts:558</code></span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">PR narrative accuracy</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>PR description claims a 353/1 → 354/0 test-repair; origin/main is 350/0</h3>
+  <div class="finding-body">
+    <p>Сообщение коммита 64d2941 гласит <code>bun test apps/core 354/0 (fixed a pre-existing 353/1)</code>. Повторный запуск той же команды на <code>origin/main</code> (worktree на коммите 253cb38) даёт <strong>350 pass / 0 fail</strong> по 36 файлам. PR добавляет +4 теста и приземляет <strong>354/0</strong>, но никакого сломанного baseline'а «чинить» не существует — нарратив преувеличивает произошедшее.</p>
+<p>Это не дефект кода. Помечено потому, что тот же текст могут в будущем цитировать как свидетельство дисциплины test-triage, которой на самом деле не было, либо может скрыться настоящий test-repair в другом месте, если этому нарративу верить дословно.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>commit 64d2941 message body</code></span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">sessions lifecycle</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Deleted transcripts leave stale rows in agent_sessions (pre-existing; unchanged by this PR)</h3>
+  <div class="finding-body">
+    <p><code>foldSessions</code> делает upsert для каждой сессии из текущего snapshot'а перечисления; он никогда не DELETE'ит и не помечает истёкшим ряд, чей транскрипт удалён с диска. Проверено вживую: <code>sess-cold-3.jsonl</code> был удалён на лету; за 12 секунд и 4 тика коллектора после удаления ряд <code>sess-cold-3</code> остался в <code>agent_sessions</code> со своим до-удаления <code>ended_at</code> (файл evidence <code>06-fleet-final.json</code>).</p>
+<p>Поведение уже существовавшее — появилось с исходным sessions collector, не GSL-360. Помечено здесь, чтобы читатель знал, что это НЕ регрессия chunked-rotation, но и НЕ починено этим PR. Отдельный тикет на прунинг рядов, чей путь транскрипта больше не резолвится (или чей mtime старше N дней), закроет пробел.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>apps/core/src/observed/sessions.ts:459-615 (foldSessions)</code></span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">chunked rotation invariants</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Theoretical starvation: `coldRotationComplete` never flips under sustained cold-list growth</h3>
+  <div class="finding-body">
+    <p>В <code>sessionsCollectorTick</code> условие оборачивания курсора: <code>coldCursor &gt;= cold.length</code>. Если холодный список растёт на ≥ <code>coldChunkSize()</code> элементов на тик (например владелец бросает 50+ исторических транскриптов в <code>~/.claude/projects</code> каждые 5 с), курсор растёт на chunkSize, но и <code>cold.length</code> растёт с той же скоростью — оборачивание не срабатывает. <code>coldRotationComplete</code> остаётся false навсегда, <code>holdFirstSweep</code> остаётся true навсегда, и все emitted-события помечаются <code>backfill=true</code> бесконечно — фильтр backfill на панели молча спрячет живые события.</p>
+<p>Требует патологического входа (500+ новых холодных транскриптов/сек); в обычных сценариях владельца не встречается. Тесты не покрывают растущий холодный список — существующий тест проверяет только статичные 3 элемента. Правка: захватить <code>initialColdSize</code> на первом тике и оборачивать по <code>coldCursor &gt;= initialColdSize</code>, либо флипать <code>coldRotationComplete=true</code> как только курсор проходит ≥ начального холодного числа — что бы ни настало раньше.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>apps/core/src/observed/sessions.ts:650-665</code></span></div>
+  </div>
+</article>, …) are filled with the
+  Russian-translated content when translations.ru provides it, else the English
+  fallback per string (so the shell always renders — never a broken page).
+
+  IMPORTANT: ../assets/ must be "../assets/" here (ru/ is one level down);
+  the language switch points back up to ../index.html. Assets are SHARED with the
+  English root — do not duplicate screenshots or CSS/JS into ru/.
+
+  HARD RULE — severity terminology is NEVER translated. The classification terms are
+  English constants in EVERY locale, including this Russian shell:
+
+      severity : CRITICAL · MAJOR · MINOR
+      lane     : architecture · functionality · design
+      status   : LANDED · PARTIAL · NOT-LANDED
+
+  They are terms of art, not words. A badge's visible text equals its own
+  data-severity attribute here exactly as in the English report. NEVER emit
+  Критично / Существенно / Незначительно — not in a badge, not in a count tile, not
+  in a heading, not in prose. Translating a term forks the vocabulary away from the
+  payload, the data-severity attribute, the Jira labels and the fix agent's JQL.
+
+  Translate the free prose AROUND the terms:
+    "2 CRITICAL findings block the release"
+      -> "2 findings уровня CRITICAL блокируют релиз"   <- sentence RU, token EN
+  The non-term count-tile label Total -> Всего still translates, and findings[N].area
+  is free prose that translates too. See SKILL.md section 9 + references/i18n-workflow.md.
+-->
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-373 — верификация R2</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script>
+    /* Тема выставляется до первой отрисовки, затем вешается обработчик переключателя. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-373 — верификация R2</span>
+        <span class="subtitle">PR #361 — независимый адверсарный run 01</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">GSL-373</span>
+        <span class="hbtn" aria-label="Дата">2026-08-16</span>
+        <!-- Переключение языка: русская версия -> английский корень -->
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Общая сводка -->
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Общая сводка</h2>
+      <div class="card hero">
+  <div class="score-ring" style="--score: 78" data-band="warning">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="track" cx="60" cy="60" r="52"></circle>
+      <circle class="value" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="num"><b>78</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>GSL-373 — Observer R2 follow-ups — адверсарная верификация</h1>
+    <p class="lead">PR #361 (ветка <code>GSL-373-observer-r2-followups</code>): GSL-359 primacy swap (<code>64d2941</code>) + GSL-360 chunked folds (<code>a600609</code>). Все три гейта зелёные и на tip PR, и на <code>origin/main</code>: <code>tsc -p apps/core --noEmit</code> чист, <code>bun test apps/core</code> 354/0 (main 350/0, PR добавляет +4 теста), <code>core-smoke</code> 102/0. Живой прогон на scratch core :7350 с fake HOME подтвердил primacy swap (теги heuristic), каденс chunked rotation (2 cold на тик) и удержание backfill в течение первой ротации.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MERGE — fix follow-up</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">1</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">3</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">4</span><span class="k">Всего</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Распределение по серьёзности">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:25%"></span>
+      <span class="seg-minor" style="width:75%"></span>
+    </div>
+  </div>
+</div>
+    </section>
+
+    <!-- Находки -->
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Находки</h2>
+      <div class="findings">
+        <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="area-tag">/fleet attribution</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>LIKE-prefix false attribution — heuristic now default, bug now default</h3>
+  <div class="finding-body">
+    <p>Эвристический JOIN в <code>/fleet</code> матчит tmux-пейны через SQL <code>LIKE a.cwd_project_root || '%'</code>. Без разделителя пути шаблон совпадает с любым пейном, чей <code>pane_current_path</code> начинается со строки cwd — включая соседние директории. Проекты <code>/repo/foo</code> и <code>/repo/foobar/…</code> сталкиваются: <code>LIKE '/repo/foo' || '%'</code> матчит <code>/repo/foobar/x</code>.</p>
+<p>GSL-359 сделал эвристику первичным путём атрибуции (раньше первичным был pidtree, а эта эвристика была fallback). То есть уже существующий баг корректности стал по-умолчанию: каждая ошибочно атрибуированная строка приезжает с <code>attribution='heuristic'</code> и неверным <code>tmux_pane_ref</code>.</p>
+<p><strong>Проверено вживую.</strong> Два сессии засеяны в fake HOME: native <code>/…/fake-repo</code> и observed-only <code>/…/fake-repo-sibling</code>. Вставлен tmux pane с <code>pane_current_path=/…/fake-repo-sibling/subdir</code>. <code>/fleet</code> атрибутировал ТОТ ЖЕ pane К ОБЕИМ сессиям — sibling верно, а native ошибочно — оба с <code>attribution='heuristic'</code> (файл evidence <code>05-fleet-with-sibling-pane.json</code>).</p>
+<p><strong>Правка.</strong> Заменить условие JOIN на <code>LIKE a.cwd_project_root || '/%'</code>, либо добавить эквивалентный вариант <code>pane_current_path = a.cwd_project_root OR pane_current_path LIKE a.cwd_project_root || '/%'</code>. Небольшая, безопасная правка, восстанавливающая исходное намерение («cwd пейна лежит внутри cwd сессии»).</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Источник</span><span class="ref-v">GSL-359 primacy swap (README this PR)</span></div>
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>apps/core/src/routes/read.ts:558</code></span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">PR narrative accuracy</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>PR description claims a 353/1 → 354/0 test-repair; origin/main is 350/0</h3>
+  <div class="finding-body">
+    <p>Сообщение коммита 64d2941 гласит <code>bun test apps/core 354/0 (fixed a pre-existing 353/1)</code>. Повторный запуск той же команды на <code>origin/main</code> (worktree на коммите 253cb38) даёт <strong>350 pass / 0 fail</strong> по 36 файлам. PR добавляет +4 теста и приземляет <strong>354/0</strong>, но никакого сломанного baseline'а «чинить» не существует — нарратив преувеличивает произошедшее.</p>
+<p>Это не дефект кода. Помечено потому, что тот же текст могут в будущем цитировать как свидетельство дисциплины test-triage, которой на самом деле не было, либо может скрыться настоящий test-repair в другом месте, если этому нарративу верить дословно.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>commit 64d2941 message body</code></span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">sessions lifecycle</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Deleted transcripts leave stale rows in agent_sessions (pre-existing; unchanged by this PR)</h3>
+  <div class="finding-body">
+    <p><code>foldSessions</code> делает upsert для каждой сессии из текущего snapshot'а перечисления; он никогда не DELETE'ит и не помечает истёкшим ряд, чей транскрипт удалён с диска. Проверено вживую: <code>sess-cold-3.jsonl</code> был удалён на лету; за 12 секунд и 4 тика коллектора после удаления ряд <code>sess-cold-3</code> остался в <code>agent_sessions</code> со своим до-удаления <code>ended_at</code> (файл evidence <code>06-fleet-final.json</code>).</p>
+<p>Поведение уже существовавшее — появилось с исходным sessions collector, не GSL-360. Помечено здесь, чтобы читатель знал, что это НЕ регрессия chunked-rotation, но и НЕ починено этим PR. Отдельный тикет на прунинг рядов, чей путь транскрипта больше не резолвится (или чей mtime старше N дней), закроет пробел.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>apps/core/src/observed/sessions.ts:459-615 (foldSessions)</code></span></div>
+  </div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-373</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">chunked rotation invariants</span>
+    <span class="lane-tag">functionality</span>
+  </div>
+  <h3>Theoretical starvation: `coldRotationComplete` never flips under sustained cold-list growth</h3>
+  <div class="finding-body">
+    <p>В <code>sessionsCollectorTick</code> условие оборачивания курсора: <code>coldCursor &gt;= cold.length</code>. Если холодный список растёт на ≥ <code>coldChunkSize()</code> элементов на тик (например владелец бросает 50+ исторических транскриптов в <code>~/.claude/projects</code> каждые 5 с), курсор растёт на chunkSize, но и <code>cold.length</code> растёт с той же скоростью — оборачивание не срабатывает. <code>coldRotationComplete</code> остаётся false навсегда, <code>holdFirstSweep</code> остаётся true навсегда, и все emitted-события помечаются <code>backfill=true</code> бесконечно — фильтр backfill на панели молча спрячет живые события.</p>
+<p>Требует патологического входа (500+ новых холодных транскриптов/сек); в обычных сценариях владельца не встречается. Тесты не покрывают растущий холодный список — существующий тест проверяет только статичные 3 элемента. Правка: захватить <code>initialColdSize</code> на первом тике и оборачивать по <code>coldCursor &gt;= initialColdSize</code>, либо флипать <code>coldRotationComplete=true</code> как только курсор проходит ≥ начального холодного числа — что бы ни настало раньше.</p>
+  </div>
+  <div class="refs">
+    <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>apps/core/src/observed/sessions.ts:650-665</code></span></div>
+  </div>
+</article>
+      </div>
+    </section>
+
+    <!-- Заметки по архитектуре (необязательно) -->
+    <section aria-labelledby="arch-h">
+  <h2 class="section-title" id="arch-h">Метод верификации + evidence</h2>
+  <article class="card arch-note">
+    <h3>Метод</h3>
+    <div class="arch-body">
+      <p><strong>1. Независимый worktree.</strong> <code>git worktree add .claude/worktrees/verify373 origin/GSL-373-observer-r2-followups</code> + <code>bun install</code>. Второй worktree на <code>origin/main</code> для baseline-сравнения.</p>
+      <p><strong>2. Прогон гейтов.</strong> На tip PR: <code>bun x tsc -p apps/core --noEmit</code> чистый; <code>bun test apps/core</code> 354 pass / 0 fail; <code>bash tools/lab/tests/core-smoke.sh</code> 102 pass / 0 fail. На <code>origin/main</code>: 350 pass / 0 fail — см. finding 2.</p>
+      <p><strong>3. Адверсарное code-review.</strong> Полный diff читался по <code>apps/core/src/observed/pidtree.ts</code>, <code>apps/core/src/observed/sessions.ts</code>, <code>apps/core/src/routes/read.ts</code>, плюс новые тесты в <code>apps/core/test/observed.sessions.test.ts</code> и <code>apps/core/test/fleet.projection.test.ts</code>. Установка атакующего: расхождение pidtree/heuristic, PID reuse, мёртвые пейны, false-match cwd-prefix, edge case ротации (0/1/нечётные, сессии появляются/исчезают на лету, starvation), качество тестов.</p>
+      <p><strong>4. Живой адверсарный прогон.</strong> Scratch core запущен на порту 7350 из PR-worktree (НИКОГДА не prod 7331) с fake <code>HOME=/…/verify373/.artifacts/live/fake-home</code>, каденс tmux-коллектора 99999 c (фактически off), чтобы <code>tmux_panes</code> содержала только вставленное тестами; <code>GOSLEEP_OBSERVER_COLD_CHUNK=2</code>, <code>GOSLEEP_OBSERVER_WARM_WINDOW_MS=3600000</code>, каденс sessions 3 c.</p>
+    </div>
+  </article>
+  <article class="card arch-note">
+    <h3>Проиграны сценарии</h3>
+    <div class="arch-body">
+      <p><strong>S1 — heuristic-primacy по умолчанию.</strong> Пустая <code>tmux_panes</code>: /fleet вернул 8 сессий (2 warm native/observed + 6 cold), все с <code>attribution=null</code> и <code>tmux_pane_ref=null</code>. См. <code>assets/01-fleet-initial.json</code>.</p>
+      <p><strong>S2 — heuristic-атрибуция работает (позитивный кейс).</strong> Вставлен ряд <code>tmux_panes</code> для observed-репо пути; <code>/fleet</code> атрибутировал <code>sess-observed-warm</code> к <code>sibling-shell:@0.%77</code> с <code>attribution='heuristic'</code>. См. <code>assets/05-fleet-with-sibling-pane.json</code>.</p>
+      <p><strong>S3 — cwd-prefix false match (finding 1).</strong> ТОТ ЖЕ ряд пейна также ошибочно атрибуирован к <code>sess-native-live</code> (cwd <code>/…/fake-repo</code>), потому что путь пейна <code>/…/fake-repo-sibling/subdir</code> начинается с <code>/…/fake-repo</code>. Это баг: <code>LIKE cwd_project_root || '%'</code> без разделителя пути. См. <code>assets/05-fleet-with-sibling-pane.json</code>.</p>
+      <p><strong>S4 — каденс chunked rotation.</strong> С 6 cold + COLD_CHUNK=2 каждый тик эмиттил 2 cold <code>session_appeared</code> (evidence: <code>SELECT ts, kind FROM observed_events ORDER BY seq</code> — 2 warm в t0, затем +2 cold в t0+3s, +2 cold в t0+6s, +2 cold в t0+9s, курсор оборачивается). У коллектора <code>last_tick_ms=1</code>. См. <code>assets/08-collectors-final.json</code>.</p>
+      <p><strong>S5 — сессия исчезает на лету (finding 3).</strong> Удалил <code>sess-cold-3.jsonl</code>; за 12 c / 4 последующих тика ряд остался в <code>agent_sessions</code> со своим до-удаления <code>ended_at</code>. Этим PR не чинится (уже существовало). См. <code>assets/06-fleet-final.json</code>.</p>
+    </div>
+  </article>
+  <article class="card arch-note">
+    <h3>Teardown</h3>
+    <div class="arch-body">
+      <p>Scratch core убит; порт 7350 подтверждён свободным через <code>lsof -i :7350 -sTCP:LISTEN</code>. Worktree <code>.claude/worktrees/verify373</code> и baseline worktree <code>.claude/worktrees/verify373-main</code> оставлены до подачи этого отчёта; caller может удалить их <code>git worktree remove</code>.</p>
+    </div>
+  </article>
+</section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Сгенерировано: <strong>verify-373 (independent adversarial verifier)</strong> · 2026-08-16 19:22 UTC</span>
+      <span>Проверенная сборка <code>a600609 (PR #361 tip)</code></span>
+    </div>
+  </footer>
+
+  <script src="../assets/lightbox.js" defer></script>
+</body>
+</html>

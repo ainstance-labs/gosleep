@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.c Tab + Newline in body OK — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-adv-3","cached":false,"finished_at":"2026-08-16T20:50:49.869Z","result":{"ok":true,"session_id":"sess-g","framing":"prompt-boundary","resolved_target":"verify378-target-g:@44.%418","keystroke_bytes":"line1\n\tline2","body_len":12,"body_sha256":"2f6928c43c919915d452b6f2b90f7cf6640a7773c83412bf3d8ea1abfc699020","warnings":[],"previewed_at":"2026-08-16T20:50:49.869Z"}}

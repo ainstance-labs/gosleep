@@ -1,0 +1,322 @@
+<!doctype html>
+<!--
+  agentic-report-creator — Russian translation shell (ru/index.html).
+  Identical structure to dashboard.html; only the UI CHROME is Russian. The data
+  slots (GSL-243 wave-4 systems audit tail — verify-wave4 run 01, <div class="card hero">
+  <div class="score-ring" style="--score: 82" data-band="good">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="track" cx="60" cy="60" r="52"></circle>
+      <circle class="value" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="num"><b>82</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>GSL-243 wave-4 systems audit tail — verify-wave4</h1>
+    <p class="lead">Верификация PR #388: 8 задач (GSL-227..234, 243) на коммите <code>f35f93b</code>, поверх main <code>c59b36e</code>. 6 новых наборов 46/46, hooks-verify 14/0, smoke 405/161 (net-улучшение vs main), совместимость чистая.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MERGE + follow-ups</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">4</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">3</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">7</span><span class="k">Всего</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Severity distribution">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:57%"></span>
+      <span class="seg-minor" style="width:43%"></span>
+    </div>
+  </div>
+</div>, <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-243</span>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="area-tag">Заявление о baseline</span>
+    <span class="lane-tag">process</span>
+  </div>
+  <h3>Baseline расходится с заявлением — на чистом main реально 392/174, не 405/161</h3>
+  <div class="finding-body"><p>В описании PR указано «smoke baseline 405/161 unchanged». Прогон <code>tools/lab/smoke.sh</code> на чистом main <code>c59b36e</code> даёт <strong>PASS=392 FAIL=174</strong>; на PR-tip после мёржа main — <strong>PASS=405 FAIL=161</strong>. Дельта <strong>+13 PASS / −13 FAIL</strong> — чистое улучшение (правки chronicler / SSG-gate / apply-due / recovery / dedup). Регрессий, привнесённых PR, не найдено (диффом полных наборов PASS/FAIL подтверждено, что каждый main-only FAIL стал PASS в PR-tip либо является недетерминизмом timestamp/inode/count). Слово «unchanged» вводит в заблуждение — точнее: «дельта PR: +13 PASS / −13 FAIL vs main c59b36e, регрессий нет». Мёржу не мешает.</p></div>
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-228</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Tier-2 floor: секреты</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>Tier-2 secrets: фраза `leak the token` не ловится</h3>
+  <div class="finding-body"><p>В шаблоне <code>secrets</code> глаголы <code>rotate</code>, <code>share</code>, <code>publish</code>, <code>commit</code>, <code>expose</code> разрешают опциональный <code>the</code>, а <code>leak(ed)</code> — нет. Итог: <code>leak the token</code>, <code>leak my token</code>, <code>leak this token</code> принимаются как DECISION и получают дефолт-таймер 2h. Воспроизведено: <code>question --type DECISION --question &#x27;leak the token&#x27; --default no --reversibility high</code> → <code>q-…</code>. Правка: симметричный <code>\bleak(?:ed)?\s+(?:the\s+)?…</code>. Комментарий кода (стр. 111) говорит «false positive — сужай, не расширяй»; здесь обратный случай (false NEGATIVE), правка = расширение.</p></div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-228</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Tier-2 floor: секреты</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>Tier-2 `rotate` обходится, если между `the` и «ключом» есть квалификатор</h3>
+  <div class="finding-body"><p>Шаблон <code>\brotate\s+(?:the\s+)?(секрет|токен|api-ключ|key)\b</code> требует, чтобы секрет-слово шло сразу после <code>rotate </code> или <code>rotate the </code> — без слов между. Естественные фразы <code>rotate the AWS key</code>, <code>rotate the master key</code>, <code>rotate our api key</code>, <code>rotate my token</code> НЕ ловятся. Проверено: <code>rotate the AWS key</code> принят как DECISION. Существующий тест <code>rotate the api key</code> проходит только потому, что <code>api key</code> совпадает с ветвью <code>api[- ]?key</code>. Правка: разрешить 1–2 слова между (<code>(?:\S+\s+){0,2}</code>) или расширить группу квалификаторов.</p></div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-228</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Tier-2 floor: внешние коммуникации</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>`post on social media`, `tweet the launch`, `email the team` обходят external-comms</h3>
+  <div class="finding-body"><p>Шаблон <code>external_comms</code> требует связки глагол+существительное из фиксированного списка. Естественные внешние коммуникации <code>post on social media</code>, <code>tweet about the launch</code>, <code>email the team about status</code> принимаются, потому что <code>social</code>, <code>media</code>, <code>team</code>, <code>launch</code> не входят в якорный список. Заявление «money/comms/secrets/destructive → BLOCKER by code» на практике мягче, чем звучит. Предложение: добавить <code>team</code>, <code>channel</code>, <code>social media</code>, <code>slack</code>, <code>twitter/x</code>, <code>linkedin</code> или ввести двухступенчатую проверку (глагол один → CLARIFY; глагол+сильное существительное → BLOCKER).</p></div>
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <span class="jira-chip">GSL-229</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Схлопывание qshape</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>qshape false-merge: `not` — стоп-слово, `merge PR` ≡ `NOT merge PR`</h3>
+  <div class="finding-body"><p>Список <code>QSHAPE_STOPWORDS</code> содержит <code>not</code>, а токены ≤2 символов отбрасываются (→ <code>PR</code> теряется). Прямой тест: <code>qshape(&#x27;should we merge PR&#x27;)</code> == <code>qshape(&#x27;should we NOT merge PR&#x27;)</code> (обе фразы сводятся к <code>merg</code>). Также <code>bump to v2</code> ≡ <code>bump to v3</code>. Цикл candidates группирует по (qshape, decision.lower); при N≥3 такие пары «одинаковых форм с противоположными решениями» «слипнутся» в один манифест-кандидат. Влияние ограничено: candidates — ADVISORY (комментарий строка 362 — манифест правится владельцем), автоматическая установка правила невозможна. Но семантический риск реален — отрицание не filler-слово. Правка: убрать <code>not</code> из стоп-слов или инвертировать знак токена (<code>ˆmerg</code>), чтобы противоположности не сливались.</p></div>
+</article>
+<article class="card finding" id="finding-6">
+  <div class="finding-head">
+    <span class="finding-index">6</span>
+    <span class="jira-chip">GSL-227</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Валидация rule</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>`delegation:` принимает будущие даты, кривые даты и неизвестные origins</h3>
+  <div class="finding-body"><p>Правило <code>--rule delegation:&lt;origin&gt; &lt;date&gt;</code> принимается, если после префикса есть что-то похожее на дату — allowlist origins и валидность/прошлое даты не проверяются. Воспроизведено: <code>delegation:owner 2099-12-31</code> → OK, <code>delegation:owner 20260816</code> → OK (кривая дата), <code>delegation:noname 2026-08-16</code> → OK (неизвестный origin), <code>delegation: owner 2026-08-16</code> → OK (пробел после <code>:</code>). Гарантия provenance для автономных решений ослаблена. Правка: <code>^delegation:(owner|orchestrator)\s+\d{4}-\d{2}-\d{2}$</code> плюс проверка «дата в прошлом или сегодня».</p></div>
+</article>
+<article class="card finding" id="finding-7">
+  <div class="finding-head">
+    <span class="finding-index">7</span>
+    <span class="jira-chip">GSL-230</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Подкоманда park</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>`park` принимает прошедший `--wake-at` — reopener сразу же откроет запись</h3>
+  <div class="finding-body"><p>Команда <code>park --re &lt;id&gt; --wake-at 2020-01-01T00:00:00Z</code> проходит и пишет <code>deferred</code>-патч с <code>defer_until=2020-01-01T00:00:00Z</code>. Любой reopener сверяет <code>defer_until &lt;= now</code> и сразу же откроет запись на следующем тике — смысл «парковки» теряется. Стоит отклонять <code>wake-at &lt;= now + &lt;мин-окно&gt;</code> (минуты/часы). Кривые / без-Z / не-UTC даты отклоняются корректно — здесь всё хорошо.</p></div>
+</article>, …) are filled with the
+  Russian-translated content when translations.ru provides it, else the English
+  fallback per string (so the shell always renders — never a broken page).
+
+  IMPORTANT: ../assets/ must be "../assets/" here (ru/ is one level down);
+  the language switch points back up to ../index.html. Assets are SHARED with the
+  English root — do not duplicate screenshots or CSS/JS into ru/.
+
+  HARD RULE — severity terminology is NEVER translated. The classification terms are
+  English constants in EVERY locale, including this Russian shell:
+
+      severity : CRITICAL · MAJOR · MINOR
+      lane     : architecture · functionality · design
+      status   : LANDED · PARTIAL · NOT-LANDED
+
+  They are terms of art, not words. A badge's visible text equals its own
+  data-severity attribute here exactly as in the English report. NEVER emit
+  Критично / Существенно / Незначительно — not in a badge, not in a count tile, not
+  in a heading, not in prose. Translating a term forks the vocabulary away from the
+  payload, the data-severity attribute, the Jira labels and the fix agent's JQL.
+
+  Translate the free prose AROUND the terms:
+    "2 CRITICAL findings block the release"
+      -> "2 findings уровня CRITICAL блокируют релиз"   <- sentence RU, token EN
+  The non-term count-tile label Total -> Всего still translates, and findings[N].area
+  is free prose that translates too. See SKILL.md section 9 + references/i18n-workflow.md.
+-->
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-243 wave-4 systems audit tail — verify-wave4 run 01</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script>
+    /* Тема выставляется до первой отрисовки, затем вешается обработчик переключателя. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-243 wave-4 systems audit tail — verify-wave4 run 01</span>
+        <span class="subtitle">PR #388 · коммит f35f93b · смена 79 · adversarial verifier</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">GSL-243</span>
+        <span class="hbtn" aria-label="Дата">2026-08-17</span>
+        <!-- Переключение языка: русская версия -> английский корень -->
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Общая сводка -->
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Общая сводка</h2>
+      <div class="card hero">
+  <div class="score-ring" style="--score: 82" data-band="good">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="track" cx="60" cy="60" r="52"></circle>
+      <circle class="value" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="num"><b>82</b><span>/ 100</span></div>
+  </div>
+  <div>
+    <h1>GSL-243 wave-4 systems audit tail — verify-wave4</h1>
+    <p class="lead">Верификация PR #388: 8 задач (GSL-227..234, 243) на коммите <code>f35f93b</code>, поверх main <code>c59b36e</code>. 6 новых наборов 46/46, hooks-verify 14/0, smoke 405/161 (net-улучшение vs main), совместимость чистая.</p>
+    <div class="verdict-row">
+      <span class="level-pill">MERGE + follow-ups</span>
+      <div class="counts">
+        <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+        <div class="count-tile" data-severity="MAJOR"><span class="n">4</span><span class="k">MAJOR</span></div>
+        <div class="count-tile"><span class="n">3</span><span class="k">MINOR</span></div>
+        <div class="count-tile"><span class="n">7</span><span class="k">Всего</span></div>
+      </div>
+    </div>
+    <div class="dist" role="img" aria-label="Severity distribution">
+      <span class="seg-critical" style="width:0%"></span>
+      <span class="seg-major" style="width:57%"></span>
+      <span class="seg-minor" style="width:43%"></span>
+    </div>
+  </div>
+</div>
+    </section>
+
+    <!-- Находки -->
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Находки</h2>
+      <div class="findings">
+        <article class="card finding" id="finding-1">
+  <div class="finding-head">
+    <span class="finding-index">1</span>
+    <span class="jira-chip">GSL-243</span>
+    <span class="badge" data-severity="MAJOR">MAJOR</span>
+    <span class="area-tag">Заявление о baseline</span>
+    <span class="lane-tag">process</span>
+  </div>
+  <h3>Baseline расходится с заявлением — на чистом main реально 392/174, не 405/161</h3>
+  <div class="finding-body"><p>В описании PR указано «smoke baseline 405/161 unchanged». Прогон <code>tools/lab/smoke.sh</code> на чистом main <code>c59b36e</code> даёт <strong>PASS=392 FAIL=174</strong>; на PR-tip после мёржа main — <strong>PASS=405 FAIL=161</strong>. Дельта <strong>+13 PASS / −13 FAIL</strong> — чистое улучшение (правки chronicler / SSG-gate / apply-due / recovery / dedup). Регрессий, привнесённых PR, не найдено (диффом полных наборов PASS/FAIL подтверждено, что каждый main-only FAIL стал PASS в PR-tip либо является недетерминизмом timestamp/inode/count). Слово «unchanged» вводит в заблуждение — точнее: «дельта PR: +13 PASS / −13 FAIL vs main c59b36e, регрессий нет». Мёржу не мешает.</p></div>
+</article>
+<article class="card finding" id="finding-2">
+  <div class="finding-head">
+    <span class="finding-index">2</span>
+    <span class="jira-chip">GSL-228</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Tier-2 floor: секреты</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>Tier-2 secrets: фраза `leak the token` не ловится</h3>
+  <div class="finding-body"><p>В шаблоне <code>secrets</code> глаголы <code>rotate</code>, <code>share</code>, <code>publish</code>, <code>commit</code>, <code>expose</code> разрешают опциональный <code>the</code>, а <code>leak(ed)</code> — нет. Итог: <code>leak the token</code>, <code>leak my token</code>, <code>leak this token</code> принимаются как DECISION и получают дефолт-таймер 2h. Воспроизведено: <code>question --type DECISION --question &#x27;leak the token&#x27; --default no --reversibility high</code> → <code>q-…</code>. Правка: симметричный <code>\bleak(?:ed)?\s+(?:the\s+)?…</code>. Комментарий кода (стр. 111) говорит «false positive — сужай, не расширяй»; здесь обратный случай (false NEGATIVE), правка = расширение.</p></div>
+</article>
+<article class="card finding" id="finding-3">
+  <div class="finding-head">
+    <span class="finding-index">3</span>
+    <span class="jira-chip">GSL-228</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Tier-2 floor: секреты</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>Tier-2 `rotate` обходится, если между `the` и «ключом» есть квалификатор</h3>
+  <div class="finding-body"><p>Шаблон <code>\brotate\s+(?:the\s+)?(секрет|токен|api-ключ|key)\b</code> требует, чтобы секрет-слово шло сразу после <code>rotate </code> или <code>rotate the </code> — без слов между. Естественные фразы <code>rotate the AWS key</code>, <code>rotate the master key</code>, <code>rotate our api key</code>, <code>rotate my token</code> НЕ ловятся. Проверено: <code>rotate the AWS key</code> принят как DECISION. Существующий тест <code>rotate the api key</code> проходит только потому, что <code>api key</code> совпадает с ветвью <code>api[- ]?key</code>. Правка: разрешить 1–2 слова между (<code>(?:\S+\s+){0,2}</code>) или расширить группу квалификаторов.</p></div>
+</article>
+<article class="card finding" id="finding-4">
+  <div class="finding-head">
+    <span class="finding-index">4</span>
+    <span class="jira-chip">GSL-228</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Tier-2 floor: внешние коммуникации</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>`post on social media`, `tweet the launch`, `email the team` обходят external-comms</h3>
+  <div class="finding-body"><p>Шаблон <code>external_comms</code> требует связки глагол+существительное из фиксированного списка. Естественные внешние коммуникации <code>post on social media</code>, <code>tweet about the launch</code>, <code>email the team about status</code> принимаются, потому что <code>social</code>, <code>media</code>, <code>team</code>, <code>launch</code> не входят в якорный список. Заявление «money/comms/secrets/destructive → BLOCKER by code» на практике мягче, чем звучит. Предложение: добавить <code>team</code>, <code>channel</code>, <code>social media</code>, <code>slack</code>, <code>twitter/x</code>, <code>linkedin</code> или ввести двухступенчатую проверку (глагол один → CLARIFY; глагол+сильное существительное → BLOCKER).</p></div>
+</article>
+<article class="card finding" id="finding-5">
+  <div class="finding-head">
+    <span class="finding-index">5</span>
+    <span class="jira-chip">GSL-229</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Схлопывание qshape</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>qshape false-merge: `not` — стоп-слово, `merge PR` ≡ `NOT merge PR`</h3>
+  <div class="finding-body"><p>Список <code>QSHAPE_STOPWORDS</code> содержит <code>not</code>, а токены ≤2 символов отбрасываются (→ <code>PR</code> теряется). Прямой тест: <code>qshape(&#x27;should we merge PR&#x27;)</code> == <code>qshape(&#x27;should we NOT merge PR&#x27;)</code> (обе фразы сводятся к <code>merg</code>). Также <code>bump to v2</code> ≡ <code>bump to v3</code>. Цикл candidates группирует по (qshape, decision.lower); при N≥3 такие пары «одинаковых форм с противоположными решениями» «слипнутся» в один манифест-кандидат. Влияние ограничено: candidates — ADVISORY (комментарий строка 362 — манифест правится владельцем), автоматическая установка правила невозможна. Но семантический риск реален — отрицание не filler-слово. Правка: убрать <code>not</code> из стоп-слов или инвертировать знак токена (<code>ˆmerg</code>), чтобы противоположности не сливались.</p></div>
+</article>
+<article class="card finding" id="finding-6">
+  <div class="finding-head">
+    <span class="finding-index">6</span>
+    <span class="jira-chip">GSL-227</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Валидация rule</span>
+    <span class="lane-tag">correctness</span>
+  </div>
+  <h3>`delegation:` принимает будущие даты, кривые даты и неизвестные origins</h3>
+  <div class="finding-body"><p>Правило <code>--rule delegation:&lt;origin&gt; &lt;date&gt;</code> принимается, если после префикса есть что-то похожее на дату — allowlist origins и валидность/прошлое даты не проверяются. Воспроизведено: <code>delegation:owner 2099-12-31</code> → OK, <code>delegation:owner 20260816</code> → OK (кривая дата), <code>delegation:noname 2026-08-16</code> → OK (неизвестный origin), <code>delegation: owner 2026-08-16</code> → OK (пробел после <code>:</code>). Гарантия provenance для автономных решений ослаблена. Правка: <code>^delegation:(owner|orchestrator)\s+\d{4}-\d{2}-\d{2}$</code> плюс проверка «дата в прошлом или сегодня».</p></div>
+</article>
+<article class="card finding" id="finding-7">
+  <div class="finding-head">
+    <span class="finding-index">7</span>
+    <span class="jira-chip">GSL-230</span>
+    <span class="badge" data-severity="MINOR">MINOR</span>
+    <span class="area-tag">Подкоманда park</span>
+    <span class="lane-tag">design</span>
+  </div>
+  <h3>`park` принимает прошедший `--wake-at` — reopener сразу же откроет запись</h3>
+  <div class="finding-body"><p>Команда <code>park --re &lt;id&gt; --wake-at 2020-01-01T00:00:00Z</code> проходит и пишет <code>deferred</code>-патч с <code>defer_until=2020-01-01T00:00:00Z</code>. Любой reopener сверяет <code>defer_until &lt;= now</code> и сразу же откроет запись на следующем тике — смысл «парковки» теряется. Стоит отклонять <code>wake-at &lt;= now + &lt;мин-окно&gt;</code> (минуты/часы). Кривые / без-Z / не-UTC даты отклоняются корректно — здесь всё хорошо.</p></div>
+</article>
+      </div>
+    </section>
+
+    <!-- Заметки по архитектуре (необязательно) -->
+    <section aria-labelledby="arch-h">
+  <h2 class="section-title" id="arch-h">Заметки по архитектуре</h2>
+  <article class="card arch-note"><h3>Результаты gates (все самопроверены)</h3><div class="arch-body"><ul><li><strong>6 новых наборов тестов</strong> — все зелёные локально: <code>lab-emit-rule</code> 7/7, <code>lab-emit-tier2</code> 14/14, <code>lab-emit-qshape</code> 5/5, <code>lab-emit-park</code> 6/6, <code>self-health-fyi</code> 6/6, <code>integrity-gate</code> 8/8. Итого <strong>46/46</strong> — совпадает с заявлением.</li><li><strong>hooks-verify --offline</strong>: <strong>14/0</strong> — совпадает с заявлением (routing 10/10 + синтетические StopFailure×2 + TeammateIdle×1 + version).</li><li><strong>bash -n</strong>: чисто по всем <code>lab-emit.sh</code>, <code>hooks-verify.sh</code>, <code>integrity-gate.sh</code> и 6 наборам; <code>python3 -m py_compile</code> чисто по <code>chronicler.py</code>.</li><li><strong>smoke.sh</strong>: PR-tip PASS=405 FAIL=161; clean-main PASS=392 FAIL=174. Дельта +13/−13 = чистое улучшение (см. finding 1).</li></ul></div></article>
+  <article class="card arch-note"><h3>Compat-сверка на fixture-копии живого queue.jsonl (94 строки)</h3><div class="arch-body"><p>Скопировал живой <code>docs/lab/questions/queue.jsonl</code> (94 строки), <code>manifest.md</code>, <code>decisions/log.jsonl</code> в <code>/tmp/verifyw4-*</code> и прогнал существующую поверхность lab-emit ОБЕИМИ бинарями (PR-tip и clean-main). Результат:</p><ul><li><code>list --count</code> → <strong><code>open=0 (0B/0D/0C/0F) lines=94</code></strong> в обоих — байт-в-байт. LIVE-STATUS / HEARTBEAT_OK контракт сохранён.</li><li><code>list --status all</code> — ИДЕНТИЧНО.</li><li><code>list --json --status all</code> — ИДЕНТИЧНО.</li><li><code>list --due</code> — ИДЕНТИЧНО.</li><li><code>list --type BLOCKER --status all</code> — ИДЕНТИЧНО.</li><li><code>candidates --json</code> — ИДЕНТИЧНО.</li><li><code>question</code> → <code>answer</code> → двойной <code>resolve</code> на свежем writable-fixture — ИДЕНТИЧНЫЕ записи + ИДЕНТИЧНОЕ сообщение отказа.</li><li><code>help</code> diff = ОДНА новая строка про <code>park</code> (ожидаемо).</li></ul><p>На живом дереве нулевые мутации. Compat-вердикт: <strong>ЧИСТО — ни одна существующая команда не меняет поведение.</strong></p></div></article>
+  <article class="card arch-note"><h3>Adversarial-проход — что устояло, что нет</h3><div class="arch-body"><p>Критические заявления устояли: tier-2 floor ловит классические тестируемые глаголы (<code>spend $</code>, <code>purchase</code>, <code>force-push</code>, <code>deploy to prod</code>, <code>rotate api key</code>, <code>publish blog</code>); валидация rule для manifest-цитат отклоняет <code>MANIFEST §1.foo</code> (регистр), <code>§0.does-not-exist</code>, <code>§1.foo garbage extra text</code>, пустое rule, и <code>manifest §1.FOO</code>; park отклоняет кривые / не-UTC / без-Z / не-ISO wake-at, а также двойной park; qshape корректно сливает истинные rewordings (<code>merge strategy after main moved</code>) и оставляет отдельными разные форки (<code>rollback</code> ≠ <code>merge-strategy</code>).</p><p>Обходы / мягкости перечислены в findings 2..7. Все <strong>MINOR</strong> — ни один не является корректностной проблемой в load-bearing контракте очереди; это граничные случаи эвристик и провенанса. Гарантии append-only + dedup + typology очереди целы.</p></div></article>
+  <article class="card arch-note"><h3>Окружение</h3><div class="arch-body"><ul><li>Worktree: <code>.claude/worktrees/verifyw4</code> на PR-tip <code>f35f93b</code>, ЛОКАЛЬНЫЙ мёрж <code>origin/main</code> <code>c59b36e</code> (одна тривиальная auto-merge правка в <code>docs/dev_history/README.md</code>, без конфликтов).</li><li>Второй worktree <code>.claude/worktrees/verifyw4-main</code> на чистом <code>c59b36e</code> для baseline-smoke.</li><li>Fixture: <code>/tmp/verifyw4-fixt-lab</code> (read-only копия живой очереди) и per-branch writable fixtures <code>/tmp/verifyw4-writefixt-{PR,MAIN}</code>.</li><li>Запреты соблюдены: без записей в <code>~/.claude</code>, без <code>/tmp</code> под корнем репо, без мутаций shared-дерева, без git push, без мёржа/закрытия PR, без правок кода приложения.</li><li>verify session id: сообщён team-lead в завершающем письме.</li></ul></div></article>
+</section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Сгенерировано: <strong>verify-wave4 (Sonnet 4.5)</strong> · 2026-08-17 UTC</span>
+      <span>Проверенная сборка <code>f35f93b (PR #388 head) merged with c59b36e (main)</code></span>
+    </div>
+  </footer>
+
+  <script src="../assets/lightbox.js" defer></script>
+</body>
+</html>

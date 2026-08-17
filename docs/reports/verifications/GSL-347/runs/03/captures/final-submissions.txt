@@ -1,0 +1,6 @@
+ts                        session_id  outcome    body_len  framing        
+------------------------  ----------  ---------  --------  ---------------
+2026-08-16T20:50:48.859Z  sess-a      delivered  32        prompt-boundary
+2026-08-16T20:50:49.633Z  sess-e      pane_gone  19        prompt-boundary
+2026-08-16T20:50:50.057Z  sess-g      delivered  18        prompt-boundary
+2026-08-16T20:50:50.166Z  sess-a      delivered  9         prompt-boundary

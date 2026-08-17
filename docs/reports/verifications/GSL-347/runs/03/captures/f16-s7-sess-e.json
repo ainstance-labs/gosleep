@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S7.b GET sess-e submissions (has pane_gone row) — HTTP 200 (expected 200)
+{"submissions":[{"id":"ac53e5a1-77d6-4fbf-b5b6-1f2506c5bf7f","ts":"2026-08-16T20:50:49.633Z","session_id":"sess-e","pane_ref_at_dispatch":null,"body_sha256":"bc38021750f201cd6791cd03f2a00639b8894c07a694a9cc36e73771fe94cc9f","body_len":19,"framing":"prompt-boundary","outcome":"pane_gone","error":"pane_ref resolves to null in tmux_panes at dispatch time"}],"count":1}

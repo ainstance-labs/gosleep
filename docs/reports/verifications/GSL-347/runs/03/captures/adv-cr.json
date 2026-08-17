@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.b lone CR (0x0D) in body → 400 — HTTP 400 (expected 400)
+{"ok":false,"intent_id":"verify-adv-2","error":"body contains disallowed control character U+000d at position 5","reason":"body-invalid"}

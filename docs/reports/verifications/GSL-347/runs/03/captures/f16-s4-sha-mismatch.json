@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S4.c confirm with different body → sha mismatch → 428 — HTTP 428 (expected 428)
+{"ok":false,"intent_id":"verify-s4-2","error":"preview-required: body_sha256 mismatch (preview=2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824, confirm=375af32c999cd2f11e63c380e9b5467cc2c61ddf97c0b34d9a9659217a406490) — re-run dry_run=true","reason":"preview-required"}

@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.d body over 16 KB cap → 400 body-invalid — HTTP 400 (expected 400)
+{"ok":false,"intent_id":"verify-adv-4","error":"body exceeds 16384-byte cap (got 16385 bytes)","reason":"body-invalid"}

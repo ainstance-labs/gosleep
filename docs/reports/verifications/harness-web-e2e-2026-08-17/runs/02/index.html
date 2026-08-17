@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>gosleep — E2E verification run 02 (2026-08-17)</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12151a; --panel2:#171b21; --border:#232a34;
+    --text:#e7ecf3; --muted:#98a2b3; --accent:#7ea1ff; --ok:#4ade80;
+    --warn:#f5c451; --bad:#f87171; --info:#8cd8ff; --shadow:0 2px 12px rgba(0,0,0,.4);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa;--panel:#ffffff;--panel2:#fafbfc;--border:#e5e8ee;
+      --text:#0e1116;--muted:#5b6472;--accent:#3161ff;--ok:#0f9d58;
+      --warn:#b6842d;--bad:#d93a3a;--info:#0f6ea3;--shadow:0 2px 12px rgba(0,0,0,.06);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1120px;margin:0 auto;padding:32px 24px 96px}
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:24px}
+  header.top h1{font-size:24px;margin:0;font-weight:600}
+  .lang{margin-left:auto;display:inline-flex;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .lang a{padding:6px 12px;color:var(--muted);border-right:1px solid var(--border)}
+  .lang a:last-child{border-right:0}
+  .lang a.active{background:var(--panel2);color:var(--text)}
+  .verdict{display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);margin-bottom:24px}
+  .score{font-family:var(--mono);font-size:56px;font-weight:700;color:var(--ok);line-height:1}
+  .score .sub{font-size:14px;color:var(--muted);font-weight:400;display:block;margin-top:4px;font-family:inherit}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .pill.ok{background:rgba(74,222,128,.14);color:var(--ok);border:1px solid rgba(74,222,128,.35)}
+  .pill.warn{background:rgba(245,196,81,.14);color:var(--warn);border:1px solid rgba(245,196,81,.35)}
+  .pill.bad{background:rgba(248,113,113,.14);color:var(--bad);border:1px solid rgba(248,113,113,.4)}
+  .pill.info{background:rgba(140,216,255,.14);color:var(--info);border:1px solid rgba(140,216,255,.35)}
+  .verdict .head{display:flex;flex-direction:column;gap:6px}
+  .verdict .head .subline{color:var(--muted);font-size:13px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  nav.toc a{background:var(--panel);border:1px solid var(--border);padding:6px 12px;border-radius:8px;color:var(--muted);font-size:13px}
+  nav.toc a:hover{color:var(--text);border-color:var(--accent)}
+  section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)}
+  section h2{font-size:18px;margin:0 0 12px;font-weight:600}
+  section h3{font-size:15px;margin:16px 0 8px;font-weight:600}
+  .kv{display:grid;grid-template-columns:180px 1fr;gap:8px 16px;font-size:13px}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0;font-family:var(--mono);font-size:12.5px;color:var(--text);word-break:break-all}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:8px}
+  .fix{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .fix .title{font-weight:600;margin-bottom:4px;font-size:14px}
+  .fix .body{color:var(--muted);font-size:13px}
+  .fix .evi{margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 8px;overflow-x:auto}
+  table.lanes{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.lanes th,table.lanes td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.lanes th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  table.lanes td.label{white-space:nowrap;font-weight:600}
+  .find-list{counter-reset:findc;list-style:none;padding:0;margin:0}
+  .find-list li{counter-increment:findc;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .find-list li:before{content:counter(findc) ". ";font-weight:700;font-family:var(--mono);color:var(--accent)}
+  .find-list .fhead{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+  .find-list .ftitle{font-weight:600}
+  .find-list .fmeta{color:var(--muted);font-size:12px;font-family:var(--mono);margin-left:auto}
+  .find-list .fbody{color:var(--text);margin-top:6px;font-size:13px}
+  .find-list .frepro{margin-top:8px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:12px;color:var(--muted);white-space:pre-wrap}
+  code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .thumbs figure{margin:0;background:var(--panel2);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:zoom-in}
+  .thumbs img{display:block;width:100%;height:140px;object-fit:cover;background:#000}
+  .thumbs figcaption{padding:6px 8px;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+  .lightbox.open{display:flex}
+  .lightbox img{max-width:min(1400px,95vw);max-height:90vh;box-shadow:0 10px 40px rgba(0,0,0,.6);border-radius:6px}
+  .lightbox .cap{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);color:#eee;font:12px var(--mono);background:rgba(0,0,0,.4);padding:6px 10px;border-radius:6px}
+  .lightbox .nav{position:fixed;top:50%;transform:translateY(-50%);color:#fff;background:rgba(255,255,255,.1);border:0;font-size:32px;padding:6px 14px;border-radius:8px;cursor:pointer}
+  .lightbox .prev{left:20px}.lightbox .next{right:20px}
+  .lightbox .close{position:fixed;top:12px;right:16px;color:#fff;background:transparent;border:0;font-size:28px;cursor:pointer}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+  .lane-pass{color:var(--ok);font-weight:600}
+  .lane-partial{color:var(--warn);font-weight:600}
+  .lane-fail{color:var(--bad);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>gosleep — end-to-end verification, run 02</h1>
+  <div class="lang">
+    <a class="active" href="index.html">EN</a>
+    <a href="ru/index.html">RU</a>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="score">87<span class="sub">/ 100</span></div>
+  <div class="head">
+    <div><span class="pill warn">Verdict — READY-with-caveats</span></div>
+    <div class="subline"><strong>Fresh-eyes independent re-run.</strong> All five run-01 fixes verified live against a real Claude Code 2.1.233 Sonnet 5 fixture. One partial regression: the parent-cwd-glue defect was fixed on <code>/fleet</code> (server-side ranking) but still present on the Observed page (client-side <code>startsWith</code>). Two minor UX gaps found. No Critical.</div>
+    <div class="subline">Fixed findings re-tested: 5/5 pass · Lanes: A pass · B pass* · C partial · D pass · E pass · New findings: 0 Critical, 1 Medium, 3 minor · SHA <code>c59b36e</code></div>
+  </div>
+  <div>
+    <span class="pill ok">5/5 fixes verified</span><br/>
+    <span class="pill info">1 partial regression</span>
+  </div>
+</div>
+
+<nav class="toc">
+  <a href="#setup">Setup</a>
+  <a href="#fixes">5 fix re-tests</a>
+  <a href="#lanes">Lanes A-E</a>
+  <a href="#findings">Findings</a>
+  <a href="#coverage">Run-01 cross-check</a>
+  <a href="#evidence">Screenshots</a>
+</nav>
+
+<section id="setup">
+  <h2>Fixture, tree, and scratch environment</h2>
+  <dl class="kv">
+    <dt>Commit</dt><dd>c59b36e (main, +PR#387 merged) — <code>Merge pull request #387 from ainstance-labs/GSL-388-e2e01-findings</code></dd>
+    <dt>Worktree</dt><dd>.claude/worktrees/e2e02 (detached HEAD, own bun install, own web build)</dd>
+    <dt>Scratch core</dt><dd>bun apps/core/src/serve.ts on 127.0.0.1:<strong>7365</strong> (prod 7331 never touched). Dev-env Bearer + INTERNAL_SECRET, scratch DB under <code>.artifacts/e2e02/</code></dd>
+    <dt>Fixture</dt><dd>tmux session <code>e2e02-fixture</code> (window @51, pane %444, pid 56412) — Claude Code 2.1.233, model <strong>Sonnet 5</strong>, opted-in via <code>GOSLEEP_WEB_QUESTIONS=1 GOSLEEP_INTERNAL_SECRET=… GOSLEEP_CORE_URL=http://127.0.0.1:7365</code></dd>
+    <dt>Fixture session_id</dt><dd>e056990d-0d54-406c-a317-e31d460abadb (surfaced as <code>e2e02-1f</code>)</dd>
+    <dt>Browser</dt><dd>chrome-devtools MCP → CDP; token handshake <code>/?token=…</code>; panel loaded from bundle served by the scratch core</dd>
+    <dt>Security posture</dt><dd>healthz public 200 · no-bearer 401 · wrong-Host 421 · web bundle served with Bearer-gated API — all observed live</dd>
+    <dt>Bans respected</dt><dd>No prod port 7331; no /tmp; no ~/.claude edits; no git commits; only <code>e2e02-*</code> tmux sessions; only Sonnet, never Haiku; no Workflow tool</dd>
+  </dl>
+</section>
+
+<section id="fixes">
+  <h2>Independent re-test of the five run-01 fixes</h2>
+  <p style="color:var(--muted);margin-top:0">Each fix was re-verified by triggering the exact real-world scenario (not the unit test) against the live fixture; report was <strong>not read</strong> until after this section closed.</p>
+  <div class="grid">
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Fix #1 — synchronous shim heartbeat auto-populates session_control</div>
+      <div class="body">First tool call in the fixture (AskUserQuestion) triggered <code>control-gate.sh</code>. Debug log confirms <em>mode=sync</em>. <code>session_control</code> row upserted without any manual seed.</div>
+      <div class="evi">hook-debug.jsonl: {"event":"shim.heartbeat","sid":"e056990d…","outcome":"ok","http":"200","mode":"sync"}<br/>DB: e056990d… | state=controlled | source=env | shim_registered=1 | last_heartbeat_at=2026-08-16T23:08:26.826Z</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Fix #2 — isPaneAtPrompt detects Claude Code 2.1.x version-string</div>
+      <div class="body">Live pane_current_command = <code>2.1.233</code> (the CC-2.1 version string, not <em>claude</em>). Submitted task through the panel dialog; body was typed into pane %444; fixture reply is verbatim.</div>
+      <div class="evi">tmux #{pane_current_command} = "2.1.233"<br/>Panel Submit → task_submissions.outcome = <strong>delivered</strong>, body_len=77, framing=prompt-boundary<br/>Fixture pane: "❯ Print the single word DELIVERED-E2E02…" → "⏺ DELIVERED-E2E02"</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS<sup>*</sup></span> Fix #3 — no parent-cwd glue on /fleet</div>
+      <div class="body">Server-side <code>/fleet</code> ranking correctly attributes <em>gosleep-66</em> (cwd = main tree) to pane <code>3:@3.%107</code>, NOT to my fixture pane %444 (deeper). No duplicate rows. <strong>Caveat:</strong> the same defect survives on the Observed page (see M-1 below).</div>
+      <div class="evi">/fleet: gosleep-66 → tmux_pane_ref=3:@3.%107  ✓ (not glued to e2e02-fixture:@51.%444)<br/>       e2e02-1f  → tmux_pane_ref=e2e02-fixture:@51.%444  ✓ (single row)</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Fix #4 — manual "Reopen now" from panel</div>
+      <div class="body">Deferred q-2026-08-16-001 with 5-minute preset; card showed live countdown; clicked <em>Reopen now</em> → status <code>deferred → open</code>, toast "Reopened … status → open (was deferred)".</div>
+      <div class="evi">events: 3 question.deferred → 6 question.reopened → variant buttons re-appeared</div>
+    </div>
+    <div class="fix">
+      <div class="title"><span class="pill ok">PASS</span> Fix #5 — list-level variant submits in ONE click</div>
+      <div class="body">Clicked the "apple" list button once on the re-opened question. No answer dialog interposed. Question status flipped to <em>answered</em> instantly, toast "Answered … sent to lab-emit + DB".</div>
+      <div class="evi">Snapshot before click: 3 variant buttons + Answer/Apply/Defer/Resolved<br/>Snapshot after click: "ANSWER apple" + toast + status=answered (single-click; no textbox dialog)</div>
+    </div>
+  </div>
+</section>
+
+<section id="lanes">
+  <h2>Lane A-E regression sweep</h2>
+  <table class="lanes">
+    <thead><tr><th>Lane</th><th>Result</th><th>Live evidence</th></tr></thead>
+    <tbody>
+      <tr><td class="label">A — Questions</td><td class="lane-pass">PASS</td><td>Real AskUserQuestion end-to-end (Sonnet 5 fixture) → panel → answer typed back into pane. One-click variant (Fix #5). Free-text answer via <code>/actions/questions/answer</code> with <em>Idempotency-Key</em> replay (cached:true). Defer/Reopen (Fix #4). XSS-labelled option (<code>&lt;img src=x onerror=alert(1)&gt;</code>, <code>&lt;script&gt;alert(2)&lt;/script&gt;</code>) is rendered as <em>text</em> only — <strong>no alert fired, no raw tags in DOM, aria-label carries the literal characters</strong>.</td></tr>
+      <tr><td class="label">B — Permissions</td><td class="lane-partial">PASS with m-2</td><td>Injected <code>Bash rm -rf /nonexistent-e2e</code> via <code>/internal/permissions/post</code>. Panel Allow (one click, no reason) worked; Deny opened a dialog with <em>"Why deny? (optional; sent as permissionDecisionReason)"</em> textarea; reason "e2e02 denial rationale — reason attached" persisted into <code>questions.applied</code>. Both events recorded as <code>permission.posed</code>. <strong>Minor:</strong> new <code>permission.posed</code> events do NOT push to /questions view via SSE — a reload is required to see fresh open permissions (m-2 below). By contrast, <code>question.posed</code> DID push live (control test).</td></tr>
+      <tr><td class="label">C — Observer</td><td class="lane-partial">PARTIAL</td><td>Fleet card for the fixture reads <em>env-locked</em>, correct pane_ref, single row. Take-control button correctly disabled with tooltip for shim-not-registered peers. <strong>My orchestrator session was NOT glued to the fixture pane on /fleet</strong> (Fix #3 ✓). <strong>BUT</strong> on the Observed page, gosleep-66 (cwd = main tree, a parent of the fixture's cwd) is glued to my fixture's tmux pane <code>e2e02-fixture:@51.%444</code> via a client-side <code>startsWith</code> join — see M-1.</td></tr>
+      <tr><td class="label">D — Task submission</td><td class="lane-pass">PASS</td><td>Dialog dry-run preview populates auto (SHA-256, bytes, framing, target pane). "I understand … cannot be recalled" gate enforced before Send is enabled. Send → task_submissions row outcome=<em>delivered</em>, timeline <code>task.submitted</code> event. Fixture pane received the body verbatim and Sonnet 5 replied exactly <em>DELIVERED-E2E02</em>. History drawer shows the row (56 s ago · delivered · 77 b · prompt-boundary · e2e02-fixture:@51.%444 · 80794b9892…).</td></tr>
+      <tr><td class="label">E — Robustness</td><td class="lane-pass">PASS</td><td>Deep-link navigation to /overview, /fleet, /observed, /questions, /timeline, /tasks all return 200 and render the intended view. Zero console errors or warnings across the whole run (chrome-devtools MCP list_console_messages returned "no messages"). Idempotency-Key replay on <code>/actions/questions/answer</code> returned cached:true with identical result. SSE reconnect: killed core (port freed) → banner flipped to "reconnecting"; restarted core → banner returned to "live" within ~3 s, no data loss, Last-Event-ID resume worked.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="findings">
+  <h2>Findings (new to run 02)</h2>
+  <ol class="find-list">
+    <li>
+      <div class="fhead">
+        <span class="ftitle">Observed page still attaches parent-cwd sessions to a deeper pane (Fix #3 was applied only to /fleet)</span>
+        <span class="fmeta">M-1 · MEDIUM · <code>apps/web/src/screens/Observed.tsx:235-241</code></span>
+      </div>
+      <div class="fbody">
+        Run 01 flagged the same defect for both <em>Fleet</em> and <em>Observed</em>. GSL-391 fixed <code>/fleet</code> at the server (per-pane ranking + session_id dedup), but the Observed card still joins panes client-side via <code>panes.find(p => p.pane_current_path.startsWith(s.cwd_project_root))</code>. That predicate matches <em>any</em> pane whose cwd is at-or-below the session's cwd — so a session with cwd = main tree is glued to the first pane whose cwd is any descendant, including my fixture's <code>.claude/worktrees/e2e02</code>. The result is visible on the Observed page: the <code>gosleep-66</code> card (session running in the main tree, actual tmux 1:@1.%10) reads "tmux e2e02-fixture:@51.%444" — my fixture's pane.
+      </div>
+      <div class="frepro">Fixture: e2e02-1f (cwd=.claude/worktrees/e2e02)  gosleep-66 (cwd=main tree)
+Panel · /observed  →  gosleep-66 card lists "tmux e2e02-fixture:@51.%444"  (WRONG — that pane is the fixture's)
+Panel · /fleet     →  gosleep-66 card lists "3:@3.%107"                     (correct)
+Fix location: replace .find(startsWith) with the same ranker used by the /fleet SQL path,
+              OR expose tmux_pane_ref on /observed/sessions so the UI can drop client-side glue.</div>
+    </li>
+    <li>
+      <div class="fhead">
+        <span class="ftitle">New <code>permission.posed</code> events don't push to /questions via SSE (reload required)</span>
+        <span class="fmeta">m-2 · MINOR · SSE fan-out gap</span>
+      </div>
+      <div class="fbody">
+        Panel open on /questions. Posted a fresh permission via <code>/internal/permissions/post</code>. Row landed in DB (event <code>permission.posed</code> seq 66) but the panel showed 0 Allow/Deny buttons for it until a manual reload. A control post (fresh <code>question.posed</code>) DID render live, so this is a permission-specific SSE gap — new open permissions won't reach a panel left running until the operator reloads. Practical impact: the owner may miss a permission request in a live session.
+      </div>
+      <div class="frepro">Repro:
+  1. Open panel /questions, count Allow/Deny buttons.
+  2. curl -X POST /internal/permissions/post {…}
+  3. Wait 2.5 s. Allow/Deny count unchanged.
+  4. Reload page. Allow/Deny +1.
+Same procedure with /internal/questions/post appears live within 2.5 s (no reload).</div>
+    </li>
+    <li>
+      <div class="fhead">
+        <span class="ftitle">Fleet card "CURRENT TOOL" shows AskUserQuestion long after the tool finished</span>
+        <span class="fmeta">m-3 · MINOR · stale field</span>
+      </div>
+      <div class="fbody">
+        After I answered the fixture's AskUserQuestion and Sonnet 5 returned to prompt, the Fleet card kept displaying <code>CURRENT TOOL: AskUserQuestion</code> and <code>INTENT: AskUserQuestion pending owner answer</code> for the entire remainder of the run. The server's <code>/fleet.sessions[…].current_tool</code> was null (queried by curl), so the staleness is client-side — the derived HEURISTIC label is not cleared on <code>question.answered</code>.
+      </div>
+      <div class="frepro">curl /fleet | jq '.sessions[] | select(.session_id | startswith("e056990d")) | .current_tool'
+=> null  (correct)
+Panel Fleet card:  CURRENT TOOL AskUserQuestion — INTENT AskUserQuestion pending owner answer  (stale)</div>
+    </li>
+    <li>
+      <div class="fhead">
+        <span class="ftitle">Permission card heading dumps raw <code>tool_input</code> JSON</span>
+        <span class="fmeta">m-4 · MINOR · UX polish</span>
+      </div>
+      <div class="fbody">
+        The Questions card for a permission request uses the heading <em>Permission request: Bash <code>{"command":"rm -rf /nonexistent-e2e"}</code></em> — the tool_input JSON is embedded in the H3. The parsed COMMAND field is shown correctly below. Consider dropping the raw JSON from the heading (already redundant with the COMMAND row) for readability.
+      </div>
+      <div class="frepro">Observed heading H3:
+  "Permission request: Bash {"command":"rm -rf /nonexistent-e2e"}"
+Body already shows:
+  COMMAND: rm -rf /nonexistent-e2e</div>
+    </li>
+  </ol>
+</section>
+
+<section id="coverage">
+  <h2>Cross-check vs run 01 (read AFTER my sweep closed)</h2>
+  <p style="color:var(--muted);margin-top:0">Run 01 (2026-08-16) verdict: <strong>READY-WITH-CAVEATS · widen after 2 MAJORs fixed</strong>, 82/100. Its two MAJORs — (a) parent-cwd glue on Fleet/Observed and (b) list-level variants opening a modal — matched the two blockers to widening. Run 01 lanes A/B/D/E were PASS.</p>
+  <h3>What run 02 confirmed</h3>
+  <ul>
+    <li>Every one of run 01's two MAJORs is <em>partially or fully</em> resolved: variant-one-click ✓, parent-cwd on /fleet ✓, parent-cwd on /observed <strong>still open</strong> (M-1).</li>
+    <li>Every run 01 lane still PASS (A/B/D/E) plus the new signal that Take-control is reachable purely from a live shim heartbeat.</li>
+  </ul>
+  <h3>Coverage gaps in run 02 vs run 01</h3>
+  <ul>
+    <li>Run 01 tested <em>refusal on observer-only session</em> (submit-task 409 <code>session-not-controlled</code>). Run 02 only exercised the happy path (env-locked, controlled). The refusal path is currently trust-only.</li>
+    <li>Run 01 tested <em>concurrent-answer idempotency</em> (two racers with the same qid). Run 02 tested only serial replay with the same <em>Idempotency-Key</em>. The concurrent-answer race is currently trust-only.</li>
+  </ul>
+  <h3>Coverage gaps in run 01 vs run 02</h3>
+  <ul>
+    <li>Run 01 flagged the parent-cwd defect for <em>Fleet/Observed</em> as one finding but did not separately verify that a partial fix on /fleet would leave /observed exposed. Run 02 caught that split explicitly.</li>
+    <li>Run 01 did not test the SSE fan-out for <code>permission.posed</code> vs <code>question.posed</code>. Run 02 caught m-2.</li>
+    <li>Run 01 did not measure staleness of the client-derived <code>current_tool</code> after <code>question.answered</code>. Run 02 caught m-3.</li>
+  </ul>
+</section>
+
+<section id="evidence">
+  <h2>Screenshots (click to zoom)</h2>
+  <div class="thumbs" id="thumbs">
+    <figure data-full="assets/01-overview.png"><img loading="lazy" src="assets/01-overview.png"><figcaption>01 · Overview (panel loaded via <code>?token=</code>)</figcaption></figure>
+    <figure data-full="assets/02-questions-open.png"><img loading="lazy" src="assets/02-questions-open.png"><figcaption>02 · Open question with 3 variant buttons</figcaption></figure>
+    <figure data-full="assets/03-defer-dialog.png"><img loading="lazy" src="assets/03-defer-dialog.png"><figcaption>03 · Defer dialog + short presets</figcaption></figure>
+    <figure data-full="assets/04-deferred-with-reopen-button.png"><img loading="lazy" src="assets/04-deferred-with-reopen-button.png"><figcaption>04 · Deferred card + Reopen now (Fix #4)</figcaption></figure>
+    <figure data-full="assets/05-reopened.png"><img loading="lazy" src="assets/05-reopened.png"><figcaption>05 · After Reopen: status=open, variants back</figcaption></figure>
+    <figure data-full="assets/06-answered-one-click.png"><img loading="lazy" src="assets/06-answered-one-click.png"><figcaption>06 · One-click "apple" → answered (Fix #5)</figcaption></figure>
+    <figure data-full="assets/07-observed-page.png"><img loading="lazy" src="assets/07-observed-page.png"><figcaption>07 · Observed page — parent-cwd glue visible (M-1)</figcaption></figure>
+    <figure data-full="assets/08-fleet-page.png"><img loading="lazy" src="assets/08-fleet-page.png"><figcaption>08 · Fleet page — attribution correct (Fix #3)</figcaption></figure>
+    <figure data-full="assets/09-fleet-fixture-card.png"><img loading="lazy" src="assets/09-fleet-fixture-card.png"><figcaption>09 · Fleet · e2e02-1f card (env-locked, real pane)</figcaption></figure>
+    <figure data-full="assets/10-submit-dryrun-ready.png"><img loading="lazy" src="assets/10-submit-dryrun-ready.png"><figcaption>10 · Submit-task dialog · dry-run ready</figcaption></figure>
+    <figure data-full="assets/11-post-submit-toast.png"><img loading="lazy" src="assets/11-post-submit-toast.png"><figcaption>11 · After Send · task delivered</figcaption></figure>
+    <figure data-full="assets/12-xss-payload-safe.png"><img loading="lazy" src="assets/12-xss-payload-safe.png"><figcaption>12 · XSS labels rendered as text · no alerts</figcaption></figure>
+    <figure data-full="assets/13-permission-request.png"><img loading="lazy" src="assets/13-permission-request.png"><figcaption>13 · Permission request card · Allow/Deny</figcaption></figure>
+    <figure data-full="assets/14-permission-allowed.png"><img loading="lazy" src="assets/14-permission-allowed.png"><figcaption>14 · After Allow · answered, toast recorded</figcaption></figure>
+    <figure data-full="assets/15-deny-with-reason-dialog.png"><img loading="lazy" src="assets/15-deny-with-reason-dialog.png"><figcaption>15 · Deny dialog with reason textarea</figcaption></figure>
+    <figure data-full="assets/16-sse-reconnect.png"><img loading="lazy" src="assets/16-sse-reconnect.png"><figcaption>16 · SSE banner returned to "live" after core restart</figcaption></figure>
+    <figure data-full="assets/17-timeline-events.png"><img loading="lazy" src="assets/17-timeline-events.png"><figcaption>17 · Timeline · question/permission/task events</figcaption></figure>
+  </div>
+</section>
+
+<footer>Written by e2e-run-02 · 2026-08-17 · sha c59b36e · Sonnet 5 fixture · no git mutation, no /tmp, no prod 7331</footer>
+
+</div>
+
+<div class="lightbox" id="lb">
+  <button class="close" aria-label="close">×</button>
+  <button class="nav prev" aria-label="previous">‹</button>
+  <img alt=""/>
+  <button class="nav next" aria-label="next">›</button>
+  <div class="cap"></div>
+</div>
+
+<script>
+(function(){
+  const lb = document.getElementById('lb');
+  const lbImg = lb.querySelector('img');
+  const lbCap = lb.querySelector('.cap');
+  const figs = Array.from(document.querySelectorAll('#thumbs figure'));
+  let idx = 0;
+  function open(i){
+    idx = (i + figs.length) % figs.length;
+    const f = figs[idx];
+    lbImg.src = f.dataset.full;
+    lbCap.textContent = f.querySelector('figcaption').textContent;
+    lb.classList.add('open');
+  }
+  function close(){ lb.classList.remove('open'); lbImg.src = ''; }
+  figs.forEach((f,i) => f.addEventListener('click', () => open(i)));
+  lb.querySelector('.close').addEventListener('click', close);
+  lb.querySelector('.prev').addEventListener('click', e => { e.stopPropagation(); open(idx-1); });
+  lb.querySelector('.next').addEventListener('click', e => { e.stopPropagation(); open(idx+1); });
+  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') close();
+    if (e.key === 'ArrowLeft') open(idx-1);
+    if (e.key === 'ArrowRight') open(idx+1);
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "sid": "sess-observed-warm",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/fake-repo-sibling",
+  "pane": "sibling-shell:@0.%77",
+  "attribution": "heuristic"
+}
+{
+  "sid": "sess-native-live",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/fake-repo",
+  "pane": "sibling-shell:@0.%77",
+  "attribution": "heuristic"
+}
+{
+  "sid": "sess-cold-6",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-6",
+  "pane": null,
+  "attribution": null
+}
+{
+  "sid": "sess-cold-5",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-5",
+  "pane": null,
+  "attribution": null
+}
+{
+  "sid": "sess-cold-4",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-4",
+  "pane": null,
+  "attribution": null
+}
+{
+  "sid": "sess-cold-3",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-3",
+  "pane": null,
+  "attribution": null
+}
+{
+  "sid": "sess-cold-2",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-2",
+  "pane": null,
+  "attribution": null
+}
+{
+  "sid": "sess-cold-1",
+  "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-1",
+  "pane": null,
+  "attribution": null
+}

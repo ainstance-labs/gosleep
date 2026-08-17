@@ -1,0 +1,120 @@
+== booting @gosleep/core (dev Bearer, port 7353, scratch DB + lab) ==
+  PASS: server booted (2s)
+== HTTP scenarios ==
+  PASS: 1. GET /healthz (no auth) → 200
+  PASS: 1b. /healthz body ok=true body matches /"ok":true.*"service":"gosleep-core"/
+  PASS: 2. GET /version (no auth) → 401
+  PASS: 3. GET /whoami (no auth) → 401
+  PASS: 4. GET /version (bad Bearer) → 401
+  PASS: 5. GET /version (wrong Host) → 421
+  PASS: 6. GET /version (valid) → 200
+  PASS: 6b. /version body has fields body matches /"server_version":"[0-9]+/
+  PASS: 6c. /version.db_schema_version is 16-hex hash (GSL-294) body matches /"db_schema_version":"[0-9a-f]{16}"/
+  PASS: 7. GET /whoami (valid) → 200
+  PASS: 7b. /whoami body owner body matches /"owner":"smoke-owner"/
+== POST /actions/* scenarios (GSL-268) ==
+  PASS: 8. POST /actions/tick (no auth) → 401
+  PASS: 9. POST /actions/tick (no Origin) → 403
+  PASS: 10. POST /actions/tick (bad Origin) → 403
+  PASS: 11. POST /actions/tick (valid) → 200
+  PASS: 11b. tick body echoes intent_id
+  PASS: 12. replay same Idempotency-Key → cached:true
+  PASS: 13. POST /actions/events/ack (unknown seq) → 404
+  PASS: 14. POST /actions/questions/answer (no qid) → 400
+== /internal/* scenarios (GSL-275) ==
+  PASS: 15. GET /internal answer-wait (no secret) → 401
+  PASS: 16. GET /internal answer-wait (wrong secret) → 401
+  PASS: 17. GET /internal answer-wait (unknown qid) → 404
+  PASS: 18. POST /internal/questions/post (no secret) → 401
+  PASS: 19. POST /internal/questions/post (valid) → 200 + qid
+  PASS: 20. GET /internal answer-wait (timeout) → 204
+== /fleet + /internal/agents/tool-observed scenarios (GSL-276) ==
+  PASS: 21. GET /fleet (no auth) → 401
+  PASS: 22. GET /fleet (valid) → 200
+  PASS: 22b. /fleet body has sessions + totals keys
+  PASS: 23. POST /internal/agents/tool-observed (no secret) → 401
+  PASS: 24. POST /internal/agents/tool-observed (missing session_id) → 400
+  PASS: 25. POST /internal/agents/tool-observed (valid) → 200
+  PASS: 25b. tool-observed row persisted (current_tool=Read, context_pct=42) — GSL-301 regression
+== /metrics scenarios (GSL-280) ==
+  PASS: 26. GET /metrics (no auth) → 401
+  PASS: 27. GET /metrics (valid) → 200
+  PASS: 27b. /metrics content-type advertises Prometheus version=0.0.4
+  PASS: 27c. /metrics has # HELP for every required family
+  PASS: 27d. /metrics auth source line = dev-env (matches smoke Bearer bypass)
+== /actions/questions/apply-manifest + /actions/questions/defer + /manifest (GSL-277 + GSL-278) ==
+  PASS: 28. GET /manifest (no auth) → 401
+  PASS: 29. GET /manifest (valid) → 200
+  PASS: 29b. /manifest contains the seeded §2.merge-strategy rule
+  PASS: 30. POST apply-manifest (no auth) → 401
+  PASS: 31. POST apply-manifest (no rule_ref) → 400
+  PASS: 32. POST apply-manifest (unknown qid) → 404
+  PASS: 33. POST defer (no auth) → 401
+  PASS: 34. POST defer (no qid) → 400
+  PASS: 35. POST defer (bad defer_until) → 400
+  PASS: 36. apply-manifest end-to-end: valid rule applied, applied_by=manifest
+  PASS: 36b. apply-manifest is idempotent on replay (cached:true)
+  PASS: 36c. DB provenance columns set: manifest / §2.merge-strategy
+  PASS: 37. defer end-to-end: valid, status=deferred, defer_until echoed
+  PASS: 37b. DB row after defer: status=deferred, defer_until=2026-08-16T20:49:29Z
+== /actions/tasks/sync scenarios (GSL-279) ==
+  PASS: 38. POST /actions/tasks/sync (no auth) → 401
+  PASS: 39. POST /actions/tasks/sync (bad epic) → 400
+  PASS: 40. POST /actions/tasks/sync (valid) → 200 + result envelope
+  PASS: 41. tasks table now carries 274 GSL-* rows after sync
+== /internal/permissions/post + /actions/permissions/decide (GSL-284) ==
+  PASS: 42. POST /internal/permissions/post (no secret) → 401
+  PASS: 43. POST /internal/permissions/post (no tool) → 400
+  PASS: 44. POST /internal/permissions/post (valid) → 200 + p-* qid
+  PASS: 44b. DB row has kind=permission + open + Allow/Deny options
+  PASS: 45. POST /actions/permissions/decide (no auth) → 401
+  PASS: 46. POST /actions/permissions/decide (bad decision) → 400
+  PASS: 47. POST /actions/permissions/decide (unknown qid) → 404
+  PASS: 48. decide allow → 200 + result.decision=allow
+  PASS: 48b. DB row: answer_text=allow, applied_by=owner
+  PASS: 49. POST decide on already-answered permission → 409 → 409
+  PASS: 50. POST decide against a BLOCKER qid → 409 → 409
+== GSL-285: SPA static serve + fallback + API precedence ==
+  PASS: 51. GET / (SPA root) → 200
+  PASS: 51b. / body has scratch marker body matches /scratch-spa-index/
+  PASS: 52. GET /overview (SPA fallback) → 200
+  PASS: 52b. /overview body has scratch marker body matches /scratch-spa-index/
+  PASS: 53. GET /assets/app.js (asset) → 200
+  PASS: 53b. asset body body matches /scratch spa asset/
+  PASS: 54. GET /healthz (API precedence over SPA) → 200
+  PASS: 54b. /healthz still returns JSON body matches /"ok":true/
+  PASS: 55. GET /version (still Bearer-gated) → 401
+  PASS: 56. CSP stamped on SPA HTML
+  PASS: 57. GET / (wrong Host) → 421
+  PASS: 58. POST /nope (honest 404, no SPA rewrite) → 404
+== GSL-310: SPA browser-navigation guard on API-colliding paths ==
+  PASS: 58a. GET /questions Accept:text/html (browser) → 200 SPA → 200
+  PASS: 58a-b. /questions browser body has scratch marker body matches /scratch-spa-index/
+  PASS: 58b. GET /questions Accept:application/json (no Bearer) → 401 → 401
+  PASS: 58c. GET /questions Accept:application/json + Bearer → 200 JSON → 200
+  PASS: 58d. GET /fleet Accept:text/html (browser) → 200 SPA → 200
+  PASS: 58e. GET /questions/GSL-1 Accept:text/html → 200 SPA → 200
+== GSL-291: /setup Bearer-discovery flow ==
+  PASS: 59. POST /internal/setup/otp (no secret) → 401
+  PASS: 60. POST /internal/setup/otp (valid) → 200
+  PASS: 60b. OTP present in response body
+  PASS: 61. GET /setup?tok=<OTP> (valid) → 200
+  PASS: 61b. /setup body carries gosleep-token meta tag with the Bearer
+  PASS: 62. GET /setup?tok=<used OTP> → 400 → 400
+  PASS: 63. GET /setup (no tok) → 400
+  PASS: 64. GET /setup (unknown tok) → 400
+  PASS: 65. /setup response is no-store
+  PASS: 66. ttl_s clamped to 30 s floor (was 5)
+== GSL-298: POST /actions/snapshot ==
+  PASS: 67. POST /actions/snapshot (no auth) → 401
+  PASS: 68. POST /actions/snapshot (bad label) → 400
+  PASS: 69. POST /actions/snapshot (valid) → 200 + result.kind=manual
+  PASS: 69b. snapshot path exists under scratch tree: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify374/.artifacts/core-smoke/snapshots/manual-smoke-2026-08-16T19-57-23Z.db
+  PASS: 70. snapshot idempotent on replay (cached:true)
+  PASS: 71. POST /actions/snapshot (no label) → 200 + result.kind=daily
+== teardown ==
+  PASS: port 7353 clean after teardown
+
+== summary ==
+  pass=102  fail=0
+  core-smoke: ALL PASS

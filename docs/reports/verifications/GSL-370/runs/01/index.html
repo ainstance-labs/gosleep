@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-370 — Panel UX polish (verify-370, run 01)</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-370 — Panel UX polish</span>
+        <span class="subtitle">Adversarial verification of PR #360 (GSL-371 + GSL-372)</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Epic">GSL-370</span>
+        <span class="hbtn" aria-label="Date">2026-08-16</span>
+        <a class="hbtn lang-switch" href="ru/index.html" hreflang="ru">EN <span aria-hidden="true">⇄</span> RU</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Toggle color theme">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Theme</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Executive summary</h2>
+      <div class="card hero">
+        <div class="score-ring" style="--score: 95" data-band="good">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="52"></circle>
+            <circle class="value" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="num"><b>95</b><span>/ 100</span></div>
+        </div>
+        <div>
+          <h1>Verdict: MERGE</h1>
+          <p class="lead">PR #360 (branch <code>GSL-370-panel-ux-polish</code>, tip <code>ad106aa</code>) delivers what it claims and survives adversarial live testing. Gates re-ran clean in an independent worktree; the two behavioural claims (variant-click&nbsp;→&nbsp;answered and short-preset&nbsp;→&nbsp;deferred) were reproduced end-to-end against a scratch core on port 7349, including an XSS attempt via a <code>&lt;script&gt;</code> variant label, an idempotency triple-click, and exact-math preset checks. 0 CRITICAL, 0 MAJOR, 2 MINOR follow-up observations.</p>
+          <div class="verdict-row">
+            <span class="level-pill">MERGE</span>
+            <div class="counts">
+              <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+              <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">MINOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">Total</span></div>
+            </div>
+          </div>
+          <div class="dist" role="img" aria-label="Severity distribution">
+            <span class="seg-minor" style="width:100%"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Gate re-run in worktree <code>.claude/worktrees/verify370</code></h3>
+        <div class="finding-body">
+          <ul>
+            <li><strong>tsc</strong> (<code>bun run typecheck</code> → <code>tsc --noEmit</code> in <code>apps/web</code>): clean, exit 0.</li>
+            <li><strong>bun test apps/web</strong>: 81 pass / 0 fail, 108 expect() calls across 5 files, 51ms. Matches the implementer's claim.</li>
+            <li><strong>vite build</strong> (<code>bun run build</code> in <code>apps/web</code>): 2358 modules transformed, ✓ built in 2.61s. Sole warning is the pre-existing 500KB chunk-size hint on <code>index-*.js</code> (present on <code>main</code>, not introduced by this PR).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Live adversarial leg — scratch core on 127.0.0.1:7349</h3>
+        <div class="finding-body">
+          <p>Independent scratch core booted from the verifier worktree with <code>GOSLEEP_CORE_PORT=7349</code>, <code>GOSLEEP_DB_PATH=…/scratch/data/gosleep.db</code>, dev-env Bearer. Production port 7331 was untouched. Ten V370 seed questions were injected via <code>POST /internal/questions/post</code> (dual-write path — DB + <code>queue.jsonl</code>). All twelve behavioural probes reproduced the PR's live proofs:</p>
+          <ol>
+            <li><strong>Variant click → dialog prefill.</strong> Clicking the "Bravo" chip on the outer question card for <code>q-2026-08-16-002</code> (8 variants Alpha…Hotel) opened the Answer dialog titled "Answer q-2026-08-16-002" with the textarea prefilled <code>"Bravo"</code> and the full 8-button in-dialog variant row visible.</li>
+            <li><strong>In-dialog variant → immediate submit.</strong> The "Pick a variant (submits immediately)" row above the textarea submits the label directly, bypassing any textarea edit — verified with a Delta click that landed a <code>question.answered</code> event and set <code>answer_text = "Delta"</code>.</li>
+            <li><strong>Idempotency (rapid triple-click).</strong> Three back-to-back clicks on Delta produced one <code>server_intents</code> row (<code>web-…-answer-72dd2c69-…</code>, <code>status='ok'</code>) and one <code>question.answered</code> event — the stable idempotency key (input hash + 2-second bucket) collapsed the burst as intended by <code>stableIdempotencyKey</code> in <code>queries.ts</code>.</li>
+            <li><strong>XSS via variant label.</strong> A variant labelled <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> renders as visible escaped text (<code>&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</code>) in both the outer button HTML and the in-dialog variant button. Clicking it opens the dialog with the literal string in the textarea; no script tag is injected, no <code>alert()</code> fires (verified by hooking <code>window.alert</code>).</li>
+            <li><strong>No-options question.</strong> <code>q-2026-08-16-004</code> ships <code>options: null</code>. The Answer dialog opens with an empty textarea, placeholder "Type the answer for the agent…", and <em>no</em> variant row (<code>[data-testid="answer-dialog-variants"]</code> absent). A free-text submission ("Free-text answer verified — v370.") landed as <code>answer_text</code>.</li>
+            <li><strong>Defer preset ladder.</strong> Ordered exactly as the ticket specifies: <em>No timer, 5 minutes, 15 minutes, 30 minutes, 1 hour, 2 hours, Tomorrow 10:00, Next Monday 10:00, Custom ISO</em>. All three new short-duration presets sit at the front of the ladder in ascending order; long presets survive.</li>
+            <li><strong>Defer preset math (millisecond).</strong>
+              5&nbsp;min → <code>defer_until − clickTs = 5:00.000</code> (<code>q-005</code>);
+              15&nbsp;min → <code>15:00.000</code> (<code>q-006</code>);
+              1&nbsp;hour → <code>60:00.000</code> (<code>q-007</code>);
+              2&nbsp;hours → <code>2:00:00.000</code> (<code>q-009</code>).
+              Confirmed by diffing the wall-clock timestamp recorded in the browser at click time against <code>server_intents.input.defer_until</code>.</li>
+            <li><strong>Countdown rendering + SSE fan-out.</strong> After each defer the deferred card's countdown text (<code>reopens in Xm Ys</code> / <code>Xh Ym</code>) refreshed immediately without a manual reload — the mutation success path invalidates <code>['core', 'questions']</code> AND the <code>question.deferred</code> SSE event fires a second invalidation. Both worked.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Code review of the diff (<code>git diff origin/main…HEAD</code>)</h3>
+        <div class="finding-body">
+          <p>13 files changed (708 / 118); reviewed by hand:</p>
+          <ul>
+            <li><strong>apps/web/src/lib/questionOptions.ts</strong> — new. <code>normalizeOptions</code> is defensive (rejects non-arrays, empty arrays, malformed items, blank-after-trim labels); trims label; coerces bare-string <code>pros</code>/<code>cons</code> to arrays. Unit test <code>questionOptions.test.ts</code> pins each edge case (7 tests, all pass).</li>
+            <li><strong>apps/web/src/lib/deferPresets.ts</strong> — new. <code>DEFER_PRESET_ORDER</code> is the single source of truth for the visible ladder; <code>DEFER_RELATIVE_SECONDS</code> pins deltas; <code>resolveDeferPreset(key, custom, now)</code> takes an explicit <code>now</code> for deterministic tests. Custom-ISO trims whitespace; empty custom collapses to <code>null</code> (mirrors CLI). Unit test covers each mapping + escape-hatch semantics (17 tests, all pass).</li>
+            <li><strong>apps/web/src/screens/Questions.tsx</strong> — the largest change. Factored <code>sendAnswer(qid, answer)</code> out of <code>submitAnswer()</code> so the outer-card variant path, the in-dialog variant path, and the free-text "Send answer" path share one submission funnel. Legacy <code>DeferDurationKey</code> / <code>isoNowPlus</code> / <code>tomorrowAt10Iso</code> / <code>nextWeekMondayAt10Iso</code> / <code>deferKeyToIso</code> deleted and replaced with a single <code>resolveDeferPreset</code> call — no duplication left.</li>
+            <li>Both variant buttons (outer card and in-dialog row) are semantic <code>&lt;button type="button"&gt;</code> — no divs-with-onClick, keyboard-reachable by default (<code>tabIndex=0</code>), <code>focus-visible</code> outline present, <code>disabled</code> during <code>answerMut.isPending</code>. React auto-escapes every label / description / pros / cons value inserted via <code>{opt.label}</code> style expressions; no <code>dangerouslySetInnerHTML</code> anywhere in the diff.</li>
+            <li>Tests cover exactly the risks that matter: label-trim semantics, malformed-item rejection, exact defer deltas, ladder ordering. 24 new tests, 24 pass. All existing tests still pass (81 total).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Findings</h2>
+      <div class="findings">
+        <article class="card finding" id="finding-1">
+          <div class="finding-head">
+            <span class="finding-index">1</span>
+            <span class="jira-chip">GSL-370-followup-a11y</span>
+            <span class="badge" data-severity="MINOR">MINOR</span>
+            <span class="area-tag">Question card options — screen-reader name</span>
+            <span class="lane-tag">design</span>
+          </div>
+          <h3>Option button accessible name concatenates label + description + pros + cons</h3>
+          <div class="finding-body">
+            <p>The outer <code>QuestionOptions</code> renders each variant as a bare <code>&lt;button&gt;</code> with no <code>aria-label</code>; the button's accessible name defaults to its concatenated <code>textContent</code>. For a variant like <em>Blue / "Cool and neutral" / +accessible / +brand-aligned / −overused</em>, VoiceOver announces the full string as one utterance, and the leading numeric index (<code>"1."</code>) is spoken too.</p>
+            <p><strong>Failure scenario.</strong> A screen-reader user hearing "1. Blue Cool and neutral plus accessible plus brand-aligned minus overused, button" has to parse the whole payload before deciding to click. On a question with 8 variants that is 8 long utterances.</p>
+            <p><strong>Recommended fix (post-merge, not a blocker).</strong> Add <code>aria-label={opt.label}</code> to the outer variant <code>&lt;button&gt;</code> (and to the in-dialog variant <code>Button</code>). The rest of the metadata still renders inside the button visually, but the primary accessible name becomes just the label; description / pros / cons remain reachable via nested landmarks and visible text.</p>
+          </div>
+          <div class="refs">
+            <div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">apps/web/src/screens/Questions.tsx:341-355 (outer <code>&lt;button&gt;</code>) and :884-905 (in-dialog <code>&lt;Button&gt;</code>)</span></div>
+          </div>
+        </article>
+
+        <article class="card finding" id="finding-2">
+          <div class="finding-head">
+            <span class="finding-index">2</span>
+            <span class="jira-chip">GSL-370-followup-stale-options</span>
+            <span class="badge" data-severity="MINOR">MINOR</span>
+            <span class="area-tag">Answer dialog — options snapshot lifecycle</span>
+            <span class="lane-tag">architecture</span>
+          </div>
+          <h3>Answer dialog holds a captured <code>options</code> snapshot instead of the live row</h3>
+          <div class="finding-body">
+            <p>When the owner clicks a variant on the outer card, the dialog opens with <code>options: normalizeOptions(question.options)</code> materialised into <code>AnswerDialogState</code>. Same at :769 for the raw "Answer" button click. If the underlying question row is subsequently mutated (e.g. an SSE-driven refresh replaces the row's options payload while the dialog is still open), the in-dialog variant row keeps rendering the stale snapshot.</p>
+            <p><strong>Failure scenario.</strong> The write path for question options is not user-facing today, so this is exceedingly unlikely to fire in production; it is a lifecycle smell, not a live bug. Filed for record so a future feature that lets options mutate (e.g. an agent re-poses a question in place) does not silently hit a stale dialog.</p>
+            <p><strong>Recommended fix (post-merge, not a blocker).</strong> Either (a) re-read the live row from the <code>useQuery</code> cache inside the dialog by <code>qid</code> and re-normalise per render, or (b) leave the snapshot in place and document the "options are frozen at open" invariant in a comment above <code>AnswerDialogState.options</code> so any future author knows.</p>
+          </div>
+          <div class="refs">
+            <div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">apps/web/src/screens/Questions.tsx:69-72 (<code>AnswerDialogState.options</code>) and :660-666 / :769-772 (setter sites)</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="ev-h">
+      <h2 class="section-title" id="ev-h">Live evidence — screenshots</h2>
+      <div class="card">
+        <div class="shots">
+          <figure class="shot">
+            <img class="shot-img" src="assets/01-questions-loaded.png" alt="Questions screen with 10 open V370 seed questions" data-lightbox-group="evidence" data-caption="1. Questions screen loaded — 10 V370 seed questions, 16 clickable option buttons across four questions.">
+            <figcaption class="shot-cap">1. Panel loaded — 10 V370 seed questions, 16 clickable options.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/02-answer-dialog-prefilled.png" alt="Answer dialog opened for q-002 with textarea prefilled Bravo" data-lightbox-group="evidence" data-caption="2. Outer Bravo click → dialog opens for q-2026-08-16-002 with textarea prefilled Bravo and 8 variant buttons Alpha..Hotel.">
+            <figcaption class="shot-cap">2. Variant click → Answer dialog prefilled (many-variants case).</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/03-answered-delta.png" alt="After Delta submitted the card shows answered state" data-lightbox-group="evidence" data-caption="3. Triple-click Delta in-dialog → single answered outcome (idempotency key collapsed 3 clicks to 1 server intent).">
+            <figcaption class="shot-cap">3. In-dialog Delta triple-click → single answered outcome.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/04-xss-label-escaped.png" alt="Answer dialog with escaped &lt;script&gt; label" data-lightbox-group="evidence" data-caption="4. XSS attempt — variant label &lt;script&gt;alert(1)&lt;/script&gt; is rendered as visible escaped text; no script executes.">
+            <figcaption class="shot-cap">4. XSS via variant label — escaped, no execution.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/05-free-text-no-variants.png" alt="Answer dialog for a no-options question, empty textarea, no variant row" data-lightbox-group="evidence" data-caption="5. No-options question — dialog opens with empty textarea, placeholder present, NO variant row.">
+            <figcaption class="shot-cap">5. Free-text-only question — pre-GSL-371 path intact.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/06-defer-ladder.png" alt="Defer dialog preset grid with No timer, 5m, 15m, 30m, 1h, 2h, Tomorrow, Next Monday, Custom" data-lightbox-group="evidence" data-caption="6. Defer dialog — 9 presets in the specified order; new 5m/15m/1h at the front.">
+            <figcaption class="shot-cap">6. Defer preset ladder — new short presets at the front.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/07-deferred-5m-countdown.png" alt="Question card in deferred state with reopens-in-4m-43s countdown" data-lightbox-group="evidence" data-caption="7. After the 5-minute preset — card transitions to deferred state, countdown text 'reopens in 4m 43s' updates live.">
+            <figcaption class="shot-cap">7. Deferred state — countdown refreshes without reload.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="assets/08-mixed-state-overview.png" alt="Panel with multiple deferred questions showing five different countdowns" data-lightbox-group="evidence" data-caption="8. Mixed state — five deferred countdowns rendering simultaneously in Xm Ys / Xh Ym formats.">
+            <figcaption class="shot-cap">8. Mixed-state overview — 5 defers rendering side-by-side.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="arch-h">
+      <h2 class="section-title" id="arch-h">Architecture notes</h2>
+      <article class="card arch-note">
+        <h3>Submission funnel after GSL-371</h3>
+        <div class="arch-body">
+          <p>Three surfaces — the outer question-card variant button, the in-dialog variant button, and the free-text "Send answer" button — now converge on one asynchronous function, <code>sendAnswer(qid, answer)</code>. The refactor removes a small duplication (the old <code>submitAnswer()</code> used to inline the mutation body and the toast wiring) and keeps the toast + close-dialog behaviour identical across the three paths.</p>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 460 180" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Answer submission funnel diagram">
+            <style>
+              .box { fill: var(--surface); stroke: var(--border); stroke-width: 1; rx: 6; }
+              .fn { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1; }
+              .txt { fill: var(--fg); font-family: system-ui, sans-serif; font-size: 12px; }
+              .arr { stroke: var(--muted); stroke-width: 1.2; fill: none; marker-end: url(#a); }
+            </style>
+            <defs>
+              <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/>
+              </marker>
+            </defs>
+            <rect class="box" x="10"  y="15"  width="170" height="34"/>
+            <text class="txt" x="20"  y="37">Outer card variant button</text>
+            <rect class="box" x="10"  y="65"  width="170" height="34"/>
+            <text class="txt" x="20"  y="87">In-dialog variant button</text>
+            <rect class="box" x="10"  y="115" width="170" height="34"/>
+            <text class="txt" x="20"  y="137">Free-text Send answer</text>
+            <rect class="fn"  x="230" y="65"  width="140" height="34"/>
+            <text class="txt" x="245" y="87">sendAnswer(qid, answer)</text>
+            <rect class="box" x="400" y="65"  width="50"  height="34"/>
+            <text class="txt" x="405" y="87">API</text>
+            <path class="arr" d="M180 32 C 210 32 210 78 230 82"/>
+            <path class="arr" d="M180 82 L 230 82"/>
+            <path class="arr" d="M180 132 C 210 132 210 82 230 82"/>
+            <path class="arr" d="M370 82 L 400 82"/>
+          </svg>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Generated by <strong>verify-370 (adversarial verifier for GSL-370, shift 79)</strong> · 2026-08-16 UTC</span>
+      <span>Audited build <code>ad106aa</code> (branch <code>GSL-370-panel-ux-polish</code>)</span>
+    </div>
+  </footer>
+
+  <script src="assets/lightbox.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S7.a GET sess-a submissions — HTTP 200 (expected 200)
+{"submissions":[{"id":"bb1c01a9-d759-428f-837f-492d5eb4e59a","ts":"2026-08-16T20:50:48.859Z","session_id":"sess-a","pane_ref_at_dispatch":"verify378-target-a:@38.%412","body_sha256":"060c09c6523dfbe93a015c00d262eef42403ee145cee2b1068c2d2bd9b772998","body_len":32,"framing":"prompt-boundary","outcome":"delivered","error":null}],"count":1}

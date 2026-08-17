@@ -1,0 +1,267 @@
+{"ts":"2026-08-16T19:42:45.441Z","event":"core.migrate.start","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","migrations":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/apps/core/drizzle"}
+{"ts":"2026-08-16T19:42:45.447Z","event":"core.migrate.integrity.ok"}
+{"ts":"2026-08-16T19:42:45.464Z","event":"core.migrate.snapshot.ok","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/snapshots/pre-2026-08-16T19-42-45-447Z.db"}
+{"ts":"2026-08-16T19:42:45.476Z","event":"core.migrate.done"}
+==== A-symlink-into-real-prod ====
+prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/decoy-outside  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/decoy-outside/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/decoy-outside/handoff
+publish:   diff (- prod / + dev):
+publish:     (empty — dev matches prod; nothing to publish, but proceeding to record the checkpoint)
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/decoy-outside backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish: backup written to /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194245Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:46.172Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":1,"skillsUpserted":12}
+publish: DONE — skill='handoff' → /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/decoy-outside/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194245Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194245Z","ts":"2026-08-16T19:42:45Z","intent_id":null}
+RC=0
+==== B-trailing-slash-prod ====
+prod=/Users/romanlidovskyi/.claude/skills/  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/.claude/skills//handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/.claude/skills//handoff
+publish:   diff (- prod / + dev):
+publish:     (empty — dev matches prod; nothing to publish, but proceeding to record the checkpoint)
+==============================================================================
+publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR
+publish:   AND GOSLEEP_SKILLS_BACKUPS_DIR set to hermetic paths outside the real tree.
+publish:   Resolved: prod='/Users/romanlidovskyi/.claude/skills/' backups='/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups'.
+publish:   Real tree: prod-refused='$HOME/.claude/skills[/*]',  backups-refused='$HOME/.claude/skills[/*]' AND '$REPO_ROOT/docs/skills/backups[/*]'.
+RC=3
+==== B2-trailing-slash-backups ====
+prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/docs/skills/backups/
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff
+publish:   diff (- prod / + dev):
+publish:     diff: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff: No such file or directory
+==============================================================================
+publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR
+publish:   AND GOSLEEP_SKILLS_BACKUPS_DIR set to hermetic paths outside the real tree.
+publish:   Resolved: prod='/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch' backups='/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/docs/skills/backups/'.
+publish:   Real tree: prod-refused='$HOME/.claude/skills[/*]',  backups-refused='$HOME/.claude/skills[/*]' AND '$REPO_ROOT/docs/skills/backups[/*]'.
+RC=3
+==== C-uppercase-CLAUDE ====
+prod=/Users/romanlidovskyi/.CLAUDE/skills  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/.CLAUDE/skills/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/.CLAUDE/skills/handoff
+publish:   diff (- prod / + dev):
+publish:     (empty — dev matches prod; nothing to publish, but proceeding to record the checkpoint)
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=/Users/romanlidovskyi/.CLAUDE/skills backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish: backup written to /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194247Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:47.771Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":2,"skillsUpserted":12}
+publish: DONE — skill='handoff' → /Users/romanlidovskyi/.CLAUDE/skills/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194247Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194247Z","ts":"2026-08-16T19:42:47Z","intent_id":null}
+RC=0
+==== C2-uppercase-SKILLS ====
+prod=/Users/romanlidovskyi/.claude/SKILLS  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/.claude/SKILLS/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/.claude/SKILLS/handoff
+publish:   diff (- prod / + dev):
+publish:     (empty — dev matches prod; nothing to publish, but proceeding to record the checkpoint)
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=/Users/romanlidovskyi/.claude/SKILLS backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish: backup written to /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194248Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:48.802Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":3,"skillsUpserted":12}
+publish: DONE — skill='handoff' → /Users/romanlidovskyi/.claude/SKILLS/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194248Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194248Z","ts":"2026-08-16T19:42:48Z","intent_id":null}
+RC=0
+==== D-relative-symlink ====
+prod=./.artifacts/verify288-defeats/work/rel-decoy  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = ./.artifacts/verify288-defeats/work/rel-decoy/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = ./.artifacts/verify288-defeats/work/rel-decoy/handoff
+publish:   diff (- prod / + dev):
+publish:     diff: ./.artifacts/verify288-defeats/work/rel-decoy/handoff: No such file or directory
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=./.artifacts/verify288-defeats/work/rel-decoy backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish: production dir absent; recorded placeholder backup at /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194249Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:49.925Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":4,"skillsUpserted":12}
+publish: DONE — skill='handoff' → ./.artifacts/verify288-defeats/work/rel-decoy/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194249Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194249Z","ts":"2026-08-16T19:42:49Z","intent_id":null}
+RC=0
+==== E-empty-prod ====
+prod=  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/.claude/skills/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/.claude/skills/handoff
+publish:   diff (- prod / + dev):
+publish:     (empty — dev matches prod; nothing to publish, but proceeding to record the checkpoint)
+==============================================================================
+publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR
+publish:   AND GOSLEEP_SKILLS_BACKUPS_DIR set to hermetic paths outside the real tree.
+publish:   Resolved: prod='' backups='/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups'.
+publish:   Real tree: prod-refused='$HOME/.claude/skills[/*]',  backups-refused='$HOME/.claude/skills[/*]' AND '$REPO_ROOT/docs/skills/backups[/*]'.
+RC=3
+==== E2-empty-backups ====
+prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch  backups=
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff
+publish:   diff (- prod / + dev):
+publish:     diff: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff: No such file or directory
+==============================================================================
+publish: refusing bypass — GOSLEEP_TOUCHID_BYPASS=1 requires GOSLEEP_SKILLS_PROD_DIR
+publish:   AND GOSLEEP_SKILLS_BACKUPS_DIR set to hermetic paths outside the real tree.
+publish:   Resolved: prod='/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch' backups=''.
+publish:   Real tree: prod-refused='$HOME/.claude/skills[/*]',  backups-refused='$HOME/.claude/skills[/*]' AND '$REPO_ROOT/docs/skills/backups[/*]'.
+RC=3
+==== F-HOME-rewrite ====
+prod=/Users/romanlidovskyi/.claude/skills  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/.claude/skills/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/.claude/skills/handoff
+publish:   diff (- prod / + dev):
+publish:     (empty — dev matches prod; nothing to publish, but proceeding to record the checkpoint)
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=/Users/romanlidovskyi/.claude/skills backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish: backup written to /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194251Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:51.629Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":5,"skillsUpserted":12}
+publish: DONE — skill='handoff' → /Users/romanlidovskyi/.claude/skills/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194251Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194251Z","ts":"2026-08-16T19:42:51Z","intent_id":null}
+RC=0
+==== G-relative-traversal ====
+prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/deep/nested/../../../../../.claude/skills  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/deep/nested/../../../../../.claude/skills/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/deep/nested/../../../../../.claude/skills/handoff
+publish:   diff (- prod / + dev):
+publish:     diff: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/deep/nested/../../../../../.claude/skills/handoff: No such file or directory
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/deep/nested/../../../../../.claude/skills backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups
+publish: production dir absent; recorded placeholder backup at /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194252Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:52.639Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":6,"skillsUpserted":12}
+publish: DONE — skill='handoff' → /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/deep/nested/../../../../../.claude/skills/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194252Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/backups/handoff-20260816T194252Z","ts":"2026-08-16T19:42:52Z","intent_id":null}
+RC=0
+==== H-backups-symlink ====
+prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch  backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/backups-decoy
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/skill/handoff
+publish:   prod = /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff
+publish:   diff (- prod / + dev):
+publish:     diff: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff: No such file or directory
+==============================================================================
+publish: WARN: GOSLEEP_TOUCHID_BYPASS=1 — TouchID gate skipped (hermetic test override).
+publish:        prod=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch backups=/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/backups-decoy
+publish: production dir absent; recorded placeholder backup at /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/backups-decoy/handoff-20260816T194253Z
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","row":{"ts":"2026-08-16T19:42:53.594Z","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/data/gosleep.db","changelog":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/changelog.jsonl","rowsScanned":7,"skillsUpserted":12}
+publish: DONE — skill='handoff' → /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/prod-scratch/handoff (backup: /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/backups-decoy/handoff-20260816T194253Z)
+{"event":"skills.publish.done","skill":"handoff","task":"GSL-88","commit":"548fbf8620b0073f8543372c0170e37e2914dd45","backup":"/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/work/symlink-farm/backups-decoy/handoff-20260816T194253Z","ts":"2026-08-16T19:42:53Z","intent_id":null}
+RC=0
+
+==== SUMMARY ====
+canary /Users/romanlidovskyi/.claude/skills/handoff:  mtime_before=1786828248  mtime_after=1786909038
+backups /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/docs/skills/backups:  mtime_before=1786909038  mtime_after=1786909373

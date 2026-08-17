@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S3.a preview against controlled+shim_unregistered — HTTP 409 (expected 409)
+{"ok":false,"intent_id":"verify-s3-1","error":"session sess-c has no registered shim (R15.7)","reason":"shim-not-registered"}

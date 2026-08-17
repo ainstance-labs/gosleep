@@ -1,0 +1,57 @@
+==== S1 happy-path normalized-stderr diff (main→pr) ====
+--- /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/inert-trace2/S1.main.norm.log	2026-08-16 21:48:06
++++ /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/inert-trace2/S1.pr.norm.log	2026-08-16 21:48:06
+@@ -1,4 +1,4 @@
+-publish:   prod = <WORK>/S1.prod-main/handoff
++publish:   prod = <WORK>/S1.prod-pr/handoff
+   PASS: skill dir exists: skill/handoff/
+   PASS: SKILL.md present + non-empty (10099 bytes)
+   PASS: no references/ directory (optional)
+@@ -7,13 +7,14 @@
+ {"event":"skills.record-publish.check.ok","db":"<WORK>/data/gosleep.db"}
+ ==============================================================================
+ publish: skill='handoff'
+-publish:   dev  = <REPO>-main/skill/handoff
+-publish:   prod = <WORK>/S1.prod-main/handoff
++publish:   dev  = <REPO>/skill/handoff
++publish:   prod = <WORK>/S1.prod-pr/handoff
+ publish:   diff (- prod / + dev):
+-publish:     diff: <WORK>/S1.prod-main/handoff: No such file or directory
++publish:     diff: <WORK>/S1.prod-pr/handoff: No such file or directory
+ ==============================================================================
+-publish: production dir absent; recorded placeholder backup at <WORK>/S1.backups-main/handoff-<TS>
++publish:   touchid gate: OFF (stub; owner-deferred 2026-08-16; opt in with GOSLEEP_TOUCHID=1)
++publish: production dir absent; recorded placeholder backup at <WORK>/S1.backups-pr/handoff-<TS>
+ publish: rsync ok
+-{"event":"skills.record-publish.appended","path":"<WORK>/changelog/S1.main.jsonl","row":{"ts":"<TS>","skill":"handoff","task":"GSL-88","commit":"<SHA>","lesson":"","status":"published"}}
+-{"event":"skills.record-publish.folded","db":"<WORK>/data/gosleep.db","changelog":"<WORK>/changelog/S1.main.jsonl","rowsScanned":1,"skillsUpserted":12}
+-publish: DONE — skill='handoff' → <WORK>/S1.prod-main/handoff (backup: <WORK>/S1.backups-main/handoff-<TS>)
++{"event":"skills.record-publish.appended","path":"<WORK>/changelog/S1.pr.jsonl","row":{"ts":"<TS>","skill":"handoff","task":"GSL-88","commit":"<SHA>","lesson":"","status":"published"}}
++{"event":"skills.record-publish.folded","db":"<WORK>/data/gosleep.db","changelog":"<WORK>/changelog/S1.pr.jsonl","rowsScanned":1,"skillsUpserted":12}
++publish: DONE — skill='handoff' → <WORK>/S1.prod-pr/handoff (backup: <WORK>/S1.backups-pr/handoff-<TS>)
+
+==== S2 preflight-fail normalized-stderr diff ====
+--- /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/inert-trace2/S2.main.norm.log	2026-08-16 21:48:06
++++ /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/inert-trace2/S2.pr.norm.log	2026-08-16 21:48:07
+@@ -1,4 +1,4 @@
+-publish:   prod = <WORK>/S2.prod-main/handoff
++publish:   prod = <WORK>/S2.prod-pr/handoff
+   PASS: skill dir exists: skill/handoff/
+   PASS: SKILL.md present + non-empty (10099 bytes)
+   PASS: no references/ directory (optional)
+
+==== S3 owner-gate refusal normalized-stderr diff ====
+--- /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/inert-trace2/S3.main.norm.log	2026-08-16 21:48:07
++++ /Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify288/.artifacts/verify288-defeats/inert-trace2/S3.pr.norm.log	2026-08-16 21:48:07
+@@ -1,2 +1,2 @@
+-publish:   prod = <WORK>/S3.prod-main/handoff
++publish:   prod = <WORK>/S3.prod-pr/handoff
+ publish: refusing — no TTY on stdin AND no GOSLEEP_WEB_TOKEN env-nonce (agent-in-pipe context).
+
+==== exit codes ====
+  S1 main rc=0
+  S1 pr   rc=0
+  S2 main rc=1
+  S2 pr   rc=1
+  S3 main rc=3
+  S3 pr   rc=3

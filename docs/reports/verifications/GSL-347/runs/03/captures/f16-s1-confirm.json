@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S1.b confirm delivered — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-s1-1","cached":false,"finished_at":"2026-08-16T20:50:48.859Z","result":{"submission_id":"bb1c01a9-d759-428f-837f-492d5eb4e59a","session_id":"sess-a","outcome":"delivered","pane_ref_at_dispatch":"verify378-target-a:@38.%412","body_len":32,"body_sha256":"060c09c6523dfbe93a015c00d262eef42403ee145cee2b1068c2d2bd9b772998","framing":"prompt-boundary","ts":"2026-08-16T20:50:48.859Z","error":null}}

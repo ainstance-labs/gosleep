@@ -1,0 +1,4 @@
+ts                        session_id  outcome    body_len  sha12         framing          error                                                   
+------------------------  ----------  ---------  --------  ------------  ---------------  --------------------------------------------------------
+2026-08-16T20:50:49.633Z  sess-e      pane_gone  19        bc38021750f2  prompt-boundary  pane_ref resolves to null in tmux_panes at dispatch time
+2026-08-16T20:50:48.859Z  sess-a      delivered  32        060c09c6523d  prompt-boundary                                                          

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-387 verify-387 — верификация follow-up-бандла смены 79</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-387 verify-387 — верификация follow-up-бандла смены 79</span>
+        <span class="subtitle">Независимая adversarial-верификация PR #380 (tip 14e43f6)</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">GSL-387</span>
+        <span class="hbtn" aria-label="Дата">2026-08-16</span>
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Общая сводка</h2>
+      <div class="card hero">
+        <div class="score-ring" style="--score: 93" data-band="good">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="52"></circle>
+            <circle class="value" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="num"><b>93</b><span>/ 100</span></div>
+        </div>
+        <div>
+          <h1>ВЕРДИКТ — MERGE</h1>
+          <p class="lead">PR #380 (7 коммитов <code>d99b42a</code>..<code>14e43f6</code> от базы
+             <code>eece507</code>, эпик <strong>GSL-387</strong>) проверен независимо. Все follow-up-фиксы
+             79-й смены (GSL-385 жёсткое усиление bypass-guard TouchID, GSL-386 расширение и якорь
+             first-match у peek shim'ов, GSL-376 aria-label, GSL-377 «stale options» баннер, GSL-375
+             purge исчезнувших транскриптов) удержались под повторной атакой. Ноль
+             <span class="term">CRITICAL</span>, ноль <span class="term">MAJOR</span>, две
+             <span class="term">MINOR</span>-заметки — не блокируют merge.</p>
+          <div class="verdict-row">
+            <span class="level-pill">MERGE-READY</span>
+            <div class="counts">
+              <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+              <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">MINOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">Всего</span></div>
+            </div>
+          </div>
+          <div class="dist" role="img" aria-label="Распределение по важности">
+            <span class="seg-critical" style="width:0%"></span>
+            <span class="seg-major" style="width:0%"></span>
+            <span class="seg-minor" style="width:100%"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Результаты гейтов (все перезапущены verify-387 на скратч-порту 7358)</h3>
+        <table class="gate-table">
+          <thead>
+            <tr><th>Гейт</th><th>Область</th><th>PR (14e43f6)</th><th>База (eece507)</th><th>Итог</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>bun x tsc -p apps/core --noEmit</code></td><td>Тайпчек core</td><td>чисто</td><td>—</td><td class="ok">PASS</td></tr>
+            <tr><td><code>bun x tsc -p apps/web --noEmit</code></td><td>Тайпчек web</td><td>чисто</td><td>—</td><td class="ok">PASS</td></tr>
+            <tr><td><code>bun test</code> (apps/core)</td><td>Unit + интеграция</td><td>360 / 360 (1005 expects)</td><td>—</td><td class="ok">PASS</td></tr>
+            <tr><td><code>bun test</code> (apps/web)</td><td>Компонентные</td><td>94 / 94 (133 expects)</td><td>—</td><td class="ok">PASS</td></tr>
+            <tr><td><code>tools/lab/tests/core-smoke.sh</code></td><td>API smoke, порт 7358</td><td>102 / 102</td><td>102 / 102</td><td class="ok">PASS + разбор smoke'а</td></tr>
+            <tr><td><code>tools/skills/tests/touchid-gate-smoke.sh</code></td><td>Инварианты guard (17)</td><td>17 / 17 вкл. D3-D8</td><td>—</td><td class="ok">PASS</td></tr>
+            <tr><td><code>tools/lab/tests/shim-control-gate.sh</code></td><td>Сценарии shim (7)</td><td>7 / 7 вкл. S6+S7</td><td>—</td><td class="ok">PASS</td></tr>
+            <tr><td>adv-attack (собственный harness verify-387, 6 новых атак)</td><td>Усиление guard</td><td>5 REFUSED + 1 N/A</td><td>—</td><td class="ok">GUARD ДЕРЖИТ</td></tr>
+            <tr><td>shim trace-diff (собственный, 12 фикстур)</td><td>Идентичность default-пути</td><td>байт-в-байт на обоих shim × 6 фикстур</td><td>байт-в-байт (база)</td><td class="ok">ИДЕНТИЧНОСТЬ СОХРАНЕНА</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="ver-h">
+      <h2 class="section-title" id="ver-h">Разбор smoke'а + результаты adversarial-атак</h2>
+
+      <div class="card">
+        <h3>Разбор smoke'а — заявленные 101/102 у автора PR — окружение, не регрессия</h3>
+        <p>Автор PR сообщил <code>core-smoke</code> 101/102 с единственным падением, объяснённым как
+           уже существующий ложноположительный <code>TIME_WAIT</code>-taerdown на порту 7356.
+           verify-387 перезапустил <code>core-smoke</code> в двух воркри на скратч-порту
+           <strong>7358</strong>:</p>
+        <ul>
+          <li><strong>PR tip 14e43f6:</strong> <code>pass=102 fail=0</code> — <em>ВСЁ PASS</em></li>
+          <li><strong>База eece507 (родитель merge'а):</strong> <code>pass=102 fail=0</code> — <em>ВСЁ PASS</em></li>
+        </ul>
+        <p>Оба воркри идентичны на том же порту. Единственное падение на 7356 подтверждено как
+           окружение (ядро держит порт в <code>TIME_WAIT</code> во время teardown-ассерта),
+           <strong>это не регрессия PR</strong>. Merge не блокируется.</p>
+      </div>
+
+      <div class="card">
+        <h3>GSL-385 повторная атака — 6 классов обхода из <code>docs/reports/verifications/GSL-288/runs/01/</code></h3>
+        <p>Все прогнаны <code>tools/skills/tests/touchid-gate-smoke.sh</code> на герметичной decoy-фикстуре
+           (<code>GOSLEEP_TOUCHID_ANCHOR_HOME/REPO</code> ре-заанкорены на
+           <code>.artifacts/touchid-gate-smoke/decoy-*</code>). Реальные <code>~/.claude/skills/handoff</code>
+           и <code>docs/skills/backups</code> — mtime зафиксированы до и после, не изменялись.</p>
+        <ul>
+          <li><strong>D3</strong> симлинк в decoy prod — <span class="term">REFUSED</span> (rc=3, "refusing bypass")</li>
+          <li><strong>D4</strong> сегмент в верхнем регистре на APFS-CI — <span class="term">REFUSED</span></li>
+          <li><strong>D5</strong> относительный симлинк в decoy prod — <span class="term">REFUSED</span></li>
+          <li><strong>D6</strong> подмена HOME (red herring) + буквальный decoy prod — <span class="term">REFUSED</span></li>
+          <li><strong>D7</strong> <code>..</code>-traversal в decoy prod — <span class="term">REFUSED</span></li>
+          <li><strong>D8</strong> симлинк в decoy backups — <span class="term">REFUSED</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>GSL-385 повторная атака — 6 НОВЫХ классов обхода (собственный harness verify-387)</h3>
+        <p>verify-387 написал независимый atacker-скрипт
+           (<code>.artifacts/verify387-adv/adv-attack.sh</code>) с атаками, которых у автора не было. Та
+           же decoy-дисциплина; belt-and-braces canaries на mtime реальных деревьев до и после.</p>
+        <ul>
+          <li><strong>N1</strong> цепочка симлинков (A → B → decoy prod) — <span class="term">REFUSED</span> (rc=3)</li>
+          <li><strong>N2b</strong> <code>..</code> внутри разрешённого префикса, возвращающий В decoy prod
+              — <span class="term">REFUSED</span> (rc=3)</li>
+          <li><strong>N3</strong> hardlink — <em>на macOS N/A:</em> hardlink на директорию требует
+              root+специальные флаги; hardlink на файл — это не поверхность rsync-таргета publish.sh,
+              guard не обмануть</li>
+          <li><strong>N4</strong> UPPER-CASE-написание якоря repo-root
+              (<code>/tmp/.../DECOY-REPO/DOCS/SKILLS/BACKUPS</code>) — <span class="term">REFUSED</span> (rc=3)</li>
+          <li><strong>N5</strong> алиас <code>/tmp</code> ↔ <code>/private/tmp</code>
+              (якорь на <code>/tmp/…</code>, PROD_DIR на <code>/private/tmp/…</code>) —
+              <span class="term">REFUSED</span> (rc=3)</li>
+          <li><strong>N6</strong> «мусор» из слэшей / точки-текущей / хвостовых слэшей
+              (<code>$DECOY_HOME/./.claude//skills/./</code>) — <span class="term">REFUSED</span> (rc=3)</li>
+        </ul>
+        <p><strong>Итог по guard'у:</strong> держит на всех реальных классах обхода. Нормализация
+           <code>realpath</code> + якорение HOME через <code>dscl</code>/<code>getent</code> +
+           обход по инодам вместе закрывают все известные сегодня bypass-поверхности на macOS.</p>
+      </div>
+
+      <div class="card">
+        <h3>GSL-386 идентичность default-пути — trace-diff PR vs origin/main</h3>
+        <p>Оба shim (<code>ask-user-question-hook.sh</code>, <code>permission-request-hook.sh</code>)
+           запущены с UNSET <code>GOSLEEP_WEB_QUESTIONS</code> на матрице 6 фикстур stdin:
+           empty · valid-sid-near-top · no-sid · sid-past-4KiB-within-64KiB · binary/no-JSON · noNL-sid.</p>
+        <ul>
+          <li><strong>12 / 12 строк байт-в-байт идентичны</strong> (stdout + exit code) с
+              <code>origin/main</code>.</li>
+          <li>Fast-path opt-out по <code>GOSLEEP_WEB_QUESTIONS != 1</code> сохранён — peek полностью
+              инертен на дефолтной установке.</li>
+          <li>На включённом пути фикстура с sid после 4 KiB теперь НАХОДИТСЯ (не срабатывает крошка
+              <code>peek_miss</code> в <code>GOSLEEP_HOOK_DEBUG_LOG</code>) — доказательство, что
+              расширение 4 KiB → 64 KiB работает. Baseline-shim крошки не имеет вообще (её добавили
+              в GSL-386), т.е. поверхность silent-miss закрыта как заявлено.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>GSL-375 корректность purge</h3>
+        <p>Разбор <code>purgeMissingTranscripts</code> в
+           <code>apps/core/src/observed/sessions.ts</code>. Тесты
+           <code>test/observed.sessions.test.ts</code> — 14 / 14 pass (82 expects). Ручной аудит на
+           row-resurrection race:</p>
+        <ul>
+          <li><strong>Нативные строки неприкосновенны</strong> — <code>SELECT ... WHERE observed_only = 1</code>;
+              нативные строки (<code>observed_only=0</code>) вообще не посещаются.</li>
+          <li><strong>Бюджет соблюдается</strong> — <code>PURGE_BUDGET_PER_TICK = 32</code>; mass-delete-тест
+              за 2 тика вычищает 35 строк ровно как 32+3.</li>
+          <li><strong>Belt-and-braces re-check</strong> — даже если tick-снапшот кандидатов говорит
+              «нет», перед DELETE прогоняется <code>existsSync</code> по
+              <code>~/.claude/projects/*/&lt;sid&gt;.jsonl</code>; тест vanish-mid-rotation это
+              доказывает (растёт <code>skipped_still_exists</code>).</li>
+          <li><strong>session_ended срабатывает ровно один раз</strong> — эмитится ДО DELETE; если
+              writer observed-events отверг append, DELETE пропускается (<code>continue</code>) —
+              silent-purge исключён. Следующий тик уже не увидит строку, повторного эмита нет.</li>
+          <li><strong>Boot-race закрыт</strong> — purge выполняется только когда
+              <code>coldRotationComplete === true</code>, boot backfill (пока cold-кандидаты
+              довыгружаются по чанкам) не может false-purge'нуть строку до fold'а её транскрипта.</li>
+          <li><strong>Row-resurrection race при нормальной работе отсутствует</strong> — цикл tick
+              на коллектор последовательный (один interval); vanish, замеченный на tick N+1,
+              вычищается purge'ом того же N+1.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>GSL-376/377 — компонентные тесты и подлинность live-proof автора</h3>
+        <ul>
+          <li><strong>GSL-376 aria-label:</strong> 4 теста / 13 expects проходят. Две button-поверхности
+              получают <code>aria-label={opt.label}</code>; not-clickable вариант рендерится как
+              <code>&lt;div&gt;</code> без aria-label; видимое тело всё так же несёт description + pros + cons.</li>
+          <li><strong>GSL-377 stale-options banner:</strong> 9 тестов / 12 expects проходят. Стабильность
+              сигнатуры при одинаковом контенте, дрейф на add/remove/reorder/rename/description-edit,
+              терпимость к pros/cons-дрейфу, интеграция с <code>normalizeOptions</code>.</li>
+          <li><strong>Live-proof в <code>docs/reports/verifications/GSL-377/runs/01/</code></strong>:
+              скриншоты подтверждены как настоящие — 2880×1800 PNG, 8-bit RGB, non-interlaced.
+              Step 2 явно показывает янтарный баннер <em>«Options changed while this dialog was open»</em>,
+              кнопку <em>Reload options</em> и «серые» disabled-варианты — ровно контракт фикса.
+              Структура отчёта по конвенции (EN + RU-shell, lightbox, offline).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Находки</h2>
+      <div class="findings">
+
+        <article class="card finding" id="finding-1">
+          <div class="finding-head">
+            <span class="finding-index">1</span>
+            <span class="jira-chip">GSL-387</span>
+            <span class="badge" data-severity="MINOR">MINOR</span>
+            <span class="area-tag">Anchor-override переменные — defense-in-depth</span>
+            <span class="lane-tag">architecture</span>
+          </div>
+          <h3><code>GOSLEEP_TOUCHID_ANCHOR_HOME</code> / <code>ANCHOR_REPO</code> задокументированы как
+              test-only, но в коде это не enforce'ится</h3>
+          <div class="finding-body">
+            <p>GSL-385-guard доверяет <code>GOSLEEP_TOUCHID_ANCHOR_HOME</code> и
+               <code>GOSLEEP_TOUCHID_ANCHOR_REPO</code>, если они выставлены (см.
+               <code>_touchid_real_home()</code> и <code>_touchid_real_repo()</code> в
+               <code>tools/skills/publish.sh:411-440</code>). Комментарий над ними (300-311) явно
+               говорит «Test-only anchor overrides — NEVER set in the launchd plist or the web
+               endpoint spawner», и grep по <code>apps/</code> подтверждает: сегодня никто, кроме
+               smoke'а, эти переменные не устанавливает.</p>
+            <p>Рекомендация (не блокер): добавить в publish.sh явный отказ, когда
+               <code>GOSLEEP_TOUCHID_BYPASS=1</code> И выставлен любой из anchor-override'ов И
+               НЕ выставлен <code>GOSLEEP_TOUCHID_TEST_MODE</code> (новый маркер). Тогда комментарий
+               в доке превратится в инвариант в коде — будущий spawner не сможет молча ре-заанкорить
+               guard. Поскольку сейчас утечек нет, это чисто defense-in-depth.</p>
+          </div>
+          <div class="refs">
+            <div class="ref-row"><span class="ref-k">Код</span><span class="ref-v"><code>tools/skills/publish.sh:407-441</code></span></div>
+            <div class="ref-row"><span class="ref-k">Поиск утечек</span><span class="ref-v"><code>grep -rn "GOSLEEP_TOUCHID_ANCHOR" apps tools</code> — только publish.sh + touchid-gate-smoke.sh</span></div>
+          </div>
+        </article>
+
+        <article class="card finding" id="finding-2">
+          <div class="finding-head">
+            <span class="finding-index">2</span>
+            <span class="jira-chip">GSL-387</span>
+            <span class="badge" data-severity="MINOR">MINOR</span>
+            <span class="area-tag">Гигиена верификатора — self-audit заметка</span>
+            <span class="lane-tag">functionality</span>
+          </div>
+          <h3>Собственный adversarial-тест N2 у verify-387 был ошибочным (задокументировано ради честности)</h3>
+          <div class="finding-body">
+            <p>Первая редакция атаки <code>..</code>-в-середине пути в
+               <code>.artifacts/verify387-adv/adv-attack.sh</code> целилась на
+               <code>$WORK/n2/allowed/../decoy-home/.claude/skills</code>. Лексически <code>..</code>
+               разворачивается в <code>$WORK/n2/decoy-home/.claude/skills</code> — это ВНЕ запретного
+               якоря <code>$WORK/decoy-home/.claude/skills</code>. Guard корректно пропустил (rc=0),
+               потому что запретного оверлапа тут просто нет.</p>
+            <p>Это не защита обхода — это ошибка авторинга теста. Правильная форма атаки покрыта
+               <code>N2b</code> (<code>$DECOY_HOME/../decoy-home/.claude/skills</code>, который
+               реально разворачивается в запретный якорь и получает REFUSED, rc=3). Оставлено в
+               harness'е как задокументированный false-positive-контроль, а не как заявленный defect
+               против PR.</p>
+          </div>
+          <div class="refs">
+            <div class="ref-row"><span class="ref-k">Harness</span><span class="ref-v"><code>.artifacts/verify387-adv/adv-attack.sh</code> (N2 vs N2b)</span></div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <section aria-labelledby="proof-h">
+      <h2 class="section-title" id="proof-h">Evidence — GSL-377 live-proof скриншоты (автора, подтверждены подлинными)</h2>
+      <div class="card">
+        <p>verify-387 открывал эти скриншоты напрямую, чтобы убедиться, что они не сфабрикованы. Все
+           три — 2880×1800 PNG (8-bit RGB, non-interlaced). Step 2 явно показывает янтарный баннер
+           «Options changed», кнопку «Reload options» и «серые» disabled-варианты — ровно то, что
+           обещает GSL-377-фикс.</p>
+        <div class="shots">
+          <figure class="shot">
+            <img class="shot-img" src="../assets/step-1-dialog-open-original-3-options.png"
+                 alt="Шаг 1 — Answer-диалог открыт с исходными 3 вариантами"
+                 data-lightbox-group="proof"
+                 data-caption="Шаг 1 — Answer-диалог открыт с исходными 3 вариантами">
+            <figcaption class="shot-cap">Шаг 1 — диалог открыт, исходные 3 варианта</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/step-2-dialog-stale-banner-visible.png"
+                 alt="Шаг 2 — баннер stale-опций + кнопка Reload options + disabled-варианты"
+                 data-lightbox-group="proof"
+                 data-caption="Шаг 2 — баннер stale-опций + кнопка Reload options + disabled-варианты">
+            <figcaption class="shot-cap">Шаг 2 — stale-баннер + Reload + disabled-варианты (контракт фикса)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/step-3-dialog-after-reload-fresh-options.png"
+                 alt="Шаг 3 — после Reload options свежий набор вариантов, кнопки снова активны"
+                 data-lightbox-group="proof"
+                 data-caption="Шаг 3 — после Reload options свежий набор вариантов, кнопки снова активны">
+            <figcaption class="shot-cap">Шаг 3 — после Reload options свежий набор</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="arch-h">
+      <h2 class="section-title" id="arch-h">Заметки по архитектуре — взгляд верификатора</h2>
+      <article class="card arch-note">
+        <h3>Слоёная защита в GSL-385 — realpath + инод-идентичность + case-fold + пере-якорение HOME/repo</h3>
+        <div class="arch-body">
+          <p>Fail-closed-проверка guard'а делает ЧЕТЫРЕ пересекающихся сравнения на каждую bypass-поверхность:
+             (a) равенство текста lowercased-физических путей, (b) префиксный матч по lowercased-физическим
+             путям, (c) обход по инодам от override'а вверх до якоря, (d) HOME/REPO_ROOT перечитываются
+             из OS-authoritative источников (<code>dscl</code> на Darwin, <code>getent</code> на Linux).
+             Срабатывание ЛЮБОГО из этих слоёв — bypass отклонён.</p>
+          <p>Повторная adversarial-атака (6 старых + 6 новых классов выше) показывает: сегодня на macOS
+             обходных путей через этот стек нет. Остаточная поверхность атаки — сами anchor-override
+             переменные окружения, что закрывается «Находкой 1» как defense-in-depth-рекомендация.</p>
+        </div>
+      </article>
+      <article class="card arch-note">
+        <h3>GSL-386 shim peek — дешёвая защита от будущего silent-miss</h3>
+        <div class="arch-body">
+          <p>До GSL-386 peek был <code>head -c 4096 | sed -n -E 's/.*"session_id":"([^"]+)".*/\1/p'</code>.
+             Существовало ДВЕ поверхности silent-failure: (1) Claude Code раздувает преамбулу и sid уходит
+             за 4 KiB (silent miss → opted-in-сессия падает в TUI), (2) жадный квантификатор sed'а ловит
+             ПОСЛЕДНЕЕ вхождение в окне peek (сегодня безопасно, потому что <code>"session_id"</code>
+             внутри <code>tool_input</code>-строк JSON-эскейпится в <code>\"session_id\"</code>, но это
+             одно изменение препроцессинга от silent-corruption).</p>
+          <p>Пара «64 KiB cap + <code>awk match()+exit</code>» стоит ~+0-10% wall-clock против жадного
+             sed-пайплайна (по бенчу автора) — гораздо меньше, чем стоит fallback в TUI, и на порядок
+             меньше ~4× стоимости альтернативы <code>grep|sed|head</code>. Хорошо оформленное
+             upfront-исправление.</p>
+        </div>
+      </article>
+      <article class="card arch-note">
+        <h3>GSL-375 purge — bounded, gated, идемпотентный</h3>
+        <div class="arch-body">
+          <p>Purge посещает максимум <code>PURGE_BUDGET_PER_TICK = 32</code> строк за тик, только
+             observed-only-строки, только после <code>coldRotationComplete = true</code>. Перед каждым
+             DELETE идут (1) проверка членства в candidate-set, (2) re-check
+             <code>existsSync</code> по <code>~/.claude/projects/*/&lt;sid&gt;.jsonl</code>,
+             (3) успешный <code>appendObservedEvent({kind:"session_ended"})</code>. Если что-то из
+             этого отказывает — DELETE пропускается. Row-resurrection race ограничен лагом в один тик,
+             который коллектор естественно обрабатывает на следующем проходе. Аккуратно и дёшево.</p>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Сгенерировано: <strong>verify-387</strong> · 2026-08-16 21:15 UTC</span>
+      <span>Проверенная сборка <code>14e43f6</code> (база <code>eece507</code>)</span>
+    </div>
+  </footer>
+
+  <script src="../assets/lightbox.js" defer></script>
+</body>
+</html>

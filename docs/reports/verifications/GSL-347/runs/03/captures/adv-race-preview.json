@@ -1,0 +1,2 @@
+  [32mPASS[0m ADV.i preview key verify-adv-race — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-adv-race","cached":false,"finished_at":"2026-08-16T20:50:50.134Z","result":{"ok":true,"session_id":"sess-a","framing":"prompt-boundary","resolved_target":"verify378-target-a:@38.%412","keystroke_bytes":"race-body","body_len":9,"body_sha256":"57c83c0b51f122f6aaf2b27ad91a990fd55822a7d1da9f7ef1f1ca9a1ea593a6","warnings":[],"previewed_at":"2026-08-16T20:50:50.134Z"}}

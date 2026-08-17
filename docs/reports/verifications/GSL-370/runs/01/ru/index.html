@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSL-370 — Полировка UX панели (verify-370, прогон 01)</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("arc-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var root = document.documentElement;
+          var isDark = root.getAttribute("data-theme")
+            ? root.getAttribute("data-theme") === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          var next = isDark ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("arc-theme", next); } catch (e) {}
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <span class="title">GSL-370 — Полировка UX панели</span>
+        <span class="subtitle">Скептическая приёмка PR #360 (GSL-371 + GSL-372)</span>
+      </div>
+      <div class="header-meta">
+        <span class="hbtn" aria-label="Эпик">GSL-370</span>
+        <span class="hbtn" aria-label="Дата">2026-08-16</span>
+        <a class="hbtn lang-switch" href="../index.html" hreflang="en">RU <span aria-hidden="true">⇄</span> EN</a>
+        <button class="hbtn theme-toggle" type="button" aria-label="Переключить тему">
+          <svg class="icon to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon to-light" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <span>Тема</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="sum-h">
+      <h2 class="section-title" id="sum-h">Общая сводка</h2>
+      <div class="card hero">
+        <div class="score-ring" style="--score: 95" data-band="good">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="52"></circle>
+            <circle class="value" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="num"><b>95</b><span>/ 100</span></div>
+        </div>
+        <div>
+          <h1>Вердикт: MERGE</h1>
+          <p class="lead">PR #360 (ветка <code>GSL-370-panel-ux-polish</code>, вершина <code>ad106aa</code>) делает всё, что заявляет, и выдерживает адверсариальную живую проверку. Гейты перепрогнаны начисто в независимом worktree; две поведенческие декларации (клик по варианту → answered и короткий пресет → deferred) воспроизведены end-to-end на скретч-ядре порта 7349, включая XSS-атаку через ярлык &lt;script&gt;, тройной клик на идемпотентность и миллисекундную сверку математики пресетов. 0 CRITICAL, 0 MAJOR, 2 MINOR — на будущее.</p>
+          <div class="verdict-row">
+            <span class="level-pill">MERGE</span>
+            <div class="counts">
+              <div class="count-tile" data-severity="CRITICAL"><span class="n">0</span><span class="k">CRITICAL</span></div>
+              <div class="count-tile" data-severity="MAJOR"><span class="n">0</span><span class="k">MAJOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">MINOR</span></div>
+              <div class="count-tile"><span class="n">2</span><span class="k">Всего</span></div>
+            </div>
+          </div>
+          <div class="dist" role="img" aria-label="Распределение по серьёзности">
+            <span class="seg-minor" style="width:100%"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Перепрогон гейтов в worktree <code>.claude/worktrees/verify370</code></h3>
+        <div class="finding-body">
+          <ul>
+            <li><strong>tsc</strong> (<code>bun run typecheck</code> → <code>tsc --noEmit</code> в <code>apps/web</code>): чисто, код выхода 0.</li>
+            <li><strong>bun test apps/web</strong>: 81 pass / 0 fail, 108 вызовов <code>expect()</code> в 5 файлах, 51 мс. Совпадает с заявлением исполнителя.</li>
+            <li><strong>vite build</strong> (<code>bun run build</code> в <code>apps/web</code>): 2358 модулей, ✓ собрано за 2.61 с. Единственный warn — предсуществующий chunk-size 500 КБ на <code>index-*.js</code> (есть на <code>main</code>, PR его не добавил).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Живая адверсариальная нога — скретч-ядро 127.0.0.1:7349</h3>
+        <div class="finding-body">
+          <p>Независимое скретч-ядро подняли из worktree верификатора с <code>GOSLEEP_CORE_PORT=7349</code>, <code>GOSLEEP_DB_PATH=…/scratch/data/gosleep.db</code>, dev-env Bearer. Прод-порт 7331 не трогали. Десять V370-сидов заведены через <code>POST /internal/questions/post</code> (dual-write — БД + <code>queue.jsonl</code>). Все двенадцать поведенческих проб воспроизвели live-пруфы PR:</p>
+          <ol>
+            <li><strong>Клик по варианту → предзаполнение диалога.</strong> Клик по «Bravo» на карточке вопроса для <code>q-2026-08-16-002</code> (8 вариантов Alpha…Hotel) открывает Answer-диалог с заголовком «Answer q-2026-08-16-002», в textarea стоит <code>"Bravo"</code>, а строка из восьми кнопок вариантов внутри диалога отрисована полностью.</li>
+            <li><strong>Вариант в диалоге → мгновенная отправка.</strong> Ряд «Pick a variant (submits immediately)» над textarea шлёт ярлык напрямую, минуя правки textarea — проверено кликом по Delta: событие <code>question.answered</code> прилетело, <code>answer_text = "Delta"</code> записан.</li>
+            <li><strong>Идемпотентность (тройной клик).</strong> Три подряд клика на Delta породили ОДНУ строку <code>server_intents</code> (<code>web-…-answer-72dd2c69-…</code>, <code>status='ok'</code>) и ОДНО событие <code>question.answered</code> — стабильный ключ идемпотентности (хэш входа + 2-секундный бакет) сколлапсировал очередь, как и предусмотрено <code>stableIdempotencyKey</code> в <code>queries.ts</code>.</li>
+            <li><strong>XSS через ярлык варианта.</strong> Вариант с ярлыком <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> отрисован как экранированный видимый текст (<code>&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</code>) в HTML внешней кнопки и во внутридиалоговой. Клик открывает диалог с этой строкой в textarea; никакой скрипт-тег не вставлен, никакой <code>alert()</code> не сработал (проверено хуком на <code>window.alert</code>).</li>
+            <li><strong>Вопрос без вариантов.</strong> <code>q-2026-08-16-004</code> идёт с <code>options: null</code>. Answer-диалог открывается с пустой textarea и плейсхолдером «Type the answer for the agent…», строки вариантов НЕТ (<code>[data-testid="answer-dialog-variants"]</code> отсутствует). Свободный ответ («Free-text answer verified — v370.») записан в <code>answer_text</code>.</li>
+            <li><strong>Лестница пресетов Defer.</strong> Порядок точь-в-точь как в тикете: <em>No timer, 5 minutes, 15 minutes, 30 minutes, 1 hour, 2 hours, Tomorrow 10:00, Next Monday 10:00, Custom ISO</em>. Три новых коротких пресета стоят в начале ладдера по возрастанию; длинные пресеты сохранены.</li>
+            <li><strong>Математика Defer-пресетов (до миллисекунды).</strong>
+              5&nbsp;мин → <code>defer_until − clickTs = 5:00.000</code> (<code>q-005</code>);
+              15&nbsp;мин → <code>15:00.000</code> (<code>q-006</code>);
+              1&nbsp;час → <code>60:00.000</code> (<code>q-007</code>);
+              2&nbsp;часа → <code>2:00:00.000</code> (<code>q-009</code>).
+              Сверка: браузерный wall-clock на момент клика минус <code>server_intents.input.defer_until</code>.</li>
+            <li><strong>Отсчёт и SSE fan-out.</strong> После каждого defer countdown-текст карточки (<code>reopens in Xm Ys</code> / <code>Xh Ym</code>) обновляется мгновенно без ручного перезагруза — успех мутации инвалидирует <code>['core', 'questions']</code>, а SSE-событие <code>question.deferred</code> инвалидирует повторно. Оба сработали.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Ревью диффа (<code>git diff origin/main…HEAD</code>)</h3>
+        <div class="finding-body">
+          <p>13 файлов изменено (708 / 118); просмотрено вручную:</p>
+          <ul>
+            <li><strong>apps/web/src/lib/questionOptions.ts</strong> — новый. <code>normalizeOptions</code> оборонительный (отвергает не-массивы, пустые массивы, кривые элементы, ярлыки-пробелы после trim); тримит ярлык; кастит одиночные строки в <code>pros</code>/<code>cons</code> в массивы. Юнит-тест <code>questionOptions.test.ts</code> закрывает каждый край (7 тестов, все green).</li>
+            <li><strong>apps/web/src/lib/deferPresets.ts</strong> — новый. <code>DEFER_PRESET_ORDER</code> — единственный источник правды по видимому ладдеру; <code>DEFER_RELATIVE_SECONDS</code> фиксирует дельты; <code>resolveDeferPreset(key, custom, now)</code> берёт явный <code>now</code>, чтобы тесты были детерминистичны. Custom-ISO тримит пробелы; пустой custom схлопывается в <code>null</code> (зеркалит CLI). Юнит-тест покрывает каждое отображение + семантику эскейп-хатчей (17 тестов, все green).</li>
+            <li><strong>apps/web/src/screens/Questions.tsx</strong> — основной. Вынесен <code>sendAnswer(qid, answer)</code> из <code>submitAnswer()</code>, чтобы путь «вариант на карточке», «вариант в диалоге» и «свободный текст» шли через одну воронку. Легаси <code>DeferDurationKey</code> / <code>isoNowPlus</code> / <code>tomorrowAt10Iso</code> / <code>nextWeekMondayAt10Iso</code> / <code>deferKeyToIso</code> удалены и заменены единственным вызовом <code>resolveDeferPreset</code> — дубликатов не осталось.</li>
+            <li>Обе кнопки вариантов (внешняя и внутридиалоговая) — семантические <code>&lt;button type="button"&gt;</code>, без div-c-onClick, доступны с клавиатуры (<code>tabIndex=0</code>), <code>focus-visible</code> outline на месте, <code>disabled</code> во время <code>answerMut.isPending</code>. React автоэкранирует каждый ярлык/описание/pros/cons через <code>{opt.label}</code>-выражения; <code>dangerouslySetInnerHTML</code> в диффе нигде нет.</li>
+            <li>Тесты покрывают ровно те риски, которые имеют значение: label-trim, отбраковка кривых пунктов, точные дельты defer, порядок ладдера. 24 новых теста, 24 pass. Все прежние тесты по-прежнему проходят (всего 81).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="find-h">
+      <h2 class="section-title" id="find-h">Находки</h2>
+      <div class="findings">
+        <article class="card finding" id="finding-1">
+          <div class="finding-head">
+            <span class="finding-index">1</span>
+            <span class="jira-chip">GSL-370-followup-a11y</span>
+            <span class="badge" data-severity="MINOR">MINOR</span>
+            <span class="area-tag">Кнопка варианта на карточке — имя для скринридера</span>
+            <span class="lane-tag">design</span>
+          </div>
+          <h3>Accessible name кнопки варианта склеивает ярлык + описание + pros + cons</h3>
+          <div class="finding-body">
+            <p>Внешний <code>QuestionOptions</code> рендерит каждый вариант как голую <code>&lt;button&gt;</code> без <code>aria-label</code>; accessible name кнопки собирается как её <code>textContent</code>. Для варианта вроде <em>Blue / «Cool and neutral» / +accessible / +brand-aligned / −overused</em> VoiceOver проговаривает всю строку одной репликой; ведущая нумерация («1.») тоже читается.</p>
+            <p><strong>Сценарий падения.</strong> Пользователь скринридера, слышащий «1. Blue Cool and neutral plus accessible plus brand-aligned minus overused, кнопка», должен разобрать всю нагрузку, прежде чем решить кликнуть. На вопросе с 8 вариантами это 8 длинных реплик.</p>
+            <p><strong>Рекомендация (после мержа, не блокер).</strong> Добавить <code>aria-label={opt.label}</code> на внешнюю кнопку варианта (и на внутридиалоговую <code>Button</code>). Остальные метаданные по-прежнему видны внутри кнопки визуально, а первичное имя для скринридера станет только ярлыком; описание / pros / cons остаются доступными через вложенные лендмарки и видимый текст.</p>
+          </div>
+          <div class="refs">
+            <div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">apps/web/src/screens/Questions.tsx:341-355 (внешняя <code>&lt;button&gt;</code>) и :884-905 (внутридиалоговая <code>&lt;Button&gt;</code>)</span></div>
+          </div>
+        </article>
+
+        <article class="card finding" id="finding-2">
+          <div class="finding-head">
+            <span class="finding-index">2</span>
+            <span class="jira-chip">GSL-370-followup-stale-options</span>
+            <span class="badge" data-severity="MINOR">MINOR</span>
+            <span class="area-tag">Answer-диалог — жизненный цикл снапшота options</span>
+            <span class="lane-tag">architecture</span>
+          </div>
+          <h3>Answer-диалог держит захваченный снапшот <code>options</code>, а не живую строку</h3>
+          <div class="finding-body">
+            <p>Когда владелец кликает вариант на внешней карточке, диалог открывается с <code>options: normalizeOptions(question.options)</code>, положенным в <code>AnswerDialogState</code>. То же на :769 для клика по «Answer». Если строка вопроса потом мутирует (например, SSE-рефреш заменит payload options пока диалог открыт), внутридиалоговый ряд вариантов продолжит рендерить устаревший снапшот.</p>
+            <p><strong>Сценарий падения.</strong> Пути записи options сегодня нет в UI, поэтому в проде это почти невозможно; это — запах жизненного цикла, а не живой баг. Занесено на будущее, чтобы фича, позволяющая options мутировать (например, агент переспрашивает вопрос на месте), не влетела молча в устаревший диалог.</p>
+            <p><strong>Рекомендация (после мержа, не блокер).</strong> Либо (а) читать живую строку из кэша <code>useQuery</code> внутри диалога по <code>qid</code> и ре-нормализовать на каждый рендер, либо (б) оставить снапшот и задокументировать инвариант «options заморожены на моменте открытия» в комментарии над <code>AnswerDialogState.options</code>.</p>
+          </div>
+          <div class="refs">
+            <div class="ref-row"><span class="ref-k">Shipped</span><span class="ref-v">apps/web/src/screens/Questions.tsx:69-72 (<code>AnswerDialogState.options</code>) и :660-666 / :769-772 (сеттеры)</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="ev-h">
+      <h2 class="section-title" id="ev-h">Живые доказательства — скриншоты</h2>
+      <div class="card">
+        <div class="shots">
+          <figure class="shot">
+            <img class="shot-img" src="../assets/01-questions-loaded.png" alt="Экран Questions с 10 открытыми V370-сидами" data-lightbox-group="evidence" data-caption="1. Панель загружена — 10 V370-сидов, 16 кликабельных кнопок вариантов на четырёх вопросах.">
+            <figcaption class="shot-cap">1. Панель загружена — 10 V370-сидов, 16 кликабельных вариантов.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/02-answer-dialog-prefilled.png" alt="Answer-диалог для q-002 с предзаполненной textarea Bravo" data-lightbox-group="evidence" data-caption="2. Внешний Bravo-клик → диалог для q-2026-08-16-002, textarea предзаполнена Bravo, 8 кнопок вариантов Alpha..Hotel.">
+            <figcaption class="shot-cap">2. Клик по варианту → Answer-диалог предзаполнен (many-variants).</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/03-answered-delta.png" alt="После Delta карточка показывает answered" data-lightbox-group="evidence" data-caption="3. Тройной клик по Delta в диалоге → один результат answered (ключ идемпотентности схлопнул 3 клика в 1 server intent).">
+            <figcaption class="shot-cap">3. Тройной клик по Delta в диалоге → один answered.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/04-xss-label-escaped.png" alt="Answer-диалог с экранированным &lt;script&gt; ярлыком" data-lightbox-group="evidence" data-caption="4. XSS-проба — ярлык варианта &lt;script&gt;alert(1)&lt;/script&gt; отрисован как видимый экранированный текст; скрипт не исполнился.">
+            <figcaption class="shot-cap">4. XSS через ярлык варианта — экранировано, не исполнилось.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/05-free-text-no-variants.png" alt="Answer-диалог для вопроса без вариантов, textarea пустая, ряда вариантов нет" data-lightbox-group="evidence" data-caption="5. Вопрос без вариантов — диалог открывается с пустой textarea, плейсхолдер на месте, ряда вариантов НЕТ.">
+            <figcaption class="shot-cap">5. Free-text-only — путь до GSL-371 не сломан.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/06-defer-ladder.png" alt="Ладдер пресетов Defer: No timer, 5m, 15m, 30m, 1h, 2h, Tomorrow, Next Monday, Custom" data-lightbox-group="evidence" data-caption="6. Defer-диалог — 9 пресетов в заявленном порядке; новые 5m/15m/1h стоят в начале.">
+            <figcaption class="shot-cap">6. Ладдер пресетов Defer — короткие в начале.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/07-deferred-5m-countdown.png" alt="Карточка в deferred с отсчётом reopens-in-4m-43s" data-lightbox-group="evidence" data-caption="7. После 5-минутного пресета — карточка перешла в deferred, текст «reopens in 4m 43s» обновляется вживую.">
+            <figcaption class="shot-cap">7. Deferred-state — отсчёт обновляется без перезагруза.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="shot-img" src="../assets/08-mixed-state-overview.png" alt="Панель с пятью deferred-вопросами и разными countdown" data-lightbox-group="evidence" data-caption="8. Смешанное состояние — пять deferred-отсчётов одновременно, форматы Xm Ys / Xh Ym.">
+            <figcaption class="shot-cap">8. Смешанный обзор — 5 defer-ов рендерятся рядом.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="arch-h">
+      <h2 class="section-title" id="arch-h">Заметки по архитектуре</h2>
+      <article class="card arch-note">
+        <h3>Воронка отправки ответа после GSL-371</h3>
+        <div class="arch-body">
+          <p>Три поверхности — внешняя кнопка варианта, внутридиалоговая кнопка варианта и кнопка «Send answer» для свободного текста — теперь сходятся в одну асинхронную функцию, <code>sendAnswer(qid, answer)</code>. Рефакторинг убирает мелкую дубликацию (прежний <code>submitAnswer()</code> инлайнил тело мутации и обёртку toast-а) и сохраняет toast + close-dialog идентичными по всем трём путям.</p>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 460 180" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Диаграмма воронки отправки ответа">
+            <style>
+              .box { fill: var(--surface); stroke: var(--border); stroke-width: 1; rx: 6; }
+              .fn { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1; }
+              .txt { fill: var(--fg); font-family: system-ui, sans-serif; font-size: 12px; }
+              .arr { stroke: var(--muted); stroke-width: 1.2; fill: none; marker-end: url(#a); }
+            </style>
+            <defs>
+              <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/>
+              </marker>
+            </defs>
+            <rect class="box" x="10"  y="15"  width="170" height="34"/>
+            <text class="txt" x="20"  y="37">Внешняя кнопка варианта</text>
+            <rect class="box" x="10"  y="65"  width="170" height="34"/>
+            <text class="txt" x="20"  y="87">Внутридиалоговый вариант</text>
+            <rect class="box" x="10"  y="115" width="170" height="34"/>
+            <text class="txt" x="20"  y="137">Free-text Send answer</text>
+            <rect class="fn"  x="230" y="65"  width="140" height="34"/>
+            <text class="txt" x="245" y="87">sendAnswer(qid, answer)</text>
+            <rect class="box" x="400" y="65"  width="50"  height="34"/>
+            <text class="txt" x="405" y="87">API</text>
+            <path class="arr" d="M180 32 C 210 32 210 78 230 82"/>
+            <path class="arr" d="M180 82 L 230 82"/>
+            <path class="arr" d="M180 132 C 210 132 210 82 230 82"/>
+            <path class="arr" d="M370 82 L 400 82"/>
+          </svg>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>Сгенерировано: <strong>verify-370 (адверсариальный верификатор GSL-370, смена 79)</strong> · 2026-08-16 UTC</span>
+      <span>Проверенная сборка <code>ad106aa</code> (ветка <code>GSL-370-panel-ux-polish</code>)</span>
+    </div>
+  </footer>
+
+  <script src="../assets/lightbox.js" defer></script>
+</body>
+</html>

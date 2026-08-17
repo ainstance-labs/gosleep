@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S5.b confirm after pane gone → outcome=pane_gone — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-s5-1","cached":false,"finished_at":"2026-08-16T20:50:49.633Z","result":{"submission_id":"ac53e5a1-77d6-4fbf-b5b6-1f2506c5bf7f","session_id":"sess-e","outcome":"pane_gone","pane_ref_at_dispatch":null,"body_len":19,"body_sha256":"bc38021750f201cd6791cd03f2a00639b8894c07a694a9cc36e73771fe94cc9f","framing":"prompt-boundary","ts":"2026-08-16T20:50:49.633Z","error":"pane_ref resolves to null in tmux_panes at dispatch time"}}

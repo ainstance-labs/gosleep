@@ -1,0 +1,20 @@
+publish:   prod = <WORK>/S1.prod-pr/handoff
+  PASS: skill dir exists: skill/handoff/
+  PASS: SKILL.md present + non-empty (10099 bytes)
+  PASS: no references/ directory (optional)
+  PASS: git working tree clean under skill/handoff
+verify-local: OK — checks=4 (skill=handoff)
+{"event":"skills.record-publish.check.ok","db":"<WORK>/data/gosleep.db"}
+==============================================================================
+publish: skill='handoff'
+publish:   dev  = <REPO>/skill/handoff
+publish:   prod = <WORK>/S1.prod-pr/handoff
+publish:   diff (- prod / + dev):
+publish:     diff: <WORK>/S1.prod-pr/handoff: No such file or directory
+==============================================================================
+publish:   touchid gate: OFF (stub; owner-deferred 2026-08-16; opt in with GOSLEEP_TOUCHID=1)
+publish: production dir absent; recorded placeholder backup at <WORK>/S1.backups-pr/handoff-<TS>
+publish: rsync ok
+{"event":"skills.record-publish.appended","path":"<WORK>/changelog/S1.pr.jsonl","row":{"ts":"<TS>","skill":"handoff","task":"GSL-88","commit":"<SHA>","lesson":"","status":"published"}}
+{"event":"skills.record-publish.folded","db":"<WORK>/data/gosleep.db","changelog":"<WORK>/changelog/S1.pr.jsonl","rowsScanned":1,"skillsUpserted":12}
+publish: DONE — skill='handoff' → <WORK>/S1.prod-pr/handoff (backup: <WORK>/S1.backups-pr/handoff-<TS>)

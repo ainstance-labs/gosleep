@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S5.a preview on sess-e (pane present) — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-s5-1","cached":false,"finished_at":"2026-08-16T20:50:49.605Z","result":{"ok":true,"session_id":"sess-e","framing":"prompt-boundary","resolved_target":"verify378-target-e:@42.%416","keystroke_bytes":"pane-gone test body","body_len":19,"body_sha256":"bc38021750f201cd6791cd03f2a00639b8894c07a694a9cc36e73771fe94cc9f","warnings":[],"previewed_at":"2026-08-16T20:50:49.605Z"}}

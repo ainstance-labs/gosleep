@@ -1,0 +1,91 @@
+{
+  "count": 8,
+  "totals": {
+    "agents_total": 8,
+    "agents_live": 2,
+    "agents_busy": 0,
+    "heartbeat_context_pct": null
+  },
+  "sessions": [
+    {
+      "session_id": "sess-observed-warm",
+      "project_slug": "fake-repo-sibling",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/fake-repo-sibling",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "active",
+      "ended_at": null
+    },
+    {
+      "session_id": "sess-native-live",
+      "project_slug": "fake-repo",
+      "observed_only": false,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/fake-repo",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "active",
+      "ended_at": null
+    },
+    {
+      "session_id": "sess-cold-6",
+      "project_slug": "cold-project-6",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-6",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "idle",
+      "ended_at": "2026-08-16T09:17:18.751Z"
+    },
+    {
+      "session_id": "sess-cold-5",
+      "project_slug": "cold-project-5",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-5",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "idle",
+      "ended_at": "2026-08-16T09:17:18.736Z"
+    },
+    {
+      "session_id": "sess-cold-4",
+      "project_slug": "cold-project-4",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-4",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "idle",
+      "ended_at": "2026-08-16T09:17:18.721Z"
+    },
+    {
+      "session_id": "sess-cold-3",
+      "project_slug": "cold-project-3",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-3",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "idle",
+      "ended_at": "2026-08-16T09:17:18.705Z"
+    },
+    {
+      "session_id": "sess-cold-2",
+      "project_slug": "cold-project-2",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-2",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "idle",
+      "ended_at": "2026-08-16T09:17:18.690Z"
+    },
+    {
+      "session_id": "sess-cold-1",
+      "project_slug": "cold-project-1",
+      "observed_only": true,
+      "cwd_project_root": "/Users/romanlidovskyi/Documents/dev/harness/gosleep/.claude/worktrees/verify373/.artifacts/live/cold-project-1",
+      "tmux_pane_ref": null,
+      "attribution": null,
+      "status": "idle",
+      "ended_at": "2026-08-16T09:17:18.670Z"
+    }
+  ]
+}

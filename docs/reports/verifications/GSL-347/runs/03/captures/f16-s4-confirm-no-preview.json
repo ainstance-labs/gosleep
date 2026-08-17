@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S4.a confirm without prior preview — HTTP 428 (expected 428)
+{"ok":false,"intent_id":"verify-s4-1","error":"preview-required: submit a dry_run=true first with the same Idempotency-Key","reason":"preview-required"}

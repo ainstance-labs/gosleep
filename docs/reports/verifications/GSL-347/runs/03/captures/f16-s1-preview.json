@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S1.a preview — HTTP 200 (expected 200)
+{"ok":true,"intent_id":"verify-s1-1","cached":false,"finished_at":"2026-08-16T20:50:48.827Z","result":{"ok":true,"session_id":"sess-a","framing":"prompt-boundary","resolved_target":"verify378-target-a:@38.%412","keystroke_bytes":"verify378 F16-S1 happy path body","body_len":32,"body_sha256":"060c09c6523dfbe93a015c00d262eef42403ee145cee2b1068c2d2bd9b772998","warnings":[],"previewed_at":"2026-08-16T20:50:48.827Z"}}

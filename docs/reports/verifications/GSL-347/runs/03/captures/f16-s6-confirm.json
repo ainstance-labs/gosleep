@@ -1,0 +1,2 @@
+  [32mPASS[0m F16-S6.b confirm after release → 409 session-not-controlled — HTTP 409 (expected 409)
+{"ok":false,"intent_id":"verify-s6-1","error":"session sess-f is not under panel control (state=observer)","reason":"session-not-controlled"}

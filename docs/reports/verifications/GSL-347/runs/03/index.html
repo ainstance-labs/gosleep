@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>verify-378 — GSL-347 Phase C run 03</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#0b0d10;--card:#12161c;--fg:#e6edf3;--mut:#8b96a5;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--acc:#58a6ff;--line:#21262d;--code:#161b22;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;max-width:1200px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  h2{font-size:16px;margin:24px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--acc)}
+  .meta{color:var(--mut);font-size:12px;margin-bottom:16px}
+  .verdict{display:inline-block;padding:6px 14px;border-radius:6px;font-weight:600;font-size:14px}
+  .verdict.yes{background:rgba(63,185,80,.15);color:var(--ok);border:1px solid var(--ok)}
+  .verdict.no{background:rgba(248,81,73,.15);color:var(--bad);border:1px solid var(--bad)}
+  .verdict.partial{background:rgba(210,153,34,.15);color:var(--warn);border:1px solid var(--warn)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .card.finding{border-left:4px solid var(--bad)}
+  .card.finding.minor{border-left-color:var(--warn)}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .row .k{color:var(--mut);font-size:12px}
+  .row .v{font-family:'SF Mono',Menlo,monospace;font-size:12px}
+  .pass{color:var(--ok);font-weight:600}
+  .fail{color:var(--bad);font-weight:600}
+  .warn{color:var(--warn);font-weight:600}
+  code, pre{font-family:'SF Mono',Menlo,monospace;font-size:12px;background:var(--code);padding:2px 5px;border-radius:3px;color:#c9d1d9}
+  pre{padding:10px;overflow-x:auto;border:1px solid var(--line);white-space:pre;line-height:1.4}
+  table{border-collapse:collapse;width:100%;margin-top:6px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:top}
+  th{color:var(--mut);font-weight:500}
+  ul{margin:6px 0;padding-left:20px}
+  li{margin:2px 0}
+  .lang-tabs{margin:16px 0 8px}
+  .lang-tabs button{background:var(--card);color:var(--fg);border:1px solid var(--line);padding:5px 12px;border-radius:4px;cursor:pointer;margin-right:4px}
+  .lang-tabs button.active{background:var(--acc);color:#000;border-color:var(--acc)}
+  .lang{display:none}
+  .lang.active{display:block}
+  .finding-none{color:var(--ok)}
+  hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+  .badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-left:6px;vertical-align:middle}
+  .badge.crit{background:rgba(248,81,73,.15);color:var(--bad);border:1px solid var(--bad)}
+  .badge.maj{background:rgba(210,153,34,.15);color:var(--warn);border:1px solid var(--warn)}
+  .badge.min{background:rgba(139,150,165,.15);color:var(--mut);border:1px solid var(--mut)}
+</style>
+</head>
+<body>
+
+<h1>verify-378 — GSL-347 Phase C (observer-mode task submission) — run 03</h1>
+<div class="meta">
+  Target: PR #379 · branch <code>GSL-378-observer-task-submission</code> · epic GSL-378 · commits
+  GSL-379 @ 65b146f · GSL-380 @ e447923 · GSL-381 @ 24ccf2e · GSL-382 @ 55279cf · GSL-383 @ 6f0ac2b · worktree
+  <code>.claude/worktrees/verify378</code> (own branch <code>verify378-scratch</code>, local merge
+  of <code>origin/main</code>).<br>
+  Scratch core: <code>http://127.0.0.1:7357</code>, DB
+  <code>.artifacts/verify-live/gosleep.db</code>, migrations 0000→<b>0007 task_submissions</b>.
+  Scratch tmux prefix: <code>verify378-target-{a..h}</code>.<br>
+  Run started 2026-08-16T20:50Z · adversarial (assume defects; hunt).
+</div>
+
+<div class="verdict no">VERDICT: FIX · Score 78/100 · 0 CRITICAL · 2 MAJOR · 2 MINOR · gates ALL PASS · F16-S1..S5 + S7 PASS · F16-S6 PARTIAL (deviates from PRD wording)</div>
+
+<div class="lang-tabs">
+  <button class="active" data-lang="en" onclick="setLang('en')">English</button>
+  <button data-lang="ru" onclick="setLang('ru')">Русский</button>
+</div>
+
+<!-- ================== ENGLISH ================== -->
+<div class="lang active" id="lang-en">
+
+<h2>1 · Scope</h2>
+<p>Phase C adds the missing verb to the observer program: with a session under panel control
+(Phase 15) and its shim registered, the owner composes a task in the panel, sees a mandatory
+dry-run preview, and confirms — the body lands in the receiving session's tmux pane. The
+security-sensitive surface is the <b>dry-run/confirm envelope</b>
+(<code>POST /actions/sessions/:id/submit-task</code>), the <b>send-keys executor</b>
+(<code>apps/core/src/sessions/submit.ts</code>), the <b>submission-history table</b>
+(migration <code>0007_task_submissions.sql</code>) and the <b>panel dialog +
+history drawer</b>. This run assumes the epic is <em>not</em> ready and hunts for ways the
+executor sends outside its consent envelope, the preview machinery is bypassed, the executor
+targets an unowned pane, or the audit trail is silently incomplete.</p>
+
+<h2>2 · Local merge summary</h2>
+<p>PR #379 was CONFLICTING with main (main advanced 63 commits after branch-off). Locally
+merged <code>origin/main</code> into a scratch branch <code>verify378-scratch</code> in the
+verifier worktree (<b>no push</b>). Only conflict: <code>docs/dev_history/README.md</code>
+— both branches appended a new "## Epic" section (GSL-378 vs GSL-374); resolved by keeping
+both. Zero code conflicts.</p>
+
+<h2>3 · Gates re-run in the verifier worktree</h2>
+<table>
+  <tr><th>Gate</th><th>Command</th><th>Result</th></tr>
+  <tr><td>tsc <code>apps/core</code></td><td><code>apps/core/node_modules/.bin/tsc -p apps/core --noEmit</code></td><td class="pass">PASS (exit 0)</td></tr>
+  <tr><td>tsc <code>apps/web</code></td><td><code>apps/web/node_modules/.bin/tsc -p apps/web --noEmit</code></td><td class="pass">PASS (exit 0)</td></tr>
+  <tr><td><code>bun test apps/core</code></td><td>full suite</td><td class="pass">401 pass / 0 fail (38 files, 1131 expects)</td></tr>
+  <tr><td><code>bun test apps/web</code></td><td>full suite</td><td class="pass">88 pass / 0 fail (6 files)</td></tr>
+  <tr><td><code>bun run --filter='@gosleep/web' build</code></td><td>vite build</td><td class="pass">PASS (2360 modules; dist 962 KB gzip 280 KB)</td></tr>
+  <tr><td><code>bash tools/lab/tests/core-smoke.sh</code></td><td><code>GOSLEEP_CORE_PORT=7357</code></td><td class="pass">106 pass / 0 fail (incl. new scenarios 72-75 for submit-task refusals)</td></tr>
+</table>
+
+<h2>4 · F16-S1..S7 live scenarios (verify378-target-* on scratch core:7357)</h2>
+
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">F16-S1 · submit into controlled session</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Target</span><span class="v">sess-a · pane verify378-target-a:@38.%412</span></div>
+    <p>Preview (dry_run:true) returns 200 with sha256=060c0…2998 and target=verify378-target-a:@38.%412.
+    Confirm (dry_run:false, same Idempotency-Key) returns 200 with outcome=<b>delivered</b>,
+    submission_id=bb1c01a9. Tmux capture-pane BEFORE shows bare bash prompt; AFTER shows
+    <code>bash-3.2$ verify378 F16-S1 happy path body</code> followed by
+    <code>bash: verify378: command not found</code> and a new bash prompt — proves the body
+    was TYPED and Enter DID fire (bash consumed it). One row in <code>task_submissions</code>,
+    body_len=32, framing=prompt-boundary, error=null. Timeline JSONL has one
+    <code>task.submitted</code> event with matching body_sha256 + full body payload.
+    <b>Cached replay</b>: second confirm with same key returns cached:true, same submission_id, no
+    second row, no re-run.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S2 · observer refusal</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Target</span><span class="v">sess-b (state=observer)</span></div>
+    <p>Preview against a session with <code>state=observer</code> returns <b>409</b> with
+    <code>{"reason":"session-not-controlled","error":"session sess-b is not under panel
+    control (state=observer)"}</code>. Matches PRD F16-S2. On the UI side (not exercised
+    live in this run), FleetCard renders Submit-task only when
+    <code>control_state==='controlled' &amp;&amp; shim_registered=true &amp;&amp; pane_ref!=null</code>
+    (verified by reading <code>apps/web/src/screens/Fleet.tsx</code>).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S3 · shim-unregistered refusal</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Target</span><span class="v">sess-c (controlled, shim_registered=0)</span></div>
+    <p>Preview against a session with <code>state=controlled</code> but
+    <code>shim_registered=0</code> returns <b>409</b> with
+    <code>{"reason":"shim-not-registered","error":"session sess-c has no registered shim
+    (R15.7)"}</code>. Matches PRD F16-S3.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S4 · dry-run mandatory (preview-required)</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Target</span><span class="v">sess-d (controlled)</span></div>
+    <p>Confirm (dry_run:false) with NO prior preview under the same Idempotency-Key returns
+    <b>428</b> with <code>{"reason":"preview-required"}</code>. A follow-up test that
+    (a) previews body A, (b) confirms body B under the same key returns 428 with
+    <code>body_sha256 mismatch (preview=2cf24…, confirm=375af…)</code>. Both branches of
+    F16-S4 match PRD.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S5 · pane-gone at dispatch</span><span class="pass">PASS</span></div>
+    <div class="row"><span class="k">Target</span><span class="v">sess-e · pane killed between preview and confirm</span></div>
+    <p>Preview returns 200 (resolved_target=verify378-target-e:@42.%416). Between preview
+    and confirm: <code>tmux kill-session</code> + <code>DELETE FROM tmux_panes WHERE
+    session_name='verify378-target-e'</code>. Confirm returns <b>200</b> with
+    outcome=<b>pane_gone</b>, pane_ref_at_dispatch=null,
+    error="pane_ref resolves to null in tmux_panes at dispatch time".
+    ONE row landed in <code>task_submissions</code> (session_id=sess-e, outcome=pane_gone,
+    body_len=19); zero tmux calls fired to any pane
+    (executor short-circuits before spawn). Matches PRD F16-S5.</p>
+  </div>
+
+  <div class="card finding">
+    <div class="row"><span class="k">F16-S6 · release-mid-submit</span><span class="warn">PARTIAL — see M1</span></div>
+    <div class="row"><span class="k">Target</span><span class="v">sess-f · state flipped to observer between preview and confirm</span></div>
+    <p>Preview returns 200 (resolved_target=verify378-target-f:@43.%417). Between preview and
+    confirm: <code>UPDATE session_control SET state='observer' WHERE session_id='sess-f'</code>.
+    Confirm returns <b>409</b> with <code>{"reason":"session-not-controlled","error":"session
+    sess-f is not under panel control (state=observer)"}</code>. The 409 half of the PRD is
+    honoured. <b>BUT</b> — <code>GET /sessions/sess-f/submissions</code> returns
+    <code>{"submissions":[],"count":0}</code>. PRD F16-S6 mandates: "The submission-history
+    row is written with outcome='released_mid_submit'." No row is written. See finding <b>M1</b>
+    below.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S7 · submission history</span><span class="pass">PASS (per-session; sees M1)</span></div>
+    <p><code>GET /sessions/sess-a/submissions</code> → 1 row (F16-S1 delivered).
+    <code>GET /sessions/sess-e/submissions</code> → 1 row (F16-S5 pane_gone).
+    <code>GET /sessions/sess-f/submissions</code> → 0 rows (F16-S6 missing row — see M1).
+    Newest-first ordering honoured. Never returns body text (only sha256+len — R16.6).</p>
+  </div>
+</div>
+
+<h2>5 · Adversarial cases (beyond the PRD's F16-S1..S7)</h2>
+
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">ADV.a · sub-0x20 body byte</span><span class="pass">PASS</span></div>
+    <p>Body with lone <code>\r</code> (0x0D) returns 400 <code>{"reason":"body-invalid","error":"body
+    contains disallowed control character U+000d at position 5"}</code> — matches R16 Q5 default.
+    Tab (0x09) and Newline (0x0A) accepted, verified via a Tab+NL body preview at 200.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.d · oversize body</span><span class="pass">PASS</span></div>
+    <p>Body of 16 385 bytes (cap+1) returns 400
+    <code>{"reason":"body-invalid","error":"body exceeds 16384-byte cap (got 16385 bytes)"}</code>
+    — matches R16.7.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.e · no bearer</span><span class="pass">PASS</span></div>
+    <p>POST with valid Host+Origin+Idempotency-Key but no Authorization header returns 401
+    (bearer.ts middleware).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.f · wrong bearer</span><span class="pass">PASS</span></div>
+    <p>POST with <code>Authorization: Bearer WRONG-TOKEN</code> returns 401.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.g · cross-endpoint Idempotency-Key reuse</span><span class="pass">PASS</span></div>
+    <p>Key used on submit-task, reused on <code>/actions/skills/publish</code> — returns 409
+    with <code>Idempotency-Key verify-adv-7 previously used against POST
+    /actions/sessions/:session_id/submit-task session=sess-a, not POST
+    /actions/skills/publish</code>. Cross-endpoint reuse is properly guarded.</p>
+  </div>
+
+  <div class="card finding">
+    <div class="row"><span class="k">ADV.h · cross-session Idempotency-Key reuse (SAME endpoint)</span><span class="fail">FAIL — see M2</span></div>
+    <p>Preview under key <code>verify-adv-cross-sess</code> against <b>sess-a</b> returns 200
+    with resolved_target=verify378-target-a. Confirm with the SAME key + SAME body against
+    <b>sess-g</b> URL returns 200 with outcome=<b>delivered</b>, pane_ref_at_dispatch=
+    <b>verify378-target-g:@44.%418</b>, submission_id=b3a86bdb. Owner saw sess-a's preview;
+    delivery landed in sess-g. See finding <b>M2</b>.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.i · double-confirm race under one key</span><span class="pass">PASS</span></div>
+    <p>Two parallel <code>curl</code> POSTs with the SAME Idempotency-Key + same body.
+    Both return 200; only ONE row lands in <code>task_submissions</code> (per-session
+    <code>serialize("session.submit.&lt;sid&gt;")</code> mutex is honoured, and the second
+    request observes the cached confirm envelope). Idempotency contract holds under
+    concurrent load.</p>
+  </div>
+</div>
+
+<h2>6 · Findings</h2>
+
+<div class="card finding" id="m1">
+  <div class="row"><span class="k">M1 · F16-S6 missing task_submissions row on release-mid-submit</span><span class="badge maj">MAJOR</span></div>
+  <p><b>Where:</b> <code>apps/core/src/routes/actions.ts</code> lines 2429-2446 (the confirm
+  phase's re-preview short-circuit).</p>
+  <p><b>What:</b> The confirm phase calls <code>previewSubmission(getDb(), …)</code> a second
+  time to re-verify state + shim + body_sha256. When the session was released between preview
+  and confirm, <code>previewSubmission</code> returns
+  <code>{ok:false, reason:'session-not-controlled', httpStatus:409}</code>. The endpoint
+  returns that 409 to the client and <b>returns without invoking the executor</b>. Because
+  the <code>task_submissions</code> INSERT lives ONLY inside the executor branch (line
+  2469-2479), the row is silently missing. The executor itself has a
+  <code>released_mid_submit</code> branch (<code>apps/core/src/sessions/submit.ts</code> lines
+  445-461), but it is unreachable under the current endpoint wiring.</p>
+  <p><b>PRD says (F16-S6):</b> "the confirm POST returns 409 with body
+  <code>{reason: "session-not-controlled"}</code> and does not send. <b>The
+  submission-history row is written with</b> <code>outcome='released_mid_submit'</code>."</p>
+  <p><b>Live proof:</b>
+  <code>GET /sessions/sess-f/submissions</code> after F16-S6 →
+  <code>{"submissions":[],"count":0}</code>. See
+  <code>captures/f16-s7-sess-f.json</code>.</p>
+  <p><b>Note:</b> The endpoint test at
+  <code>apps/core/test/actions.submitTask.test.ts:348-350</code>
+  EXPLICITLY asserts <code>rows.c === 0</code> — the code and its tests intentionally
+  deviate from the PRD's wording. Either the PRD's F16-S6 sentence needs revising ("no
+  history row is written on release-mid-submit; the timeline event stream still records the
+  attempt") or the endpoint needs to insert a row before returning 409. Currently the
+  attempt disappears from both surfaces (no <code>task_submissions</code> row AND no
+  timeline event, because the timeline emit lives in the same executor-only branch).</p>
+  <p><b>Failure scenario:</b> Owner presses Send-task in the panel; before the confirm POST
+  arrives, they click Release-control on the same card. The submit returns 409. The
+  submission history drawer for that session shows nothing. The timeline shows nothing. The
+  owner has no record that the attempt happened — R16.6 "every submission is auditable
+  end-to-end" is violated for this outcome class.</p>
+</div>
+
+<div class="card finding" id="m2">
+  <div class="row"><span class="k">M2 · Cross-session Idempotency-Key reuse bypasses R16.3</span><span class="badge maj">MAJOR</span></div>
+  <p><b>Where:</b> <code>apps/core/src/routes/actions.ts</code> lines 2352-2364 (the
+  cross-endpoint replay guard).</p>
+  <p><b>What:</b> The endpoint writes <code>endpoint =
+  \`POST /actions/sessions/:session_id/submit-task session=${sessionId}\`</code> into
+  <code>server_intents.endpoint</code> — INCLUDING the session id. But the replay guard
+  checks only <code>existing.endpoint.startsWith("POST /actions/sessions/:session_id/submit-task")</code>,
+  ignoring the trailing <code>session=&lt;sid&gt;</code>. Any client with the panel Bearer
+  can (a) preview a body against session A, (b) confirm the same body under the same
+  Idempotency-Key against session B's URL, and the endpoint accepts the confirm as a
+  legitimate follow-up. The confirm phase's own guards (<code>previewSubmission</code>
+  re-check + body_sha256 match) pass because the body is byte-identical.</p>
+  <p><b>Live proof:</b>
+  Preview <code>verify-adv-cross-sess</code> → sess-a returns
+  <code>resolved_target:verify378-target-a:@38.%412</code> (see
+  <code>captures/adv-cross-sess-preview.json</code>).
+  Confirm <code>verify-adv-cross-sess</code> → sess-g URL returns 200 with
+  <code>{"submission_id":"b3a86bdb-…","session_id":"sess-g","outcome":"delivered",
+  "pane_ref_at_dispatch":"verify378-target-g:@44.%418"}</code> (see
+  <code>captures/adv-cross-sess-confirm.json</code>).
+  <code>SELECT * FROM task_submissions WHERE session_id='sess-g'</code> after the run
+  shows one <code>delivered</code> row with body_len=18 ("cross-session body").</p>
+  <p><b>Impact:</b> R16.3 ("Dry-run preview is mandatory") assumes the owner reviews the
+  <em>specific</em> target's preview (<code>resolved_target</code>, <code>keystroke_bytes</code>,
+  advisory <code>warnings</code>) before authorising the delivery. Under this bug the
+  owner-review contract holds only for the session that was previewed; a crafted or buggy
+  client can reroute the delivery to any other controlled session under the same key.</p>
+  <p><b>Fix sketch:</b> Compare on FULL <code>endpoint</code> string (or extract the
+  <code>session=&lt;sid&gt;</code> suffix and compare to the current request's session id).
+  Under mismatch, return the same 409 the cross-endpoint branch returns today.</p>
+  <p><b>Panel-in-practice mitigation:</b> <code>SubmitTaskDialog</code> mints a fresh
+  <code>submit-&lt;18 hex&gt;</code> key on every preview cycle
+  (<code>apps/web/src/components/SubmitTaskDialog.tsx</code> lines 73-81) and discards it on
+  body change or dialog close, so the panel-as-shipped never hits this bug. It is a
+  server-side hardening gap, not a live user-facing regression today.</p>
+</div>
+
+<div class="card finding minor" id="m3">
+  <div class="row"><span class="k">m3 · isPaneAtPrompt whitelist includes <code>node</code> / <code>bun</code></span><span class="badge min">MINOR</span></div>
+  <p><b>Where:</b> <code>apps/core/src/sessions/submit.ts</code> lines 230-249.</p>
+  <p><b>What:</b> The prompt-set for the "at prompt?" heuristic includes
+  <code>node</code>, <code>bun</code>, <code>claude</code>. When a Claude session spawns a Bash
+  or Node subprocess to run a tool, <code>tmux #{pane_current_command}</code> may report
+  <code>node</code> (or the shell name) even while the tool is still executing. In that case
+  <code>isPaneAtPrompt()</code> returns <b>true</b> and the submission lands mid-execution,
+  interleaving the owner's typed body with the tool's output. On the receiving Claude, this
+  looks like an out-of-turn user message and may derail the tool call. The
+  <code>prompt-boundary</code> framing was supposed to protect against exactly this.</p>
+  <p><b>Fix sketch:</b> Restrict the prompt-set to pure shells (bash/zsh/fish/sh/dash/ksh),
+  and only treat <code>claude</code> as prompt-idle when a paired "claude-idle" signal (e.g.
+  <code>events.claude.awaiting_input</code>) confirms it. Not observed live in this run —
+  the F16-S1 target was a bash pane and prompt-boundary correctly saw <code>bash</code>.</p>
+</div>
+
+<div class="card finding minor" id="m4">
+  <div class="row"><span class="k">m4 · <code>cwd_project_root</code> empty-string handling in resolvePaneRef</span><span class="badge min">MINOR</span></div>
+  <p><b>Where:</b> <code>apps/core/src/sessions/submit.ts</code> lines 177-202.</p>
+  <p><b>What:</b> The SQL guards on <code>a.cwd_project_root IS NOT NULL</code> but does not
+  guard on non-empty. A row with <code>cwd_project_root=''</code> would produce
+  <code>heur.pane_current_path LIKE '/%'</code> — matching ANY absolute path. The MAX()
+  aggregation would then return the LEXICOGRAPHICALLY LARGEST <code>pane_ref</code> across
+  the whole tmux_panes table, i.e. a foreign pane. Today the fleet enumerator never writes
+  empty-string cwd_project_root (it writes NULL or the actual toplevel), so the bug is
+  latent. Add <code>AND length(a.cwd_project_root) &gt; 0</code> or normalise at the writer
+  layer.</p>
+</div>
+
+<h2>7 · Method (reproducibility)</h2>
+<pre>
+# 1. Own worktree + local merge
+cd /Users/…/gosleep
+git worktree add -b verify378-scratch .claude/worktrees/verify378 6f0ac2b
+cd .claude/worktrees/verify378
+git merge --no-ff --no-commit origin/main    # index-only fix in dev_history/README.md
+
+# 2. Install + gates
+bun install
+apps/core/node_modules/.bin/tsc -p apps/core --noEmit
+apps/web/node_modules/.bin/tsc -p apps/web --noEmit
+bun test apps/core           # 401 pass / 0 fail
+bun test apps/web            # 88 pass / 0 fail
+bun run --filter='@gosleep/web' build
+GOSLEEP_CORE_PORT=7357 bash tools/lab/tests/core-smoke.sh    # 106 pass / 0 fail
+
+# 3. Live scenario harness (see .artifacts/verify-live/live.sh)
+bash .artifacts/verify-live/live.sh    # boots scratch core:7357, seeds scratch DB,
+                                       # creates verify378-target-{a..h} tmux sessions,
+                                       # runs F16-S1..S7 + adversarial cases
+
+# 4. Teardown
+# — trap in live.sh kills scratch core + verify378-target-* tmux sessions
+# — port 7357 asserted clean after teardown
+
+# Bans honoured: no writes to ~/.claude · no /tmp for repo content · no git mutation in
+# shared tree · no push · no stash/reset/add -A/force-push · no prod port 7331 · no
+# send-keys to any pane the harness did not create · no PR merge or close · no application
+# code edits.
+</pre>
+
+<h2>8 · Captures</h2>
+<p>All captures live at <code>captures/*.json</code>, <code>captures/*.txt</code> and
+<code>captures/*.jsonl</code>:</p>
+<ul>
+  <li><code>00-seed-session_control.txt</code>, <code>00-seed-tmux_panes.txt</code> — scratch DB seed state</li>
+  <li><code>f16-s1-before-submit.pane.txt</code>, <code>f16-s1-after-submit.pane.txt</code> — tmux capture-pane of verify378-target-a</li>
+  <li><code>f16-s1-preview.json</code>, <code>f16-s1-confirm.json</code>, <code>f16-s1-replay.json</code> — happy-path HTTP responses</li>
+  <li><code>f16-s1-db.submissions.txt</code>, <code>f16-s1-events.events.jsonl</code> — DB row + timeline event</li>
+  <li><code>f16-s2-preview.json</code> (observer 409), <code>f16-s3-preview.json</code> (shim-unregistered 409)</li>
+  <li><code>f16-s4-confirm-no-preview.json</code> (428), <code>f16-s4-preview.json</code> (200), <code>f16-s4-sha-mismatch.json</code> (428)</li>
+  <li><code>f16-s5-preview.json</code>, <code>f16-s5-confirm.json</code> (outcome=pane_gone), <code>f16-s5-db.submissions.txt</code></li>
+  <li><code>f16-s6-preview.json</code>, <code>f16-s6-confirm.json</code> (409), <code>f16-s6-db.submissions.txt</code></li>
+  <li><code>f16-s7-sess-{a,e,f}.json</code> — GET /sessions/:id/submissions</li>
+  <li><code>adv-*.json</code> — control-char, oversize, no/wrong bearer, cross-endpoint, cross-session, race</li>
+  <li><code>log.jsonl</code> — line-oriented log of every HTTP call, expected vs actual</li>
+</ul>
+
+<h2>9 · Teardown</h2>
+<ul>
+  <li>Scratch core PID killed (SIGTERM → exit at 20:58:50Z; core.out.log logs
+  <code>core.shutdown signal=SIGTERM</code>).</li>
+  <li>Port 7357 verified clean (<code>lsof -i :7357</code> → no output).</li>
+  <li>All <code>verify378-target-*</code> tmux sessions killed (<code>tmux ls | grep
+  verify378</code> → 0 matches). Foreign sessions (owner's 0/1/2/3/26) untouched.</li>
+  <li>Worktree left in place for the follow-up implementer to inspect; scratch DB + logs
+  preserved under <code>.artifacts/verify-live/</code> (git-ignored path).</li>
+</ul>
+
+</div><!-- /en -->
+
+<!-- ================== RUSSIAN ================== -->
+<div class="lang" id="lang-ru">
+
+<h2>1 · Область проверки</h2>
+<p>Фаза C добавляет недостающий глагол в программу observer-режима: когда сессия под
+управлением панели (фаза 15) и её shim зарегистрирован, владелец набирает задачу в панели,
+видит обязательный dry-run превью и подтверждает — тело попадает в tmux-панель
+принимающей сессии. Чувствительная к безопасности поверхность: <b>envelope
+dry-run/confirm</b> (<code>POST /actions/sessions/:id/submit-task</code>), <b>исполнитель
+send-keys</b> (<code>apps/core/src/sessions/submit.ts</code>), <b>таблица истории
+отправок</b> (миграция <code>0007_task_submissions.sql</code>) и <b>панельный диалог +
+шторка истории</b>. Этот ран исходит из презумпции «эпик НЕ готов» и охотится за путями,
+где исполнитель отправит наружу того, что владелец не подтверждал; где превью
+обходится; где исполнитель попадает в чужую панель; или где след аудита молча неполон.</p>
+
+<h2>2 · Итог локального merge</h2>
+<p>PR #379 конфликтовал с main (main ушёл на 63 коммита вперёд после ответвления).
+Локально слил <code>origin/main</code> в scratch-ветку <code>verify378-scratch</code>
+внутри worktree верификатора (<b>без push</b>). Единственный конфликт:
+<code>docs/dev_history/README.md</code> — обе ветки дописали новую секцию «## Epic»
+(GSL-378 vs GSL-374); решено сохранением обеих. Нулевые конфликты в коде.</p>
+
+<h2>3 · Гейты, перепрогнанные в worktree верификатора</h2>
+<table>
+  <tr><th>Гейт</th><th>Команда</th><th>Результат</th></tr>
+  <tr><td>tsc <code>apps/core</code></td><td><code>apps/core/node_modules/.bin/tsc -p apps/core --noEmit</code></td><td class="pass">PASS (exit 0)</td></tr>
+  <tr><td>tsc <code>apps/web</code></td><td><code>apps/web/node_modules/.bin/tsc -p apps/web --noEmit</code></td><td class="pass">PASS (exit 0)</td></tr>
+  <tr><td><code>bun test apps/core</code></td><td>полная сюита</td><td class="pass">401 pass / 0 fail (38 файлов, 1131 expect)</td></tr>
+  <tr><td><code>bun test apps/web</code></td><td>полная сюита</td><td class="pass">88 pass / 0 fail (6 файлов)</td></tr>
+  <tr><td><code>bun run --filter='@gosleep/web' build</code></td><td>vite build</td><td class="pass">PASS (2360 модулей; dist 962 KB gzip 280 KB)</td></tr>
+  <tr><td><code>bash tools/lab/tests/core-smoke.sh</code></td><td><code>GOSLEEP_CORE_PORT=7357</code></td><td class="pass">106 pass / 0 fail (в т.ч. новые 72-75 на submit-task refusals)</td></tr>
+</table>
+
+<h2>4 · Сценарии F16-S1..S7 (verify378-target-* на scratch core:7357)</h2>
+
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">F16-S1 · отправка в controlled-сессию</span><span class="pass">PASS</span></div>
+    <p>Preview 200 (sha=060c0…2998), Confirm 200 outcome=<b>delivered</b>. Tmux
+    capture-pane ДО: пустой bash-3.2$. ПОСЛЕ: <code>bash-3.2$ verify378 F16-S1 happy path body</code>
+    и следом <code>bash: verify378: command not found</code> — доказывает, что тело было
+    <b>напечатано</b> и Enter <b>был нажат</b> (bash попробовал выполнить). Одна строка в
+    <code>task_submissions</code>. Timeline JSONL содержит событие
+    <code>task.submitted</code> с совпадающим body_sha256 и полным телом.
+    Cached-replay: второй confirm тем же ключом → cached:true, тот же submission_id, второй
+    строки нет.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S2 · observer → 409</span><span class="pass">PASS</span></div>
+    <p>Preview против сессии <code>state=observer</code> → 409, reason=session-not-controlled.
+    UI-слой (не проверялся live в этом ране) рендерит кнопку Submit-task только когда
+    <code>control_state==='controlled' &amp;&amp; shim_registered=true &amp;&amp; pane_ref!=null</code>
+    (прочитано из <code>apps/web/src/screens/Fleet.tsx</code>).</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S3 · shim-unregistered → 409</span><span class="pass">PASS</span></div>
+    <p>Preview против <code>state=controlled</code> + <code>shim_registered=0</code> → 409,
+    reason=shim-not-registered.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S4 · dry-run обязателен</span><span class="pass">PASS</span></div>
+    <p>Confirm без предварительного preview → 428 preview-required. Confirm с ДРУГИМ телом
+    под тем же ключом → 428 body_sha256 mismatch. Обе ветки F16-S4 соответствуют PRD.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S5 · pane_gone</span><span class="pass">PASS</span></div>
+    <p>Между preview и confirm убил tmux-сессию + <code>DELETE FROM tmux_panes</code>.
+    Confirm 200 outcome=<b>pane_gone</b>, pane_ref_at_dispatch=null, одна строка в
+    <code>task_submissions</code>, ноль вызовов tmux (исполнитель короткозамкнул
+    до spawn). Соответствует PRD F16-S5.</p>
+  </div>
+
+  <div class="card finding">
+    <div class="row"><span class="k">F16-S6 · release-mid-submit</span><span class="warn">PARTIAL — см. M1</span></div>
+    <p>Между preview и confirm сделал
+    <code>UPDATE session_control SET state='observer'</code>. Confirm 200 → 409
+    session-not-controlled — <b>верно</b>. НО <code>GET /sessions/sess-f/submissions</code>
+    возвращает <code>count=0</code>. PRD требует: «в историю отправок записывается строка с
+    <code>outcome='released_mid_submit'</code>». Строки нет. См. найдёныш <b>M1</b>.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">F16-S7 · история отправок</span><span class="pass">PASS (с оговоркой M1)</span></div>
+    <p>GET /sessions/sess-a/submissions → 1 строка (F16-S1 delivered).
+    GET /sessions/sess-e/submissions → 1 строка (F16-S5 pane_gone).
+    GET /sessions/sess-f/submissions → 0 строк (F16-S6 отсутствующая строка — M1).
+    Порядок newest-first. Тело никогда не возвращается (только sha256+len — R16.6).</p>
+  </div>
+</div>
+
+<h2>5 · Adversarial-сценарии (вне PRD F16-S1..S7)</h2>
+
+<div class="grid">
+  <div class="card">
+    <div class="row"><span class="k">ADV.a · управляющий байт sub-0x20</span><span class="pass">PASS</span></div>
+    <p>Тело с одиночным <code>\r</code> (0x0D) → 400 body-invalid — соответствует
+    R16 Q5 default. Tab и Newline разрешены.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.d · тело больше 16 KB</span><span class="pass">PASS</span></div>
+    <p>16 385 байт → 400 body-invalid «body exceeds 16384-byte cap». Соответствует R16.7.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.e/f · без bearer / чужой bearer</span><span class="pass">PASS</span></div>
+    <p>Оба → 401.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.g · переиспользование ключа между endpoint-ами</span><span class="pass">PASS</span></div>
+    <p>Ключ с submit-task переиспользован на <code>/actions/skills/publish</code> → 409
+    с внятной ошибкой «previously used against POST /actions/sessions/:session_id/submit-task
+    session=sess-a, not POST /actions/skills/publish». Guard работает.</p>
+  </div>
+
+  <div class="card finding">
+    <div class="row"><span class="k">ADV.h · переиспользование ключа между сессиями (ТОТ ЖЕ endpoint)</span><span class="fail">FAIL — см. M2</span></div>
+    <p>Preview под ключом <code>verify-adv-cross-sess</code> против <b>sess-a</b> → 200
+    (target=verify378-target-a). Confirm с ТЕМ ЖЕ ключом и телом против URL <b>sess-g</b>
+    → 200 delivered в <b>verify378-target-g</b>. Владелец видел превью sess-a; доставка
+    ушла в sess-g. См. M2.</p>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ADV.i · гонка двух confirm под одним ключом</span><span class="pass">PASS</span></div>
+    <p>Две параллельные POST-и с одним ключом и телом. Оба 200; в
+    <code>task_submissions</code> — одна строка (мьютекс
+    <code>serialize("session.submit.&lt;sid&gt;")</code> честный, второй запрос видит
+    cached-envelope).</p>
+  </div>
+</div>
+
+<h2>6 · Найдёныши</h2>
+
+<div class="card finding">
+  <div class="row"><span class="k">M1 · Отсутствует строка task_submissions при release-mid-submit (F16-S6)</span><span class="badge maj">MAJOR</span></div>
+  <p><b>Где:</b> <code>apps/core/src/routes/actions.ts</code> строки 2429-2446 (короткое
+  замыкание re-preview в фазе confirm).</p>
+  <p><b>Что:</b> Фаза confirm вызывает <code>previewSubmission()</code> повторно, чтобы
+  ещё раз проверить state+shim+body_sha256. Если сессия была released между preview и
+  confirm, <code>previewSubmission()</code> возвращает
+  <code>{ok:false,reason:'session-not-controlled',httpStatus:409}</code>, endpoint отдаёт
+  409 клиенту и <b>выходит, не запуская исполнителя</b>. INSERT в
+  <code>task_submissions</code> лежит только внутри ветки исполнителя, поэтому строка
+  молча теряется. У исполнителя есть ветка
+  <code>released_mid_submit</code> (submit.ts 445-461), но при текущей проводке endpoint-а
+  она недостижима.</p>
+  <p><b>PRD (F16-S6):</b> «confirm возвращает 409… <b>в историю отправок пишется строка с
+  <code>outcome='released_mid_submit'</code></b>».</p>
+  <p><b>Живое доказательство:</b>
+  <code>GET /sessions/sess-f/submissions</code> после F16-S6 →
+  <code>{"submissions":[],"count":0}</code>.</p>
+  <p><b>Замечание:</b> endpoint-тест
+  <code>apps/core/test/actions.submitTask.test.ts:348-350</code> ЯВНО ассертит
+  <code>rows.c === 0</code> — код и тесты сознательно отступают от PRD. Либо PRD F16-S6
+  требует переформулировки («строка не пишется на release-mid-submit; timeline-событие
+  фиксирует попытку»), либо endpoint должен писать строку перед 409. Сейчас попытка
+  исчезает с ОБЕИХ поверхностей (нет ни строки в task_submissions, ни timeline-события,
+  потому что timeline emit тоже лежит внутри той же executor-only ветки).</p>
+  <p><b>Сценарий провала:</b> Владелец жмёт Send-task; до confirm-POST кликает
+  Release-control. Submit возвращает 409. В шторке истории для этой сессии — пусто. В
+  timeline — пусто. У владельца нет записи о произошедшем — R16.6 «каждая отправка
+  auditable end-to-end» нарушена для этого класса исходов.</p>
+</div>
+
+<div class="card finding">
+  <div class="row"><span class="k">M2 · Переиспользование Idempotency-Key между сессиями обходит R16.3</span><span class="badge maj">MAJOR</span></div>
+  <p><b>Где:</b> <code>apps/core/src/routes/actions.ts</code> строки 2352-2364
+  (guard от cross-endpoint replay).</p>
+  <p><b>Что:</b> Endpoint пишет
+  <code>endpoint = \`POST /actions/sessions/:session_id/submit-task session=${sessionId}\`</code>
+  в <code>server_intents.endpoint</code> — <b>с session id в хвосте</b>. Но guard проверяет
+  только <code>existing.endpoint.startsWith("POST /actions/sessions/:session_id/submit-task")</code>,
+  игнорируя суффикс <code>session=&lt;sid&gt;</code>. Любой клиент с bearer панели может
+  (а) сделать preview тела против сессии A, (b) сделать confirm с тем же ключом и телом
+  против URL сессии B — endpoint примет confirm как легитимное продолжение. Собственные
+  guard-ы confirm-фазы (re-preview + сверка sha) проходят, потому что тело байт-в-байт.</p>
+  <p><b>Живое доказательство:</b> см. <code>adv-cross-sess-preview.json</code> (target
+  sess-a) и <code>adv-cross-sess-confirm.json</code> (outcome=delivered в sess-g).</p>
+  <p><b>Влияние:</b> R16.3 «Dry-run превью обязателен» подразумевает, что владелец
+  просматривает превью <em>конкретной</em> цели (resolved_target, keystroke_bytes,
+  warnings) перед подтверждением. При этом баге контракт «владелец видел превью» держится
+  только для превьюеной сессии; поддельный или кривой клиент может перенаправить доставку
+  в любую другую controlled-сессию под тем же ключом.</p>
+  <p><b>Эскиз фикса:</b> сравнивать полную строку <code>endpoint</code> (или парсить
+  <code>session=&lt;sid&gt;</code> и сверять с session_id текущего запроса). При
+  расхождении — тот же 409, что уже возвращает cross-endpoint-ветка.</p>
+  <p><b>Смягчение в текущем UI:</b> <code>SubmitTaskDialog</code> минтит свежий
+  ключ <code>submit-&lt;18 hex&gt;</code> на каждый цикл preview и выбрасывает его при
+  изменении тела или закрытии диалога (SubmitTaskDialog.tsx 73-81), поэтому as-shipped
+  панель этот баг не триггерит. Это server-side hardening gap, не пользовательская
+  регрессия сегодня.</p>
+</div>
+
+<div class="card finding minor">
+  <div class="row"><span class="k">m3 · <code>node</code>/<code>bun</code> в whitelist isPaneAtPrompt</span><span class="badge min">MINOR</span></div>
+  <p><b>Где:</b> <code>apps/core/src/sessions/submit.ts</code> строки 230-249.</p>
+  <p><b>Что:</b> Prompt-set включает <code>node</code>, <code>bun</code>, <code>claude</code>.
+  Когда Claude-сессия запускает Bash- или Node-подпроцесс для tool call, tmux
+  <code>#{pane_current_command}</code> может показать <code>node</code> (или имя шелла)
+  ПОКА tool ещё выполняется. Тогда <code>isPaneAtPrompt()</code> вернёт <b>true</b> и
+  отправка приземлится посреди выполнения, смешавшись с выводом tool-а. На принимающем
+  Claude это выглядит как out-of-turn user message и может сорвать tool call. Фрейминг
+  <code>prompt-boundary</code> должен был защищать именно от этого.</p>
+</div>
+
+<div class="card finding minor">
+  <div class="row"><span class="k">m4 · Пустая строка <code>cwd_project_root</code> в resolvePaneRef</span><span class="badge min">MINOR</span></div>
+  <p><b>Где:</b> <code>apps/core/src/sessions/submit.ts</code> строки 177-202. SQL
+  guard-ит на <code>IS NOT NULL</code> но не на непустоту. Строка
+  <code>cwd_project_root=''</code> дала бы <code>LIKE '/%'</code> — совпадение с любым
+  абсолютным путём. Сегодня fleet enumerator таких значений не пишет, но hardening
+  желателен.</p>
+</div>
+
+<h2>7 · Тирдаун</h2>
+<ul>
+  <li>Scratch-core убит SIGTERM; port 7357 чист.</li>
+  <li>Все <code>verify378-target-*</code> tmux-сессии убиты; чужие сессии (0/1/2/3/26)
+  не тронуты.</li>
+  <li>Worktree оставлен для следующего implementer-а; scratch DB + логи под
+  <code>.artifacts/verify-live/</code> (git-ignored).</li>
+</ul>
+
+</div><!-- /ru -->
+
+<script>
+function setLang(l){
+  document.querySelectorAll('.lang').forEach(d=>d.classList.toggle('active',d.id==='lang-'+l));
+  document.querySelectorAll('.lang-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
+}
+</script>
+</body>
+</html>
