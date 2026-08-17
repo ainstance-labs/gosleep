@@ -52,6 +52,11 @@ INTERNAL_SECRET="${GOSLEEP_INTERNAL_SECRET:-}"
 CONNECT_TIMEOUT_S="${GOSLEEP_HOOK_CONNECT_S:-2}"
 INTENT="${GOSLEEP_TOOL_OBSERVED_INTENT:-}"
 TOOL_OVERRIDE="${GOSLEEP_TOOL_OBSERVED_TOOL:-}"
+# GSL-401 — when set to "1", this invocation is a CLEAR: the fleet row's current_tool
+# AND current_intent are NULLed for the observed session_id. Used by the PostToolUse
+# wiring for AskUserQuestion (see .claude/settings.json). Everything else about the
+# observation payload is ignored on this path — only session_id makes it into the POST.
+CLEAR_MODE="${GOSLEEP_TOOL_OBSERVED_CLEAR:-0}"
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 ERR_LOG="$ROOT/.artifacts/lab/tool-observed-feed.err"
@@ -78,9 +83,60 @@ if [ -n "${GOSLEEP_TOOL_OBSERVED_DUMP:-}" ]; then
     cp "$STDIN_FILE" "${GOSLEEP_TOOL_OBSERVED_DUMP}.$(date +%s%N)" 2>/dev/null || true
 fi
 
-if [ ! -s "$STDIN_FILE" ] && [ -z "$TOOL_OVERRIDE" ]; then
+if [ ! -s "$STDIN_FILE" ] && [ -z "$TOOL_OVERRIDE" ] && [ "$CLEAR_MODE" != "1" ]; then
   rm -f "$STDIN_FILE" 2>/dev/null || true
   fail_open "empty stdin and no tool override"
+fi
+
+# GSL-401 — CLEAR path (PostToolUse hook wiring). We only need session_id from the
+# hook payload; the tool / intent / preview extractions are skipped entirely (they are
+# meaningless for a "the tool has exited, wipe its stuck observation" signal). The
+# resulting POST is `{session_id, clear: true}`. All existing guards (WEB_QUESTIONS
+# gate above, INTERNAL_SECRET presence, curl fail-open) apply unchanged.
+if [ "$CLEAR_MODE" = "1" ]; then
+  # Bash-native session_id peek — mirrors the awk-based first-match anchor the
+  # AskUserQuestion / PermissionRequest shims use (tools/hooks/ask-user-question-hook.sh
+  # GSL-386). 64 KiB peek window matches those shims so a payload growth that reaches
+  # them also reaches this feeder.
+  _GOSLEEP_CLEAR_SID=""
+  if [ -s "$STDIN_FILE" ]; then
+    _GOSLEEP_CLEAR_SID="$(LC_ALL=C head -c 65536 "$STDIN_FILE" 2>/dev/null \
+      | LC_ALL=C awk '
+          match($0, /"session_id"[[:space:]]*:[[:space:]]*"[^"]+"/) {
+            s = substr($0, RSTART, RLENGTH)
+            sub(/^"session_id"[[:space:]]*:[[:space:]]*"/, "", s)
+            sub(/"$/, "", s)
+            print s
+            exit
+          }')"
+  fi
+  rm -f "$STDIN_FILE" 2>/dev/null || true
+  if [ -z "$_GOSLEEP_CLEAR_SID" ]; then
+    fail_open "clear: session_id missing in stdin payload"
+  fi
+  POST_BODY="$(printf '{"session_id":"%s","clear":true}' "$_GOSLEEP_CLEAR_SID")"
+
+  HOST_HEADER="${CORE_URL#http://}"
+  HOST_HEADER="${HOST_HEADER#https://}"
+  HOST_HEADER="${HOST_HEADER%%/*}"
+  ORIGIN_HEADER="${CORE_URL%/}"
+
+  HTTP_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
+    --connect-timeout "$CONNECT_TIMEOUT_S" --max-time "$((CONNECT_TIMEOUT_S + 3))" \
+    -X POST \
+    -H "Host: $HOST_HEADER" \
+    -H "Origin: $ORIGIN_HEADER" \
+    -H "Content-Type: application/json" \
+    -H "X-Internal-Secret: $INTERNAL_SECRET" \
+    -d "$POST_BODY" \
+    "$CORE_URL/internal/agents/tool-observed" 2>/dev/null || echo "000")"
+
+  if [ "$HTTP_STATUS" != "200" ]; then
+    printf '{"ts":"%s","event":"tool-observed-feed.clear.non_200","status":"%s"}\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)" "$HTTP_STATUS" \
+      >> "$ERR_LOG" 2>/dev/null || true
+  fi
+  exit 0
 fi
 
 # Build the POST body via python3 (no jq dep). Falls open on parse error.

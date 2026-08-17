@@ -496,6 +496,13 @@ interface ToolObservation {
   /** GSL-319 — most-recent GitHub PR URL found in the observed command / response / intent
    *  text on this observation (null when the extractor found nothing). */
   pr_url: string | null;
+  /** GSL-401 — when true, the flush NULLs current_tool AND current_intent for this row
+   *  (rather than merging the observation via COALESCE). Set by a PostToolUse-driven
+   *  clear POST that tells us the shim-intercepted tool has exited. On a clear entry
+   *  every other field is ignored except `session_id` and `ts` (the timestamp is used
+   *  for `updated_at`; no pr_url extraction runs). Never emitted by the pre-GSL-401
+   *  writer path — non-clear observations continue to merge as before. */
+  clear: boolean;
 }
 
 // GSL-319 — extract the FIRST canonical GitHub PR URL from any string. Deliberately narrow:
@@ -568,6 +575,25 @@ function flushPendingObservations(): void {
   let affected = 0;
   for (const obs of drained) {
     try {
+      // GSL-401 — clear observations are handled BEFORE the normal UPDATE / INSERT branch.
+      // They explicitly NULL current_tool AND current_intent for an EXISTING row (a clear
+      // on an unknown session_id is a silent no-op — a placeholder row for a session we
+      // have never observed would be meaningless). The clear path does not touch
+      // context_pct, pr_url, or any other column: it is scoped exactly to the two fields
+      // the E2E run-03 finding m1 called out as stuck.
+      if (obs.clear === true) {
+        db.raw
+          .query(
+            `UPDATE agent_sessions SET
+               current_tool = NULL,
+               current_intent = NULL,
+               updated_at = ?
+             WHERE session_id = ?`,
+          )
+          .run(nowTs, obs.session_id);
+        affected += 1;
+        continue;
+      }
       // Try UPDATE first; if no row, INSERT a placeholder row. This is the "poller hasn't
       // seen this session yet" case — perfectly legal, the observation carries enough state
       // to make an intermediate row until the next poll fills in kind/cwd/status.
@@ -937,8 +963,39 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
   const sessionId = typeof body.session_id === "string" ? body.session_id : "";
   const tool = typeof body.tool === "string" ? body.tool : "";
   const ts = typeof body.ts === "string" && body.ts.length > 0 ? body.ts : nowIso();
-  if (sessionId.length === 0 || tool.length === 0) {
+  const clear = body.clear === true;
+  if (sessionId.length === 0) {
+    return c.json({ ok: false, error: "session_id required" }, 400);
+  }
+  // GSL-401 — the clear path (PostToolUse-driven "the tool has exited, NULL its stuck
+  // observation") requires ONLY session_id. Non-clear observations still need a tool
+  // name, matching the pre-GSL-401 contract exactly.
+  if (!clear && tool.length === 0) {
     return c.json({ ok: false, error: "session_id and tool required" }, 400);
+  }
+  if (clear) {
+    // Enqueue a clear-observation for the debounce flush. Skip all preview / pr-url
+    // extraction — the clear path is a pure "wipe current_tool + current_intent on this
+    // row" signal and never carries tool metadata. Overwrites any pending observation
+    // for the same session_id (the intent is "the tool has exited" — a stale pending
+    // observation for that same tool is superseded).
+    pendingObservations.set(sessionId, {
+      session_id: sessionId,
+      tool: "",
+      ts,
+      context_pct: null,
+      intent: null,
+      pr_url: null,
+      clear: true,
+    });
+    ensureFlushTimer();
+    return c.json({
+      ok: true,
+      session_id: sessionId,
+      cleared: true,
+      pending: pendingObservations.size,
+      debounce_ms: TOOL_OBSERVED_FLUSH_MS,
+    });
   }
   const contextPct =
     typeof body.context_pct === "number" &&
@@ -979,6 +1036,7 @@ internalRoutes.post("/internal/agents/tool-observed", requireInternalSecret, asy
     context_pct: contextPct,
     intent,
     pr_url: prUrl,
+    clear: false,
   });
   ensureFlushTimer();
 
