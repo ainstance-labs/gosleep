@@ -1,10 +1,21 @@
 # PRD — Эволюция GoSleep: «оркестратор, при котором владелец спит»
 
-> **Status:** Draft — 2026-07-08
+> **Status:** Live — last delta 2026-08-17 (Wave-4b, systems-audit process tail, GSL-238).
+> **Data valid as of:** 2026-08-17.
+> **Updated by:** wave4b (GSL-238).
 > **Владелец:** Roman L (rommxx@gmail.com) · **Проект:** GSL (GoSleep) · **Ветка исследования:** GSL-41
 > **Источник фактов (primary):** `docs/research/2026-07-07-orchestration/{01..05}-*.md`
 > **Контекст (сводные отчёты):** `docs/reports/{orchestrator-landscape,headless-and-supervision,autonomy-lab-ui,loop-engineering}/index.html`
-> **Что уже есть и НЕ меняется:** `skill/orchestrating-delivery-agents/SKILL.md` (+ `handoff`, `delivery-workflow`, `using-jira`)
+> — Contextual reports above were valid as of 2026-07-08…07-10; drift since then
+> is discussed in `docs/reviews/system-audit-2026-07-24/SYNTHESIS.md`.
+> **Skills are a living artefact.** Authoritative copies live under
+> `~/.claude/skills/` for all seven owned skills; the repo tree under `skill/`
+> is a redundancy copy (GSL-334). Editing a skill is a shift-closing item per
+> `skill/handoff/SKILL.md` Procedure step 7 (GSL-189).
+>
+> **PRD-maintenance rule (GSL-238, 2026-08-17).** A PRD delta is a mandatory
+> part of every epic closure. See `docs/process/prd-maintenance.md` for the
+> exact contract (what to update, in which commit, with what proof).
 
 Это внутренний PRD владельца. Английские технические термины и названия оставлены в оригинале.
 Документ — контракт «ЧТО должно работать и КАК мы поймём, что готово». Он **не создаёт** Jira/GitHub
@@ -39,11 +50,19 @@ handoff-файлы, ledger `ORCHESTRATION-STATE.md`). Сегодня всё эт
 ответа с обратным отсчётом. Вопросов-за-ночь для повторяющихся ситуаций со временем становится ноль.
 
 **4. Риски.** (a) Research-preview статус официальных поверхностей (Routines, Remote Control) — surface
-может измениться → оборачиваем в тонкий скилл-слой. (b) `claude -p` с ~2026-06-15 тарифицируется из
-programmatic credit pool по API-ставкам → строго бюджетируем клей, движок оставляем на interactive
-quota. (c) Watchdog, срабатывающий на ложных сигналах, может убить здоровый флот → все уроки Gastown
-(debounce/cooldown/grace) вшиты в Фазу 1 как обязательные. (d) Лимит машины ~3 панели и правило
-`kill-pane` только по явному id — жёсткие инварианты (см. MEMORY).
+может измениться → оборачиваем в тонкий скилл-слой. (b) `claude -p` billing status is UNRESOLVED and
+remains an open question (updated 2026-08-17, GSL-238 delta). Anthropic's own source (`support.claude.com`, verified 2026-07-24)
+reads: "Update June 15: We're pausing the changes… For now, nothing has changed: Claude Agent SDK,
+`claude -p`, and third-party app usage still draw from your subscription's usage limits" — i.e. the
+announced move to the programmatic credit pool was PAUSED, not rolled out, and the pause may be
+lifted. Empirically confirmed on this machine: independent live runs (2026-07-24 and 2026-08-17)
+returned `exit 0`, `provider: firstParty`, no API key, subscription usage. A single trivial call
+was measured at ≈ $0.30 with `cache_read = 0` — cache reuse across separate `-p` invocations is
+effectively zero. Therefore: budget the glue strictly (`--max-budget-usd`), keep the engine on
+interactive quota, and **explicitly forbid polling via `-p`** (≈ $48 over an eight-hour night from
+the same pool the fleet uses). (c) Watchdog, срабатывающий на ложных сигналах, может убить здоровый
+флот → все уроки Gastown (debounce/cooldown/grace) вшиты в Фазу 1 как обязательные. (d) Лимит машины
+~3 панели и правило `kill-pane` только по явному id — жёсткие инварианты (см. MEMORY).
 
 **5. Открытые решения.** Порог context% для эскалации ролла; точные `activeHours` ночного окна; выбор
 push-канала первого приоритета (Claude-app push vs self-hosted ntfy); хостинг ntfy (self-host vs
@@ -61,25 +80,35 @@ ACL'd topic); момент включения learning-loop (после N зап
 |---|---|---|
 | C1 | **Только Claude-подписка. Никаких API-ключей.** `install.sh`/doctor должен sanity-проверять `unset ANTHROPIC_API_KEY` (стрей-ключ молча перехватывает подписку в non-interactive). | 03 раздел 2 (precedence: exported key hijacks subscription); 01 раздел 4 (subscription-native через уже-залогиненный `claude`) |
 | C2 | **Движок = interactive Claude Code + Agent Teams/tmux.** Вердикт исследования: самая защищённая Anthropic'ом поверхность и самая щедрая по $/token (interactive quota, 5h/weekly). Не переносить bulk-работу на API/SDK. | 03 раздел 3 (approach matrix, рекомендация A); 02 раздел 8 (subscription-CLI auth) |
-| C3 | **`claude -p` — только bounded glue** (chronicler, watchdog-triage) со строгим `--allowedTools` + `--max-budget-usd`; тарифицируется из programmatic credit pool → под бюджетом, не как основной движок. | 03 раздел 2 (June-2026 credit-pool split); 04 раздел 3.6; 05 раздел 3.1 (T3) |
+| C3 | **`claude -p` — bounded glue only, and only as a one-off judgement call** (updated 2026-08-17, GSL-238 delta). Strict `--allowedTools` + mandatory `--max-budget-usd`. Allowed: a single call when the mechanism has ALREADY detected an anomaly and needs to read the ledger and render a judgement. Forbidden: scheduled polling (measured 2026-07-24 — $0.30 per call with zero cache reuse, ≈ $48 for an eight-hour night). **Billing model is NOT established:** Anthropic's own source on 2026-07-24 says "pausing… nothing has changed" (subscription pool is still the source of truth) but the pause is reversible. Any decision that leans on billing requires a fresh live check (`/usage` in an interactive owner session). | 03 раздел 2; primary source support.claude.com (2026-07-24 + 2026-08-17); supervision measurement F10 + red-team |
 | C4 | **NO Workflow tool** в воркерах и в этой надстройке. Mechanism-level cap, не prompt-level. | orchestrating skill «Workers get NO multi-agent Workflow tool»; 02 STEELMAN (coordination tax) |
 | C5 | **Максимум 3 одновременных воркер-панели** (лимит машины: 4-я даёт `fork failed`). Очередь + retry на пульсе. | MEMORY «Teammate spawn cap ~3»; 05 раздел 5.1 (slots 2/3) |
 | C6 | **Модели по политике владельца:** three-tier (orchestrator — premium/coordination-only; workers/reviewers — mid; вся verification — cheap). `model:` всегда явно при спавне. | orchestrating skill «Three model tiers»; 02 раздел 2 (model-tiers) |
 | C7 | **Liveness — только из durable-артефактов** (mtime файла, git, event-row), НИКОГДА из self-report или pane-scraping. Единственный источник правды. | 02 раздел 5b (warren watchdog = newest event); 04 раздел 3.9 (a wedged agent can't report) |
 | C8 | **STATE + handoff остаются авторитетом.** Всё новое (`docs/lab/`, `status.json`, дашборд) — производное; при конфликте побеждают STATE + live git (существующее правило suspect-handoff). Атомарная запись (temp+rename) для всего не-append. | orchestrating skill (STATE authority, atomic write); 05 раздел 3.3 |
+| C9 | **A mechanism counts as delivered only when it is ARMED on this machine** (added 2026-08-17, GSL-236/GSL-238 delta). Code plus green tests is not acceptance. Every phase shipping a mechanism (supervisor, breaker, tick, server, hook) MUST close with an `ARMED-CHECK` block sourced from `tools/lab/armed-check.sh` — receipt at `.artifacts/lab/gates/armed-check.json`. Off-record mechanisms are named with an explicit reason; silence = defect. Full checklist: `docs/process/phase-acceptance-checklist.md`. | Shift-73 audit finding 89 (MAJOR): Phase 1 marked DONE while `launchctl list \| grep com.gosleep.watchdog` returned nothing for 104 cycles; smoke 75/75 green against fixtures that had never been reconciled with the live machine |
 
 ---
 
 ## Карта фаз и обоснование порядка
 
-| Фаза | Название | Что даёт владельцу | Зависит от | Усилие |
-|---|---|---|---|---|
-| 1 | Watchdog над оркестратором | Флот переживает смерть оркестратора ночью | существующий cold-start/STATE (+ минимальный heartbeat) | **M** |
-| 2 | Self-pulse + night mode | Оркестратор сам планирует пробуждения дёшево; ночной режим и авто-wait по квоте | Ф1 (heartbeat-файл) | **M** |
-| 3 | Question buffer + decision manifest + morning digest | Вопросы не блокируют ночь; решения по манифесту; утренний дайджест | Ф2 (night mode как триггер буферизации) | **M** |
-| 4 | Laboratory (auto-doc) | Ночь фиксируется сама: события → JSONL, дашборд/дайджест регенерируются | Ф3 (queue/manifest/digest как данные) | **L** |
-| 5 | UI оркестрации | Один утренний экран: runway, вопросы, задачи, стоимость | Ф4 (данные `docs/lab/`) | **M** |
-| 6 | Mobile | Пуш BLOCKER на телефон; ответ из кровати в буфер; break-glass | Ф3 (буфер как цель ответа) + Ф4 (hooks для ntfy) | **M** |
+| Фаза | Название | Readiness (2026-08-17) | Что даёт владельцу | Зависит от | Усилие |
+|---|---|---|---|---|---|
+| 1 | Watchdog над оркестратором | **PARTIAL** — GSL-49 code DONE (PR #66) + shift-73 audit + follow-ups GSL-178/211 (armed-check receipt now the source of truth); live installation status: read from `.artifacts/lab/gates/armed-check.json` at closure. | Флот переживает смерть оркестратора ночью | существующий cold-start/STATE (+ минимальный heartbeat) | **M** |
+| 2 | Self-pulse + night mode | **PARTIAL** — GSL-65 (PR #82); heartbeat + night mode present; measured cadence still drifts vs spec (2026-07-24 audit). | Оркестратор сам планирует пробуждения дёшево; ночной режим и авто-wait по квоте | Ф1 (heartbeat-файл) | **M** |
+| 3 | Question buffer + decision manifest + morning digest | **DONE** — GSL-72 (PR #92); question buffer + manifest + digest live; learning-loop candidates flow (GSL-227/229) landed in Wave-4b sibling epic. | Вопросы не блокируют ночь; решения по манифесту; утренний дайджест | Ф2 (night mode как триггер буферизации) | **M** |
+| 4 | Laboratory (auto-doc) | **PARTIAL** — GSL-81/90; T1 (events) autonomous; T3 debounced trigger present (GSL-364 PostToolUse). `telemetry.jsonl` was declared but never created; removed from layout in Wave-4b (see R4.3 note). | Ночь фиксируется сама: события → JSONL, дашборд/дайджест регенерируются | Ф3 (queue/manifest/digest как данные) | **L** |
+| 5 | UI оркестрации | **SUPERSEDED (v1) → рабочий web control plane (Epic GSL-250)** — v1 static bundle preserved as rollback surface (`docs/lab/site/*.html`, `GOSLEEP_KEEP_STATIC_SITE=1`); live UI now served by `apps/core` + `apps/web` on `127.0.0.1:7331` (deprecation recorded in `docs/runbooks/gosleep-core.md`, PRD 01-phase7). | Один утренний экран: runway, вопросы, задачи, стоимость | Ф4 (данные `docs/lab/`) | **M** |
+| 6 | Mobile | **FROZEN (owner 2026-07-24)** — GSL-104 (RC wrapper) + GSL-108 DONE; GSL-105/106/107 explicitly NOT owed as debt; unfreezes on owner call. | Пуш BLOCKER на телефон; ответ из кровати в буфер; break-glass | Ф3 (буфер как цель ответа) + Ф4 (hooks для ntfy) | **M** |
+| 7 | Web control plane (interactive, all services) | **IN PROGRESS** — new phase since 2026-07-24 owner priority; delivered slices: `apps/core` Hono API on 127.0.0.1:7331 (GSL-260/280), `apps/web` Vite+React SPA (GSL-265), question loop (GSL-267/274/275), action endpoints (GSL-268/298), Fleet + observer + task submission (GSL-276/365/379-381). Full PRD: `docs/prd/01-phase7-interactive-control-plane.md`. | Web is the control panel, not the poster: live data + live actions | Ф4 + Ф5 (+ armed-check per C9) | **L** |
+| 8 | Skills as a living product | **PARTIAL** — GSL-174 phased plan (`docs/prd/02-phase8-skills-management.md`); Phase 0 rescue + reverse-sync landed (GSL-251/334); active development pace throttled per owner (skills-publish deferred to phase 8 completion). | Editable skills with real ownership | — (+ owner decision on publish procedure) | **M** |
+
+> **Readiness column contract** (added 2026-08-17, GSL-238 delta). Values:
+> `DONE` / `ARMED` / `PARTIAL` / `NOT-ARMED` / `FROZEN` / `SUPERSEDED` /
+> `IN PROGRESS` / `NOT-STARTED`. Every value carries a proof reference (Jira
+> epic + PR, or an `armed-check` line). Updating this column is a mandatory
+> part of every epic closure per `docs/process/prd-maintenance.md`. A `DONE`
+> cell without proof is a PRD defect under constraint C9.
 
 **Почему такой порядок (value + зависимости, а не шаблон).** Порядок — вертикальные, независимо
 поставляемые срезы, отсортированные по «самой ранней ценности для владельца» и по зависимостям
@@ -459,7 +488,13 @@ T2 нарратив (существующие конвенции, без изм�
   дописывает пропущенные локально события (PR смёржен из web) — reconcile-don't-trust (autosk
   watcher). *Acceptance:* PR, смёрженный вне CLI, появляется в таймлайне после chronicler-прохода.
 - **R4.3 — On-disk layout + дисциплина.** *Target:* layout из 05 раздел 3.3 (`events/`, `status.json`,
-  `questions/`, `decisions/`, `telemetry.jsonl`, `digest/`, `site/`, `scratch/` gitignored). Правила:
+  `questions/`, `decisions/`, `digest/`, `site/`, `scratch/` gitignored). Правила:
+  > **Removed 2026-08-17 (GSL-238 delta):** `telemetry.jsonl` used to appear in
+  > this layout line, but never existed on disk and no writer was ever wired
+  > (finding independently confirmed by GSL-164 audit run). The Cost view builds
+  > telemetry from `ORCHESTRATION-STATE.md`; if a dedicated `telemetry.jsonl`
+  > becomes needed, file a task that ships the writer alongside the layout
+  > entry (constraint C9). 
   atomic temp+rename для не-append; append-only jsonl (коррекция = `supersedes:<seq>`); STATE остаётся
   авторитетом, `status.json` производный, при конфликте STATE+git побеждают (C8). *Acceptance:*
   `scratch/` в .gitignore; не-append файлы пишутся атомарно (проверка: нет torn-write при kill

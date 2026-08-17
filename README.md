@@ -15,11 +15,19 @@ measurable, evolving product.
 | `install.sh` | Sync `skill/` into `~/.claude/skills/orchestrating-delivery-agents/` so it's active. |
 | `evals/` | The behavioral test suite (stress-test scenarios + runner + scorecards). |
 | `docs/design/` | Design docs for the future live observability harness (event schema + web UI). |
-| `docs/report/` | HTML knowledge base / dashboard (open `docs/report/index.html`). |
+| `docs/reports/` | **Active** — verification runs and ad-hoc reports (audits, research, benchmarks). Standard: `docs/reports/verifications/README.md`. |
+| `docs/report/` | **LEGACY (frozen; do not add to)** — pre-GSL HTML knowledge base kept as historical citation surface. See `docs/report/LEGACY.md`. |
 | `docs/analysis/` | Eval cost analysis and methods. |
 | `docs/dev_history/` | Per-task dev history (the live engineering memory, keyed by Jira task). |
-| `docs/dev-history/` | Legacy narrative log from the pre-standalone (TLM) era — frozen. |
 | `docs/handoff/` | Agent handoff batons + orchestration state. |
+| `docs/lessons-learned/` | Class-of-failure patterns the project bought at cost (GSL-240). |
+| `docs/adr/` | Architectural / process decisions with context, options, consequences (GSL-240). |
+| `docs/process/` | Cross-cutting delivery conventions (phase-acceptance checklist, doc-header, PRD-maintenance). |
+
+> Note: the legacy `docs/dev-history/` directory (hyphen — the pre-GSL / TLM
+> narrative log) was deleted by owner directive on 2026-07-26 and is
+> deliberately not recreated. Do not add references to that path in new
+> docs. See CLAUDE.md "Delivery conventions".
 
 ## The idea
 
