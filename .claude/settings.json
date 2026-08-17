@@ -183,6 +183,13 @@
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/lab-log-hook.sh", "timeout": 5 }
         ]
+      },
+      {
+        "$comment": "GSL-401 — PostToolUse clear for the tool-observed feed. E2E run-03 finding m1: after the AskUserQuestion shim intercepts, the panel answers, and Claude proceeds to status=idle, agent_sessions.current_tool / current_intent stay pinned to 'AskUserQuestion' / 'AskUserQuestion pending owner answer' indefinitely — the feeder only fires from PreToolUse and flushPendingObservations UPDATEs intent via COALESCE (never NULLs it). This block wires the feeder in CLEAR mode (GOSLEEP_TOOL_OBSERVED_CLEAR=1) for exactly the AskUserQuestion tool matcher — on tool exit the feeder POSTs {session_id, clear:true}, flush NULLs both columns, the Fleet card unpins. Guard chain unchanged: the feeder still early-exits on GOSLEEP_WEB_QUESTIONS != 1, so a non-pilot session runs a millisecond no-op. Runs in background (`&`) so a slow clear POST cannot delay Claude's PostToolUse return.",
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          { "type": "command", "command": "env GOSLEEP_TOOL_OBSERVED_CLEAR=1 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/tool-observed-feed.sh", "timeout": 5 }
+        ]
       }
     ]
   }
