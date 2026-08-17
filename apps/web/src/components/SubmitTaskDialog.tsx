@@ -86,6 +86,39 @@ export interface SubmitTaskDialogProps {
   sessionId: string;
   sessionName: string;
   paneRef: string | null;
+  /** GSL-402 — when true, the dialog renders an advisory banner at the top telling the
+   *  owner that the target session currently has an open AskUserQuestion. Submissions
+   *  queue behind the pending question (no data loss — verified live in E2E run 03),
+   *  but a message the owner typed intending it as an ANSWER to the question would
+   *  silently miss the AskUserQuestion tool_input and land as a follow-on prompt.
+   *  Non-blocking: Send stays enabled. Default `false` preserves pre-GSL-402 behaviour.
+   *  FleetCard computes this from `s.current_tool === "AskUserQuestion"` (post-GSL-401
+   *  the field is reliably NULLed once the tool exits, so a truthy value means the
+   *  session is currently parked on a pending AskUserQuestion). */
+  hasOpenQuestion?: boolean;
+}
+
+/** GSL-402 — advisory sentence rendered inside the dialog when the target session has an
+ *  open AskUserQuestion. Exported as a constant so tests, docs, and any future E2E
+ *  harness can grep for it without inlining a literal that might drift. */
+export const PENDING_QUESTION_BANNER_TEXT =
+  "This session has an open question — the text will queue until the question is answered.";
+
+/** Stateless banner rendered above the dialog body when `hasOpenQuestion` is true.
+ *  Exported so the unit test can render it via `react-dom/server` without booting the
+ *  Radix Portal (portals do not render in static markup). Matches the same visual
+ *  tokens (`--color-warn-soft` background, `--color-warn` text) as the persistent
+ *  guardrails banner already in the dialog so the two feel like siblings. */
+export function SubmitTaskPendingQuestionBanner() {
+  return (
+    <div
+      className="rounded-md border border-[color-mix(in_oklab,var(--color-warn),transparent_70%)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs text-[var(--color-warn)]"
+      role="note"
+      data-testid="submit-task-pending-question-banner"
+    >
+      {PENDING_QUESTION_BANNER_TEXT}
+    </div>
+  );
 }
 
 interface PreviewState {
@@ -103,6 +136,7 @@ export function SubmitTaskDialog({
   sessionId,
   sessionName,
   paneRef,
+  hasOpenQuestion = false,
 }: SubmitTaskDialogProps) {
   const submit = useSubmitTask();
   const { push: pushToast } = useToast();
@@ -313,6 +347,12 @@ export function SubmitTaskDialog({
       }
     >
       <div className="space-y-4 px-4 py-3">
+        {/* GSL-402 — pending-question banner (E2E run-03 finding m2). Rendered ABOVE the
+            persistent guardrails banner so the "this will queue behind an open question"
+            context lands before the operator reads the always-on submitting semantics.
+            Advisory only; Send stays enabled. */}
+        {hasOpenQuestion ? <SubmitTaskPendingQuestionBanner /> : null}
+
         {/* Persistent guardrail banner -- PRD § Scope "Guardrails". */}
         <div
           className="rounded-md border border-[color-mix(in_oklab,var(--color-warn),transparent_70%)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs text-[var(--color-warn)]"

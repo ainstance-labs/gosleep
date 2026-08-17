@@ -355,6 +355,14 @@ function FleetCard({ s }: { s: FleetSession }) {
           sessionId={s.session_id}
           sessionName={s.name}
           paneRef={s.tmux_pane_ref ?? null}
+          // GSL-402 — advise the owner when the target session is currently parked on a
+          // pending AskUserQuestion. Post-GSL-401, the /fleet-side current_tool is
+          // reliably NULLed once the tool exits, so a truthy match here means the
+          // session is actively long-polling on an owner answer. A task submission
+          // will queue behind that question (Claude Code queues under "Press up to
+          // edit queued messages" until the question resolves) — no data loss, but
+          // the owner needs to know it will not be read as the answer.
+          hasOpenQuestion={s.current_tool === "AskUserQuestion"}
         />
       ) : null}
     </>
